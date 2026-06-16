@@ -72,126 +72,132 @@ export const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
 	},
 ] as const;
 
+// Hand-tuned demo matches: each song scored against the playlists' intent
+// descriptions (the mood/scene/sonic cues in demo-intent-examples.ts), not just
+// the titles — so a song lands in several playlists at different strengths and
+// off-vibe pairings drop out. Playlist ids: 1 crying in the car · 2 golden hour
+// bike ride · 3 feeling everything · 4 main character energy · 5 3am thoughts ·
+// 6 sunday softness · 7 revenge era. Scores descend within each song.
 const DEMO_SONG_MATCHES: Record<string, DemoSongMatch[]> = {
-	// Ribs — Lorde
+	// Ribs — Lorde · nostalgic dread of growing up, building synths, the panic of
+	// feeling it all at once
 	"2MvvoeRt8NcOXWESkxWn3g": [
-		{ id: "5", matchScore: 0.94 },
-		{ id: "3", matchScore: 0.72 },
-		{ id: "1", matchScore: 0.51 },
+		{ id: "3", matchScore: 0.92 },
+		{ id: "5", matchScore: 0.74 },
+		{ id: "1", matchScore: 0.55 },
 	],
-	// Houdini — Dua Lipa
+	// Houdini — Dua Lipa · confident disco-pop strut, daring someone to keep up
 	"4OMJGnvZfDvsePyCwRGO7X": [
-		{ id: "2", matchScore: 0.95 },
-		{ id: "4", matchScore: 0.79 },
-		{ id: "7", matchScore: 0.48 },
+		{ id: "4", matchScore: 0.9 },
+		{ id: "2", matchScore: 0.7 },
+		{ id: "7", matchScore: 0.55 },
 	],
-	// Thinkin Bout You — Frank Ocean
+	// Thinkin Bout You — Frank Ocean · hushed falsetto, late-night intimate longing
 	"7DfFc7a6Rwfi3YQMRbDMau": [
 		{ id: "5", matchScore: 0.91 },
-		{ id: "3", matchScore: 0.68 },
-		{ id: "6", matchScore: 0.44 },
+		{ id: "3", matchScore: 0.7 },
+		{ id: "1", matchScore: 0.55 },
 	],
-	// Motion Sickness — Phoebe Bridgers
+	// Motion Sickness — Phoebe Bridgers · wry, aching breakup, the classic car-cry
 	"5xo8RrjJ9CVNrtRg2S3B1R": [
-		{ id: "1", matchScore: 0.96 },
-		{ id: "7", matchScore: 0.63 },
-		{ id: "5", matchScore: 0.41 },
+		{ id: "1", matchScore: 0.95 },
+		{ id: "3", matchScore: 0.78 },
+		{ id: "7", matchScore: 0.52 },
 	],
-	// Too Sweet — Hozier
+	// Too Sweet — Hozier · warm bluesy groove, easy and unhurried
 	"3HMY0r2BAdpasXMY8rseR0": [
-		{ id: "6", matchScore: 0.88 },
-		{ id: "3", matchScore: 0.6 },
-		{ id: "5", matchScore: 0.39 },
+		{ id: "2", matchScore: 0.88 },
+		{ id: "6", matchScore: 0.66 },
+		{ id: "3", matchScore: 0.48 },
 	],
-	// Do I Wanna Know? — Arctic Monkeys
+	// Do I Wanna Know? — Arctic Monkeys · brooding 3am riff, sleepless yearning
 	"5FVd6KXrgO9B3JPmC8OPst": [
-		{ id: "5", matchScore: 0.93 },
-		{ id: "3", matchScore: 0.65 },
-		{ id: "1", matchScore: 0.47 },
+		{ id: "5", matchScore: 0.9 },
+		{ id: "7", matchScore: 0.6 },
+		{ id: "4", matchScore: 0.5 },
 	],
-	// Kill Bill — SZA
+	// Kill Bill — SZA · smooth, deadpan revenge fantasy
 	"1Qrg8KqiBpW07V7PNxwwwL": [
-		{ id: "7", matchScore: 0.92 },
-		{ id: "5", matchScore: 0.74 },
+		{ id: "7", matchScore: 0.93 },
+		{ id: "5", matchScore: 0.7 },
 		{ id: "3", matchScore: 0.5 },
 	],
-	// Not Like Us — Kendrick Lamar
+	// Not Like Us — Kendrick Lamar · dominant diss, owning the room
 	"6AI3ezQ4o3HUoP6Dhudph3": [
-		{ id: "4", matchScore: 0.96 },
+		{ id: "4", matchScore: 0.93 },
 		{ id: "7", matchScore: 0.85 },
-		{ id: "2", matchScore: 0.58 },
 	],
-	// Taxes — Geese
+	// Taxes — Geese · raw, rootsy indie-rock build
 	"7r9BUOSnekEjrkMhmxD6Ae": [
-		{ id: "1", matchScore: 0.77 },
-		{ id: "6", matchScore: 0.55 },
-		{ id: "5", matchScore: 0.38 },
+		{ id: "3", matchScore: 0.76 },
+		{ id: "1", matchScore: 0.58 },
+		{ id: "6", matchScore: 0.48 },
 	],
-	// Beautiful Things — Benson Boone
+	// Beautiful Things — Benson Boone · soft-to-explosive, grateful and terrified
 	"6tNQ70jh4OwmPGpYy6R2o9": [
-		{ id: "3", matchScore: 0.91 },
-		{ id: "6", matchScore: 0.67 },
-		{ id: "1", matchScore: 0.44 },
+		{ id: "3", matchScore: 0.92 },
+		{ id: "1", matchScore: 0.66 },
+		{ id: "6", matchScore: 0.5 },
 	],
-	// BIRDS OF A FEATHER — Billie Eilish
+	// BIRDS OF A FEATHER — Billie Eilish · soft, devoted, gentle warmth
 	"6dOtVTDdiauQNBQEDOtlAB": [
-		{ id: "3", matchScore: 0.93 },
-		{ id: "6", matchScore: 0.76 },
-		{ id: "5", matchScore: 0.49 },
+		{ id: "6", matchScore: 0.82 },
+		{ id: "3", matchScore: 0.78 },
+		{ id: "2", matchScore: 0.66 },
 	],
-	// drivers license — Olivia Rodrigo
+	// drivers license — Olivia Rodrigo · the definitive car-cry breakup ballad
 	"7lPN2DXiMsVn7XUKtOW1CS": [
 		{ id: "1", matchScore: 0.97 },
-		{ id: "3", matchScore: 0.81 },
+		{ id: "3", matchScore: 0.8 },
+		{ id: "5", matchScore: 0.6 },
+	],
+	// Pink Pony Club — Chappell Roan · euphoric, liberating, becoming yourself
+	"1k2pQc5i348DCHwbn5KTdc": [
+		{ id: "4", matchScore: 0.9 },
+		{ id: "2", matchScore: 0.76 },
+		{ id: "7", matchScore: 0.55 },
+	],
+	// EARFQUAKE — Tyler, the Creator · lush, vulnerable plea
+	"5hVghJ4KaYES3BFUATCYn0": [
+		{ id: "3", matchScore: 0.85 },
+		{ id: "5", matchScore: 0.7 },
+		{ id: "1", matchScore: 0.58 },
+	],
+	// Blinding Lights — The Weeknd · propulsive 80s-synth night drive
+	"0VjIjW4GlUZAMYd2vXMi3b": [
+		{ id: "4", matchScore: 0.85 },
+		{ id: "2", matchScore: 0.72 },
 		{ id: "5", matchScore: 0.55 },
 	],
-	// Pink Pony Club — Chappell Roan
-	"1k2pQc5i348DCHwbn5KTdc": [
-		{ id: "2", matchScore: 0.94 },
-		{ id: "4", matchScore: 0.72 },
-		{ id: "7", matchScore: 0.43 },
-	],
-	// EARFQUAKE — Tyler, the Creator
-	"5hVghJ4KaYES3BFUATCYn0": [
-		{ id: "3", matchScore: 0.89 },
-		{ id: "5", matchScore: 0.66 },
-		{ id: "6", matchScore: 0.42 },
-	],
-	// Blinding Lights — The Weeknd
-	"0VjIjW4GlUZAMYd2vXMi3b": [
-		{ id: "1", matchScore: 0.88 },
-		{ id: "2", matchScore: 0.69 },
-		{ id: "4", matchScore: 0.47 },
-	],
-	// As It Was — Harry Styles
+	// As It Was — Harry Styles · bright synthpop carrying real melancholy
 	"4Dvkj6JhhA12EX05fT7y2e": [
-		{ id: "3", matchScore: 0.82 },
-		{ id: "1", matchScore: 0.61 },
-		{ id: "6", matchScore: 0.4 },
+		{ id: "3", matchScore: 0.8 },
+		{ id: "2", matchScore: 0.72 },
+		{ id: "1", matchScore: 0.5 },
 	],
-	// Manchild — Sabrina Carpenter
+	// Manchild — Sabrina Carpenter · sassy, witty kiss-off
 	"42UBPzRMh5yyz0EDPr6fr1": [
-		{ id: "7", matchScore: 0.91 },
-		{ id: "4", matchScore: 0.73 },
-		{ id: "2", matchScore: 0.46 },
+		{ id: "7", matchScore: 0.9 },
+		{ id: "4", matchScore: 0.72 },
+		{ id: "2", matchScore: 0.5 },
 	],
-	// God's Plan — Drake
+	// God's Plan — Drake · warm, grateful, proving the doubters wrong
 	"6DCZcSspjsKoFjzjrWoCdn": [
-		{ id: "4", matchScore: 0.88 },
-		{ id: "6", matchScore: 0.57 },
-		{ id: "2", matchScore: 0.38 },
+		{ id: "4", matchScore: 0.82 },
+		{ id: "7", matchScore: 0.6 },
+		{ id: "2", matchScore: 0.48 },
 	],
-	// DtMF — Bad Bunny
+	// DtMF — Bad Bunny · bittersweet nostalgia, warm and communal
 	"3sK8wGT43QFpWrvNQsrQya": [
-		{ id: "2", matchScore: 0.87 },
-		{ id: "3", matchScore: 0.64 },
-		{ id: "1", matchScore: 0.42 },
+		{ id: "3", matchScore: 0.8 },
+		{ id: "2", matchScore: 0.72 },
+		{ id: "6", matchScore: 0.55 },
 	],
-	// That's So True — Gracie Abrams
+	// That's So True — Gracie Abrams · snappy, knowing post-breakup pettiness
 	"7ne4VBA60CxGM75vw0EYad": [
-		{ id: "3", matchScore: 0.9 },
-		{ id: "1", matchScore: 0.71 },
-		{ id: "5", matchScore: 0.48 },
+		{ id: "1", matchScore: 0.78 },
+		{ id: "3", matchScore: 0.7 },
+		{ id: "7", matchScore: 0.62 },
 	],
 };
 

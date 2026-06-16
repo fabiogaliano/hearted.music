@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import {
+	type DescriptionExample,
+	DescriptionExamplesShuffle,
+} from "./DescriptionExamplesShuffle";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
@@ -18,6 +22,13 @@ interface SpotlightPanelProps {
 	tracksLoadingMore?: boolean;
 	/** Load the next track page (fired as the sentinel scrolls into view). */
 	onLoadMoreTracks?: () => void;
+	/** Hide the writing surface's "can't be matched yet" caution (rehearsal mode). */
+	hideUnmatchableWarning?: boolean;
+	/** Hide the track list's "No tracks yet" empty state (rehearsal mode). */
+	hideTracksEmptyState?: boolean;
+	/** Per-playlist matching-intent examples for the editor's pick-an-intent
+	 *  helper. Omitted falls back to the generic shuffle list. */
+	examples?: readonly DescriptionExample[];
 }
 
 /**
@@ -45,6 +56,9 @@ export function SpotlightPanel({
 	tracksHasMore = false,
 	tracksLoadingMore = false,
 	onLoadMoreTracks,
+	hideUnmatchableWarning = false,
+	hideTracksEmptyState = false,
+	examples,
 }: SpotlightPanelProps) {
 	const [description, setDescription] = useState<string | null>(
 		playlist?.intent ?? null,
@@ -74,6 +88,17 @@ export function SpotlightPanel({
 	const openEditor = () => {
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
+		setIsEditing(true);
+	};
+	// Picking a ready-made example seeds the draft from it and jumps straight into
+	// editing — bypassing openEditor's reseed-from-saved, since the point is to
+	// start from the example rather than the current intent.
+	const pickExample = (
+		nextDescription: string,
+		nextGenres: readonly string[],
+	) => {
+		setDraftDescription(nextDescription);
+		setDraftGenres([...nextGenres]);
 		setIsEditing(true);
 	};
 	const save = () => {
@@ -141,6 +166,7 @@ export function SpotlightPanel({
 												draftDescription={draftDescription}
 												draftGenres={draftGenres}
 												topGenres={topGenres}
+												hideUnmatchableWarning={hideUnmatchableWarning}
 												onEditDescription={openEditor}
 												onEditGenres={openEditor}
 												onDraftDescriptionChange={setDraftDescription}
@@ -151,12 +177,27 @@ export function SpotlightPanel({
 										</div>
 									</div>
 
+									{/* Pick-an-intent helper, edit mode only: it feeds the writing
+									    surface, so it appears once editing starts and sits below the
+									    band — and its Save/Cancel — on the panel's plain bg, where the
+									    legend notch's default --t-bg matches and nothing has to be
+									    overridden. */}
+									{isEditing && (
+										<div className="max-w-[56ch]">
+											<DescriptionExamplesShuffle
+												onPick={pickExample}
+												examples={examples}
+											/>
+										</div>
+									)}
+
 									<TrackList
 										tracks={tracks}
 										songCount={playlist.songCount}
 										hasMore={tracksHasMore}
 										isLoadingMore={tracksLoadingMore}
 										onLoadMore={onLoadMoreTracks}
+										hideEmptyState={hideTracksEmptyState}
 									/>
 								</div>
 							</div>

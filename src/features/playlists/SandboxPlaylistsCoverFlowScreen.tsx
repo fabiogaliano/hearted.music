@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
 import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
@@ -40,8 +41,9 @@ export function SandboxPlaylistsCoverFlowScreen() {
 					name: p.name,
 					isTarget: targetIds.has(p.id),
 					// Canned demo: covers come from /public/demo-playlists where present,
-					// else null → the shared AlbumPlaceholder. No real tracks, so songCount
-					// 0 keeps the detail panel's "No tracks yet" honest; intent/genres blank.
+					// else null → the shared AlbumPlaceholder. No real tracks (songCount 0);
+					// the panel's empty-track + unmatchable nudges are suppressed below so the
+					// rehearsal stays clean. Intent/genres start blank.
 					songCount: 0,
 					imageUrl: p.imageUrl ?? null,
 					intent: meta?.intent ?? null,
@@ -98,6 +100,11 @@ export function SandboxPlaylistsCoverFlowScreen() {
 				onClose={() => setSelectedId(null)}
 				onToggleTarget={(id) => toggleTarget(id, !targetIds.has(id))}
 				onSave={handleSave}
+				hideUnmatchableWarning
+				hideTracksEmptyState
+				examples={
+					panelPlaylist ? DEMO_INTENT_EXAMPLES[panelPlaylist.id] : undefined
+				}
 			/>
 		</>
 	);

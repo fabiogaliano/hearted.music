@@ -2,16 +2,17 @@ import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
-interface DescriptionExample {
+export interface DescriptionExample {
 	description: string;
 	genres: readonly string[];
 }
 
-// Read-only inspiration shown below the writing surface on the first-pick dialog:
-// it shows the shape of a good description and the genres that pair with it,
-// without ever touching what the user writes. Genres are illustrative (never
-// inserted), but kept to canonical whitelist forms ("hip-hop", "rnb", …) so they
-// read as real, selectable genres rather than invented labels.
+// Ready-made intents shown below the playlist writing surface: each pairs the
+// shape of a good description with the genres that fit it. Picking one fills the
+// surface (description + genres) and opens the editor — a one-click start for
+// users who'd otherwise face a blank intent. Genres are kept to canonical
+// whitelist forms ("hip-hop", "rnb", …) so they land as real, selectable genres
+// rather than invented labels.
 const EXAMPLES: readonly DescriptionExample[] = [
 	{ description: "songs i run to", genres: ["electronic", "house", "indie"] },
 	{
@@ -55,15 +56,21 @@ interface DescriptionExamplesShuffleProps {
 	/** Fill the writing surface above with the shown example's description and
 	 *  genres, then open the editor so it's ready to tweak or save. */
 	onPick: (description: string, genres: readonly string[]) => void;
+	/** Override the shuffle pool — e.g. the onboarding preview passes a playlist's
+	 *  own tuned examples so each demo playlist shows only its three. Omitted (the
+	 *  production /playlists screen) falls back to the generic list. */
+	examples?: readonly DescriptionExample[];
 }
 
 export function DescriptionExamplesShuffle({
 	onPick,
+	examples,
 }: DescriptionExamplesShuffleProps) {
+	const pool = examples && examples.length > 0 ? examples : EXAMPLES;
 	const [index, setIndex] = useState(0);
-	const current = EXAMPLES[index];
+	const current = pool[index % pool.length];
 
-	const shuffle = () => setIndex((i) => (i + 1) % EXAMPLES.length);
+	const shuffle = () => setIndex((i) => (i + 1) % pool.length);
 
 	return (
 		<div className="desc-examples">

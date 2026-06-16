@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Button } from "@/components/ui/Button";
+import { DescriptionExamplesShuffle } from "@/features/playlists/components/explorations/DescriptionExamplesShuffle";
 import { PlaylistWritingSurface } from "@/features/playlists/components/PlaylistWritingSurface";
 import { accountTopGenresQueryOptions } from "@/features/playlists/queries";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
@@ -14,7 +15,6 @@ import {
 	savePlaylistMatchIntent,
 } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
 
 type DescriptionEditState =
 	| { kind: "idle" }

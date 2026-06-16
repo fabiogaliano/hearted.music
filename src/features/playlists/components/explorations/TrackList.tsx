@@ -14,6 +14,9 @@ interface TrackListProps {
 	isLoadingMore?: boolean;
 	/** Called when the sentinel scrolls into view; the caller loads the next page. */
 	onLoadMore?: () => void;
+	/** Suppress the "No tracks yet" empty state — used in the onboarding rehearsal
+	 *  where canned playlists have no tracks and the message would be noise. */
+	hideEmptyState?: boolean;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
@@ -25,12 +28,14 @@ export function TrackList({
 	hasMore = false,
 	isLoadingMore = false,
 	onLoadMore,
+	hideEmptyState = false,
 }: TrackListProps) {
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
 		hasMore,
 	});
 	if (!tracks.length) {
+		if (hideEmptyState) return null;
 		return (
 			<p
 				className="theme-text-muted text-xs leading-relaxed text-pretty"

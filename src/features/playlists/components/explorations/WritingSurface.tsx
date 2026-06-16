@@ -32,6 +32,9 @@ interface WritingSurfaceProps {
 	intentSerif?: boolean;
 	/** Names the collapsed description for a card→panel shared-element morph. */
 	descriptionViewTransitionName?: string;
+	/** Hide the "can't be matched yet" caution — used in the onboarding rehearsal
+	 *  where canned playlists start empty and the nudge would be noise. */
+	hideUnmatchableWarning?: boolean;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -58,6 +61,7 @@ export function WritingSurface({
 	isSaving = false,
 	intentSerif = false,
 	descriptionViewTransitionName,
+	hideUnmatchableWarning = false,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -178,7 +182,7 @@ export function WritingSurface({
 
 	return (
 		<div className="relative flex flex-col gap-4">
-			{!description && genres.length === 0 && (
+			{!hideUnmatchableWarning && !description && genres.length === 0 && (
 				<div
 					className="flex items-start gap-2.5 border-l-2 px-3 py-2.5"
 					style={{
