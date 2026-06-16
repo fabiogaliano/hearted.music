@@ -42,9 +42,10 @@ export function WelcomeStep() {
 					className="theme-text-muted mt-6 text-xl font-light tracking-wide"
 					style={{ fontFamily: fonts.body }}
 				>
-					Your songs have been waiting.
+					You have liked songs. You have playlists.
+					<br />
+					Tell us what each is for, and your songs find their way in.
 				</p>
-
 				<Button
 					variant="link"
 					onClick={handleContinue}
@@ -52,7 +53,9 @@ export function WelcomeStep() {
 					className="mt-16"
 					style={{ fontFamily: fonts.body }}
 				>
-					<span className="text-lg font-medium tracking-wide">Let's go</span>
+					<span className="text-lg font-medium tracking-wide">
+						Show me how it works
+					</span>
 					<ArrowRightIcon
 						size={16}
 						className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"

@@ -216,6 +216,7 @@ describe("queue ordering (new first, max score desc, id asc)", () => {
 vi.mock("../queries", () => ({
 	fetchActiveSession: vi.fn(),
 	insertMatchReviewSession: vi.fn(),
+	completeSession: vi.fn(),
 	fetchAppliedSnapshotIds: vi.fn(),
 	fetchQueuedSongIds: vi.fn(),
 	fetchMaxPosition: vi.fn(),
@@ -332,6 +333,7 @@ beforeEach(() => {
 	vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
 		Result.ok(fakeSession()),
 	);
+	vi.mocked(queries.completeSession).mockResolvedValue(Result.ok(null));
 	vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
 		Result.ok(new Set<string>()),
 	);
@@ -375,6 +377,8 @@ describe("createOrResumeQueue", () => {
 		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
 			Result.ok(fakeSession()),
 		);
+		// Pass still in progress — unresolved items remain, so no rollover.
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(3));
 
 		const result = await createOrResumeQueue(ACCOUNT_ID);
 
@@ -386,6 +390,8 @@ describe("createOrResumeQueue", () => {
 			}
 		}
 		expect(queries.insertMatchReviewSession).not.toHaveBeenCalled();
+		// In-progress pass is resumed as-is, never completed/rolled over.
+		expect(queries.completeSession).not.toHaveBeenCalled();
 	});
 
 	it("returns no_snapshot when no active session and no snapshot exists", async () => {
@@ -505,6 +511,8 @@ describe("createOrResumeQueue", () => {
 		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
 			Result.ok(fakeSession()),
 		);
+		// In-progress pass (unresolved items remain) — resume, do not roll over.
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(2));
 		// Latest snapshot exists and has not yet been applied.
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from: vi.fn(() => ({
@@ -545,6 +553,8 @@ describe("createOrResumeQueue", () => {
 		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
 			Result.ok(fakeSession()),
 		);
+		// In-progress pass — resume, not rollover.
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(1));
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from: vi.fn(() => ({
 				select: vi.fn().mockReturnThis(),
@@ -602,6 +612,241 @@ describe("createOrResumeQueue", () => {
 		const result = await createOrResumeQueue(ACCOUNT_ID);
 
 		expect(result).toBeErr();
+	});
+
+	it("appends the latest snapshot into the winner's session on race fallback", async () => {
+		// Regression for the race where the loser returned the winner's bare session
+		// without appending — rendering an empty/caught-up queue for a pass that
+		// actually has matches. The fallback must run the same latest-snapshot append.
+		const winnerSession = { ...fakeSession(), id: "session-winner-003" };
+		vi.mocked(queries.fetchActiveSession)
+			.mockResolvedValueOnce(Result.ok(null))
+			.mockResolvedValueOnce(Result.ok(winnerSession));
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.err(new ConstraintError("idx_match_review_session_one_active")),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi
+					.fn()
+					.mockResolvedValue({ data: { id: SNAPSHOT_ID }, error: null }),
+			})),
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.kind).toBe("resumed");
+		}
+		// The append actually ran against the winner's session — it read the latest
+		// snapshot's results and recorded the snapshot as applied to the winner.
+		expect(getMatchResults).toHaveBeenCalledWith(SNAPSHOT_ID);
+		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
+			"session-winner-003",
+			SNAPSHOT_ID,
+			0,
+		);
+	});
+
+	it("propagates the error when the race-fallback append fails", async () => {
+		// A failed append in the fallback must surface, not degrade to an empty
+		// "resumed" success that hides the winner's matches.
+		const winnerSession = { ...fakeSession(), id: "session-winner-004" };
+		vi.mocked(queries.fetchActiveSession)
+			.mockResolvedValueOnce(Result.ok(null))
+			.mockResolvedValueOnce(Result.ok(winnerSession));
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.err(new ConstraintError("idx_match_review_session_one_active")),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi
+					.fn()
+					.mockResolvedValue({ data: { id: SNAPSHOT_ID }, error: null }),
+			})),
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		// appendLatestSnapshot fails at its first DB step.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeErr();
+	});
+});
+
+// ============================================================================
+// createOrResumeQueue — pass rollover (skipped songs return in a future pass)
+// ============================================================================
+
+describe("createOrResumeQueue pass rollover", () => {
+	function activeSnapshotClient(songIds: string[]) {
+		// match_snapshot lookup returns the latest snapshot; entitlement RPC returns
+		// the given song ids as entitled.
+		return {
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi
+					.fn()
+					.mockResolvedValue({ data: { id: SNAPSHOT_ID }, error: null }),
+			})),
+			rpc: vi.fn().mockResolvedValue({
+				data: songIds.map((song_id) => ({ song_id })),
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
+	}
+
+	it("completes a caught-up active session and creates a fresh pass", async () => {
+		// Active session exists but every item is resolved (caught up).
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
+		vi.mocked(queries.completeSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), status: "completed" as const }),
+		);
+		// Fresh pass is created from a different session id.
+		const freshSession = { ...fakeSession(), id: "session-fresh-001" };
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.ok(freshSession),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			activeSnapshotClient([]),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.kind).toBe("created");
+			if (result.value.kind === "created") {
+				expect(result.value.session.id).toBe("session-fresh-001");
+			}
+		}
+		// The caught-up pass was completed before the fresh one was created.
+		expect(queries.completeSession).toHaveBeenCalledWith(
+			SESSION_ID,
+			ACCOUNT_ID,
+		);
+		expect(queries.insertMatchReviewSession).toHaveBeenCalledOnce();
+	});
+
+	it("re-offers a skipped song in the new pass (skip wrote no decision)", async () => {
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
+		vi.mocked(queries.completeSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), status: "completed" as const }),
+		);
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), id: "session-fresh-002" }),
+		);
+		// Latest snapshot still matches the skipped song.
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([{ song_id: "song-skipped", playlist_id: "pl-A", score: 0.8 }]),
+		);
+		// Skip wrote no decision — the pair is undecided, so it stays eligible.
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
+		// The fresh pass starts empty, so nothing is excluded as already-queued.
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(
+			Result.ok([fakeQueueItem({ songId: "song-skipped" })]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			activeSnapshotClient(["song-skipped"]),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		const inserted = vi.mocked(queries.insertQueueItems).mock.calls[0]?.[0];
+		expect(inserted?.map((item) => item.songId)).toContain("song-skipped");
+	});
+
+	it("keeps a dismissed song excluded in the new pass (decision present)", async () => {
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
+		vi.mocked(queries.completeSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), status: "completed" as const }),
+		);
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), id: "session-fresh-003" }),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{ song_id: "song-dismissed", playlist_id: "pl-A", score: 0.8 },
+			]),
+		);
+		// A dismissed decision exists for the only above-threshold pair → excluded.
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok([
+				{
+					id: "dec-1",
+					account_id: ACCOUNT_ID,
+					song_id: "song-dismissed",
+					playlist_id: "pl-A",
+					decision: "dismissed" as const,
+					decided_at: "2026-06-15T00:00:00Z",
+					created_at: "2026-06-15T00:00:00Z",
+					snapshot_id: null,
+					served_rank: null,
+					queue_item_id: null,
+				},
+			]),
+		);
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			activeSnapshotClient(["song-dismissed"]),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		// Nothing eligible — the dismissed song is filtered out, so no insert runs.
+		expect(queries.insertQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("propagates a completeSession error instead of rolling over", async () => {
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
+		vi.mocked(queries.completeSession).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeErr();
+		// A failed completion must NOT create a second active session.
+		expect(queries.insertMatchReviewSession).not.toHaveBeenCalled();
 	});
 });
 
@@ -958,6 +1203,41 @@ describe("markItemPresented", () => {
 		});
 		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
 			Result.ok(presentedItem),
+		);
+
+		const result = await markItemPresented("item-001", ACCOUNT_ID, "song-001");
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value?.state).toBe("presented");
+		}
+	});
+
+	it("clears newness with the account id, song id, and a timestamp on success", async () => {
+		// The positive path: a successful presented transition must durably clear the
+		// song's newness so it never re-flags after the user has seen the card.
+		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
+			Result.ok(fakeQueueItem({ state: "presented" })),
+		);
+
+		await markItemPresented("item-001", ACCOUNT_ID, "song-001");
+
+		expect(queries.clearSongNewness).toHaveBeenCalledWith(
+			ACCOUNT_ID,
+			"song-001",
+			expect.any(String),
+		);
+	});
+
+	it("still resolves the presented transition when clearSongNewness rejects", async () => {
+		// Newness clearing is best-effort: a failure there must not fail the presented
+		// transition (the item is presented regardless). The await-in-try/catch keeps
+		// the write reliable in serverless while still swallowing the error.
+		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
+			Result.ok(fakeQueueItem({ state: "presented" })),
+		);
+		vi.mocked(queries.clearSongNewness).mockRejectedValue(
+			new Error("newness write failed"),
 		);
 
 		const result = await markItemPresented("item-001", ACCOUNT_ID, "song-001");

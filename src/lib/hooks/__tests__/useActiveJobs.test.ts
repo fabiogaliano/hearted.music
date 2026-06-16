@@ -1,6 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { matchReviewKeys } from "@/features/matching/queries";
+import { dashboardKeys } from "@/features/dashboard/queries";
+import {
+	matchReviewKeys,
+	matchReviewSummaryKeys,
+} from "@/features/matching/queries";
+import { playlistKeys } from "@/features/playlists/queries";
 import { runMatchSnapshotRefreshEffects } from "../useActiveJobs";
 
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
@@ -131,5 +136,55 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
 		expect(calledKeys).toContainEqual(matchReviewKeys.review(ACCOUNT_ID));
+	});
+
+	it("(e) invalidates the queue summary and dashboard stats/previews together", async () => {
+		// The summary key backs the sidebar badge + dashboard CTA count; stats backs
+		// the dashboard reviewCount. All must be invalidated after sync so no consumer
+		// shows a stale count while another surface has already refreshed.
+		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+			undefined as never,
+		);
+		const qc = makeFakeQueryClient();
+
+		await runMatchSnapshotRefreshEffects(
+			qc as unknown as QueryClient,
+			ACCOUNT_ID,
+		);
+
+		const calledKeys = (
+			qc.invalidateQueries as ReturnType<typeof vi.fn>
+		).mock.calls.map(
+			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
+		);
+
+		expect(calledKeys).toContainEqual(
+			matchReviewSummaryKeys.summary(ACCOUNT_ID),
+		);
+		expect(calledKeys).toContainEqual(dashboardKeys.stats(ACCOUNT_ID));
+		expect(calledKeys).toContainEqual(dashboardKeys.matchPreviews(ACCOUNT_ID));
+		expect(calledKeys).toContainEqual(dashboardKeys.pageData(ACCOUNT_ID));
+	});
+
+	it("(f) does not invalidate playlist data (outside the plan's Phase 6 set)", async () => {
+		// playlistKeys.all was a carry-over from enrichment invalidation; a match
+		// snapshot refresh does not change playlist rows, so refetching them is waste.
+		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+			undefined as never,
+		);
+		const qc = makeFakeQueryClient();
+
+		await runMatchSnapshotRefreshEffects(
+			qc as unknown as QueryClient,
+			ACCOUNT_ID,
+		);
+
+		const calledKeys = (
+			qc.invalidateQueries as ReturnType<typeof vi.fn>
+		).mock.calls.map(
+			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
+		);
+
+		expect(calledKeys).not.toContainEqual(playlistKeys.all);
 	});
 });

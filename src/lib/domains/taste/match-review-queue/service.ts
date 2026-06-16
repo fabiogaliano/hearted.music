@@ -23,6 +23,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	clearSongNewness,
+	completeSession,
 	countUnresolvedItems,
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
@@ -120,22 +121,49 @@ export async function createOrResumeQueue(
 	if (Result.isError(existing)) return existing;
 
 	if (existing.value) {
-		// Sync the latest snapshot into the existing queue before returning. If the
-		// browser missed the live-append effect after a background refresh, route
-		// entry is the recovery point — without this, new matches would only appear
-		// after another refresh completion. appendSnapshotDelta uses the session's
-		// STORED strictness (never live preferences) and is idempotent, so a snapshot
-		// already applied is a no-op and the current card is never disturbed.
-		//
-		// A DB/RPC failure here propagates rather than silently reporting caught-up:
-		// the snapshot is not marked applied, so the next entry retries cleanly.
-		const syncResult = await appendLatestSnapshot(existing.value, accountId);
-		if (Result.isError(syncResult)) return syncResult;
+		const session = existing.value;
 
-		return Result.ok<ActiveQueueResult, DbError>({
-			kind: "resumed",
-			session: existing.value,
-		});
+		// Is this pass still in progress? Count unresolved (pending/presented) items.
+		const unresolvedResult = await countUnresolvedItems(session.id);
+		if (Result.isError(unresolvedResult)) return unresolvedResult;
+
+		if (unresolvedResult.value > 0) {
+			// Pass in progress. Sync the latest snapshot into the existing queue
+			// before returning. If the browser missed the live-append effect after a
+			// background refresh, route entry is the recovery point — without this,
+			// new matches would only appear after another refresh completion.
+			// appendSnapshotDelta uses the session's STORED strictness (never live
+			// preferences) and is idempotent, so a snapshot already applied is a no-op
+			// and the current card is never disturbed.
+			//
+			// A DB/RPC failure here propagates rather than silently reporting caught-up:
+			// the snapshot is not marked applied, so the next entry retries cleanly.
+			const syncResult = await appendLatestSnapshot(session, accountId);
+			if (Result.isError(syncResult)) return syncResult;
+
+			return Result.ok<ActiveQueueResult, DbError>({
+				kind: "resumed",
+				session,
+			});
+		}
+
+		// Caught up: every item in this pass is resolved. Complete the pass so a
+		// fresh one can re-offer skipped songs — the plan's "new pass created lazily
+		// on /match entry" rollover. Skip writes no decision, so the new pass derives
+		// a previously-skipped song as eligible again, while added/dismissed pairs
+		// stay excluded by their decisions. Completing must happen BEFORE the insert
+		// below: the partial unique index idx_match_review_session_one_active rejects
+		// a second active row, so this session has to leave 'active' first. A
+		// concurrent rollover that already completed it returns null here — harmless;
+		// we still fall through and the one-active index plus the ConstraintError
+		// fallback below resolve the race.
+		//
+		// Trade-off (minimal rollover, no cooldown): when there is nothing new to
+		// offer this churns one completed + one empty active session per caught-up
+		// entry. Acceptable because /match entry is user-initiated, not polled.
+		const completeResult = await completeSession(session.id, accountId);
+		if (Result.isError(completeResult)) return completeResult;
+		// Fall through to create a fresh active pass from the latest snapshot.
 	}
 
 	const supabase = createAdminSupabaseClient();
@@ -178,11 +206,18 @@ export async function createOrResumeQueue(
 
 	if (Result.isError(sessionResult)) {
 		// Unique index violation: another request won the race. Fall back to the
-		// session the winner created.
+		// session the winner created — but append the latest snapshot into it before
+		// returning. The winner may not have populated its queue yet; returning the
+		// bare session here would let this caller render an empty/caught-up queue for
+		// a pass that actually has matches. appendLatestSnapshot is idempotent, so if
+		// the winner already appended this is a no-op; its errors propagate so we
+		// never report a falsely-empty success.
 		if (sessionResult.error._tag === "ConstraintError") {
 			const active = await fetchActiveSession(accountId);
 			if (Result.isError(active)) return active;
 			if (active.value) {
+				const syncResult = await appendLatestSnapshot(active.value, accountId);
+				if (Result.isError(syncResult)) return syncResult;
 				return Result.ok<ActiveQueueResult, DbError>({
 					kind: "resumed",
 					session: active.value,
@@ -527,8 +562,15 @@ export async function markItemPresented(
 	// the card is no longer being presented.
 	if (itemResult.value === null) return itemResult;
 
-	// Best-effort: fire and forget — we don't propagate failures.
-	void clearSongNewness(accountId, songId, now);
+	// Best-effort, but awaited: in a serverless handler a fire-and-forget promise
+	// can be dropped when the function returns before it settles. Awaiting inside a
+	// try/catch keeps the write reliable while still swallowing failures so a
+	// newness-clear error never fails the presented transition.
+	try {
+		await clearSongNewness(accountId, songId, now);
+	} catch {
+		// Swallow — the item is presented regardless of whether newness cleared.
+	}
 
 	return itemResult;
 }

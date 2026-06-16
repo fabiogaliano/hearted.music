@@ -11,7 +11,6 @@ import {
 	matchReviewKeys,
 	matchReviewSummaryKeys,
 } from "@/features/matching/queries";
-import { playlistKeys } from "@/features/playlists/queries";
 import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
 import { syncActiveMatchReviewSession } from "@/lib/server/match-review-queue.functions";
 
@@ -72,16 +71,17 @@ export async function runMatchSnapshotRefreshEffects(
 		queryKey: matchReviewSummaryKeys.summary(accountId),
 	});
 
-	// Dashboard page data and preview fan — updated by the new snapshot.
+	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's
+	// reviewCount — without invalidating it the preview fan refreshes while the
+	// count stays stale. pageData keeps the route-loader cache fresh.
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.stats(accountId),
+	});
 	queryClient.invalidateQueries({
 		queryKey: dashboardKeys.pageData(accountId),
 	});
 	queryClient.invalidateQueries({
 		queryKey: dashboardKeys.matchPreviews(accountId),
-	});
-
-	queryClient.invalidateQueries({
-		queryKey: playlistKeys.all,
 	});
 }
 

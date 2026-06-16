@@ -1,11 +1,16 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fetchQueueItems } from "@/lib/domains/taste/match-review-queue/queries";
+import { createOrResumeQueue } from "@/lib/domains/taste/match-review-queue/service";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
 	finishMatchReviewItem,
+	getMatchReview,
 	getMatchReviewItem,
 	markMatchReviewItemPresented,
+	startOrResumeMatchReview,
 	syncActiveMatchReviewSession,
 } from "../match-review-queue.functions";
 
@@ -1342,5 +1347,204 @@ describe("syncActiveMatchReviewSession", () => {
 
 		expect(result.appendedCount).toBe(0);
 		expect(result.alreadyApplied).toBe(true);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Queue entry points — startOrResumeMatchReview + getMatchReview
+// ---------------------------------------------------------------------------
+
+// Domain (camelCase) queue item shape returned by fetchQueueItems.
+function fakeDomainItem(overrides: Record<string, unknown> = {}) {
+	return {
+		id: "item-1",
+		sessionId: "session-1",
+		accountId: "acct-1",
+		songId: "song-1",
+		sourceSnapshotId: "snap-1",
+		position: 0,
+		state: "pending" as const,
+		resolution: null,
+		sourceScore: 0.85,
+		wasNewAtEnqueue: false,
+		presentedAt: null,
+		resolvedAt: null,
+		createdAt: "2026-01-01T00:00:00Z",
+		updatedAt: "2026-01-01T00:00:00Z",
+		...overrides,
+	};
+}
+
+describe("startOrResumeMatchReview", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("returns an empty caught-up payload when there is no snapshot", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({ kind: "no_snapshot" }),
+		);
+
+		const result = await startOrResumeMatchReview();
+
+		expect(result).toEqual({
+			sessionId: "",
+			itemIds: [],
+			total: 0,
+			caughtUp: true,
+		});
+		// No session means the queue is never read.
+		expect(fetchQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("returns ordered item ids and caughtUp=false for an active queue with unresolved items", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({
+				kind: "created",
+				session: { id: "session-1" } as never,
+				appendedCount: 2,
+			}),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "pending", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "presented", position: 1 }),
+			]),
+		);
+
+		const result = await startOrResumeMatchReview();
+
+		expect(result.sessionId).toBe("session-1");
+		expect(result.itemIds).toEqual(["item-1", "item-2"]);
+		expect(result.total).toBe(2);
+		expect(result.caughtUp).toBe(false);
+	});
+
+	it("derives caughtUp=true from item states when every item is resolved", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({ kind: "resumed", session: { id: "session-1" } as never }),
+		);
+		// All resolved — caught up must come from the states, never from null song data.
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "skipped", position: 1 }),
+			]),
+		);
+
+		const result = await startOrResumeMatchReview();
+
+		expect(result.caughtUp).toBe(true);
+		expect(result.total).toBe(2);
+	});
+
+	it("throws a user-safe error when the domain queue setup fails", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
+		);
+
+		await expect(startOrResumeMatchReview()).rejects.toThrow(
+			/prepare your match review queue/i,
+		);
+	});
+
+	it("throws a user-safe error when loading the queue items fails", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({
+				kind: "created",
+				session: { id: "session-1" } as never,
+				appendedCount: 0,
+			}),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
+		);
+
+		await expect(startOrResumeMatchReview()).rejects.toThrow(
+			/load your match review queue/i,
+		);
+	});
+});
+
+describe("getMatchReview", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("returns an empty caught-up payload when there is no active session", async () => {
+		mockFetchActiveSession.mockResolvedValue(Result.ok(null));
+
+		const result = await getMatchReview();
+
+		expect(result).toEqual({
+			sessionId: "",
+			items: [],
+			total: 0,
+			caughtUp: true,
+		});
+		expect(fetchQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("maps queue items and reports caughtUp=false while unresolved items remain", async () => {
+		mockFetchActiveSession.mockResolvedValue(
+			Result.ok({ id: "session-1", accountId: "acct-1" }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "pending", position: 0 }),
+			]),
+		);
+
+		const result = await getMatchReview();
+
+		expect(result?.sessionId).toBe("session-1");
+		expect(result?.items).toEqual([
+			{
+				id: "item-1",
+				position: 0,
+				state: "pending",
+				songId: "song-1",
+				sourceSnapshotId: "snap-1",
+			},
+		]);
+		expect(result?.total).toBe(1);
+		expect(result?.caughtUp).toBe(false);
+	});
+
+	it("derives caughtUp=true from item states, not from song data", async () => {
+		mockFetchActiveSession.mockResolvedValue(
+			Result.ok({ id: "session-1", accountId: "acct-1" }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "unavailable", position: 1 }),
+			]),
+		);
+
+		const result = await getMatchReview();
+
+		expect(result?.caughtUp).toBe(true);
+	});
+
+	it("throws a user-safe error when the active session lookup fails", async () => {
+		mockFetchActiveSession.mockResolvedValue(Result.err(new Error("db down")));
+
+		await expect(getMatchReview()).rejects.toThrow(
+			/load your match review queue/i,
+		);
+	});
+
+	it("throws a user-safe error when loading the queue items fails", async () => {
+		mockFetchActiveSession.mockResolvedValue(
+			Result.ok({ id: "session-1", accountId: "acct-1" }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
+		);
+
+		await expect(getMatchReview()).rejects.toThrow(
+			/load your match review queue/i,
+		);
 	});
 });

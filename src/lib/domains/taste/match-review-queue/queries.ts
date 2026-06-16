@@ -109,6 +109,39 @@ export async function fetchActiveSession(
 }
 
 /**
+ * Marks an active session completed. The `.eq("status", "active")` guard makes
+ * the transition conditional so two concurrent rollovers can't double-complete:
+ * the first writer wins and the loser matches no row (returns null). Used by the
+ * lazy pass-rollover path — a caught-up session is completed so a fresh pass can
+ * re-offer skipped songs without colliding with the one-active partial index.
+ *
+ * Returns Result.ok(null) when no active row matched (already completed/raced).
+ */
+export async function completeSession(
+	sessionId: string,
+	accountId: string,
+): Promise<Result<MatchReviewSession | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const now = new Date().toISOString();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("match_review_session")
+			.update({
+				status: "completed",
+				completed_at: now,
+				updated_at: now,
+			})
+			.eq("id", sessionId)
+			.eq("account_id", accountId)
+			.eq("status", "active")
+			.select()
+			.maybeSingle(),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(result.value ? mapSessionRow(result.value) : null);
+}
+
+/**
  * Returns the highest position already in the session, or -1 when the queue is
  * empty. The service adds 1 to get the next append start position.
  */

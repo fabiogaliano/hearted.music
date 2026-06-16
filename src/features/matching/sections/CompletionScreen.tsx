@@ -84,7 +84,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 						className="theme-text-muted mb-5 text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body }}
 					>
-						Reviewed this session
+						Reviewed this round
 					</p>
 					<div className="flex gap-2">
 						{songs.slice(0, 5).map((song) => (

@@ -168,4 +168,3 @@ BEGIN
   RETURN QUERY SELECT p_job_id, v_feature_id, v_review_id, FALSE;
 END;
 $function$
-

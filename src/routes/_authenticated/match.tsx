@@ -13,6 +13,8 @@ import {
 } from "@/features/matching/queries";
 import {
 	countAppendedFromTotal,
+	deriveCaughtUp,
+	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
 } from "@/features/matching/queue-helpers";
@@ -94,20 +96,16 @@ function QueueMatchPage() {
 	);
 
 	// Ordered unresolved item ids derived from queue state — never from null song.
-	// Resolved items (completed/skipped/unavailable) are excluded so the list
-	// contains only cards that still need a decision.
-	const unresolvedIds = useMemo(() => {
-		if (!queue) return [];
-		return queue.items
-			.filter((item) => item.state === "pending" || item.state === "presented")
-			.sort((a, b) => a.position - b.position)
-			.map((item) => item.id);
-	}, [queue]);
+	// Shares deriveUnresolvedIds with the unit-tested helper so the route and its
+	// contract can't drift: resolved items (completed/skipped/unavailable) are
+	// excluded and the rest are position-sorted.
+	const unresolvedIds = useMemo(() => deriveUnresolvedIds(queue), [queue]);
 
 	// total reflects ALL queue items (append-only from the server).
 	const total = queue?.total ?? 0;
-	// caughtUp is authoritative from the server — derived from item states.
-	const caughtUp = queue?.caughtUp ?? true;
+	// caughtUp via the shared helper — authoritative server caughtUp OR an empty
+	// unresolved list, never from null song data.
+	const caughtUp = deriveCaughtUp(queue, unresolvedIds);
 	const hasQueue = !!queue?.sessionId;
 
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
@@ -121,8 +119,9 @@ function QueueMatchPage() {
 		);
 	}
 
-	// Queue exists but every item is resolved.
-	if (caughtUp || unresolvedIds.length === 0) {
+	// Queue exists but every item is resolved (deriveCaughtUp folds in the
+	// empty-unresolved case).
+	if (caughtUp) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState reason="caught-up" />
@@ -420,11 +419,15 @@ function QueueCardContent({
 	);
 
 	// Durable presented tracking: fire once per item when it becomes current and
-	// the data is ready. Newness is cleared durably and immediately, not at unload.
-	// A ref-set ensures we fire at most once per item even under StrictMode.
+	// the read resolved to a card the user actually sees. Both "ready" and
+	// "unavailable" render a card in front of the user, so both mark presented and
+	// clear newness; "error" is excluded because ownership/data integrity is
+	// unknown. Newness is cleared durably and immediately, not at unload. A ref-set
+	// ensures we fire at most once per item even under StrictMode.
 	const presentedIdsRef = useRef<Set<string>>(new Set());
 	useEffect(() => {
-		if (itemData.status !== "ready") return;
+		if (itemData.status !== "ready" && itemData.status !== "unavailable")
+			return;
 		if (presentedIdsRef.current.has(itemId)) return;
 		presentedIdsRef.current.add(itemId);
 		void markMatchReviewItemPresented({ data: { itemId } });
