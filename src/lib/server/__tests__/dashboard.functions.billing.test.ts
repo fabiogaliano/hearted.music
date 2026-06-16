@@ -7,17 +7,9 @@ const {
 	mockGetLikedSongCount,
 	mockGetAnalyzedCountForAccount,
 	mockGetLastCompletedSync,
-	mockGetLikedSongStats,
 	mockGetPlaylistCount,
-	mockGetLatestMatchSnapshot,
-	mockGetOrderedUndecidedSongIds,
-	mockGetNewItemIds,
-	mockRpc,
-	mockIn,
-	mockFrom,
+	mockResolveMatchReviewSummary,
 } = vi.hoisted(() => {
-	const mockSelect = vi.fn();
-	const mockIn = vi.fn();
 	return {
 		mockAuthContext: {
 			session: { accountId: "acct-1" },
@@ -26,18 +18,10 @@ const {
 		mockGetLikedSongCount: vi.fn(),
 		mockGetAnalyzedCountForAccount: vi.fn(),
 		mockGetLastCompletedSync: vi.fn(),
-		mockGetLikedSongStats: vi.fn(),
 		mockGetPlaylistCount: vi.fn(),
-		mockGetLatestMatchSnapshot: vi.fn(),
-		mockGetOrderedUndecidedSongIds: vi.fn(),
-		mockGetNewItemIds: vi.fn(),
-		mockRpc: vi.fn(),
-		mockIn,
-		mockFrom: vi.fn(() => ({
-			select: mockSelect.mockReturnValue({
-				in: mockIn,
-			}),
-		})),
+		// Phase 7: dashboard stats and previews now source their queue-aware
+		// count and preview images from resolveMatchReviewSummary.
+		mockResolveMatchReviewSummary: vi.fn(),
 	};
 });
 
@@ -64,13 +48,6 @@ vi.mock("@tanstack/react-start", () => {
 	};
 });
 
-vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: () => ({
-		rpc: mockRpc,
-		from: mockFrom,
-	}),
-}));
-
 vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
@@ -83,7 +60,6 @@ vi.mock("@/lib/platform/jobs/sync-phase-jobs", () => ({
 vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	getCount: (...args: unknown[]) => mockGetLikedSongCount(...args),
 	getRecentWithDetails: vi.fn(),
-	getStats: (...args: unknown[]) => mockGetLikedSongStats(...args),
 }));
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
@@ -91,38 +67,41 @@ vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 		mockGetAnalyzedCountForAccount(...args),
 }));
 
-vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
-	getNewItemIds: (...args: unknown[]) => mockGetNewItemIds(...args),
-}));
-
-vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
-	getLatestMatchSnapshot: (...args: unknown[]) =>
-		mockGetLatestMatchSnapshot(...args),
-}));
-
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistCount: (...args: unknown[]) => mockGetPlaylistCount(...args),
 }));
 
-vi.mock("@/lib/server/matching.functions", () => ({
-	getOrderedUndecidedSongIds: (...args: unknown[]) =>
-		mockGetOrderedUndecidedSongIds(...args),
+// Phase 7: resolveMatchReviewSummary is the new source for CTA count + previews.
+// We mock at the module level so dashboard.functions.ts picks it up.
+vi.mock("@/lib/server/match-review-queue.functions", () => ({
+	resolveMatchReviewSummary: (...args: unknown[]) =>
+		mockResolveMatchReviewSummary(...args),
+	// Other exports from the module are not exercised by these tests.
+	getMatchReviewSummary: vi.fn(),
+	syncActiveMatchReviewSession: vi.fn(),
+	startOrResumeMatchReview: vi.fn(),
+	getMatchReview: vi.fn(),
+	getMatchReviewItem: vi.fn(),
+	markMatchReviewItemPresented: vi.fn(),
+	addSongToPlaylistFromQueueItem: vi.fn(),
+	dismissMatchReviewItem: vi.fn(),
+	finishMatchReviewItem: vi.fn(),
 }));
 
-vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
-	resolveMinMatchScore: () => Promise.resolve(0),
-}));
-
-describe("getDashboardStats (billing-aware)", () => {
+describe("getDashboardStats (queue-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it("returns analyzedPercent from the entitlement-aware RPC result", async () => {
+	it("returns analyzedPercent from the entitlement-aware analyzed count", async () => {
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 3,
+			previewImages: [],
+			hasActiveQueue: true,
+		});
 		mockGetLikedSongCount.mockResolvedValue(Result.ok(10));
 		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(3));
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(2));
 
 		const stats = await getDashboardStats();
@@ -132,25 +111,51 @@ describe("getDashboardStats (billing-aware)", () => {
 		expect(mockGetAnalyzedCountForAccount).toHaveBeenCalledWith("acct-1");
 	});
 
-	it("returns 0 analyzedPercent when RPC returns 0 (locked songs not counted)", async () => {
-		mockGetLikedSongCount.mockResolvedValue(Result.ok(5));
-		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(0));
+	it("sources pendingReviewCount from the queue summary, not the snapshot RPC", async () => {
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 7,
+			previewImages: [],
+			hasActiveQueue: true,
+		});
+		mockGetLikedSongCount.mockResolvedValue(Result.ok(20));
+		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(10));
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
+		mockGetPlaylistCount.mockResolvedValue(Result.ok(3));
+
+		const stats = await getDashboardStats();
+
+		// The queue summary is the authoritative count; no snapshot RPC is called.
+		expect(stats.pendingReviewCount).toBe(7);
+		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith("acct-1");
+	});
+
+	it("returns pendingReviewCount 0 when caught up", async () => {
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 0,
+			previewImages: [],
+			hasActiveQueue: false,
+		});
+		mockGetLikedSongCount.mockResolvedValue(Result.ok(5));
+		mockGetAnalyzedCountForAccount.mockResolvedValue(Result.ok(5));
+		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(0));
 
 		const stats = await getDashboardStats();
 
-		expect(stats.analyzedPercent).toBe(0);
+		expect(stats.pendingReviewCount).toBe(0);
 	});
 
-	it("handles analyzedCount error gracefully (defaults to 0)", async () => {
+	it("returns 0 analyzedPercent when analyzed count errors (defaults to 0)", async () => {
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 0,
+			previewImages: [],
+			hasActiveQueue: false,
+		});
 		mockGetLikedSongCount.mockResolvedValue(Result.ok(5));
 		mockGetAnalyzedCountForAccount.mockResolvedValue(
 			Result.err(new Error("db error")),
 		);
 		mockGetLastCompletedSync.mockResolvedValue(Result.ok(null));
-		mockGetLikedSongStats.mockResolvedValue(Result.ok({ has_suggestions: 0 }));
 		mockGetPlaylistCount.mockResolvedValue(Result.ok(0));
 
 		const stats = await getDashboardStats();
@@ -159,82 +164,56 @@ describe("getDashboardStats (billing-aware)", () => {
 	});
 });
 
-describe("getMatchPreviews (billing-aware)", () => {
+describe("getMatchPreviews (queue-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	// Ordering + entitlement filtering now live in getOrderedUndecidedSongIds
-	// (mocked here, tested directly in matching.functions.billing.test.ts). These
-	// tests cover the dashboard's slice-3 + image-mapping contract on top of it.
-	it("builds previews from the first 3 ordered, entitled song ids", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: ["song-1", "song-3"],
-			hiddenSongCount: 0,
-		});
-
-		mockIn.mockResolvedValue({
-			data: [
-				{ id: "song-1", image_url: "img1.jpg" },
-				{ id: "song-3", image_url: "img3.jpg" },
-			],
-			error: null,
+	it("returns previewImages from the queue summary", async () => {
+		const previewImages = [
+			{ id: 1, image: "img1.jpg" },
+			{ id: 2, image: "img2.jpg" },
+		];
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 5,
+			previewImages,
+			hasActiveQueue: true,
 		});
 
 		const previews = await getMatchPreviews();
 
-		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
-			"snap-1",
-			"acct-1",
-		);
-		expect(previews).toHaveLength(2);
-		expect(previews[0]).toEqual({ id: 1, image: "img1.jpg" });
-		expect(previews[1]).toEqual({ id: 2, image: "img3.jpg" });
+		expect(previews).toEqual(previewImages);
+		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith("acct-1");
 	});
 
-	it("caps previews at the first 3 ids", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: ["song-1", "song-2", "song-3", "song-4", "song-5"],
-			hiddenSongCount: 0,
-		});
-
-		mockIn.mockResolvedValue({
-			data: [
-				{ id: "song-1", image_url: "img1.jpg" },
-				{ id: "song-2", image_url: "img2.jpg" },
-				{ id: "song-3", image_url: "img3.jpg" },
-			],
-			error: null,
-		});
-
-		const previews = await getMatchPreviews();
-
-		expect(mockIn).toHaveBeenCalledWith("id", ["song-1", "song-2", "song-3"]);
-		expect(previews).toHaveLength(3);
-	});
-
-	it("returns empty when no songs are undecided/entitled", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: [],
-			hiddenSongCount: 0,
+	it("returns empty array when no previews available (caught up)", async () => {
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 0,
+			previewImages: [],
+			hasActiveQueue: false,
 		});
 
 		const previews = await getMatchPreviews();
 
 		expect(previews).toHaveLength(0);
-		// No ids → no image lookup.
-		expect(mockIn).not.toHaveBeenCalled();
 	});
 
-	it("returns empty when no snapshot exists", async () => {
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
+	it("returns queue-ordered previews when active queue exists", async () => {
+		// The queue service provides its own ordering; the resolver passes through
+		// those images in order — no re-sorting in dashboard.functions.
+		const ordered = [
+			{ id: 1, image: "queue-first.jpg" },
+			{ id: 2, image: "queue-second.jpg" },
+			{ id: 3, image: "queue-third.jpg" },
+		];
+		mockResolveMatchReviewSummary.mockResolvedValue({
+			pendingCount: 15,
+			previewImages: ordered,
+			hasActiveQueue: true,
+		});
 
 		const previews = await getMatchPreviews();
 
-		expect(previews).toHaveLength(0);
-		expect(mockGetOrderedUndecidedSongIds).not.toHaveBeenCalled();
+		expect(previews).toEqual(ordered);
 	});
 });

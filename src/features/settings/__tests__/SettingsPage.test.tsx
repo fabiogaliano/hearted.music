@@ -35,6 +35,7 @@ vi.mock("@/lib/platform/auth/auth-client", () => ({
 // which means the Privacy section is hidden; no extra mock needed.
 
 const baseProps = {
+	accountId: "acct-test",
 	email: "user@example.com",
 	imageUrl: null,
 	currentTheme: "rose" as const,

@@ -1,10 +1,19 @@
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	queryOptions,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
-import { matchingKeys } from "@/features/matching/queries";
+import {
+	matchReviewKeys,
+	matchReviewSummaryKeys,
+} from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
 import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
+import { syncActiveMatchReviewSession } from "@/lib/server/match-review-queue.functions";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
@@ -25,6 +34,54 @@ function activeJobsQueryOptions(accountId: string, enabled = true) {
 		enabled,
 		refetchInterval: (query) =>
 			hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS,
+	});
+}
+
+// Extracted so the invalidation sequence can be unit-tested without a
+// running React tree or real timers. The hook's falling-edge branch delegates
+// entirely to this function; runtime behavior is identical to the previous
+// inline async IIFE.
+export async function runMatchSnapshotRefreshEffects(
+	queryClient: QueryClient,
+	accountId: string,
+): Promise<void> {
+	// Sync must complete before the queue query refetches so the new tail
+	// is already in the DB when matchReviewKeys.review invalidation fires.
+	// Failure is swallowed: a missed sync just means no new items this
+	// round; the user won't lose existing cards.
+	try {
+		await syncActiveMatchReviewSession();
+	} catch {
+		// Best-effort — proceed to invalidations regardless.
+	}
+
+	// Invalidate the queue summary/list so the card stack picks up
+	// newly appended items.
+	queryClient.invalidateQueries({
+		queryKey: matchReviewKeys.review(accountId),
+	});
+
+	// Per-card item queries must NOT be invalidated here — refetching an
+	// individual card mid-review would interrupt the user's current card.
+	// matchReviewKeys.item is intentionally absent from this block.
+
+	// Queue-aware summary: drives sidebar badge + dashboard CTA count after
+	// Phase 7. Both surfaces now read matchReviewSummaryKeys.summary so a
+	// single invalidation here keeps them consistent.
+	queryClient.invalidateQueries({
+		queryKey: matchReviewSummaryKeys.summary(accountId),
+	});
+
+	// Dashboard page data and preview fan — updated by the new snapshot.
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.pageData(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.matchPreviews(accountId),
+	});
+
+	queryClient.invalidateQueries({
+		queryKey: playlistKeys.all,
 	});
 }
 
@@ -84,22 +141,7 @@ export function useActiveJobCompletionEffects(
 		}
 
 		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
-			queryClient.invalidateQueries({
-				queryKey: dashboardKeys.pageData(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: dashboardKeys.matchPreviews(accountId),
-			});
-			// Refresh only the session summary — it drives the "new suggestions"
-			// banner and the sidebar badge. Deliberately NOT matchingKeys.all: that
-			// also evicts the active walk's per-song caches, abruptly interrupting an
-			// in-progress session the moment a background snapshot refresh lands.
-			queryClient.invalidateQueries({
-				queryKey: matchingKeys.session(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: playlistKeys.all,
-			});
+			void runMatchSnapshotRefreshEffects(queryClient, accountId);
 		}
 	}, [data, accountId, queryClient]);
 }

@@ -46,7 +46,7 @@ function DashboardHome() {
 				totalSongs: stats.totalSongs,
 				analyzedPercent: stats.analyzedPercent,
 				playlistCount: stats.playlistCount,
-				reviewCount: stats.hasSuggestions,
+				reviewCount: stats.pendingReviewCount,
 			}}
 			lastSyncText={lastSyncText}
 			matchPreviews={matchPreviews}

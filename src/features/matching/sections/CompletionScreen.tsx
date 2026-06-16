@@ -35,7 +35,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 						className="theme-text mt-3 text-page-title font-extralight tracking-tight text-balance"
 						style={{ fontFamily: fonts.display }}
 					>
-						Session Complete
+						You're caught up
 					</h1>
 				</div>
 				<div

@@ -7,6 +7,31 @@ export type Json =
 	| Json[];
 
 export type Database = {
+	graphql_public: {
+		Tables: {
+			[_ in never]: never;
+		};
+		Views: {
+			[_ in never]: never;
+		};
+		Functions: {
+			graphql: {
+				Args: {
+					extensions?: Json;
+					operationName?: string;
+					query?: string;
+					variables?: Json;
+				};
+				Returns: Json;
+			};
+		};
+		Enums: {
+			[_ in never]: never;
+		};
+		CompositeTypes: {
+			[_ in never]: never;
+		};
+	};
 	public: {
 		Tables: {
 			account: {
@@ -1173,6 +1198,7 @@ export type Database = {
 					decision: string;
 					id: string;
 					playlist_id: string;
+					queue_item_id: string | null;
 					served_rank: number | null;
 					snapshot_id: string | null;
 					song_id: string;
@@ -1184,6 +1210,7 @@ export type Database = {
 					decision: string;
 					id?: string;
 					playlist_id: string;
+					queue_item_id?: string | null;
 					served_rank?: number | null;
 					snapshot_id?: string | null;
 					song_id: string;
@@ -1195,6 +1222,7 @@ export type Database = {
 					decision?: string;
 					id?: string;
 					playlist_id?: string;
+					queue_item_id?: string | null;
 					served_rank?: number | null;
 					snapshot_id?: string | null;
 					song_id?: string;
@@ -1212,6 +1240,13 @@ export type Database = {
 						columns: ["playlist_id"];
 						isOneToOne: false;
 						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_decision_queue_item_id_fkey";
+						columns: ["queue_item_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_queue_item";
 						referencedColumns: ["id"];
 					},
 					{
@@ -1301,6 +1336,170 @@ export type Database = {
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_queue_item: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: string;
+					position: number;
+					presented_at: string | null;
+					resolution: string | null;
+					resolved_at: string | null;
+					session_id: string;
+					song_id: string;
+					source_score: number;
+					source_snapshot_id: string;
+					state: string;
+					updated_at: string;
+					was_new_at_enqueue: boolean;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: string;
+					position: number;
+					presented_at?: string | null;
+					resolution?: string | null;
+					resolved_at?: string | null;
+					session_id: string;
+					song_id: string;
+					source_score?: number;
+					source_snapshot_id: string;
+					state: string;
+					updated_at?: string;
+					was_new_at_enqueue?: boolean;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: string;
+					position?: number;
+					presented_at?: string | null;
+					resolution?: string | null;
+					resolved_at?: string | null;
+					session_id?: string;
+					song_id?: string;
+					source_score?: number;
+					source_snapshot_id?: string;
+					state?: string;
+					updated_at?: string;
+					was_new_at_enqueue?: boolean;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_queue_item_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_queue_item_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_session";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_queue_item_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_review_queue_item_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_queue_item_source_snapshot_id_fkey";
+						columns: ["source_snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_session: {
+				Row: {
+					account_id: string;
+					completed_at: string | null;
+					created_at: string;
+					id: string;
+					status: string;
+					strictness_min_score: number;
+					strictness_preset: string;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					completed_at?: string | null;
+					created_at?: string;
+					id?: string;
+					status: string;
+					strictness_min_score: number;
+					strictness_preset: string;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					completed_at?: string | null;
+					created_at?: string;
+					id?: string;
+					status?: string;
+					strictness_min_score?: number;
+					strictness_preset?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_session_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_session_snapshot: {
+				Row: {
+					appended_item_count: number;
+					applied_at: string;
+					session_id: string;
+					snapshot_id: string;
+				};
+				Insert: {
+					appended_item_count?: number;
+					applied_at?: string;
+					session_id: string;
+					snapshot_id: string;
+				};
+				Update: {
+					appended_item_count?: number;
+					applied_at?: string;
+					session_id?: string;
+					snapshot_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_session_snapshot_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_session";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_session_snapshot_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
 						referencedColumns: ["id"];
 					},
 				];
@@ -2751,6 +2950,15 @@ export type Database = {
 				};
 				Returns: number;
 			};
+			add_match_review_item_decision_atomic: {
+				Args: {
+					p_account_id: string;
+					p_item_id: string;
+					p_playlist_id: string;
+					p_served_rank?: number;
+				};
+				Returns: string;
+			};
 			create_account_with_billing: {
 				Args: {
 					p_better_auth_user_id: string;
@@ -2779,6 +2987,14 @@ export type Database = {
 			deactivate_subscription: {
 				Args: { p_account_id: string; p_stripe_event_created_at: string };
 				Returns: undefined;
+			};
+			dismiss_match_review_item_atomic: {
+				Args: { p_account_id: string; p_decisions?: Json; p_item_id: string };
+				Returns: string;
+			};
+			finish_match_review_item_atomic: {
+				Args: { p_account_id: string; p_item_id: string };
+				Returns: string;
 			};
 			defer_audio_feature_backfill_job: {
 				Args: {
@@ -3382,40 +3598,41 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			settle_audio_feature_backfill_job: {
+				Args: {
+					p_aggregation_metadata?: Json;
+					p_candidate_rank?: number;
+					p_clip_features?: Json;
+					p_clip_starts_seconds?: number[];
+					p_features: Json;
+					p_job_id: string;
+					p_match_reasons?: Json;
+					p_match_score?: number;
+					p_rejected_candidates?: Json;
+					p_review_status: string;
+					p_reviewed_by?: string;
+					p_search_query?: string;
+					p_song_id: string;
+					p_source_type: string;
+					p_worker_id: string;
+					p_youtube_channel?: string;
+					p_youtube_duration_seconds?: number;
+					p_youtube_thumbnail_url?: string;
+					p_youtube_title?: string;
+					p_youtube_url?: string;
+					p_youtube_video_id?: string;
+				};
+				Returns: {
+					audio_feature_id: string;
+					did_skip: boolean;
+					job_id: string;
+					review_id: string;
+				}[];
+			};
 			song_artists_joined: { Args: { p_artists: string[] }; Returns: string };
 			song_slug: {
 				Args: { p_artists: string[]; p_name: string };
 				Returns: string;
-			};
-			settle_audio_feature_backfill_job: {
-				Args: {
-					p_aggregation_metadata: Json;
-					p_candidate_rank: number | null;
-					p_clip_features: Json;
-					p_clip_starts_seconds: number[];
-					p_features: Json;
-					p_job_id: string;
-					p_match_reasons: Json;
-					p_match_score: number | null;
-					p_rejected_candidates: Json;
-					p_review_status: string;
-					p_reviewed_by: string | null;
-					p_song_id: string;
-					p_source_type: string;
-					p_worker_id: string;
-					p_youtube_channel: string | null;
-					p_youtube_duration_seconds: number | null;
-					p_youtube_thumbnail_url: string | null;
-					p_youtube_title: string | null;
-					p_youtube_url: string;
-					p_youtube_video_id: string | null;
-				};
-				Returns: {
-					audio_feature_id: string | null;
-					did_skip: boolean;
-					job_id: string;
-					review_id: string | null;
-				}[];
 			};
 			sweep_stale_audio_feature_backfill_jobs: {
 				Args: never;
@@ -3723,6 +3940,9 @@ export type CompositeTypes<
 		: never;
 
 export const Constants = {
+	graphql_public: {
+		Enums: {},
+	},
 	public: {
 		Enums: {
 			item_type: ["song", "playlist"],

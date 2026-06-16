@@ -14,19 +14,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import type { ActivityItem, MatchPreview } from "@/features/dashboard/types";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getAnalyzedCountForAccount } from "@/lib/domains/enrichment/content-analysis/queries";
-import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import {
 	getCount as getLikedSongCount,
-	getStats as getLikedSongStats,
 	getRecentWithDetails,
 } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
-import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
-import { getOrderedUndecidedSongIds } from "@/lib/server/matching.functions";
+import { resolveMatchReviewSummary } from "@/lib/server/match-review-queue.functions";
 
 // ============================================================================
 // Types
@@ -36,7 +32,9 @@ export interface DashboardStats {
 	totalSongs: number;
 	analyzedPercent: number;
 	lastSyncAt: string | null;
-	hasSuggestions: number;
+	// Renamed from hasSuggestions to pendingReviewCount to match the queue-aware
+	// source. The route's stats→DashboardProps mapping is updated accordingly.
+	pendingReviewCount: number;
 	playlistCount: number;
 }
 
@@ -50,32 +48,21 @@ export interface DashboardPageData {
 // Internal helpers (pure functions, take accountId explicitly)
 // ============================================================================
 
-async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
-	// The review count (`has_suggestions`) must honor the same read-time bar as
-	// the /match queue, so resolve the threshold first and pass it into the stats
-	// RPC. A fast indexed prefs read — cheap relative to the parallel fan-out.
-	const minScore = await resolveMinMatchScore(accountId);
-
-	const [
-		totalResult,
-		analyzedResult,
-		lastSyncResult,
-		statsResult,
-		playlistCountResult,
-	] = await Promise.all([
-		getLikedSongCount(accountId),
-		getAnalyzedCountForAccount(accountId),
-		getLastCompletedSync(accountId),
-		getLikedSongStats(accountId, minScore),
-		getPlaylistCount(accountId),
-	]);
+async function fetchDashboardStats(
+	accountId: string,
+	pendingReviewCount: number,
+): Promise<DashboardStats> {
+	const [totalResult, analyzedResult, lastSyncResult, playlistCountResult] =
+		await Promise.all([
+			getLikedSongCount(accountId),
+			getAnalyzedCountForAccount(accountId),
+			getLastCompletedSync(accountId),
+			getPlaylistCount(accountId),
+		]);
 
 	const totalSongs = Result.isOk(totalResult) ? totalResult.value : 0;
 	const analyzedCount = Result.isOk(analyzedResult) ? analyzedResult.value : 0;
 	const lastSync = Result.isOk(lastSyncResult) ? lastSyncResult.value : null;
-	const hasSuggestions = Result.isOk(statsResult)
-		? Number(statsResult.value.has_suggestions)
-		: 0;
 	const playlistCount = Result.isOk(playlistCountResult)
 		? playlistCountResult.value
 		: 0;
@@ -85,7 +72,7 @@ async function fetchDashboardStats(accountId: string): Promise<DashboardStats> {
 		analyzedPercent:
 			totalSongs > 0 ? Math.round((analyzedCount / totalSongs) * 100) : 0,
 		lastSyncAt: lastSync?.completed_at ?? null,
-		hasSuggestions,
+		pendingReviewCount,
 		playlistCount,
 	};
 }
@@ -113,36 +100,6 @@ async function fetchRecentActivity(accountId: string): Promise<ActivityItem[]> {
 	);
 }
 
-async function fetchMatchPreviews(accountId: string): Promise<MatchPreview[]> {
-	const snapshotResult = await getLatestMatchSnapshot(accountId);
-	if (Result.isError(snapshotResult) || !snapshotResult.value) return [];
-
-	// Same ordering authority as the /match walk, so the dashboard's top-3
-	// previews are the queue's first 3 by construction — no duplicated comparator.
-	const { songIds } = await getOrderedUndecidedSongIds(
-		snapshotResult.value.id,
-		accountId,
-	);
-	const topIds = songIds.slice(0, 3);
-	if (topIds.length === 0) return [];
-
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("song")
-		.select("id, image_url")
-		.in("id", topIds);
-
-	if (error || !data) return [];
-
-	const imageMap = new Map(data.map((s) => [s.id, s.image_url]));
-	return topIds
-		.map((id, i) => {
-			const image = imageMap.get(id);
-			return image ? { id: i + 1, image } : null;
-		})
-		.filter((p): p is MatchPreview => p !== null);
-}
-
 // ============================================================================
 // Page-level aggregate: one auth check, one HTTP request
 // ============================================================================
@@ -150,17 +107,28 @@ async function fetchMatchPreviews(accountId: string): Promise<MatchPreview[]> {
 /**
  * Fetches all dashboard page data in a single authenticated request.
  * Use in the route loader for initial page load.
+ *
+ * resolveMatchReviewSummary is called once here and its result feeds BOTH
+ * the CTA count (stats.pendingReviewCount) and the preview fan — no double
+ * fetch within this aggregate request.
  */
 export const getDashboardPageData = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<DashboardPageData> => {
 		const { session } = context;
 
-		const [stats, recentActivity, matchPreviews] = await Promise.all([
-			fetchDashboardStats(session.accountId),
+		// resolveMatchReviewSummary runs in parallel with recent activity so the
+		// one summary call feeds BOTH pendingReviewCount and previewImages.
+		const [summary, recentActivity] = await Promise.all([
+			resolveMatchReviewSummary(session.accountId),
 			fetchRecentActivity(session.accountId),
-			fetchMatchPreviews(session.accountId),
 		]);
+
+		const stats = await fetchDashboardStats(
+			session.accountId,
+			summary.pendingCount,
+		);
+		const matchPreviews: MatchPreview[] = summary.previewImages;
 
 		return { stats, recentActivity, matchPreviews };
 	});
@@ -172,7 +140,8 @@ export const getDashboardPageData = createServerFn({ method: "GET" })
 export const getDashboardStats = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<DashboardStats> => {
-		return fetchDashboardStats(context.session.accountId);
+		const summary = await resolveMatchReviewSummary(context.session.accountId);
+		return fetchDashboardStats(context.session.accountId, summary.pendingCount);
 	});
 
 export const getRecentActivity = createServerFn({ method: "GET" })
@@ -184,5 +153,6 @@ export const getRecentActivity = createServerFn({ method: "GET" })
 export const getMatchPreviews = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<MatchPreview[]> => {
-		return fetchMatchPreviews(context.session.accountId);
+		const summary = await resolveMatchReviewSummary(context.session.accountId);
+		return summary.previewImages;
 	});

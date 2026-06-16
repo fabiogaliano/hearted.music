@@ -32,7 +32,7 @@ import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWel
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
 import { UserJotWidget } from "@/features/feedback/UserJotWidget";
-import { matchingSessionQueryOptions } from "@/features/matching/queries";
+import { matchReviewSummaryQueryOptions } from "@/features/matching/queries";
 import {
 	isPathAllowed,
 	resolveSession,
@@ -180,11 +180,14 @@ function AuthenticatedLayout() {
 	// real Stripe redirects, not display.
 	usePostPurchaseReturn(session.accountId, billingState);
 
-	const { data: matchingSession } = useQuery({
-		...matchingSessionQueryOptions(session.accountId),
+	// Queue-aware summary: same source as the dashboard CTA count so sidebar
+	// badge and CTA are always consistent. Replaces the old snapshot-derived
+	// matchingSession.totalSongs path that was removed in Phase 7.
+	const { data: matchReviewSummary } = useQuery({
+		...matchReviewSummaryQueryOptions(session.accountId),
 		enabled: isComplete,
 	});
-	const pendingSuggestions = matchingSession?.totalSongs ?? 0;
+	const pendingSuggestions = matchReviewSummary?.pendingCount ?? 0;
 
 	const devPanel = DevWorkflowPanel ? (
 		<Suspense fallback={null}>

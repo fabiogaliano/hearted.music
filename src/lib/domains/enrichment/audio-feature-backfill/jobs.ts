@@ -203,7 +203,7 @@ export interface SettleBackfillInput {
 	features: SettleFeatures;
 	reviewStatus: "pending" | "approved";
 	reviewedBy: string | null;
-	youtubeVideoId: string | null;
+	youtubeVideoId: string;
 	youtubeUrl: string;
 	youtubeTitle: string | null;
 	youtubeChannel: string | null;
@@ -247,16 +247,16 @@ export async function settleBackfillJob(
 			p_source_type: input.sourceType,
 			p_features: input.features as unknown as Json,
 			p_review_status: input.reviewStatus,
-			p_reviewed_by: input.reviewedBy,
+			p_reviewed_by: input.reviewedBy ?? undefined,
 			p_youtube_video_id: input.youtubeVideoId,
 			p_youtube_url: input.youtubeUrl,
-			p_youtube_title: input.youtubeTitle,
-			p_youtube_channel: input.youtubeChannel,
-			p_youtube_duration_seconds: input.youtubeDurationSeconds,
-			p_youtube_thumbnail_url: input.youtubeThumbnailUrl,
-			p_search_query: input.searchQuery,
-			p_candidate_rank: input.candidateRank,
-			p_match_score: input.matchScore,
+			p_youtube_title: input.youtubeTitle ?? undefined,
+			p_youtube_channel: input.youtubeChannel ?? undefined,
+			p_youtube_duration_seconds: input.youtubeDurationSeconds ?? undefined,
+			p_youtube_thumbnail_url: input.youtubeThumbnailUrl ?? undefined,
+			p_search_query: input.searchQuery ?? undefined,
+			p_candidate_rank: input.candidateRank ?? undefined,
+			p_match_score: input.matchScore ?? undefined,
 			p_match_reasons: input.matchReasons as unknown as Json,
 			p_rejected_candidates: input.rejectedCandidates as unknown as Json,
 			p_clip_starts_seconds: input.clipStartsSeconds,

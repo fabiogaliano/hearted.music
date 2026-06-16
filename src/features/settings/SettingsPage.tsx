@@ -15,7 +15,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { dashboardKeys } from "@/features/dashboard/queries";
-import { matchingKeys } from "@/features/matching/queries";
+import {
+	matchReviewKeys,
+	matchReviewSummaryKeys,
+} from "@/features/matching/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	type MatchStrictness,
@@ -64,6 +67,7 @@ const STRICTNESS_OPTIONS: StrictnessOption[] = [
 ];
 
 interface SettingsPageProps {
+	accountId: string;
 	handle: string | null;
 	email: string | null;
 	imageUrl: string | null;
@@ -77,6 +81,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({
+	accountId,
 	handle,
 	email,
 	imageUrl,
@@ -136,9 +141,15 @@ export function SettingsPage({
 
 			try {
 				await updateMatchStrictnessPreference({ data: { strictness: next } });
-				// Invalidate both families so the new bar applies without a reload:
-				// the /match queue + dashboard previews/review count read these keys.
-				queryClient.invalidateQueries({ queryKey: matchingKeys.all });
+				// Refresh the sidebar badge, dashboard CTA count, and no-active-queue
+				// fallback in /match. An in-progress queue retains the strictness it was
+				// created with by design; only the summary + threshold-based fallback change.
+				queryClient.invalidateQueries({
+					queryKey: matchReviewSummaryKeys.summary(accountId),
+				});
+				queryClient.invalidateQueries({
+					queryKey: matchReviewKeys.review(accountId),
+				});
 				queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			} catch {
 				setStrictness(previousStrictness);
@@ -147,7 +158,7 @@ export function SettingsPage({
 				setIsSavingStrictness(false);
 			}
 		},
-		[strictness, isSavingStrictness, queryClient],
+		[strictness, isSavingStrictness, queryClient, accountId],
 	);
 
 	const handleSignOut = useCallback(async () => {

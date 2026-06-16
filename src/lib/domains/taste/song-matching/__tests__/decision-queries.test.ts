@@ -93,6 +93,7 @@ function fakeDecision(overrides: Partial<MatchDecision> = {}): MatchDecision {
 		created_at: "2026-03-17T00:00:00Z",
 		snapshot_id: null,
 		served_rank: null,
+		queue_item_id: null,
 		...overrides,
 	};
 }

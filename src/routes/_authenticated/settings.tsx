@@ -25,13 +25,14 @@ export const Route = createFileRoute("/_authenticated/settings")({
 });
 
 function SettingsRoute() {
-	const { account, billingState } = Route.useRouteContext();
+	const { account, billingState, session } = Route.useRouteContext();
 	const { themeColor, setThemeColor } = useAuthenticatedTheme();
 	const currentStrictness = Route.useLoaderData();
 	const { from } = Route.useSearch();
 
 	return (
 		<SettingsPage
+			accountId={session.accountId}
 			handle={account?.handle ?? null}
 			email={account?.email ?? null}
 			imageUrl={account?.image_url ?? null}

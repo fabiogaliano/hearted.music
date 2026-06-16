@@ -26,13 +26,20 @@ type DecisionType = "added" | "dismissed";
  * the served snapshot can't be tied to a match_result — never blocking the
  * decision. A null `servedRank` under a non-null `snapshotId` is the signal
  * that the (song, playlist) pair was never surfaced in that snapshot.
+ *
+ * `queueItemId` links the decision back to the queue item it was made from.
+ * Nullable — decisions made outside the queue path (legacy add/dismiss) omit it.
  */
 export function upsertMatchDecision(
 	accountId: string,
 	songId: string,
 	playlistId: string,
 	decision: DecisionType,
-	served?: { snapshotId?: string | null; servedRank?: number | null },
+	served?: {
+		snapshotId?: string | null;
+		servedRank?: number | null;
+		queueItemId?: string | null;
+	},
 ): Promise<Result<MatchDecision, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -47,6 +54,7 @@ export function upsertMatchDecision(
 					decided_at: new Date().toISOString(),
 					snapshot_id: served?.snapshotId ?? null,
 					served_rank: served?.servedRank ?? null,
+					queue_item_id: served?.queueItemId ?? null,
 				},
 				{ onConflict: "account_id,song_id,playlist_id" },
 			)
@@ -63,6 +71,9 @@ export function upsertMatchDecision(
  * `upsertMatchDecision`). A dismiss spans many playlists in one snapshot: those
  * with a match_result carry `servedRank` (surfaced negatives), the rest null it
  * (implicit negatives) — both kept distinct in the same batch.
+ *
+ * `queueItemId` links each decision back to the queue item it was made from.
+ * Nullable — decisions made outside the queue path (legacy dismiss) omit it.
  */
 export function upsertMatchDecisions(
 	decisions: {
@@ -72,6 +83,7 @@ export function upsertMatchDecisions(
 		decision: DecisionType;
 		snapshotId?: string | null;
 		servedRank?: number | null;
+		queueItemId?: string | null;
 	}[],
 ): Promise<Result<MatchDecision[], DbError>> {
 	if (decisions.length === 0) {
@@ -91,6 +103,7 @@ export function upsertMatchDecisions(
 					decided_at: new Date().toISOString(),
 					snapshot_id: d.snapshotId ?? null,
 					served_rank: d.servedRank ?? null,
+					queue_item_id: d.queueItemId ?? null,
 				})),
 				{ onConflict: "account_id,song_id,playlist_id" },
 			)

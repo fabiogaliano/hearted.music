@@ -9,38 +9,19 @@ import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries"
 import {
 	getMatchDecisionsForSongs,
 	upsertMatchDecision,
-	upsertMatchDecisions,
 } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
-	getMatchResultDetailsForSong,
 	getMatchResults,
 	getMatchResultsForSong,
 	getServedRanksForSong,
-	isSnapshotOwnedByAccount,
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
-const NoInputSchema = z.undefined();
-
 // ============================================================================
 // Shared types
 // ============================================================================
-
-export interface MatchingSessionResult {
-	snapshotId: string;
-	// The frozen walk order: ordered, entitled, undecided song ids. The client
-	// indexes its `offset` into this array so a recorded decision can never shift
-	// which song slot N points to (the positional-offset bug this replaces).
-	songIds: string[];
-	// === songIds.length. Kept so the sidebar badge and empty-state guards that
-	// read `totalSongs` need no changes.
-	totalSongs: number;
-	// Entitled, undecided songs hidden purely by the user's strictness bar —
-	// drives the "filtered" empty state. Zero when the bar hides nothing.
-	hiddenSongCount: number;
-}
 
 export interface MatchingSong {
 	id: string;
@@ -80,30 +61,11 @@ export interface MatchingPlaylistMatch {
 	factors: Json;
 }
 
-export interface SongMatchesResult {
-	song: MatchingSong;
-	matches: MatchingPlaylistMatch[];
-}
-
 // ============================================================================
 // Internal helpers
 // ============================================================================
 
 type MatchDecision = { song_id: string; playlist_id: string };
-
-// Accepts any snapshot the account owns — not only the latest. A frozen match
-// session keeps walking the snapshot it started on after a background refresh
-// supersedes it; gating per-song reads on "is latest" blanked the active card
-// (and broke the walk) the moment a new snapshot landed. Entitlement is still
-// enforced per song by the caller, so widening the snapshot gate to "owned"
-// does not widen data access.
-async function doesSnapshotBelongToAccount(
-	snapshotId: string,
-	accountId: string,
-): Promise<boolean> {
-	const owned = await isSnapshotOwnedByAccount(snapshotId, accountId);
-	return Result.isOk(owned) && owned.value;
-}
 
 /**
  * Resolves the served-ranking context for a song's decision(s): the snapshot the
@@ -236,14 +198,12 @@ export async function getUndecidedSongs(
 }
 
 /**
- * Single ordering authority for a match session: the ordered, entitled,
+ * Single ordering authority for a match queue: the ordered, entitled,
  * undecided song ids for a snapshot. Owns undecided derivation, the entitlement
  * filter, newness, and the 3-key sort (isNew desc, maxScore desc, songId asc).
  *
- * Both surfaces that must agree on "which songs, in what order" call this:
- * `getMatchingSession` (the frozen walk) and the dashboard's match previews
- * (top-3). Collapsing the two formerly-duplicated comparators here makes
- * "dashboard top-3 === match first-3" true by construction.
+ * Used by the dashboard's match previews (top-3) and the queue domain's
+ * snapshot-append logic to compute the canonical ordering of new items.
  */
 export async function getOrderedUndecidedSongIds(
 	snapshotId: string,
@@ -306,36 +266,6 @@ export async function getOrderedUndecidedSongIds(
 
 	return { songIds, hiddenSongCount };
 }
-
-// ============================================================================
-// Server functions
-// ============================================================================
-
-export const getMatchingSession = createServerFn({ method: "GET" })
-	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<MatchingSessionResult | null> => {
-		const { session } = context;
-
-		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
-		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
-
-		const matchSnapshot = snapshotResult.value;
-
-		// The session now carries the *order*, not just the count — the client
-		// freezes this list and indexes its walk into it.
-		const { songIds, hiddenSongCount } = await getOrderedUndecidedSongIds(
-			matchSnapshot.id,
-			session.accountId,
-		);
-
-		return {
-			snapshotId: matchSnapshot.id,
-			songIds,
-			totalSongs: songIds.length,
-			hiddenSongCount,
-		};
-	});
 
 // ============================================================================
 // Song suggestions (read-only, for liked-song detail panel)
@@ -426,159 +356,6 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 	});
 
 // ============================================================================
-// Song matches (for /match page)
-// ============================================================================
-
-const GetSongMatchesSchema = z.object({
-	snapshotId: z.uuid(),
-	songId: z.uuid(),
-});
-
-export interface GetSongMatchesParams {
-	snapshotId: string;
-	songId: string;
-}
-
-export const getSongMatches = createServerFn({ method: "GET" })
-	.middleware([authMiddleware])
-	.inputValidator((data) => GetSongMatchesSchema.parse(data))
-	.handler(async ({ data, context }): Promise<SongMatchesResult | null> => {
-		const { session } = context;
-		const supabase = createAdminSupabaseClient();
-
-		const ownsSnapshot = await doesSnapshotBelongToAccount(
-			data.snapshotId,
-			session.accountId,
-		);
-		if (!ownsSnapshot) return null;
-
-		// `songId` is now client-supplied (it used to be derived server-side from a
-		// positional offset), so the per-song entitlement check is mandatory — it's
-		// the one piece of server validation that must survive the simplification.
-		// Cheaper than the old whole-set RPC, too: one row vs. the entitled set.
-		const entitledCheck = await supabase.rpc("is_account_song_entitled", {
-			p_account_id: session.accountId,
-			p_song_id: data.songId,
-		});
-		if (entitledCheck.error || !entitledCheck.data) return null;
-
-		// One per-song fetch — never the whole snapshot. `getMatchResultDetailsForSong`
-		// carries the heavy factors/rank JSONB for this song alone.
-		const [
-			songRow,
-			analysisRow,
-			audioRow,
-			songDetailsResult,
-			decisionsResult,
-			minScore,
-		] = await Promise.all([
-			supabase.from("song").select("*").eq("id", data.songId).single(),
-			supabase
-				.from("song_analysis")
-				.select("analysis")
-				.eq("song_id", data.songId)
-				.order("created_at", { ascending: false })
-				.limit(1)
-				.maybeSingle(),
-			supabase
-				.from("song_audio_feature")
-				.select("tempo, energy, valence")
-				.eq("song_id", data.songId)
-				.maybeSingle(),
-			getMatchResultDetailsForSong(data.snapshotId, data.songId),
-			getMatchDecisionsForSongs(session.accountId, [data.songId]),
-			resolveMinMatchScore(session.accountId),
-		]);
-
-		if (songRow.error || !songRow.data) return null;
-		if (Result.isError(songDetailsResult) || Result.isError(decisionsResult))
-			return null;
-
-		const song = songRow.data;
-		const analysis = analysisRow.data?.analysis as
-			| {
-					headline: string;
-					compound_mood: string;
-					mood_description: string;
-					interpretation: string;
-					themes: Array<{ name: string; description: string }>;
-					journey: Array<{
-						section: string;
-						mood: string;
-						description: string;
-					}>;
-					key_lines: Array<{ line: string; insight: string }>;
-					sonic_texture: string;
-			  }
-			| null
-			| undefined;
-		const audio = audioRow.data;
-
-		const builtSong: MatchingSong = {
-			id: song.id,
-			spotifyId: song.spotify_id,
-			name: song.name,
-			artist: song.artists[0] ?? "Unknown Artist",
-			album: song.album_name,
-			albumArtUrl: song.image_url,
-			genres: song.genres,
-			audioFeatures: audio
-				? { tempo: audio.tempo, energy: audio.energy, valence: audio.valence }
-				: null,
-			analysis: analysis ?? null,
-		};
-
-		const decidedPairs = new Set(
-			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-		);
-
-		const songMatchResults = songDetailsResult.value.filter(
-			(mr) =>
-				mr.score >= minScore &&
-				!decidedPairs.has(`${data.songId}:${mr.playlist_id}`),
-		);
-
-		// With the frozen list, Previous revisits already-decided songs — return the
-		// song with empty matches rather than null, so a revisit never hits the
-		// blank-page path. The UI guards its dismiss write behind `matches.length > 0`.
-		if (songMatchResults.length === 0) {
-			return { song: builtSong, matches: [] };
-		}
-
-		const playlistIds = songMatchResults.map((mr) => mr.playlist_id);
-		const { data: playlistRows, error: playlistError } = await supabase
-			.from("playlist")
-			.select("id, name, match_intent, song_count, spotify_id")
-			.in("id", playlistIds);
-
-		if (playlistError || !playlistRows) return null;
-
-		const playlistMap = new Map(playlistRows.map((p) => [p.id, p]));
-
-		const matches: MatchingPlaylistMatch[] = songMatchResults
-			.map((mr) => {
-				const playlist = playlistMap.get(mr.playlist_id);
-				if (!playlist) return null;
-				return {
-					playlist: {
-						id: playlist.id,
-						name: playlist.name,
-						description: playlist.match_intent,
-						trackCount: playlist.song_count,
-						spotifyId: playlist.spotify_id,
-					},
-					score: mr.score,
-					rank: mr.rank,
-					factors: mr.factors,
-				};
-			})
-			.filter((m): m is MatchingPlaylistMatch => m !== null)
-			.toSorted((a, b) => b.score - a.score);
-
-		return { song: builtSong, matches };
-	});
-
-// ============================================================================
 // Match decision functions (moved from liked-songs.functions.ts)
 // ============================================================================
 
@@ -590,20 +367,10 @@ const AddToPlaylistSchema = z.object({
 	snapshotId: z.uuid().optional(),
 });
 
-export interface AddToPlaylistParams {
-	songId: string;
-	playlistId: string;
-	snapshotId?: string;
-}
-
-export interface AddToPlaylistResult {
-	success: boolean;
-}
-
 export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => AddToPlaylistSchema.parse(data))
-	.handler(async ({ data, context }): Promise<AddToPlaylistResult> => {
+	.handler(async ({ data, context }): Promise<{ success: boolean }> => {
 		const { session } = context;
 		// Served-context resolution is best-effort and independent of the ownership
 		// checks, so it rides the same Promise.all instead of adding a serial wait.
@@ -627,88 +394,4 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 			},
 		);
 		return { success: Result.isOk(result) };
-	});
-
-// Each id is ownership-checked below, but bound the array first so a giant
-// payload can't blow up the ownership IN() query. 500 sits well above the number
-// of playlists a single song realistically matches.
-const MAX_DISMISS_PLAYLISTS = 500;
-
-const DismissSongSchema = z.object({
-	songId: z.uuid(),
-	playlistIds: z.array(z.uuid()).min(1).max(MAX_DISMISS_PLAYLISTS),
-	// The snapshot whose ranking the user acted on (see AddToPlaylistSchema).
-	snapshotId: z.uuid().optional(),
-});
-
-export interface DismissSongParams {
-	songId: string;
-	playlistIds: string[];
-	snapshotId?: string;
-}
-
-export const dismissSong = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator((data) => DismissSongSchema.parse(data))
-	.handler(async ({ data, context }) => {
-		const { session } = context;
-		// Served-context resolution is best-effort and independent of the ownership
-		// checks, so it rides the same Promise.all instead of adding a serial wait.
-		const [songOwned, playlistsOwned, served] = await Promise.all([
-			isSongOwnedByAccount(session.accountId, data.songId),
-			doPlaylistsBelongToAccount(data.playlistIds, session.accountId),
-			resolveServedContext(session.accountId, data.songId, data.snapshotId),
-		]);
-		if (!songOwned || !playlistsOwned) {
-			return { success: false };
-		}
-
-		// One snapshot, many playlists: surfaced pairs carry their served_rank;
-		// the rest get null (implicit negatives) — both land in the same upsert.
-		const decisions = data.playlistIds.map((playlistId) => ({
-			accountId: session.accountId,
-			songId: data.songId,
-			playlistId,
-			decision: "dismissed" as const,
-			snapshotId: served.snapshotId,
-			servedRank: served.rankByPlaylist.get(playlistId) ?? null,
-		}));
-		const result = await upsertMatchDecisions(decisions);
-		return { success: Result.isOk(result) };
-	});
-
-// ============================================================================
-// markSeen server function (for session lifecycle)
-// ============================================================================
-
-// songIds accumulates across a whole matching session, so the cap is generous —
-// above any realistic session — to never drop a legitimate flush. It exists to
-// stop a single call forcing a multi-million-row upsert into account_item_newness.
-// The client (useMatchingSession) slices to this same cap so real flushes never
-// trip it; anything larger is definitionally not our client.
-export const MAX_MARK_SEEN_SONGS = 10_000;
-
-const MarkSeenSchema = z.object({
-	songIds: z.array(z.uuid()).max(MAX_MARK_SEEN_SONGS),
-});
-
-export const markSeenSongs = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator((data) => MarkSeenSchema.parse(data))
-	.handler(async ({ data, context }) => {
-		if (data.songIds.length === 0) return { success: true };
-		const { session } = context;
-		const supabase = createAdminSupabaseClient();
-		const now = new Date().toISOString();
-		const { error } = await supabase.from("account_item_newness").upsert(
-			data.songIds.map((itemId) => ({
-				account_id: session.accountId,
-				item_id: itemId,
-				item_type: "song" as const,
-				is_new: false,
-				viewed_at: now,
-			})),
-			{ onConflict: "account_id,item_id,item_type" },
-		);
-		return { success: !error };
 	});

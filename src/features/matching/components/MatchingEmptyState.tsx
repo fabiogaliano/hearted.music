@@ -3,27 +3,52 @@ import { Link } from "@tanstack/react-router";
 
 import { fonts } from "@/lib/theme/fonts";
 
-type Reason = "no-context" | "all-decided" | "filtered";
+// "no-matches" maps to the case where a queue exists but every item was filtered
+// out by the user's strictness setting. "caught-up" is when all items are resolved.
+type Reason =
+	| "no-context"
+	| "caught-up"
+	| "no-matches"
+	| "all-decided"
+	| "filtered";
 
 interface Props {
 	reason: Reason;
-	// Only meaningful for reason="filtered": entitled, undecided songs whose only
-	// matches sit below the user's strictness bar.
+	// Only meaningful for reason="no-matches"/"filtered": entitled, undecided songs
+	// whose only matches sit below the user's strictness bar.
 	hiddenCount?: number;
 }
 
 const staticCopy = {
 	"no-context": {
-		overline: "no suggestions yet",
-		headline: ["Nothing to match", "just yet."],
-		body: "Suggestions appear here once matching has run on your library.",
+		overline: "nothing yet",
+		headline: ["Check back after", "your next sync."],
+		body: "Your matches will appear here once matching has run on your library.",
 		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
 	},
+	"caught-up": {
+		overline: "all caught up",
+		headline: ["You're caught up."],
+		body: "New matches will appear here after your next sync.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
+	},
+	// Legacy alias — same display as caught-up, kept so old route branches still compile.
 	"all-decided": {
 		overline: "all caught up",
-		headline: ["Your songs have", "found their home."],
-		body: "Check back after your next sync for new songs to match.",
+		headline: ["You're caught up."],
+		body: "New matches will appear here after your next sync.",
 		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
+	},
+	"no-matches": {
+		overline: "quiet in here",
+		headline: ["No matches right now."],
+		body: "Some songs may be waiting just below your strictness setting.",
+		link: {
+			to: "/settings",
+			hash: "settings-section-matching",
+			search: { from: "match" as const },
+			label: "Adjust strictness",
+		},
 	},
 } as const;
 
@@ -66,7 +91,13 @@ export function MatchingEmptyState({ reason, hiddenCount = 0 }: Props) {
 				className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight text-balance md:text-[54px]"
 				style={{ fontFamily: fonts.display }}
 			>
-				{headline[0]} <em>{headline[1]}</em>
+				{headline[0]}
+				{headline.length > 1 ? (
+					<>
+						{" "}
+						<em>{headline[1]}</em>
+					</>
+				) : null}
 			</h1>
 
 			<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed text-pretty">
