@@ -1223,9 +1223,11 @@ describe("ClaimHandleStep", () => {
 
 	// Test 6: Intermediate-step navigation via resolveSession.
 	// Complements the existing "claimed with complete session → /dashboard" test.
-	it("claimed with intermediate session: navigates to /onboarding?step=flag-playlists via resolveSession", async () => {
+	// Uses plan-selection — the real post-claim advance target — which still maps
+	// to /onboarding?step=, exercising the search-param navigation branch.
+	it("claimed with intermediate session: navigates to /onboarding?step=plan-selection via resolveSession", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
-		const onboarding = makeOnboarding("flag-playlists");
+		const onboarding = makeOnboarding("plan-selection");
 		mockClaimHandleAndAdvance.mockResolvedValue({
 			status: "claimed",
 			ownedHandle: "fabio",
@@ -1248,7 +1250,7 @@ describe("ClaimHandleStep", () => {
 			expect(mockNavigate).toHaveBeenCalledWith(
 				expect.objectContaining({
 					to: "/onboarding",
-					search: { step: "flag-playlists" },
+					search: { step: "plan-selection" },
 				}),
 			);
 		});

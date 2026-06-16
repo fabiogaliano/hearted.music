@@ -146,30 +146,4 @@ describe("Onboarding Flow", () => {
 		const container = within(stepContainer as HTMLElement);
 		expect(container.getByText(/Pick your/i)).toBeInTheDocument();
 	});
-
-	it("renders flag-playlists step with playlist selection", async () => {
-		const data = createMockOnboardingData();
-
-		const { user } = renderOnboarding("flag-playlists", data);
-
-		const stepContainer = document.querySelector(
-			'[data-step="flag-playlists"]',
-		);
-		expect(stepContainer).toBeInTheDocument();
-
-		const container = within(stepContainer as HTMLElement);
-		const lofiButton = container.getByRole("button", {
-			name: /lo-fi tokyo City Pop/i,
-		});
-		const rockButton = container.getByRole("button", {
-			name: /old rock - coding zone/i,
-		});
-
-		expect(lofiButton).toBeInTheDocument();
-		expect(rockButton).toBeInTheDocument();
-		expect(rockButton).toHaveAttribute("aria-pressed", "true");
-
-		await user.click(lofiButton);
-		expect(lofiButton).toHaveAttribute("aria-pressed", "true");
-	});
 });

@@ -89,6 +89,22 @@ describe("useStepNavigation", () => {
 		expect(mockNavigate).toHaveBeenCalledWith({ to: "/match" });
 	});
 
+	it("saves step, fetches fresh session, and navigates to /playlists for flag-playlists", async () => {
+		mockGetOnboardingSession.mockResolvedValue({
+			session: { status: "flag-playlists" },
+			theme: null,
+		});
+
+		const { result } = renderHook(() => useStepNavigation());
+
+		await act(() => result.current.navigateTo("flag-playlists"));
+
+		expect(mockSaveOnboardingStep).toHaveBeenCalledWith({
+			data: { step: "flag-playlists" },
+		});
+		expect(mockNavigate).toHaveBeenCalledWith({ to: "/playlists" });
+	});
+
 	it("saves step and navigates to /onboarding?step= for plan-selection", async () => {
 		mockGetOnboardingSession.mockResolvedValue({
 			session: { status: "plan-selection" },

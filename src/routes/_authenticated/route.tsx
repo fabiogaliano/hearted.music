@@ -173,7 +173,11 @@ function AuthenticatedLayout() {
 
 	const mode = sessionMode(onboardingSession);
 	const isComplete = mode === "complete";
-	const showShell = isComplete || mode === "walkthrough";
+	// playlist-preview routes the user to the real /playlists screen, so it needs
+	// the app shell (header/main) like the walkthroughs — but still no sidebar
+	// (showSidebar stays isComplete-only) since onboarding isn't finished.
+	const showShell =
+		isComplete || mode === "walkthrough" || mode === "playlist-preview";
 
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	// Post-purchase return must observe the *real* billing state — it handles

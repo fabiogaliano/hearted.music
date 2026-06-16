@@ -51,7 +51,11 @@ export type OnboardingAuthPayload = {
 };
 
 /** Broad categorization used by layout shells and UI branches. */
-export type OnboardingMode = "steps" | "walkthrough" | "complete";
+export type OnboardingMode =
+	| "steps"
+	| "walkthrough"
+	| "playlist-preview"
+	| "complete";
 
 export function sessionMode(session: OnboardingSession): OnboardingMode {
 	switch (session.status) {
@@ -60,6 +64,11 @@ export function sessionMode(session: OnboardingSession): OnboardingMode {
 		case "song-walkthrough":
 		case "match-walkthrough":
 			return "walkthrough";
+		// flag-playlists is previewed on the real /playlists screen, so it gets
+		// the same shell-but-no-sidebar chrome as the walkthrough handoffs rather
+		// than the in-orchestrator "steps" chrome.
+		case "flag-playlists":
+			return "playlist-preview";
 		default:
 			return "steps";
 	}

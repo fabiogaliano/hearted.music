@@ -10,7 +10,7 @@ executing and you have everything you need. Do **not** read the whole file to do
 ## Status
 
 - [x] **Phase 1 — Reorder steps + handle migration + guard tests** ✅ done 2026-06-16
-- [ ] Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`) · _audited 2026-06-16, see corrections_
+- [x] **Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`)** ✅ done 2026-06-16
 - [ ] Phase 3 — Sandbox data in `/playlists` preview (canned playlists + local actions) · _audited, plan needs revision_
 - [ ] Phase 4 — Salvage the intent shuffle into the real writing surface · _audited, **wrong target component** — see corrections_
 - [ ] Phase 5 — Fully-fake match reveal + `/liked-songs` sandbox · _audited 2026-06-16_
@@ -217,7 +217,41 @@ reorder) or you trigger a wider migration surface.
 
 ---
 
-## Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`)
+## Phase 2 — Preview-routing skeleton (`flag-playlists` → real `/playlists`) — ✅ DONE (2026-06-16)
+
+> **✅ Completed.** All six audit corrections re-verified against live code first; all held. What shipped:
+> - **`onboarding-session.ts`:** `OnboardingMode` gains `"playlist-preview"`; `sessionMode()` returns it
+>   for `flag-playlists` (new `case`, with WHY comment). No external exhaustive switch over `OnboardingMode`
+>   exists, so the union widen was safe.
+> - **`step-resolver.ts`:** `/playlists` added to `AllowedPath`; `resolveSession(flag-playlists)` → `/playlists`
+>   (moved out of the `/onboarding` fallthrough group); `isPathAllowed` now prefix-matches
+>   (`pathname === p || pathname.startsWith(p + "/")`) so `/playlists/$playlistRef` stays allowed. Other
+>   allowed paths have no children, so prefix-matching is a no-op for them.
+> - **`route.tsx`:** `showShell` now also true for `mode === "playlist-preview"`; `showSidebar={isComplete}`
+>   left untouched (preview gets shell, no sidebar). `match.tsx:45` (`=== "walkthrough"`) unaffected.
+> - **`Onboarding.tsx`:** `flag-playlists` STEP_CONFIG → `render: () => null, hideIndicator: true` (defensive —
+>   the guard reroutes before the orchestrator renders); dropped the now-unused `FlagPlaylistsStep` import.
+>   (`StepContext.playlists` left in place — its only reader was this step; removing the field is Phase 6 cleanup.)
+> - **`onboarding.tsx` route:** deleted BOTH the `flag-playlists → pick-demo-song` auto-skip (old `:98-104`)
+>   and the `isAutoSkipFlagPlaylists` special-case (old `:73-76`) + its `&& !isAutoSkipFlagPlaylists` guard
+>   clause. `data` is still returned in context, so no unused-var fallout.
+> - **`playlists.tsx`:** now reads `onboardingSession` from route context (mirrors `liked-songs.tsx`); computes
+>   `isPlaylistPreview` and renders a hidden no-op slot (`<div data-onboarding-preview="flag-playlists" hidden />`)
+>   as the Phase-3 mount point. **Deviation from the audit's "empty fragment" suggestion:** Biome rejects a
+>   single-child/redundant fragment (and dropping it would make `isPlaylistPreview` an unused var), so a hidden
+>   marker div is the lint-clean equivalent.
+> - **Tests:** `step-resolver.test.ts` (flag-playlists→/playlists, `sessionMode`→playlist-preview, new
+>   `isPathAllowed` prefix-match block incl. the `/playlists-archive` negative); `useStepNavigation.test.ts`
+>   (+flag-playlists→`/playlists`, no `?step=`); `onboarding-flow.test.tsx` (**removed** the now-dead
+>   `"renders flag-playlists step"` block — Phase 2 nulls that render; the inert `vi.mock`s stay for Phase 6 to
+>   strip); `ClaimHandleStep.test.tsx` Test 6 (**repurposed** off `flag-playlists`, which now routes to
+>   `/playlists`, onto `plan-selection` — the real post-claim target that still exercises the `/onboarding?step=`
+>   branch this test guards).
+> - **Verify:** targeted onboarding suites 82 passed; full suite 2274 passed / 8 skipped / 0 failed;
+>   `bun run typecheck` 0 errors; `biome check` clean on all touched files.
+> - **Carried into Phase 3:** `playlists.tsx` still mounts the production, server-wired `PlaylistsCoverFlowScreen`
+>   for preview users (pre-sync = empty playlists, renders gracefully; `usePlaylistSession` writes only on user
+>   action, so mounting is side-effect-free). Phase 3 swaps in the sandbox screen + canned data at the hidden slot.
 
 > **⚠ Audit corrections (2026-06-16):**
 > - **CONFIRMED** — `OnboardingMode` is `"steps" | "walkthrough" | "complete"`

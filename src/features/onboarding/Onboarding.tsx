@@ -20,7 +20,6 @@ import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import type { ThemeColor } from "@/lib/theme/types";
 import { AnimatedStep } from "./components/AnimatedStep";
 import { ClaimHandleStep } from "./components/ClaimHandleStep";
-import { FlagPlaylistsStep } from "./components/FlagPlaylistsStep";
 import { InstallExtensionStep } from "./components/InstallExtensionStep";
 import { PickColorStep } from "./components/PickColorStep";
 import { PickDemoSongStep } from "./components/PickDemoSongStep";
@@ -83,10 +82,10 @@ const STEP_CONFIG: Record<OnboardingStep, StepConfig> = {
 		),
 	},
 	"flag-playlists": {
-		render: (ctx) => (
-			<FlagPlaylistsStep playlists={ctx.playlists} accountId={ctx.accountId} />
-		),
-		fullBleed: true,
+		// Previewed on the real /playlists screen; the route guard redirects there
+		// before the orchestrator renders, so this is defensive only.
+		render: () => null,
+		hideIndicator: true,
 	},
 	"pick-demo-song": {
 		render: (ctx) => <PickDemoSongStep songs={ctx.landingSongs} />,
