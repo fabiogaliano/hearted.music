@@ -14,13 +14,16 @@
 // lyric `lines` are forced back from the original read; only the prose fields (image, take,
 // contradiction, arc scenes, texture) can change, and a null contradiction/texture stays null so
 // the pass can never manufacture one. This bounds content drift to the sentences that were flagged.
+//
+// Because everything else is pinned anyway, the model is asked to return ONLY the flagged fields
+// (rewriteOutputFields → buildRewriteOutputSchema), not the whole read — it had been re-emitting the
+// verbatim lines and the full arc just to have them discarded, and that re-emission was most of the
+// per-pass output cost. The full read is still in the prompt as context; only the wire format shrank.
 
 import { Result } from "better-result";
-import {
-	type SongRead,
-	SongReadSchema,
-} from "@/lib/domains/enrichment/content-analysis/read-schema";
-import type { LlmService, TokenUsage } from "@/lib/integrations/llm/service";
+import { z } from "zod";
+import type { SongRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import type { TokenUsage } from "@/lib/integrations/llm/service";
 import type { RuleHit } from "./rules-types";
 import { runAllRules } from "./tier1-rules";
 
@@ -86,8 +89,151 @@ export interface RewriteResult {
 	usages: RewritePassUsage[];
 }
 
+interface RewriteGenerationResult {
+	output: Record<string, string>;
+	provider: string;
+	modelId: string;
+	tokens?: TokenUsage;
+	costUsd: number | null;
+}
+
+interface RewriteLlm {
+	generateObject(
+		prompt: string,
+		schema: z.ZodType<Record<string, string>>,
+		options?: {
+			functionId?: string;
+			distinctId?: string;
+			maxOutputTokens?: number;
+			temperature?: number;
+		},
+	): Promise<Result<RewriteGenerationResult, unknown>>;
+}
+
 function targetHits(read: SongRead): RuleHit[] {
 	return runAllRules(read).filter((h) => TARGET_RULES.has(h.rule));
+}
+
+// The rewrite asks the model to return ONLY the fields a target rule actually flagged — not the whole
+// read. The model still sees the entire read (above) for coherence, but applySurgical discards every
+// field except the flagged ones, so re-emitting the verbatim lines, the full arc, and the unflagged
+// prose was output generated and thrown away on every pass — and output is the dominant slice of
+// rewrite cost. A reduced output schema, built from the same flagged-field set applySurgical merges
+// on, drops realized output to the handful of strings that can actually change: same merge, same
+// invariants, a fraction of the tokens.
+interface RewriteOutputField {
+	// JSON key the model returns; also the schema property name.
+	key: string;
+	// The flagged-field path applySurgical keys on ("image", "take", "arc[1].scene", …).
+	field: string;
+	// Human label, reused as the Zod property description AND the prompt's return-list entry, so the
+	// schema the model sees and the instruction it reads can never drift apart.
+	describe: string;
+	// Set when the field is an arc beat's scene, so the merge can place it back by beat index.
+	arcIndex?: number;
+}
+
+// Deterministic order (image, take, contradiction, texture, then arc scenes by beat) so the prompt
+// text and schema shape are stable regardless of hit order. Only the prose fields a target rule can
+// flag are representable — lens/tension/lines/labels/moods are pinned in code and never rewritable,
+// so they are intentionally absent (a hit on one of them simply yields no output field, exactly as
+// applySurgical already pins it from the original).
+function rewriteOutputFields(
+	read: SongRead,
+	hits: RuleHit[],
+): RewriteOutputField[] {
+	const flagged = new Set(hits.map((h) => h.field));
+	const fields: RewriteOutputField[] = [];
+	if (flagged.has("image"))
+		fields.push({
+			key: "image",
+			field: "image",
+			describe: "the corrected image",
+		});
+	if (flagged.has("take"))
+		fields.push({ key: "take", field: "take", describe: "the corrected take" });
+	if (flagged.has("contradiction"))
+		fields.push({
+			key: "contradiction",
+			field: "contradiction",
+			describe: "the corrected contradiction",
+		});
+	if (flagged.has("texture"))
+		fields.push({
+			key: "texture",
+			field: "texture",
+			describe: "the corrected texture",
+		});
+	read.arc.forEach((b, i) => {
+		if (flagged.has(`arc[${i}].scene`))
+			fields.push({
+				key: `scene${i + 1}`,
+				field: `arc[${i}].scene`,
+				describe: `the corrected scene prose for beat ${i + 1} ("${b.label}")`,
+				arcIndex: i,
+			});
+	});
+	return fields;
+}
+
+function rewriteOutputPlan(
+	read: SongRead,
+	hits: RuleHit[],
+): RewriteOutputField[] {
+	const fields = rewriteOutputFields(read, hits);
+	const supported = new Set(fields.map((field) => field.field));
+	const unsupported = [...new Set(hits.map((hit) => hit.field))].filter(
+		(field) => !supported.has(field),
+	);
+	if (unsupported.length > 0) {
+		throw new Error(
+			`Rewrite pass cannot represent flagged fields in partial output: ${unsupported.join(", ")}`,
+		);
+	}
+	return fields;
+}
+
+function buildRewriteOutputSchemaForFields(
+	outputFields: RewriteOutputField[],
+): z.ZodType<Record<string, string>> {
+	const shape: Record<string, z.ZodString> = {};
+	for (const f of outputFields) shape[f.key] = z.string().describe(f.describe);
+	return z.object(shape);
+}
+
+// The reduced output schema: one required string per flagged field, keyed exactly as the prompt's
+// return list. Exported for unit testing — locks the schema↔prompt key agreement the model relies on.
+export function buildRewriteOutputSchema(
+	read: SongRead,
+	hits: RuleHit[],
+): z.ZodType<Record<string, string>> {
+	return buildRewriteOutputSchemaForFields(rewriteOutputPlan(read, hits));
+}
+
+// Overlays the model's partial output onto a copy of the fed-in read, so applySurgical can merge it
+// exactly as before. applySurgical only ever reads the flagged fields from this object, so the
+// copied-through values are never used — this is just the adapter that lets the surgical-apply
+// invariant (and its tests) stay untouched while the wire format shrank to the flagged fields.
+function mergePartialOutput(
+	fedIn: SongRead,
+	partial: Record<string, string>,
+	fields: RewriteOutputField[],
+): SongRead {
+	const out: SongRead = {
+		...fedIn,
+		arc: fedIn.arc.map((b) => ({ ...b })),
+		lines: fedIn.lines.map((l) => ({ ...l })),
+	};
+	for (const f of fields) {
+		const val = partial[f.key];
+		if (typeof val !== "string") continue;
+		if (f.arcIndex !== undefined) out.arc[f.arcIndex].scene = val;
+		else if (f.field === "image") out.image = val;
+		else if (f.field === "take") out.take = val;
+		else if (f.field === "contradiction") out.contradiction = val;
+		else if (f.field === "texture") out.texture = val;
+	}
+	return out;
 }
 
 // Renders the read field-by-field with the flagged spans inline, so the model sees exactly which
@@ -95,9 +241,10 @@ function targetHits(read: SongRead): RuleHit[] {
 // read for coherence) but carry no ⚠ marks — the model is told to copy those through unchanged.
 // Exported for unit testing — locks the mode→recipe wiring (direct-assertion must swap the
 // antithesis recipe to the delete-and-strengthen text; minimal must keep the recast text).
-export function buildRewritePrompt(
+function buildRewritePromptForFields(
 	read: SongRead,
 	hits: RuleHit[],
+	outputFields: RewriteOutputField[],
 	mode: RewriteMode = "minimal",
 ): string {
 	const recipes =
@@ -133,6 +280,10 @@ export function buildRewritePrompt(
 		.join("\n");
 
 	const linesBlock = read.lines.map((l) => `  - "${l.line}"`).join("\n");
+
+	const returnList = outputFields
+		.map((f) => `- "${f.key}": ${f.describe}`)
+		.join("\n");
 
 	// Direct-assertion mode only diverges from minimal when an antithesis pivot is actually present to
 	// delete; with no pivot flagged it is a byte-identical no-op vs minimal (only the recipes for rules
@@ -171,10 +322,27 @@ contradiction: ${read.contradiction ?? "(none)"}${flagsFor("contradiction")}
 arc:
 ${arcBlock}
 texture: ${read.texture ?? "(none)"}${flagsFor("texture")}
-lines (DO NOT CHANGE — verbatim lyric quotes, return identical):
+lines (context only — verbatim lyric quotes, not part of your output):
 ${linesBlock}
 
-Return the corrected read as structured JSON with the same fields. Keep lens, tension, and every line identical to the input. Return the arc as the same ${read.arc.length} beats in the same order; for each beat keep its label and mood exactly, and return its scene as full prose — rewritten if it was flagged, otherwise copied word-for-word (never return a placeholder like "beat 1"). ${read.contradiction === null ? "Return null for contradiction." : ""} ${read.texture === null ? "Return null for texture." : ""}`.trim();
+The read above is your full context for coherence — but you return ONLY the flagged fields you rewrote, nothing else. Output JSON with exactly these keys:
+
+${returnList}
+
+Each value is the corrected prose for that field: the flagged construction gone, every grounded claim, named person, place, and image kept, the meaning unchanged. Do not output lens, tension, lines, arc labels, moods, or any unflagged field — they are pinned in code and any edit to them is discarded.`.trim();
+}
+
+export function buildRewritePrompt(
+	read: SongRead,
+	hits: RuleHit[],
+	mode: RewriteMode = "minimal",
+): string {
+	return buildRewritePromptForFields(
+		read,
+		hits,
+		rewriteOutputPlan(read, hits),
+		mode,
+	);
 }
 
 // Field-aware surgical apply: takes the model's rewrite ONLY for fields that were actually flagged
@@ -227,7 +395,7 @@ export function applySurgical(
 // NOT touch) and the token cost. A pass that hits an LLM error returns the best read so far.
 export async function rewriteRead(
 	read: SongRead,
-	llm: LlmService,
+	llm: RewriteLlm,
 	opts?: { maxPasses?: number; temperature?: number; mode?: RewriteMode },
 ): Promise<RewriteResult> {
 	const maxPasses = opts?.maxPasses ?? 2;
@@ -243,15 +411,34 @@ export async function rewriteRead(
 		const hits = targetHits(current);
 		if (hits.length === 0) break;
 
-		const prompt = buildRewritePrompt(current, hits, mode);
-		const gen = await llm.generateObject(prompt, SongReadSchema, {
-			temperature,
-			// A rewrite returns the full read, so it has the same ~10%-of-draws-truncate-at-4k risk the
-			// generation call addresses with 8k (see song-analysis.ts). At 4k a long read truncates
-			// mid-JSON, fails to parse, and the pass keeps the original (uncleaned) read; 8k removes that.
-			maxOutputTokens: 8000,
-			functionId: "voice-audit-rewrite-pass",
-		});
+		let outputFields: RewriteOutputField[];
+		try {
+			outputFields = rewriteOutputPlan(current, hits);
+		} catch (error) {
+			return {
+				read: current,
+				passes,
+				hitsBefore,
+				hitsAfter: runAllRules(current),
+				error: error instanceof Error ? error.message : String(error),
+				tokens,
+				usages,
+			};
+		}
+		const gen = await llm.generateObject(
+			buildRewritePromptForFields(current, hits, outputFields, mode),
+			buildRewriteOutputSchemaForFields(outputFields),
+			{
+				temperature,
+				// Output is now only the flagged fields — a few short prose strings — instead of the whole
+				// re-emitted read, which was the bulk of rewrite cost (output dominates it). The ceiling
+				// stays generous because it is free (you pay per token generated, not per cap) and still
+				// guards a long flagged field, or any reasoning tokens drawing on this budget, from
+				// truncating mid-JSON and failing the parse (which would keep the uncleaned read).
+				maxOutputTokens: 8000,
+				functionId: "voice-audit-rewrite-pass",
+			},
+		);
 		if (Result.isError(gen)) {
 			return {
 				read: current,
@@ -272,7 +459,8 @@ export async function rewriteRead(
 			costUsd: gen.value.costUsd,
 		});
 		const flaggedFields = new Set(hits.map((h) => h.field));
-		current = applySurgical(read, current, gen.value.output, flaggedFields);
+		const merged = mergePartialOutput(current, gen.value.output, outputFields);
+		current = applySurgical(read, current, merged, flaggedFields);
 	}
 
 	return {
