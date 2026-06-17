@@ -258,9 +258,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				...baseHeaders,
 				"Content-Security-Policy": [
 					...cspDirectives,
+					// TODO: build/research the sandboxed-frame approach to drop
+					// 'unsafe-eval' when there's more time.
+					// Spotify's embed IFrame API evals internally; 'unsafe-eval' is
+					// document-scoped (not origin-scoped), so allowlisting
+					// open.spotify.com in script-src alone does not permit it.
 					[
 						"script-src",
 						"'self'",
+						"'unsafe-eval'",
 						"https://open.spotify.com",
 						"https://*.spotifycdn.com",
 						"https://cdn.userjot.com",
@@ -283,10 +289,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				// 'strict-dynamic' it blocked every route chunk loaded on client-side
 				// navigation, throwing "Importing a module script failed" on most
 				// routes. Listing 'self' keeps those same-origin chunks loadable.
+				// TODO: build/research the sandboxed-frame approach to drop
+				// 'unsafe-eval' when there's more time.
+				// 'unsafe-eval' is required by Spotify's embed IFrame API, which
+				// evals in this document. It is document-scoped, not origin-scoped,
+				// so the open.spotify.com allowlist below does not cover it.
 				[
 					"script-src",
 					"'self'",
 					`'nonce-${nonce}'`,
+					"'unsafe-eval'",
 					"https://open.spotify.com",
 					"https://*.spotifycdn.com",
 					"https://cdn.userjot.com",
