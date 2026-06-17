@@ -35,6 +35,8 @@ const {
 	mockFinishQueueItemAtomically,
 	mockFetchActiveSession,
 	mockSyncActiveQueue,
+	mockGetLatestMatchSnapshot,
+	mockGetOrderedUndecidedSongIds,
 } = vi.hoisted(() => {
 	// Shared from mock — overridden per-test via mockFrom.mockImplementation
 	const mockFrom = vi.fn();
@@ -58,6 +60,8 @@ const {
 		mockFinishQueueItemAtomically: vi.fn(),
 		mockFetchActiveSession: vi.fn(),
 		mockSyncActiveQueue: vi.fn(),
+		mockGetLatestMatchSnapshot: vi.fn(),
+		mockGetOrderedUndecidedSongIds: vi.fn(),
 	};
 });
 
@@ -104,6 +108,13 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 		mockGetMatchResultDetailsForSong(...args),
 	getServedRanksForSong: (...args: unknown[]) =>
 		mockGetServedRanksForSong(...args),
+	getLatestMatchSnapshot: (...args: unknown[]) =>
+		mockGetLatestMatchSnapshot(...args),
+}));
+
+vi.mock("@/lib/server/matching.functions", () => ({
+	getOrderedUndecidedSongIds: (...args: unknown[]) =>
+		mockGetOrderedUndecidedSongIds(...args),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
@@ -1469,6 +1480,10 @@ describe("startOrResumeMatchReview", () => {
 describe("getMatchReview", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Default: no snapshot, so the caught-up path reports zero hidden songs
+		// without reaching getOrderedUndecidedSongIds. Tests that exercise the
+		// hidden-count path override this.
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 	});
 
 	it("returns an empty caught-up payload when there is no active session", async () => {
@@ -1481,8 +1496,50 @@ describe("getMatchReview", () => {
 			items: [],
 			total: 0,
 			caughtUp: true,
+			hiddenSongCount: 0,
 		});
 		expect(fetchQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("forwards hiddenSongCount from the latest snapshot when caught-up", async () => {
+		mockFetchActiveSession.mockResolvedValue(
+			Result.ok({ id: "session-1", accountId: "acct-1" }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
+			]),
+		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetOrderedUndecidedSongIds.mockResolvedValue({
+			songIds: [],
+			hiddenSongCount: 3,
+		});
+
+		const result = await getMatchReview();
+
+		expect(result?.caughtUp).toBe(true);
+		expect(result?.hiddenSongCount).toBe(3);
+		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
+		);
+	});
+
+	it("does not compute hiddenSongCount while unresolved items remain", async () => {
+		mockFetchActiveSession.mockResolvedValue(
+			Result.ok({ id: "session-1", accountId: "acct-1" }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "pending", position: 0 }),
+			]),
+		);
+
+		const result = await getMatchReview();
+
+		expect(result?.hiddenSongCount).toBe(0);
+		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
 	});
 
 	it("maps queue items and reports caughtUp=false while unresolved items remain", async () => {

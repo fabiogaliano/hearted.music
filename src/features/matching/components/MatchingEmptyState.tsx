@@ -8,6 +8,7 @@ import { fonts } from "@/lib/theme/fonts";
 type Reason =
 	| "no-context"
 	| "caught-up"
+	| "none-yet"
 	| "no-matches"
 	| "all-decided"
 	| "filtered";
@@ -21,15 +22,28 @@ interface Props {
 
 const staticCopy = {
 	"no-context": {
-		overline: "nothing yet",
-		headline: ["Check back after", "your next sync."],
-		body: "Your matches will appear here once matching has run on your library.",
-		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
+		overline: "one more step",
+		headline: ["Matches begin with", "your playlists."],
+		body: "Tell us what each playlist is about and we'll pull songs from your library to match them.",
+		link: {
+			to: "/playlists",
+			hash: undefined,
+			search: undefined,
+			label: "Set a matching intent",
+		},
 	},
 	"caught-up": {
 		overline: "all caught up",
 		headline: ["You're caught up."],
 		body: "New matches will appear here after your next sync.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
+	},
+	// Matching ran but surfaced nothing — distinct from caught-up, which means
+	// the user worked through a pile that actually existed.
+	"none-yet": {
+		overline: "nothing yet",
+		headline: ["No matches", "just yet."],
+		body: "We looked through your library and nothing lined up with your playlists this time. As it grows, fresh matches will land here.",
 		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
 	},
 	// Legacy alias — same display as caught-up, kept so old route branches still compile.

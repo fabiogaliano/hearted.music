@@ -16,6 +16,7 @@ function makeQueue(
 		items: [],
 		total: 0,
 		caughtUp: false,
+		hiddenSongCount: 0,
 		...overrides,
 	};
 }

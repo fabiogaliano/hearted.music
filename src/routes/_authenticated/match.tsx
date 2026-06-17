@@ -107,6 +107,9 @@ function QueueMatchPage() {
 	// unresolved list, never from null song data.
 	const caughtUp = deriveCaughtUp(queue, unresolvedIds);
 	const hasQueue = !!queue?.sessionId;
+	// Songs whose only matches sit below the strictness bar — drives the
+	// "loosen strictness" empty state over the "nothing surfaced" one.
+	const hiddenSongCount = queue?.hiddenSongCount ?? 0;
 
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
@@ -120,11 +123,16 @@ function QueueMatchPage() {
 	}
 
 	// Queue exists but every item is resolved (deriveCaughtUp folds in the
-	// empty-unresolved case).
+	// empty-unresolved case). Three terminal states, in priority order:
+	//  - hidden songs exist     → "filtered": loosen strictness to recover them
+	//  - total === 0            → "none-yet": matching ran but surfaced nothing
+	//  - otherwise              → "caught-up": worked through a real pile
 	if (caughtUp) {
+		const reason =
+			hiddenSongCount > 0 ? "filtered" : total === 0 ? "none-yet" : "caught-up";
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason="caught-up" />
+				<MatchingEmptyState reason={reason} hiddenCount={hiddenSongCount} />
 			</div>
 		);
 	}

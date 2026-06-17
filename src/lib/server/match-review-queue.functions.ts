@@ -76,6 +76,14 @@ export interface MatchReviewResult {
 	total: number;
 	/** True when every item is resolved — derived from queue state, not null song. */
 	caughtUp: boolean;
+	/**
+	 * Entitled, undecided songs whose only matches sit below the user's strictness
+	 * bar. Only computed on the caught-up path (where the empty state needs it to
+	 * choose between the "loosen strictness" nudge and "nothing surfaced"); 0
+	 * otherwise. Lets the empty state distinguish "hidden by strictness" from
+	 * "genuinely nothing".
+	 */
+	hiddenSongCount: number;
 }
 
 export interface MatchReviewItemPresentedResult {
@@ -202,6 +210,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 				items: [],
 				total: 0,
 				caughtUp: true,
+				hiddenSongCount: 0,
 			};
 		}
 
@@ -216,6 +225,21 @@ export const getMatchReview = createServerFn({ method: "GET" })
 		const items = itemsResult.value;
 		const caughtUp = deriveCaughtUp(items);
 
+		// Only the caught-up empty state needs the hidden-by-strictness count, so
+		// computing it here keeps the active-review hot path free of the extra
+		// snapshot read. getOrderedUndecidedSongIds owns the strictness diff.
+		let hiddenSongCount = 0;
+		if (caughtUp) {
+			const snapshotResult = await getLatestMatchSnapshot(session.accountId);
+			if (Result.isOk(snapshotResult) && snapshotResult.value) {
+				const ordered = await getOrderedUndecidedSongIds(
+					snapshotResult.value.id,
+					session.accountId,
+				);
+				hiddenSongCount = ordered.hiddenSongCount;
+			}
+		}
+
 		return {
 			sessionId: activeSession.id,
 			items: items.map((item) => ({
@@ -227,6 +251,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 			})),
 			total: items.length,
 			caughtUp,
+			hiddenSongCount,
 		};
 	});
 
