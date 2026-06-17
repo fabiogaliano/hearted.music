@@ -61,19 +61,17 @@
 }
 /* A theme-colored glow that breathes around the onboarding "add it" button, so the
    one control the user must press reads as the live target against the dimmed page.
-   Ring (spread) + soft bloom, both in --t-primary, easing in and out so it pulses
-   rather than blinks. */
+   Attached to the button (box-shadow on the pill), so it hugs the rounded shape and
+   bleeds from the button's own --t-primary — edge-free (blur, no spread), pulsing
+   brightness + size so it reads as a glow, not a notification ring. */
 @keyframes xpl-pulse {
 	0%,
 	100% {
-		box-shadow:
-			0 0 0 0 color-mix(in srgb, var(--t-primary) 55%, transparent),
-			0 0 0 0 color-mix(in srgb, var(--t-primary) 0%, transparent);
+		box-shadow: 0 0 12px 0 color-mix(in srgb, var(--t-primary) 34%, transparent);
 	}
 	50% {
-		box-shadow:
-			0 0 0 4px color-mix(in srgb, var(--t-primary) 36%, transparent),
-			0 0 22px 6px color-mix(in srgb, var(--t-primary) 45%, transparent);
+		box-shadow: 0 0 42px 2px
+			color-mix(in srgb, var(--t-primary) 84%, transparent);
 	}
 }
 
@@ -102,10 +100,10 @@
 .xpl-sleeve-enter {
 	animation: xpl-sleeve-enter 440ms var(--ease-out-expo) both;
 }
-/* The "add it" beat: a slow, steady breathe — long enough to feel like an
-   invitation, not an alarm. */
+/* The "add it" beat: a soft glow that swells brighter and wider, then settles —
+   long enough to feel like an invitation, not an alarm. */
 .xpl-pulse {
-	animation: xpl-pulse 1.8s var(--ease-out-quart) infinite;
+	animation: xpl-pulse 1.6s var(--ease-in-out-sine) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {

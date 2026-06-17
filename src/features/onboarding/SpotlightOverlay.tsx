@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 interface Rect {
@@ -57,6 +57,11 @@ export function SpotlightOverlay({
 }: SpotlightOverlayProps) {
 	const [rect, setRect] = useState<Rect | null>(null);
 	const [mounted, setMounted] = useState(false);
+	// Fade the dim in on appearance. Starts visible so the very first appearance
+	// (and the SSR/initial inline scrim it hands off from) never flashes bright;
+	// later re-appearances — after a no-target teaching step — ease in.
+	const [revealed, setRevealed] = useState(true);
+	const seenRef = useRef(false);
 
 	// The scrim is client-only (portal + per-frame measurement), so on an SSR'd
 	// route the server HTML paints the bright page first and the overlay only
@@ -72,6 +77,8 @@ export function SpotlightOverlay({
 			return;
 		}
 		let raf = 0;
+		let stable = 0;
+		let last: Rect | null = null;
 		const measure = () => {
 			const els = document.querySelectorAll(targetSelector);
 			if (els.length > 0) {
@@ -89,22 +96,60 @@ export function SpotlightOverlay({
 					b = Math.max(b, rc.bottom);
 				}
 				const next = { top: t, left: l, width: r - l, height: b - t };
-				setRect((prev) =>
-					prev &&
-					prev.top === next.top &&
-					prev.left === next.left &&
-					prev.width === next.width &&
-					prev.height === next.height
-						? prev
-						: next,
-				);
+				if (
+					last &&
+					last.top === next.top &&
+					last.left === next.left &&
+					last.width === next.width &&
+					last.height === next.height
+				) {
+					stable += 1;
+				} else {
+					stable = 0;
+					last = next;
+					setRect(next);
+				}
 			} else {
+				stable = 0;
+				last = null;
 				setRect(null);
 			}
-			raf = requestAnimationFrame(measure);
+			// getBoundingClientRect forces a layout, so don't run it forever: once the
+			// target has held still for ~12 frames, sleep. scroll/resize (below) and a
+			// targetSelector change (this effect re-running) wake it again.
+			raf = stable < 12 ? requestAnimationFrame(measure) : 0;
+		};
+		const wake = () => {
+			if (!raf) {
+				stable = 0;
+				raf = requestAnimationFrame(measure);
+			}
 		};
 		raf = requestAnimationFrame(measure);
-		return () => cancelAnimationFrame(raf);
+		window.addEventListener("scroll", wake, true);
+		window.addEventListener("resize", wake);
+		return () => {
+			if (raf) cancelAnimationFrame(raf);
+			window.removeEventListener("scroll", wake, true);
+			window.removeEventListener("resize", wake);
+		};
+	}, [targetSelector]);
+
+	// First appearance shows instantly (preserves the SSR/initial anti-flash);
+	// re-appearances after a no-target step fade in.
+	useEffect(() => {
+		if (!targetSelector) {
+			setRevealed(false);
+			return;
+		}
+		if (!seenRef.current) {
+			seenRef.current = true;
+			setRevealed(true);
+			return;
+		}
+		setRevealed(false);
+		const r = requestAnimationFrame(() => setRevealed(true));
+		return () => cancelAnimationFrame(r);
 	}, [targetSelector]);
 
 	if (!targetSelector) return null;
@@ -177,6 +222,8 @@ export function SpotlightOverlay({
 						? "translate(-50%, 0)"
 						: "translate(-50%, -100%)",
 					pointerEvents: "none",
+					opacity: revealed ? 1 : 0,
+					transition: "opacity 200ms var(--ease-out-quart)",
 				}}
 			>
 				<span
@@ -256,6 +303,8 @@ export function SpotlightOverlay({
 					...blurStyle,
 					...(mask ? { maskImage: mask, WebkitMaskImage: mask } : {}),
 					pointerEvents: "none",
+					opacity: revealed ? 1 : 0,
+					transition: "opacity 200ms var(--ease-out-quart)",
 				}}
 			/>
 			{captionEl}

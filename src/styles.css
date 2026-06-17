@@ -64,6 +64,9 @@ code {
   /* For elements that travel between two on-screen positions (shared-element
      morphs), where ease-out's instant start reads as a jump rather than travel. */
   --ease-in-out-quart: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Symmetric in/out for looping "breathe" effects (e.g. the add-it pulse), so the
+     glow swells and settles evenly instead of front-loading like ease-out. */
+  --ease-in-out-sine: cubic-bezier(0.37, 0, 0.63, 1);
 
   /* Single source of truth for keyboard focus indication.
      Tweak --focus-ring-width to change every focus ring in the app. */

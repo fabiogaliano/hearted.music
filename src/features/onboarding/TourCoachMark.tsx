@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
@@ -33,7 +33,71 @@ export function TourCoachMark({
 	// Mount-in transition: the card settles up + fades so it arrives as a beat of
 	// its own rather than snapping over the dimmed page.
 	const [shown, setShown] = useState(false);
+	const dialogRef = useRef<HTMLDivElement>(null);
+	const actedRef = useRef(false);
+	const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Keep the latest onAction reachable from the once-mounted keydown effect below,
+	// so Escape never fires a stale handler captured on the first render.
+	const onActionRef = useRef(onAction);
+	useEffect(() => {
+		onActionRef.current = onAction;
+	});
+
+	// Play the exit (reverse of the enter) before handing control back, so the card
+	// leaves on a beat instead of vanishing. Self-contained: callers still just
+	// mount/unmount the component and pass onAction. Stable (only refs + setShown),
+	// so the keydown effect below can depend on it without re-running each render.
+	const handleAction = useCallback(() => {
+		if (actedRef.current) return;
+		actedRef.current = true;
+		setShown(false);
+		exitTimer.current = setTimeout(() => onActionRef.current(), 220);
+	}, []);
+
 	useEffect(() => setShown(true), []);
+
+	// Clear the pending exit hand-off if we unmount before it fires.
+	useEffect(
+		() => () => {
+			if (exitTimer.current) clearTimeout(exitTimer.current);
+		},
+		[],
+	);
+
+	// Honour the aria-modal contract: move focus into the dialog, trap Tab, and let
+	// Escape dismiss (Escape runs the same single action as the button).
+	useEffect(() => {
+		const node = dialogRef.current;
+		if (!node) return;
+		const previouslyFocused = document.activeElement as HTMLElement | null;
+		node.querySelector<HTMLElement>("button")?.focus();
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				e.preventDefault();
+				handleAction();
+				return;
+			}
+			if (e.key !== "Tab") return;
+			const focusables = node.querySelectorAll<HTMLElement>(
+				'button, [href], [tabindex]:not([tabindex="-1"])',
+			);
+			if (focusables.length === 0) return;
+			const first = focusables[0];
+			const last = focusables[focusables.length - 1];
+			if (e.shiftKey && document.activeElement === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && document.activeElement === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		};
+		document.addEventListener("keydown", onKey);
+		return () => {
+			document.removeEventListener("keydown", onKey);
+			previouslyFocused?.focus?.();
+		};
+	}, [handleAction]);
 
 	if (typeof document === "undefined") return null;
 
@@ -57,6 +121,7 @@ export function TourCoachMark({
 				}}
 			/>
 			<div
+				ref={dialogRef}
 				role="dialog"
 				aria-modal="true"
 				aria-label={title ?? body[0]}
@@ -90,7 +155,7 @@ export function TourCoachMark({
 				<div className="mt-6 flex justify-center">
 					<Button
 						variant="primary"
-						onClick={onAction}
+						onClick={handleAction}
 						style={{ fontFamily: fonts.body }}
 					>
 						{actionLabel}

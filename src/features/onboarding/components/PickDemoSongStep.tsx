@@ -177,7 +177,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										aria-pressed={isSelected}
 										aria-label={`${isSelected ? "Deselect" : "Select"} ${song.name} by ${song.artist}`}
 										title={`${song.name} — ${song.artist}`}
-										className="group relative h-fit min-h-11 min-w-11 cursor-pointer"
+										className="group relative h-fit min-h-11 min-w-11 cursor-pointer transition-transform duration-100 active:scale-[0.96]"
 										style={{
 											...(isFocused && {
 												outline: "1px dashed var(--t-text-muted)",
@@ -186,7 +186,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 										}}
 									>
 										<div
-											className="transition-[filter,opacity] duration-200"
+											className="transition-[filter,opacity] duration-200 motion-reduce:transition-none"
 											style={{
 												filter: isSelected
 													? "grayscale(0%)"
