@@ -7,6 +7,8 @@ interface RailRowProps {
 	onOpen: (id: string) => void;
 	onAdd: (id: string) => void;
 	onRemove: (id: string) => void;
+	/** Suppress the inline "＋ Add" — the onboarding preview adds via the panel. */
+	hideAdd?: boolean;
 }
 
 /**
@@ -14,7 +16,13 @@ interface RailRowProps {
  * intent is deliberately absent here — it's a property of being *in* matching,
  * so the library stays a calm staging shelf. Inline add, hover-revealed remove.
  */
-export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
+export function RailRow({
+	playlist,
+	onOpen,
+	onAdd,
+	onRemove,
+	hideAdd = false,
+}: RailRowProps) {
 	return (
 		<div className="group/row theme-border-color theme-hover-surface relative -mx-3.5 grid grid-cols-[54px_minmax(0,1fr)_auto] items-center gap-3 border-b px-3.5 py-[13px] last:border-b-0 md:gap-[18px]">
 			{/* Whole-row open affordance as a real <button>, overlaid rather than
@@ -65,7 +73,7 @@ export function RailRow({ playlist, onOpen, onAdd, onRemove }: RailRowProps) {
 							Remove
 						</button>
 					</>
-				) : (
+				) : hideAdd ? null : (
 					<button
 						type="button"
 						onClick={(event) => {

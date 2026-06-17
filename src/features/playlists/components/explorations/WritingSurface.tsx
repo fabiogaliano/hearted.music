@@ -1,5 +1,11 @@
 import { PlusIcon, WarningIcon } from "@phosphor-icons/react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+} from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import { GenrePillsPicker } from "../GenrePillsPicker";
@@ -35,6 +41,18 @@ interface WritingSurfaceProps {
 	/** Hide the "can't be matched yet" caution — used in the onboarding rehearsal
 	 *  where canned playlists start empty and the nudge would be noise. */
 	hideUnmatchableWarning?: boolean;
+	/** Override the editor textarea's placeholder — the onboarding preview swaps in
+	 *  a CTA. Omitted falls back to the neutral production prompt. */
+	intentPlaceholder?: string;
+	/** Onboarding guided mode: lock manual entry so the only way to fill the intent
+	 *  is picking a ready-made example. The textarea goes read-only (no typing, no
+	 *  autofocus), the genre picker is disabled, Cancel is hidden, and Save stays
+	 *  disabled until a description is present. */
+	lockManualEntry?: boolean;
+	/** Guided mode only: the example-picker element, rendered inside the intent
+	 *  field until a pick fills the draft — then it collapses out and the picked
+	 *  text takes its place. Ignored unless lockManualEntry is set. */
+	examplesSlot?: ReactNode;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -62,6 +80,9 @@ export function WritingSurface({
 	intentSerif = false,
 	descriptionViewTransitionName,
 	hideUnmatchableWarning = false,
+	intentPlaceholder = "What is this playlist for?",
+	lockManualEntry = false,
+	examplesSlot,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -93,14 +114,21 @@ export function WritingSurface({
 		if (isEditing) autosize();
 	}, [isEditing, draftDescription, autosize]);
 
+	// Skip autofocus in lock mode — the field is read-only (pick-to-fill), so a
+	// blinking caret in a textarea you can't type into would only mislead.
 	useEffect(() => {
-		if (!isEditing || focusTargetRef.current !== "description") return;
+		if (
+			!isEditing ||
+			lockManualEntry ||
+			focusTargetRef.current !== "description"
+		)
+			return;
 		const textarea = textareaRef.current;
 		if (!textarea) return;
 		textarea.focus();
 		const end = textarea.value.length;
 		textarea.setSelectionRange(end, end);
-	}, [isEditing]);
+	}, [isEditing, lockManualEntry]);
 
 	// The intent leads the body: notably larger than the 11px eyebrow / 12px chips.
 	const intentClass = intentSerif
@@ -108,23 +136,60 @@ export function WritingSurface({
 		: "text-[17px] leading-relaxed";
 	const intentFont = intentSerif ? fonts.display : fonts.body;
 	const genresAtCap = draftGenres.length >= GENRE_MAX;
+	// In guided mode the field opens on the example picker and only flips to the
+	// (read-only) text once a draft exists — i.e. once an example's been picked.
+	const picked = draftDescription.trim() !== "";
+
+	const intentField = (
+		<textarea
+			ref={textareaRef}
+			value={draftDescription}
+			onChange={(event) => onDraftDescriptionChange(event.target.value)}
+			onInput={autosize}
+			placeholder={intentPlaceholder}
+			rows={1}
+			disabled={isSaving}
+			readOnly={lockManualEntry}
+			className={`theme-text w-full resize-none overflow-hidden bg-transparent p-0 outline-none placeholder:text-(--t-text-muted) disabled:opacity-60 ${lockManualEntry ? "cursor-default" : ""} ${intentClass}`}
+			style={{ fontFamily: intentFont }}
+		/>
+	);
 
 	if (isEditing) {
 		return (
 			<div className="relative flex flex-col gap-7">
 				<div className="flex flex-col gap-1.5">
 					<Label>Matching intent</Label>
-					<textarea
-						ref={textareaRef}
-						value={draftDescription}
-						onChange={(event) => onDraftDescriptionChange(event.target.value)}
-						onInput={autosize}
-						placeholder="What is this playlist for?"
-						rows={1}
-						disabled={isSaving}
-						className={`theme-text w-full resize-none overflow-hidden bg-transparent p-0 outline-none placeholder:text-(--t-text-muted) disabled:opacity-60 ${intentClass}`}
-						style={{ fontFamily: intentFont }}
-					/>
+					{lockManualEntry && examplesSlot ? (
+						// Two rows stacked in one grid: the picker (1fr) and the picked text
+						// (0fr) trade places on pick, each fading as it collapses/expands. The
+						// grid's height is always exactly the open row, so the text rises into
+						// the space the examples vacate with no jump.
+						<div className="grid">
+							<div
+								className="grid transition-[grid-template-rows,opacity] duration-[360ms] ease-[var(--ease-out-expo)] motion-reduce:transition-none"
+								style={{
+									gridTemplateRows: picked ? "0fr" : "1fr",
+									opacity: picked ? 0 : 1,
+								}}
+								inert={picked}
+							>
+								<div className="min-h-0 overflow-hidden">{examplesSlot}</div>
+							</div>
+							<div
+								className="grid transition-[grid-template-rows,opacity] duration-[360ms] ease-[var(--ease-out-expo)] motion-reduce:transition-none"
+								style={{
+									gridTemplateRows: picked ? "1fr" : "0fr",
+									opacity: picked ? 1 : 0,
+								}}
+								inert={!picked}
+							>
+								<div className="min-h-0 overflow-hidden">{intentField}</div>
+							</div>
+						</div>
+					) : (
+						intentField
+					)}
 				</div>
 
 				<div className="xpl-genres xpl-reveal flex flex-col gap-2">
@@ -152,25 +217,31 @@ export function WritingSurface({
 						onChange={onDraftGenresChange}
 						topGenres={topGenres}
 						maxPills={GENRE_MAX}
-						disabled={isSaving}
+						disabled={isSaving || lockManualEntry}
 						autoFocus={focusTargetRef.current === "genres"}
 					/>
 				</div>
 
 				<div className="flex items-center justify-end gap-2">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={onCancel}
-						disabled={isSaving}
-						style={{ fontFamily: fonts.body }}
-					>
-						Cancel
-					</Button>
+					{!lockManualEntry && (
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={onCancel}
+							disabled={isSaving}
+							style={{ fontFamily: fonts.body }}
+						>
+							Cancel
+						</Button>
+					)}
 					<Button
 						size="sm"
 						onClick={onSave}
-						disabled={isSaving}
+						disabled={isSaving || (lockManualEntry && !draftDescription.trim())}
+						// Guided mode: once an example is picked Save becomes the next
+						// action, so breathe the same pulse as the add toggle to point the
+						// user at it. Before a pick it's disabled, so it stays quiet.
+						className={lockManualEntry && picked ? "xpl-pulse" : undefined}
 						style={{ fontFamily: fonts.body }}
 					>
 						{isSaving ? "Saving…" : "Save"}

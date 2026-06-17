@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import {
 	setFlaggedPlaylistIds,
 	useFlaggedPlaylistIds,
 } from "@/features/onboarding/demoSandboxStore";
+import {
+	usePlaylistTourReporter,
+	usePlaylistTourStep,
+} from "@/features/onboarding/playlistPreviewTour";
 import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
@@ -39,6 +44,18 @@ export function SandboxPlaylistsCoverFlowScreen() {
 		() => new Map(),
 	);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
+	const tour = usePlaylistTourReporter();
+	const { step } = usePlaylistTourStep();
+	// During the forced add → intent beats the panel is held open; once the first
+	// cycle releases (step "done") it's freely closable again.
+	const panelLocked =
+		step === "add" || step === "intent-intro" || step === "intent";
+
+	// Report the open/closed panel to the walkthrough so it can advance from
+	// "open a candidate" to "write its intent".
+	useEffect(() => {
+		tour.reportPanelOpen(selectedId);
+	}, [selectedId, tour]);
 
 	const summaries = useMemo<PlaylistSummary[]>(
 		() =>
@@ -87,6 +104,10 @@ export function SandboxPlaylistsCoverFlowScreen() {
 			next.set(id, { intent, genres });
 			return next;
 		});
+		if (intent) tour.reportIntentSaved(id);
+		// Onboarding closes the panel on save so the rehearsal flows straight back to
+		// the cover flow to flag the next one — production keeps it open to keep editing.
+		setSelectedId(null);
 	};
 
 	return (
@@ -98,6 +119,16 @@ export function SandboxPlaylistsCoverFlowScreen() {
 				onRemove={(id) => toggleTarget(id, false)}
 				detailOpen={selectedId != null}
 				showSearch={false}
+				hideRailAdd
+				matchingEmptyTitle="What's a matching candidate?"
+				matchingEmptyBody="A playlist you want your liked songs to flow into. As demonstration, add a few from our library, and tell each one what it's for."
+				matchingEmptyAction={
+					step === "concept" ? (
+						<Button variant="primary" onClick={tour.advanceConcept}>
+							Next
+						</Button>
+					) : undefined
+				}
 			/>
 			<SpotlightPanel
 				playlist={panelPlaylist}
@@ -108,6 +139,11 @@ export function SandboxPlaylistsCoverFlowScreen() {
 				onSave={handleSave}
 				hideUnmatchableWarning
 				hideTracksEmptyState
+				closable={!panelLocked}
+				highlightAdd={step === "add"}
+				autoEditOnAdd={panelLocked}
+				guidedIntent
+				intentPlaceholder="Pick an example to set this playlist's intent…"
 				examples={
 					panelPlaylist ? DEMO_INTENT_EXAMPLES[panelPlaylist.id] : undefined
 				}

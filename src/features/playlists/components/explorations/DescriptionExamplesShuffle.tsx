@@ -1,6 +1,7 @@
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
+import "./playlist-explorations.css";
 
 export interface DescriptionExample {
 	description: string;
@@ -60,11 +61,16 @@ interface DescriptionExamplesShuffleProps {
 	 *  own tuned examples so each demo playlist shows only its three. Omitted (the
 	 *  production /playlists screen) falls back to the generic list. */
 	examples?: readonly DescriptionExample[];
+	/** "guided" lifts the card onto the hero band as the only way to set an intent:
+	 *  drops the legend, fills the Pick button, and reads as a prompt rather than a
+	 *  passive inspiration bar. Default sits on the panel's plain bg below. */
+	variant?: "default" | "guided";
 }
 
 export function DescriptionExamplesShuffle({
 	onPick,
 	examples,
+	variant = "default",
 }: DescriptionExamplesShuffleProps) {
 	const pool = examples && examples.length > 0 ? examples : EXAMPLES;
 	const [index, setIndex] = useState(0);
@@ -73,7 +79,9 @@ export function DescriptionExamplesShuffle({
 	const shuffle = () => setIndex((i) => (i + 1) % pool.length);
 
 	return (
-		<div className="desc-examples">
+		<div
+			className={`desc-examples xpl-reveal${variant === "guided" ? " guided" : ""}`}
+		>
 			<span className="desc-examples-legend" style={{ fontFamily: fonts.body }}>
 				Examples
 			</span>

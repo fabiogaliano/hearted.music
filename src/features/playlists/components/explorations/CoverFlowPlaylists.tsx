@@ -1,5 +1,5 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
@@ -20,6 +20,15 @@ interface CoverFlowPlaylistsProps {
 	/** Hide the search field — the onboarding playlist preview keeps the surface
 	 * focused on flagging and has nothing to search. */
 	showSearch?: boolean;
+	/** Override the Matching shelf's empty-state copy (onboarding teaches the
+	 * concept; production leaves these undefined for the terse default). */
+	matchingEmptyTitle?: string;
+	matchingEmptyBody?: string;
+	/** Action below the Matching empty state — the onboarding concept-step "Next". */
+	matchingEmptyAction?: ReactNode;
+	/** Hide every rail row's inline "＋ Add" — the onboarding preview adds through
+	 *  the detail panel, so the rail action would be a second, off-script path. */
+	hideRailAdd?: boolean;
 }
 
 /**
@@ -38,6 +47,10 @@ export function CoverFlowPlaylists({
 	onRemove = () => {},
 	detailOpen = false,
 	showSearch = true,
+	matchingEmptyTitle,
+	matchingEmptyBody,
+	matchingEmptyAction,
+	hideRailAdd = false,
 }: CoverFlowPlaylistsProps) {
 	const library = playlists.filter((p) => !p.isTarget);
 
@@ -170,6 +183,7 @@ export function CoverFlowPlaylists({
 		<div className="mx-auto max-w-[1180px] pb-24">
 			<header className="mb-2 flex items-end justify-between gap-6">
 				<h1
+					data-tour="page-title"
 					className="theme-text text-page-title leading-[0.95] font-extralight tracking-tight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
@@ -229,6 +243,7 @@ export function CoverFlowPlaylists({
 									onOpen={onOpen}
 									onAdd={handleAdd}
 									onRemove={onRemove}
+									hideAdd={hideRailAdd}
 								/>
 							))}
 						</div>
@@ -243,20 +258,26 @@ export function CoverFlowPlaylists({
 				</section>
 			) : (
 				<>
-					<CoverFlowShelf
-						label="Matching candidates"
-						playlists={matching}
-						center={center}
-						onCenterChange={clampCenter}
-						onActivate={() => {}}
-						onOpen={onOpen}
-						onAdd={handleAdd}
-						onRemove={onRemove}
-						enterId={enteringId}
-						chrome="chapter"
-					/>
+					{/* data-tour marks onboarding spotlight targets; inert in production. */}
+					<div data-tour="matching">
+						<CoverFlowShelf
+							label="Matching candidates"
+							playlists={matching}
+							center={center}
+							onCenterChange={clampCenter}
+							onActivate={() => {}}
+							onOpen={onOpen}
+							onAdd={handleAdd}
+							onRemove={onRemove}
+							enterId={enteringId}
+							chrome="chapter"
+							emptyTitle={matchingEmptyTitle}
+							emptyBody={matchingEmptyBody}
+							emptyAction={matchingEmptyAction}
+						/>
+					</div>
 
-					<section className="mt-8">
+					<section className="mt-8" data-tour="library">
 						<div className="flex items-center gap-4 px-1">
 							<span
 								className="theme-text-muted text-xs tracking-[0.2em] uppercase"
@@ -282,6 +303,7 @@ export function CoverFlowPlaylists({
 										onOpen={onOpen}
 										onAdd={handleAdd}
 										onRemove={onRemove}
+										hideAdd={hideRailAdd}
 									/>
 								))
 							) : (

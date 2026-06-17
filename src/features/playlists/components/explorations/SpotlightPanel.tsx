@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	type DescriptionExample,
 	DescriptionExamplesShuffle,
@@ -7,6 +7,11 @@ import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
 import { WritingSurface } from "./WritingSurface";
+
+// The hue-washed band behind the hero + writing surface (and the guided example
+// picker, which lifts off it as a lighter card).
+const BAND_BG =
+	"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))";
 
 interface SpotlightPanelProps {
 	playlist: PlaylistSummary | null;
@@ -29,6 +34,19 @@ interface SpotlightPanelProps {
 	/** Per-playlist matching-intent examples for the editor's pick-an-intent
 	 *  helper. Omitted falls back to the generic shuffle list. */
 	examples?: readonly DescriptionExample[];
+	/** Lock the panel shut — hides the ✕ and no-ops the scrim/Escape. The
+	 *  onboarding walkthrough holds the user in until they've added + written intent. */
+	closable?: boolean;
+	/** Pulse the add control as the walkthrough's "add it" spotlight target. */
+	highlightAdd?: boolean;
+	/** Auto-open the intent editor the moment this playlist is added to matching —
+	 *  the walkthrough flows straight from "add" into "write intent". */
+	autoEditOnAdd?: boolean;
+	/** Override the editor textarea placeholder (onboarding CTA). */
+	intentPlaceholder?: string;
+	/** Onboarding: lock the intent editor to pick-from-examples only — no typing or
+	 *  manual genres, Cancel hidden, Save gated until a description is picked. */
+	guidedIntent?: boolean;
 }
 
 /**
@@ -59,6 +77,11 @@ export function SpotlightPanel({
 	hideUnmatchableWarning = false,
 	hideTracksEmptyState = false,
 	examples,
+	closable = true,
+	highlightAdd = false,
+	autoEditOnAdd = false,
+	intentPlaceholder,
+	guidedIntent = false,
 }: SpotlightPanelProps) {
 	const [description, setDescription] = useState<string | null>(
 		playlist?.intent ?? null,
@@ -77,19 +100,36 @@ export function SpotlightPanel({
 	}, [playlist?.id]);
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open || !closable) return;
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key === "Escape") onClose();
 		};
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
-	}, [open, onClose]);
+	}, [open, closable, onClose]);
 
 	const openEditor = () => {
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
 		setIsEditing(true);
 	};
+
+	// Walkthrough: the instant the open playlist is added to matching, drop straight
+	// into the editor (textarea + shuffle suggestions) so "add" flows into "write
+	// intent" without a tap. Fires only on a same-playlist false→true target flip, so
+	// switching to an already-matching playlist (after release) never auto-opens it.
+	const prevTarget = useRef<{ id: string | null; isTarget: boolean }>({
+		id: playlist?.id ?? null,
+		isTarget: playlist?.isTarget ?? false,
+	});
+	// biome-ignore lint/correctness/useExhaustiveDependencies: seeds from the just-added playlist's (empty) intent; reacts to the target flip only
+	useEffect(() => {
+		const id = playlist?.id ?? null;
+		const now = playlist?.isTarget ?? false;
+		const prev = prevTarget.current;
+		prevTarget.current = { id, isTarget: now };
+		if (autoEditOnAdd && id === prev.id && now && !prev.isTarget) openEditor();
+	}, [playlist?.id, playlist?.isTarget, autoEditOnAdd]);
 	// Picking a ready-made example seeds the draft from it and jumps straight into
 	// editing — bypassing openEditor's reseed-from-saved, since the point is to
 	// start from the example rather than the current intent.
@@ -117,8 +157,8 @@ export function SpotlightPanel({
 			<button
 				type="button"
 				aria-label="Close panel"
-				tabIndex={open ? 0 : -1}
-				onClick={onClose}
+				tabIndex={open && closable ? 0 : -1}
+				onClick={closable ? onClose : undefined}
 				className={`absolute inset-0 cursor-default border-0 transition-opacity duration-200 ease-[var(--ease-out-quart)] motion-reduce:transition-none ${open ? "opacity-100" : "opacity-0"}`}
 				style={{
 					background: "color-mix(in srgb, var(--t-text) 22%, transparent)",
@@ -134,71 +174,112 @@ export function SpotlightPanel({
 			>
 				{playlist && (
 					<>
-						<button
-							type="button"
-							onClick={onClose}
-							aria-label="Close"
-							className="theme-text-muted absolute top-[26px] right-[22px] z-30 grid size-10 place-items-center text-[17px] transition-[color,transform] duration-150 hover:text-(--t-text) active:scale-[0.94] md:right-[30px]"
-						>
-							✕
-						</button>
+						{closable && (
+							<button
+								type="button"
+								onClick={onClose}
+								aria-label="Close"
+								className="theme-text-muted absolute top-[26px] right-[22px] z-30 grid size-10 place-items-center text-[17px] transition-[color,transform] duration-150 hover:text-(--t-text) active:scale-[0.94] md:right-[30px]"
+							>
+								✕
+							</button>
+						)}
 
 						<div className="flex-1 overflow-y-auto overscroll-contain">
 							<div className="relative px-5 pt-[30px] pb-20 md:px-10 md:pt-[34px]">
 								<SpotlightHero
 									playlist={playlist}
 									onToggleTarget={() => onToggleTarget(playlist.id)}
+									highlightToggle={highlightAdd}
 								/>
 
-								<div className="flex flex-col gap-8">
+								{/* data-tour spotlight target for the "write intent" beat — spans the
+								    band + the shuffle suggestions (the demo's track list is empty, so
+								    the zone reads as just those two). Inert in production. */}
+								<div data-tour="intent-zone">
+									{/* The matching intent only matters once the playlist is in the
+								    matching set, so the writing surface stays collapsed until then.
+								    The grid-rows 0fr→1fr trick animates to the band's natural height
+								    (no magic max-height); the bleed lives on this wrapper so the inner
+								    overflow-hidden can clip the collapse vertically without cutting the
+								    band's horizontal edge-bleed. Driven straight off isTarget, the
+								    transition stays put on first paint — opening an already-matching
+								    playlist is instant; only the in-place Add-to-matching toggle grows
+								    it. The pb-8 spacer sits inside the collapse so it vanishes too,
+								    instead of leaving a phantom gap above the track list. */}
 									<div
-										className="relative z-20 -mx-5 px-5 pt-1 pb-9 md:-mx-10 md:px-10"
+										className="grid -mx-5 transition-[grid-template-rows] duration-[400ms] ease-[var(--ease-out-expo)] motion-reduce:transition-none md:-mx-10"
 										style={{
-											background:
-												"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))",
+											gridTemplateRows: playlist.isTarget ? "1fr" : "0fr",
 										}}
 									>
-										<div className="max-w-[56ch]">
-											<WritingSurface
-												description={description}
-												genres={genres}
-												isEditing={isEditing}
-												draftDescription={draftDescription}
-												draftGenres={draftGenres}
-												topGenres={topGenres}
-												hideUnmatchableWarning={hideUnmatchableWarning}
-												onEditDescription={openEditor}
-												onEditGenres={openEditor}
-												onDraftDescriptionChange={setDraftDescription}
-												onDraftGenresChange={setDraftGenres}
-												onSave={save}
-												onCancel={() => setIsEditing(false)}
-											/>
+										<div
+											className="min-h-0 overflow-hidden pb-8"
+											inert={!playlist.isTarget}
+										>
+											<div
+												className="relative z-20 px-5 pt-1 pb-9 md:px-10"
+												style={{ background: BAND_BG }}
+											>
+												<div
+													className={`max-w-[56ch] transition-opacity duration-300 ease-[var(--ease-out-expo)] motion-reduce:transition-none ${playlist.isTarget ? "opacity-100" : "opacity-0"}`}
+												>
+													<WritingSurface
+														description={description}
+														genres={genres}
+														isEditing={isEditing}
+														draftDescription={draftDescription}
+														draftGenres={draftGenres}
+														topGenres={topGenres}
+														hideUnmatchableWarning={hideUnmatchableWarning}
+														intentPlaceholder={intentPlaceholder}
+														lockManualEntry={guidedIntent}
+														examplesSlot={
+															guidedIntent ? (
+																<DescriptionExamplesShuffle
+																	onPick={pickExample}
+																	examples={examples}
+																	variant="guided"
+																/>
+															) : undefined
+														}
+														onEditDescription={openEditor}
+														onEditGenres={openEditor}
+														onDraftDescriptionChange={setDraftDescription}
+														onDraftGenresChange={setDraftGenres}
+														onSave={save}
+														onCancel={() => setIsEditing(false)}
+													/>
+												</div>
+											</div>
 										</div>
 									</div>
 
-									{/* Pick-an-intent helper, edit mode only: it feeds the writing
+									<div className="flex flex-col gap-8">
+										{/* Pick-an-intent helper, edit mode only: it feeds the writing
 									    surface, so it appears once editing starts and sits below the
 									    band — and its Save/Cancel — on the panel's plain bg, where the
 									    legend notch's default --t-bg matches and nothing has to be
-									    overridden. */}
-									{isEditing && (
-										<div className="max-w-[56ch]">
-											<DescriptionExamplesShuffle
-												onPick={pickExample}
-												examples={examples}
-											/>
-										</div>
-									)}
+									    overridden. Guided onboarding moves it up into the intent field
+									    itself (examplesSlot), so it's suppressed here in that mode. */}
+										{!guidedIntent && playlist.isTarget && isEditing && (
+											<div className="max-w-[56ch]">
+												<DescriptionExamplesShuffle
+													onPick={pickExample}
+													examples={examples}
+												/>
+											</div>
+										)}
 
-									<TrackList
-										tracks={tracks}
-										songCount={playlist.songCount}
-										hasMore={tracksHasMore}
-										isLoadingMore={tracksLoadingMore}
-										onLoadMore={onLoadMoreTracks}
-										hideEmptyState={hideTracksEmptyState}
-									/>
+										<TrackList
+											tracks={tracks}
+											songCount={playlist.songCount}
+											hasMore={tracksHasMore}
+											isLoadingMore={tracksLoadingMore}
+											onLoadMore={onLoadMoreTracks}
+											hideEmptyState={hideTracksEmptyState}
+										/>
+									</div>
 								</div>
 							</div>
 						</div>

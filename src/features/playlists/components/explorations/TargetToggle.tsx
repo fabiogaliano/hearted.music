@@ -1,51 +1,85 @@
-import { CheckIcon, MinusIcon } from "@phosphor-icons/react";
+import { CheckIcon, MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
+import "./playlist-explorations.css";
 
 interface TargetToggleProps {
 	isTarget: boolean;
 	onToggle: () => void;
+	/** Pulse a theme-colored glow to draw the eye — the onboarding "add it" beat. */
+	pulse?: boolean;
 }
 
 /**
- * Add to / remove from the matching set, as the shared membership pill — the same
- * quiet rounded surface pill the cover-flow caption uses, so the one action reads
- * the same on every surface. Once matching it shows "In matching" and swaps to
- * "Remove" on hover; not yet matching it's an "Add to matching" pill whose hover
- * fills solid accent, previewing the commitment. Rounded so it sits in the same
- * family as the genre chips beside it, and quiet so the masthead title leads —
- * accent stays sparing, per the gallery aesthetic.
+ * Add to / remove from the matching set. The label swaps instantly between states —
+ * no slide or crossfade, those ghosted two texts over each other — so the only
+ * motion is the pill's colour transitioning. Not matching it's an accent
+ * "Add to matching" whose hover fills solid accent, previewing the commitment; once
+ * matching it reads "In matching" and swaps to "Remove" on hover.
+ *
+ * The "Remove" hover is suppressed on the very hover that performed the add: right
+ * after clicking "Add to matching" the cursor is still on the pill, and flipping
+ * straight to "Remove" (then back to "In matching" the instant you leave) reads as a
+ * twitchy dare-to-undo. So the add-click arms a suppression flag that holds
+ * "In matching" until the pointer actually leaves — only a fresh hover afterwards
+ * reveals "Remove". Touch has no hover, so it's left out (the pill stays informational
+ * and a tap toggles directly). A fixed min width keeps the pill from resizing as the
+ * shorter labels swap in.
  */
-export function TargetToggle({ isTarget, onToggle }: TargetToggleProps) {
-	if (isTarget) {
-		return (
-			<button
-				type="button"
-				onClick={onToggle}
-				aria-pressed
-				aria-label="Remove from matching"
-				className="group/match theme-border-color relative inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center self-start rounded-full border bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-text) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:bg-(--t-surface-dim) active:scale-[0.96]"
-				style={{ fontFamily: fonts.body }}
-			>
-				<span className="flex items-center gap-1.5 transition-opacity duration-150 group-hover/match:opacity-0 motion-reduce:transition-none">
-					<CheckIcon size={13} weight="bold" aria-hidden />
-					In matching
-				</span>
-				<span className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition-opacity duration-150 group-hover/match:opacity-100 motion-reduce:transition-none">
-					<MinusIcon size={13} weight="bold" aria-hidden />
-					Remove
-				</span>
-			</button>
-		);
-	}
+export function TargetToggle({
+	isTarget,
+	onToggle,
+	pulse = false,
+}: TargetToggleProps) {
+	const [hovering, setHovering] = useState(false);
+	const [removeSuppressed, setRemoveSuppressed] = useState(false);
+
+	const showRemove = isTarget && hovering && !removeSuppressed;
+
 	return (
 		<button
 			type="button"
-			onClick={onToggle}
-			aria-pressed={false}
-			className="theme-border-color inline-flex min-h-10 cursor-pointer items-center gap-1.5 self-start rounded-full border bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-primary) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.96]"
+			aria-pressed={isTarget}
+			aria-label={isTarget ? "Remove from matching" : "Add to matching"}
+			onClick={() => {
+				if (!isTarget) setRemoveSuppressed(true);
+				onToggle();
+			}}
+			onPointerEnter={(event) => {
+				if (event.pointerType !== "touch") setHovering(true);
+			}}
+			onPointerLeave={(event) => {
+				if (event.pointerType === "touch") return;
+				setHovering(false);
+				setRemoveSuppressed(false);
+			}}
+			className={`theme-border-color inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center gap-1.5 self-start rounded-full border px-4 text-[11px] tracking-[0.14em] uppercase transition-[color,border-color,background-color,transform] duration-200 ease-[var(--ease-out-quart)] active:scale-[0.96] motion-reduce:transition-none ${
+				pulse ? "xpl-pulse" : ""
+			} ${
+				isTarget
+					? "bg-(--t-surface) text-(--t-text) hover:bg-(--t-surface-dim)"
+					: "bg-(--t-surface) text-(--t-primary) hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
+			}`}
 			style={{ fontFamily: fonts.body }}
 		>
-			<span aria-hidden="true">＋</span> Add to matching
+			{!isTarget && (
+				<>
+					<PlusIcon size={13} weight="bold" aria-hidden />
+					Add to matching
+				</>
+			)}
+			{isTarget && !showRemove && (
+				<>
+					<CheckIcon size={13} weight="bold" aria-hidden />
+					In matching
+				</>
+			)}
+			{showRemove && (
+				<>
+					<MinusIcon size={13} weight="bold" aria-hidden />
+					Remove
+				</>
+			)}
 		</button>
 	);
 }

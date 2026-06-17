@@ -954,6 +954,29 @@ code {
 .desc-examples-shuffle:active svg {
   transform: rotate(180deg);
 }
+
+/* Guided onboarding variant: the picker is the only way to set an intent, so it
+   lifts off the hue band as a light card with a primary-tinted edge instead of a
+   passive outline. The legend is dropped (the "Matching intent" label already names
+   it) and Pick is filled so the call to action is unmistakable. */
+.desc-examples.guided {
+  background: var(--t-surface);
+  border-color: color-mix(in srgb, var(--t-primary) 28%, transparent);
+  box-shadow: 0 8px 22px -14px color-mix(in srgb, var(--t-text) 45%, transparent);
+}
+.desc-examples.guided .desc-examples-legend {
+  display: none;
+}
+.desc-examples.guided .desc-examples-pick {
+  background: var(--t-primary);
+  border-color: transparent;
+  color: var(--t-text-on-primary);
+}
+.desc-examples.guided .desc-examples-pick:hover {
+  background: var(--t-primary-hover);
+  border-color: transparent;
+}
+
 @keyframes desc-examples-swap {
   from {
     opacity: 0;

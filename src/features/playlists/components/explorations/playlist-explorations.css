@@ -59,6 +59,23 @@
 		filter: blur(6px);
 	}
 }
+/* A theme-colored glow that breathes around the onboarding "add it" button, so the
+   one control the user must press reads as the live target against the dimmed page.
+   Ring (spread) + soft bloom, both in --t-primary, easing in and out so it pulses
+   rather than blinks. */
+@keyframes xpl-pulse {
+	0%,
+	100% {
+		box-shadow:
+			0 0 0 0 color-mix(in srgb, var(--t-primary) 55%, transparent),
+			0 0 0 0 color-mix(in srgb, var(--t-primary) 0%, transparent);
+	}
+	50% {
+		box-shadow:
+			0 0 0 4px color-mix(in srgb, var(--t-primary) 36%, transparent),
+			0 0 22px 6px color-mix(in srgb, var(--t-primary) 45%, transparent);
+	}
+}
 
 /* The genre editor region animates in on its own when Edit opens — scoped here
    so the description + divider that carry over from the collapsed view don't. */
@@ -85,6 +102,11 @@
 .xpl-sleeve-enter {
 	animation: xpl-sleeve-enter 440ms var(--ease-out-expo) both;
 }
+/* The "add it" beat: a slow, steady breathe — long enough to feel like an
+   invitation, not an alarm. */
+.xpl-pulse {
+	animation: xpl-pulse 1.8s var(--ease-out-quart) infinite;
+}
 
 @media (prefers-reduced-motion: reduce) {
 	.xpl-reveal,
@@ -92,7 +114,8 @@
 	.xpl-shake,
 	.xpl-track-enter,
 	.xpl-caption-enter,
-	.xpl-sleeve-enter {
+	.xpl-sleeve-enter,
+	.xpl-pulse {
 		animation: none;
 	}
 }
@@ -115,6 +138,13 @@
 	color: var(--t-text-on-primary);
 	background: var(--t-primary);
 	border-color: transparent;
+}
+/* In the guided onboarding the picker is disabled (genres arrive pre-set from the
+   picked example), so each chip's remove-× is inert. Drop its pointer cursor so it
+   doesn't read as clickable. Scoped to :disabled, so the enabled prod picker keeps
+   its remove affordance. */
+.xpl-genres .genre-picker .gp-chip-x:disabled {
+	cursor: default;
 }
 /* The "+ add genre" input pill + its prefix/placeholder need a darker edge and
    readable hint text against the band. */

@@ -1,5 +1,6 @@
 import {
 	type CSSProperties,
+	type ReactNode,
 	useCallback,
 	useEffect,
 	useRef,
@@ -112,6 +113,15 @@ interface CoverFlowShelfProps {
 	 * / keys). The sleeve geometry is identical in both.
 	 */
 	chrome?: "plain" | "chapter";
+	/**
+	 * Empty-state copy, overridable so the onboarding preview can teach the concept
+	 * ("what's a matching candidate?") while production keeps the terse default.
+	 */
+	emptyTitle?: string;
+	emptyBody?: string;
+	/** Action rendered below the empty-state copy — the onboarding "Next" button
+	 *  that advances the walkthrough from the concept step. */
+	emptyAction?: ReactNode;
 }
 
 /**
@@ -131,6 +141,9 @@ export function CoverFlowShelf({
 	onRemove,
 	enterId,
 	chrome = "plain",
+	emptyTitle = "No matching candidates yet",
+	emptyBody = "Add playlists from your library below — each one's description is how your liked songs find their homes.",
+	emptyAction,
 }: CoverFlowShelfProps) {
 	const stageRef = useRef<HTMLDivElement>(null);
 	// `lastX/lastT` and `prevX/prevT` keep the final two pointer samples so release
@@ -393,7 +406,10 @@ export function CoverFlowShelf({
 				// Empty: skip the tall 3-D stage (a big void reads as broken) for a
 				// compact invitation — a ghost sleeve where covers will land, pointing
 				// the eye down to the rail it's filled from.
-				<div className="mt-3 flex min-h-[220px] flex-col items-center justify-center gap-5 text-center md:min-h-[260px]">
+				<div
+					data-tour="concept"
+					className="mt-3 flex min-h-[220px] flex-col items-center justify-center gap-5 text-center md:min-h-[260px]"
+				>
 					<div
 						aria-hidden="true"
 						className="theme-border-color theme-text-muted grid size-[120px] place-items-center border border-dashed text-4xl"
@@ -405,16 +421,16 @@ export function CoverFlowShelf({
 							className="theme-text text-lg font-light"
 							style={{ fontFamily: fonts.display }}
 						>
-							No matching candidates yet
+							{emptyTitle}
 						</p>
 						<p
 							className="theme-text-muted max-w-[46ch] text-[13px] text-pretty"
 							style={{ fontFamily: fonts.body }}
 						>
-							Add playlists from your library below — each one's description is
-							how your liked songs find their homes.
+							{emptyBody}
 						</p>
 					</div>
+					{emptyAction ? <div className="mt-1">{emptyAction}</div> : null}
 				</div>
 			) : (
 				<>

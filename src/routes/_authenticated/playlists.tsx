@@ -1,14 +1,20 @@
+import { QuestionIcon } from "@phosphor-icons/react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { useFlaggedPlaylistIds } from "@/features/onboarding/demoSandboxStore";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import {
+	PlaylistPreviewTourProvider,
+	REQUIRED_FLAGGED_COUNT,
+	usePlaylistTourReporter,
+	usePlaylistTourStep,
+} from "@/features/onboarding/playlistPreviewTour";
+import { SpotlightOverlay } from "@/features/onboarding/SpotlightOverlay";
+import { TourCoachMark } from "@/features/onboarding/TourCoachMark";
 import { PlaylistsCoverFlowScreen } from "@/features/playlists/PlaylistsCoverFlowScreen";
 import { playlistManagementQueryOptions } from "@/features/playlists/queries";
 import { SandboxPlaylistsCoverFlowScreen } from "@/features/playlists/SandboxPlaylistsCoverFlowScreen";
-
-// The rehearsal asks the user to flag at least this many playlists into matching
-// before continuing; the flagged set then drives the canned match reveal.
-const REQUIRED_FLAGGED_COUNT = 3;
 
 export const Route = createFileRoute("/_authenticated/playlists")({
 	loader: async ({ context }) => {
@@ -42,9 +48,34 @@ function PlaylistsPage() {
 // the demo song picker. Nothing here persists — it's a rehearsal, so the local
 // sandbox state is discarded on continue.
 function PlaylistsPreview() {
+	return (
+		<PlaylistPreviewTourProvider>
+			<PlaylistsPreviewInner />
+		</PlaylistPreviewTourProvider>
+	);
+}
+
+function PlaylistsPreviewInner() {
 	const { navigateTo, isPending } = useStepNavigation();
 	const flaggedIds = useFlaggedPlaylistIds();
-	const hasEnoughFlagged = flaggedIds.length >= REQUIRED_FLAGGED_COUNT;
+	const remaining = REQUIRED_FLAGGED_COUNT - flaggedIds.length;
+	const hasEnoughFlagged = remaining <= 0;
+	const {
+		step,
+		panelOpen,
+		targetSelector,
+		mode,
+		caption,
+		bottomFeather,
+		topFeather,
+	} = usePlaylistTourStep();
+	const { explainIntent, requestHelp } = usePlaylistTourReporter();
+
+	// After the guided first cycle releases (step "done") the user flags the rest on
+	// their own. The handoff coach-mark hands the wheel over once; dismissing it
+	// surfaces the Help button, which re-arms the guides for whatever they're doing.
+	const [handoffDismissed, setHandoffDismissed] = useState(false);
+	const onYourOwn = step === "done" && !hasEnoughFlagged;
 
 	return (
 		<>
@@ -54,12 +85,52 @@ function PlaylistsPreview() {
 					variant="primary"
 					onClick={() => void navigateTo("pick-demo-song")}
 					disabled={isPending || !hasEnoughFlagged}
+					// Once enough are flagged, Continue is the next action — breathe the
+					// same pulse as the add toggle and Save to point the user at it.
+					className={hasEnoughFlagged ? "xpl-pulse" : undefined}
 				>
-					{/* TODO(copy): continue-to-demo label + a hint that 3 playlists must
-					    be flagged before this enables. */}
-					TODO(copy)
+					{hasEnoughFlagged ? "Continue" : `Pick ${remaining} to continue`}
 				</Button>
 			</div>
+			<SpotlightOverlay
+				targetSelector={targetSelector}
+				blocking={mode === "block"}
+				caption={caption}
+				bottomFeather={bottomFeather}
+				topFeather={topFeather}
+			/>
+			{step === "intent-intro" && (
+				<TourCoachMark
+					title="What's a playlist matching intent?"
+					body={[
+						"It's the description your liked songs get matched to. Pick one of the examples to set it.",
+					]}
+					actionLabel="Got it"
+					onAction={explainIntent}
+				/>
+			)}
+			{onYourOwn && !handoffDismissed && (
+				<TourCoachMark
+					title="You've got this"
+					body={[
+						"Open one more playlist and add it to matching — same as before, on your own this time.",
+						"Stuck? Tap Help, top-right, to bring the guides back.",
+					]}
+					actionLabel="Got it"
+					onAction={() => setHandoffDismissed(true)}
+				/>
+			)}
+			{onYourOwn && handoffDismissed && !panelOpen && (
+				<button
+					type="button"
+					onClick={requestHelp}
+					aria-label="Bring the guides back"
+					className="theme-bg theme-border-color fixed top-4 right-4 z-[55] flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--t-text)_50%,transparent)] transition-colors duration-150 hover:bg-(--t-surface)"
+				>
+					<QuestionIcon size={16} weight="bold" aria-hidden />
+					Help
+				</button>
+			)}
 		</>
 	);
 }
