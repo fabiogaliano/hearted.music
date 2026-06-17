@@ -73,7 +73,7 @@ export function PaywallDialog({ billingState, onClose }: PaywallDialogProps) {
 						<p
 							id={titleId}
 							className="theme-text text-3xl leading-tight tracking-tight text-balance"
-							style={{ fontFamily: fonts.display }}
+							style={{ fontFamily: fonts.body }}
 						>
 							Hear every song
 						</p>

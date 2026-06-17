@@ -65,7 +65,7 @@ export function ConsentBanner() {
 				<h2
 					id={titleId}
 					className="theme-text mt-3 text-2xl font-extralight"
-					style={{ fontFamily: fonts.display }}
+					style={{ fontFamily: fonts.body }}
 				>
 					How we use your data
 				</h2>

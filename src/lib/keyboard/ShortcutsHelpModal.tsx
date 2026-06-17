@@ -157,7 +157,7 @@ export function ShortcutsHelpModal() {
 				<div className="theme-bg theme-border-color sticky top-0 flex items-center justify-between border-b px-6 py-4">
 					<h2
 						className="theme-text text-lg font-light"
-						style={{ fontFamily: fonts.display }}
+						style={{ fontFamily: fonts.body }}
 					>
 						Keyboard Shortcuts
 					</h2>

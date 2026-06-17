@@ -136,7 +136,7 @@ export function TourCoachMark({
 				{title && (
 					<h3
 						className="theme-text text-[22px] leading-snug font-light tracking-tight text-balance"
-						style={{ fontFamily: fonts.display }}
+						style={{ fontFamily: fonts.body }}
 					>
 						{title}
 					</h3>

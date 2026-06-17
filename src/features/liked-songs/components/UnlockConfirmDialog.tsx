@@ -260,7 +260,7 @@ function ConfirmContent({
 					<p
 						id={titleId}
 						className="theme-text text-base"
-						style={{ fontFamily: fonts.display }}
+						style={{ fontFamily: fonts.body }}
 					>
 						See what's inside?
 					</p>

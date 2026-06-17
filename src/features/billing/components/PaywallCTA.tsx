@@ -325,7 +325,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							<p
 								id={packConfirmTitleId}
 								className="theme-text text-lg font-light"
-								style={{ fontFamily: fonts.display }}
+								style={{ fontFamily: fonts.body }}
 							>
 								You still have {billingState.creditBalance} songs.
 							</p>
