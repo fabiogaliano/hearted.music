@@ -163,13 +163,23 @@ export function useFlagPlaylistsScroll(
 
 		// Add listeners
 		section.addEventListener("wheel", handleWheel, { passive: false });
-		window.addEventListener("resize", handleResize);
+
+		// Re-measure whenever the track or viewport actually changes size.
+		// The mount-time measurement is unreliable: the grid's scrollWidth isn't
+		// final until layout settles (font loads, the rowCount reflow, hydration),
+		// which left maxScroll too small and capped scrolling to 1-2 items until a
+		// window resize forced a re-measure. ResizeObserver fires after layout and
+		// observes the elements directly, so it catches those cases a window resize
+		// event can't — and still covers window resizes via the viewport's width.
+		const resizeObserver = new ResizeObserver(handleResize);
+		resizeObserver.observe(track);
+		resizeObserver.observe(viewport);
 
 		// Cleanup
 		return () => {
 			section.style.overflow = "";
 			section.removeEventListener("wheel", handleWheel);
-			window.removeEventListener("resize", handleResize);
+			resizeObserver.disconnect();
 			if (tweenRef.current) {
 				tweenRef.current.kill();
 			}
