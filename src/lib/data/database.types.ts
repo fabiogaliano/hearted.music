@@ -1295,6 +1295,98 @@ export type Database = {
 					},
 				];
 			};
+			match_event: {
+				Row: {
+					account_id: string;
+					display_rank: number | null;
+					event: string;
+					id: string;
+					occurred_at: string;
+					playlist_id: string;
+					queue_item_id: string | null;
+					served_rank: number | null;
+					session_id: string | null;
+					snapshot_id: string | null;
+					song_id: string;
+				};
+				Insert: {
+					account_id: string;
+					display_rank?: number | null;
+					event: string;
+					id?: string;
+					occurred_at?: string;
+					playlist_id: string;
+					queue_item_id?: string | null;
+					served_rank?: number | null;
+					session_id?: string | null;
+					snapshot_id?: string | null;
+					song_id: string;
+				};
+				Update: {
+					account_id?: string;
+					display_rank?: number | null;
+					event?: string;
+					id?: string;
+					occurred_at?: string;
+					playlist_id?: string;
+					queue_item_id?: string | null;
+					served_rank?: number | null;
+					session_id?: string | null;
+					snapshot_id?: string | null;
+					song_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_event_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_event_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_event_queue_item_id_fkey";
+						columns: ["queue_item_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_queue_item";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_event_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_session";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_event_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_event_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_event_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			match_result: {
 				Row: {
 					created_at: string;
@@ -1585,6 +1677,46 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_snapshot_playlist_profile: {
+				Row: {
+					playlist_id: string;
+					profile_id: string;
+					snapshot_id: string;
+				};
+				Insert: {
+					playlist_id: string;
+					profile_id: string;
+					snapshot_id: string;
+				};
+				Update: {
+					playlist_id?: string;
+					profile_id?: string;
+					snapshot_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_snapshot_playlist_profile_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_snapshot_playlist_profile_profile_id_fkey";
+						columns: ["profile_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist_profile";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_snapshot_playlist_profile_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
 						referencedColumns: ["id"];
 					},
 				];
