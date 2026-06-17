@@ -32,14 +32,23 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 
 	const [rowCount, setRowCount] = useState(3);
 
+	// Each `1fr` row is forced to containerHeight / rowCount, so once that drops
+	// below the ~250px album art the centered cells overflow and adjacent rows
+	// overlap. Step the count down with available height — three rows when tall,
+	// two in the middle, a single strip once too short for two to fit.
 	useEffect(() => {
-		const mediaQuery = window.matchMedia("(max-height: 1050px)");
-		setRowCount(mediaQuery.matches ? 2 : 3);
-		const handleChange = (e: MediaQueryListEvent) => {
-			setRowCount(e.matches ? 2 : 3);
+		const tall = window.matchMedia("(min-height: 1051px)");
+		const short = window.matchMedia("(max-height: 860px)");
+		const update = () => {
+			setRowCount(short.matches ? 1 : tall.matches ? 3 : 2);
 		};
-		mediaQuery.addEventListener("change", handleChange);
-		return () => mediaQuery.removeEventListener("change", handleChange);
+		update();
+		tall.addEventListener("change", update);
+		short.addEventListener("change", update);
+		return () => {
+			tall.removeEventListener("change", update);
+			short.removeEventListener("change", update);
+		};
 	}, []);
 
 	const sectionRef = useRef<HTMLElement>(null);
@@ -128,7 +137,8 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 						className="theme-text-muted mt-4 text-lg font-light md:text-xl"
 						style={{ fontFamily: fonts.body }}
 					>
-						It'll be used to show you how hearted. listens.
+						Liked songs get matched to playlist intents — pick one to try it
+						with.
 					</p>
 
 					<p className="sr-only">

@@ -330,8 +330,7 @@ export function InstallExtensionStep() {
 								maxWidth: "26ch",
 							}}
 						>
-							a small {browserLabel} extension reads your library and sends it
-							here.
+							we read your library in through a small {browserLabel} extension.
 						</p>
 
 						<div className="mt-6">
