@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useFlaggedPlaylistIds } from "@/features/onboarding/demoSandboxStore";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import { TourCoachMark } from "@/features/onboarding/TourCoachMark";
 import { getDemoMatchesForFlaggedPlaylists } from "@/lib/content/landing/demo-matches";
 import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import { MatchingHeader } from "./sections/MatchingHeader";
@@ -34,6 +35,7 @@ export function WalkthroughMatchContent({
 }) {
 	const { navigateTo, isPending } = useStepNavigation();
 	const flaggedIds = useFlaggedPlaylistIds();
+	const [finishing, setFinishing] = useState(false);
 
 	const currentSong = useMemo(
 		() => songToMatchingSong(walkthroughSong),
@@ -57,23 +59,40 @@ export function WalkthroughMatchContent({
 		[walkthroughSong.spotifyTrackId, flaggedIds],
 	);
 
-	const handleWalkthroughAction = useCallback(async () => {
+	// Any match action ends the rehearsal — but instead of cutting straight to the
+	// real-setup step, open a finish dialog so the walkthrough closes on a beat.
+	const handleWalkthroughAction = useCallback(() => {
+		setFinishing(true);
+	}, []);
+
+	const handleFinish = useCallback(async () => {
 		if (isPending) return;
 		await navigateTo("install-extension");
 	}, [isPending, navigateTo]);
 
 	return (
-		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-			<MatchingHeader currentIndex={0} totalSongs={1} />
-			<MatchingSession
-				currentSong={currentSong}
-				playlists={playlists}
-				addedTo={[]}
-				isDemo={true}
-				onAdd={handleWalkthroughAction}
-				onDismiss={handleWalkthroughAction}
-				onNext={handleWalkthroughAction}
-			/>
-		</div>
+		<>
+			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+				<MatchingHeader currentIndex={0} totalSongs={1} />
+				<MatchingSession
+					currentSong={currentSong}
+					playlists={playlists}
+					addedTo={[]}
+					isDemo={true}
+					onAdd={handleWalkthroughAction}
+					onDismiss={handleWalkthroughAction}
+					onNext={handleWalkthroughAction}
+				/>
+			</div>
+			{finishing && (
+				<TourCoachMark
+					body={[
+						"You've seen the whole loop. Ready to set it up for your real library?",
+					]}
+					actionLabel="Let's go"
+					onAction={handleFinish}
+				/>
+			)}
+		</>
 	);
 }

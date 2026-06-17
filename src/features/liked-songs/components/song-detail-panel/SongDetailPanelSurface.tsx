@@ -213,6 +213,7 @@ export function SongDetailPanelSurface({
 				heroHeight={heroHeight}
 				isExpanded={isExpanded}
 			/>
+			{isWalkthrough && <WalkthroughCta colors={colors} />}
 			<div
 				style={{
 					paddingLeft: PADDING_X,
@@ -220,10 +221,10 @@ export function SongDetailPanelSurface({
 					// Sections draw their own divider + padding; this pads above the first so it
 					// doesn't hug the hero. Locked has no frame, so 0.
 					paddingTop: isLocked ? 0 : SECTION_GAP,
-					// Locked centers its CTA in the full space below the hero, and
-					// walkthrough's CTA owns the bottom — both fill exactly, so drop the
-					// runway. Otherwise leave scroll runway below the last Trace block.
-					paddingBottom: isWalkthrough || isLocked ? 0 : 80,
+					// Locked centers its CTA in the full space below the hero, so it fills
+					// exactly — drop the runway. Otherwise leave scroll runway below the
+					// last Trace block (walkthrough included; its CTA is its own sticky bar).
+					paddingBottom: isLocked ? 0 : 80,
 				}}
 			>
 				{song.read ? (
@@ -264,7 +265,6 @@ export function SongDetailPanelSurface({
 						/>
 					</div>
 				)}
-				{isWalkthrough && <WalkthroughCta colors={colors} />}
 			</div>
 		</div>
 	);
@@ -1889,11 +1889,12 @@ function usePrefersReducedMotion() {
 	return prefers;
 }
 
-// Walkthrough-only footer. The read is the demo song's payoff; this carries the
-// onboarding forward into the match step. `position: sticky` (not fixed) pins it
-// to the panel's own scroll viewport without escaping the slide-in chrome, and
-// the gradient fades the read out behind it as it scrolls past. The hook lives
-// inside this component so it only runs when the CTA is actually mounted.
+// Walkthrough-only advance bar. The read is the demo song's payoff and stays
+// bright; this bar carries the onboarding into the match step. Rendered just below
+// the hero so it follows the song's cover/name/genres in reading order, with
+// `position: sticky; top: 0` (not fixed) so it then pins to the top as the read
+// scrolls under it — sits below the identity, stays reachable throughout, and
+// never escapes the slide-in chrome. The hook lives inside so it only runs mounted.
 function WalkthroughCta({ colors }: { colors: Palette }) {
 	const { navigateTo, isPending } = useStepNavigation();
 	const [isNavigating, setIsNavigating] = useState(false);
@@ -1914,109 +1915,109 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 	};
 
 	return (
-		<>
-			{/* Darkness scrim over the whole panel. Fixed so it tracks the panel
-			    viewport (same box as the surface via PANEL_WIDTH); z-index sits above
-			    the read/hero (z 3–4) but below the raised CTA bar, so the button is
-			    the one lit element. The close button lives in the chrome's own
-			    stacking context above the surface, so it stays bright on top. */}
-			<div
-				aria-hidden
-				style={{
-					position: "fixed",
-					top: 0,
-					right: 0,
-					width: PANEL_WIDTH,
-					height: "100vh",
-					zIndex: 40,
-					pointerEvents: "none",
-					background: `color-mix(in srgb, ${colors.bg} 60%, transparent)`,
-				}}
-			/>
-			<div
-				style={{
-					position: "sticky",
-					bottom: 0,
-					paddingTop: 24,
-					paddingBottom: 28,
-					zIndex: 50,
-					background: `linear-gradient(to bottom, transparent, ${colors.bg} 32%)`,
-				}}
-			>
-				<style>{`
+		<div
+			style={{
+				position: "sticky",
+				top: 0,
+				zIndex: 50,
+				padding: "12px 16px",
+				// Solid panel bg so the read scrolls cleanly under the bar when it pins.
+				// No border — the first read section draws its own divider just below, so
+				// a hairline here would only double it up. No scrim either: the read is
+				// the payoff and stays bright; the bar carries discovery on its own.
+				background: colors.bg,
+			}}
+		>
+			<style>{`
 				@keyframes walkthrough-cta-arrow-nudge {
 					0%, 100% { transform: translateX(0); }
 					50% { transform: translateX(3px); }
 				}
+				@keyframes walkthrough-cta-pulse {
+					0%, 100% {
+						box-shadow:
+							0 0 0 0 color-mix(in srgb, ${colors.accent} 55%, transparent),
+							0 0 0 0 color-mix(in srgb, ${colors.accent} 0%, transparent);
+					}
+					50% {
+						box-shadow:
+							0 0 0 4px color-mix(in srgb, ${colors.accent} 36%, transparent),
+							0 0 22px 6px color-mix(in srgb, ${colors.accent} 45%, transparent);
+					}
+				}
 			`}</style>
-				<button
-					type="button"
-					onClick={handleClick}
-					onMouseEnter={() => setHovered(true)}
-					onMouseLeave={() => {
-						setHovered(false);
-						setPressed(false);
-					}}
-					onMouseDown={() => setPressed(true)}
-					onMouseUp={() => setPressed(false)}
-					disabled={disabled}
-					aria-label="See where this song belongs"
+			<button
+				type="button"
+				onClick={handleClick}
+				onMouseEnter={() => setHovered(true)}
+				onMouseLeave={() => {
+					setHovered(false);
+					setPressed(false);
+				}}
+				onMouseDown={() => setPressed(true)}
+				onMouseUp={() => setPressed(false)}
+				disabled={disabled}
+				aria-label="See it matched"
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					gap: 10,
+					width: "100%",
+					padding: "15px 24px",
+					fontFamily: fonts.body,
+					fontSize: 12,
+					fontWeight: 600,
+					letterSpacing: "0.12em",
+					textTransform: "uppercase",
+					color: colors.bg,
+					background: colors.accent,
+					border: "none",
+					borderRadius: 12,
+					cursor: disabled ? "default" : "pointer",
+					opacity: disabled ? 0.55 : 1,
+					// Breathing accent glow — the same "this is your next action" pulse the
+					// onboarding's other CTAs use, rebuilt from the song's accent. Calms on
+					// hover (like the arrow) so it settles once the pointer arrives.
+					animation:
+						reducedMotion || disabled || hovered
+							? "none"
+							: "walkthrough-cta-pulse 1.8s var(--ease-out-quart) infinite",
+					// Tactile press, matching Button.tsx's active:scale-[0.98]. Hover
+					// lifts brightness slightly so the CTA still acknowledges the pointer
+					// now that the arrow's idle nudge is what draws the eye.
+					transform:
+						pressed && !disabled && !reducedMotion ? "scale(0.98)" : "scale(1)",
+					filter: hovered && !disabled ? "brightness(1.06)" : "none",
+					transition: reducedMotion
+						? "opacity 150ms ease, filter 150ms ease"
+						: "opacity 150ms ease, transform 150ms ease, filter 150ms ease",
+				}}
+			>
+				See it matched
+				<span
+					aria-hidden
 					style={{
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						gap: 10,
-						width: "100%",
-						padding: "15px 24px",
-						fontFamily: fonts.body,
-						fontSize: 12,
-						fontWeight: 600,
-						letterSpacing: "0.12em",
-						textTransform: "uppercase",
-						color: colors.bg,
-						background: colors.accent,
-						border: "none",
-						borderRadius: 12,
-						cursor: disabled ? "default" : "pointer",
-						opacity: disabled ? 0.55 : 1,
-						// Tactile press, matching Button.tsx's active:scale-[0.98]. Hover
-						// lifts brightness slightly so the CTA still acknowledges the pointer
-						// now that the arrow's idle nudge is what draws the eye.
+						display: "inline-block",
+						// Continuous idle nudge ported from the SongCard "See what's
+						// inside →" hint, so the CTA advertises itself instead of waiting
+						// for hover. Hover holds the arrow forward; disabled stops it.
+						animation:
+							reducedMotion || disabled
+								? "none"
+								: hovered
+									? "none"
+									: "walkthrough-cta-arrow-nudge 2s ease-in-out infinite",
 						transform:
-							pressed && !disabled && !reducedMotion
-								? "scale(0.98)"
-								: "scale(1)",
-						filter: hovered && !disabled ? "brightness(1.06)" : "none",
-						transition: reducedMotion
-							? "opacity 150ms ease, filter 150ms ease"
-							: "opacity 150ms ease, transform 150ms ease, filter 150ms ease",
+							hovered && !disabled && !reducedMotion
+								? "translateX(3px)"
+								: "translateX(0)",
+						transition: reducedMotion ? "none" : "transform 180ms ease",
 					}}
 				>
-					See where this song belongs
-					<span
-						aria-hidden
-						style={{
-							display: "inline-block",
-							// Continuous idle nudge ported from the SongCard "See what's
-							// inside →" hint, so the CTA advertises itself instead of waiting
-							// for hover. Hover holds the arrow forward; disabled stops it.
-							animation:
-								reducedMotion || disabled
-									? "none"
-									: hovered
-										? "none"
-										: "walkthrough-cta-arrow-nudge 2s ease-in-out infinite",
-							transform:
-								hovered && !disabled && !reducedMotion
-									? "translateX(3px)"
-									: "translateX(0)",
-							transition: reducedMotion ? "none" : "transform 180ms ease",
-						}}
-					>
-						&rarr;
-					</span>
-				</button>
-			</div>
-		</>
+					&rarr;
+				</span>
+			</button>
+		</div>
 	);
 }

@@ -32,6 +32,8 @@ interface SongCardProps {
 	scrollMarginTop?: string;
 	isEnabled?: boolean;
 	isWalkthroughHighlight?: boolean;
+	/** The list is in the onboarding walkthrough — hides the per-song "new" badge. */
+	isWalkthrough?: boolean;
 }
 
 interface SongCardContentProps {
@@ -43,6 +45,7 @@ interface SongCardContentProps {
 	isChecked: boolean;
 	isWalkthroughHighlight: boolean;
 	showWalkthroughUi: boolean;
+	isWalkthrough: boolean;
 }
 
 export const SongCard = memo(function SongCard({
@@ -67,6 +70,7 @@ export const SongCard = memo(function SongCard({
 	scrollMarginTop,
 	isEnabled = true,
 	isWalkthroughHighlight = false,
+	isWalkthrough = false,
 }: SongCardProps) {
 	const songId = song.track.id;
 	const isLocked = song.displayState === "locked";
@@ -159,6 +163,7 @@ export const SongCard = memo(function SongCard({
 				isChecked={isChecked}
 				isWalkthroughHighlight={isWalkthroughHighlight}
 				showWalkthroughUi={showWalkthroughUi}
+				isWalkthrough={isWalkthrough}
 			/>
 		</button>
 	);
@@ -173,6 +178,7 @@ const SongCardContent = memo(function SongCardContent({
 	isChecked,
 	isWalkthroughHighlight,
 	showWalkthroughUi,
+	isWalkthrough,
 }: SongCardContentProps) {
 	const isNew = isNewSong(song.liked_at);
 	const isLocked = song.displayState === "locked";
@@ -222,7 +228,7 @@ const SongCardContent = memo(function SongCardContent({
 						<LockSimpleIcon size={16} color="white" weight="regular" />
 					</div>
 				)}
-				{!isLocked && isNew && (
+				{!isWalkthrough && !isLocked && isNew && (
 					<div className="theme-primary-bg absolute top-1 right-1 size-2 rounded-full" />
 				)}
 			</div>

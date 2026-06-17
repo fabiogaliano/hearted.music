@@ -79,7 +79,9 @@ export function SongDetailPanel({
 		description: "Close detail view",
 		scope: "liked-detail",
 		category: "actions",
-		enabled: isExpanded,
+		// The walkthrough locks the panel — its CTA is the only way forward — so Esc
+		// can't close it out from under the user mid-step.
+		enabled: isExpanded && !isWalkthrough,
 	});
 
 	useShortcut({
@@ -119,121 +121,146 @@ export function SongDetailPanel({
 	});
 
 	return (
-		<section
-			ref={panelRef}
-			tabIndex={-1}
-			aria-label={`${song.title} by ${song.artist}`}
-			className="overflow-hidden"
-			style={
-				{
-					// Re-theme the app's focus ring to this song's accent for everything inside
-					// the panel (close button + the read's interactive bits). The global --ring
-					// is the app-wide purple and clashes with the per-song dark palette; the
-					// global :focus-visible rule reads --focus-ring-color, which inherits from here.
-					"--focus-ring-color": colors.accent,
-					position: "fixed",
-					top: 0,
-					right: 0,
-					zIndex: 50,
-					width: PANEL_WIDTH,
-					height: "100vh",
-					transform: isExpanded ? "translateX(0)" : "translateX(100%)",
-					opacity: isExpanded ? 1 : 0,
-					pointerEvents: isExpanded ? "auto" : "none",
-					// Focus lands here programmatically on open (for the Esc/j/k shortcut scope
-					// and screen-reader context), not via keyboard — so the browser's focus ring
-					// is just noise. It also escapes the shell's overflow:hidden and paints a
-					// stray line in the list to the left. tabIndex is -1, so nothing can focus
-					// this by keyboard; suppressing the outline costs no real affordance.
-					outline: "none",
-					transition: prefersReducedMotion
-						? "none"
-						: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
-				} as CSSProperties & { "--focus-ring-color": string }
-			}
-		>
-			<SongDetailPanelSurface
-				key={song.id}
-				song={song}
-				isExpanded={isExpanded}
-				isWalkthrough={isWalkthrough}
-				isEnrichmentRunning={isEnrichmentRunning}
-				lockedCta={lockedCta}
-				playlists={playlists}
-				readDeeperOpen={readDeeperOpen}
-				onReadDeeperChange={setReadDeeperOpen}
-			/>
-			<button
-				type="button"
-				onClick={onClose}
-				onMouseEnter={() => setCloseHovered(true)}
-				onMouseLeave={() => {
-					setCloseHovered(false);
-					setClosePressed(false);
-				}}
-				onMouseDown={() => setClosePressed(true)}
-				onMouseUp={() => setClosePressed(false)}
-				aria-label="Close detail view"
-				title="Close (Esc)"
-				style={{
-					position: "absolute",
-					// 40×40 min tap area centered on the visible 32px disc (still at top/right:16).
-					top: 12,
-					right: 12,
-					zIndex: 10,
-					width: 40,
-					height: 40,
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					padding: 0,
-					border: "none",
-					background: "transparent",
-					cursor: "pointer",
-				}}
-			>
-				<span
+		<>
+			{/* Walkthrough only: dim + frost the rest of the page so the panel is the
+			    sole focus, and swallow clicks on the list behind it so the user can't
+			    accidentally pull themselves out of the step. */}
+			{isWalkthrough && (
+				<div
+					aria-hidden="true"
 					style={{
-						display: "flex",
-						alignItems: "center",
-						justifyContent: "center",
-						width: 32,
-						height: 32,
-						borderRadius: 16,
-						border: `1px solid ${colors.border}`,
-						background: `color-mix(in srgb, ${colors.surface} ${
-							closeHovered ? 92 : 80
-						}%, transparent)`,
-						color: closeHovered ? colors.text : colors.textMuted,
+						position: "fixed",
+						inset: 0,
+						zIndex: 49,
+						pointerEvents: isExpanded ? "auto" : "none",
+						opacity: isExpanded ? 1 : 0,
+						background: "color-mix(in srgb, var(--t-text) 44%, transparent)",
 						backdropFilter: "blur(6px)",
-						// Layered shadow lifts the disc off the hero — reads on any backdrop, unlike the border alone.
-						boxShadow:
-							"0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.35)",
-						transform:
-							closePressed && !prefersReducedMotion
-								? "scale(0.98)"
-								: "scale(1)",
+						WebkitBackdropFilter: "blur(6px)",
+						transition: prefersReducedMotion
+							? "opacity 300ms ease"
+							: "opacity 300ms var(--ease-out-quart)",
+					}}
+				/>
+			)}
+			<section
+				ref={panelRef}
+				tabIndex={-1}
+				aria-label={`${song.title} by ${song.artist}`}
+				className="overflow-hidden"
+				style={
+					{
+						// Re-theme the app's focus ring to this song's accent for everything inside
+						// the panel (close button + the read's interactive bits). The global --ring
+						// is the app-wide purple and clashes with the per-song dark palette; the
+						// global :focus-visible rule reads --focus-ring-color, which inherits from here.
+						"--focus-ring-color": colors.accent,
+						position: "fixed",
+						top: 0,
+						right: 0,
+						zIndex: 50,
+						width: PANEL_WIDTH,
+						height: "100vh",
+						transform: isExpanded ? "translateX(0)" : "translateX(100%)",
+						opacity: isExpanded ? 1 : 0,
+						pointerEvents: isExpanded ? "auto" : "none",
+						// Focus lands here programmatically on open (for the Esc/j/k shortcut scope
+						// and screen-reader context), not via keyboard — so the browser's focus ring
+						// is just noise. It also escapes the shell's overflow:hidden and paints a
+						// stray line in the list to the left. tabIndex is -1, so nothing can focus
+						// this by keyboard; suppressing the outline costs no real affordance.
+						outline: "none",
 						transition: prefersReducedMotion
 							? "none"
-							: "background 150ms ease, color 150ms ease, transform 150ms ease",
-					}}
-				>
-					<svg
-						width="14"
-						height="14"
-						viewBox="0 0 14 14"
-						fill="none"
-						aria-hidden="true"
+							: "transform 300ms var(--ease-out-quart), opacity 300ms var(--ease-out-quart)",
+					} as CSSProperties & { "--focus-ring-color": string }
+				}
+			>
+				<SongDetailPanelSurface
+					key={song.id}
+					song={song}
+					isExpanded={isExpanded}
+					isWalkthrough={isWalkthrough}
+					isEnrichmentRunning={isEnrichmentRunning}
+					lockedCta={lockedCta}
+					playlists={playlists}
+					readDeeperOpen={readDeeperOpen}
+					onReadDeeperChange={setReadDeeperOpen}
+				/>
+				{!isWalkthrough && (
+					<button
+						type="button"
+						onClick={onClose}
+						onMouseEnter={() => setCloseHovered(true)}
+						onMouseLeave={() => {
+							setCloseHovered(false);
+							setClosePressed(false);
+						}}
+						onMouseDown={() => setClosePressed(true)}
+						onMouseUp={() => setClosePressed(false)}
+						aria-label="Close detail view"
+						title="Close (Esc)"
+						style={{
+							position: "absolute",
+							// 40×40 min tap area centered on the visible 32px disc (still at top/right:16).
+							top: 12,
+							right: 12,
+							zIndex: 10,
+							width: 40,
+							height: 40,
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							padding: 0,
+							border: "none",
+							background: "transparent",
+							cursor: "pointer",
+						}}
 					>
-						<path
-							d="M1 1L13 13M13 1L1 13"
-							stroke="currentColor"
-							strokeWidth="1.5"
-							strokeLinecap="round"
-						/>
-					</svg>
-				</span>
-			</button>
-		</section>
+						<span
+							style={{
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "center",
+								width: 32,
+								height: 32,
+								borderRadius: 16,
+								border: `1px solid ${colors.border}`,
+								background: `color-mix(in srgb, ${colors.surface} ${
+									closeHovered ? 92 : 80
+								}%, transparent)`,
+								color: closeHovered ? colors.text : colors.textMuted,
+								backdropFilter: "blur(6px)",
+								// Layered shadow lifts the disc off the hero — reads on any backdrop, unlike the border alone.
+								boxShadow:
+									"0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.35)",
+								transform:
+									closePressed && !prefersReducedMotion
+										? "scale(0.98)"
+										: "scale(1)",
+								transition: prefersReducedMotion
+									? "none"
+									: "background 150ms ease, color 150ms ease, transform 150ms ease",
+							}}
+						>
+							<svg
+								width="14"
+								height="14"
+								viewBox="0 0 14 14"
+								fill="none"
+								aria-hidden="true"
+							>
+								<path
+									d="M1 1L13 13M13 1L1 13"
+									stroke="currentColor"
+									strokeWidth="1.5"
+									strokeLinecap="round"
+								/>
+							</svg>
+						</span>
+					</button>
+				)}
+			</section>
+		</>
 	);
 }

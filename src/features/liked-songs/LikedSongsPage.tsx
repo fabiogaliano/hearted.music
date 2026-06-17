@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { TourCoachMark } from "@/features/onboarding/TourCoachMark";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import type {
@@ -66,6 +67,12 @@ export function LikedSongsPage({
 		...walkthroughCompanionsQueryOptions(),
 		enabled: isWalkthrough,
 	});
+
+	// One-time concept beat for the walkthrough: a song's unlocked inside is what
+	// gets matched to a playlist's intent. Dismissing it hands off to the card's
+	// "See what's inside" nudge.
+	const [walkthroughIntroDismissed, setWalkthroughIntroDismissed] =
+		useState(false);
 
 	const showSelectionUI =
 		!isWalkthrough &&
@@ -471,6 +478,16 @@ export function LikedSongsPage({
 					onConfirm={confirmUnlock}
 					onCancel={cancelConfirmation}
 					onDismiss={handleFlowDismiss}
+				/>
+			)}
+
+			{isWalkthrough && !isLoading && !walkthroughIntroDismissed && (
+				<TourCoachMark
+					body={[
+						"Inside an unlocked song is what meets your playlist's intent. Here's a look.",
+					]}
+					actionLabel="Got it"
+					onAction={() => setWalkthroughIntroDismissed(true)}
 				/>
 			)}
 		</div>

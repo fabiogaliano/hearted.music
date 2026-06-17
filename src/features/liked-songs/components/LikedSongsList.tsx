@@ -168,9 +168,12 @@ export function LikedSongsList({
 						walkthrough.isActive &&
 						walkthrough.songId !== null &&
 						song.track.id === walkthrough.songId;
-					// Every song is interactive now — in the walkthrough the hero is just
-					// visually spotlighted while the curated companions stay openable.
-					const isSongEnabled = true;
+					// During the walkthrough only the chosen demo song stays interactive —
+					// the rest dim and go inert (isEnabled=false) so attention and the click
+					// land on the one the user picked. Outside the walkthrough, or before a
+					// song is chosen, every song stays enabled.
+					const isSongEnabled =
+						!walkthrough.isActive || walkthrough.songId === null || isHeroSong;
 					const navIndex = isSongEnabled
 						? (navigation.navIndexBySongId.get(song.track.id) ?? -1)
 						: -1;
@@ -199,6 +202,7 @@ export function LikedSongsList({
 							onToggleSelect={selection.onToggleSelect}
 							scrollMarginTop={selection.scrollMarginTop}
 							isEnabled={isSongEnabled}
+							isWalkthrough={walkthrough.isActive}
 							isWalkthroughHighlight={!!isHeroSong && !navigation.isExpanded}
 						/>
 					);
