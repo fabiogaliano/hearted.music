@@ -116,13 +116,30 @@ attributes (`:186`, `:262`, `:280`) are inert in prod. No action needed beyond a
 
 - [ ] No change required — noted for completeness.
 
-> **Verified clean (no prod leakage), no action:** all guided props default to prod-safe values
-> (`closable`, `highlightAdd`, `autoEditOnAdd`, `guidedIntent`, `intentPlaceholder`, `lockManualEntry`,
-> `examplesSlot`, `hideRailAdd`, `matchingEmpty*`, `emptyTitle/Body/Action`); liked-songs changes
-> (`SongCard` new-badge suppression, `isSongEnabled` dimming, `LikedSongsPage` coach-mark) are behind
-> `isWalkthrough`/`walkthrough.isActive`; `styles.css` `.desc-examples.guided` is scoped to the `.guided`
-> modifier; new onboarding modules (`SpotlightOverlay`, `TourCoachMark`, `playlistPreviewTour`) have no
-> module-level side effects and the tour provider wraps only the preview branch.
+### Confirmed clean — properly gated, no prod leakage (no action, kept as a record)
+
+These were verified during the leakage pass and are correctly isolated to onboarding. Listed so the
+isolation work that *is* right doesn't get re-litigated.
+
+- **liked-songs** (`SongCard`, `LikedSongsList`, `LikedSongsPage`): the new "new"-badge suppression, the
+  dim-non-hero `isSongEnabled` logic, and the `TourCoachMark` all sit behind
+  `isWalkthrough` / `walkthrough.isActive`, which is false in prod. `isWalkthrough` defaults to `false`
+  on `SongCard`. ✓
+- **`WalkthroughMatchContent.tsx`**: onboarding-only component; the finish-dialog change stays inside
+  it. ✓
+- **All guided props on the shared components** default to the exact prior production values, and the
+  prod `PlaylistsCoverFlowScreen` (unmodified) passes none of them: `closable`, `highlightAdd`,
+  `autoEditOnAdd`, `guidedIntent`, `intentPlaceholder`, `lockManualEntry`, `examplesSlot`, `hideRailAdd`,
+  `matchingEmptyTitle/Body/Action`, `emptyTitle/Body/Action`, `hideUnmatchableWarning`,
+  `hideTracksEmptyState`. ✓
+- **`styles.css` `.desc-examples.guided`**: scoped to the `.guided` modifier, only added in the guided
+  variant. The new `xpl-pulse` keyframe/class only applies where `xpl-pulse` is attached (all gated). ✓
+- **New modules** (`SpotlightOverlay`, `TourCoachMark`, `playlistPreviewTour`): no module-level side
+  effects — the `document.body` references are `createPortal` targets inside component bodies. The
+  `PlaylistPreviewTourProvider` wraps only the preview branch in `playlists.tsx`; the real screen is
+  untouched. ✓
+- **Onboarding step files** (`InstallExtensionStep`, `PickDemoSongStep`): copy + responsive-rows
+  changes, onboarding-only. ✓
 
 ---
 
