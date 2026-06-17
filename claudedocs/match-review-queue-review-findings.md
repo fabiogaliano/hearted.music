@@ -13,7 +13,7 @@ Date: 2026-06-16
 
 ### 1. Dashboard CTA count can stay stale after background match refresh
 
-**Source:** my review  
+**Source:** my review
 **Priority:** High
 
 `runMatchSnapshotRefreshEffects` invalidates `dashboardKeys.pageData` and `dashboardKeys.matchPreviews`, but the dashboard component subscribes to `dashboardKeys.stats` for `reviewCount`. The preview fan can update while the CTA count remains stale.
@@ -26,7 +26,7 @@ Date: 2026-06-16
 
 ### 2. First queue creation race can temporarily render an empty/caught-up queue
 
-**Source:** my review  
+**Source:** my review
 **Priority:** High
 
 In `createOrResumeQueue`, the unique-constraint fallback fetches the session another request created and returns it immediately. If that winning request has not appended snapshot items yet, this caller may fetch an empty queue and render caught-up.
@@ -39,7 +39,7 @@ In `createOrResumeQueue`, the unique-constraint fallback fetches the session ano
 
 ### 3. Skipped songs cannot currently return in a future pass
 
-**Source:** my review  
+**Source:** my review
 **Priority:** High / product-semantics
 
 The plan says `Next Song` is "skip for now" and skipped songs can return in a future pass/session. The implementation has one active session per account, never completes or abandons it, and append derivation excludes every song already in the active session. A skipped song is therefore excluded indefinitely.
@@ -53,7 +53,7 @@ The plan says `Next Song` is "skip for now" and skipped songs can return in a fu
 
 ### 4. Unavailable cards are not marked presented and do not clear newness
 
-**Source:** my review  
+**Source:** my review
 **Priority:** Medium
 
 The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` returns `status: "ready"`. Unavailable cards are still presented to the user, but remain `pending` until skipped and their song newness is not cleared.
@@ -66,7 +66,7 @@ The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` retur
 
 ### 5. User-facing copy still says "session"
 
-**Source:** both reviews  
+**Source:** both reviews
 **Priority:** Low
 
 `src/features/matching/sections/CompletionScreen.tsx` renders "Reviewed this session". The plan asks to avoid frontend terms like `session`.
@@ -78,7 +78,7 @@ The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` retur
 
 ### 6. Duplicated queue derivation logic in the route
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Low / maintenance
 
 `queue-helpers.ts` exports tested `deriveUnresolvedIds` and `deriveCaughtUp`, but `match.tsx` inlines equivalent filter/sort logic. It is correct today, but future changes could update only the tested helper and leave the route stale.
@@ -91,7 +91,7 @@ The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` retur
 
 ### 7. `playlistKeys.all` invalidation is outside the plan
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Low / performance
 
 `runMatchSnapshotRefreshEffects` invalidates all playlist queries after match snapshot refresh. The plan's Phase 6 invalidation list does not include playlist data; this may be a carry-over from enrichment invalidation and can trigger unnecessary playlist page refetches.
@@ -104,7 +104,7 @@ The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` retur
 
 ### 8. Out-of-scope audio-feature-backfill migration is bundled into this refactor
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Low / branch hygiene
 
 `supabase/migrations/20260616120000_settle_backfill_optional_params.sql` is unrelated to the match review queue refactor.
@@ -117,7 +117,7 @@ The UI calls `markMatchReviewItemPresented` only when `getMatchReviewItem` retur
 
 ### 9. Missing server-function tests for queue entry points
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Medium
 
 The server tests cover item reads and mutations, but not `startOrResumeMatchReview` and `getMatchReview`, which are the route entry points.
@@ -130,7 +130,7 @@ The server tests cover item reads and mutations, but not `startOrResumeMatchRevi
 
 ### 10. Missing positive test for clearing newness on presentation
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Medium
 
 There is a negative test ensuring newness is not cleared when no eligible row is updated, but the positive path does not assert `clearSongNewness` is called with the expected account and song.
@@ -143,7 +143,7 @@ There is a negative test ensuring newness is not cleared when no eligible row is
 
 ### 11. Sidebar/dashboard sync behavior could use one higher-level test
 
-**Source:** Claude  
+**Source:** Claude
 **Priority:** Low / confidence
 
 There is a unit test that invalidates the summary key after sync, but no higher-level test tying sync completion to summary consumers.

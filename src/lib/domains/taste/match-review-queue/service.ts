@@ -104,6 +104,121 @@ function sortSongsForQueue(songs: UndecidedSong[]): UndecidedSong[] {
 }
 
 /**
+ * True once a session has either queued an item or recorded a snapshot as
+ * applied. A just-inserted session has neither until its creator finishes the
+ * initial append, so treating "0 unresolved" as caught-up before this check can
+ * complete a session while the winning request is still seeding it.
+ */
+async function hasSessionBeenSeeded(
+	sessionId: string,
+): Promise<Result<boolean, DbError>> {
+	const [appliedResult, maxPositionResult] = await Promise.all([
+		fetchAppliedSnapshotIds(sessionId),
+		fetchMaxPosition(sessionId),
+	]);
+
+	if (Result.isError(appliedResult)) return appliedResult;
+	if (Result.isError(maxPositionResult)) return maxPositionResult;
+
+	return Result.ok(
+		appliedResult.value.size > 0 || maxPositionResult.value >= 0,
+	);
+}
+
+async function fetchLatestSnapshotId(
+	accountId: string,
+): Promise<Result<string | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const snapshotResult = await supabase
+		.from("match_snapshot")
+		.select("id")
+		.eq("account_id", accountId)
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	// A DB error here must propagate as a retryable failure — collapsing it into
+	// no_snapshot would render the no-context/caught-up empty state on a transient
+	// error, hiding the user's matches until the failure happened to clear.
+	if (snapshotResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: snapshotResult.error.code,
+				message: snapshotResult.error.message,
+			}),
+		);
+	}
+
+	return Result.ok(snapshotResult.data?.id ?? null);
+}
+
+async function createQueueFromLatestSnapshot(
+	accountId: string,
+): Promise<Result<ActiveQueueResult, DbError>> {
+	const snapshotIdResult = await fetchLatestSnapshotId(accountId);
+	if (Result.isError(snapshotIdResult)) return snapshotIdResult;
+
+	const snapshotId = snapshotIdResult.value;
+	if (!snapshotId) {
+		return Result.ok<ActiveQueueResult, DbError>({ kind: "no_snapshot" });
+	}
+
+	// Resolve strictness at session creation time — stored so mid-review setting
+	// changes don't shift the bar on cards the user is already looking at.
+	const minScore = await resolveMinMatchScore(accountId);
+	const preset =
+		Object.entries(STRICTNESS_MIN_SCORE).find(([, v]) => v === minScore)?.[0] ??
+		DEFAULT_MATCH_STRICTNESS;
+
+	const sessionResult = await insertMatchReviewSession(
+		accountId,
+		preset,
+		minScore,
+	);
+
+	if (Result.isError(sessionResult)) {
+		// Unique index violation: another request won the race. Fall back to the
+		// session the winner created — but append the latest snapshot into it before
+		// returning. The winner may not have populated its queue yet; returning the
+		// bare session here would let this caller render an empty/caught-up queue for
+		// a pass that actually has matches. appendLatestSnapshot is idempotent, so if
+		// the winner already appended this is a no-op; its errors propagate so we
+		// never report a falsely-empty success.
+		if (sessionResult.error._tag === "ConstraintError") {
+			const active = await fetchActiveSession(accountId);
+			if (Result.isError(active)) return active;
+			if (active.value) {
+				const syncResult = await appendLatestSnapshot(active.value, accountId);
+				if (Result.isError(syncResult)) return syncResult;
+				return Result.ok<ActiveQueueResult, DbError>({
+					kind: "resumed",
+					session: active.value,
+				});
+			}
+		}
+		return sessionResult;
+	}
+
+	const session = sessionResult.value;
+	const appendResult = await appendSnapshotDelta(
+		session,
+		snapshotId,
+		accountId,
+	);
+
+	// Propagate append failures instead of returning a successful empty queue. A
+	// swallowed error here would mark the freshly created session "caught up" with
+	// zero items, permanently hiding the snapshot's matches until another refresh.
+	if (Result.isError(appendResult)) return appendResult;
+
+	return Result.ok<ActiveQueueResult, DbError>({
+		kind: "created",
+		session,
+		appendedCount: appendResult.value.appendedCount,
+	});
+}
+
+/**
  * Ensures an active queue exists for the account. If one already exists it is
  * returned as-is. Otherwise a new session is created, the latest snapshot is
  * appended, and the result describes what happened.
@@ -147,6 +262,23 @@ export async function createOrResumeQueue(
 			});
 		}
 
+		const seededResult = await hasSessionBeenSeeded(session.id);
+		if (Result.isError(seededResult)) return seededResult;
+
+		if (!seededResult.value) {
+			// First-creation race: another request inserted the active session but has
+			// not appended its first snapshot yet. Sync it here and return the same
+			// session instead of completing it as caught-up; otherwise the creator can
+			// append items into a session this request just completed.
+			const syncResult = await appendLatestSnapshot(session, accountId);
+			if (Result.isError(syncResult)) return syncResult;
+
+			return Result.ok<ActiveQueueResult, DbError>({
+				kind: "resumed",
+				session,
+			});
+		}
+
 		// Caught up: every item in this pass is resolved. Complete the pass so a
 		// fresh one can re-offer skipped songs — the plan's "new pass created lazily
 		// on /match entry" rollover. Skip writes no decision, so the new pass derives
@@ -166,84 +298,7 @@ export async function createOrResumeQueue(
 		// Fall through to create a fresh active pass from the latest snapshot.
 	}
 
-	const supabase = createAdminSupabaseClient();
-	const snapshotResult = await supabase
-		.from("match_snapshot")
-		.select("id")
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	// A DB error here must propagate as a retryable failure — collapsing it into
-	// no_snapshot would render the no-context/caught-up empty state on a transient
-	// error, hiding the user's matches until the failure happened to clear.
-	if (snapshotResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: snapshotResult.error.code,
-				message: snapshotResult.error.message,
-			}),
-		);
-	}
-
-	if (!snapshotResult.data) {
-		return Result.ok<ActiveQueueResult, DbError>({ kind: "no_snapshot" });
-	}
-
-	// Resolve strictness at session creation time — stored so mid-review setting
-	// changes don't shift the bar on cards the user is already looking at.
-	const minScore = await resolveMinMatchScore(accountId);
-	const preset =
-		Object.entries(STRICTNESS_MIN_SCORE).find(([, v]) => v === minScore)?.[0] ??
-		DEFAULT_MATCH_STRICTNESS;
-
-	const sessionResult = await insertMatchReviewSession(
-		accountId,
-		preset,
-		minScore,
-	);
-
-	if (Result.isError(sessionResult)) {
-		// Unique index violation: another request won the race. Fall back to the
-		// session the winner created — but append the latest snapshot into it before
-		// returning. The winner may not have populated its queue yet; returning the
-		// bare session here would let this caller render an empty/caught-up queue for
-		// a pass that actually has matches. appendLatestSnapshot is idempotent, so if
-		// the winner already appended this is a no-op; its errors propagate so we
-		// never report a falsely-empty success.
-		if (sessionResult.error._tag === "ConstraintError") {
-			const active = await fetchActiveSession(accountId);
-			if (Result.isError(active)) return active;
-			if (active.value) {
-				const syncResult = await appendLatestSnapshot(active.value, accountId);
-				if (Result.isError(syncResult)) return syncResult;
-				return Result.ok<ActiveQueueResult, DbError>({
-					kind: "resumed",
-					session: active.value,
-				});
-			}
-		}
-		return sessionResult;
-	}
-
-	const session = sessionResult.value;
-	const appendResult = await appendSnapshotDelta(
-		session,
-		snapshotResult.data.id,
-		accountId,
-	);
-
-	// Propagate append failures instead of returning a successful empty queue. A
-	// swallowed error here would mark the freshly created session "caught up" with
-	// zero items, permanently hiding the snapshot's matches until another refresh.
-	if (Result.isError(appendResult)) return appendResult;
-
-	return Result.ok<ActiveQueueResult, DbError>({
-		kind: "created",
-		session,
-		appendedCount: appendResult.value.appendedCount,
-	});
+	return createQueueFromLatestSnapshot(accountId);
 }
 
 /**
@@ -498,7 +553,45 @@ export async function syncActiveQueue(
 		});
 	}
 
-	return appendLatestSnapshot(sessionResult.value, accountId);
+	const session = sessionResult.value;
+	const unresolvedResult = await countUnresolvedItems(session.id);
+	if (Result.isError(unresolvedResult)) return unresolvedResult;
+
+	if (unresolvedResult.value > 0) {
+		return appendLatestSnapshot(session, accountId);
+	}
+
+	const seededResult = await hasSessionBeenSeeded(session.id);
+	if (Result.isError(seededResult)) return seededResult;
+
+	if (!seededResult.value) {
+		// A create/resume request can expose a zero-item active session before its
+		// initial append finishes. Do the same recovery append as route entry, but do
+		// not roll it over as caught-up yet.
+		return appendLatestSnapshot(session, accountId);
+	}
+
+	// The active pass is caught up. Complete it before deriving the latest snapshot
+	// so skipped songs are no longer excluded by "already queued in this session"
+	// and can return in the new pass. This keeps dashboard/sidebar counts fresh
+	// after background refreshes, even if the user does not re-enter /match.
+	const completeResult = await completeSession(session.id, accountId);
+	if (Result.isError(completeResult)) return completeResult;
+
+	const freshQueueResult = await createQueueFromLatestSnapshot(accountId);
+	if (Result.isError(freshQueueResult)) return freshQueueResult;
+
+	if (freshQueueResult.value.kind === "created") {
+		return Result.ok<AppendResult, DbError>({
+			appendedCount: freshQueueResult.value.appendedCount,
+			alreadyApplied: false,
+		});
+	}
+
+	return Result.ok<AppendResult, DbError>({
+		appendedCount: 0,
+		alreadyApplied: false,
+	});
 }
 
 /**
