@@ -21,9 +21,9 @@ import {
 } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { advanceActiveSession } from "./pass-advance";
 import {
 	clearSongNewness,
-	completeSession,
 	countUnresolvedItems,
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
@@ -236,66 +236,23 @@ export async function createOrResumeQueue(
 	if (Result.isError(existing)) return existing;
 
 	if (existing.value) {
-		const session = existing.value;
+		const advanceResult = await advanceActiveSession(
+			existing.value,
+			accountId,
+			appendLatestSnapshot,
+			hasSessionBeenSeeded,
+			createQueueFromLatestSnapshot,
+		);
+		if (Result.isError(advanceResult)) return advanceResult;
 
-		// Is this pass still in progress? Count unresolved (pending/presented) items.
-		const unresolvedResult = await countUnresolvedItems(session.id);
-		if (Result.isError(unresolvedResult)) return unresolvedResult;
-
-		if (unresolvedResult.value > 0) {
-			// Pass in progress. Sync the latest snapshot into the existing queue
-			// before returning. If the browser missed the live-append effect after a
-			// background refresh, route entry is the recovery point — without this,
-			// new matches would only appear after another refresh completion.
-			// appendSnapshotDelta uses the session's STORED strictness (never live
-			// preferences) and is idempotent, so a snapshot already applied is a no-op
-			// and the current card is never disturbed.
-			//
-			// A DB/RPC failure here propagates rather than silently reporting caught-up:
-			// the snapshot is not marked applied, so the next entry retries cleanly.
-			const syncResult = await appendLatestSnapshot(session, accountId);
-			if (Result.isError(syncResult)) return syncResult;
-
-			return Result.ok<ActiveQueueResult, DbError>({
-				kind: "resumed",
-				session,
-			});
+		const advance = advanceResult.value;
+		if (advance.kind === "rolled-over-and-created") {
+			return Result.ok<ActiveQueueResult, DbError>(advance.freshQueueResult);
 		}
-
-		const seededResult = await hasSessionBeenSeeded(session.id);
-		if (Result.isError(seededResult)) return seededResult;
-
-		if (!seededResult.value) {
-			// First-creation race: another request inserted the active session but has
-			// not appended its first snapshot yet. Sync it here and return the same
-			// session instead of completing it as caught-up; otherwise the creator can
-			// append items into a session this request just completed.
-			const syncResult = await appendLatestSnapshot(session, accountId);
-			if (Result.isError(syncResult)) return syncResult;
-
-			return Result.ok<ActiveQueueResult, DbError>({
-				kind: "resumed",
-				session,
-			});
-		}
-
-		// Caught up: every item in this pass is resolved. Complete the pass so a
-		// fresh one can re-offer skipped songs — the plan's "new pass created lazily
-		// on /match entry" rollover. Skip writes no decision, so the new pass derives
-		// a previously-skipped song as eligible again, while added/dismissed pairs
-		// stay excluded by their decisions. Completing must happen BEFORE the insert
-		// below: the partial unique index idx_match_review_session_one_active rejects
-		// a second active row, so this session has to leave 'active' first. A
-		// concurrent rollover that already completed it returns null here — harmless;
-		// we still fall through and the one-active index plus the ConstraintError
-		// fallback below resolve the race.
-		//
-		// Trade-off (minimal rollover, no cooldown): when there is nothing new to
-		// offer this churns one completed + one empty active session per caught-up
-		// entry. Acceptable because /match entry is user-initiated, not polled.
-		const completeResult = await completeSession(session.id, accountId);
-		if (Result.isError(completeResult)) return completeResult;
-		// Fall through to create a fresh active pass from the latest snapshot.
+		return Result.ok<ActiveQueueResult, DbError>({
+			kind: "resumed",
+			session: advance.session,
+		});
 	}
 
 	return createQueueFromLatestSnapshot(accountId);
@@ -553,37 +510,26 @@ export async function syncActiveQueue(
 		});
 	}
 
-	const session = sessionResult.value;
-	const unresolvedResult = await countUnresolvedItems(session.id);
-	if (Result.isError(unresolvedResult)) return unresolvedResult;
+	const advanceResult = await advanceActiveSession(
+		sessionResult.value,
+		accountId,
+		appendLatestSnapshot,
+		hasSessionBeenSeeded,
+		createQueueFromLatestSnapshot,
+	);
+	if (Result.isError(advanceResult)) return advanceResult;
 
-	if (unresolvedResult.value > 0) {
-		return appendLatestSnapshot(session, accountId);
+	const advance = advanceResult.value;
+	if (
+		advance.kind === "resumed-in-place" ||
+		advance.kind === "appended-while-seeding"
+	) {
+		return Result.ok<AppendResult, DbError>(advance.appendResult);
 	}
 
-	const seededResult = await hasSessionBeenSeeded(session.id);
-	if (Result.isError(seededResult)) return seededResult;
-
-	if (!seededResult.value) {
-		// A create/resume request can expose a zero-item active session before its
-		// initial append finishes. Do the same recovery append as route entry, but do
-		// not roll it over as caught-up yet.
-		return appendLatestSnapshot(session, accountId);
-	}
-
-	// The active pass is caught up. Complete it before deriving the latest snapshot
-	// so skipped songs are no longer excluded by "already queued in this session"
-	// and can return in the new pass. This keeps dashboard/sidebar counts fresh
-	// after background refreshes, even if the user does not re-enter /match.
-	const completeResult = await completeSession(session.id, accountId);
-	if (Result.isError(completeResult)) return completeResult;
-
-	const freshQueueResult = await createQueueFromLatestSnapshot(accountId);
-	if (Result.isError(freshQueueResult)) return freshQueueResult;
-
-	if (freshQueueResult.value.kind === "created") {
+	if (advance.freshQueueResult.kind === "created") {
 		return Result.ok<AppendResult, DbError>({
-			appendedCount: freshQueueResult.value.appendedCount,
+			appendedCount: advance.freshQueueResult.appendedCount,
 			alreadyApplied: false,
 		});
 	}
