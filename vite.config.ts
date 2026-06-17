@@ -51,6 +51,7 @@ const sharedTestExcludes = [
 // in the much cheaper node environment.
 const domTestFiles = [
 	"src/features/onboarding/__tests__/useStepNavigation.test.ts",
+	"src/features/onboarding/__tests__/demoSandboxStore.test.ts",
 	"src/features/billing/__tests__/useCheckoutFlow.test.ts",
 	"src/lib/extension/__tests__/reconnect-link.test.ts",
 	"src/lib/consent/__tests__/consent-storage.test.ts",
