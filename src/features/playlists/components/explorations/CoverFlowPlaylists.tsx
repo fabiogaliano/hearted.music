@@ -1,10 +1,10 @@
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
 import { RailRow } from "./RailRow";
-import type { PlaylistSummary } from "./types";
+import type { GuidedPlaylistsConfig, PlaylistSummary } from "./types";
 
 interface CoverFlowPlaylistsProps {
 	playlists: PlaylistSummary[];
@@ -17,18 +17,9 @@ interface CoverFlowPlaylistsProps {
 	 * would otherwise slide the covers around underneath the open panel.
 	 */
 	detailOpen?: boolean;
-	/** Hide the search field — the onboarding playlist preview keeps the surface
-	 * focused on flagging and has nothing to search. */
-	showSearch?: boolean;
-	/** Override the Matching shelf's empty-state copy (onboarding teaches the
-	 * concept; production leaves these undefined for the terse default). */
-	matchingEmptyTitle?: string;
-	matchingEmptyBody?: string;
-	/** Action below the Matching empty state — the onboarding concept-step "Next". */
-	matchingEmptyAction?: ReactNode;
-	/** Hide every rail row's inline "＋ Add" — the onboarding preview adds through
-	 *  the detail panel, so the rail action would be a second, off-script path. */
-	hideRailAdd?: boolean;
+	/** Onboarding rehearsal config. Presence activates guided mode; absence =
+	 *  production defaults. See GuidedPlaylistsConfig for the full contract. */
+	guided?: GuidedPlaylistsConfig;
 }
 
 /**
@@ -46,12 +37,15 @@ export function CoverFlowPlaylists({
 	onAdd = () => {},
 	onRemove = () => {},
 	detailOpen = false,
-	showSearch = true,
-	matchingEmptyTitle,
-	matchingEmptyBody,
-	matchingEmptyAction,
-	hideRailAdd = false,
+	guided,
 }: CoverFlowPlaylistsProps) {
+	// Expand the guided config into local constants — production defaults are
+	// explicit here and the guided path overrides only what it needs.
+	const showSearch = guided == null;
+	const hideRailAdd = guided != null;
+	const matchingEmptyTitle = guided?.matchingEmptyTitle;
+	const matchingEmptyBody = guided?.matchingEmptyBody;
+	const matchingEmptyAction = guided?.matchingEmptyAction;
 	const library = playlists.filter((p) => !p.isTarget);
 
 	// Searching collapses the two-zone layout into one flat rail across the whole

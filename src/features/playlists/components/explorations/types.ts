@@ -9,6 +9,35 @@
  *   songCount → playlist.song_count
  *   isTarget  → playlist.is_target
  */
+
+import type { ReactNode } from "react";
+import type { DescriptionExample } from "./DescriptionExamplesShuffle";
+
+/**
+ * Everything that makes the playlists screen a guided onboarding rehearsal. Its
+ * PRESENCE activates guided mode; absence means production defaults. All fields
+ * must be set together — the type makes incoherent partial configs unrepresentable
+ * by keeping them in one object that only the sandbox screen constructs.
+ */
+export interface GuidedPlaylistsConfig {
+	/** Lock the panel shut during forced walkthrough beats (hides ✕, no-ops scrim/Escape). */
+	locked: boolean;
+	/** Pulse the add toggle as the walkthrough "add it" spotlight target. */
+	highlightAdd: boolean;
+	/** Drop straight into the intent editor the moment this playlist is added. */
+	autoEditOnAdd: boolean;
+	/** Override the editor textarea placeholder. */
+	intentPlaceholder: string;
+	/** Per-playlist intent examples for the guided pick-to-fill flow. */
+	examples: readonly DescriptionExample[] | undefined;
+	/** Override the Matching shelf empty-state headline. */
+	matchingEmptyTitle: string;
+	/** Override the Matching shelf empty-state body. */
+	matchingEmptyBody: string;
+	/** Action rendered below the Matching empty state (e.g. walkthrough "Next"). */
+	matchingEmptyAction: ReactNode;
+}
+
 export interface PlaylistSummary {
 	id: string;
 	name: string;

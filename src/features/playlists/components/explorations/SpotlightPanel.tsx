@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import {
-	type DescriptionExample,
-	DescriptionExamplesShuffle,
-} from "./DescriptionExamplesShuffle";
+import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
-import type { PlaylistSummary, PlaylistTrackVM } from "./types";
+import type {
+	GuidedPlaylistsConfig,
+	PlaylistSummary,
+	PlaylistTrackVM,
+} from "./types";
 import { WritingSurface } from "./WritingSurface";
 
 // The hue-washed band behind the hero + writing surface (and the guided example
@@ -27,26 +28,9 @@ interface SpotlightPanelProps {
 	tracksLoadingMore?: boolean;
 	/** Load the next track page (fired as the sentinel scrolls into view). */
 	onLoadMoreTracks?: () => void;
-	/** Hide the writing surface's "can't be matched yet" caution (rehearsal mode). */
-	hideUnmatchableWarning?: boolean;
-	/** Hide the track list's "No tracks yet" empty state (rehearsal mode). */
-	hideTracksEmptyState?: boolean;
-	/** Per-playlist matching-intent examples for the editor's pick-an-intent
-	 *  helper. Omitted falls back to the generic shuffle list. */
-	examples?: readonly DescriptionExample[];
-	/** Lock the panel shut — hides the ✕ and no-ops the scrim/Escape. The
-	 *  onboarding walkthrough holds the user in until they've added + written intent. */
-	closable?: boolean;
-	/** Pulse the add control as the walkthrough's "add it" spotlight target. */
-	highlightAdd?: boolean;
-	/** Auto-open the intent editor the moment this playlist is added to matching —
-	 *  the walkthrough flows straight from "add" into "write intent". */
-	autoEditOnAdd?: boolean;
-	/** Override the editor textarea placeholder (onboarding CTA). */
-	intentPlaceholder?: string;
-	/** Onboarding: lock the intent editor to pick-from-examples only — no typing or
-	 *  manual genres, Cancel hidden, Save gated until a description is picked. */
-	guidedIntent?: boolean;
+	/** Onboarding rehearsal config. Presence activates guided mode; absence =
+	 *  production defaults. See GuidedPlaylistsConfig for the full contract. */
+	guided?: GuidedPlaylistsConfig;
 }
 
 /**
@@ -74,15 +58,19 @@ export function SpotlightPanel({
 	tracksHasMore = false,
 	tracksLoadingMore = false,
 	onLoadMoreTracks,
-	hideUnmatchableWarning = false,
-	hideTracksEmptyState = false,
-	examples,
-	closable = true,
-	highlightAdd = false,
-	autoEditOnAdd = false,
-	intentPlaceholder,
-	guidedIntent = false,
+	guided,
 }: SpotlightPanelProps) {
+	// Expand the guided config into local constants so the rest of the component
+	// reads the same way it did before — production defaults are explicit here and
+	// the guided path overrides only what it needs.
+	const closable = guided ? !guided.locked : true;
+	const highlightAdd = guided?.highlightAdd ?? false;
+	const autoEditOnAdd = guided?.autoEditOnAdd ?? false;
+	const intentPlaceholder = guided?.intentPlaceholder;
+	const guidedIntent = guided != null;
+	const hideUnmatchableWarning = guided != null;
+	const hideTracksEmptyState = guided != null;
+	const examples = guided?.examples;
 	const [description, setDescription] = useState<string | null>(
 		playlist?.intent ?? null,
 	);
@@ -206,7 +194,11 @@ export function SpotlightPanel({
 								    transition stays put on first paint — opening an already-matching
 								    playlist is instant; only the in-place Add-to-matching toggle grows
 								    it. The pb-8 spacer sits inside the collapse so it vanishes too,
-								    instead of leaving a phantom gap above the track list. */}
+								    instead of leaving a phantom gap above the track list.
+								    DELIBERATE product decision: the intent editor is only useful once
+								    the playlist is in the matching set ("Add to matching" first), so
+								    it stays collapsed until isTarget is true — this is not an
+								    onboarding leak and should not be "fixed" to always show. */}
 									<div
 										className="grid -mx-5 transition-[grid-template-rows] duration-[400ms] ease-[var(--ease-out-expo)] motion-reduce:transition-none md:-mx-10"
 										style={{

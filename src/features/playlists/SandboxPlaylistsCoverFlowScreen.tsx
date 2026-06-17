@@ -12,7 +12,10 @@ import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
 import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
-import type { PlaylistSummary } from "./components/explorations/types";
+import type {
+	GuidedPlaylistsConfig,
+	PlaylistSummary,
+} from "./components/explorations/types";
 
 interface DemoMetadata {
 	intent: string | null;
@@ -110,6 +113,29 @@ export function SandboxPlaylistsCoverFlowScreen() {
 		setSelectedId(null);
 	};
 
+	// One cohesive guided config — its presence activates rehearsal mode in both
+	// CoverFlowPlaylists and SpotlightPanel. Reactive fields (locked, highlightAdd,
+	// autoEditOnAdd, matchingEmptyAction) are derived from tour step so the config
+	// stays current without the components needing to know about the tour.
+	const guidedConfig: GuidedPlaylistsConfig = {
+		locked: panelLocked,
+		highlightAdd: step === "add",
+		autoEditOnAdd: panelLocked,
+		intentPlaceholder: "Pick an example to set this playlist's intent…",
+		examples: panelPlaylist
+			? DEMO_INTENT_EXAMPLES[panelPlaylist.id]
+			: undefined,
+		matchingEmptyTitle: "What's a matching candidate?",
+		matchingEmptyBody:
+			"A playlist you want your liked songs to flow into. As demonstration, add a few from our library, and tell each one what it's for.",
+		matchingEmptyAction:
+			step === "concept" ? (
+				<Button variant="primary" onClick={tour.advanceConcept}>
+					Next
+				</Button>
+			) : undefined,
+	};
+
 	return (
 		<>
 			<CoverFlowPlaylists
@@ -118,17 +144,7 @@ export function SandboxPlaylistsCoverFlowScreen() {
 				onAdd={(id) => toggleTarget(id, true)}
 				onRemove={(id) => toggleTarget(id, false)}
 				detailOpen={selectedId != null}
-				showSearch={false}
-				hideRailAdd
-				matchingEmptyTitle="What's a matching candidate?"
-				matchingEmptyBody="A playlist you want your liked songs to flow into. As demonstration, add a few from our library, and tell each one what it's for."
-				matchingEmptyAction={
-					step === "concept" ? (
-						<Button variant="primary" onClick={tour.advanceConcept}>
-							Next
-						</Button>
-					) : undefined
-				}
+				guided={guidedConfig}
 			/>
 			<SpotlightPanel
 				playlist={panelPlaylist}
@@ -137,16 +153,7 @@ export function SandboxPlaylistsCoverFlowScreen() {
 				onClose={() => setSelectedId(null)}
 				onToggleTarget={(id) => toggleTarget(id, !targetIds.has(id))}
 				onSave={handleSave}
-				hideUnmatchableWarning
-				hideTracksEmptyState
-				closable={!panelLocked}
-				highlightAdd={step === "add"}
-				autoEditOnAdd={panelLocked}
-				guidedIntent
-				intentPlaceholder="Pick an example to set this playlist's intent…"
-				examples={
-					panelPlaylist ? DEMO_INTENT_EXAMPLES[panelPlaylist.id] : undefined
-				}
+				guided={guidedConfig}
 			/>
 		</>
 	);
