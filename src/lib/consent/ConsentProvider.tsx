@@ -52,7 +52,19 @@ export function ConsentProvider({
 		// so it expires alongside our app-level consent.
 		// Replay is consent-gated, so it's started here.
 		posthog?.opt_in_capturing();
-		posthog?.startSessionRecording();
+		// Load the replay recorder from our own bundle instead of letting
+		// posthog-js lazy-fetch /static/posthog-recorder.js. Ad/privacy blockers
+		// match that filename by substring (ERR_BLOCKED_BY_CLIENT) even through the
+		// same-origin pulse-h tunnel, because the leaf name still reads as a known
+		// tracker asset. Importing it executes the recorder IIFE, which registers
+		// rrweb on window.__PosthogExtensions__; startSessionRecording then sees the
+		// recorder already present and starts directly without any external fetch.
+		// The dynamic import keeps it a separate chunk, so it stays lazy and
+		// Accept-gated — decline/pending visitors never download rrweb. On the off
+		// chance the chunk itself fails, fall back to posthog's own loader.
+		void import("posthog-js/dist/posthog-recorder")
+			.then(() => posthog?.startSessionRecording())
+			.catch(() => posthog?.startSessionRecording());
 		enableSentryReplay();
 	}, [posthog]);
 

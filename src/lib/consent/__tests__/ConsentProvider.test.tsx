@@ -16,6 +16,10 @@ vi.mock("@posthog/react", () => ({
 	usePostHog: () => posthog,
 }));
 
+// The granted path dynamically imports the recorder bundle to self-host replay;
+// stub it so tests don't execute the real rrweb IIFE in jsdom.
+vi.mock("posthog-js/dist/posthog-recorder", () => ({}));
+
 vi.mock("sonner", () => ({
 	toast: {
 		error: vi.fn(),

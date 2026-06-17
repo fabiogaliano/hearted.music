@@ -85,6 +85,14 @@ function buildPostHogOptions(
 		ui_host: config.uiHost,
 		defaults: "2025-05-24",
 		capture_exceptions: true,
+		// Dead-click autocapture lazy-fetches /static/dead-clicks-autocapture.js,
+		// which blockers match by filename. Unlike the recorder, its loader always
+		// fetches even when the script is bundled (only the global
+		// disable_external_dependency_loading flag stops it, and that flag would
+		// break the recorder's lazy load), so it can't be self-hosted cleanly. The
+		// signal is marginal next to our event capture, so we turn it off rather
+		// than emit a blocked request on every session.
+		capture_dead_clicks: false,
 		debug: import.meta.env.DEV,
 		loaded: (posthog) => {
 			// Segment analytics by deploy — PostHog's equivalent of a release tag.
