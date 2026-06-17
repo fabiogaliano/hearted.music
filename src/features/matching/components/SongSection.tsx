@@ -13,7 +13,13 @@ import {
 	SpotifyEmbedIframe,
 } from "./SpotifyEmbedIframe";
 
-const ALBUM_SIZE = "min(100%, clamp(280px, 30vw, 560px))";
+// The dvh term caps the art by viewport height so the whole card (art + title +
+// matches + controls) stays reachable without scrolling on short viewports; on
+// tall screens 30vw wins and the size is unchanged. The -40px reserves vertical
+// room so the bottom controls (Next Song) clear the fixed feedback launcher
+// (size-10 @ right-6/bottom-6 → a 64px bottom-right corner) instead of sliding
+// under it when the card fills a short viewport.
+const ALBUM_SIZE = "min(100%, clamp(200px, 30vw, 560px), calc(50dvh - 40px))";
 
 interface SongSectionProps {
 	song: {
@@ -24,6 +30,9 @@ interface SongSectionProps {
 	albumArtUrl?: string;
 	songKey?: string;
 	spotifyId?: string;
+	/** Swap songs instantly (no slide) — the card-level reject animation owns the
+	 *  motion while it's flying off, so the inner slide must stay out of its way. */
+	suppressTransition?: boolean;
 }
 
 export const SongSection = memo(function SongSection({
@@ -31,15 +40,20 @@ export const SongSection = memo(function SongSection({
 	albumArtUrl,
 	songKey,
 	spotifyId,
+	suppressTransition,
 }: SongSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
 
 	return (
-		<div>
-			<AnimatePresence mode="wait">
+		<div className="flex h-full flex-col">
+			{/* initial={false}: the slide is a song-to-song transition, not an entrance.
+			Suppressing it on mount lets the composition-level StaggeredContent own the
+			entrance so the panel no longer slides in beside a static header. */}
+			<AnimatePresence mode="wait" initial={false}>
 				<AnimatedSongPanel
 					key={songKey}
 					prefersReducedMotion={prefersReducedMotion ?? false}
+					instant={suppressTransition ?? false}
 				>
 					<AlbumWithPlayer
 						album={song.album}
@@ -47,7 +61,12 @@ export const SongSection = memo(function SongSection({
 						spotifyId={spotifyId}
 					/>
 
-					<div className="mt-10">
+					{/* mt-auto pins the title block to the column bottom so it aligns
+					with the matches controls (Dismiss/Next) in the adjacent column,
+					which pin to their own bottom. The dvh-based type/margin clamps
+					shrink the block on short viewports so the card fits without
+					scrolling. */}
+					<div className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]">
 						<p
 							className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
 							style={{ fontFamily: fonts.body }}
@@ -55,13 +74,13 @@ export const SongSection = memo(function SongSection({
 							{song.album}
 						</p>
 						<h2
-							className="theme-text mt-4 text-5xl font-extralight text-balance leading-[1]"
+							className="theme-text mt-[clamp(0.75rem,2dvh,1rem)] text-[clamp(2.25rem,5.2dvh,3rem)] font-extralight text-balance leading-[1]"
 							style={{ fontFamily: fonts.display }}
 						>
 							{song.name}
 						</h2>
 						<p
-							className="theme-text-muted mt-4 text-xl italic"
+							className="theme-text-muted mt-[clamp(0.5rem,1.8dvh,1rem)] text-[clamp(1.05rem,2.4dvh,1.25rem)] italic"
 							style={{ fontFamily: fonts.display }}
 						>
 							{song.artist}
@@ -75,26 +94,32 @@ export const SongSection = memo(function SongSection({
 
 interface AnimatedSongPanelProps {
 	prefersReducedMotion: boolean;
+	/** Skip the slide and swap immediately — see SongSectionProps.suppressTransition. */
+	instant?: boolean;
 	children: ReactNode;
 }
 
 function AnimatedSongPanel({
 	prefersReducedMotion,
+	instant,
 	children,
 }: AnimatedSongPanelProps) {
 	// Exiting copies remain mounted briefly under AnimatePresence mode="wait";
 	// disable pointer events so stale DOM cannot receive clicks.
 	const isPresent = useIsPresent();
+	const skip = instant || prefersReducedMotion;
 	return (
 		<motion.div
-			initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
+			initial={skip ? false : { opacity: 0, x: 20 }}
 			animate={{
 				opacity: 1,
 				x: 0,
-				transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
+				transition: skip
+					? { duration: 0 }
+					: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
 			}}
 			exit={
-				prefersReducedMotion
+				skip
 					? {}
 					: {
 							opacity: 0,

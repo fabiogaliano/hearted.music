@@ -62,6 +62,7 @@ export const InteractiveSession: Story = () => {
 					id: m.song.id,
 					albumArtUrl: m.song.albumArtUrl,
 					name: m.song.name,
+					artist: m.song.artist,
 				}))}
 				onAdd={() => {}}
 				onDismiss={() => {}}
@@ -84,6 +85,7 @@ export const InteractiveSession: Story = () => {
 				id: m.song.id,
 				albumArtUrl: m.song.albumArtUrl,
 				name: m.song.name,
+				artist: m.song.artist,
 			}))}
 			onAdd={(playlistId) => {
 				setAddedTo((prev) => [...prev, playlistId]);
@@ -161,6 +163,7 @@ export const FullExperience: Story = () => {
 		id: s.id,
 		albumArtUrl: s.albumArtUrl,
 		name: s.name,
+		artist: s.artist,
 	}));
 
 	return (

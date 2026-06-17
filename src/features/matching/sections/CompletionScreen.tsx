@@ -90,15 +90,32 @@ export const CompletionScreen = memo(function CompletionScreen({
 						{songs.slice(0, 5).map((song) => (
 							<div
 								key={song.id}
-								className="relative size-20 transition-transform duration-200 ease-out motion-safe:hover:-translate-y-1"
+								className="group relative size-20 transition-transform duration-[220ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:z-10 motion-safe:hover:-translate-y-1"
 							>
 								<img
 									src={song.albumArtUrl ?? undefined}
-									alt={song.name}
+									alt={`${song.name} — ${song.artist}`}
 									loading="lazy"
 									className="h-full w-full object-cover"
 									style={{ outline: IMAGE_OUTLINE }}
 								/>
+								{/* Hover caption: title + artist. The opacity reveal is ungated
+								so reduced-motion users still get it instantly; only the
+								scale/rise easing is motion-safe. */}
+								<div className="theme-surface-bg pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[180px] -translate-x-1/2 rounded-md px-3 py-2 text-center opacity-0 shadow-md group-hover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover:translate-y-0 motion-safe:group-hover:scale-100">
+									<p
+										className="theme-text truncate text-xs font-medium"
+										style={{ fontFamily: fonts.body }}
+									>
+										{song.name}
+									</p>
+									<p
+										className="theme-text-muted truncate text-xs italic"
+										style={{ fontFamily: fonts.display }}
+									>
+										{song.artist}
+									</p>
+								</div>
 							</div>
 						))}
 					</div>

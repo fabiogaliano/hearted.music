@@ -3,6 +3,7 @@ import type { MatchReviewResult } from "@/lib/server/match-review-queue.function
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
+	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
@@ -210,5 +211,45 @@ describe("nextItemIdAfterResolved", () => {
 		const result = nextItemIdAfterResolved(["A", "B", "C", "D"], "B");
 		expect(result).toBe("C");
 		expect(result).not.toBe("B");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// deriveProgressIndex — header counts UP through the session, not down
+// ---------------------------------------------------------------------------
+
+describe("deriveProgressIndex", () => {
+	it("is 0 (shows 1/N) on the first card of a fresh session", () => {
+		// 6 songs, none resolved → position 0 → header "1/6".
+		expect(deriveProgressIndex(6, 6)).toBe(0);
+	});
+
+	it("climbs as cards resolve while total holds steady (regression: 1/6 → 2/6 → 3/6)", () => {
+		const total = 6;
+		// Each resolve drops one item from the unresolved list. The numerator
+		// (index + 1) must climb 1 → 2 → 3 …; previously it stayed pinned at 1 while
+		// the denominator counted DOWN (6 → 5 → 4) because both used the unresolved
+		// list.
+		expect(deriveProgressIndex(total, 6) + 1).toBe(1);
+		expect(deriveProgressIndex(total, 5) + 1).toBe(2);
+		expect(deriveProgressIndex(total, 4) + 1).toBe(3);
+		expect(deriveProgressIndex(total, 1) + 1).toBe(6);
+	});
+
+	it("resumes at the right position when prior-session cards are already resolved", () => {
+		// 6 total, 2 resolved before this session → 4 unresolved → position 2 → "3/6".
+		expect(deriveProgressIndex(6, 4)).toBe(2);
+	});
+
+	it("holds the position when new matches append (total and unresolved both grow)", () => {
+		// On song 3 of 6 (4 unresolved). Two new matches append: total 6 → 8,
+		// unresolved 4 → 6. Still song 3, now of 8.
+		expect(deriveProgressIndex(6, 4)).toBe(2);
+		expect(deriveProgressIndex(8, 6)).toBe(2);
+	});
+
+	it("clamps at 0 when the unresolved list is briefly longer than total", () => {
+		// Transient snapshot where an append lands before total updates.
+		expect(deriveProgressIndex(5, 6)).toBe(0);
 	});
 });

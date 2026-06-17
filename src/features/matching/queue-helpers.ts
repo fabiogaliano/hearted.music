@@ -90,3 +90,29 @@ export function nextItemIdAfterResolved(
 	if (index === -1) return null;
 	return effectiveItemIds[index + 1] ?? null;
 }
+
+/**
+ * Zero-based progress position of the current card within the whole session.
+ *
+ * The header reads "song X of Y" as progress through the pile, so the numerator
+ * must count UP while the denominator holds at the full session size. Deriving
+ * it from `total - unresolvedCount` does exactly that: each resolved card leaves
+ * the unresolved list, advancing the position by one, while `total` (append-only)
+ * keeps the denominator steady.
+ *
+ * This replaces deriving the position from the unresolved index alone, which was
+ * the count-down bug: every forward action resolves the current card and drops it
+ * from the unresolved list, so the current card is always that list's head
+ * (index 0). The numerator stayed pinned at 1 and the denominator shrank
+ * (6 → 5 → 4) instead of the numerator climbing (1 → 2 → 3).
+ *
+ * Clamped at 0 so a transient snapshot where the unresolved list is briefly
+ * longer than `total` (e.g. an append landing a tick before total updates) cannot
+ * produce a negative position.
+ */
+export function deriveProgressIndex(
+	total: number,
+	unresolvedCount: number,
+): number {
+	return Math.max(0, total - unresolvedCount);
+}

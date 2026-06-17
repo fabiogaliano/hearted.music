@@ -45,6 +45,14 @@ export interface CompletionStats {
 	skippedCount: number;
 }
 
+/** A song the user reviewed this session — shown in the completion recap. */
+export interface ReviewedSong {
+	id: string;
+	albumArtUrl?: string | null;
+	name: string;
+	artist: string;
+}
+
 export interface MatchingSessionProps {
 	currentSong: SongForMatching;
 	playlists: Playlist[];
@@ -54,16 +62,19 @@ export interface MatchingSessionProps {
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
 	isLastSong?: boolean;
+	/** Play the Tinder-style fly-off when the user rejects. The walkthrough leaves
+	 *  this off: there, reject ends the rehearsal rather than advancing a song. */
+	animateReject?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
-	onDismiss: () => void;
+	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
 }
 
 export interface CompletionScreenProps {
 	stats: CompletionStats;
-	songs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
+	songs: ReviewedSong[];
 	onExit: () => void;
 }
 
@@ -80,11 +91,11 @@ export interface MatchingProps {
 	addedTo: string[];
 	isComplete: boolean;
 	completionStats: CompletionStats;
-	recentSongs: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
+	recentSongs: ReviewedSong[];
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
 	onAdd: (playlistId: string) => void;
-	onDismiss: () => void;
+	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
 	onExit: () => void;

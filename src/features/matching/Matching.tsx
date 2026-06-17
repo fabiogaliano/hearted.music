@@ -1,3 +1,4 @@
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { CompletionScreen } from "./sections/CompletionScreen";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
@@ -43,8 +44,17 @@ export function Matching({
 		);
 	}
 
+	// Header + session enter as one cohesive unit — the app's shared "whisper" fade
+	// (Dashboard, onboarding, the completion screen). Kept snappy because this is a
+	// working surface advanced through many times per session. The per-panel slide
+	// is reserved for song-to-song swaps (AnimatePresence initial={false}), so it no
+	// longer fires on mount and leaves the header looking frozen beside it.
 	return (
-		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+		<StaggeredContent
+			className="mx-auto w-full max-w-[min(1600px,100%)]"
+			staggerDelay={0.05}
+			initialDelay={0.04}
+		>
 			<MatchingHeader currentIndex={offset} totalSongs={totalSongs} />
 
 			<MatchingSession
@@ -54,11 +64,12 @@ export function Matching({
 				reconnectNeeded={reconnectNeeded}
 				navigationDisabled={navigationDisabled}
 				isLastSong={offset >= totalSongs - 1}
+				animateReject
 				onAdd={onAdd}
 				onDismiss={onDismiss}
 				onNext={onNext}
 				onPrevious={offset > 0 ? onPrevious : undefined}
 			/>
-		</div>
+		</StaggeredContent>
 	);
 }

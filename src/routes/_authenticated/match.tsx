@@ -14,6 +14,7 @@ import {
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
+	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
@@ -21,6 +22,7 @@ import {
 import type {
 	CompletionStats,
 	Playlist,
+	ReviewedSong,
 	SongForMatching,
 } from "@/features/matching/types";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
@@ -115,6 +117,15 @@ function QueueMatchPage() {
 	// "loosen strictness" empty state over the "nothing surfaced" one.
 	const hiddenSongCount = queue?.hiddenSongCount ?? 0;
 
+	// Latch: once this visit has had unresolved items to work, keep rendering the
+	// session UI for the rest of the visit. Completing the last card invalidates the
+	// queue query, and its refetch reports caughtUp — without this latch the parent
+	// would tear the just-rendered CompletionScreen back down to an empty state
+	// (the "quiet in here" flash). The session's own isComplete logic owns the
+	// completion view; the empty state is only for arriving already caught up.
+	const sessionStartedRef = useRef(false);
+	if (!caughtUp) sessionStartedRef.current = true;
+
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
 	// No queue at all means no snapshot context yet.
@@ -131,7 +142,10 @@ function QueueMatchPage() {
 	//  - hidden songs exist     → "filtered": loosen strictness to recover them
 	//  - total === 0            → "none-yet": matching ran but surfaced nothing
 	//  - otherwise              → "caught-up": worked through a real pile
-	if (caughtUp) {
+	// Only show the empty state when arriving already caught up (no session worked
+	// this visit). Mid-session completion is handled by QueueMatchContent's own
+	// CompletionScreen, which the latch keeps mounted.
+	if (caughtUp && !sessionStartedRef.current) {
 		const reason =
 			hiddenSongCount > 0 ? "filtered" : total === 0 ? "none-yet" : "caught-up";
 		return (
@@ -198,9 +212,7 @@ function QueueMatchContent({
 		songsWithAdditions: new Set<string>(),
 	}));
 
-	const [pastItems, setPastItems] = useState<
-		Array<{ id: string; albumArtUrl?: string | null; name: string }>
-	>([]);
+	const [pastItems, setPastItems] = useState<ReviewedSong[]>([]);
 
 	// Passive chip: fire when queue.total grows. Using total (append-only from the
 	// server) rather than itemIds.length means a head-drop + tail-append that nets
@@ -349,11 +361,17 @@ function QueueMatchContent({
 		);
 	}
 
+	// Intentionally NOT keyed by item id. Keeping QueueCardContent mounted across
+	// cards leaves the header chrome + entrance animation in place and lets the
+	// song/matches panels run their AnimatePresence song-to-song slide (a keyed
+	// remount would instead replay the whole-page entrance on every advance and
+	// leave the panels with no exit). itemId flows in as a prop; the effects below
+	// re-run on itemId change.
 	return (
 		<QueueCardContent
-			key={resolvedCurrentId}
 			itemId={resolvedCurrentId}
 			currentIndex={currentIndex}
+			total={total}
 			unresolvedIds={effectiveItemIds}
 			addedTo={addedTo}
 			navigationStatus={navigationStatus}
@@ -376,10 +394,14 @@ function QueueMatchContent({
 interface QueueCardContentProps {
 	itemId: string;
 	currentIndex: number;
+	// Full session size (queue.total, append-only). The progress header's
+	// denominator, distinct from currentIndex/unresolvedIds which live in the
+	// shrinking navigable domain.
+	total: number;
 	unresolvedIds: string[];
 	addedTo: string[];
 	navigationStatus: "idle" | "pending";
-	pastItems: Array<{ id: string; albumArtUrl?: string | null; name: string }>;
+	pastItems: ReviewedSong[];
 	completionStats: CompletionStats;
 	onAddedTo: React.Dispatch<React.SetStateAction<string[]>>;
 	onSessionStats: React.Dispatch<
@@ -390,11 +412,7 @@ interface QueueCardContentProps {
 			songsWithAdditions: Set<string>;
 		}>
 	>;
-	onPastItems: React.Dispatch<
-		React.SetStateAction<
-			Array<{ id: string; albumArtUrl?: string | null; name: string }>
-		>
-	>;
+	onPastItems: React.Dispatch<React.SetStateAction<ReviewedSong[]>>;
 	onCurrentItemId: React.Dispatch<React.SetStateAction<string | null>>;
 	// Marks the current card resolved locally and advances to the next unresolved
 	// card. Use after a successful finish/dismiss/skip so a resolved card cannot be
@@ -410,6 +428,7 @@ interface QueueCardContentProps {
 function QueueCardContent({
 	itemId,
 	currentIndex,
+	total,
 	unresolvedIds,
 	addedTo,
 	navigationStatus,
@@ -453,16 +472,15 @@ function QueueCardContent({
 		if (next2) queryClient.prefetchQuery(matchReviewItemQueryOptions(next2));
 	}, [queryClient, currentIndex, unresolvedIds]);
 
-	// QueueCardContent is keyed by item id in the parent, so each new card is a
-	// fresh mount. The previous card's successful action left navigation locked
-	// (status "pending"); releasing on mount is what clears it for the new card.
-	// The earlier per-instance "item changed" ref never fired — the remount
-	// re-initialized it to the new id, so it never observed a change, leaving every
-	// card after the first stuck in the locked state. onReleaseNavigation is stable
-	// (useCallback), so this runs once per mount, not on every parent render.
+	// QueueCardContent now persists across cards (see the render site — it is not
+	// keyed), so this no longer runs on a fresh mount per card. The previous card's
+	// successful action leaves navigation locked (status "pending"); re-running on
+	// itemId change clears the lock once we land on the next card. onReleaseNavigation
+	// is stable (useCallback), so itemId is the only trigger.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: itemId is an intentional re-sync trigger, not a value read in the body — the lock must release when the current card changes, mirroring the old release-on-mount behavior.
 	useEffect(() => {
 		onReleaseNavigation();
-	}, [onReleaseNavigation]);
+	}, [itemId, onReleaseNavigation]);
 
 	// Map server shape → component shape.
 	const currentSong: SongForMatching | null =
@@ -499,6 +517,13 @@ function QueueCardContent({
 	const { reconnectNeeded, setReconnectNeeded } = useSpotifyReconnectState(
 		currentSong?.id ?? "",
 	);
+
+	// Header progress: position within the whole session, NOT within the shrinking
+	// navigable list. Resolved cards drop out of unresolvedIds, so currentIndex is
+	// always ~0 (the current card is the head of what's left); using it as the
+	// numerator pinned the display at 1/N and made N count down as cards resolved.
+	// total − remaining advances the numerator instead.
+	const progressIndex = deriveProgressIndex(total, unresolvedIds.length);
 
 	// Unavailable/error card: non-scary inline state. Primary action is Next Song
 	// which calls finishMatchReviewItem (marks the item skipped). No new server
@@ -547,11 +572,8 @@ function QueueCardContent({
 						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
 						style={{ fontFamily: fonts.display }}
 					>
-						<span>{currentIndex + 1}</span>
-						<span className="theme-text-muted opacity-60">
-							{" "}
-							/ {unresolvedIds.length}
-						</span>
+						<span>{progressIndex + 1}</span>
+						<span className="theme-text-muted opacity-60"> / {total}</span>
 					</h2>
 				</div>
 				<div
@@ -572,7 +594,7 @@ function QueueCardContent({
 						style={{ fontFamily: fonts.body }}
 						disabled={navigationStatus === "pending"}
 					>
-						Next Song →
+						Skip Song →
 					</button>
 				</div>
 			</div>
@@ -589,6 +611,7 @@ function QueueCardContent({
 					id: currentSong.id,
 					albumArtUrl: currentSong.albumArtUrl,
 					name: currentSong.name,
+					artist: currentSong.artist,
 				},
 			];
 		});
@@ -713,15 +736,17 @@ function QueueCardContent({
 		onCurrentItemId(unresolvedIds[currentIndex - 1] ?? null);
 	};
 
-	// X-of-Y: both numerator and denominator are in the unresolved domain so the
-	// display is consistent. The denominator updates softly as items append — that's
-	// acceptable and less confusing than mixing resolved/unresolved counts.
+	// X-of-Y is session progress, not a position in the navigable list: offset is
+	// total − remaining so the numerator climbs (1 → 2 → 3) as cards resolve, while
+	// totalSongs stays at the full session size. The denominator still grows softly
+	// as new matches append, which is the intended "N new matches" behavior. Prev/Next
+	// bounds stay in the navigable domain via currentIndex below.
 	return (
 		<Matching
 			currentSong={currentSong}
 			currentMatches={currentMatches}
-			totalSongs={unresolvedIds.length}
-			offset={currentIndex}
+			totalSongs={total}
+			offset={progressIndex}
 			addedTo={addedTo}
 			isComplete={false}
 			completionStats={completionStats}

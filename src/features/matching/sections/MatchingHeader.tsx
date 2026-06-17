@@ -9,8 +9,8 @@ export const MatchingHeader = memo(function MatchingHeader({
 	const progress = ((currentIndex + 1) / totalSongs) * 100;
 
 	return (
-		<div className="mb-12">
-			<div className="mb-5 flex items-end justify-between gap-6">
+		<div className="mb-[clamp(1rem,4dvh,3rem)]">
+			<div className="mb-[clamp(0.5rem,2dvh,1.25rem)] flex items-end justify-between gap-6">
 				<div>
 					<p
 						className="theme-text-muted text-xs tracking-widest uppercase"
@@ -19,7 +19,7 @@ export const MatchingHeader = memo(function MatchingHeader({
 						Matching
 					</p>
 					<h2
-						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
+						className="theme-text mt-[clamp(0.25rem,1.5dvh,0.75rem)] text-[clamp(1.5rem,3.4dvh,1.875rem)] font-extralight tabular-nums leading-none"
 						style={{ fontFamily: fonts.display }}
 					>
 						<span>{currentIndex + 1}</span>

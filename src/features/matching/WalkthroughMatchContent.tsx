@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { useFlaggedPlaylistIds } from "@/features/onboarding/demoSandboxStore";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import { TourCoachMark } from "@/features/onboarding/TourCoachMark";
@@ -74,7 +75,11 @@ export function WalkthroughMatchContent({
 
 	return (
 		<>
-			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+			<StaggeredContent
+				className="mx-auto w-full max-w-[min(1600px,100%)]"
+				staggerDelay={0.05}
+				initialDelay={0.04}
+			>
 				<MatchingHeader currentIndex={0} totalSongs={1} />
 				<MatchingSession
 					currentSong={currentSong}
@@ -85,7 +90,7 @@ export function WalkthroughMatchContent({
 					onDismiss={handleWalkthroughAction}
 					onNext={handleWalkthroughAction}
 				/>
-			</div>
+			</StaggeredContent>
 			{finishing && (
 				<TourCoachMark
 					body={[

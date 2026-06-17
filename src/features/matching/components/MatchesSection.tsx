@@ -15,7 +15,11 @@ import type { Playlist } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 import { usePlaylistTrackPreview } from "./usePlaylistTrackPreview";
 
-const MIN_HEIGHT = "clamp(300px, 30vw, 560px)";
+// Mirrors the album art's height cap (SongSection), including the -40px reserve
+// for the fixed feedback launcher, so on short viewports the matches column
+// collapses in step with the art instead of forcing a tall row that pushes the
+// controls below the fold or under the launcher.
+const MIN_HEIGHT = "min(clamp(300px, 30vw, 560px), calc(50dvh - 40px))";
 
 interface MatchesSectionProps {
 	songKey: string;
@@ -26,9 +30,11 @@ interface MatchesSectionProps {
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
 	isLastSong?: boolean;
+	/** Swap songs instantly (no slide) while the card-level reject animation runs. */
+	suppressTransition?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
-	onDismiss: () => void;
+	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
 }
@@ -42,6 +48,7 @@ export const MatchesSection = memo(function MatchesSection({
 	reconnectNeeded,
 	navigationDisabled,
 	isLastSong,
+	suppressTransition,
 	onRefresh,
 	onAdd,
 	onDismiss,
@@ -60,10 +67,19 @@ export const MatchesSection = memo(function MatchesSection({
 				minHeight: MIN_HEIGHT,
 			}}
 		>
-			<AnimatePresence mode="wait">
+			{/* Below lg the matches stack directly under the song with only the grid
+			gap between them; this rule restores the visual break the two-column split
+			gives on wider viewports. Hidden at lg, where the columns sit side by side. */}
+			<div className="theme-border-color mb-8 border-t lg:hidden" />
+
+			{/* initial={false}: see SongSection — the slide is a song-to-song
+			transition, not a mount entrance. The composition-level StaggeredContent
+			owns the entrance. */}
+			<AnimatePresence mode="wait" initial={false}>
 				<AnimatedMatchesPanel
 					key={songKey}
 					prefersReducedMotion={prefersReducedMotion ?? false}
+					instant={suppressTransition ?? false}
 				>
 					<div className="flex items-center gap-2">
 						<p
@@ -137,6 +153,7 @@ export const MatchesSection = memo(function MatchesSection({
 			<MatchesControls
 				disabled={navigationDisabled ?? false}
 				isLastSong={isLastSong ?? false}
+				matchCount={playlists.length}
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
 				onNext={onNext}
@@ -207,27 +224,33 @@ function MatchRow({
 
 interface AnimatedMatchesPanelProps {
 	prefersReducedMotion: boolean;
+	/** Skip the slide and swap immediately — see MatchesSectionProps.suppressTransition. */
+	instant?: boolean;
 	children: ReactNode;
 }
 
 function AnimatedMatchesPanel({
 	prefersReducedMotion,
+	instant,
 	children,
 }: AnimatedMatchesPanelProps) {
 	// While exiting, this subtree is still mounted but stale; block input so
 	// users cannot click "Add" buttons that belong to the previous song.
 	const isPresent = useIsPresent();
+	const skip = instant || prefersReducedMotion;
 	return (
 		<motion.div
 			className="flex flex-1 flex-col"
-			initial={prefersReducedMotion ? false : { opacity: 0, x: 20 }}
+			initial={skip ? false : { opacity: 0, x: 20 }}
 			animate={{
 				opacity: 1,
 				x: 0,
-				transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
+				transition: skip
+					? { duration: 0 }
+					: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
 			}}
 			exit={
-				prefersReducedMotion
+				skip
 					? {}
 					: {
 							opacity: 0,
@@ -248,6 +271,8 @@ function AnimatedMatchesPanel({
 interface MatchesControlsProps {
 	disabled: boolean;
 	isLastSong: boolean;
+	/** Drives the Reject button's singular/plural label. */
+	matchCount: number;
 	onDismiss: () => void;
 	onPrevious?: () => void;
 	onNext: () => void;
@@ -259,6 +284,7 @@ interface MatchesControlsProps {
 function MatchesControls({
 	disabled,
 	isLastSong,
+	matchCount,
 	onDismiss,
 	onPrevious,
 	onNext,
@@ -274,7 +300,7 @@ function MatchesControls({
 			>
 				<span className="inline-flex min-h-11 items-center gap-1.5">
 					<XIcon size={14} weight="regular" />
-					Dismiss
+					{matchCount === 1 ? "Reject Match" : "Reject Matches"}
 				</span>
 			</Button>
 
@@ -300,7 +326,7 @@ function MatchesControls({
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-base font-medium tracking-wide">
-						{isLastSong ? "Finish matching" : "Next Song"}
+						{isLastSong ? "Finish matching" : "Skip Song"}
 					</span>
 					<ArrowRightIcon
 						size={16}
