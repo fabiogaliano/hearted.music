@@ -86,25 +86,23 @@ const TARGET: Record<
 		mode: "block",
 		caption: "Pick a playlist to open it",
 	},
-	// Lights the whole hero band (cover + title + toggle) so the playlist the user
-	// just opened stays legible; the pulsing glow on the toggle is the instruction,
-	// so no caption.
+	// Focuses the playlist header's action cluster (title + add/remove pill), not the
+	// whole band, so the onboarding cue lands on the control the user needs next.
+	// The pulsing glow on the toggle is the instruction, so no caption.
 	add: {
 		targetSelector: '[data-tour="add-target"]',
 		mode: "block",
-		padding: 0,
-		feather: 0,
 	},
 	// A teaching beat before the first pick: no spotlight window — the route floats
 	// a coach-mark over a full dim that explains what a matching intent is, then the
 	// user dismisses it to reveal the picker (the "intent" step below).
 	"intent-intro": { targetSelector: null, mode: "none" },
 	// Highlight (visual only): the panel is locked at its own level, but the user
-	// must be free to type, shuffle and Save inside the lit zone. Unions the hero
-	// band with the editor so the cover + name the user just added stay lit above
-	// the writing surface, not dimmed off.
+	// must be free to type, shuffle and Save inside the lit zone. Unions the full
+	// hero band with the editor so the cover + name stay lit above the writing
+	// surface, not dimmed off.
 	intent: {
-		targetSelector: '[data-tour="add-target"], [data-tour="intent-zone"]',
+		targetSelector: '[data-tour="intent-hero"], [data-tour="intent-zone"]',
 		mode: "highlight",
 		padding: 0,
 		feather: 0,
@@ -161,11 +159,14 @@ export function PlaylistPreviewTourProvider({
 
 	const stepInfo = useMemo<TourStepInfo>(() => {
 		let step: TourStep;
-		// Concept is taught once; a refresh that restored any flagged playlist already
-		// passed it, so don't re-block on a step whose advance affordance — the Next
-		// button, rendered only in the empty Matching shelf — is gone once a restored
-		// playlist fills that shelf, which would soft-lock the page.
-		const conceptDone = conceptAdvanced || flaggedIds.length > 0;
+		// Concept is taught once. Any deeper walkthrough state means we've already
+		// passed it: a restored flagged playlist, or simply an open detail panel (for
+		// example when the user removes the still-pending playlist and must be guided
+		// to add it back, not bounced all the way to the broad empty-shelf concept
+		// spotlight). Don't re-block on a step whose affordance no longer matches the
+		// user's current context.
+		const conceptDone =
+			conceptAdvanced || flaggedIds.length > 0 || panelOpenId !== null;
 		// Released = the self-driven state: at least one playlist described and none
 		// left pending. A pending playlist keeps the cycle held, so a mid-cycle refresh
 		// (added one, intent not yet written) resumes on finishing it.

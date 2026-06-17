@@ -25,9 +25,9 @@ function titleSize(name: string): string {
 interface SpotlightHeroProps {
 	playlist: PlaylistSummary;
 	onToggleTarget: () => void;
-	/** Pulse the add control during the onboarding "add it" beat. The spotlight
-	 *  window spans the whole hero band (marked below), so the cover and title
-	 *  stay lit alongside the pulsing control. */
+	/** Pulse the add control during the onboarding "add it" beat. That step now
+	 *  targets just the title + toggle cluster; the broader hero band is still
+	 *  marked separately for the later intent-writing spotlight. */
 	highlightToggle?: boolean;
 }
 
@@ -46,7 +46,7 @@ export function SpotlightHero({
 }: SpotlightHeroProps) {
 	return (
 		<div
-			data-tour="add-target"
+			data-tour="intent-hero"
 			className="-mx-5 -mt-[30px] mb-0 flex flex-col items-start gap-5 px-5 pt-9 pb-8 md:-mx-10 md:-mt-[34px] md:flex-row md:items-center md:gap-8 md:px-10 md:pr-20"
 			style={{
 				background:
@@ -63,7 +63,10 @@ export function SpotlightHero({
 					}}
 				/>
 			</div>
-			<div className="@container flex w-full min-w-0 flex-1 flex-col items-center gap-5 md:w-auto md:max-w-[34rem] md:items-start">
+			<div
+				data-tour="add-target"
+				className="@container flex w-full min-w-0 flex-1 flex-col items-center gap-5 md:w-auto md:max-w-[34rem] md:items-start"
+			>
 				<h2
 					className="theme-text text-center leading-[1.04] font-extralight tracking-tight text-balance break-words md:text-left"
 					style={{

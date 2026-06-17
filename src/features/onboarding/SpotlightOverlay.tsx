@@ -76,6 +76,11 @@ export function SpotlightOverlay({
 	// (and the SSR/initial inline scrim it hands off from) never flashes bright;
 	// later re-appearances — after a no-target teaching step — ease in.
 	const [revealed, setRevealed] = useState(true);
+	// The cutout DOM node only mounts once we have a measured rect. Keep showing the
+	// plain scrim until we've pushed that rect into the motion values, otherwise the
+	// very first paint of a re-appearing window can land on the springs' stale/zero
+	// defaults for a frame and visibly flash the cutout at the wrong geometry.
+	const [windowReady, setWindowReady] = useState(false);
 	const seenRef = useRef(false);
 	const jumpedRef = useRef(false);
 	// The selector the springs last settled toward. Lets us spring only when we move
@@ -111,6 +116,7 @@ export function SpotlightOverlay({
 		}
 		let raf = 0;
 		let stable = 0;
+		let cancelled = false;
 		let last: Rect | null = null;
 		// Wake on the target's own size changes too, not just scroll/resize: the lit
 		// elements grow from content (genres added, the textarea or suggestion chips
@@ -119,23 +125,40 @@ export function SpotlightOverlay({
 		// pushed-down content (e.g. the Save button).
 		const ro = new ResizeObserver(() => wake());
 		const measure = () => {
+			if (cancelled) return;
 			const els = document.querySelectorAll(targetSelector);
-			if (els.length > 0) {
-				for (const el of els) ro.observe(el);
-				// Union every match into one bounding box, so a step can light several
-				// elements at once (e.g. the page title + the concept block).
-				let t = Number.POSITIVE_INFINITY;
-				let l = Number.POSITIVE_INFINITY;
-				let r = Number.NEGATIVE_INFINITY;
-				let b = Number.NEGATIVE_INFINITY;
-				for (const el of els) {
-					const rc = el.getBoundingClientRect();
-					t = Math.min(t, rc.top);
-					l = Math.min(l, rc.left);
-					r = Math.max(r, rc.right);
-					b = Math.max(b, rc.bottom);
-				}
+			// Union every *laid-out* match into one bounding box, so a step can light
+			// several elements at once (e.g. the page title + the concept block).
+			let t = Number.POSITIVE_INFINITY;
+			let l = Number.POSITIVE_INFINITY;
+			let r = Number.NEGATIVE_INFINITY;
+			let b = Number.NEGATIVE_INFINITY;
+			let found = 0;
+			for (const el of els) {
+				// Observe every match (even un-laid-out ones) so the loop wakes the moment
+				// they gain size — the panel mounts this step's targets at zero before
+				// layout settles.
+				ro.observe(el);
+				// Skip elements that aren't rendered yet: display:none, visibility:hidden,
+				// or a not-laid-out frame all return an all-zero rect. Unioning that drags
+				// the window's corner to (0,0) and, when both targets read zero at once,
+				// yields a 0×0 box — which the box-shadow paints as a fully black screen.
+				// If such a frame holds for 12 frames the loop would sleep on it, freezing
+				// the page black until a resize forced a re-measure. Measuring only real
+				// geometry keeps that degenerate union from ever being committed.
+				if (typeof el.checkVisibility === "function" && !el.checkVisibility())
+					continue;
+				const rc = el.getBoundingClientRect();
+				if (rc.width <= 0 || rc.height <= 0) continue;
+				found += 1;
+				t = Math.min(t, rc.top);
+				l = Math.min(l, rc.left);
+				r = Math.max(r, rc.right);
+				b = Math.max(b, rc.bottom);
+			}
+			if (found > 0) {
 				const next = { top: t, left: l, width: r - l, height: b - t };
+				if (cancelled) return;
 				if (
 					last &&
 					last.top === next.top &&
@@ -150,29 +173,48 @@ export function SpotlightOverlay({
 					setRect(next);
 				}
 			} else {
+				// Nothing measurable this frame (targets absent or not yet laid out). Hold
+				// the last good window if we have one and keep polling — never sleep on or
+				// commit a degenerate box. Only before the first valid measurement do we
+				// fall back to the full scrim (rect null), so the page stays dimmed rather
+				// than flashing its content or going black on a 0×0 cutout.
 				stable = 0;
-				last = null;
-				setRect(null);
+				if (!last) setRect(null);
 			}
 			// getBoundingClientRect forces a layout, so don't run it forever: once the
 			// target has held still for ~12 frames, sleep. scroll/resize (below) and a
 			// targetSelector change (this effect re-running) wake it again.
-			raf = stable < 12 ? requestAnimationFrame(measure) : 0;
+			raf = !cancelled && stable < 12 ? requestAnimationFrame(measure) : 0;
 		};
 		const wake = () => {
-			if (!raf) {
-				stable = 0;
-				raf = requestAnimationFrame(measure);
-			}
+			if (cancelled || raf) return;
+			stable = 0;
+			raf = requestAnimationFrame(measure);
 		};
 		raf = requestAnimationFrame(measure);
 		window.addEventListener("scroll", wake, true);
 		window.addEventListener("resize", wake);
+		// Wake when CSS transitions/animations finish. The lit targets live inside the
+		// detail panel, which reaches this step mid-settle: the writing surface's grid
+		// expands (grid-template-rows 0fr→1fr, 400ms), opacity fades run, and the editor
+		// opens. If the measure loop catches a lull and sleeps before those finish, it
+		// locks the mid-transition geometry — a short or zero-area cutout — and only
+		// scroll/resize could rescue it (why a window resize "fixed" it). ResizeObserver
+		// misses this: it fires for the targets' own size changes, not the position shift
+		// from an ancestor reflowing, and it races the moment observation is attached.
+		// transitionend/animationend fire exactly when the settled layout is readable, so
+		// re-measuring then tracks the truth. Capture phase since transitionend bubbles
+		// but we want it regardless of where it originates.
+		window.addEventListener("transitionend", wake, true);
+		window.addEventListener("animationend", wake, true);
 		return () => {
+			cancelled = true;
 			if (raf) cancelAnimationFrame(raf);
 			ro.disconnect();
 			window.removeEventListener("scroll", wake, true);
 			window.removeEventListener("resize", wake);
+			window.removeEventListener("transitionend", wake, true);
+			window.removeEventListener("animationend", wake, true);
 		};
 	}, [targetSelector]);
 
@@ -187,8 +229,10 @@ export function SpotlightOverlay({
 	useEffect(() => {
 		if (!rect) {
 			jumpedRef.current = false;
+			setWindowReady(false);
 			return;
 		}
+		setWindowReady(false);
 		const tx = rect.left - padding;
 		const ty = rect.top - padding;
 		const tw = rect.width + padding * 2;
@@ -208,6 +252,7 @@ export function SpotlightOverlay({
 		}
 		jumpedRef.current = true;
 		lastSelectorRef.current = targetSelector;
+		setWindowReady(true);
 	}, [rect, padding, targetSelector, x, y, w, h]);
 
 	// First appearance shows instantly (preserves the SSR/initial anti-flash);
@@ -252,9 +297,10 @@ export function SpotlightOverlay({
 		);
 	}
 
-	// Before the first measurement lands, render a full scrim with no window so the
-	// page stays dimmed instead of flashing all content.
-	if (!rect) {
+	// Before the first measurement lands — and until that measurement has been pushed
+	// into the motion values that drive the window — render a full scrim with no
+	// cutout so the page stays dimmed instead of flashing a stale/zero-geometry hole.
+	if (!rect || !windowReady) {
 		return createPortal(
 			<div
 				aria-hidden="true"

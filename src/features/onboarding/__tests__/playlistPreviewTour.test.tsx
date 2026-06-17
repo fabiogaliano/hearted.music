@@ -8,6 +8,7 @@
  * fresh so sessionStorage hydration re-runs, mirroring a real reload.
  */
 
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@/test/utils/render";
 
@@ -37,6 +38,32 @@ async function renderStepProbe() {
 			<>
 				<span data-testid="step">{step}</span>
 				<span data-testid="focus">{focusPlaylistId ?? ""}</span>
+			</>
+		);
+	}
+	render(
+		<PlaylistPreviewTourProvider>
+			<Probe />
+		</PlaylistPreviewTourProvider>,
+	);
+}
+
+async function renderInteractiveProbe() {
+	const {
+		PlaylistPreviewTourProvider,
+		usePlaylistTourReporter,
+		usePlaylistTourStep,
+	} = await loadTour();
+	function Probe() {
+		const { step, focusPlaylistId } = usePlaylistTourStep();
+		const { reportPanelOpen } = usePlaylistTourReporter();
+		return (
+			<>
+				<span data-testid="step">{step}</span>
+				<span data-testid="focus">{focusPlaylistId ?? ""}</span>
+				<button type="button" onClick={() => reportPanelOpen("2")}>
+					Open 2
+				</button>
 			</>
 		);
 	}
@@ -103,5 +130,25 @@ describe("PlaylistPreviewTourProvider resume", () => {
 			expect(screen.getByTestId("step").textContent).toBe("intent-intro"),
 		);
 		expect(screen.getByTestId("focus").textContent).toBe("5");
+	});
+
+	it("stays on the add step when the open pending playlist is removed from matching", async () => {
+		const store = await import("../demoSandboxStore");
+		seedFlagged(["2"]);
+		await renderInteractiveProbe();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("step").textContent).toBe("intent-intro"),
+		);
+		screen.getByRole("button", { name: "Open 2" }).click();
+
+		act(() => {
+			store.setFlaggedPlaylistIds([]);
+		});
+
+		await waitFor(() =>
+			expect(screen.getByTestId("step").textContent).toBe("add"),
+		);
+		expect(screen.getByTestId("focus").textContent).toBe("");
 	});
 });
