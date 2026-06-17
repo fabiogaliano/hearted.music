@@ -381,7 +381,7 @@ export function PlanSelectionStep({
 				<PlanCard
 					title="Song Pack"
 					price={formatOfferPrice(SONG_PACK_500)}
-					description="500 songs + 25 Instant Unlocks"
+					description="250 songs + 15 Instant Unlocks"
 					buttonLabel={
 						activeCheckout === SONG_PACK_500 ? "Redirecting..." : "Unlock Pack"
 					}

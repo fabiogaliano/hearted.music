@@ -27,7 +27,7 @@ interface PaywallCTAProps {
 	compact?: boolean;
 }
 
-const PACK_CREDITS = 500;
+const PACK_CREDITS = 250;
 const YEARLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_YEARLY].amountCents;
 const QUARTERLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_QUARTERLY].amountCents;
 
@@ -174,7 +174,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							<span className="theme-text text-sm font-medium">
 								Song Pack
 								<span className="theme-text-muted ml-1 font-normal">
-									· 500 songs
+									· 250 songs
 								</span>
 							</span>
 							<span className="theme-text-muted shrink-0 text-xs">
@@ -354,7 +354,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									}}
 									style={{ fontFamily: fonts.body }}
 								>
-									Add 500 more
+									Add 250 more
 								</Button>
 							</div>
 						</div>
