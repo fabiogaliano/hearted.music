@@ -10,7 +10,10 @@
 import { redirect } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
 import { Result } from "better-result";
-import { getAccountByBetterAuthUserId } from "@/lib/domains/library/accounts/queries";
+import {
+	getAccountByBetterAuthUserId,
+	touchAccountLastSeen,
+} from "@/lib/domains/library/accounts/queries";
 import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
 import type { AuthContext } from "@/lib/platform/auth/auth-types";
@@ -43,9 +46,15 @@ async function loadAuthSession(): Promise<AuthContext | null> {
 		const accountResult = await getAccountByBetterAuthUserId(
 			betterAuthSession.user.id,
 		);
-		const account = Result.isOk(accountResult) ? accountResult.value : null;
+		const accountWithActivity = Result.isOk(accountResult)
+			? accountResult.value
+			: null;
 
-		if (!account) return null;
+		if (!accountWithActivity) return null;
+
+		const { account, lastSeenAt } = accountWithActivity;
+
+		recordLastSeen(account.id, lastSeenAt);
 
 		return {
 			session: { accountId: account.id },
@@ -59,6 +68,41 @@ async function loadAuthSession(): Promise<AuthContext | null> {
 		const message = errorMessage(error);
 		console.warn("Failed to get auth session:", message);
 		return null;
+	}
+}
+
+const LAST_SEEN_THROTTLE_MS = 10 * 60 * 1000;
+
+/**
+ * Fire-and-forget "last active" heartbeat.
+ *
+ * Gates in-process on the last_seen_at we already read with the account, so the
+ * common fresh path makes no extra round-trip; touch_account_last_seen applies
+ * the authoritative 10-minute throttle in SQL, which also makes concurrent
+ * requests correct regardless of this check or Worker clock skew. Runs after
+ * the response via waitUntil so it never adds latency, and its failure is
+ * intentionally swallowed — a missed heartbeat must not break auth.
+ */
+function recordLastSeen(accountId: string, lastSeenAt: string | null): void {
+	const isFresh =
+		lastSeenAt !== null &&
+		Date.now() - new Date(lastSeenAt).getTime() < LAST_SEEN_THROTTLE_MS;
+
+	if (isFresh) return;
+
+	const heartbeat = touchAccountLastSeen(accountId).catch((error) => {
+		console.warn("Failed to record last_seen_at:", errorMessage(error));
+	});
+
+	void runAfterResponse(heartbeat);
+}
+
+async function runAfterResponse(promise: Promise<unknown>): Promise<void> {
+	try {
+		const { waitUntil } = await import("cloudflare:workers");
+		waitUntil(promise);
+	} catch {
+		await promise;
 	}
 }
 

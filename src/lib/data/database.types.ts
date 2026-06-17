@@ -78,6 +78,29 @@ export type Database = {
 					},
 				];
 			};
+			account_activity: {
+				Row: {
+					account_id: string;
+					last_seen_at: string;
+				};
+				Insert: {
+					account_id: string;
+					last_seen_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					last_seen_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_activity_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: true;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			account_billing: {
 				Row: {
 					account_id: string;
@@ -2628,6 +2651,15 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			add_match_review_item_decision_atomic: {
+				Args: {
+					p_account_id: string;
+					p_item_id: string;
+					p_playlist_id: string;
+					p_served_rank?: number;
+				};
+				Returns: string;
+			};
 			apply_subscription_upgrade_conversion: {
 				Args: {
 					p_applied_stripe_event_id: string;
@@ -2856,15 +2888,6 @@ export type Database = {
 				};
 				Returns: number;
 			};
-			add_match_review_item_decision_atomic: {
-				Args: {
-					p_account_id: string;
-					p_item_id: string;
-					p_playlist_id: string;
-					p_served_rank?: number;
-				};
-				Returns: string;
-			};
 			create_account_with_billing: {
 				Args: {
 					p_better_auth_user_id: string;
@@ -2893,14 +2916,6 @@ export type Database = {
 			deactivate_subscription: {
 				Args: { p_account_id: string; p_stripe_event_created_at: string };
 				Returns: undefined;
-			};
-			dismiss_match_review_item_atomic: {
-				Args: { p_account_id: string; p_decisions?: Json; p_item_id: string };
-				Returns: string;
-			};
-			finish_match_review_item_atomic: {
-				Args: { p_account_id: string; p_item_id: string };
-				Returns: string;
 			};
 			defer_audio_feature_backfill_job: {
 				Args: {
@@ -2938,6 +2953,10 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
+			};
+			dismiss_match_review_item_atomic: {
+				Args: { p_account_id: string; p_decisions?: Json; p_item_id: string };
+				Returns: string;
 			};
 			enqueue_audio_feature_backfill_manual: {
 				Args: {
@@ -3040,6 +3059,10 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
+			};
+			finish_match_review_item_atomic: {
+				Args: { p_account_id: string; p_item_id: string };
+				Returns: string;
 			};
 			fulfill_pack_purchase: {
 				Args: {
@@ -3622,6 +3645,10 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
+			};
+			touch_account_last_seen: {
+				Args: { p_account_id: string };
+				Returns: undefined;
 			};
 			unlock_songs_for_account: {
 				Args: { p_account_id: string; p_song_ids: string[] };

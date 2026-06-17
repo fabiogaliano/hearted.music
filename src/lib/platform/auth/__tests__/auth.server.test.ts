@@ -20,11 +20,13 @@ const {
 	mockGetRequest,
 	mockGetSession,
 	mockGetAccountByBetterAuthUserId,
+	mockTouchAccountLastSeen,
 	mockGetAuthRequestState,
 } = vi.hoisted(() => ({
 	mockGetRequest: vi.fn(),
 	mockGetSession: vi.fn(),
 	mockGetAccountByBetterAuthUserId: vi.fn(),
+	mockTouchAccountLastSeen: vi.fn(),
 	mockGetAuthRequestState: vi.fn(),
 }));
 
@@ -43,6 +45,8 @@ vi.mock("@/lib/platform/auth/auth", () => ({
 vi.mock("@/lib/domains/library/accounts/queries", () => ({
 	getAccountByBetterAuthUserId: (...args: unknown[]) =>
 		mockGetAccountByBetterAuthUserId(...args),
+	touchAccountLastSeen: (...args: unknown[]) =>
+		mockTouchAccountLastSeen(...args),
 }));
 
 vi.mock("@/lib/platform/auth/auth-request-state", () => ({
@@ -56,6 +60,7 @@ describe("getAuthSession", () => {
 			new Request("https://hearted.music/dashboard"),
 		);
 		mockGetAuthRequestState.mockReturnValue(createMockAuthRequestState());
+		mockTouchAccountLastSeen.mockResolvedValue(undefined);
 	});
 
 	it("memoizes the full auth lookup per request", async () => {
@@ -78,7 +83,9 @@ describe("getAuthSession", () => {
 				emailVerified: true,
 			},
 		});
-		mockGetAccountByBetterAuthUserId.mockResolvedValue(Result.ok(account));
+		mockGetAccountByBetterAuthUserId.mockResolvedValue(
+			Result.ok({ account, lastSeenAt: null }),
+		);
 
 		const [first, second] = await Promise.all([
 			getAuthSession(),
@@ -87,6 +94,8 @@ describe("getAuthSession", () => {
 
 		expect(mockGetSession).toHaveBeenCalledTimes(1);
 		expect(mockGetAccountByBetterAuthUserId).toHaveBeenCalledTimes(1);
+		expect(mockTouchAccountLastSeen).toHaveBeenCalledTimes(1);
+		expect(mockTouchAccountLastSeen).toHaveBeenCalledWith("acct-1");
 		expect(first).toEqual(second);
 		expect(first).toEqual({
 			session: { accountId: "acct-1" },

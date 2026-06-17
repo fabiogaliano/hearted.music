@@ -24,6 +24,15 @@ export interface PublicHandleIdentity {
 /** Account row type */
 export type Account = Tables<"account">;
 
+/**
+ * Account plus its last-seen heartbeat, read together on the auth path so the
+ * caller can decide whether the throttled write is due without a second query.
+ */
+export interface AccountWithActivity {
+	account: Account;
+	lastSeenAt: string | null;
+}
+
 /** Insert type - only the fields we use for upsert */
 type UpsertAccountData = Pick<
 	TablesInsert<"account">,
@@ -88,20 +97,44 @@ export function upsertAccount(
 }
 
 /**
- * Gets an account by its Better Auth user ID.
+ * Gets an account by its Better Auth user ID, plus its last_seen_at heartbeat.
  * Used after Better Auth session validation to find our app account.
+ *
+ * Embeds account_activity into the same read (no extra round-trip) so the auth
+ * path can gate the throttled heartbeat write in-process. account_activity is
+ * one-to-one with account, so the embed resolves to an object or null.
  */
-export function getAccountByBetterAuthUserId(
+export async function getAccountByBetterAuthUserId(
 	userId: string,
-): Promise<Result<Account | null, DbError>> {
+): Promise<Result<AccountWithActivity | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
+	const result = await fromSupabaseMaybe(
 		supabase
 			.from("account")
-			.select("*")
+			.select("*, account_activity(last_seen_at)")
 			.eq("better_auth_user_id", userId)
 			.single(),
 	);
+
+	if (Result.isError(result)) return result;
+	if (result.value === null) return Result.ok(null);
+
+	const { account_activity, ...account } = result.value;
+	return Result.ok({
+		account,
+		lastSeenAt: account_activity?.last_seen_at ?? null,
+	});
+}
+
+/**
+ * Records that the account was just seen. Throttled in SQL to at most one write
+ * per 10-minute window (see touch_account_last_seen), so it's safe to call on
+ * every authenticated request. Fire-and-forget: callers run it after the
+ * response via waitUntil, and its failure must never affect the request.
+ */
+export async function touchAccountLastSeen(accountId: string): Promise<void> {
+	const supabase = createAdminSupabaseClient();
+	await supabase.rpc("touch_account_last_seen", { p_account_id: accountId });
 }
 
 /**
