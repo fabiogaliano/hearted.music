@@ -1,7 +1,9 @@
 import type { ActivityItem, DashboardProps } from "@/features/dashboard/types";
 import type { LikedSong } from "@/features/liked-songs/types";
 import type { Playlist, SongForMatching } from "@/features/matching/types";
+import type { PlaylistTrack } from "@/lib/server/playlists.functions";
 import data from "./fixtures.json";
+import matchExperienceData from "./match-experience.json";
 
 export const allLikedSongs: LikedSong[] = data.likedSongs as LikedSong[];
 const dashboardData = data.dashboard as Omit<DashboardProps, "accountId">;
@@ -15,6 +17,18 @@ export const matchingSongs: Array<{
 }>;
 
 export const sidebarData = data.sidebar;
+
+/**
+ * Real data for the full /match experience story: real songs, real playlists
+ * (covers, descriptions) and real per-playlist track membership pulled from the
+ * local DB by scripts/fixtures/export-match-experience.ts. Only the song→playlist
+ * pairings and scores are fabricated (the local match_result table is empty).
+ */
+export const matchExperience = matchExperienceData as unknown as {
+	songs: SongForMatching[];
+	matchesBySong: Record<string, Playlist[]>;
+	playlistTracks: Record<string, PlaylistTrack[]>;
+};
 
 /**
  * Simulate progressive enrichment by masking analysis/audio data

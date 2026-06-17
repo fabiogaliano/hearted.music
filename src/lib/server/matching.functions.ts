@@ -54,6 +54,7 @@ export interface MatchingPlaylistMatch {
 		name: string;
 		description: string | null;
 		trackCount: number | null;
+		imageUrl: string | null;
 		spotifyId: string;
 	};
 	score: number;

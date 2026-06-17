@@ -197,6 +197,7 @@ export function Landing({
 									previewSongManifest.spotifyTrackId,
 								)}
 								addedTo={[]}
+								isDemo
 								onAdd={() => {}}
 								onDismiss={handlePreviewDiscard}
 								onNext={handlePreviewNext}

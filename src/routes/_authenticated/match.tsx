@@ -485,6 +485,8 @@ function QueueCardContent({
 						name: m.playlist.name,
 						reason: m.playlist.description ?? "",
 						matchScore: m.score,
+						imageUrl: m.playlist.imageUrl,
+						songCount: m.playlist.trackCount,
 					}))
 				: [],
 		[itemData],

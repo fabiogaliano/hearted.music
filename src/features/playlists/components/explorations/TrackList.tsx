@@ -17,6 +17,9 @@ interface TrackListProps {
 	/** Suppress the "No tracks yet" empty state — used in the onboarding rehearsal
 	 *  where canned playlists have no tracks and the message would be noise. */
 	hideEmptyState?: boolean;
+	/** Drop the per-track album column — for tight contexts like the match
+	 *  preview card where the extra text is noise. */
+	hideAlbum?: boolean;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
@@ -29,6 +32,7 @@ export function TrackList({
 	isLoadingMore = false,
 	onLoadMore,
 	hideEmptyState = false,
+	hideAlbum = false,
 }: TrackListProps) {
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
@@ -83,7 +87,7 @@ export function TrackList({
 							{track.artists.join(", ")}
 						</div>
 					</div>
-					{track.albumName && (
+					{!hideAlbum && track.albumName && (
 						<span
 							className="theme-text-muted max-w-[34%] flex-none truncate text-right text-xs"
 							style={{ fontFamily: fonts.body }}

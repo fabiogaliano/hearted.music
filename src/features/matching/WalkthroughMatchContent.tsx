@@ -55,6 +55,8 @@ export function WalkthroughMatchContent({
 					name: m.name,
 					reason: m.reason,
 					matchScore: m.matchScore,
+					imageUrl: m.imageUrl,
+					songCount: m.songCount,
 				})),
 		[walkthroughSong.spotifyTrackId, flaggedIds],
 	);

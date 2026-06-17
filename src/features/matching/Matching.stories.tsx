@@ -1,6 +1,8 @@
 import type { Story } from "@ladle/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { matchingSongs } from "@/stories/fixtures";
+import { playlistKeys } from "@/features/playlists/queries";
+import { matchExperience, matchingSongs } from "@/stories/fixtures";
 import { Matching } from "./Matching";
 import type { CompletionStats } from "./types";
 
@@ -107,6 +109,106 @@ export const InteractiveSession: Story = () => {
 InteractiveSession.meta = {
 	description:
 		"Walk through matching songs — add to playlists, skip, or dismiss",
+};
+
+/**
+ * The whole /match experience on real data: real songs, real playlists (covers,
+ * descriptions) and real per-playlist track membership from the local DB. Hover a
+ * match row to reveal the preview card — the cover, the playlist's "what it's
+ * for", and its real, scrollable track list. Only the song→playlist pairings and
+ * scores are fabricated (the local match_result table is empty).
+ *
+ * The hover card's track list is fetched via a server function in the app; here
+ * each playlist's real tracks are pre-seeded into a QueryClient so the card
+ * resolves from cache (Ladle can't run server functions). The list scrolls; in
+ * the real app it also paginates on scroll.
+ */
+export const FullExperience: Story = () => {
+	// Seed each playlist's real tracks into the infinite-query cache so the hover
+	// card resolves them without hitting the (unavailable) server function. Built
+	// once per mount in a nested client, per the Ladle seeded-data convention.
+	const [queryClient] = useState(() => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, refetchOnWindowFocus: false },
+			},
+		});
+		for (const [playlistId, tracks] of Object.entries(
+			matchExperience.playlistTracks,
+		)) {
+			client.setQueryData(playlistKeys.tracks(playlistId), {
+				pages: [{ tracks, nextCursor: null }],
+				pageParams: [undefined],
+			});
+		}
+		return client;
+	});
+
+	const [index, setIndex] = useState(0);
+	const [addedTo, setAddedTo] = useState<string[]>([]);
+	const [stats, setStats] = useState<CompletionStats>({
+		totalSongs: matchExperience.songs.length,
+		songsMatched: 0,
+		totalAdditions: 0,
+		dismissedCount: 0,
+		skippedCount: 0,
+	});
+
+	const current = matchExperience.songs[index];
+	const isComplete = index >= matchExperience.songs.length || !current;
+
+	const recentSongs = matchExperience.songs.slice(0, index).map((s) => ({
+		id: s.id,
+		albumArtUrl: s.albumArtUrl,
+		name: s.name,
+	}));
+
+	return (
+		<QueryClientProvider client={queryClient}>
+			<Matching
+				currentSong={isComplete ? null : current}
+				currentMatches={
+					isComplete || !current
+						? []
+						: (matchExperience.matchesBySong[current.id] ?? [])
+				}
+				totalSongs={matchExperience.songs.length}
+				offset={index}
+				addedTo={addedTo}
+				isComplete={isComplete}
+				completionStats={stats}
+				recentSongs={recentSongs}
+				onAdd={(playlistId) => {
+					if (addedTo.includes(playlistId)) return;
+					setAddedTo((prev) => [...prev, playlistId]);
+					setStats((s) => ({
+						...s,
+						songsMatched: s.songsMatched + (addedTo.length === 0 ? 1 : 0),
+						totalAdditions: s.totalAdditions + 1,
+					}));
+				}}
+				onDismiss={() => {
+					setStats((s) => ({ ...s, dismissedCount: s.dismissedCount + 1 }));
+					setAddedTo([]);
+					setIndex((i) => i + 1);
+				}}
+				onNext={() => {
+					setStats((s) =>
+						addedTo.length === 0
+							? { ...s, skippedCount: s.skippedCount + 1 }
+							: s,
+					);
+					setAddedTo([]);
+					setIndex((i) => i + 1);
+				}}
+				onExit={() => setIndex(0)}
+			/>
+		</QueryClientProvider>
+	);
+};
+FullExperience.meta = {
+	description:
+		"Real songs, playlists & tracks from the local DB — hover a match to preview its cover, intent & track list. Pairings/scores are faked.",
 };
 
 export const EmptyState: Story = () => (

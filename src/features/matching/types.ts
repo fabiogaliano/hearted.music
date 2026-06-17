@@ -31,6 +31,10 @@ export interface Playlist {
 	name: string;
 	reason: string;
 	matchScore: number;
+	/** Playlist cover — the recognition aid in the match row. Null → ♫ placeholder. */
+	imageUrl: string | null;
+	/** Total tracks in the playlist; drives the hover preview's "+ N more" tail. */
+	songCount: number | null;
 }
 
 export interface CompletionStats {

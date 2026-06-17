@@ -25,6 +25,9 @@ interface DemoMatchPlaylist {
 	name: string;
 	reason: string;
 	matchScore: number;
+	imageUrl: string | null;
+	/** Canned demo playlists have no synced track rows, so the count is unknown. */
+	songCount: number | null;
 }
 
 export const DEMO_PLAYLISTS: readonly DemoPlaylist[] = [
@@ -215,13 +218,23 @@ export function getDemoMatchesForSong(
 	return matches.map(({ id, matchScore }) => {
 		const def = PLAYLIST_BY_ID.get(id);
 		if (!def)
-			return { id, spotifyId: "", name: "Unknown", reason: "", matchScore };
+			return {
+				id,
+				spotifyId: "",
+				name: "Unknown",
+				reason: "",
+				matchScore,
+				imageUrl: null,
+				songCount: null,
+			};
 		return {
 			id: def.id,
 			spotifyId: "",
 			name: def.name,
 			reason: def.reason,
 			matchScore,
+			imageUrl: def.imageUrl ?? null,
+			songCount: null,
 		};
 	});
 }
@@ -283,6 +296,8 @@ export function getDemoMatchesForFlaggedPlaylists(
 				name: def.name,
 				reason: def.reason,
 				matchScore,
+				imageUrl: def.imageUrl ?? null,
+				songCount: null,
 			};
 		})
 		.filter((m): m is DemoMatchPlaylist => m !== null)

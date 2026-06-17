@@ -8,10 +8,12 @@ import {
 import { memo, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
+import { Cover } from "@/features/playlists/components/explorations/Cover";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
+import { usePlaylistTrackPreview } from "./usePlaylistTrackPreview";
 
 const MIN_HEIGHT = "clamp(300px, 30vw, 560px)";
 
@@ -117,41 +119,17 @@ export const MatchesSection = memo(function MatchesSection({
 					</AnimatePresence>
 
 					<div className="mt-6 flex min-h-0 flex-1 flex-col gap-5">
-						{playlists.map((playlist) => {
-							return (
-								<PlaylistMatchRow
-									key={playlist.id}
-									playlistId={playlist.id}
-									name={playlist.name}
-									scoreDisplay={
-										<NumberFlow
-											value={Math.round(playlist.matchScore * 100)}
-											suffix="%"
-											className="theme-text font-extralight tabular-nums leading-none"
-											style={{
-												fontFamily: fonts.display,
-												fontSize: "1.5rem",
-											}}
-										/>
-									}
-									reason={
-										reconnectNeeded ? undefined : playlist.reason || undefined
-									}
-									size="lg"
-									action={
-										addedTo.includes(playlist.id)
-											? { type: "added" }
-											: reconnectAction
-												? { type: "custom", node: reconnectAction }
-												: {
-														type: "add",
-														disabled: navigationDisabled,
-														onAdd,
-													}
-									}
-								/>
-							);
-						})}
+						{playlists.map((playlist) => (
+							<MatchRow
+								key={playlist.id}
+								playlist={playlist}
+								added={addedTo.includes(playlist.id)}
+								isDemo={isDemo ?? false}
+								reconnectNode={reconnectAction}
+								navigationDisabled={navigationDisabled ?? false}
+								onAdd={onAdd}
+							/>
+						))}
 					</div>
 				</AnimatedMatchesPanel>
 			</AnimatePresence>
@@ -166,6 +144,66 @@ export const MatchesSection = memo(function MatchesSection({
 		</div>
 	);
 });
+
+interface MatchRowProps {
+	playlist: Playlist;
+	added: boolean;
+	isDemo: boolean;
+	/** Reconnect CTA shown in place of Add when a Spotify reconnect is needed. */
+	reconnectNode?: ReactNode;
+	navigationDisabled: boolean;
+	onAdd: (playlistId: string) => void;
+}
+
+// One match row + its hover preview. A component (not an inline map body) so the
+// preview hook is called once per playlist under the rules of hooks. The preview
+// trigger spans the cover+name region so hovering either — or crossing the gap
+// between them — opens it as one bridge without flicker.
+function MatchRow({
+	playlist,
+	added,
+	isDemo,
+	reconnectNode,
+	navigationDisabled,
+	onAdd,
+}: MatchRowProps) {
+	const { triggerProps, preview } = usePlaylistTrackPreview({
+		playlistId: playlist.id,
+		songCount: playlist.songCount,
+		canLoadTracks: !isDemo,
+	});
+
+	return (
+		<>
+			<PlaylistMatchRow
+				playlistId={playlist.id}
+				name={playlist.name}
+				leadProps={triggerProps}
+				media={
+					<Cover src={playlist.imageUrl} size={48} className="flex-none" />
+				}
+				scoreDisplay={
+					<NumberFlow
+						value={Math.round(playlist.matchScore * 100)}
+						suffix="%"
+						className="theme-text font-extralight tabular-nums leading-none"
+						style={{ fontFamily: fonts.display, fontSize: "1.5rem" }}
+					/>
+				}
+				reason={reconnectNode ? undefined : playlist.reason || undefined}
+				size="lg"
+				action={
+					added
+						? { type: "added" }
+						: reconnectNode
+							? { type: "custom", node: reconnectNode }
+							: { type: "add", disabled: navigationDisabled, onAdd }
+				}
+			/>
+			{preview}
+		</>
+	);
+}
 
 interface AnimatedMatchesPanelProps {
 	prefersReducedMotion: boolean;

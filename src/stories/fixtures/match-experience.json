@@ -1,0 +1,826 @@
+{
+	"songs": [
+		{
+			"id": "413006a3-2f9a-48a6-b8a1-4b5f21ee3f32",
+			"spotifyId": "4EoJ151oQ5jY48z4RhSE96",
+			"name": "the cure",
+			"artist": "Olivia Rodrigo",
+			"album": "the cure",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e0279e480cbab8c7b86d277841a",
+			"genres": [],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "8f423a76-934c-44c2-bcae-5cc654d76838",
+			"spotifyId": "7ne4VBA60CxGM75vw0EYad",
+			"name": "That’s So True",
+			"artist": "Gracie Abrams",
+			"album": "The Secret of Us (Deluxe)",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e021dac3694b3289cd903cb3acf",
+			"genres": ["indie pop", "folk", "pop"],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "78f3a58e-6019-478a-a3a6-c3b2bad314f1",
+			"spotifyId": "3sK8wGT43QFpWrvNQsrQya",
+			"name": "DtMF",
+			"artist": "Bad Bunny",
+			"album": "DeBÍ TiRAR MáS FOToS",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02bbd45c8d36e0e045ef640411",
+			"genres": ["latin", "reggaeton", "salsa"],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "729fa96c-b225-44e8-9bd5-4fef6e508db6",
+			"spotifyId": "6DCZcSspjsKoFjzjrWoCdn",
+			"name": "God's Plan",
+			"artist": "Drake",
+			"album": "Scorpion",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02f907de96b9a4fbc04accc0d5",
+			"genres": ["rap", "hip-hop", "rnb"],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "edbc9a3a-ba8a-4899-b8b4-ac9aac383d64",
+			"spotifyId": "699n0PWczOUvXqKSrLplCv",
+			"name": "Manchild",
+			"artist": "Sabrina Carpenter",
+			"album": "Manchild",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e02ec390a8102f1543020ac5ed7",
+			"genres": [],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "76cb46a6-a377-440c-942f-ae753628c5f3",
+			"spotifyId": "4Dvkj6JhhA12EX05fT7y2e",
+			"name": "As It Was",
+			"artist": "Harry Styles",
+			"album": "Harry's House",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e0282ce362511fb3d9dda6578ee",
+			"genres": ["pop", "pop rock", "synthpop"],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "3a3622d4-3908-4687-89da-509f1beb0dc1",
+			"spotifyId": "0VjIjW4GlUZAMYd2vXMi3b",
+			"name": "Blinding Lights",
+			"artist": "The Weeknd",
+			"album": "After Hours",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e028863bc11d2aa12b54f5aeb36",
+			"genres": ["synthpop", "synthwave", "new wave"],
+			"audioFeatures": null,
+			"analysis": null
+		},
+		{
+			"id": "0a8aba4f-d342-4806-8989-2f0709e4a8dc",
+			"spotifyId": "5hVghJ4KaYES3BFUATCYn0",
+			"name": "EARFQUAKE",
+			"artist": "Tyler, The Creator",
+			"album": "IGOR",
+			"albumArtUrl": "https://i.scdn.co/image/ab67616d00001e0230a635de2bb0caa4e26f6abb",
+			"genres": ["rock", "pop", "alternative"],
+			"audioFeatures": null,
+			"analysis": null
+		}
+	],
+	"matchesBySong": {
+		"413006a3-2f9a-48a6-b8a1-4b5f21ee3f32": [
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.9,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.86,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.76,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			},
+			{
+				"id": "925437f5-75cd-4830-ae17-2ec02df0031a",
+				"spotifyId": "6otZU4PqtURiaZteBBgdms",
+				"name": "Super Bock Super Rock 2021",
+				"reason": "made with ♪ by @inotbeingf",
+				"matchScore": 0.66,
+				"imageUrl": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+				"songCount": 14
+			}
+		],
+		"8f423a76-934c-44c2-bcae-5cc654d76838": [
+			{
+				"id": "f8516bc7-44da-43e8-adde-07d11fef5613",
+				"spotifyId": "7kFhX4oiVkRgM032mKKuCK",
+				"name": "yilkes!",
+				"reason": "✨: 2!!",
+				"matchScore": 0.84,
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+				"songCount": 1
+			},
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.78,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.64,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.58,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			}
+		],
+		"78f3a58e-6019-478a-a3a6-c3b2bad314f1": [
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.94,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.9,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "925437f5-75cd-4830-ae17-2ec02df0031a",
+				"spotifyId": "6otZU4PqtURiaZteBBgdms",
+				"name": "Super Bock Super Rock 2021",
+				"reason": "made with ♪ by @inotbeingf",
+				"matchScore": 0.86,
+				"imageUrl": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+				"songCount": 14
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.8,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			}
+		],
+		"729fa96c-b225-44e8-9bd5-4fef6e508db6": [
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.93,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.83,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			},
+			{
+				"id": "925437f5-75cd-4830-ae17-2ec02df0031a",
+				"spotifyId": "6otZU4PqtURiaZteBBgdms",
+				"name": "Super Bock Super Rock 2021",
+				"reason": "made with ♪ by @inotbeingf",
+				"matchScore": 0.73,
+				"imageUrl": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+				"songCount": 14
+			},
+			{
+				"id": "f8516bc7-44da-43e8-adde-07d11fef5613",
+				"spotifyId": "7kFhX4oiVkRgM032mKKuCK",
+				"name": "yilkes!",
+				"reason": "✨: 2!!",
+				"matchScore": 0.6,
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+				"songCount": 1
+			}
+		],
+		"edbc9a3a-ba8a-4899-b8b4-ac9aac383d64": [
+			{
+				"id": "f8516bc7-44da-43e8-adde-07d11fef5613",
+				"spotifyId": "7kFhX4oiVkRgM032mKKuCK",
+				"name": "yilkes!",
+				"reason": "✨: 2!!",
+				"matchScore": 0.87,
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+				"songCount": 1
+			},
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.81,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.77,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.67,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			}
+		],
+		"76cb46a6-a377-440c-942f-ae753628c5f3": [
+			{
+				"id": "f8516bc7-44da-43e8-adde-07d11fef5613",
+				"spotifyId": "7kFhX4oiVkRgM032mKKuCK",
+				"name": "yilkes!",
+				"reason": "✨: 2!!",
+				"matchScore": 0.82,
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+				"songCount": 1
+			},
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.76,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.72,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.62,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			}
+		],
+		"3a3622d4-3908-4687-89da-509f1beb0dc1": [
+			{
+				"id": "bd39e303-0a0d-48b6-aabb-5624b1b0f63c",
+				"spotifyId": "5OC1OtfBktCYz8Xk3xNUYX",
+				"name": "main character energy!!1!!",
+				"reason": "songs that make me feel like the main character in my own movie! slay!!",
+				"matchScore": 0.75,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
+				"songCount": 6
+			},
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.73,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.69,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			},
+			{
+				"id": "925437f5-75cd-4830-ae17-2ec02df0031a",
+				"spotifyId": "6otZU4PqtURiaZteBBgdms",
+				"name": "Super Bock Super Rock 2021",
+				"reason": "made with ♪ by @inotbeingf",
+				"matchScore": 0.65,
+				"imageUrl": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+				"songCount": 14
+			}
+		],
+		"0a8aba4f-d342-4806-8989-2f0709e4a8dc": [
+			{
+				"id": "925437f5-75cd-4830-ae17-2ec02df0031a",
+				"spotifyId": "6otZU4PqtURiaZteBBgdms",
+				"name": "Super Bock Super Rock 2021",
+				"reason": "made with ♪ by @inotbeingf",
+				"matchScore": 0.94,
+				"imageUrl": "https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
+				"songCount": 14
+			},
+			{
+				"id": "f8516bc7-44da-43e8-adde-07d11fef5613",
+				"spotifyId": "7kFhX4oiVkRgM032mKKuCK",
+				"name": "yilkes!",
+				"reason": "✨: 2!!",
+				"matchScore": 0.81,
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
+				"songCount": 1
+			},
+			{
+				"id": "522d1368-56e5-421a-978a-288529029829",
+				"spotifyId": "6s8RX6yRRVtXEWvHaykvhG",
+				"name": "Dubolt Mix: Kendrick Lamar / Ross from Friends / KAYTRANADA / Totally Enormous Extinct Dinosaurs / J. Cole",
+				"reason": "",
+				"matchScore": 0.75,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
+				"songCount": 25
+			},
+			{
+				"id": "398a4b64-93d8-4ff4-80f9-98d6021e3336",
+				"spotifyId": "3SQLijfxOBVFwBy6DWCvG4",
+				"name": "house?",
+				"reason": "AI: house music",
+				"matchScore": 0.71,
+				"imageUrl": "https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
+				"songCount": 6
+			}
+		]
+	},
+	"playlistTracks": {
+		"522d1368-56e5-421a-978a-288529029829": [
+			{
+				"position": 0,
+				"songId": "3c755df7-b6fd-4586-882f-87b0ea37a855",
+				"name": "Hilarity Duff",
+				"artists": ["KAYTRANADA"],
+				"albumName": "At All / Hilarity Duff EP",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0270cd916cc7d895fb5e648a7f"
+			},
+			{
+				"position": 1,
+				"songId": "beaa9b39-4c77-461d-8cb8-5c6ae9f5f28c",
+				"name": "Fair",
+				"artists": ["TEED"],
+				"albumName": "Trouble",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02ba02d709c8aeaf8ed0e80dc4"
+			},
+			{
+				"position": 2,
+				"songId": "9b18aa73-d28b-4fb7-8398-0847b0f54ca2",
+				"name": "It's Good To Try",
+				"artists": ["Laurence Guy"],
+				"albumName": "Making Music Is Bad For Your Self Esteem",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02bda1c2e6f854b16df5f0b420"
+			},
+			{
+				"position": 3,
+				"songId": "0978caeb-6f1e-4a8d-bc4b-abcecd8d374d",
+				"name": "Sunday",
+				"artists": ["HNNY"],
+				"albumName": "Sunday",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02107d051e4c35ac3c8fe3470d"
+			},
+			{
+				"position": 4,
+				"songId": "4ec66dec-f33b-4640-972f-7325b6c7340f",
+				"name": "Jaded",
+				"artists": ["Lone"],
+				"albumName": "Reality Testing",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0258d3c41ece17b5a6ac257eda"
+			},
+			{
+				"position": 5,
+				"songId": "0d859bd5-c4a5-4436-a20f-86eb308aec5b",
+				"name": "Session Add",
+				"artists": ["Skee Mask"],
+				"albumName": "Compro",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02b5658daa8f91e2c40d00581b"
+			},
+			{
+				"position": 6,
+				"songId": "5280cb7c-6d67-4897-b7ab-c8bceb8f3965",
+				"name": "jasmine - demo",
+				"artists": ["Jai Paul"],
+				"albumName": "Leak 04-13 (Bait Ones)",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02875cb424fc82d971ce197ba3"
+			},
+			{
+				"position": 7,
+				"songId": "8e2e2a42-3e73-4ae8-8638-dbcb4312659a",
+				"name": "Someone Else",
+				"artists": ["Tourist"],
+				"albumName": "Someone Else",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02d016ef255476c39600bba6b8"
+			},
+			{
+				"position": 8,
+				"songId": "cebcc1fc-cc03-493f-b622-d47ed6bb4a16",
+				"name": "BUS RIDE",
+				"artists": ["KAYTRANADA", "Karriem Riggins", "River Tiber"],
+				"albumName": "99.9%",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0242c18fe458181bc13d08070a"
+			},
+			{
+				"position": 9,
+				"songId": "663e873c-51cf-4f4c-b3d2-6b177c1ca0f3",
+				"name": "LA Trance",
+				"artists": ["Four Tet"],
+				"albumName": "New Energy",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e023f31769b727102837cb32a63"
+			},
+			{
+				"position": 10,
+				"songId": "406f7640-a353-4c61-a0e0-ce8cf74d987e",
+				"name": "Carbonated",
+				"artists": ["Mount Kimbie"],
+				"albumName": "Crooks & Lovers",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02c5966e06089feda5603730c1"
+			},
+			{
+				"position": 11,
+				"songId": "6397ece1-df21-4929-914f-5545fd071546",
+				"name": "Can't Do Without You",
+				"artists": ["Caribou"],
+				"albumName": "Our Love",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02ae8d75e1ecd98f59999e0a08"
+			},
+			{
+				"position": 12,
+				"songId": "95b09252-6a5a-4b88-ba2b-a307b9fe5cac",
+				"name": "FF4",
+				"artists": ["Flying Lotus"],
+				"albumName": "Flamagra",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02d79875c5339df68a02975881"
+			},
+			{
+				"position": 13,
+				"songId": "5dcd4256-287e-4886-a524-2b464f977ee3",
+				"name": "Claudi",
+				"artists": ["Laurence Guy"],
+				"albumName": "Saw You for the First Time",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e029b155462935409d36758560a"
+			},
+			{
+				"position": 14,
+				"songId": "29c339a5-6ff2-4d31-b4ef-78a9e51d0d3b",
+				"name": "Between Summers",
+				"artists": ["Aleksandir"],
+				"albumName": "Café del Mar ChillWave 3",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02f865d7f9c42bd43f97ce451a"
+			},
+			{
+				"position": 15,
+				"songId": "3abdcf2d-250b-4ce0-92b7-4de574954962",
+				"name": "Movements (Chapter III)",
+				"artists": ["Leon Vynehall"],
+				"albumName": "Nothing Is Still",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02db1083f417644e3e1cf47543"
+			},
+			{
+				"position": 16,
+				"songId": "739b42a7-a6e3-43cd-a02e-5a42c6e9eb39",
+				"name": "The Upsetter",
+				"artists": ["Metronomy"],
+				"albumName": "Love Letters",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0261d88d122004a25e3a3c64df"
+			},
+			{
+				"position": 17,
+				"songId": "439d1463-6050-4ba3-8ab7-14a18286c63d",
+				"name": "Stranger In A Room",
+				"artists": ["Jamie xx", "Oliver Sim"],
+				"albumName": "In Colour",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02c3acb15b9f2580513e1d2bad"
+			},
+			{
+				"position": 18,
+				"songId": "6dec1f79-7a03-4e02-af25-870275b1e3c9",
+				"name": "Utopia - Joris Voorn Remix",
+				"artists": ["Digitalism", "Joris Voorn"],
+				"albumName": "Utopia",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e027e16e2580baa2f0494aefeb8"
+			},
+			{
+				"position": 19,
+				"songId": "0e4f86b5-10bc-48a9-8d45-12091e697c1d",
+				"name": "The Journey",
+				"artists": ["Tom Misch"],
+				"albumName": "Beat Tape 2",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0204673b3ef017a7581b96e42f"
+			},
+			{
+				"position": 20,
+				"songId": "8d2a8747-4371-469e-8371-b86fada70db0",
+				"name": "Hold On",
+				"artists": ["SBTRKT", "Sampha"],
+				"albumName": "SBTRKT",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0222d353af2286937c261f4b3e"
+			},
+			{
+				"position": 21,
+				"songId": "7cf4c2ff-37bc-4726-bd2a-ffb8e3e46323",
+				"name": "For Marmish",
+				"artists": ["Floating Points"],
+				"albumName": "Elaenia",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02074d5ab948ef74abb81c72aa"
+			},
+			{
+				"position": 22,
+				"songId": "4392b8f3-66b7-40f5-b319-ab33a380d957",
+				"name": "Decompression",
+				"artists": ["Harrison BDP"],
+				"albumName": "Fair",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02bf9eef6177c71f3972d09d0c"
+			},
+			{
+				"position": 23,
+				"songId": "04e97edf-4f58-45fb-bf31-1468dbd886d6",
+				"name": "Envelopes (Chapter VI) - Edit",
+				"artists": ["Leon Vynehall"],
+				"albumName": "Envelopes",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e027db3cc546f83215c4ddb690a"
+			},
+			{
+				"position": 24,
+				"songId": "08990365-16c1-443f-a7b4-265256f2f682",
+				"name": "Far Nearer",
+				"artists": ["Jamie xx"],
+				"albumName": "Far Nearer",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02d3e5b56dd83d376d6cbe55c5"
+			}
+		],
+		"925437f5-75cd-4830-ae17-2ec02df0031a": [
+			{
+				"position": 0,
+				"songId": "eefa8f99-3fc6-43b3-a10e-43ad4b47ca4e",
+				"name": "When Am I Gonna Lose You",
+				"artists": ["Local Natives"],
+				"albumName": "Violet Street",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02daf19ee32be2d4917c266b09"
+			},
+			{
+				"position": 1,
+				"songId": "cd54bc06-375b-4180-bec8-daa965c9c728",
+				"name": "Pistoleira",
+				"artists": ["GANSO"],
+				"albumName": "Costela Ofendida",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e021f00c80777659ae11bac9fa7"
+			},
+			{
+				"position": 2,
+				"songId": "d2250992-454a-45ef-9280-167863656687",
+				"name": "Easy",
+				"artists": ["Son Lux"],
+				"albumName": "Lanterns",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e028bf103cc5b67e835de7a0dba"
+			},
+			{
+				"position": 3,
+				"songId": "1a42af04-90b7-4bdf-9075-d2eb4fa60ee2",
+				"name": "telepatía",
+				"artists": ["Kali Uchis"],
+				"albumName": "Sin Miedo (del Amor y Otros Demonios) ∞",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02044a5466dac00f7b3c570b99"
+			},
+			{
+				"position": 4,
+				"songId": "5a66d440-2d35-4f1a-af3c-b0968ffda28b",
+				"name": "Praise The Lord (Da Shine) (feat. Skepta)",
+				"artists": ["A$AP Rocky", "Skepta"],
+				"albumName": "TESTING",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02bfcb8d00cee4f8257a6b7fe1"
+			},
+			{
+				"position": 5,
+				"songId": "c6872da4-9669-490e-bdf4-af4495c6a303",
+				"name": "Over And Over",
+				"artists": ["Hot Chip"],
+				"albumName": "The Warning",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02827991a336e5a5860865921f"
+			},
+			{
+				"position": 6,
+				"songId": "98bd232f-8485-47e4-a99c-6583621c6c5b",
+				"name": "Dance, Baby!",
+				"artists": ["boy pablo"],
+				"albumName": "Roy Pablo",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02081ff2cd17da31768fef002e"
+			},
+			{
+				"position": 7,
+				"songId": "ff82e35c-f944-4b91-bbb1-f79578e80a52",
+				"name": "Levitating (feat. DaBaby)",
+				"artists": ["Dua Lipa", "DaBaby"],
+				"albumName": "Future Nostalgia",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e024aa538a481e67131c214135a"
+			},
+			{
+				"position": 8,
+				"songId": "4660b1ee-54d2-4474-867c-2a93ab8623b2",
+				"name": "Imagina",
+				"artists": ["FRANKIEONTHEGUITAR", "Slow J", "Ivandro"],
+				"albumName": "Imagina",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02260c6a95c8ebea88e3b0d152"
+			},
+			{
+				"position": 9,
+				"songId": "577b8b8e-73e6-4418-9dbc-ce58c30e2b83",
+				"name": "My Number",
+				"artists": ["Foals"],
+				"albumName": "Holy Fire",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e028b04dacf186124a62bc667a7"
+			},
+			{
+				"position": 10,
+				"songId": "bee5c84d-66de-4ceb-a2ba-5b13df1e3858",
+				"name": "Salvadora",
+				"artists": ["Pedro de Tróia"],
+				"albumName": "Depois Logo Se Vê",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02c610eba787b54d1893fcd4a3"
+			},
+			{
+				"position": 11,
+				"songId": "601a70f0-1669-48a6-8146-8db368b9708c",
+				"name": "Mannequin - 2006 Remastered Version",
+				"artists": ["Wire"],
+				"albumName": "Pink Flag (2006 Remastered Version)",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0221faee05f3c4d648d971f1b0"
+			},
+			{
+				"position": 12,
+				"songId": "7b654b51-31e0-4c6b-bc3c-6375a4ef5e3e",
+				"name": "Crew (feat. Brent Faiyaz & Shy Glizzy)",
+				"artists": ["GoldLink", "Brent Faiyaz", "Shy Glizzy"],
+				"albumName": "At What Cost",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0255da3f8bb8019c9a1afd9f96"
+			},
+			{
+				"position": 13,
+				"songId": "36efbffb-8f00-4101-8ed0-57bd1b978f34",
+				"name": "SUGAR",
+				"artists": ["BROCKHAMPTON"],
+				"albumName": "GINGER",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e026f3faf235f4251dfa575f843"
+			}
+		],
+		"bd39e303-0a0d-48b6-aabb-5624b1b0f63c": [
+			{
+				"position": 0,
+				"songId": "91ce12c5-e147-47ff-8d98-3021b3fdb11b",
+				"name": "Last Nite",
+				"artists": ["The Strokes"],
+				"albumName": "Is This It",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0213f2466b83507515291acce4"
+			},
+			{
+				"position": 1,
+				"songId": "b0832b4b-3203-4f6e-a694-55641ecb824d",
+				"name": "Don't Start Now",
+				"artists": ["Dua Lipa"],
+				"albumName": "Future Nostalgia",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02c88bae7846e62a8ba59ee0bd"
+			},
+			{
+				"position": 2,
+				"songId": "7f4ef2a6-d36f-4f2e-9fa9-06240c4a95ca",
+				"name": "Training Season",
+				"artists": ["Dua Lipa"],
+				"albumName": "Radical Optimism",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e022f8790ed72296c2614607575"
+			},
+			{
+				"position": 3,
+				"songId": "a220ab3c-792f-4dcf-b712-976c064d8713",
+				"name": "Kill Bill",
+				"artists": ["SZA"],
+				"albumName": "SOS",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02bc18bdade69ec5ef0bb25b17"
+			},
+			{
+				"position": 4,
+				"songId": "624c380d-51c5-45da-9808-f35f8a07aa6c",
+				"name": "BIRDS OF A FEATHER",
+				"artists": ["Billie Eilish"],
+				"albumName": "HIT ME HARD AND SOFT",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0271d62ea7ea8a5be92d3c1f62"
+			},
+			{
+				"position": 5,
+				"songId": "a8999e19-ab11-402a-88b2-fb70353fa554",
+				"name": "Bohemian Rhapsody - Remastered 2011",
+				"artists": ["Queen"],
+				"albumName": "A Night At The Opera (Deluxe Remastered Version)",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02ce4f1737bc8a646c8c4bd25a"
+			}
+		],
+		"398a4b64-93d8-4ff4-80f9-98d6021e3336": [
+			{
+				"position": 0,
+				"songId": "7cebaf8b-b3f3-43f8-8fce-e10626b25f46",
+				"name": "Ghostly",
+				"artists": ["Jesper Ryom"],
+				"albumName": "Syvsover",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0237b51b1bfcf7028ef9e11bf1"
+			},
+			{
+				"position": 1,
+				"songId": "55002475-bf81-4d21-ab11-80afb66cb941",
+				"name": "Dead Channel",
+				"artists": ["Patrick Holland"],
+				"albumName": "Sofware",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0277df7170104e91b627b1e386"
+			},
+			{
+				"position": 2,
+				"songId": "d4ce5f37-b607-4987-b25b-2850aa00db7e",
+				"name": "like me",
+				"artists": ["paleboi"],
+				"albumName": "like me",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e0268881375078c577509bb8681"
+			},
+			{
+				"position": 3,
+				"songId": "a01755c7-fefb-4e42-8a6a-e8037878b64e",
+				"name": "Coconuts",
+				"artists": ["Fouk"],
+				"albumName": "Heavy on the Bacon",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02203e46372c0f87182743c58b"
+			},
+			{
+				"position": 4,
+				"songId": "a81a57f5-cef2-459e-b8a3-8ef82252ab26",
+				"name": "WhereYouGonnaGo?",
+				"artists": ["Jitwam"],
+				"albumName": "WhereYouGonnaGo?",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e024b18936c5e5e8e196cb16f12"
+			},
+			{
+				"position": 5,
+				"songId": "a325dff7-e420-4652-8e1d-2310dcee743d",
+				"name": "Waiting",
+				"artists": ["Hidden Spheres"],
+				"albumName": "Waiting",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02792680ea2898005deae83db4"
+			}
+		],
+		"f8516bc7-44da-43e8-adde-07d11fef5613": [
+			{
+				"position": 0,
+				"songId": "797ffb4f-112b-44f7-ba4d-ed7f5c8774e3",
+				"name": "Meet Me Halfway",
+				"artists": ["Black Eyed Peas"],
+				"albumName": "THE E.N.D. (THE ENERGY NEVER DIES)",
+				"imageUrl": "https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4"
+			}
+		]
+	}
+}

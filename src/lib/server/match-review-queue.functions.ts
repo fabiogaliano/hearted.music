@@ -413,7 +413,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			const playlistIds = visibleMatchResults.map((mr) => mr.playlist_id);
 			const { data: playlistRows, error: playlistError } = await supabase
 				.from("playlist")
-				.select("id, name, match_intent, song_count, spotify_id")
+				.select("id, name, match_intent, song_count, image_url, spotify_id")
 				.in("id", playlistIds);
 
 			if (playlistError || !playlistRows) {
@@ -436,6 +436,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 							name: playlist.name,
 							description: playlist.match_intent,
 							trackCount: playlist.song_count,
+							imageUrl: playlist.image_url,
 							spotifyId: playlist.spotify_id,
 						},
 						score: mr.score,
