@@ -80,7 +80,8 @@ export function DescriptionExamplesShuffle({
 
 	return (
 		<div
-			className={`desc-examples xpl-reveal${variant === "guided" ? " guided" : ""}`}
+			// xpl-reveal is guided-only — prod intent examples mount without animation
+			className={`desc-examples${variant === "guided" ? " xpl-reveal guided" : ""}`}
 		>
 			<span className="desc-examples-legend" style={{ fontFamily: fonts.body }}>
 				Examples
