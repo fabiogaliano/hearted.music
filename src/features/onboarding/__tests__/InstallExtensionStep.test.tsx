@@ -39,7 +39,7 @@ vi.mock("@/lib/extension/detect", () => ({
 	isExtensionInstalled: () => mockIsExtensionInstalled(),
 	triggerExtensionSync: () => mockTriggerExtensionSync(),
 }));
-vi.mock("../components/StaggeredContent", () => ({
+vi.mock("@/components/ui/StaggeredContent", () => ({
 	StaggeredContent: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 vi.mock("../components/ExtensionSetupTrail", () => ({

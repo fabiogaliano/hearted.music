@@ -12,8 +12,8 @@
  */
 
 import { CheckIcon } from "@phosphor-icons/react";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
-import { StaggeredContent } from "./StaggeredContent";
 
 const SUPPORTED_BROWSERS = "Chrome, Firefox, or other Chromium browsers";
 

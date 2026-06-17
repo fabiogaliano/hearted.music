@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import {
 	type BrowserTarget,
 	getBrowserName,
@@ -36,7 +37,6 @@ import { useOnboardingCapability } from "../hooks/useOnboardingCapability";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { OnboardingHandoff } from "./OnboardingHandoff";
-import { StaggeredContent } from "./StaggeredContent";
 
 const SPOTIFY_LOGIN_URL =
 	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";

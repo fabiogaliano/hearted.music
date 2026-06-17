@@ -2,7 +2,7 @@
  * Dashboard home view.
  * Composition: HomeHeader → MatchReviewCTA → ActivityFeed
  */
-import { StaggeredContent } from "@/features/onboarding/components/StaggeredContent";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
 import { DashboardHeader } from "./sections/DashboardHeader";

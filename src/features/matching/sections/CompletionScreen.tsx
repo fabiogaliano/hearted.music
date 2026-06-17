@@ -1,7 +1,7 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Button } from "@/components/ui/Button";
-import { StaggeredContent } from "@/features/onboarding/components/StaggeredContent";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
 import type { CompletionScreenProps } from "../types";
 

@@ -9,6 +9,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { saveThemePreference } from "@/lib/server/onboarding.functions";
@@ -16,7 +17,6 @@ import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { COLOR_LABELS, THEME_COLORS, type ThemeColor } from "@/lib/theme/types";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
-import { StaggeredContent } from "./StaggeredContent";
 import { THEME_TRANSITION_MS } from "./StepContainer";
 
 interface PickColorStepProps {

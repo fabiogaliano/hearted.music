@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import { getPublicAppOrigin } from "@/lib/config/public-app-origin";
 import type { ClaimHandleSeed } from "@/lib/domains/library/accounts/claim-handle-seed";
@@ -38,7 +39,6 @@ import {
 	claimHandleAndAdvance,
 } from "@/lib/server/account-handle.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { StaggeredContent } from "./StaggeredContent";
 
 // Loader-delay pattern (see github.com/smeijer/spin-delay): two thresholds keep
 // the transient "Checking…" message from flashing.
