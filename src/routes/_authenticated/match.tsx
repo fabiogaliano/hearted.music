@@ -46,20 +46,24 @@ export const Route = createFileRoute("/_authenticated/match")({
 		const { session, queryClient } = context;
 
 		// Bootstrap the queue (idempotent — resumes if one already exists). This
-		// must run before getMatchReview to ensure a session row exists.
+		// must run before the prefetches to ensure a session row exists.
 		const startResult = await startOrResumeMatchReview();
 
-		// Prefetch the first unresolved item so the first card renders without a
-		// loading spinner. Resolved items are skipped since they don't need card data.
-		if (!startResult.caughtUp && startResult.itemIds.length > 0) {
-			const firstId = startResult.itemIds[0];
-			if (firstId) {
-				await queryClient.prefetchQuery(matchReviewItemQueryOptions(firstId));
-			}
+		// The queue summary and the first card are independent reads (one keys off
+		// the account, the other off the item id), so fire them together — sequencing
+		// them adds a needless round-trip to the route's critical path. The summary
+		// primes the page's useSuspenseQuery; the first-item prefetch lets the first
+		// card render without a spinner (resolved items are skipped — no card data).
+		const firstId = startResult.caughtUp ? undefined : startResult.itemIds[0];
+		const prefetches = [
+			queryClient.prefetchQuery(matchReviewQueryOptions(session.accountId)),
+		];
+		if (firstId) {
+			prefetches.push(
+				queryClient.prefetchQuery(matchReviewItemQueryOptions(firstId)),
+			);
 		}
-
-		// Prime the queue summary so the page's useSuspenseQuery resolves from cache.
-		await queryClient.prefetchQuery(matchReviewQueryOptions(session.accountId));
+		await Promise.all(prefetches);
 	},
 	pendingComponent: MatchPending,
 	component: MatchPage,

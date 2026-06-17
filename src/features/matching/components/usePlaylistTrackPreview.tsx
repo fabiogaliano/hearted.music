@@ -142,6 +142,7 @@ export function usePlaylistTrackPreview({
 				}),
 			);
 			setOpen(true);
+			setEverOpened(true);
 		}, OPEN_DELAY);
 	}, [clearTimers]);
 
@@ -185,15 +186,12 @@ export function usePlaylistTrackPreview({
 				}),
 			);
 			setOpen(true);
+			setEverOpened(true);
 		},
 		[clearTimers],
 	);
 
 	useEffect(() => clearTimers, [clearTimers]);
-
-	useEffect(() => {
-		if (open) setEverOpened(true);
-	}, [open]);
 
 	useEffect(() => {
 		if (!open) return;
