@@ -134,7 +134,18 @@ export async function getAccountByBetterAuthUserId(
  */
 export async function touchAccountLastSeen(accountId: string): Promise<void> {
 	const supabase = createAdminSupabaseClient();
-	await supabase.rpc("touch_account_last_seen", { p_account_id: accountId });
+	const result = await fromSupabaseSingle(
+		supabase.rpc("touch_account_last_seen", { p_account_id: accountId }),
+	);
+
+	// PostgREST returns DB errors in-band — the promise only rejects on transport
+	// failures — so discarding the response would hide a missing function, bad
+	// grant, or constraint error and let the heartbeat fail silently. Throw so
+	// the caller's fire-and-forget .catch logs it (the failure is still swallowed
+	// for the request, just no longer invisible).
+	if (Result.isError(result)) {
+		throw result.error;
+	}
 }
 
 /**
