@@ -88,3 +88,104 @@ function subscribe(listener: () => void): () => void {
 export function useFlaggedPlaylistIds(): readonly string[] {
 	return useSyncExternalStore(subscribe, getFlaggedPlaylistIds, () => EMPTY);
 }
+
+/**
+ * Per-playlist intent/genres the rehearsal collects, mirrored to sessionStorage
+ * for the same reason as the flagged set: a hard refresh must not drop it. The
+ * intent text isn't read downstream (the /match reveal scores off the flagged set
+ * + curated matches, not the user's typed intent) — it's persisted so the
+ * /playlists tour can derive the user's true position on resume. Without it, a
+ * refresh after the first intent was saved can't tell "finished the cycle, now on
+ * your own" from "added one, never described it", and re-guides or falsely hands
+ * off. Persisting it makes the resumed step exact and keeps a described playlist
+ * showing its description after the refresh.
+ */
+
+const METADATA_STORAGE_KEY = "hearted:demo:playlist-metadata";
+
+export interface DemoPlaylistMetadata {
+	intent: string | null;
+	genres: string[];
+}
+
+type MetadataMap = Readonly<Record<string, DemoPlaylistMetadata>>;
+
+// Stable empty reference, mirroring EMPTY above, so useSyncExternalStore never
+// sees a fresh identity for the metadata-free state.
+const EMPTY_METADATA: MetadataMap = {};
+
+let metadata: MetadataMap = EMPTY_METADATA;
+let metadataHydrated = false;
+const metadataListeners = new Set<() => void>();
+
+function isMetadata(value: unknown): value is DemoPlaylistMetadata {
+	if (typeof value !== "object" || value === null) return false;
+	const m = value as Record<string, unknown>;
+	const intentOk = m.intent === null || typeof m.intent === "string";
+	const genresOk =
+		Array.isArray(m.genres) && m.genres.every((g) => typeof g === "string");
+	return intentOk && genresOk;
+}
+
+function readMetadataStorage(): MetadataMap {
+	try {
+		const raw = window.sessionStorage.getItem(METADATA_STORAGE_KEY);
+		if (!raw) return EMPTY_METADATA;
+		const parsed: unknown = JSON.parse(raw);
+		if (typeof parsed !== "object" || parsed === null) return EMPTY_METADATA;
+		const entries = Object.entries(parsed as Record<string, unknown>).filter(
+			([, v]) => isMetadata(v),
+		) as Array<[string, DemoPlaylistMetadata]>;
+		return entries.length > 0 ? Object.fromEntries(entries) : EMPTY_METADATA;
+	} catch {
+		return EMPTY_METADATA;
+	}
+}
+
+function writeMetadataStorage(value: MetadataMap): void {
+	if (typeof window === "undefined") return;
+	try {
+		window.sessionStorage.setItem(METADATA_STORAGE_KEY, JSON.stringify(value));
+	} catch {
+		// Same trade-off as the flagged set: storage may be unavailable. The
+		// in-memory value still drives the live session; we only forfeit
+		// refresh-survival of the collected intents.
+	}
+}
+
+function ensureMetadataHydrated(): void {
+	if (metadataHydrated || typeof window === "undefined") return;
+	metadataHydrated = true;
+	const stored = readMetadataStorage();
+	if (Object.keys(stored).length > 0) metadata = stored;
+}
+
+export function getDemoPlaylistMetadata(): MetadataMap {
+	ensureMetadataHydrated();
+	return metadata;
+}
+
+export function setDemoPlaylistMetadata(
+	id: string,
+	value: DemoPlaylistMetadata,
+): void {
+	metadataHydrated = true;
+	metadata = { ...metadata, [id]: value };
+	writeMetadataStorage(metadata);
+	for (const listener of metadataListeners) listener();
+}
+
+function subscribeMetadata(listener: () => void): () => void {
+	metadataListeners.add(listener);
+	return () => {
+		metadataListeners.delete(listener);
+	};
+}
+
+export function useDemoPlaylistMetadata(): MetadataMap {
+	return useSyncExternalStore(
+		subscribeMetadata,
+		getDemoPlaylistMetadata,
+		() => EMPTY_METADATA,
+	);
+}

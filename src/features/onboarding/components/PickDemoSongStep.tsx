@@ -228,22 +228,7 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 				</div>
 
 				<footer className="flex shrink-0 flex-wrap gap-4 px-6 pb-[max(3rem,env(safe-area-inset-bottom))] pt-6 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] md:px-12 md:pl-[max(3rem,env(safe-area-inset-left))] md:pr-[max(3rem,env(safe-area-inset-right))]">
-					<Button
-						variant="link"
-						onClick={handleContinue}
-						disabled={isSaving || selectedTrackId === null}
-						style={{ fontFamily: fonts.body }}
-					>
-						<span className="text-lg font-medium tracking-wide">
-							{isSaving ? "Saving..." : "Continue"}
-						</span>
-						<ArrowRightIcon
-							size={16}
-							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
-						/>
-					</Button>
-
-					<div className="theme-kbd-scope ml-auto flex items-center gap-6 opacity-60">
+					<div className="theme-kbd-scope flex items-center gap-6 opacity-60">
 						<div className="flex items-center gap-1.5">
 							<KbdGroup>
 								<Kbd>↑</Kbd>
@@ -262,6 +247,22 @@ export function PickDemoSongStep({ songs }: PickDemoSongStepProps) {
 							<span className="text-xs">continue</span>
 						</div>
 					</div>
+
+					<Button
+						variant="link"
+						onClick={handleContinue}
+						disabled={isSaving || selectedTrackId === null}
+						className="ml-auto"
+						style={{ fontFamily: fonts.body }}
+					>
+						<span className="text-lg font-medium tracking-wide">
+							{isSaving ? "Saving..." : "Continue"}
+						</span>
+						<ArrowRightIcon
+							size={16}
+							className="theme-text-muted inline-block transition-transform group-hover:translate-x-1"
+						/>
+					</Button>
 				</footer>
 			</div>
 		</section>

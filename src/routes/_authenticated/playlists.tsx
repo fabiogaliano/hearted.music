@@ -1,12 +1,8 @@
-import { QuestionIcon } from "@phosphor-icons/react";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { useFlaggedPlaylistIds } from "@/features/onboarding/demoSandboxStore";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import {
 	PlaylistPreviewTourProvider,
-	REQUIRED_FLAGGED_COUNT,
 	usePlaylistTourReporter,
 	usePlaylistTourStep,
 } from "@/features/onboarding/playlistPreviewTour";
@@ -57,25 +53,14 @@ function PlaylistsPreview() {
 
 function PlaylistsPreviewInner() {
 	const { navigateTo, isPending } = useStepNavigation();
-	const flaggedIds = useFlaggedPlaylistIds();
-	const remaining = REQUIRED_FLAGGED_COUNT - flaggedIds.length;
-	const hasEnoughFlagged = remaining <= 0;
-	const {
-		step,
-		panelOpen,
-		targetSelector,
-		mode,
-		caption,
-		bottomFeather,
-		topFeather,
-	} = usePlaylistTourStep();
-	const { explainIntent, requestHelp } = usePlaylistTourReporter();
+	const { step, targetSelector, mode, caption, padding, feather } =
+		usePlaylistTourStep();
+	const { explainIntent } = usePlaylistTourReporter();
 
-	// After the guided first cycle releases (step "done") the user flags the rest on
-	// their own. The handoff coach-mark hands the wheel over once; dismissing it
-	// surfaces the Help button, which re-arms the guides for whatever they're doing.
-	const [handoffDismissed, setHandoffDismissed] = useState(false);
-	const onYourOwn = step === "done" && !hasEnoughFlagged;
+	// Continue unlocks only when the guided cycle completes (step "done" = the one
+	// playlist flagged and described). Gating on the step rather than a raw flag count
+	// keeps the "write its intent" beat mandatory — flagging alone won't release it.
+	const ready = step === "done";
 
 	return (
 		<>
@@ -84,20 +69,20 @@ function PlaylistsPreviewInner() {
 				<Button
 					variant="primary"
 					onClick={() => void navigateTo("pick-demo-song")}
-					disabled={isPending || !hasEnoughFlagged}
-					// Once enough are flagged, Continue is the next action — breathe the
+					disabled={isPending || !ready}
+					// Once the cycle is done, Continue is the next action — breathe the
 					// same pulse as the add toggle and Save to point the user at it.
-					className={hasEnoughFlagged ? "xpl-pulse" : undefined}
+					className={ready ? "xpl-pulse" : undefined}
 				>
-					{hasEnoughFlagged ? "Continue" : `Pick ${remaining} to continue`}
+					Continue
 				</Button>
 			</div>
 			<SpotlightOverlay
 				targetSelector={targetSelector}
 				blocking={mode === "block"}
 				caption={caption}
-				bottomFeather={bottomFeather}
-				topFeather={topFeather}
+				padding={padding}
+				feather={feather}
 			/>
 			{step === "intent-intro" && (
 				<TourCoachMark
@@ -108,28 +93,6 @@ function PlaylistsPreviewInner() {
 					actionLabel="Got it"
 					onAction={explainIntent}
 				/>
-			)}
-			{onYourOwn && !handoffDismissed && (
-				<TourCoachMark
-					title="You've got this"
-					body={[
-						"Open one more playlist and add it to matching — same as before, on your own this time.",
-						"Stuck? Tap Help, top-right, to bring the guides back.",
-					]}
-					actionLabel="Got it"
-					onAction={() => setHandoffDismissed(true)}
-				/>
-			)}
-			{onYourOwn && handoffDismissed && !panelOpen && (
-				<button
-					type="button"
-					onClick={requestHelp}
-					aria-label="Bring the guides back"
-					className="theme-bg theme-border-color fixed top-4 right-4 z-[55] flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium shadow-[0_8px_24px_-12px_color-mix(in_srgb,var(--t-text)_50%,transparent)] transition-colors duration-150 hover:bg-(--t-surface)"
-				>
-					<QuestionIcon size={16} weight="bold" aria-hidden />
-					Help
-				</button>
 			)}
 		</>
 	);

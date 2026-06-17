@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
@@ -31,6 +32,9 @@ interface SpotlightPanelProps {
 	/** Onboarding rehearsal config. Presence activates guided mode; absence =
 	 *  production defaults. See GuidedPlaylistsConfig for the full contract. */
 	guided?: GuidedPlaylistsConfig;
+	/** Global intent examples for the production editor's "(i)" shuffle-to-fill
+	 *  popover. Ignored in guided mode (which uses its own per-playlist slot). */
+	intentExamples?: readonly DescriptionExample[];
 }
 
 /**
@@ -59,6 +63,7 @@ export function SpotlightPanel({
 	tracksLoadingMore = false,
 	onLoadMoreTracks,
 	guided,
+	intentExamples,
 }: SpotlightPanelProps) {
 	// Expand the guided config into local constants so the rest of the component
 	// reads the same way it did before — production defaults are explicit here and
@@ -102,22 +107,17 @@ export function SpotlightPanel({
 		setIsEditing(true);
 	};
 
-	// Walkthrough: the instant the open playlist is added to matching, drop straight
-	// into the editor (textarea + shuffle suggestions) so "add" flows into "write
-	// intent" without a tap. Fires only on a same-playlist false→true target flip, so
-	// switching to an already-matching playlist (after release) never auto-opens it.
-	const prevTarget = useRef<{ id: string | null; isTarget: boolean }>({
-		id: playlist?.id ?? null,
-		isTarget: playlist?.isTarget ?? false,
-	});
-	// biome-ignore lint/correctness/useExhaustiveDependencies: seeds from the just-added playlist's (empty) intent; reacts to the target flip only
+	// Walkthrough: when the guided panel shows a matching playlist with no intent yet,
+	// drop straight into the editor (textarea + example picker) so "add" flows into
+	// "write intent" without a tap — and a refresh that reopened a flagged-but-
+	// undescribed playlist lands there too, instead of the collapsed Edit affordance.
+	// A described playlist (or any playlist once the cycle releases, where
+	// autoEditOnAdd is off) stays collapsed.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reacts to identity/target/intent; openEditor reads the current saved seeds
 	useEffect(() => {
-		const id = playlist?.id ?? null;
-		const now = playlist?.isTarget ?? false;
-		const prev = prevTarget.current;
-		prevTarget.current = { id, isTarget: now };
-		if (autoEditOnAdd && id === prev.id && now && !prev.isTarget) openEditor();
-	}, [playlist?.id, playlist?.isTarget, autoEditOnAdd]);
+		const described = !!playlist?.intent && playlist.intent.trim() !== "";
+		if (autoEditOnAdd && playlist?.isTarget && !described) openEditor();
+	}, [playlist?.id, playlist?.isTarget, playlist?.intent, autoEditOnAdd]);
 	// Picking a ready-made example seeds the draft from it and jumps straight into
 	// editing — bypassing openEditor's reseed-from-saved, since the point is to
 	// start from the example rather than the current intent.
@@ -181,10 +181,7 @@ export function SpotlightPanel({
 									highlightToggle={highlightAdd}
 								/>
 
-								{/* data-tour spotlight target for the "write intent" beat — spans the
-								    band + the shuffle suggestions (the demo's track list is empty, so
-								    the zone reads as just those two). Inert in production. */}
-								<div data-tour="intent-zone">
+								<div>
 									{/* The matching intent only matters once the playlist is in the
 								    matching set, so the writing surface stays collapsed until then.
 								    The grid-rows 0fr→1fr trick animates to the band's natural height
@@ -193,8 +190,10 @@ export function SpotlightPanel({
 								    band's horizontal edge-bleed. Driven straight off isTarget, the
 								    transition stays put on first paint — opening an already-matching
 								    playlist is instant; only the in-place Add-to-matching toggle grows
-								    it. The pb-8 spacer sits inside the collapse so it vanishes too,
-								    instead of leaving a phantom gap above the track list.
+								    it. The gap above the track list lives on the track-list wrapper
+								    (mt-8), not inside this clipped box, so it stays constant whether
+								    the band is open or collapsed — a collapsed band must not pull the
+								    "no tracks yet" empty state flush against the hero.
 								    DELIBERATE product decision: the intent editor is only useful once
 								    the playlist is in the matching set ("Add to matching" first), so
 								    it stays collapsed until isTarget is true — this is not an
@@ -206,10 +205,15 @@ export function SpotlightPanel({
 										}}
 									>
 										<div
-											className="min-h-0 overflow-hidden pb-8"
+											className="min-h-0 overflow-hidden"
 											inert={!playlist.isTarget}
 										>
+											{/* data-tour spotlight target for the "write intent" beat —
+										    exactly the hue-washed writing surface, so the union with the
+										    hero band frames just the mauve region, not the empty track
+										    list below it. Inert in production. */}
 											<div
+												data-tour="intent-zone"
 												className="relative z-20 px-5 pt-1 pb-9 md:px-10"
 												style={{ background: BAND_BG }}
 											>
@@ -226,8 +230,11 @@ export function SpotlightPanel({
 														hideUnmatchableWarning={hideUnmatchableWarning}
 														intentPlaceholder={intentPlaceholder}
 														lockManualEntry={guidedIntent}
+														intentExamples={intentExamples}
 														examplesSlot={
-															guidedIntent ? (
+															guidedIntent &&
+															examples &&
+															examples.length > 0 ? (
 																<DescriptionExamplesShuffle
 																	onPick={pickExample}
 																	examples={examples}
@@ -247,22 +254,11 @@ export function SpotlightPanel({
 										</div>
 									</div>
 
-									<div className="flex flex-col gap-8">
-										{/* Pick-an-intent helper, edit mode only: it feeds the writing
-									    surface, so it appears once editing starts and sits below the
-									    band — and its Save/Cancel — on the panel's plain bg, where the
-									    legend notch's default --t-bg matches and nothing has to be
-									    overridden. Guided onboarding moves it up into the intent field
-									    itself (examplesSlot), so it's suppressed here in that mode. */}
-										{!guidedIntent && playlist.isTarget && isEditing && (
-											<div className="max-w-[56ch]">
-												<DescriptionExamplesShuffle
-													onPick={pickExample}
-													examples={examples}
-												/>
-											</div>
-										)}
-
+									<div className="mt-8 flex flex-col gap-8">
+										{/* The pick-an-intent examples helper lives only in guided
+									    onboarding now (the examplesSlot inside the intent field).
+									    Once onboarding is done, the production editor stands on its
+									    own — no examples rail below the writing surface. */}
 										<TrackList
 											tracks={tracks}
 											songCount={playlist.songCount}

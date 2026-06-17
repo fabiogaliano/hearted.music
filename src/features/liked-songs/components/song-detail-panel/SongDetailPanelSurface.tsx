@@ -1935,14 +1935,10 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 				}
 				@keyframes walkthrough-cta-pulse {
 					0%, 100% {
-						box-shadow:
-							0 0 0 0 color-mix(in srgb, ${colors.accent} 55%, transparent),
-							0 0 0 0 color-mix(in srgb, ${colors.accent} 0%, transparent);
+						box-shadow: 0 0 12px 0 color-mix(in srgb, ${colors.accent} 34%, transparent);
 					}
 					50% {
-						box-shadow:
-							0 0 0 4px color-mix(in srgb, ${colors.accent} 36%, transparent),
-							0 0 22px 6px color-mix(in srgb, ${colors.accent} 45%, transparent);
+						box-shadow: 0 0 42px 2px color-mix(in srgb, ${colors.accent} 84%, transparent);
 					}
 				}
 			`}</style>
@@ -1976,13 +1972,13 @@ function WalkthroughCta({ colors }: { colors: Palette }) {
 					borderRadius: 12,
 					cursor: disabled ? "default" : "pointer",
 					opacity: disabled ? 0.55 : 1,
-					// Breathing accent glow — the same "this is your next action" pulse the
-					// onboarding's other CTAs use, rebuilt from the song's accent. Calms on
-					// hover (like the arrow) so it settles once the pointer arrives.
+					// Breathing accent glow — the playlists onboarding's `xpl-pulse`, rebuilt
+					// from the song's accent instead of `--t-primary`. Calms on hover (like
+					// the arrow) so it settles once the pointer arrives.
 					animation:
 						reducedMotion || disabled || hovered
 							? "none"
-							: "walkthrough-cta-pulse 1.8s var(--ease-out-quart) infinite",
+							: "walkthrough-cta-pulse 1.6s var(--ease-in-out-sine) infinite",
 					// Tactile press, matching Button.tsx's active:scale-[0.98]. Hover
 					// lifts brightness slightly so the CTA still acknowledges the pointer
 					// now that the arrow's idle nudge is what draws the eye.

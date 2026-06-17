@@ -168,7 +168,11 @@ export function CDCase({
 				<img
 					src={src}
 					alt={alt}
-					className="absolute object-cover"
+					draggable={false}
+					// `draggable={false}` plus the webkit-only `user-drag` suppress the
+					// browser's native image drag-and-drop, so a small pointer movement
+					// after press registers as a click rather than dragging the artwork.
+					className="absolute select-none object-cover [-webkit-user-drag:none]"
 					style={{
 						left: `${ART_LEFT_PERCENT}%`,
 						top: `${ART_TOP_PERCENT}%`,

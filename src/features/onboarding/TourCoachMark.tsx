@@ -145,7 +145,7 @@ export function TourCoachMark({
 					{body.map((line) => (
 						<p
 							key={line}
-							className="theme-text text-[15px] leading-relaxed text-pretty opacity-90"
+							className="theme-text text-[15px] leading-relaxed text-balance opacity-90"
 							style={{ fontFamily: fonts.body }}
 						>
 							{line}

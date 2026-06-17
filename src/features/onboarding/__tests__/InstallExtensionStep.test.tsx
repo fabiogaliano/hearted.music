@@ -15,7 +15,7 @@ const mockUseOnboardingCapability = vi.fn();
 const CAPABLE = {
 	engine: "chromium" as const,
 	engineSupported: true,
-	bigScreen: true,
+	wizardFits: true,
 	canOnboardHere: true,
 };
 
@@ -23,9 +23,9 @@ vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
 );
-// The install flow assumes a capable device; jsdom's UA reads as unsupported and
-// the stubbed matchMedia reads as small, so without this the gate would render
-// the handoff. Tests that care about the gate override the return value.
+// The install flow assumes a capable device; jsdom's UA reads as unsupported, so
+// without this the gate would render the handoff. Tests that care about the gate
+// override the return value.
 vi.mock("../hooks/useOnboardingCapability", () => ({
 	useOnboardingCapability: () => mockUseOnboardingCapability(),
 }));
@@ -59,7 +59,7 @@ describe("InstallExtensionStep", () => {
 		mockUseOnboardingCapability.mockReturnValue({
 			engine: "unsupported",
 			engineSupported: false,
-			bigScreen: false,
+			wizardFits: false,
 			canOnboardHere: false,
 		});
 

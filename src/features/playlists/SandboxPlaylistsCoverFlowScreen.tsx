@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import {
+	setDemoPlaylistMetadata,
 	setFlaggedPlaylistIds,
+	useDemoPlaylistMetadata,
 	useFlaggedPlaylistIds,
 } from "@/features/onboarding/demoSandboxStore";
 import {
@@ -16,11 +18,6 @@ import type {
 	GuidedPlaylistsConfig,
 	PlaylistSummary,
 } from "./components/explorations/types";
-
-interface DemoMetadata {
-	intent: string | null;
-	genres: string[];
-}
 
 /**
  * The /playlists screen as it appears during the flag-playlists onboarding
@@ -43,12 +40,13 @@ export function SandboxPlaylistsCoverFlowScreen() {
 	// Library rail).
 	const flaggedIds = useFlaggedPlaylistIds();
 	const targetIds = useMemo(() => new Set(flaggedIds), [flaggedIds]);
-	const [metadata, setMetadata] = useState<Map<string, DemoMetadata>>(
-		() => new Map(),
-	);
+	// Intent/genres live in the cross-step demo store (sessionStorage), not local
+	// state, so a description the user already wrote survives a hard refresh and the
+	// tour can derive their true resume position from it.
+	const metadata = useDemoPlaylistMetadata();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const tour = usePlaylistTourReporter();
-	const { step } = usePlaylistTourStep();
+	const { step, focusPlaylistId } = usePlaylistTourStep();
 	// During the forced add → intent beats the panel is held open; once the first
 	// cycle releases (step "done") it's freely closable again.
 	const panelLocked =
@@ -60,10 +58,20 @@ export function SandboxPlaylistsCoverFlowScreen() {
 		tour.reportPanelOpen(selectedId);
 	}, [selectedId, tour]);
 
+	// The tour points at a flagged playlist still missing its intent (e.g. a refresh
+	// reopened mid-cycle): open its panel so the user lands on describing it rather
+	// than being able to add more. The intent step locks the panel, so it can't be
+	// closed back out without finishing.
+	useEffect(() => {
+		if (focusPlaylistId && selectedId !== focusPlaylistId) {
+			setSelectedId(focusPlaylistId);
+		}
+	}, [focusPlaylistId, selectedId]);
+
 	const summaries = useMemo<PlaylistSummary[]>(
 		() =>
 			DEMO_PLAYLISTS.map((p) => {
-				const meta = metadata.get(p.id);
+				const meta = metadata[p.id];
 				return {
 					id: p.id,
 					name: p.name,
@@ -102,12 +110,7 @@ export function SandboxPlaylistsCoverFlowScreen() {
 	const panelPlaylist = selected ?? lastShown;
 
 	const handleSave = (id: string, intent: string | null, genres: string[]) => {
-		setMetadata((prev) => {
-			const next = new Map(prev);
-			next.set(id, { intent, genres });
-			return next;
-		});
-		if (intent) tour.reportIntentSaved(id);
+		setDemoPlaylistMetadata(id, { intent, genres });
 		// Onboarding closes the panel on save so the rehearsal flows straight back to
 		// the cover flow to flag the next one — production keeps it open to keep editing.
 		setSelectedId(null);

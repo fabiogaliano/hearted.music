@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import {
 	savePlaylistGenrePills,
@@ -186,6 +187,7 @@ export function PlaylistsCoverFlowScreen({
 				tracksHasMore={tracksQuery.hasNextPage}
 				tracksLoadingMore={tracksQuery.isFetchingNextPage}
 				onLoadMoreTracks={loadMoreTracks}
+				intentExamples={ALL_DEMO_INTENT_EXAMPLES}
 			/>
 		</>
 	);

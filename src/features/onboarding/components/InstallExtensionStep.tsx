@@ -74,7 +74,7 @@ function ActionContent({
 					here's what hearted can see.
 				</p>
 				<ul
-					className="flex flex-col gap-3"
+					className="mx-auto flex flex-col items-start gap-3 text-left md:mx-0"
 					style={{ listStyle: "none", padding: 0 }}
 				>
 					{["your profile", "your liked songs", "your playlists"].map(
@@ -103,7 +103,7 @@ function ActionContent({
 				<Button
 					onClick={onAccept}
 					disabled={isAdvancing}
-					className="self-start rounded-full"
+					className="self-center rounded-full md:self-start"
 					style={{ fontFamily: fonts.body }}
 				>
 					allow sync <ArrowRightIcon size={14} className="inline" />
@@ -133,7 +133,7 @@ function ActionContent({
 					href={storeUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="hover-border-brighten self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+					className="hover-border-brighten self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
 					add to {browserLabel}
@@ -166,7 +166,7 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				className="hover-border-brighten self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+				className="hover-border-brighten self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
 				style={{ fontFamily: fonts.body }}
 			>
 				log in to Spotify
@@ -312,7 +312,7 @@ export function InstallExtensionStep() {
 		<>
 			<StaggeredContent>
 				<h2
-					className="theme-text text-6xl leading-tight font-extralight"
+					className="theme-text text-center text-6xl leading-tight font-extralight md:text-left"
 					style={{ fontFamily: fonts.display }}
 				>
 					everything you
@@ -320,11 +320,11 @@ export function InstallExtensionStep() {
 					ever <em className="font-normal">hearted.</em>
 				</h2>
 
-				<div className="mt-16 flex flex-col gap-10 md:flex-row md:gap-14">
+				<div className="mt-16 flex flex-col items-center gap-10 text-center md:flex-row md:items-stretch md:gap-14 md:text-left">
 					{/* Left column: supporting text + trail */}
 					<div className="shrink-0 md:w-[220px]">
 						<p
-							className="theme-text-muted text-sm leading-relaxed"
+							className="theme-text-muted mx-auto text-left text-sm leading-relaxed md:mx-0"
 							style={{
 								fontFamily: fonts.body,
 								maxWidth: "26ch",
@@ -333,7 +333,7 @@ export function InstallExtensionStep() {
 							we read your library in through a small {browserLabel} extension.
 						</p>
 
-						<div className="mt-6">
+						<div className="mt-6 flex justify-center md:justify-start">
 							<ExtensionSetupTrail
 								isExtensionInstalled={isExtensionDetected}
 								isSpotifyConnected={isSpotifyConnected}
@@ -341,8 +341,8 @@ export function InstallExtensionStep() {
 						</div>
 					</div>
 
-					{/* Vertical divider — desktop only */}
-					<div className="theme-border-bg hidden w-px self-stretch md:block" />
+					{/* Separator — horizontal when stacked, vertical on desktop */}
+					<div className="theme-border-bg h-px w-24 self-center md:h-auto md:w-px md:self-stretch" />
 
 					{/* Right column: state-driven action content */}
 					<div className="flex flex-1 flex-col justify-center gap-5">

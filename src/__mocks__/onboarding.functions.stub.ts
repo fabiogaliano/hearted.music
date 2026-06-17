@@ -82,3 +82,7 @@ export const saveDemoSongSelection = reject as unknown as (opts: {
 export const commitDemoSongAndEnterWalkthrough = reject as unknown as (opts: {
 	data: { spotifyTrackId: string };
 }) => Promise<OnboardingAuthPayload>;
+
+export const getWalkthroughCompanionSongs = reject as unknown as () => Promise<
+	WalkthroughSong[]
+>;

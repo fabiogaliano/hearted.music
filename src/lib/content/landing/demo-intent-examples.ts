@@ -144,3 +144,11 @@ export const DEMO_INTENT_EXAMPLES: Record<
 		},
 	],
 };
+
+/**
+ * The per-playlist sets flattened into one global pool. Onboarding scopes
+ * examples to each demo playlist; the production /playlists intent editor has no
+ * such scope, so its "examples" popover shuffles across all of them.
+ */
+export const ALL_DEMO_INTENT_EXAMPLES: readonly DemoIntentExample[] =
+	Object.values(DEMO_INTENT_EXAMPLES).flat();

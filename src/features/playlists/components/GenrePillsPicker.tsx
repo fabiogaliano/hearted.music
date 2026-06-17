@@ -261,7 +261,11 @@ export function GenrePillsPicker({
 			}
 			case "Escape": {
 				if (popOpen) {
+					// Swallow this Escape so it dismisses the suggestions first instead
+					// of bubbling to the panel's document-level Escape-to-close. A second
+					// Escape (popover now closed) falls through and reaches the panel.
 					event.preventDefault();
+					event.stopPropagation();
 					setOpen(false);
 					setActiveIndex(-1);
 				}

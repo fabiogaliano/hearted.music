@@ -87,7 +87,8 @@ export function WalkthroughMatchContent({
 			{finishing && (
 				<TourCoachMark
 					body={[
-						"You've seen the whole loop. Ready to set it up for your real library?",
+						"You've seen the whole loop.",
+						"Ready to set it up for your real library?",
 					]}
 					actionLabel="Let's go"
 					onAction={handleFinish}

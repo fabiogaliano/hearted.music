@@ -9,8 +9,10 @@ import {
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 import { GenrePillsPicker } from "../GenrePillsPicker";
+import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { GenreChip } from "./GenreChip";
 import { InfoTip } from "./InfoTip";
+import { IntentExamplesPopover } from "./IntentExamplesPopover";
 import "./playlist-explorations.css";
 
 const GENRE_MAX = 5;
@@ -53,6 +55,11 @@ interface WritingSurfaceProps {
 	 *  field until a pick fills the draft — then it collapses out and the picked
 	 *  text takes its place. Ignored unless lockManualEntry is set. */
 	examplesSlot?: ReactNode;
+	/** Production intent examples for the "(i)" popover beside the Matching intent
+	 *  label — the shuffle-to-fill helper for users facing a blank intent. Shown
+	 *  only when editing manually (suppressed in lockManualEntry/guided mode, which
+	 *  has its own inline examplesSlot). Omitted hides the popover entirely. */
+	intentExamples?: readonly DescriptionExample[];
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -83,6 +90,7 @@ export function WritingSurface({
 	intentPlaceholder = "What is this playlist for?",
 	lockManualEntry = false,
 	examplesSlot,
+	intentExamples,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -159,7 +167,20 @@ export function WritingSurface({
 		return (
 			<div className="relative flex flex-col gap-7">
 				<div className="flex flex-col gap-1.5">
-					<Label>Matching intent</Label>
+					<div className="flex items-center gap-1.5">
+						<Label>Matching intent</Label>
+						{!lockManualEntry &&
+							intentExamples &&
+							intentExamples.length > 0 && (
+								<IntentExamplesPopover
+									examples={intentExamples}
+									onPick={(nextDescription, nextGenres) => {
+										onDraftDescriptionChange(nextDescription);
+										onDraftGenresChange([...nextGenres]);
+									}}
+								/>
+							)}
+					</div>
 					{lockManualEntry && examplesSlot ? (
 						// Two rows stacked in one grid: the picker (1fr) and the picked text
 						// (0fr) trade places on pick, each fading as it collapses/expands. The
