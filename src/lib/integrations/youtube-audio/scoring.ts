@@ -40,6 +40,7 @@ const REJECT_PHRASES = [
 	"8d",
 	"reaction",
 	"tutorial",
+	"instrumental",
 ] as const;
 
 const OFFICIAL_MARKERS = [
@@ -49,9 +50,15 @@ const OFFICIAL_MARKERS = [
 ] as const;
 
 export function normalizeText(input: string): string {
+	// NFKD (compatibility decomposition), not NFD: it folds look-alike glyphs
+	// like math-bold "𝙨𝙡𝙤𝙬𝙚𝙙" and full-width text down to plain ASCII. Uploaders
+	// use those styled letters to dodge the reject phrases ("slowed", "sped up");
+	// without this the [^a-z0-9] strip would just delete them and the marker would
+	// vanish instead of matching. Diacritic-strip below still works (NFKD also
+	// emits combining marks for accents).
 	return input
 		.toLowerCase()
-		.normalize("NFD")
+		.normalize("NFKD")
 		.replace(/[̀-ͯ]/g, "")
 		.replace(/&/g, " and ")
 		.replace(/[^a-z0-9]+/g, " ")
@@ -108,9 +115,17 @@ export function scoreCandidate(
 	const reasons: string[] = [];
 
 	// --- Hard rejects ------------------------------------------------------
+	// Reject wrong-version markers (live/remix/cover/instrumental/…) — but only
+	// when the *song itself* doesn't carry that marker. A track literally named
+	// "… (Doveman Remix)" or "… - Live" should match a YouTube upload that says
+	// "remix"/"live"; the marker is only "wrong" when it's absent from the Spotify
+	// name, i.e. the upload is a different version than the one we actually want.
 	const penaltyHay = `${titleFullNorm} ${channelNorm}`;
 	for (const phrase of REJECT_PHRASES) {
-		if (containsPhrase(penaltyHay, phrase)) {
+		if (
+			containsPhrase(penaltyHay, phrase) &&
+			!containsPhrase(songNameNorm, phrase)
+		) {
 			return {
 				candidate,
 				score: 0,
@@ -119,19 +134,6 @@ export function scoreCandidate(
 				rejectReason: `contains "${phrase}"`,
 			};
 		}
-	}
-	// Instrumental is only a reject when the *song* isn't itself instrumental.
-	if (
-		containsPhrase(penaltyHay, "instrumental") &&
-		!containsPhrase(songNameNorm, "instrumental")
-	) {
-		return {
-			candidate,
-			score: 0,
-			reasons,
-			rejected: true,
-			rejectReason: "instrumental version",
-		};
 	}
 
 	// --- Positive signals --------------------------------------------------

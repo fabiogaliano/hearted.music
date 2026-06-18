@@ -67,12 +67,60 @@ describe("scoreCandidates", () => {
 		expect(scored.rejected).toBe(true);
 	});
 
+	it("hard-rejects a styled-Unicode 'slowed' variant (NFKD fold)", () => {
+		// Uploaders dodge the reject phrases by spelling them in math-bold glyphs;
+		// NFKD normalization folds them back to ASCII so the marker still trips.
+		const scored = scoreCandidate(
+			SONG,
+			candidate({
+				title: "The Weeknd - Blinding Lights (𝙨𝙡𝙤𝙬𝙚𝙙 + 𝙧𝙚𝙫𝙚𝙧𝙗)",
+				channel: "random uploader",
+				durationSeconds: 201,
+			}),
+		);
+		expect(scored.rejected).toBe(true);
+		expect(scored.rejectReason).toMatch(/slowed/);
+	});
+
 	it("does not reject 'discover' as 'cover' (word boundary)", () => {
 		const scored = scoreCandidate(
 			{ ...SONG, name: "Discover" },
 			candidate({ title: "The Weeknd - Discover", durationSeconds: 201 }),
 		);
 		expect(scored.rejected).toBe(false);
+	});
+
+	it("keeps a marker the song itself carries (a remix song matches a remix)", () => {
+		const scored = scoreCandidate(
+			{ ...SONG, name: "Blinding Lights (Chromatics Remix)" },
+			candidate({
+				title: "The Weeknd - Blinding Lights (Chromatics Remix)",
+				channel: "The Weeknd - Topic",
+				durationSeconds: 201,
+			}),
+		);
+		expect(scored.rejected).toBe(false);
+	});
+
+	it("rejects an instrumental upload only when the song isn't itself instrumental", () => {
+		const normalSong = scoreCandidate(
+			SONG,
+			candidate({
+				title: "Blinding Lights (Instrumental)",
+				durationSeconds: 201,
+			}),
+		);
+		expect(normalSong.rejected).toBe(true);
+
+		const instrumentalSong = scoreCandidate(
+			{ ...SONG, name: "Blinding Lights - Instrumental" },
+			candidate({
+				title: "Blinding Lights (Instrumental)",
+				channel: "The Weeknd - Topic",
+				durationSeconds: 201,
+			}),
+		);
+		expect(instrumentalSong.rejected).toBe(false);
 	});
 
 	it("rejects a candidate whose duration is off by more than 25s", () => {
