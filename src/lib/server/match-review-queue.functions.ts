@@ -771,7 +771,12 @@ export const finishMatchReviewItem = createServerFn({ method: "POST" })
 
 export interface MatchReviewSummaryResult {
 	pendingCount: number;
-	previewImages: Array<{ id: number; image: string }>;
+	previewImages: Array<{
+		id: number;
+		image: string;
+		name: string;
+		artist: string;
+	}>;
 	hasActiveQueue: boolean;
 }
 
@@ -828,20 +833,29 @@ export async function resolveMatchReviewSummary(
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("song")
-		.select("id, image_url")
+		.select("id, image_url, name, artists")
 		.in("id", topIds);
 
 	if (error || !data) {
 		return { pendingCount, previewImages: [], hasActiveQueue };
 	}
 
-	const imageMap = new Map(data.map((s) => [s.id, s.image_url]));
+	const songMap = new Map(data.map((s) => [s.id, s]));
 	const previewImages = topIds
 		.map((id, i) => {
-			const image = imageMap.get(id);
-			return image ? { id: i + 1, image } : null;
+			const song = songMap.get(id);
+			return song?.image_url
+				? {
+						id: i + 1,
+						image: song.image_url,
+						name: song.name,
+						artist: song.artists[0] ?? "Unknown Artist",
+					}
+				: null;
 		})
-		.filter((p): p is { id: number; image: string } => p !== null);
+		.filter(
+			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
+		);
 
 	return { pendingCount, previewImages, hasActiveQueue };
 }

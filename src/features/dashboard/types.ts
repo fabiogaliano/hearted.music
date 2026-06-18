@@ -42,6 +42,8 @@ export interface DashboardStats {
 export interface MatchPreview {
 	id: number;
 	image: string;
+	name: string;
+	artist: string;
 }
 
 export interface DashboardProps {

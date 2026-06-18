@@ -1,8 +1,11 @@
 /** Fan-spread album art: 1-3 overlapping images with rotation and hover effects. */
+import { fonts } from "@/lib/theme/fonts";
 
 interface AlbumImage {
 	id: number;
 	image: string;
+	name: string;
+	artist: string;
 }
 
 interface FanSpreadAlbumArtProps {
@@ -54,7 +57,7 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 				return (
 					<div
 						key={item.id}
-						className="absolute transition-[transform,opacity] duration-200 ease-out motion-safe:hover:[transform:translateY(-12px)_scale(1.08)]! motion-safe:hover:z-10! motion-safe:hover:opacity-100!"
+						className="group/cover absolute transition-[transform,opacity] duration-200 ease-out motion-safe:hover:[transform:translateY(-12px)_scale(1.08)]! motion-safe:hover:z-10! motion-safe:hover:opacity-100!"
 						style={{
 							width: `${comp.size}px`,
 							height: `${comp.size}px`,
@@ -72,6 +75,26 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 							className="h-full w-full object-cover shadow-md"
 							style={{ outline: "1px solid rgba(255, 255, 255, 0.1)" }}
 						/>
+						{/* Hover caption: title + artist, mirroring the CompletionScreen
+						reveal. The opacity flip is ungated so reduced-motion users get it
+						instantly; only the scale/rise easing is motion-safe. It lives
+						inside the wrapper so it rides the lift/scale, and since it only
+						shows on hover (rotation already snapped to 0) the side cards'
+						tilt never reaches the text. */}
+						<div className="theme-surface-bg pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[160px] -translate-x-1/2 rounded-md px-3 py-2 text-center opacity-0 shadow-md group-hover/cover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover/cover:translate-y-0 motion-safe:group-hover/cover:scale-100">
+							<p
+								className="theme-text truncate text-xs font-medium"
+								style={{ fontFamily: fonts.body }}
+							>
+								{item.name}
+							</p>
+							<p
+								className="theme-text-muted truncate text-xs italic"
+								style={{ fontFamily: fonts.display }}
+							>
+								{item.artist}
+							</p>
+						</div>
 					</div>
 				);
 			})}

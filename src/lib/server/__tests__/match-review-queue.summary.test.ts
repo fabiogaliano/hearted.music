@@ -144,9 +144,24 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 		);
 		mockIn.mockResolvedValue({
 			data: [
-				{ id: "song-1", image_url: "img1.jpg" },
-				{ id: "song-2", image_url: "img2.jpg" },
-				{ id: "song-3", image_url: "img3.jpg" },
+				{
+					id: "song-1",
+					image_url: "img1.jpg",
+					name: "Track 1",
+					artists: ["A1"],
+				},
+				{
+					id: "song-2",
+					image_url: "img2.jpg",
+					name: "Track 2",
+					artists: ["A2"],
+				},
+				{
+					id: "song-3",
+					image_url: "img3.jpg",
+					name: "Track 3",
+					artists: ["A3"],
+				},
 			],
 			error: null,
 		});
@@ -156,9 +171,24 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 		expect(result.pendingCount).toBe(5);
 		expect(result.hasActiveQueue).toBe(true);
 		expect(result.previewImages).toHaveLength(3);
-		expect(result.previewImages[0]).toEqual({ id: 1, image: "img1.jpg" });
-		expect(result.previewImages[1]).toEqual({ id: 2, image: "img2.jpg" });
-		expect(result.previewImages[2]).toEqual({ id: 3, image: "img3.jpg" });
+		expect(result.previewImages[0]).toEqual({
+			id: 1,
+			image: "img1.jpg",
+			name: "Track 1",
+			artist: "A1",
+		});
+		expect(result.previewImages[1]).toEqual({
+			id: 2,
+			image: "img2.jpg",
+			name: "Track 2",
+			artist: "A2",
+		});
+		expect(result.previewImages[2]).toEqual({
+			id: 3,
+			image: "img3.jpg",
+			name: "Track 3",
+			artist: "A3",
+		});
 		// Snapshot-fallback path must NOT be called when queue is active.
 		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
 	});
@@ -174,9 +204,9 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 		);
 		mockIn.mockResolvedValue({
 			data: [
-				{ id: "s1", image_url: "a.jpg" },
-				{ id: "s2", image_url: "b.jpg" },
-				{ id: "s3", image_url: "c.jpg" },
+				{ id: "s1", image_url: "a.jpg", name: "T1", artists: ["A1"] },
+				{ id: "s2", image_url: "b.jpg", name: "T2", artists: ["A2"] },
+				{ id: "s3", image_url: "c.jpg", name: "T3", artists: ["A3"] },
 			],
 			error: null,
 		});
@@ -243,8 +273,8 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 		});
 		mockIn.mockResolvedValue({
 			data: [
-				{ id: "song-x", image_url: "x.jpg" },
-				{ id: "song-y", image_url: "y.jpg" },
+				{ id: "song-x", image_url: "x.jpg", name: "Track X", artists: ["AX"] },
+				{ id: "song-y", image_url: "y.jpg", name: "Track Y", artists: ["AY"] },
 			],
 			error: null,
 		});
@@ -255,7 +285,12 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 		// pendingCount comes from songIds.length in fallback path.
 		expect(result.pendingCount).toBe(2);
 		expect(result.previewImages).toHaveLength(2);
-		expect(result.previewImages[0]).toEqual({ id: 1, image: "x.jpg" });
+		expect(result.previewImages[0]).toEqual({
+			id: 1,
+			image: "x.jpg",
+			name: "Track X",
+			artist: "AX",
+		});
 		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
 			"snap-1",
 			"acct-1",
@@ -303,9 +338,9 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 		});
 		mockIn.mockResolvedValue({
 			data: [
-				{ id: "s1", image_url: "a.jpg" },
-				{ id: "s2", image_url: "b.jpg" },
-				{ id: "s3", image_url: "c.jpg" },
+				{ id: "s1", image_url: "a.jpg", name: "T1", artists: ["A1"] },
+				{ id: "s2", image_url: "b.jpg", name: "T2", artists: ["A2"] },
+				{ id: "s3", image_url: "c.jpg", name: "T3", artists: ["A3"] },
 			],
 			error: null,
 		});
@@ -329,7 +364,9 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			hiddenSongCount: 0,
 		});
 		mockIn.mockResolvedValue({
-			data: [{ id: "song-z", image_url: "z.jpg" }],
+			data: [
+				{ id: "song-z", image_url: "z.jpg", name: "Track Z", artists: ["AZ"] },
+			],
 			error: null,
 		});
 
@@ -363,7 +400,14 @@ describe("getMatchReviewSummary — server fn", () => {
 			}),
 		);
 		mockIn.mockResolvedValue({
-			data: [{ id: "song-1", image_url: "cover.jpg" }],
+			data: [
+				{
+					id: "song-1",
+					image_url: "cover.jpg",
+					name: "Track 1",
+					artists: ["A1"],
+				},
+			],
 			error: null,
 		});
 

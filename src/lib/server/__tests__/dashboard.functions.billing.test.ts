@@ -171,8 +171,8 @@ describe("getMatchPreviews (queue-aware)", () => {
 
 	it("returns previewImages from the queue summary", async () => {
 		const previewImages = [
-			{ id: 1, image: "img1.jpg" },
-			{ id: 2, image: "img2.jpg" },
+			{ id: 1, image: "img1.jpg", name: "Track 1", artist: "A1" },
+			{ id: 2, image: "img2.jpg", name: "Track 2", artist: "A2" },
 		];
 		mockResolveMatchReviewSummary.mockResolvedValue({
 			pendingCount: 5,
@@ -202,9 +202,9 @@ describe("getMatchPreviews (queue-aware)", () => {
 		// The queue service provides its own ordering; the resolver passes through
 		// those images in order — no re-sorting in dashboard.functions.
 		const ordered = [
-			{ id: 1, image: "queue-first.jpg" },
-			{ id: 2, image: "queue-second.jpg" },
-			{ id: 3, image: "queue-third.jpg" },
+			{ id: 1, image: "queue-first.jpg", name: "Track 1", artist: "A1" },
+			{ id: 2, image: "queue-second.jpg", name: "Track 2", artist: "A2" },
+			{ id: 3, image: "queue-third.jpg", name: "Track 3", artist: "A3" },
 		];
 		mockResolveMatchReviewSummary.mockResolvedValue({
 			pendingCount: 15,
