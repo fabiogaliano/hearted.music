@@ -117,6 +117,28 @@ export function parseVideoJson(stdout: string): YoutubeCandidate | null {
 	return toCandidate(obj as Record<string, unknown>);
 }
 
+/**
+ * Pull the most informative single line out of yt-dlp's stderr for surfacing in
+ * a stored error_message. yt-dlp prints the real cause (e.g. "Sign in to confirm
+ * you're not a bot") on an `ERROR:` line, usually after noisier warnings; prefer
+ * that, fall back to the last non-empty line, and cap the length so the column
+ * stays readable.
+ */
+export function summarizeYtDlpFailure(
+	stderr: string | undefined,
+): string | null {
+	if (!stderr) return null;
+	const lines = stderr
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+	if (lines.length === 0) return null;
+	const chosen =
+		lines.find((line) => line.startsWith("ERROR:")) ?? lines.at(-1);
+	if (!chosen) return null;
+	return chosen.length > 300 ? `${chosen.slice(0, 299)}…` : chosen;
+}
+
 export async function checkYtDlpAvailable(): Promise<
 	Result<string, YtDlpError>
 > {

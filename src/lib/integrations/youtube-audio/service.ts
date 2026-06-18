@@ -22,7 +22,12 @@ import type {
 	YoutubeCandidate,
 } from "./types";
 import { extractYoutubeVideoId } from "./url";
-import { downloadAudio, hydrateCandidate, searchYouTube } from "./yt-dlp";
+import {
+	downloadAudio,
+	hydrateCandidate,
+	searchYouTube,
+	summarizeYtDlpFailure,
+} from "./yt-dlp";
 
 export type ManualNeededCode =
 	| "yt_search_no_candidates"
@@ -123,20 +128,31 @@ async function resolveCandidate(
 	// (one yt-dlp call each) and capped to the configured search size. Failed
 	// hydrations are dropped as long as at least one candidate survives.
 	const hydrated: YoutubeCandidate[] = [];
+	const hydrateFailures: YtDlpError[] = [];
 	for (const candidate of flat.slice(
 		0,
 		audioFeatureBackfillConfig.searchResults,
 	)) {
 		const result = await hydrateCandidate(candidate.videoId);
 		if (Result.isOk(result)) hydrated.push(result.value);
+		else hydrateFailures.push(result.error);
 	}
 	if (hydrated.length === 0) {
 		// Every candidate failed to hydrate: don't auto-insert off weak flat data.
-		// A typed error defers/retries the job instead of marking it manual.
+		// A typed error defers/retries the job instead of marking it manual. Carry
+		// a sample of yt-dlp's stderr (e.g. "Sign in to confirm you're not a bot")
+		// into the message so the real cause reaches the stored error_message
+		// instead of being swallowed with the per-candidate Results here.
+		const sample = hydrateFailures[0];
+		const detail =
+			summarizeYtDlpFailure(sample?.stderr) ?? sample?.message ?? null;
 		return Result.err(
 			new YtDlpErrorClass({
-				message: `all ${flat.length} search candidates failed to hydrate`,
+				message: detail
+					? `all ${flat.length} search candidates failed to hydrate: ${detail}`
+					: `all ${flat.length} search candidates failed to hydrate`,
 				code: "hydrate_failed",
+				stderr: sample?.stderr,
 			}),
 		);
 	}

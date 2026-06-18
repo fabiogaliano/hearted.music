@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseSearchOutput, parseVideoJson } from "../yt-dlp";
+import {
+	parseSearchOutput,
+	parseVideoJson,
+	summarizeYtDlpFailure,
+} from "../yt-dlp";
 
 describe("parseSearchOutput", () => {
 	it("parses a single object with an entries array", () => {
@@ -82,5 +86,35 @@ describe("parseVideoJson", () => {
 	it("returns null for unparseable or id-less JSON", () => {
 		expect(parseVideoJson("not json")).toBeNull();
 		expect(parseVideoJson("{}")).toBeNull();
+	});
+});
+
+describe("summarizeYtDlpFailure", () => {
+	it("prefers the ERROR line over surrounding warnings", () => {
+		const stderr = [
+			"WARNING: [youtube] vid: nsig extraction failed",
+			"ERROR: [youtube] vid: Sign in to confirm you're not a bot. Use --cookies-from-browser",
+			"",
+		].join("\n");
+		expect(summarizeYtDlpFailure(stderr)).toBe(
+			"ERROR: [youtube] vid: Sign in to confirm you're not a bot. Use --cookies-from-browser",
+		);
+	});
+
+	it("falls back to the last non-empty line when no ERROR line exists", () => {
+		expect(summarizeYtDlpFailure("first\nsecond\n  \n")).toBe("second");
+	});
+
+	it("returns null for empty or whitespace-only stderr", () => {
+		expect(summarizeYtDlpFailure(undefined)).toBeNull();
+		expect(summarizeYtDlpFailure("")).toBeNull();
+		expect(summarizeYtDlpFailure("   \n  ")).toBeNull();
+	});
+
+	it("caps overly long lines with an ellipsis", () => {
+		const long = `ERROR: ${"x".repeat(400)}`;
+		const out = summarizeYtDlpFailure(long);
+		expect(out).toHaveLength(300);
+		expect(out?.endsWith("…")).toBe(true);
 	});
 });
