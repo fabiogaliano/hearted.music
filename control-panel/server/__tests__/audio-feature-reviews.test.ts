@@ -160,6 +160,31 @@ describe("mapRow → UI shape", () => {
 		expect(row.tempo).toBeNull();
 		expect(row.spotifyDurationMs).toBeNull();
 	});
+
+	// The live driver runs postgres.js with fetch_types:false, so array columns
+	// arrive as raw Postgres array-literal STRINGS, not JS arrays. mapRow must
+	// parse them — otherwise artists/reasons silently render empty in the panel.
+	it("parses Postgres array-literal strings from the type-less driver", () => {
+		const row = mapRow({
+			...dbRow,
+			artists: "{Oasis}",
+			match_reasons: '{"title match","duration within 3s"}',
+			clip_starts_seconds: "{10,90,170}",
+		});
+		expect(row.artists).toEqual(["Oasis"]);
+		expect(row.matchReasons).toEqual(["title match", "duration within 3s"]);
+		expect(row.clipStartsSeconds).toEqual([10, 90, 170]);
+	});
+
+	it("handles empty and comma-bearing array literals", () => {
+		const row = mapRow({
+			...dbRow,
+			artists: '{"Tyler, The Creator","Kali Uchis"}',
+			match_reasons: "{}",
+		});
+		expect(row.artists).toEqual(["Tyler, The Creator", "Kali Uchis"]);
+		expect(row.matchReasons).toEqual([]);
+	});
 });
 
 describe("rejectAudioReview state behavior", () => {

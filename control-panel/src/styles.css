@@ -1043,3 +1043,173 @@ body {
 		transition-duration: 0.001ms !important;
 	}
 }
+
+/* ── Audio match review ─────────────────────────────────────────────────── */
+
+/* Responsive card grid: each review needs ~560px to show its song + YouTube
+   panels side by side without cramming, so cards reflow to one-up on laptops
+   and two-up only when there's genuinely room. min(560px, 100%) prevents the
+   track from overflowing on narrow viewports. */
+.ar-list {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(min(560px, 100%), 1fr));
+	gap: 16px;
+}
+
+/* The review cards live in .ar-list, not the 12-col page grid, so their
+   span-* grid-column is meaningless here — let auto-flow place them. */
+.ar-list > .card { grid-column: auto; }
+
+.ar-compare {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+@media (max-width: 720px) {
+	.ar-compare { grid-template-columns: 1fr; }
+}
+
+.ar-panel {
+	display: flex;
+	gap: 12px;
+	padding: 12px;
+	border-radius: var(--radius-sm);
+	background: var(--surface-raised);
+	border: 1px solid var(--border);
+}
+
+.ar-eyebrow {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-bottom: 9px;
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	white-space: nowrap;
+	color: var(--fg-muted);
+}
+
+.ar-eyebrow .sp { color: var(--success); }
+.ar-eyebrow .yt { color: var(--danger); }
+.ar-eyebrow .tag { margin-left: 2px; color: var(--fg-faint); letter-spacing: 0; }
+
+.ar-art {
+	flex-shrink: 0;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	background: var(--surface-hover);
+	/* Pure-white hairline (never a tinted neutral) keeps the art edge crisp on dark. */
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	outline-offset: -1px;
+}
+
+.ar-art.cover { width: 56px; height: 56px; }
+.ar-art.thumb { width: 84px; height: 47px; }
+.ar-art.placeholder { border: 1px solid var(--border); }
+
+.ar-body { min-width: 0; flex: 1; }
+
+.ar-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fg);
+	line-height: 1.3;
+	text-wrap: balance;
+}
+
+.ar-sub {
+	margin-top: 3px;
+	font-size: 12px;
+	color: var(--fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ar-clock {
+	font-family: var(--mono);
+	font-variant-numeric: tabular-nums;
+	color: var(--fg-secondary);
+}
+
+.ar-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 6px;
+	font-size: 12px;
+}
+
+.ar-verdict {
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var(--border);
+	text-align: center;
+}
+
+.ar-verdict-line {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
+	font-size: 13px;
+}
+
+.ar-verdict .conn { color: var(--fg-faint); }
+
+.ar-score {
+	font-variant-numeric: tabular-nums;
+	color: var(--fg-secondary);
+	font-weight: 500;
+}
+
+.ar-delta {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-family: var(--mono);
+	font-variant-numeric: tabular-nums;
+}
+
+.ar-delta.success { color: var(--success); }
+.ar-delta.warning { color: var(--warning); }
+.ar-delta.danger { color: var(--danger); }
+
+.ar-reasons {
+	margin-top: 6px;
+	font-size: 12px;
+	color: var(--fg-muted);
+	line-height: 1.5;
+	text-wrap: pretty;
+}
+
+.ar-extra {
+	margin-top: 12px;
+	border-top: 1px solid var(--border);
+	padding-top: 10px;
+}
+
+.ar-extra + .ar-extra { border-top: none; padding-top: 0; margin-top: 6px; }
+
+.ar-extra summary {
+	cursor: pointer;
+	font-size: 12px;
+	color: var(--fg-muted);
+	list-style: none;
+	transition: color 150ms ease;
+}
+
+.ar-extra summary:hover { color: var(--fg-secondary); }
+.ar-extra summary::-webkit-details-marker { display: none; }
+
+.ar-extra summary::before {
+	content: "▸";
+	display: inline-block;
+	margin-right: 7px;
+	color: var(--fg-faint);
+	transition: transform 150ms var(--ease);
+}
+
+.ar-extra[open] summary::before { transform: rotate(90deg); }

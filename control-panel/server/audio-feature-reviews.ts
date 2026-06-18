@@ -66,13 +66,64 @@ export interface AudioFeatureReviewRow {
 const numOrNull = (v: unknown): number | null =>
 	v == null ? null : Number(v);
 
+/**
+ * Parse a one-dimensional Postgres array literal (e.g. `{Oasis}` or
+ * `{"Some, Artist","Featured"}`) into a JS array. The control-panel db client
+ * runs postgres.js with `fetch_types: false` (required by the Supabase pooler),
+ * which leaves it with no OID catalog to recognise array columns — so `text[]`
+ * and `numeric[]` arrive as raw literal STRINGS, not parsed arrays. Real arrays
+ * (tests, any type-aware driver) pass straight through `asStringArray` above.
+ */
+function parsePgArrayLiteral(literal: string): string[] {
+	const s = literal.trim();
+	if (!s.startsWith("{") || !s.endsWith("}")) return [];
+	const inner = s.slice(1, -1);
+	if (inner.length === 0) return [];
+
+	const out: string[] = [];
+	let i = 0;
+	while (i < inner.length) {
+		if (inner[i] === '"') {
+			i++;
+			let val = "";
+			while (i < inner.length) {
+				const c = inner[i];
+				if (c === "\\") {
+					val += inner[i + 1] ?? "";
+					i += 2;
+					continue;
+				}
+				if (c === '"') {
+					i++;
+					break;
+				}
+				val += c;
+				i++;
+			}
+			out.push(val);
+			while (i < inner.length && inner[i] !== ",") i++;
+			i++;
+		} else {
+			let j = i;
+			while (j < inner.length && inner[j] !== ",") j++;
+			const token = inner.slice(i, j).trim();
+			// Unquoted NULL is the SQL null sentinel, not the literal text "NULL".
+			if (token !== "NULL") out.push(token);
+			i = j + 1;
+		}
+	}
+	return out;
+}
+
 function asStringArray(v: unknown): string[] {
 	if (Array.isArray(v)) return v.map((x) => String(x));
+	if (typeof v === "string") return parsePgArrayLiteral(v);
 	return [];
 }
 
 function asNumberArray(v: unknown): number[] {
 	if (Array.isArray(v)) return v.map((x) => Number(x));
+	if (typeof v === "string") return parsePgArrayLiteral(v).map(Number);
 	return [];
 }
 

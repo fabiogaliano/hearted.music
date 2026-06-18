@@ -1,15 +1,16 @@
 import {
 	ArrowSquareOutIcon,
 	CheckCircleIcon,
+	MusicNotesIcon,
 	SwapIcon,
 	TrashIcon,
 	WaveformIcon,
+	YoutubeLogoIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Badge, Card, ErrorState, Loading } from "../components/primitives";
 import { postJson, useApi } from "../lib/api";
 import { noAutofill } from "../lib/form";
-import { duration } from "../lib/format";
 
 interface AudioFeatureReviewRow {
 	id: string;
@@ -49,6 +50,25 @@ interface AudioFeatureReviewRow {
 	aggregationMetadata: Record<string, unknown>;
 }
 
+// The shared duration() helper collapses to coarse units ("4m"), which is
+// useless when the whole point is comparing 3:42 against 3:39. Format precisely.
+function clock(seconds: number | null): string {
+	if (seconds == null) return "—";
+	const total = Math.round(seconds);
+	const m = Math.floor(total / 60);
+	const s = total % 60;
+	return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// The duration gap is the single strongest "does this match" signal — a YouTube
+// result that's minutes off is almost certainly the wrong video.
+function durationDelta(spotifyMs: number | null, ytSec: number | null) {
+	if (spotifyMs == null || ytSec == null) return null;
+	const delta = Math.round(Math.abs(spotifyMs / 1000 - ytSec));
+	const tone = delta <= 2 ? "success" : delta <= 8 ? "warning" : "danger";
+	return { delta, tone };
+}
+
 const FEATURE_KEYS: {
 	key: keyof AudioFeatureReviewRow;
 	label: string;
@@ -72,7 +92,7 @@ function FeatureGrid({ r }: { r: AudioFeatureReviewRow }) {
 				display: "grid",
 				gridTemplateColumns: "repeat(3, 1fr)",
 				gap: 8,
-				marginTop: 12,
+				marginTop: 10,
 			}}
 		>
 			{FEATURE_KEYS.map(({ key, label, digits }) => {
@@ -90,25 +110,114 @@ function FeatureGrid({ r }: { r: AudioFeatureReviewRow }) {
 	);
 }
 
-function MetadataNotes({ meta }: { meta: Record<string, unknown> }) {
-	const entries = Object.entries(meta);
-	if (entries.length === 0) return null;
+function SpotifyPanel({ r }: { r: AudioFeatureReviewRow }) {
+	const artistLabel = r.artists.join(", ");
+	const songName = r.songName || "Unknown song";
+	// Em dash, not hyphen: song names here often already contain " - " (e.g.
+	// "Some Might Say - Remastered"), so a hyphen separator would blur together.
+	const title = artistLabel ? `${artistLabel} — ${songName}` : songName;
 	return (
-		<details style={{ marginTop: 12 }}>
-			<summary className="dim" style={{ cursor: "pointer" }}>
-				Aggregation metadata ({entries.length})
-			</summary>
-			<pre
-				style={{
-					marginTop: 8,
-					fontSize: 12,
-					maxHeight: 180,
-					overflow: "auto",
-				}}
-			>
-				{JSON.stringify(meta, null, 2)}
-			</pre>
-		</details>
+		<div className="ar-panel">
+			{r.imageUrl ? (
+				<img className="ar-art cover" src={r.imageUrl} alt="" loading="lazy" />
+			) : (
+				<span className="ar-art cover placeholder" />
+			)}
+			<div className="ar-body">
+				<div className="ar-eyebrow">
+					<MusicNotesIcon className="sp" size={12} weight="fill" />
+					Spotify song
+				</div>
+				<div className="ar-title">{title}</div>
+				<div className="ar-sub">
+					{r.albumName ?? "—"}
+					{r.spotifyDurationMs != null && (
+						<>
+							{" · "}
+							<span className="ar-clock">
+								{clock(r.spotifyDurationMs / 1000)}
+							</span>
+						</>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}
+
+function YoutubePanel({ r }: { r: AudioFeatureReviewRow }) {
+	const sourceLabel =
+		r.sourceType === "youtube_url" ? "manual url" : "via search";
+	return (
+		<div className="ar-panel">
+			{r.youtubeThumbnailUrl ? (
+				<img
+					className="ar-art thumb"
+					src={r.youtubeThumbnailUrl}
+					alt=""
+					loading="lazy"
+				/>
+			) : (
+				<span className="ar-art thumb placeholder" />
+			)}
+			<div className="ar-body">
+				<div className="ar-eyebrow">
+					<YoutubeLogoIcon className="yt" size={13} weight="fill" />
+					YouTube match
+					<span className="tag">· {sourceLabel}</span>
+				</div>
+				<div className="ar-title">{r.youtubeTitle ?? "(no title)"}</div>
+				<div className="ar-sub">
+					{r.youtubeChannel ?? "—"}
+					{r.youtubeDurationSeconds != null && (
+						<>
+							{" · "}
+							<span className="ar-clock">
+								{clock(r.youtubeDurationSeconds)}
+							</span>
+						</>
+					)}
+				</div>
+				{r.youtubeUrl && (
+					<a
+						href={r.youtubeUrl}
+						target="_blank"
+						rel="noreferrer"
+						className="user-link ar-link"
+					>
+						<ArrowSquareOutIcon size={13} weight="bold" /> open on YouTube
+					</a>
+				)}
+			</div>
+		</div>
+	);
+}
+
+function Verdict({
+	r,
+	reasons,
+}: {
+	r: AudioFeatureReviewRow;
+	reasons: string[];
+}) {
+	const delta = durationDelta(r.spotifyDurationMs, r.youtubeDurationSeconds);
+	return (
+		<div className="ar-verdict">
+			<div className="ar-verdict-line">
+				{r.matchScore != null && (
+					<span className="ar-score">
+						{(r.matchScore * 100).toFixed(0)}% match
+					</span>
+				)}
+				{r.matchScore != null && delta && <span className="conn">·</span>}
+				{delta && (
+					<span className={`ar-delta ${delta.tone}`}>Δ {delta.delta}s</span>
+				)}
+			</div>
+			{reasons.length > 0 && (
+				<div className="ar-reasons">{reasons.join(" · ")}</div>
+			)}
+		</div>
 	);
 }
 
@@ -185,65 +294,17 @@ function ReviewCard({
 
 	return (
 		<Card
-			title={r.songName || "Unknown song"}
+			title="Audio match"
 			icon={WaveformIcon}
-			span={6}
+			span={12}
 			action={<Badge tone="warning">pending · live</Badge>}
 		>
-			<div className="song-cell" style={{ marginBottom: 8 }}>
-				{r.imageUrl ? (
-					<img className="song-cover" src={r.imageUrl} alt="" loading="lazy" />
-				) : (
-					<span className="song-cover placeholder" />
-				)}
-				<span className="song-meta">
-					<span className="primary">{r.artists.join(", ") || "—"}</span>
-					<span className="dim">
-						{r.albumName ?? "—"}
-						{r.spotifyDurationMs != null &&
-							` · ${duration(r.spotifyDurationMs / 1000)}`}
-					</span>
-				</span>
+			<div className="ar-compare">
+				<SpotifyPanel r={r} />
+				<YoutubePanel r={r} />
 			</div>
 
-			<div
-				className="dim"
-				style={{ display: "flex", alignItems: "center", gap: 8 }}
-			>
-				<Badge tone="default">{r.sourceType.replace("youtube_", "yt ")}</Badge>
-				{r.matchScore != null && (
-					<span>match {(r.matchScore * 100).toFixed(0)}%</span>
-				)}
-			</div>
-
-			<div style={{ marginTop: 10 }}>
-				<div className="primary">{r.youtubeTitle ?? "(no title)"}</div>
-				<div className="dim">
-					{r.youtubeChannel ?? "—"}
-					{r.youtubeDurationSeconds != null &&
-						` · ${duration(r.youtubeDurationSeconds)}`}
-				</div>
-				{r.youtubeUrl && (
-					<a
-						href={r.youtubeUrl}
-						target="_blank"
-						rel="noreferrer"
-						className="user-link"
-						style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
-					>
-						<ArrowSquareOutIcon size={13} weight="bold" /> open on YouTube
-					</a>
-				)}
-			</div>
-
-			{r.matchReasons.length > 0 && (
-				<div className="dim" style={{ marginTop: 8, fontSize: 12 }}>
-					{r.matchReasons.join(" · ")}
-				</div>
-			)}
-
-			<FeatureGrid r={r} />
-			<MetadataNotes meta={r.aggregationMetadata} />
+			<Verdict r={r} reasons={r.matchReasons} />
 
 			<div className="btn-row" style={{ marginTop: 14 }}>
 				<button
@@ -299,6 +360,29 @@ function ReviewCard({
 				</div>
 			)}
 
+			<details className="ar-extra">
+				<summary>Audio features</summary>
+				<FeatureGrid r={r} />
+			</details>
+
+			{Object.keys(r.aggregationMetadata).length > 0 && (
+				<details className="ar-extra">
+					<summary>
+						Aggregation metadata ({Object.keys(r.aggregationMetadata).length})
+					</summary>
+					<pre
+						style={{
+							marginTop: 8,
+							fontSize: 12,
+							maxHeight: 180,
+							overflow: "auto",
+						}}
+					>
+						{JSON.stringify(r.aggregationMetadata, null, 2)}
+					</pre>
+				</details>
+			)}
+
 			{error && (
 				<div className="result err" style={{ marginTop: 10 }}>
 					{error}
@@ -339,10 +423,11 @@ export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
 				}
 			>
 				<p className="muted-text">
-					Auto-backfilled audio features (YouTube → ReccoBeats) are{" "}
-					<strong>live immediately</strong>. Approve the good ones, reject the
-					bad ones — rejection deletes the feature and any analysis/embedding
-					derived from it, then re-queues the song.
+					Each card pairs a <strong>Spotify song</strong> with the{" "}
+					<strong>YouTube video</strong> its audio was pulled from. Confirm the
+					video is the right one — approve the good ones, reject the bad ones.
+					Rejection deletes the feature and any analysis/embedding derived from
+					it, then re-queues the song.
 				</p>
 			</Card>
 
@@ -351,7 +436,11 @@ export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
 					<div className="empty">No pending audio reviews.</div>
 				</div>
 			) : (
-				reviews.map((r) => <ReviewCard key={r.id} r={r} onActioned={refetch} />)
+				<div className="ar-list span-12">
+					{reviews.map((r) => (
+						<ReviewCard key={r.id} r={r} onActioned={refetch} />
+					))}
+				</div>
 			)}
 		</div>
 	);
