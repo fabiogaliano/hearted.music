@@ -3,9 +3,11 @@
  * trustworthy enough match to auto-insert a live audio-feature row.
  *
  * Pure and deterministic: no IO, no config beyond the thresholds passed in, so
- * the whole acceptance policy is unit-testable. The bar is deliberately high
- * (clear minScore AND beat the runner-up) because a wrong pick silently poisons
- * matching until an operator catches it in review.
+ * the whole acceptance policy is unit-testable. Acceptance is a clear minScore on
+ * the best viable candidate. We deliberately do NOT also require beating the
+ * runner-up: the reject phrases (live/remix/cover/…) already filter wrong
+ * versions, so the remaining candidates are near-identical uploads of the same
+ * recording that tie constantly — and for feature extraction either is fine.
  */
 
 import type {
@@ -17,7 +19,6 @@ import type {
 
 export interface ScoringThresholds {
 	minScore: number;
-	minScoreGap: number;
 }
 
 // Wrong-version markers. Single words are matched on token boundaries (so
@@ -203,7 +204,6 @@ export function scoreCandidates(
 		.sort((a, b) => b.score - a.score);
 
 	const best = viable[0];
-	const second = viable[1];
 
 	if (!best || best.score < thresholds.minScore) {
 		return {
@@ -215,16 +215,9 @@ export function scoreCandidates(
 		};
 	}
 
-	if (second && best.score - second.score < thresholds.minScoreGap) {
-		return {
-			kind: "manual_needed",
-			scored,
-			reason: `top two within ${thresholds.minScoreGap} (${best.score.toFixed(
-				2,
-			)} vs ${second.score.toFixed(2)})`,
-		};
-	}
-
+	// No runner-up gap check: equally-good uploads of the same recording tie all
+	// the time, and either is fine for feature extraction. `viable` is sorted by
+	// score and Array.sort is stable, so ties resolve to YouTube's own search rank.
 	return {
 		kind: "selected",
 		candidate: best.candidate,

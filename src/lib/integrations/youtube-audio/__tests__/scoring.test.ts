@@ -21,7 +21,7 @@ function candidate(p: Partial<YoutubeCandidate>): YoutubeCandidate {
 	};
 }
 
-const THRESHOLDS = { minScore: 0.82, minScoreGap: 0.08 };
+const THRESHOLDS = { minScore: 0.82 };
 
 describe("scoreCandidates", () => {
 	it("selects an exact official audio match", () => {
@@ -84,7 +84,7 @@ describe("scoreCandidates", () => {
 		expect(scored.rejectReason).toMatch(/duration off/);
 	});
 
-	it("falls back to manual_needed when the top two are within the gap", () => {
+	it("selects the top-ranked candidate when two are equally good (no gap bail)", () => {
 		const decision = scoreCandidates(
 			SONG,
 			[
@@ -103,7 +103,10 @@ describe("scoreCandidates", () => {
 			],
 			THRESHOLDS,
 		);
-		expect(decision.kind).toBe("manual_needed");
+		// Both score the same; ties resolve to search order (the first), not manual.
+		expect(decision.kind).toBe("selected");
+		if (decision.kind === "selected")
+			expect(decision.candidate.videoId).toBe("a");
 	});
 
 	it("returns manual_needed when there are no candidates", () => {

@@ -161,7 +161,6 @@ async function resolveCandidate(
 
 	const decision = scoreCandidates(input.song, hydrated, {
 		minScore: audioFeatureBackfillConfig.minScore,
-		minScoreGap: audioFeatureBackfillConfig.minScoreGap,
 	});
 	if (decision.kind === "manual_needed") {
 		return Result.ok({
