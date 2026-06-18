@@ -8,6 +8,11 @@
  * runner-up: the reject phrases (live/remix/cover/…) already filter wrong
  * versions, so the remaining candidates are near-identical uploads of the same
  * recording that tie constantly — and for feature extraction either is fine.
+ *
+ * Before title matching we strip "same-recording" qualifiers the DB name carries
+ * but YouTube uploads omit ("- Remastered", "- 2011 Remaster", "- Single
+ * Version"): a remaster is the same performance, so leaving those tokens in would
+ * unfairly penalize a correct match's title score.
  */
 
 import type {
@@ -57,6 +62,19 @@ export function normalizeText(input: string): string {
 /** Drop (...) and [...] suffixes — used for token matching, not penalty scan. */
 export function stripBracketed(input: string): string {
 	return input.replace(/[([][^)\]]*[)\]]/g, " ");
+}
+
+// A trailing " - <qualifier>" that denotes the SAME recording (a remaster /
+// single / radio edit is the same performance), which YouTube uploads routinely
+// drop. Live/remix/cover are intentionally absent — those are different
+// recordings and stay handled by REJECT_PHRASES. The inner [^-–—]* keeps the
+// match inside the last dash-delimited segment so real titles aren't truncated.
+const SAME_RECORDING_QUALIFIER =
+	/\s[-–—]\s[^-–—]*\b(?:remaster(?:ed)?|single version|album version|radio edit|mono|stereo|bonus track|anniversary (?:edition|remaster)|digital remaster|re-?recorded)\b[^-–—]*$/i;
+
+/** Strip a trailing "- Remastered / - 2011 Remaster / - Single Version" tag. */
+export function stripVersionQualifier(input: string): string {
+	return input.replace(SAME_RECORDING_QUALIFIER, "").trim();
 }
 
 export function tokenize(input: string): string[] {
@@ -123,7 +141,9 @@ export function scoreCandidate(
 		...tokenize(candidate.channel ?? ""),
 	]);
 
-	const songNameTokens = tokenize(stripBracketed(song.name));
+	const songNameTokens = tokenize(
+		stripBracketed(stripVersionQualifier(song.name)),
+	);
 	const titleMatch = fractionPresent(songNameTokens, titleTokens);
 	if (titleMatch >= 0.999) reasons.push("title contains full song title");
 	else if (titleMatch > 0) reasons.push("title partially matches song title");

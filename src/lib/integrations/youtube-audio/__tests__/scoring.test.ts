@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { scoreCandidate, scoreCandidates } from "../scoring";
+import {
+	scoreCandidate,
+	scoreCandidates,
+	stripVersionQualifier,
+} from "../scoring";
 import type { SongForScoring, YoutubeCandidate } from "../types";
 
 const SONG: SongForScoring = {
@@ -21,7 +25,7 @@ function candidate(p: Partial<YoutubeCandidate>): YoutubeCandidate {
 	};
 }
 
-const THRESHOLDS = { minScore: 0.82 };
+const THRESHOLDS = { minScore: 0.75 };
 
 describe("scoreCandidates", () => {
 	it("selects an exact official audio match", () => {
@@ -127,5 +131,44 @@ describe("scoreCandidates", () => {
 			candidate({ title: "Blinding Lights", durationSeconds: 201 }),
 		);
 		expect(withArtist.score).toBeGreaterThan(titleOnly.score);
+	});
+
+	it("selects a remaster-named song against a plain YouTube upload", () => {
+		// The DB name carries a "- Remastered" tag the upload omits; without the
+		// qualifier strip the missing token drops title match below the floor.
+		const decision = scoreCandidates(
+			{ ...SONG, name: "Blinding Lights - Remastered 2020" },
+			[
+				candidate({
+					videoId: "rm",
+					title: "The Weeknd - Blinding Lights",
+					channel: "The Weeknd - Topic",
+					durationSeconds: 201,
+				}),
+			],
+			THRESHOLDS,
+		);
+		expect(decision.kind).toBe("selected");
+		if (decision.kind === "selected")
+			expect(decision.candidate.videoId).toBe("rm");
+	});
+});
+
+describe("stripVersionQualifier", () => {
+	it.each([
+		["Some Might Say - Remastered", "Some Might Say"],
+		["Sakura - 2023 Remaster", "Sakura"],
+		["Boys Don't Cry - Single Version", "Boys Don't Cry"],
+		["Missing - 2013 Remaster", "Missing"],
+	])("strips same-recording qualifier from %s", (input, expected) => {
+		expect(stripVersionQualifier(input)).toBe(expected);
+	});
+
+	it.each([
+		"Tequila - En Vivo",
+		"Plain Title",
+		"Title - With A Dash Subtitle",
+	])("leaves %s untouched (not a same-recording qualifier)", (input) => {
+		expect(stripVersionQualifier(input)).toBe(input);
 	});
 });

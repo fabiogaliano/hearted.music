@@ -15,11 +15,14 @@ export const audioFeatureBackfillConfig = {
 	// multi-hour upload masquerading as a track.
 	maxDownloadMb: 80,
 	searchResults: 8,
-	// The top candidate must clear minScore to be auto-selected. We deliberately
-	// don't also require beating the runner-up by a gap: near-identical uploads of
-	// the same recording tie constantly, and for feature extraction either is fine
-	// (wrong *versions* are already filtered out by the scorer's reject phrases).
-	minScore: 0.82,
+	// The top candidate must clear minScore to be auto-selected. No runner-up gap
+	// rule: near-identical uploads of the same recording tie constantly, and for
+	// feature extraction either is fine (wrong *versions* are filtered by the
+	// scorer's reject phrases). Floor is 0.75 rather than higher because most songs
+	// do exist on YouTube and we favor recall — a full title+artist match alone is
+	// 0.75, so this admits correct matches lacking a duration/official bonus while
+	// the reject phrases still bar wrong recordings.
+	minScore: 0.75,
 	requestTimeoutMs: 120_000,
 	// ReccoBeats truncates anything past 30s, so clips are capped there and we
 	// take up to three of them to cover a full track.
