@@ -115,7 +115,7 @@ jobs:
         run: bun run typecheck:worker
 
       - if: needs.detect.outputs.code == 'true'
-        run: bun run test
+        run: bun run test:fast
 
       - name: Build webapp
         if: needs.detect.outputs.code == 'true' && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
@@ -183,7 +183,7 @@ jobs:
             *) echo "::error::DATABASE_URL is not local; security invariants would skip"; exit 1 ;;
           esac
 
-          bun run test src/lib/data/__tests__/security-invariants.integration.test.ts
+          bun run test:fast src/lib/data/__tests__/security-invariants.integration.test.ts
 
   migrate-prod:
     needs: [detect, verify, db-security]

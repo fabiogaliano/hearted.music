@@ -17,8 +17,8 @@ const isLiveTest = process.env.VITEST_LIVE === "true";
 // Half the cores is the measured sweet spot: on an 8-core machine, going above
 // half buys ~nothing (6 vs 4 workers was within 4%) while dropping below it is
 // costly (3 workers +28%, 2 workers +84%). Override with VITEST_MAX_WORKERS —
-// CI passes the full core count for raw speed, and `bun run test:quiet` pins it
-// to 2 for a responsive machine when you don't need the throughput.
+// `bun run test` pins it to 2 so the default local run stays responsive, while
+// `bun run test:fast` (used in CI) takes the half-core throughput.
 const availableCores = os.availableParallelism?.() ?? os.cpus().length;
 const testMaxWorkers = process.env.VITEST_MAX_WORKERS
 	? Math.max(1, Number(process.env.VITEST_MAX_WORKERS))
