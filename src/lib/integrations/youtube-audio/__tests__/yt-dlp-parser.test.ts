@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	buildProxyArgs,
 	parseSearchOutput,
 	parseVideoJson,
 	summarizeYtDlpFailure,
@@ -116,5 +117,27 @@ describe("summarizeYtDlpFailure", () => {
 		const out = summarizeYtDlpFailure(long);
 		expect(out).toHaveLength(300);
 		expect(out?.endsWith("…")).toBe(true);
+	});
+});
+
+describe("buildProxyArgs", () => {
+	it("returns --proxy args when a proxy is set", () => {
+		expect(buildProxyArgs("socks5://warp:1080")).toEqual([
+			"--proxy",
+			"socks5://warp:1080",
+		]);
+	});
+
+	it("trims surrounding whitespace", () => {
+		expect(buildProxyArgs("  http://p:3128  ")).toEqual([
+			"--proxy",
+			"http://p:3128",
+		]);
+	});
+
+	it("returns [] when unset, empty, or whitespace-only", () => {
+		expect(buildProxyArgs(undefined)).toEqual([]);
+		expect(buildProxyArgs("")).toEqual([]);
+		expect(buildProxyArgs("   ")).toEqual([]);
 	});
 });

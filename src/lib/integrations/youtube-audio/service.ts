@@ -65,6 +65,8 @@ interface AcquireInput {
 	sourceUrl: string | null;
 	song: SongForScoring;
 	jobDir: string;
+	/** Optional egress proxy for all yt-dlp calls (see buildProxyArgs). */
+	proxy?: string;
 }
 
 /** Resolve the source candidate (search+score, or hydrate the operator URL). */
@@ -95,7 +97,7 @@ async function resolveCandidate(
 				}),
 			);
 		}
-		const hydrated = await hydrateCandidate(parsed.videoId);
+		const hydrated = await hydrateCandidate(parsed.videoId, input.proxy);
 		if (Result.isError(hydrated)) return Result.err(hydrated.error);
 		return Result.ok({
 			candidate: hydrated.value,
@@ -110,7 +112,7 @@ async function resolveCandidate(
 	}
 
 	const query = buildSearchQuery(input.song);
-	const searchResult = await searchYouTube(query);
+	const searchResult = await searchYouTube(query, undefined, input.proxy);
 	if (Result.isError(searchResult)) return Result.err(searchResult.error);
 
 	const flat = searchResult.value;
@@ -133,7 +135,7 @@ async function resolveCandidate(
 		0,
 		audioFeatureBackfillConfig.searchResults,
 	)) {
-		const result = await hydrateCandidate(candidate.videoId);
+		const result = await hydrateCandidate(candidate.videoId, input.proxy);
 		if (Result.isOk(result)) hydrated.push(result.value);
 		else hydrateFailures.push(result.error);
 	}
@@ -210,7 +212,11 @@ export async function acquireSource(
 		provenance: SearchProvenance;
 	};
 
-	const downloadResult = await downloadAudio(candidate.url, input.jobDir);
+	const downloadResult = await downloadAudio(
+		candidate.url,
+		input.jobDir,
+		input.proxy,
+	);
 	if (Result.isError(downloadResult)) return Result.err(downloadResult.error);
 
 	const probeResult = await probeAndValidate(

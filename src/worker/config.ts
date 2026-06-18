@@ -34,4 +34,9 @@ export const workerConfig = {
 	// the orchestrator SIGKILLs after the grace period regardless of this timeout.
 	drainTimeoutMs: Number(process.env.WORKER_DRAIN_TIMEOUT_MS ?? 600_000),
 	healthPort: Number(process.env.WORKER_HEALTH_PORT ?? 3_002),
+	// Optional egress proxy for yt-dlp's YouTube calls in the audio-feature
+	// backfill. YouTube bot-gates the datacenter IP, so prod points this at a
+	// clean-reputation proxy (e.g. a Cloudflare WARP SOCKS5 sidecar). Unset =
+	// direct, and only yt-dlp is routed through it — not the worker's other egress.
+	ytdlpProxy: process.env.YTDLP_PROXY?.trim() || undefined,
 };

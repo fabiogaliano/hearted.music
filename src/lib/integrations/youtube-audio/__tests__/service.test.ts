@@ -78,10 +78,11 @@ describe("acquireSource youtube_search hydration", () => {
 		if (Result.isError(result)) throw result.error;
 		expect(result.value.kind).toBe("acquired");
 		// Scoring ran against hydrated metadata, not the bare flat hit.
-		expect(hydrateCandidate).toHaveBeenCalledWith("aaaaaaaaaaa");
+		expect(hydrateCandidate).toHaveBeenCalledWith("aaaaaaaaaaa", undefined);
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
 			"/tmp/job",
+			undefined,
 		);
 	});
 
@@ -114,6 +115,40 @@ describe("acquireSource youtube_search hydration", () => {
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=bbbbbbbbbbb",
 			"/tmp/job",
+			undefined,
+		);
+	});
+
+	it("threads the egress proxy through search, hydrate, and download", async () => {
+		vi.mocked(searchYouTube).mockResolvedValue(
+			Result.ok([flat("aaaaaaaaaaa")]),
+		);
+		vi.mocked(hydrateCandidate).mockResolvedValue(
+			Result.ok(strong("aaaaaaaaaaa")),
+		);
+
+		const result = await acquireSource({
+			sourceType: "youtube_search",
+			sourceUrl: null,
+			song: SONG,
+			jobDir: "/tmp/job",
+			proxy: "socks5://warp:1080",
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		expect(searchYouTube).toHaveBeenCalledWith(
+			expect.any(String),
+			undefined,
+			"socks5://warp:1080",
+		);
+		expect(hydrateCandidate).toHaveBeenCalledWith(
+			"aaaaaaaaaaa",
+			"socks5://warp:1080",
+		);
+		expect(downloadAudio).toHaveBeenCalledWith(
+			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
+			"/tmp/job",
+			"socks5://warp:1080",
 		);
 	});
 

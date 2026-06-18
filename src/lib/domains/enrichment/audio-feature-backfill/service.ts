@@ -94,6 +94,7 @@ async function deferAndMaybeWake(
 export async function processBackfillJob(
 	job: BackfillJob,
 	workerId: string,
+	proxy?: string,
 ): Promise<ProcessOutcome> {
 	const jobDir = `${audioFeatureBackfillConfig.tmpDir}/${job.id}`;
 	const supabase = createAdminSupabaseClient();
@@ -141,6 +142,7 @@ export async function processBackfillJob(
 		const acquired = await acquireSource({
 			sourceType: job.source_type as "youtube_search" | "youtube_url",
 			sourceUrl: job.source_url,
+			proxy,
 			song: {
 				name: song.name,
 				artists: song.artists,

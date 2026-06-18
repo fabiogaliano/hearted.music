@@ -73,7 +73,11 @@ export async function startAudioFeatureBackfillPolling(): Promise<void> {
 		activeJobs.add(job.id);
 		void (async () => {
 			try {
-				const outcome = await processBackfillJob(job, WORKER_ID);
+				const outcome = await processBackfillJob(
+					job,
+					WORKER_ID,
+					workerConfig.ytdlpProxy,
+				);
 				log.info("audio-backfill-job-settled", {
 					jobId: job.id,
 					songId: job.song_id,

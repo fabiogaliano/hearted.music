@@ -20,6 +20,18 @@ function videoUrl(videoId: string): string {
 	return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
+/**
+ * Map an optional proxy URL to yt-dlp `--proxy` args, or [] when unset. YouTube
+ * bot-gates the worker's datacenter IP ("Sign in to confirm you're not a bot"),
+ * so production passes YTDLP_PROXY (resolved in workerConfig, e.g.
+ * socks5://warp:1080) down to these calls to route YouTube traffic — and only
+ * YouTube traffic — through a clean-reputation egress.
+ */
+export function buildProxyArgs(proxy: string | undefined): string[] {
+	const trimmed = proxy?.trim();
+	return trimmed ? ["--proxy", trimmed] : [];
+}
+
 function tryJson(text: string): unknown {
 	try {
 		return JSON.parse(text);
@@ -159,10 +171,12 @@ export async function checkYtDlpAvailable(): Promise<
 export async function searchYouTube(
 	query: string,
 	limit: number = audioFeatureBackfillConfig.searchResults,
+	proxy?: string,
 ): Promise<Result<YoutubeCandidate[], YtDlpError>> {
 	const res = await runCommand(
 		[
 			YT_DLP,
+			...buildProxyArgs(proxy),
 			"--dump-single-json",
 			"--skip-download",
 			"--flat-playlist",
@@ -192,10 +206,12 @@ export async function searchYouTube(
 
 export async function hydrateCandidate(
 	videoId: string,
+	proxy?: string,
 ): Promise<Result<YoutubeCandidate, YtDlpError>> {
 	const res = await runCommand(
 		[
 			YT_DLP,
+			...buildProxyArgs(proxy),
 			"--dump-single-json",
 			"--skip-download",
 			"--no-playlist",
@@ -240,12 +256,14 @@ export async function hydrateCandidate(
 export async function downloadAudio(
 	url: string,
 	jobDir: string,
+	proxy?: string,
 ): Promise<Result<string, YtDlpError>> {
 	await mkdir(jobDir, { recursive: true });
 
 	const res = await runCommand(
 		[
 			YT_DLP,
+			...buildProxyArgs(proxy),
 			"--no-playlist",
 			"--no-continue",
 			"--restrict-filenames",
