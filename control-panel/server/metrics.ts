@@ -71,6 +71,7 @@ export interface UserRow {
 	handle: string | null;
 	email: string | null;
 	createdAt: string;
+	lastSeenAt: string | null;
 	onboardingStep: string | null;
 	onboarded: boolean;
 	liked: number;
@@ -84,6 +85,7 @@ export async function usersList(): Promise<UserRow[]> {
 	const rows = await read(`
 		select a.id, a.email, a.handle, a.display_name,
 			to_char(a.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as created_at,
+			to_char(act.last_seen_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as last_seen_at,
 			p.onboarding_step,
 			(p.onboarding_completed_at is not null) as onboarded,
 			coalesce(lk.liked, 0) as liked,
@@ -91,6 +93,7 @@ export async function usersList(): Promise<UserRow[]> {
 			coalesce(un.unlocks, 0) as unlocks,
 			b.plan, b.subscription_status, b.unlimited_access_source
 		from account a
+		left join account_activity act on act.account_id = a.id
 		left join user_preferences p on p.account_id = a.id
 		left join (select account_id, count(*) as liked from liked_song where unliked_at is null group by 1) lk on lk.account_id = a.id
 		left join (select account_id, count(*) as playlists from playlist group by 1) pl on pl.account_id = a.id
@@ -106,6 +109,7 @@ export async function usersList(): Promise<UserRow[]> {
 		handle: r.handle ? String(r.handle) : null,
 		email: r.email ? String(r.email) : null,
 		createdAt: String(r.created_at),
+		lastSeenAt: r.last_seen_at ? String(r.last_seen_at) : null,
 		onboardingStep: r.onboarding_step ? String(r.onboarding_step) : null,
 		onboarded: Boolean(r.onboarded),
 		liked: num(r.liked),

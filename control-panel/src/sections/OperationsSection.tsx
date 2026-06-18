@@ -31,8 +31,11 @@ function OperationForm({ op }: { op: OperationDef }) {
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState<null | "dry" | "run">(null);
 
+	const isVisible = (f: OperationField): boolean =>
+		!f.visibleWhen || values[f.visibleWhen.field] === f.visibleWhen.equals;
+
 	const missingRequired = op.fields.some(
-		(f) => f.required && !values[f.name]?.trim(),
+		(f) => isVisible(f) && f.required && !values[f.name]?.trim(),
 	);
 
 	const accountField = op.fields.find((f) => f.type === "account");
@@ -77,6 +80,7 @@ function OperationForm({ op }: { op: OperationDef }) {
 			</p>
 
 			{op.fields.map((f) => {
+				if (!isVisible(f)) return null;
 				const fieldId = `${op.id}-${f.name}`;
 				return (
 					<div className="field" key={f.name}>

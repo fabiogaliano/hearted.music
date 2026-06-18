@@ -38,6 +38,7 @@ export interface UserRow {
 	handle: string | null;
 	email: string | null;
 	createdAt: string;
+	lastSeenAt: string | null;
 	onboardingStep: string | null;
 	onboarded: boolean;
 	liked: number;
@@ -176,6 +177,7 @@ export interface OperationField {
 	default?: string;
 	min?: number;
 	max?: number;
+	visibleWhen?: { field: string; equals: string };
 }
 
 export interface AccountSearchResult {

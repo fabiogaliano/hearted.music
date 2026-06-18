@@ -28,8 +28,27 @@ export function duration(seconds: number | null): string {
 	return `${Math.round(seconds / 86400)}d`;
 }
 
+const humanDateFmt = new Intl.DateTimeFormat("en-GB", {
+	day: "numeric",
+	month: "long",
+	year: "numeric",
+});
+
+function parseDate(iso: string): Date {
+	// PostgreSQL to_char with OF produces "+HH" without minutes (e.g. "+00"), which
+	// is not spec-compliant ISO 8601 — browsers return Invalid Date. Normalize to "+HH:00".
+	return new Date(iso.replace(/([+-]\d{2})$/, "$1:00"));
+}
+
+export function humanDate(iso: string | null | undefined): string {
+	if (!iso) return "—";
+	const d = parseDate(iso);
+	if (Number.isNaN(d.getTime())) return "—";
+	return humanDateFmt.format(d);
+}
+
 export function relativeTime(iso: string): string {
-	const then = new Date(iso).getTime();
+	const then = parseDate(iso).getTime();
 	if (Number.isNaN(then)) return iso;
 	const diff = Math.round((Date.now() - then) / 1000);
 	if (diff < 60) return `${diff}s ago`;

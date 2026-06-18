@@ -12,7 +12,7 @@ import {
 	UserLink,
 } from "../components/primitives";
 import { useApi } from "../lib/api";
-import { fmt, pct, relativeTime } from "../lib/format";
+import { fmt, humanDate, pct } from "../lib/format";
 import type { UserRow, UsersMetrics } from "../lib/types";
 
 const columns: Column<UserRow>[] = [
@@ -22,15 +22,18 @@ const columns: Column<UserRow>[] = [
 		render: (r) => <UserLink id={r.id} label={r.label} handle={r.handle} />,
 	},
 	{
-		key: "onboarding",
-		header: "Onboarding",
+		key: "lastSeen",
+		header: "Last seen",
+		render: (r) => <span className="dim">{humanDate(r.lastSeenAt)}</span>,
+	},
+	{
+		key: "plan",
+		header: "Plan",
 		render: (r) =>
-			r.onboarded ? (
-				<Badge tone="success">complete</Badge>
-			) : r.onboardingStep ? (
-				<Badge tone="warning">{r.onboardingStep}</Badge>
+			r.unlimited ? (
+				<Badge tone="accent">unlimited</Badge>
 			) : (
-				<span className="dim">not started</span>
+				<span className="dim">{r.plan ?? "—"}</span>
 			),
 	},
 	{
@@ -57,20 +60,21 @@ const columns: Column<UserRow>[] = [
 			),
 	},
 	{
-		key: "plan",
-		header: "Plan",
+		key: "onboarding",
+		header: "Onboarding",
 		render: (r) =>
-			r.unlimited ? (
-				<Badge tone="accent">unlimited</Badge>
+			r.onboarded ? (
+				<Badge tone="success">complete</Badge>
+			) : r.onboardingStep ? (
+				<Badge tone="warning">{r.onboardingStep}</Badge>
 			) : (
-				<span className="dim">{r.plan ?? "—"}</span>
+				<span className="dim">not started</span>
 			),
 	},
 	{
 		key: "joined",
 		header: "Joined",
-		right: true,
-		render: (r) => <span className="dim">{relativeTime(r.createdAt)}</span>,
+		render: (r) => <span className="dim">{humanDate(r.createdAt)}</span>,
 	},
 ];
 
