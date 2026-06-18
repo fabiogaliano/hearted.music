@@ -42,6 +42,7 @@ export const SpotifyTrackDTOSchema = z.object({
 		}),
 		duration_ms: z.number(),
 		uri: z.string(),
+		release_year: z.number().int().nullable().optional(),
 	}),
 });
 

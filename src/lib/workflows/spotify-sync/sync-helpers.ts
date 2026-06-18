@@ -35,6 +35,7 @@ function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		artists: st.track.artists.map((a) => a.name),
 		artist_ids: st.track.artists.map((a) => a.id),
 		duration_ms: st.track.duration_ms,
+		release_year: st.track.release_year ?? null,
 	};
 }
 

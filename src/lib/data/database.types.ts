@@ -2136,6 +2136,7 @@ export type Database = {
 					id: string;
 					image_url: string | null;
 					name: string;
+					release_year: number | null;
 					spotify_id: string;
 					updated_at: string;
 				};
@@ -2150,6 +2151,7 @@ export type Database = {
 					id?: string;
 					image_url?: string | null;
 					name: string;
+					release_year?: number | null;
 					spotify_id: string;
 					updated_at?: string;
 				};
@@ -2164,6 +2166,7 @@ export type Database = {
 					id?: string;
 					image_url?: string | null;
 					name?: string;
+					release_year?: number | null;
 					spotify_id?: string;
 					updated_at?: string;
 				};

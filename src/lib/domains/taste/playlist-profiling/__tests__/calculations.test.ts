@@ -53,6 +53,7 @@ function createSong(partial: Partial<Song> = {}): Song {
 		album_name: partial.album_name ?? null,
 		image_url: partial.image_url ?? null,
 		duration_ms: partial.duration_ms ?? null,
+		release_year: partial.release_year ?? null,
 		created_at: new Date().toISOString(),
 		updated_at: new Date().toISOString(),
 	};

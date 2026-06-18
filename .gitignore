@@ -30,3 +30,7 @@ v1_hearted_brand
 
 # Transient script scratch output (was claudedocs/; see build-compare.ts, fetch-raw-genius-referents.ts)
 .scratch/
+
+# release-year backfill runtime artifacts (local cache + temp write SQL)
+scripts/spotify-hash-sync/.release-year-cache.json
+scripts/spotify-hash-sync/.release-year-write.sql

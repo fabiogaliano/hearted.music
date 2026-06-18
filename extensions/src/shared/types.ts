@@ -73,6 +73,7 @@ export type SpotifyTrackDTO = {
 		};
 		duration_ms: number;
 		uri: string;
+		release_year?: number | null;
 	};
 };
 

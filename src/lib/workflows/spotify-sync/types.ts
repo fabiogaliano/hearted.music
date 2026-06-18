@@ -33,6 +33,9 @@ export interface SpotifyTrackDTO {
 		};
 		duration_ms: number;
 		uri: string;
+		// Album release year when the source op carried it (playlist/getTrack);
+		// liked-songs sync omits it, so it stays null until a getTrack backfill.
+		release_year?: number | null;
 	};
 }
 

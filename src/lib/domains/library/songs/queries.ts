@@ -44,6 +44,7 @@ export type CatalogUpsertData = Pick<
 	| "artists"
 	| "artist_ids"
 	| "duration_ms"
+	| "release_year"
 >;
 
 /**
@@ -179,6 +180,7 @@ export function upsertCatalog(
 						artists: song.artists,
 						artist_ids: song.artist_ids,
 						duration_ms: song.duration_ms,
+						release_year: song.release_year,
 					})),
 					{ onConflict: "spotify_id" },
 				)

@@ -9,6 +9,14 @@ export function extractId(uri: string): string {
 	return uri.split(":").pop() as string;
 }
 
+/** Pulls the release year from a pathfinder isoString ("2019-03-29" or
+ *  "1975-11-21T00:00:00Z"). Returns null for missing/unparseable values. */
+function parseReleaseYear(isoString: string | null | undefined): number | null {
+	if (!isoString) return null;
+	const year = Number.parseInt(isoString.slice(0, 4), 10);
+	return Number.isInteger(year) && year > 0 ? year : null;
+}
+
 /** Maps a pathfinder liked-track item (fetchLibraryTracks response).
  *  URI is on the wrapper (`item.track._uri`), not on `item.track.data`. */
 export function mapPathfinderTrack(
@@ -81,6 +89,13 @@ export function mapPathfinderPlaylistTrack(
 		return null;
 	}
 
+	// Release year lives on the itemV3 branch (album = contentHierarchyParent),
+	// not on itemV2's albumOfTrack — so it's read separately from the same item.
+	const releaseYear = parseReleaseYear(
+		item.itemV3?.data?.identityTrait?.contentHierarchyParent
+			?.publishingMetadataTrait?.firstPublishedAt?.isoString,
+	);
+
 	return {
 		added_at: item.addedAt?.isoString ?? new Date().toISOString(),
 		track: {
@@ -97,6 +112,7 @@ export function mapPathfinderPlaylistTrack(
 			},
 			duration_ms: track.trackDuration?.totalMilliseconds ?? 0,
 			uri: track.uri,
+			release_year: releaseYear,
 		},
 	};
 }
