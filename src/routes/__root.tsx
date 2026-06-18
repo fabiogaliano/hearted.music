@@ -218,7 +218,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 			"frame-ancestors 'none'",
 			`style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.userjot.com`,
 			"font-src 'self' https://fonts.gstatic.com",
-			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com https://*.bcbits.com https://*.userjot.com`,
+			`img-src 'self' data: https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com https://*.googleusercontent.com https://*.bcbits.com https://*.userjot.com https://*.fbsbx.com`,
 			"frame-src https://open.spotify.com https://*.userjot.com",
 			// Session replay (Sentry rrweb, and PostHog's recorder) compresses events
 			// in a Web Worker spun up from a blob: URL. Without an explicit worker-src
