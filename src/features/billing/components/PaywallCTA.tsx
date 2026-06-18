@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/Button";
 import {
+	type PackOfferId,
+	SONG_PACK_250,
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
@@ -27,7 +29,16 @@ interface PaywallCTAProps {
 	compact?: boolean;
 }
 
-const PACK_CREDITS = 250;
+const PACK_OPTIONS: { offer: PackOfferId; credits: number; bonus: number }[] = [
+	{ offer: SONG_PACK_250, credits: 250, bonus: 15 },
+	{ offer: SONG_PACK_500, credits: 500, bonus: 25 },
+];
+
+// Dollars-per-song, e.g. "$0.024". Three decimals on purpose: at two decimals
+// both packs round to $0.02 and the volume discount (2.4¢ → 2.0¢) disappears.
+function perSongLabel(offer: PackOfferId, credits: number): string {
+	return `$${(OFFER_PRICING[offer].amountCents / credits / 100).toFixed(3)}`;
+}
 const YEARLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_YEARLY].amountCents;
 const QUARTERLY_PRICE_CENTS = OFFER_PRICING[UNLIMITED_QUARTERLY].amountCents;
 
@@ -49,7 +60,10 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	});
 	const [quoteState, setQuoteState] = useState<QuoteState>({ status: "idle" });
 
-	const [showPackConfirm, setShowPackConfirm] = useState(false);
+	const [pendingPack, setPendingPack] = useState<{
+		offer: PackOfferId;
+		credits: number;
+	} | null>(null);
 	const packConfirmDialogRef = useRef<HTMLDivElement>(null);
 	const packConfirmTitleId = useId();
 	const packConfirmDescriptionId = useId();
@@ -60,13 +74,16 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	const creditBalance = billingState.creditBalance;
 	const hasRemainingCredits = creditBalance > 0;
 
-	const handlePackClick = useCallback(() => {
-		if (hasRemainingCredits) {
-			setShowPackConfirm(true);
-		} else {
-			startCheckout(SONG_PACK_500);
-		}
-	}, [hasRemainingCredits, startCheckout]);
+	const handlePackClick = useCallback(
+		(pack: { offer: PackOfferId; credits: number }) => {
+			if (hasRemainingCredits) {
+				setPendingPack(pack);
+			} else {
+				startCheckout(pack.offer);
+			}
+		},
+		[hasRemainingCredits, startCheckout],
+	);
 	const upgradeQuote = quoteState.status === "loaded" ? quoteState.quote : null;
 	const discountCents = upgradeQuote?.discountCents ?? 0;
 	const hasUpgradeDiscount = discountCents > 0;
@@ -120,14 +137,14 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	}, [showUnlimitedCTA, creditBalance]);
 
 	useEffect(() => {
-		if (!showPackConfirm) return;
+		if (!pendingPack) return;
 
 		const previouslyFocused = document.activeElement;
 		packConfirmDialogRef.current?.focus();
 
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key !== "Escape") return;
-			setShowPackConfirm(false);
+			setPendingPack(null);
 		}
 
 		document.addEventListener("keydown", handleKeyDown);
@@ -141,7 +158,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 				previouslyFocused.focus();
 			}
 		};
-	}, [showPackConfirm]);
+	}, [pendingPack]);
 
 	const quarterlyEnabled =
 		configState.status === "loaded" && configState.config.quarterlyPlanEnabled;
@@ -161,36 +178,43 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 			)}
 
 			<div
-				className={`flex w-full flex-col gap-3 ${compact ? "mt-1" : "mt-2"}`}
+				className={`flex w-full flex-col gap-4 ${compact ? "mt-1" : "mt-2"}`}
 			>
-				{showPackCTA && (
-					<Button
-						variant="card"
-						onClick={handlePackClick}
-						disabled={isBusy}
-						style={{ fontFamily: fonts.body }}
-					>
-						<div className="flex items-baseline justify-between">
-							<span className="theme-text text-sm font-medium">
-								Song Pack
-								<span className="theme-text-muted ml-1 font-normal">
-									· 250 songs
+				{showPackCTA &&
+					PACK_OPTIONS.map((pack) => (
+						<Button
+							key={pack.offer}
+							variant="card"
+							className="bg-(--t-surface)"
+							onClick={() => handlePackClick(pack)}
+							disabled={isBusy}
+							style={{ fontFamily: fonts.body }}
+						>
+							<div className="flex items-baseline justify-between">
+								<span className="theme-text text-sm font-medium">
+									{pack.credits} Song Pack
+									<span className="theme-text-muted ml-1 text-xs font-normal opacity-60">
+										(+{pack.bonus} bonus)
+									</span>
 								</span>
-							</span>
-							<span className="theme-text-muted shrink-0 text-xs">
-								{formatOfferPrice(SONG_PACK_500)}
-							</span>
-						</div>
-						<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
-							<li className="text-xs">You choose which ones to explore</li>
-						</ul>
-					</Button>
-				)}
+								<span className="theme-text-muted shrink-0 text-xs">
+									<span className="opacity-60">
+										{perSongLabel(pack.offer, pack.credits)} p/song
+									</span>{" "}
+									· {formatOfferPrice(pack.offer)}
+								</span>
+							</div>
+							<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
+								<li className="text-xs">You choose which ones to explore</li>
+							</ul>
+						</Button>
+					))}
 
 				{showUnlimitedCTA && (
 					<>
 						<Button
 							variant="card"
+							className="bg-(--t-surface)"
 							onClick={() => startCheckout(UNLIMITED_YEARLY)}
 							disabled={isBusy}
 							style={{ fontFamily: fonts.body }}
@@ -245,6 +269,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						{quarterlyEnabled && (
 							<Button
 								variant="card"
+								className="bg-(--t-surface)"
 								onClick={() => startCheckout(UNLIMITED_QUARTERLY)}
 								disabled={isBusy}
 								style={{ fontFamily: fonts.body }}
@@ -301,7 +326,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 				)}
 			</div>
 
-			{showPackConfirm &&
+			{pendingPack &&
 				createPortal(
 					<div
 						className="fixed inset-0 z-[100] flex items-center justify-center p-4"
@@ -311,7 +336,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							type="button"
 							aria-label="Close pack confirmation"
 							className="dialog-backdrop absolute inset-0 cursor-default border-0 bg-black/50 p-0"
-							onClick={() => setShowPackConfirm(false)}
+							onClick={() => setPendingPack(null)}
 						/>
 						<div
 							ref={packConfirmDialogRef}
@@ -335,13 +360,13 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								style={{ fontFamily: fonts.body }}
 							>
 								Another pack brings that to{" "}
-								{billingState.creditBalance + PACK_CREDITS}.
+								{billingState.creditBalance + pendingPack.credits}.
 							</p>
 							<div className="mt-5 flex justify-end gap-3">
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => setShowPackConfirm(false)}
+									onClick={() => setPendingPack(null)}
 									style={{ fontFamily: fonts.body }}
 								>
 									Not now
@@ -349,12 +374,13 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 								<Button
 									size="sm"
 									onClick={() => {
-										setShowPackConfirm(false);
-										startCheckout(SONG_PACK_500);
+										const pack = pendingPack;
+										setPendingPack(null);
+										startCheckout(pack.offer);
 									}}
 									style={{ fontFamily: fonts.body }}
 								>
-									Add 250 more
+									Add {pendingPack.credits} more
 								</Button>
 							</div>
 						</div>

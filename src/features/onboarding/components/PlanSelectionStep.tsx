@@ -17,6 +17,8 @@ import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import { billingKeys } from "@/features/billing/query-keys";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import {
+	isPackOffer,
+	SONG_PACK_250,
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
@@ -161,15 +163,14 @@ export function PlanSelectionStep({
 				? existingIntent.checkoutAttemptId
 				: crypto.randomUUID();
 
-		const intent: CheckoutIntent =
-			offer === SONG_PACK_500
-				? {
-						kind: "pack",
-						offer,
-						checkoutAttemptId,
-						baselineCreditBalance: billingState.creditBalance,
-					}
-				: { kind: "unlimited", offer, checkoutAttemptId };
+		const intent: CheckoutIntent = isPackOffer(offer)
+			? {
+					kind: "pack",
+					offer,
+					checkoutAttemptId,
+					baselineCreditBalance: billingState.creditBalance,
+				}
+			: { kind: "unlimited", offer, checkoutAttemptId };
 
 		analytics.capture("checkout_started", {
 			plan_kind: intent.kind,
@@ -228,10 +229,9 @@ export function PlanSelectionStep({
 
 	// ── Polling state ──
 	if (planState === "polling" && pendingIntent && pollingState) {
-		const offerLabel =
-			pendingIntent.offer === SONG_PACK_500
-				? "Song Pack"
-				: "Unlimited subscription";
+		const offerLabel = isPackOffer(pendingIntent.offer)
+			? "Song Pack"
+			: "Unlimited subscription";
 
 		return (
 			<div className="text-center">
@@ -380,8 +380,19 @@ export function PlanSelectionStep({
 
 				<PlanCard
 					title="Song Pack"
-					price={formatOfferPrice(SONG_PACK_500)}
+					price={formatOfferPrice(SONG_PACK_250)}
 					description="250 songs + 15 Instant Unlocks"
+					buttonLabel={
+						activeCheckout === SONG_PACK_250 ? "Redirecting..." : "Unlock Pack"
+					}
+					disabled={isBusy}
+					onClick={() => handleCheckout(SONG_PACK_250)}
+				/>
+
+				<PlanCard
+					title="Song Pack"
+					price={formatOfferPrice(SONG_PACK_500)}
+					description="500 songs + 25 Instant Unlocks"
 					buttonLabel={
 						activeCheckout === SONG_PACK_500 ? "Redirecting..." : "Unlock Pack"
 					}

@@ -3199,6 +3199,7 @@ export type Database = {
 			fulfill_pack_purchase: {
 				Args: {
 					p_account_id: string;
+					p_bonus_unlocks?: number;
 					p_checkout_session_id?: string;
 					p_credits: number;
 					p_offer_id: string;

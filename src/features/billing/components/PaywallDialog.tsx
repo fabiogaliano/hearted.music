@@ -55,7 +55,7 @@ export function PaywallDialog({ billingState, onClose }: PaywallDialogProps) {
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				tabIndex={-1}
-				className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-[420px] border p-6 outline-none"
+				className="theme-border-color dialog-content relative w-full max-w-[560px] border bg-(--t-bg) p-8 outline-none"
 			>
 				<Button
 					variant="icon"

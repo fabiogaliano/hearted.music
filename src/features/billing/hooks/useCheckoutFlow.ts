@@ -16,7 +16,7 @@ import {
 	clearCheckoutIntent,
 	saveCheckoutIntent,
 } from "@/features/onboarding/checkout-intent";
-import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
+import { isPackOffer } from "@/lib/domains/billing/offers";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
 import { createCheckoutSession } from "@/lib/server/billing.functions";
@@ -36,15 +36,14 @@ export function useCheckoutFlow(billingState: BillingState) {
 			setState({ status: "creating", offer });
 
 			const checkoutAttemptId = crypto.randomUUID();
-			const intent: CheckoutIntent =
-				offer === SONG_PACK_500
-					? {
-							kind: "pack",
-							offer,
-							checkoutAttemptId,
-							baselineCreditBalance: billingState.creditBalance,
-						}
-					: { kind: "unlimited", offer, checkoutAttemptId };
+			const intent: CheckoutIntent = isPackOffer(offer)
+				? {
+						kind: "pack",
+						offer,
+						checkoutAttemptId,
+						baselineCreditBalance: billingState.creditBalance,
+					}
+				: { kind: "unlimited", offer, checkoutAttemptId };
 
 			try {
 				const result = await createCheckoutSession({

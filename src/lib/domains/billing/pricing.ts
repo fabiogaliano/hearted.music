@@ -12,9 +12,15 @@
  * two in sync — this file is the single source for every displayed price.
  */
 
-import { SONG_PACK_500, UNLIMITED_QUARTERLY, UNLIMITED_YEARLY } from "./offers";
+import {
+	SONG_PACK_250,
+	SONG_PACK_500,
+	UNLIMITED_QUARTERLY,
+	UNLIMITED_YEARLY,
+} from "./offers";
 
 export type OfferId =
+	| typeof SONG_PACK_250
 	| typeof SONG_PACK_500
 	| typeof UNLIMITED_QUARTERLY
 	| typeof UNLIMITED_YEARLY;
@@ -26,7 +32,8 @@ interface OfferPricing {
 }
 
 export const OFFER_PRICING: Record<OfferId, OfferPricing> = {
-	[SONG_PACK_500]: { amountCents: 599, suffix: "" },
+	[SONG_PACK_250]: { amountCents: 599, suffix: "" },
+	[SONG_PACK_500]: { amountCents: 999, suffix: "" },
 	[UNLIMITED_YEARLY]: { amountCents: 3999, suffix: "/yr" },
 	[UNLIMITED_QUARTERLY]: { amountCents: 1499, suffix: "/quarter" },
 };

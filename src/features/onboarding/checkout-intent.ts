@@ -8,14 +8,15 @@
  */
 
 import {
-	SONG_PACK_500,
+	isPackOffer,
+	type PackOfferId,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
 
 const STORAGE_KEY = "hearted:checkout-intent:v2";
 
-type PackOffer = typeof SONG_PACK_500;
+type PackOffer = PackOfferId;
 type UnlimitedOffer = typeof UNLIMITED_QUARTERLY | typeof UNLIMITED_YEARLY;
 export type CheckoutOffer = PackOffer | UnlimitedOffer;
 
@@ -71,7 +72,7 @@ function parseIntent(value: unknown): CheckoutIntent | null {
 	}
 
 	if (kind === "pack") {
-		if (offer !== SONG_PACK_500) return null;
+		if (typeof offer !== "string" || !isPackOffer(offer)) return null;
 		const baseline = record.baselineCreditBalance;
 		if (
 			typeof baseline !== "number" ||

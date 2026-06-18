@@ -9,6 +9,8 @@ import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
 import {
+	isPackOffer,
+	SONG_PACK_250,
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
@@ -131,6 +133,7 @@ export const requestSongUnlock = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 const VALID_OFFER_IDS = [
+	SONG_PACK_250,
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
@@ -139,6 +142,7 @@ const VALID_OFFER_IDS = [
 type OfferId = (typeof VALID_OFFER_IDS)[number];
 
 const OfferIdSchema = z.enum([
+	SONG_PACK_250,
 	SONG_PACK_500,
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
@@ -150,13 +154,10 @@ const CreateCheckoutSessionSchema = z.object({
 });
 
 function checkoutEndpointForOffer(offer: OfferId): string {
-	switch (offer) {
-		case SONG_PACK_500:
-			return "/api/checkout/pack";
-		case UNLIMITED_QUARTERLY:
-		case UNLIMITED_YEARLY:
-			return "/api/checkout/unlimited";
+	if (isPackOffer(offer)) {
+		return "/api/checkout/pack";
 	}
+	return "/api/checkout/unlimited";
 }
 
 export type CreateCheckoutSessionResponse =
