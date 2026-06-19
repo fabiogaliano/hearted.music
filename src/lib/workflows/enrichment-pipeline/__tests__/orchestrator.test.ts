@@ -52,10 +52,12 @@ vi.mock("../stages/song-embedding", () => ({
 	runSongEmbedding: (...args: unknown[]) => mockRunSongEmbedding(...args),
 }));
 
-const { mockGetEmbeddings, mockGetAnalysis } = vi.hoisted(() => ({
-	mockGetEmbeddings: vi.fn(),
-	mockGetAnalysis: vi.fn(),
-}));
+const { mockGetEmbeddings, mockGetAnalysis, mockDetectLanguageForSongs } =
+	vi.hoisted(() => ({
+		mockGetEmbeddings: vi.fn(),
+		mockGetAnalysis: vi.fn(),
+		mockDetectLanguageForSongs: vi.fn(),
+	}));
 
 vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	EmbeddingService: {
@@ -116,6 +118,11 @@ vi.mock("@/lib/integrations/llm/service", () => ({
 
 vi.mock("@/lib/domains/taste/playlist-profiling/service", () => ({
 	createPlaylistProfilingService: vi.fn().mockReturnValue({}),
+}));
+
+vi.mock("@/lib/domains/enrichment/language-detection/service", () => ({
+	detectLanguageForSongs: (...args: unknown[]) =>
+		mockDetectLanguageForSongs(...args),
 }));
 
 import { executeWorkerChunk } from "../orchestrator";
@@ -179,6 +186,13 @@ function activationOutcomeSuccess(songIds: string[]): StageOutcome {
 	};
 }
 
+const EMPTY_LANGUAGE_DETECTION_STATS = {
+	candidates: 0,
+	detected: 0,
+	bilingual: 0,
+	songsWritten: 0,
+} as const;
+
 function makeBatch(songIds: string[]): PipelineBatch {
 	const now = new Date().toISOString();
 	return {
@@ -200,6 +214,10 @@ function makeBatch(songIds: string[]): PipelineBatch {
 			release_year: null,
 			release_year_checked_at: null,
 			vocal_gender: null,
+			language: null,
+			language_confidence: null,
+			language_secondary: null,
+			language_checked_at: null,
 			created_at: now,
 			updated_at: now,
 		})),
@@ -265,6 +283,7 @@ beforeEach(() => {
 	mockGetByIds.mockResolvedValue(Result.ok([]));
 	mockGetEntitledDataEnrichedSongIds.mockResolvedValue([]);
 	mockGetAudioFeatureAvailability.mockResolvedValue(Result.ok([]));
+	mockDetectLanguageForSongs.mockResolvedValue(EMPTY_LANGUAGE_DETECTION_STATS);
 });
 
 describe("executeWorkerChunk sub-batching", () => {
@@ -350,6 +369,76 @@ describe("executeWorkerChunk sub-batching", () => {
 		const embeddingBatch = mockRunSongEmbedding.mock
 			.calls[0][1] as PipelineBatch;
 		expect(embeddingBatch.songIds).toEqual(["b"]);
+	});
+
+	it("runs lyric-language detection for the full batch", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["a", "b"],
+			needAnalysis: ["b"],
+			needEmbedding: ["b"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["a", "b"]));
+
+		await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(mockDetectLanguageForSongs).toHaveBeenCalledOnce();
+		expect(mockDetectLanguageForSongs).toHaveBeenCalledWith(["a", "b"]);
+	});
+
+	it("waits for lyric-language detection before surfacing a later-stage failure", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["song-1"],
+			needAnalysis: ["song-1"],
+			needEmbedding: ["song-1"],
+			needContentActivation: ["song-1"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1"]));
+
+		let resolveLanguageDetection:
+			| ((value: typeof EMPTY_LANGUAGE_DETECTION_STATS) => void)
+			| undefined;
+		const languageDetection = new Promise<
+			typeof EMPTY_LANGUAGE_DETECTION_STATS
+		>((resolve) => {
+			resolveLanguageDetection = resolve;
+		});
+		mockDetectLanguageForSongs.mockReturnValue(languageDetection);
+
+		let activationStarted: (() => void) | undefined;
+		const activationReached = new Promise<void>((resolve) => {
+			activationStarted = resolve;
+		});
+		mockRunContentActivation.mockImplementation(async () => {
+			activationStarted?.();
+			throw new Error("activation failed");
+		});
+		vi.mocked(recordStageFailure).mockResolvedValue(
+			Result.err(
+				new DatabaseError({
+					code: "FAIL",
+					message: "content activation failure row insert failed",
+				}),
+			),
+		);
+
+		const resultPromise = executeWorkerChunk("account-1", "job-1", 10, 0);
+		await activationReached;
+
+		const settlement = await Promise.race([
+			resultPromise.then(
+				() => "settled",
+				() => "settled",
+			),
+			Promise.resolve("pending"),
+		]);
+		expect(settlement).toBe("pending");
+
+		resolveLanguageDetection?.(EMPTY_LANGUAGE_DETECTION_STATS);
+		await expect(resultPromise).rejects.toThrow(
+			"Failed to record failure rows for stage content_activation",
+		);
 	});
 
 	it("fails the parent attempt when audio feature accounting cannot persist", async () => {

@@ -243,6 +243,10 @@ function makeBatch(songIds: string[]): PipelineBatch {
 			release_year: null,
 			release_year_checked_at: null,
 			vocal_gender: null,
+			language: null,
+			language_confidence: null,
+			language_secondary: null,
+			language_checked_at: null,
 			created_at: now,
 			updated_at: now,
 		})),
@@ -392,6 +396,7 @@ const mockRunContentActivation = vi
 	.mockImplementation((_ctx: unknown, songIds: string[]) =>
 		Promise.resolve(activationOutcomeSuccess(songIds)),
 	);
+const mockDetectLanguageForSongs = vi.fn();
 const mockMarkItemsNew = vi.fn().mockResolvedValue(Result.ok([]));
 
 vi.mock("../stages/audio-features", () => ({
@@ -460,6 +465,11 @@ vi.mock("@/lib/domains/taste/playlist-profiling/service", () => ({
 	createPlaylistProfilingService: vi.fn().mockReturnValue({}),
 }));
 
+vi.mock("@/lib/domains/enrichment/language-detection/service", () => ({
+	detectLanguageForSongs: (...args: unknown[]) =>
+		mockDetectLanguageForSongs(...args),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (must come after mocks)
 // ---------------------------------------------------------------------------
@@ -472,6 +482,12 @@ import { executeWorkerChunk } from "../orchestrator";
 // ---------------------------------------------------------------------------
 
 const ACCOUNT_ID = "test-account-id";
+const EMPTY_LANGUAGE_DETECTION_STATS = {
+	candidates: 0,
+	detected: 0,
+	bilingual: 0,
+	songsWritten: 0,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -503,6 +519,7 @@ beforeEach(() => {
 			Promise.resolve(activationOutcomeSuccess(songIds)),
 	);
 	mockMarkItemsNew.mockResolvedValue(Result.ok([]));
+	mockDetectLanguageForSongs.mockResolvedValue(EMPTY_LANGUAGE_DETECTION_STATS);
 	mockSelectEnrichmentWorkPlan.mockResolvedValue(makeFullWorkPlan());
 	mockLoadBatchSongs.mockResolvedValue(
 		makeBatch(["song-1", "song-2", "song-3"]),
@@ -585,6 +602,12 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 			expect(mockRunGenreTagging).toHaveBeenCalledOnce();
 			expect(mockRunSongAnalysis).toHaveBeenCalledOnce();
 			expect(mockRunSongEmbedding).toHaveBeenCalledOnce();
+			expect(mockDetectLanguageForSongs).toHaveBeenCalledOnce();
+			expect(mockDetectLanguageForSongs).toHaveBeenCalledWith([
+				"song-1",
+				"song-2",
+				"song-3",
+			]);
 
 			expect(result.readyCount).toBe(3);
 		});

@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { getAudioFeatureAvailability } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { detectLanguageForSongs } from "@/lib/domains/enrichment/language-detection/service";
 import { resolveVocalGenderForSongs } from "@/lib/domains/enrichment/vocal-gender/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
@@ -351,82 +352,94 @@ async function enrichSongs(
 			: "skipped",
 	);
 
-	// Phase C: song_embedding (entitled only)
-	progress.currentStage = "song_embedding";
-	progress.stages.song_embedding.status = "running";
-	await persistProgress(jobId, progress);
+	// Lyric-language detection (eld, offline) runs after analysis because that's
+	// the stage that fetches & stores lyrics — so this chunk's freshly-stored
+	// lyrics are detectable now. Best-effort and not accounted (app metadata, not
+	// a matching gate); kicked off here so it overlaps embedding + activation.
+	// Still await it in finally so the chunk never leaves detached work behind.
+	const languageDetection = detectLanguageForSongs(batch.songIds);
 
-	const embeddingSubBatch = filterBatch(batch, workPlan.needEmbedding);
-	const embeddingAccountingResult =
-		embeddingSubBatch.songIds.length > 0
-			? await runStageWithAccounting({
-					stage: "song_embedding",
-					candidateSongIds: embeddingSubBatch.songIds,
-					jobId,
-					accountId: ctx.accountId,
-					fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
-					run: () => runSongEmbedding(ctx, embeddingSubBatch),
-				})
-			: await emptyAccounting;
+	try {
+		// Phase C: song_embedding (entitled only)
+		progress.currentStage = "song_embedding";
+		progress.stages.song_embedding.status = "running";
+		await persistProgress(jobId, progress);
 
-	if (Result.isError(embeddingAccountingResult)) {
-		log.error("stage-accounting-failed", {
-			stage: "song_embedding",
-			jobId,
-			accountId: ctx.accountId,
-			error: embeddingAccountingResult.error,
-		});
-		throw embeddingAccountingResult.error;
+		const embeddingSubBatch = filterBatch(batch, workPlan.needEmbedding);
+		const embeddingAccountingResult =
+			embeddingSubBatch.songIds.length > 0
+				? await runStageWithAccounting({
+						stage: "song_embedding",
+						candidateSongIds: embeddingSubBatch.songIds,
+						jobId,
+						accountId: ctx.accountId,
+						fallbackCode: FAILURE_CODES.PROVIDER_TRANSIENT,
+						run: () => runSongEmbedding(ctx, embeddingSubBatch),
+					})
+				: await emptyAccounting;
+
+		if (Result.isError(embeddingAccountingResult)) {
+			log.error("stage-accounting-failed", {
+				stage: "song_embedding",
+				jobId,
+				accountId: ctx.accountId,
+				error: embeddingAccountingResult.error,
+			});
+			throw embeddingAccountingResult.error;
+		}
+
+		const embeddingResult: StageSummary = embeddingAccountingResult.value;
+
+		applyStageSummary(
+			progress,
+			"song_embedding",
+			embeddingResult,
+			embeddingSubBatch.songIds.length > 0
+				? stageStatus(embeddingResult)
+				: "skipped",
+		);
+
+		// Phase D: content_activation (entitled + data-enriched songs)
+		progress.currentStage = "content_activation";
+		progress.stages.content_activation.status = "running";
+		await persistProgress(jobId, progress);
+
+		const activationAccountingResult =
+			workPlan.needContentActivation.length > 0
+				? await runStageWithAccounting({
+						stage: "content_activation",
+						candidateSongIds: workPlan.needContentActivation,
+						jobId,
+						accountId: ctx.accountId,
+						fallbackCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
+						run: () =>
+							runContentActivation(ctx, workPlan.needContentActivation),
+					})
+				: await emptyAccounting;
+
+		if (Result.isError(activationAccountingResult)) {
+			log.error("stage-accounting-failed", {
+				stage: "content_activation",
+				jobId,
+				accountId: ctx.accountId,
+				error: activationAccountingResult.error,
+			});
+			throw activationAccountingResult.error;
+		}
+
+		const activationResult: StageSummary = activationAccountingResult.value;
+
+		applyStageSummary(
+			progress,
+			"content_activation",
+			activationResult,
+			workPlan.needContentActivation.length > 0
+				? stageStatus(activationResult)
+				: "skipped",
+		);
+	} finally {
+		await languageDetection;
 	}
-
-	const embeddingResult: StageSummary = embeddingAccountingResult.value;
-
-	applyStageSummary(
-		progress,
-		"song_embedding",
-		embeddingResult,
-		embeddingSubBatch.songIds.length > 0
-			? stageStatus(embeddingResult)
-			: "skipped",
-	);
-
-	// Phase D: content_activation (entitled + data-enriched songs)
-	progress.currentStage = "content_activation";
-	progress.stages.content_activation.status = "running";
-	await persistProgress(jobId, progress);
-
-	const activationAccountingResult =
-		workPlan.needContentActivation.length > 0
-			? await runStageWithAccounting({
-					stage: "content_activation",
-					candidateSongIds: workPlan.needContentActivation,
-					jobId,
-					accountId: ctx.accountId,
-					fallbackCode: FAILURE_CODES.CONTENT_ACTIVATION_FAILED,
-					run: () => runContentActivation(ctx, workPlan.needContentActivation),
-				})
-			: await emptyAccounting;
-
-	if (Result.isError(activationAccountingResult)) {
-		log.error("stage-accounting-failed", {
-			stage: "content_activation",
-			jobId,
-			accountId: ctx.accountId,
-			error: activationAccountingResult.error,
-		});
-		throw activationAccountingResult.error;
-	}
-
-	const activationResult: StageSummary = activationAccountingResult.value;
-
-	applyStageSummary(
-		progress,
-		"content_activation",
-		activationResult,
-		workPlan.needContentActivation.length > 0
-			? stageStatus(activationResult)
-			: "skipped",
-	);
 }
 
 // --- Worker-owned chunk orchestration ---

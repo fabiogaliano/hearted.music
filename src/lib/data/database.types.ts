@@ -2150,6 +2150,10 @@ export type Database = {
 					genres: string[];
 					id: string;
 					image_url: string | null;
+					language: string | null;
+					language_checked_at: string | null;
+					language_confidence: number | null;
+					language_secondary: string | null;
 					name: string;
 					release_year: number | null;
 					release_year_checked_at: string | null;
@@ -2167,6 +2171,10 @@ export type Database = {
 					genres?: string[];
 					id?: string;
 					image_url?: string | null;
+					language?: string | null;
+					language_checked_at?: string | null;
+					language_confidence?: number | null;
+					language_secondary?: string | null;
 					name: string;
 					release_year?: number | null;
 					release_year_checked_at?: string | null;
@@ -2184,6 +2192,10 @@ export type Database = {
 					genres?: string[];
 					id?: string;
 					image_url?: string | null;
+					language?: string | null;
+					language_checked_at?: string | null;
+					language_confidence?: number | null;
+					language_secondary?: string | null;
 					name?: string;
 					release_year?: number | null;
 					release_year_checked_at?: string | null;
@@ -2820,10 +2832,8 @@ export type Database = {
 				Args: { p_rows: Json };
 				Returns: number;
 			};
-			apply_release_year_lookups: {
-				Args: { p_rows: Json };
-				Returns: number;
-			};
+			apply_release_year_lookups: { Args: { p_rows: Json }; Returns: number };
+			apply_song_language: { Args: { p_rows: Json }; Returns: number };
 			apply_subscription_upgrade_conversion: {
 				Args: {
 					p_applied_stripe_event_id: string;
@@ -3672,6 +3682,13 @@ export type Database = {
 			select_liked_song_ids_needing_pipeline_processing: {
 				Args: { p_account_id: string; p_limit: number };
 				Returns: {
+					song_id: string;
+				}[];
+			};
+			select_songs_needing_language_detection: {
+				Args: { p_song_ids: string[] };
+				Returns: {
+					lyrics_text: string;
 					song_id: string;
 				}[];
 			};
