@@ -142,7 +142,16 @@ async function flush(rows: Resolved[]): Promise<void> {
 		console.log(`  [dry-run] would flush ${rows.length} rows`);
 		return;
 	}
-	await prodSql(sql, { write: true });
+	for (let attempt = 0; ; attempt++) {
+		try {
+			await prodSql(sql, { write: true });
+			return;
+		} catch (err) {
+			if (attempt >= 3) throw err;
+			console.error(`  flush failed (attempt ${attempt + 1}), retrying…`);
+			await sleep(2500);
+		}
+	}
 }
 
 async function main() {
