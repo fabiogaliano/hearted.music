@@ -18,7 +18,6 @@ jobs:
       app: ${{ steps.changes.outputs.app }}
       worker: ${{ steps.changes.outputs.worker }}
       db_security: ${{ steps.changes.outputs.db_security }}
-      db_migrations: ${{ steps.changes.outputs.db_migrations }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -71,8 +70,6 @@ jobs:
               - 'supabase/**'
               - 'src/lib/data/**'
               - '.github/workflows/**'
-            db_migrations:
-              - 'supabase/migrations/**'
 
   verify:
     needs: detect
@@ -187,13 +184,21 @@ jobs:
 
   migrate-prod:
     needs: [detect, verify, db-security]
+    # Reconciles from REMOTE STATE on every green push to main — deliberately not
+    # gated on whether this push touched supabase/migrations/**. `supabase db
+    # push` is idempotent: it applies only migrations missing from the remote
+    # schema_migrations and is a no-op otherwise, so the extra runs are cheap.
+    # Gating on the per-commit diff once stranded a migration in prod: the commit
+    # that ADDED it failed `verify`, so this job skipped; the follow-up commit
+    # that fixed `verify` changed only test files, so the migrations path-filter
+    # was false and it skipped again — leaving main ahead of prod with nothing to
+    # ever re-trigger the apply. Driving off remote state closes that gap.
     if: >-
       !cancelled()
       && needs.verify.result == 'success'
       && (needs.db-security.result == 'success' || needs.db-security.result == 'skipped')
       && github.event_name == 'push'
       && github.ref == 'refs/heads/main'
-      && needs.detect.outputs.db_migrations == 'true'
     runs-on: ubuntu-latest
     environment: production-db
     timeout-minutes: 15

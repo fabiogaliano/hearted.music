@@ -20,7 +20,11 @@ pre-push:
       run: bun run check
       skip: [merge, rebase]
     typecheck:
-      run: bun run typecheck
+      # Bust tsgo's incremental cache so this gate runs a FULL check, matching CI
+      # (fresh checkout = no .tsbuildinfo). A stale cache once let a type error
+      # pass pre-push yet fail CI, which stranded a migration. Cover both projects
+      # CI typechecks (main + worker).
+      run: rm -rf node_modules/.cache/tsgo && bun run typecheck && bun run typecheck:worker
       skip: [merge, rebase]
     test:
       run: bun run test
