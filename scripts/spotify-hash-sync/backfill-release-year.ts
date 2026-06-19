@@ -40,8 +40,11 @@ const PATHFINDER_URL = "https://api-partner.spotify.com/pathfinder/v2/query";
 // the token / client-token / live hash from.
 const TOKEN_SEED_PAGE = "https://open.spotify.com/track/4PTG3Z6ehGkBFwjybzWkR8";
 
-const BATCH_SIZE = 200; // ids per in-page eval call
-const IN_PAGE_CONCURRENCY = 5; // concurrent fetches inside the page
+const BATCH_SIZE = 100; // ids per in-page eval call
+const IN_PAGE_CONCURRENCY = 3; // concurrent fetches inside the page
+const REQUEST_SPACING_MS = 150; // pause between a worker's requests
+const MAX_RETRY_AFTER_S = 25; // cap how long we honor a 429 Retry-After
+const EVAL_TIMEOUT_MS = 300_000; // per-batch ceiling (backoff can stretch a batch)
 const WRITE_CHUNK = 500;
 
 const argv = process.argv.slice(2);
@@ -194,24 +197,39 @@ function parseEvalResult(raw: string): unknown {
 function buildBatchFn(ids: string[], session: Session): string {
 	return `async()=>{
 		const ids=${JSON.stringify(ids)};
+		const HEADERS={
+			"authorization":${JSON.stringify(session.token)},
+			"client-token":${JSON.stringify(session.clientToken)},
+			"content-type":"application/json;charset=UTF-8",
+			"accept":"application/json"
+		};
+		const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
 		const out={}; let i=0;
+		async function one(id){
+			// Honor 429 Retry-After and retry a few times before giving up to retry-later.
+			for(let attempt=0; attempt<5; attempt++){
+				try{
+					const r=await fetch(${JSON.stringify(PATHFINDER_URL)},{
+						method:"POST", headers:HEADERS,
+						body:JSON.stringify({variables:{uri:"spotify:track:"+id},operationName:"getTrack",extensions:{persistedQuery:{version:1,sha256Hash:${JSON.stringify(session.hash)}}}})
+					});
+					if(r.status===429){
+						const ra=Number(r.headers.get("Retry-After"))||5;
+						await sleep(Math.min(ra,${MAX_RETRY_AFTER_S})*1000);
+						continue;
+					}
+					if(r.status===401) return {s:401};
+					let j=null; try{ j=JSON.parse(await r.text()); }catch{}
+					return {s:r.status,y:j?.data?.trackUnion?.albumOfTrack?.date?.year};
+				}catch(e){ await sleep(1000); }
+			}
+			return {s:429}; // exhausted backoff — retry on a later run
+		}
 		async function worker(){
 			while(i<ids.length){
 				const id=ids[i++];
-				try{
-					const r=await fetch(${JSON.stringify(PATHFINDER_URL)},{
-						method:"POST",
-						headers:{
-							"authorization":${JSON.stringify(session.token)},
-							"client-token":${JSON.stringify(session.clientToken)},
-							"content-type":"application/json;charset=UTF-8",
-							"accept":"application/json"
-						},
-						body:JSON.stringify({variables:{uri:"spotify:track:"+id},operationName:"getTrack",extensions:{persistedQuery:{version:1,sha256Hash:${JSON.stringify(session.hash)}}}})
-					});
-					let j=null; try{ j=JSON.parse(await r.text()); }catch{}
-					out[id]={s:r.status,y:j?.data?.trackUnion?.albumOfTrack?.date?.year};
-				}catch(e){ out[id]={s:-1}; }
+				out[id]=await one(id);
+				await sleep(${REQUEST_SPACING_MS});
 			}
 		}
 		await Promise.all(Array.from({length:${IN_PAGE_CONCURRENCY}},()=>worker()));
@@ -229,7 +247,7 @@ type BatchOutcome = {
 function runBatchInPage(ids: string[], session: Session): BatchOutcome {
 	const b64 = Buffer.from(buildBatchFn(ids, session)).toString("base64");
 	const wrapper = `() => (0,eval)(atob(${JSON.stringify(b64)}))()`;
-	const raw = pw(`eval ${JSON.stringify(wrapper)}`, { timeout: 120_000 });
+	const raw = pw(`eval ${JSON.stringify(wrapper)}`, { timeout: EVAL_TIMEOUT_MS });
 	const parsed = parseEvalResult(raw) as Record<string, { s: number; y?: number }>;
 
 	const years = new Map<string, number>();
