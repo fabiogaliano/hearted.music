@@ -45,6 +45,7 @@ export type CatalogUpsertData = Pick<
 	| "artist_ids"
 	| "duration_ms"
 	| "release_year"
+	| "release_year_checked_at"
 >;
 
 /**
@@ -181,6 +182,9 @@ export function upsertCatalog(
 						artist_ids: song.artist_ids,
 						duration_ms: song.duration_ms,
 						release_year: song.release_year,
+						...(song.release_year_checked_at != null
+							? { release_year_checked_at: song.release_year_checked_at }
+							: {}),
 					})),
 					{ onConflict: "spotify_id" },
 				)
@@ -265,6 +269,143 @@ export async function refreshVocalGenderForSongs(
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc("refresh_song_vocal_gender_for", {
 		p_song_ids: songIds,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(Number(data) || 0);
+}
+
+/**
+ * Of the given Spotify ids, returns those already resolved or already checked
+ * for a release year — i.e. `release_year IS NOT NULL OR release_year_checked_at
+ * IS NOT NULL`. Ids absent from this set still need a getTrack lookup (this
+ * includes ids not yet in the catalog, which are simply not returned). Selecting
+ * only spotify_id keeps the payload tiny; batched like getByIds so a large
+ * library never blows the PostgREST URL length on the `.in()` filter.
+ */
+export async function getResolvedOrCheckedReleaseYearIds(
+	spotifyIds: string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (spotifyIds.length === 0) {
+		return Result.ok(new Set());
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const BATCH_SIZE = 100;
+	const BATCH_CONCURRENCY = 4;
+	const batches = chunkArray(spotifyIds, BATCH_SIZE);
+
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		(batch) =>
+			fromSupabaseMany(
+				supabase
+					.from("song")
+					.select("spotify_id")
+					.in("spotify_id", batch)
+					.or("release_year.not.is.null,release_year_checked_at.not.is.null"),
+			),
+	);
+
+	const done = new Set<string>();
+	for (const result of batchResults) {
+		if (Result.isError(result)) {
+			return result;
+		}
+		for (const row of result.value) done.add(row.spotify_id);
+	}
+	return Result.ok(done);
+}
+
+/**
+ * Bulk-applies extension getTrack release-year lookups via the
+ * apply_release_year_lookups RPC: fills release_year where still missing and
+ * stamps release_year_checked_at on every matched row, whether or not a year
+ * resolved. Returns the number of catalog rows touched.
+ */
+export async function getActivelyLikedSpotifyIdsForAccount(
+	accountId: string,
+	spotifyIds: string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (spotifyIds.length === 0) {
+		return Result.ok(new Set());
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const SONG_BATCH_SIZE = 100;
+	const SONG_BATCH_CONCURRENCY = 4;
+	const uniqueSpotifyIds = [...new Set(spotifyIds)];
+	const songBatches = chunkArray(uniqueSpotifyIds, SONG_BATCH_SIZE);
+
+	const songResults = await mapWithConcurrency(
+		songBatches,
+		SONG_BATCH_CONCURRENCY,
+		(batch) =>
+			fromSupabaseMany<{ id: string; spotify_id: string }>(
+				supabase.from("song").select("id, spotify_id").in("spotify_id", batch),
+			),
+	);
+
+	const spotifyIdBySongId = new Map<string, string>();
+	for (const result of songResults) {
+		if (Result.isError(result)) {
+			return result;
+		}
+		for (const row of result.value) {
+			spotifyIdBySongId.set(row.id, row.spotify_id);
+		}
+	}
+
+	const songIds = [...spotifyIdBySongId.keys()];
+	if (songIds.length === 0) {
+		return Result.ok(new Set());
+	}
+
+	const LIKE_BATCH_SIZE = 100;
+	const LIKE_BATCH_CONCURRENCY = 4;
+	const likeResults = await mapWithConcurrency(
+		chunkArray(songIds, LIKE_BATCH_SIZE),
+		LIKE_BATCH_CONCURRENCY,
+		(batch) =>
+			fromSupabaseMany<{ song_id: string }>(
+				supabase
+					.from("liked_song")
+					.select("song_id")
+					.eq("account_id", accountId)
+					.is("unliked_at", null)
+					.in("song_id", batch),
+			),
+	);
+
+	const activeSpotifyIds = new Set<string>();
+	for (const result of likeResults) {
+		if (Result.isError(result)) {
+			return result;
+		}
+		for (const row of result.value) {
+			const spotifyId = spotifyIdBySongId.get(row.song_id);
+			if (spotifyId) activeSpotifyIds.add(spotifyId);
+		}
+	}
+	return Result.ok(activeSpotifyIds);
+}
+
+export async function applyReleaseYearLookups(
+	lookups: ReadonlyArray<{ spotifyId: string; releaseYear: number | null }>,
+): Promise<Result<number, DbError>> {
+	if (lookups.length === 0) return Result.ok(0);
+
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("apply_release_year_lookups", {
+		p_rows: lookups.map((l) => ({
+			spotify_id: l.spotifyId,
+			release_year: l.releaseYear,
+		})),
 	});
 
 	if (error) {

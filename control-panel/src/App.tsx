@@ -1,6 +1,7 @@
 import {
 	ArrowLeftIcon,
 	ArrowsClockwiseIcon,
+	CalendarBlankIcon,
 	CreditCardIcon,
 	EnvelopeSimpleIcon,
 	GaugeIcon,
@@ -29,6 +30,7 @@ import { JobsSection } from "./sections/JobsSection";
 import { LibrarySection } from "./sections/LibrarySection";
 import { OperationsSection } from "./sections/OperationsSection";
 import { Overview } from "./sections/Overview";
+import { ReleaseYearSection } from "./sections/ReleaseYearSection";
 import { UserDetail } from "./sections/UserDetail";
 import { UsersSection } from "./sections/UsersSection";
 
@@ -87,6 +89,12 @@ const NAV: NavEntry[] = [
 		label: "Audio review",
 		icon: WaveformIcon,
 		render: (k) => <AudioReviewSection refreshKey={k} />,
+	},
+	{
+		key: "release-year",
+		label: "Release year",
+		icon: CalendarBlankIcon,
+		render: (k) => <ReleaseYearSection refreshKey={k} />,
 	},
 	{
 		key: "email",

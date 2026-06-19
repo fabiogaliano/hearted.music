@@ -15,6 +15,7 @@ import {
 } from "./audio-feature-reviews";
 import { cached } from "./cache";
 import { prodRef, warm } from "./db";
+import { HttpError } from "./http-error";
 import {
 	previewStyledEmail,
 	renderStyledEmail,
@@ -33,6 +34,12 @@ import {
 	usersMetrics,
 } from "./metrics";
 import { OPERATIONS, runOperation } from "./operations";
+import {
+	countReleaseYearBuckets,
+	listReleaseYearReviews,
+	type ReleaseYearFilter,
+	setReleaseYear,
+} from "./release-year-reviews";
 
 const PORT = Number(process.env.CP_API_PORT ?? 4319);
 
@@ -201,6 +208,33 @@ const server = Bun.serve({
 				);
 			}
 
+			if (path === "/api/release-year-reviews" && req.method === "GET") {
+				const filterParam = url.searchParams.get("filter");
+				const filter: ReleaseYearFilter =
+					filterParam === "set" || filterParam === "pending"
+						? filterParam
+						: "unresolved";
+				const [reviews, counts] = await Promise.all([
+					listReleaseYearReviews(filter),
+					countReleaseYearBuckets(),
+				]);
+				return json({
+					reviews,
+					pendingTotal: counts.pending,
+					unresolvedTotal: counts.unresolved,
+				});
+			}
+
+			const setYearMatch = path.match(
+				/^\/api\/release-year-reviews\/([0-9a-fA-F-]+)$/,
+			);
+			if (setYearMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					year?: unknown;
+				};
+				return json(await setReleaseYear(setYearMatch[1]!, body.year));
+			}
+
 			if (path === "/api/email/send" && req.method === "POST") {
 				const input = (await req.json().catch(() => ({}))) as Record<
 					string,
@@ -218,6 +252,9 @@ const server = Bun.serve({
 
 			return json({ error: "Not found" }, 404);
 		} catch (err) {
+			if (err instanceof HttpError) {
+				return json({ error: err.message }, err.status);
+			}
 			const message = err instanceof Error ? err.message : String(err);
 			console.error(`[control-panel] ${path}:`, message);
 			return json({ error: message }, 500);

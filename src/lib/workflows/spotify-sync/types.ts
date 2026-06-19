@@ -33,9 +33,15 @@ export interface SpotifyTrackDTO {
 		};
 		duration_ms: number;
 		uri: string;
-		// Album release year when the source op carried it (playlist/getTrack);
-		// liked-songs sync omits it, so it stays null until a getTrack backfill.
+		// Album release year. Playlist tracks carry it inline; the bulk liked-songs
+		// query doesn't, so the extension hydrates liked songs with targeted
+		// getTrack calls during sync. Null only when hydration hasn't reached the
+		// track yet or couldn't resolve a year (those fall to manual review).
 		release_year?: number | null;
+		// True when the extension attempted a liked-song getTrack release-year
+		// lookup for this track during this sync. The worker maps it to a
+		// server-side release_year_checked_at stamp for newly-inserted songs.
+		release_year_checked?: boolean;
 	};
 }
 

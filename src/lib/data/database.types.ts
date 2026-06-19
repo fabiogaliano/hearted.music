@@ -2152,6 +2152,7 @@ export type Database = {
 					image_url: string | null;
 					name: string;
 					release_year: number | null;
+					release_year_checked_at: string | null;
 					spotify_id: string;
 					updated_at: string;
 					vocal_gender: string | null;
@@ -2168,6 +2169,7 @@ export type Database = {
 					image_url?: string | null;
 					name: string;
 					release_year?: number | null;
+					release_year_checked_at?: string | null;
 					spotify_id: string;
 					updated_at?: string;
 					vocal_gender?: string | null;
@@ -2184,6 +2186,7 @@ export type Database = {
 					image_url?: string | null;
 					name?: string;
 					release_year?: number | null;
+					release_year_checked_at?: string | null;
 					spotify_id?: string;
 					updated_at?: string;
 					vocal_gender?: string | null;
@@ -2814,6 +2817,10 @@ export type Database = {
 				Returns: string;
 			};
 			apply_artist_gender_resolution: {
+				Args: { p_rows: Json };
+				Returns: number;
+			};
+			apply_release_year_lookups: {
 				Args: { p_rows: Json };
 				Returns: number;
 			};

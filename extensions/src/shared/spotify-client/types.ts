@@ -48,6 +48,8 @@ export type TrackResult = {
 	albumName: string;
 	albumCoverArt: Array<{ url: string; width: number; height: number }>;
 	artists: Array<{ id: string; name: string }>;
+	/** Album release year (albumOfTrack.date.year); null when absent/unparseable. */
+	releaseYear: number | null;
 };
 
 // --- Write Operation Results ---

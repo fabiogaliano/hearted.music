@@ -38,6 +38,8 @@ import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
 import { Route as ApiExtensionSyncStatusRouteImport } from './routes/api/extension/sync/status'
+import { Route as ApiExtensionReleaseYearPendingRouteImport } from './routes/api/extension/release-year/pending'
+import { Route as ApiExtensionReleaseYearCheckedRouteImport } from './routes/api/extension/release-year/checked'
 import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -187,6 +189,18 @@ const ApiExtensionSyncStatusRoute = ApiExtensionSyncStatusRouteImport.update({
   path: '/status',
   getParentRoute: () => ApiExtensionSyncRoute,
 } as any)
+const ApiExtensionReleaseYearPendingRoute =
+  ApiExtensionReleaseYearPendingRouteImport.update({
+    id: '/api/extension/release-year/pending',
+    path: '/api/extension/release-year/pending',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiExtensionReleaseYearCheckedRoute =
+  ApiExtensionReleaseYearCheckedRouteImport.update({
+    id: '/api/extension/release-year/checked',
+    path: '/api/extension/release-year/checked',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiExtensionArtistsCheckRoute =
   ApiExtensionArtistsCheckRouteImport.update({
     id: '/api/extension/artists/check',
@@ -223,6 +237,8 @@ export interface FileRoutesByFullPath {
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
+  '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
+  '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
 export interface FileRoutesByTo {
@@ -254,6 +270,8 @@ export interface FileRoutesByTo {
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
+  '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
+  '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
 export interface FileRoutesById {
@@ -287,6 +305,8 @@ export interface FileRoutesById {
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
+  '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
+  '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
 }
 export interface FileRouteTypes {
@@ -320,6 +340,8 @@ export interface FileRouteTypes {
     | '/api/extension/token'
     | '/api/pulse-h/$'
     | '/api/extension/artists/check'
+    | '/api/extension/release-year/checked'
+    | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -351,6 +373,8 @@ export interface FileRouteTypes {
     | '/api/extension/token'
     | '/api/pulse-h/$'
     | '/api/extension/artists/check'
+    | '/api/extension/release-year/checked'
+    | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
   id:
     | '__root__'
@@ -383,6 +407,8 @@ export interface FileRouteTypes {
     | '/api/extension/token'
     | '/api/pulse-h/$'
     | '/api/extension/artists/check'
+    | '/api/extension/release-year/checked'
+    | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
   fileRoutesById: FileRoutesById
 }
@@ -407,6 +433,8 @@ export interface RootRouteChildren {
   ApiExtensionTokenRoute: typeof ApiExtensionTokenRoute
   ApiPulseHSplatRoute: typeof ApiPulseHSplatRoute
   ApiExtensionArtistsCheckRoute: typeof ApiExtensionArtistsCheckRoute
+  ApiExtensionReleaseYearCheckedRoute: typeof ApiExtensionReleaseYearCheckedRoute
+  ApiExtensionReleaseYearPendingRoute: typeof ApiExtensionReleaseYearPendingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -614,6 +642,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionSyncStatusRouteImport
       parentRoute: typeof ApiExtensionSyncRoute
     }
+    '/api/extension/release-year/pending': {
+      id: '/api/extension/release-year/pending'
+      path: '/api/extension/release-year/pending'
+      fullPath: '/api/extension/release-year/pending'
+      preLoaderRoute: typeof ApiExtensionReleaseYearPendingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/release-year/checked': {
+      id: '/api/extension/release-year/checked'
+      path: '/api/extension/release-year/checked'
+      fullPath: '/api/extension/release-year/checked'
+      preLoaderRoute: typeof ApiExtensionReleaseYearCheckedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/extension/artists/check': {
       id: '/api/extension/artists/check'
       path: '/api/extension/artists/check'
@@ -696,6 +738,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionTokenRoute: ApiExtensionTokenRoute,
   ApiPulseHSplatRoute: ApiPulseHSplatRoute,
   ApiExtensionArtistsCheckRoute: ApiExtensionArtistsCheckRoute,
+  ApiExtensionReleaseYearCheckedRoute: ApiExtensionReleaseYearCheckedRoute,
+  ApiExtensionReleaseYearPendingRoute: ApiExtensionReleaseYearPendingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

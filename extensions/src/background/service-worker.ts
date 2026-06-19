@@ -55,6 +55,10 @@ import {
 	getPendingLoginReturn,
 	setPendingLoginReturnAwaitingCreatedTab,
 } from "./expect-login-return";
+import {
+	hydrateLikedSongReleaseYears,
+	recordReleaseYearLookups,
+} from "./release-year-hydration";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
@@ -571,6 +575,24 @@ async function performSync(): Promise<SyncResult> {
 			})),
 		];
 
+		const playlistTrackIdsWithReleaseYear = new Set(
+			playlistTracks.flatMap((entry) =>
+				entry.tracks.flatMap((track) =>
+					track.track.release_year != null ? [track.track.id] : [],
+				),
+			),
+		);
+		// Playlist tracks can already carry release_year inline, so hydrate liked
+		// songs only after that free enrichment is known; otherwise we'd waste the
+		// budget on overlap instead of true liked-only gaps.
+		const { likedSongs: hydratedLikedSongs, lookups: releaseYearLookups } =
+			await hydrateLikedSongReleaseYears(
+				token,
+				likedSongs,
+				playlistTrackIdsWithReleaseYear,
+				postToBackend,
+			);
+
 		const totalTracks = playlistTracks.reduce(
 			(sum, pt) => sum + pt.tracks.length,
 			0,
@@ -585,13 +607,23 @@ async function performSync(): Promise<SyncResult> {
 
 		try {
 			const res = await postToBackend("/api/extension/sync", {
-				likedSongs,
+				likedSongs: hydratedLikedSongs,
 				playlists,
 				playlistTracks,
 				userProfile,
 			});
 			if (res.ok) {
 				const result = await res.json();
+				if (releaseYearLookups.length > 0) {
+					try {
+						await recordReleaseYearLookups(postToBackend, releaseYearLookups);
+					} catch (error) {
+						console.warn(
+							"[hearted.] Failed to persist release-year hydration attempts:",
+							error,
+						);
+					}
+				}
 				diagnosticOutcome = "success";
 				await setSyncState({
 					status: "done",

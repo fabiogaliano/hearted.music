@@ -45,6 +45,7 @@ function makeSong(id: string, genres: string[] = []): Song {
 		updated_at: "2026-01-01T00:00:00Z",
 		duration_ms: null,
 		release_year: null,
+		release_year_checked_at: null,
 		vocal_gender: null,
 		image_url: null,
 		spotify_id: `spotify-${id}`,

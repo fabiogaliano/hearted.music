@@ -36,7 +36,9 @@ vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	softDeleteBatch: (...args: unknown[]) => mockSoftDeleteBatch(...args),
 }));
 
-const { runPhase, incrementalSync } = await import("../sync-helpers");
+const { importSpotifyTracks, runPhase, incrementalSync } = await import(
+	"../sync-helpers"
+);
 
 const ACCOUNT_ID = "acct-1";
 const SONG_ID = "song-x";
@@ -121,6 +123,44 @@ describe("runPhase", () => {
 		}
 		expect(result.error).toBe(cleanupError);
 		expect(mockFailJob).toHaveBeenCalledWith("job-1", syncError.message);
+	});
+});
+
+describe("importSpotifyTracks", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockUpsertCatalog.mockResolvedValue(Result.ok([makeSong()]));
+		mockUpsertArtists.mockResolvedValue(Result.ok([]));
+	});
+
+	it("ignores release_year_checked by default so playlist imports cannot stamp checked_at", async () => {
+		const track = makeTrack("2026-03-01T00:00:00.000Z") as SpotifyTrackDTO;
+		track.track.release_year_checked = true;
+
+		const result = await importSpotifyTracks([track]);
+
+		expect(Result.isOk(result)).toBe(true);
+		expect(mockUpsertCatalog).toHaveBeenCalledWith([
+			expect.not.objectContaining({
+				release_year_checked_at: expect.any(String),
+			}),
+		]);
+	});
+
+	it("honors release_year_checked for liked-song imports that opt in", async () => {
+		const track = makeTrack("2026-03-01T00:00:00.000Z") as SpotifyTrackDTO;
+		track.track.release_year_checked = true;
+
+		const result = await importSpotifyTracks([track], {
+			honorReleaseYearChecked: true,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		expect(mockUpsertCatalog).toHaveBeenCalledWith([
+			expect.objectContaining({
+				release_year_checked_at: expect.any(String),
+			}),
+		]);
 	});
 });
 

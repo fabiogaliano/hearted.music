@@ -74,6 +74,10 @@ export type SpotifyTrackDTO = {
 		duration_ms: number;
 		uri: string;
 		release_year?: number | null;
+		// True when the extension attempted a liked-song getTrack release-year
+		// lookup for this track during the current sync. The worker maps this to a
+		// server-side release_year_checked_at stamp for newly-inserted songs.
+		release_year_checked?: boolean;
 	};
 };
 

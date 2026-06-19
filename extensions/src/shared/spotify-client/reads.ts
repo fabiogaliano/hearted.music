@@ -319,6 +319,11 @@ export async function getTrack(
 		...(t.otherArtists?.items ?? []),
 	];
 
+	// Unlike the bulk fetchLibraryTracks query, getTrack carries the album release
+	// date — this is what lets liked songs get a release year at sync time.
+	const year = t.albumOfTrack.date?.year;
+	const releaseYear = typeof year === "number" && year > 0 ? year : null;
+
 	return {
 		id: t.id,
 		uri: t.uri,
@@ -331,5 +336,6 @@ export async function getTrack(
 			id: a.id,
 			name: a.profile.name,
 		})),
+		releaseYear,
 	};
 }

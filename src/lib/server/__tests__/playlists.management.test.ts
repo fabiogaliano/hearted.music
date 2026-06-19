@@ -137,6 +137,7 @@ function makeSong(overrides: Partial<Song> = {}): Song {
 		artist_ids: ["art-1"],
 		duration_ms: 200000,
 		release_year: null,
+		release_year_checked_at: null,
 		vocal_gender: null,
 		genres: [],
 		created_at: "2026-03-28T00:00:00Z",

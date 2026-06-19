@@ -25,7 +25,10 @@ type SyncOperationError = DbError | SyncFailedError;
  * Transforms a SpotifyTrackDTO to catalog metadata for song upsert.
  * Does not include enrichment-owned fields (genres).
  */
-function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
+function mapSpotifyTrackToSongData(
+	st: SpotifyTrackDTO,
+	options: { honorReleaseYearChecked: boolean },
+) {
 	return {
 		spotify_id: st.track.id,
 		name: st.track.name,
@@ -36,17 +39,27 @@ function mapSpotifyTrackToSongData(st: SpotifyTrackDTO) {
 		artist_ids: st.track.artists.map((a) => a.id),
 		duration_ms: st.track.duration_ms,
 		release_year: st.track.release_year ?? null,
+		...(options.honorReleaseYearChecked && st.track.release_year_checked
+			? { release_year_checked_at: new Date().toISOString() }
+			: {}),
 	};
 }
 
 /**
  * Shared import path for Spotify tracks used by both liked-song and playlist-track sync.
  * Maps tracks → catalog upsert (no genre overwrite) → persist artist metadata → return spotify_id→Song map.
+ * The liked-song-only release_year_checked signal is ignored unless callers opt
+ * in, so playlist imports can never stamp release_year_checked_at.
  */
 export async function importSpotifyTracks(
 	tracks: SpotifyTrackDTO[],
+	options: { honorReleaseYearChecked?: boolean } = {},
 ): Promise<Result<Map<string, Song>, SyncOperationError>> {
-	const songData = tracks.map(mapSpotifyTrackToSongData);
+	const songData = tracks.map((track) =>
+		mapSpotifyTrackToSongData(track, {
+			honorReleaseYearChecked: options.honorReleaseYearChecked ?? false,
+		}),
+	);
 
 	const upsertedResult = await upsertCatalog(songData);
 	if (Result.isError(upsertedResult)) {
@@ -109,7 +122,9 @@ async function importLikedTracks(
 	accountId: string,
 	tracks: SpotifyTrackDTO[],
 ): Promise<Result<Song[], SyncOperationError>> {
-	const songMapResult = await importSpotifyTracks(tracks);
+	const songMapResult = await importSpotifyTracks(tracks, {
+		honorReleaseYearChecked: true,
+	});
 	if (Result.isError(songMapResult)) {
 		return Result.err(songMapResult.error);
 	}
