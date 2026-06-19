@@ -323,28 +323,43 @@ export type Database = {
 			};
 			artist: {
 				Row: {
+					band_gender: string | null;
 					bio: string | null;
 					created_at: string;
+					gender: string | null;
 					image_url: string | null;
+					musicbrainz_checked_at: string | null;
 					name: string;
 					spotify_id: string;
 					updated_at: string;
+					wikidata_checked_at: string | null;
+					wikidata_id: string | null;
 				};
 				Insert: {
+					band_gender?: string | null;
 					bio?: string | null;
 					created_at?: string;
+					gender?: string | null;
 					image_url?: string | null;
+					musicbrainz_checked_at?: string | null;
 					name: string;
 					spotify_id: string;
 					updated_at?: string;
+					wikidata_checked_at?: string | null;
+					wikidata_id?: string | null;
 				};
 				Update: {
+					band_gender?: string | null;
 					bio?: string | null;
 					created_at?: string;
+					gender?: string | null;
 					image_url?: string | null;
+					musicbrainz_checked_at?: string | null;
 					name?: string;
 					spotify_id?: string;
 					updated_at?: string;
+					wikidata_checked_at?: string | null;
+					wikidata_id?: string | null;
 				};
 				Relationships: [];
 			};
@@ -2139,6 +2154,7 @@ export type Database = {
 					release_year: number | null;
 					spotify_id: string;
 					updated_at: string;
+					vocal_gender: string | null;
 				};
 				Insert: {
 					album_id?: string | null;
@@ -2154,6 +2170,7 @@ export type Database = {
 					release_year?: number | null;
 					spotify_id: string;
 					updated_at?: string;
+					vocal_gender?: string | null;
 				};
 				Update: {
 					album_id?: string | null;
@@ -2169,6 +2186,7 @@ export type Database = {
 					release_year?: number | null;
 					spotify_id?: string;
 					updated_at?: string;
+					vocal_gender?: string | null;
 				};
 				Relationships: [];
 			};
@@ -2795,6 +2813,10 @@ export type Database = {
 				};
 				Returns: string;
 			};
+			apply_artist_gender_resolution: {
+				Args: { p_rows: Json };
+				Returns: number;
+			};
 			apply_subscription_upgrade_conversion: {
 				Args: {
 					p_applied_stripe_event_id: string;
@@ -3009,6 +3031,10 @@ export type Database = {
 					isOneToOne: false;
 					isSetofReturn: true;
 				};
+			};
+			compute_song_vocal_gender: {
+				Args: { p_artist_ids: string[] };
+				Returns: string;
 			};
 			count_analyzed_songs_for_account: {
 				Args: { p_account_id: string };
@@ -3567,6 +3593,11 @@ export type Database = {
 					converted_credits: number;
 					discount_cents: number;
 				}[];
+			};
+			refresh_song_vocal_gender: { Args: never; Returns: number };
+			refresh_song_vocal_gender_for: {
+				Args: { p_song_ids: string[] };
+				Returns: number;
 			};
 			release_provider_lease: {
 				Args: { p_holder: string; p_provider: string };

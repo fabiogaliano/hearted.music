@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
 import { getAudioFeatureAvailability } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { resolveVocalGenderForSongs } from "@/lib/domains/enrichment/vocal-gender/service";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
@@ -211,6 +212,12 @@ async function enrichSongs(
 	const audioSubBatch = filterBatch(batch, workPlan.needAudioFeatures);
 	const genreSubBatch = filterBatch(batch, workPlan.needGenreTagging);
 
+	// Vocal-gender resolution (local MusicBrainz dump -> Wikidata fallback) runs
+	// alongside the other cheap Phase-A steps. It's catalog metadata, not gated
+	// per-song work, so it's best-effort (never throws) and isn't accounted —
+	// awaited before Phase B only so song.vocal_gender is settled for matching.
+	const vocalGenderResolution = resolveVocalGenderForSongs(batch.songs);
+
 	const emptyAccounting = Promise.resolve(
 		Result.ok<StageSummary, StageAccountingError>({
 			total: 0,
@@ -276,6 +283,8 @@ async function enrichSongs(
 		genreResult,
 		genreSubBatch.songIds.length > 0 ? stageStatus(genreResult) : "skipped",
 	);
+
+	await vocalGenderResolution;
 
 	// Phase B: song_analysis (entitled only)
 	progress.currentStage = "song_analysis";

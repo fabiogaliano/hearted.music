@@ -55,6 +55,7 @@ function makeBatch(songIds: string[]): PipelineBatch {
 			popularity: null,
 			isrc: null,
 			release_year: null,
+			vocal_gender: null,
 			created_at: now,
 			updated_at: now,
 		})),

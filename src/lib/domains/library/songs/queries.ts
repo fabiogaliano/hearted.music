@@ -8,7 +8,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { chunkedWrite } from "@/lib/shared/utils/chunked-write";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
@@ -250,4 +250,27 @@ export async function updateGenresBatch(
 	}
 
 	return Result.ok(undefined);
+}
+
+/**
+ * Recomputes song.vocal_gender for the given songs via the
+ * refresh_song_vocal_gender_for RPC (scoped, so Phase-1 doesn't full-scan the
+ * catalog). Returns the number of songs whose vocal_gender actually changed.
+ */
+export async function refreshVocalGenderForSongs(
+	songIds: string[],
+): Promise<Result<number, DbError>> {
+	if (songIds.length === 0) return Result.ok(0);
+
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("refresh_song_vocal_gender_for", {
+		p_song_ids: songIds,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(Number(data) || 0);
 }

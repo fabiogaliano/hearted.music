@@ -17,6 +17,7 @@ import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
+import { resolveVocalGenderForSongs } from "@/lib/domains/enrichment/vocal-gender/service";
 import {
 	getPlaylistSongs,
 	getTargetPlaylists,
@@ -49,6 +50,7 @@ interface LightweightEnrichmentStats {
 	songsScanned: number;
 	audio: { filled: number; skipped: number; failed: number };
 	genres: { filled: number; skipped: number; failed: number };
+	vocalGender: { resolvedLocal: number; resolvedWikidata: number };
 	affectedSongIds: string[];
 	affectedPlaylistIds: string[];
 }
@@ -171,6 +173,7 @@ export async function runLightweightEnrichment(
 		songsScanned: 0,
 		audio: { filled: 0, skipped: 0, failed: 0 },
 		genres: { filled: 0, skipped: 0, failed: 0 },
+		vocalGender: { resolvedLocal: 0, resolvedWikidata: 0 },
 		affectedSongIds: [],
 		affectedPlaylistIds: [],
 	};
@@ -199,6 +202,13 @@ export async function runLightweightEnrichment(
 	// 3. Backfill genres
 	const genreStats = await backfillGenres(candidateSongs);
 	stats.genres = genreStats;
+
+	// 4. Resolve vocal gender (local MusicBrainz dump -> Wikidata fallback)
+	const genderStats = await resolveVocalGenderForSongs(candidateSongs);
+	stats.vocalGender = {
+		resolvedLocal: genderStats.resolvedLocal,
+		resolvedWikidata: genderStats.resolvedWikidata,
+	};
 
 	return stats;
 }
