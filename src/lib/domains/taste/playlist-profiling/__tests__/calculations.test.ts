@@ -56,6 +56,10 @@ function createSong(partial: Partial<Song> = {}): Song {
 		release_year: partial.release_year ?? null,
 		release_year_checked_at: null,
 		vocal_gender: partial.vocal_gender ?? null,
+		language: partial.language ?? null,
+		language_confidence: partial.language_confidence ?? null,
+		language_secondary: partial.language_secondary ?? null,
+		language_checked_at: partial.language_checked_at ?? null,
 		created_at: new Date().toISOString(),
 		updated_at: new Date().toISOString(),
 	};

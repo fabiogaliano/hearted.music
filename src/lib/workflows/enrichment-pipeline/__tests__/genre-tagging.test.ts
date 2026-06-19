@@ -47,6 +47,10 @@ function makeSong(id: string, genres: string[] = []): Song {
 		release_year: null,
 		release_year_checked_at: null,
 		vocal_gender: null,
+		language: null,
+		language_confidence: null,
+		language_secondary: null,
+		language_checked_at: null,
 		image_url: null,
 		spotify_id: `spotify-${id}`,
 	};
