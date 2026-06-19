@@ -1,0 +1,5 @@
+# Benchmark data artifacts contain real (copyrighted) lyric text pulled from
+# prod — keep them local, never commit. The harness + findings are committed.
+lyrics-pool.json
+results.json
+disagreements.csv
