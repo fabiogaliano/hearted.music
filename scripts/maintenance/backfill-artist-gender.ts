@@ -213,6 +213,16 @@ async function main() {
 	console.log(`\nDone. Resolved ${done}/${pending.length}.`);
 	console.log(`  female: ${tally.female}  male: ${tally.male}  other: ${tally.other}`);
 	console.log(`  group/unlinked (gender null): ${tally.group_or_unlinked}`);
+
+	// Artist gender is the input to song.vocal_gender; recompute it now that more
+	// artists are resolved. Songs link to artists by array, not FK, so the column
+	// can't update reactively — this is the source-of-truth refresh.
+	if (!dryRun) {
+		const refreshed = (await prodSql("select refresh_song_vocal_gender() as n", {
+			write: true,
+		})) as Array<{ n: number }>;
+		console.log(`Refreshed song.vocal_gender: ${refreshed[0]?.n ?? 0} songs changed.`);
+	}
 }
 
 await main();
