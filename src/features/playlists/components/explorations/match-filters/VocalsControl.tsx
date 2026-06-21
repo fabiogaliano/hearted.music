@@ -18,6 +18,8 @@ export interface VocalsControlProps {
 	filters: PlaylistMatchFiltersV1;
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 	disabled?: boolean;
+	/** True while a save is in flight — freezes chip removal (see §7 vs save). */
+	isSaving?: boolean;
 }
 
 const VOCALS_OPTIONS: Array<{ value: "female" | "male" }> = [
@@ -34,6 +36,7 @@ export function VocalsControl({
 	filters,
 	onFiltersChange,
 	disabled = false,
+	isSaving = false,
 }: VocalsControlProps) {
 	const active = filters.vocalGender;
 
@@ -43,6 +46,8 @@ export function VocalsControl({
 	};
 
 	const clear = () => {
+		// Frozen during a pending save so the removal isn't lost on reconcile.
+		if (isSaving) return;
 		const { vocalGender: _dropped, ...rest } = filters;
 		onFiltersChange(normalizeMatchFilters({ ...rest }));
 	};
@@ -70,8 +75,9 @@ export function VocalsControl({
 					<button
 						type="button"
 						onClick={clear}
+						disabled={isSaving}
 						aria-label={`Remove ${vocalGenderLabel(active)} vocals filter`}
-						className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9]"
+						className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9] disabled:cursor-default disabled:opacity-50"
 						style={{ color: "var(--t-primary)" }}
 					>
 						<XIcon size={9} weight="bold" aria-hidden />

@@ -24,6 +24,14 @@ interface AdvancedFiltersPanelProps {
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 
 	/**
+	 * True while a save is in flight. Chips render display-only (no remove X) so a
+	 * removal can't be silently overwritten when the save response reconciles the
+	 * submitted draft. Distinct from options loading/error, where chips DO stay
+	 * removable (decisions §7) — only a pending save freezes them.
+	 */
+	isSaving?: boolean;
+
+	/**
 	 * Slot for CMHF-04: the Language and Vocals controls.
 	 * Will be populated by CMHF-04 and passed in here.
 	 */
@@ -56,6 +64,7 @@ const REGION_ID = "advanced-filters-region";
 export function AdvancedFiltersPanel({
 	filters,
 	onFiltersChange,
+	isSaving = false,
 	languageVocalsControlsSlot,
 	yearDateControlsSlot,
 }: AdvancedFiltersPanelProps) {
@@ -116,6 +125,18 @@ export function AdvancedFiltersPanel({
 		onFiltersChange({ ...rest });
 	};
 
+	// While saving, omit every remove handler so ActiveFilterChips renders the
+	// chips display-only (FilterChip hides the X when onRemove is undefined). Any
+	// other state keeps removal wired.
+	const chipRemovers = isSaving
+		? {}
+		: {
+				onRemoveLanguage: removeLanguage,
+				onRemoveReleaseYear: removeReleaseYear,
+				onRemoveLikedAt: removeLikedAt,
+				onRemoveVocalGender: removeVocalGender,
+			};
+
 	return (
 		<div className="flex flex-col gap-2">
 			<AdvancedFiltersTrigger
@@ -129,15 +150,7 @@ export function AdvancedFiltersPanel({
 			{/* Active chips always visible outside the collapsible area so they serve
 			    as source-of-truth in collapsed state. In collapsed+no-filter state this
 			    renders null (ActiveFilterChips returns null when hasAny is false). */}
-			{!isOpen && (
-				<ActiveFilterChips
-					filters={filters}
-					onRemoveLanguage={removeLanguage}
-					onRemoveReleaseYear={removeReleaseYear}
-					onRemoveLikedAt={removeLikedAt}
-					onRemoveVocalGender={removeVocalGender}
-				/>
-			)}
+			{!isOpen && <ActiveFilterChips filters={filters} {...chipRemovers} />}
 
 			{/* Collapsible body — grid-rows 0fr→1fr avoids a magic max-height and
 			    lets the content animate to its natural height, matching the pattern
@@ -152,13 +165,7 @@ export function AdvancedFiltersPanel({
 					<div className="flex flex-col gap-4 pt-1 pb-1">
 						{/* Active chips inside the expanded panel so removals are in context
 						    with the controls that produced them. */}
-						<ActiveFilterChips
-							filters={filters}
-							onRemoveLanguage={removeLanguage}
-							onRemoveReleaseYear={removeReleaseYear}
-							onRemoveLikedAt={removeLikedAt}
-							onRemoveVocalGender={removeVocalGender}
-						/>
+						<ActiveFilterChips filters={filters} {...chipRemovers} />
 
 						{/*
 						 * CMHF-04 slot — Language picker + Vocals control.

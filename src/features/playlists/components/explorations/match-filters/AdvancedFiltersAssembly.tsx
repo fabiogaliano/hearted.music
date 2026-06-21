@@ -39,6 +39,12 @@ export interface AdvancedFiltersAssemblyProps {
 	options: PlaylistMatchFilterOptions;
 	/** "loading" and "error" disable add/edit controls while keeping chip removal enabled. */
 	optionsState?: OptionsState;
+	/**
+	 * True while a save is in flight. Disables add/edit controls alongside the
+	 * intent textarea and genre picker, so filter edits made mid-save aren't
+	 * silently discarded when the server response reconciles the submitted draft.
+	 */
+	isSaving?: boolean;
 }
 
 /**
@@ -66,8 +72,12 @@ export function AdvancedFiltersAssembly({
 	onFiltersChange,
 	options,
 	optionsState = "ready",
+	isSaving = false,
 }: AdvancedFiltersAssemblyProps) {
-	const disabled = optionsState !== "ready";
+	// A pending save freezes the controls the same way loading/error does — the
+	// notice below still keys off optionsState only, so saving doesn't show a
+	// spurious "loading options" message.
+	const disabled = optionsState !== "ready" || isSaving;
 
 	const languageVocalsSlot = (
 		<div className="flex flex-col gap-4">
@@ -77,11 +87,13 @@ export function AdvancedFiltersAssembly({
 				onFiltersChange={onFiltersChange}
 				options={options}
 				disabled={disabled}
+				isSaving={isSaving}
 			/>
 			<VocalsControl
 				filters={filters}
 				onFiltersChange={onFiltersChange}
 				disabled={disabled}
+				isSaving={isSaving}
 			/>
 		</div>
 	);
@@ -93,12 +105,14 @@ export function AdvancedFiltersAssembly({
 				onFiltersChange={onFiltersChange}
 				options={options}
 				disabled={disabled}
+				isSaving={isSaving}
 			/>
 			<LikedDateTimelineA
 				filters={filters}
 				onFiltersChange={onFiltersChange}
 				options={options}
 				disabled={disabled}
+				isSaving={isSaving}
 			/>
 		</div>
 	);
@@ -107,6 +121,7 @@ export function AdvancedFiltersAssembly({
 		<AdvancedFiltersPanel
 			filters={filters}
 			onFiltersChange={onFiltersChange}
+			isSaving={isSaving}
 			languageVocalsControlsSlot={languageVocalsSlot}
 			yearDateControlsSlot={yearDateSlot}
 		/>

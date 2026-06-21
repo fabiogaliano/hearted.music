@@ -35,6 +35,12 @@ export interface LanguagePickerProps {
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 	options: PlaylistMatchFilterOptions;
 	disabled?: boolean;
+	/**
+	 * True while a save is in flight. Unlike `disabled` (options loading/error,
+	 * where chips stay removable per §7), a pending save also freezes chip removal
+	 * so a removal can't be lost when the save reconciles the submitted draft.
+	 */
+	isSaving?: boolean;
 }
 
 /** Map from PlaylistMatchFilterOptions to the Map shape orderLanguageOptions expects. */
@@ -55,6 +61,7 @@ export function LanguagePickerCombobox({
 	onFiltersChange,
 	options,
 	disabled = false,
+	isSaving = false,
 }: LanguagePickerProps) {
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(-1);
@@ -93,6 +100,9 @@ export function LanguagePickerCombobox({
 
 	const addCode = useCallback(
 		(code: string) => {
+			// While options are loading/error, adding from the catalog is disabled —
+			// only chip removal of already-selected codes stays live (decisions §7).
+			if (disabled) return;
 			if (selectedCodes.includes(code)) return;
 			const next = normalizeMatchFilters({
 				...filters,
@@ -104,11 +114,14 @@ export function LanguagePickerCombobox({
 			);
 			inputRef.current?.focus();
 		},
-		[filters, onFiltersChange, selectedCodes, announce],
+		[disabled, filters, onFiltersChange, selectedCodes, announce],
 	);
 
 	const removeCode = useCallback(
 		(code: string) => {
+			// Chips stay removable while options load/error, but a pending save
+			// freezes removal so the edit isn't lost on reconcile.
+			if (isSaving) return;
 			const remaining = selectedCodes.filter((c) => c !== code);
 			const next = normalizeMatchFilters({
 				...filters,
@@ -120,18 +133,22 @@ export function LanguagePickerCombobox({
 			);
 			inputRef.current?.focus();
 		},
-		[filters, onFiltersChange, selectedCodes, announce],
+		[isSaving, filters, onFiltersChange, selectedCodes, announce],
 	);
 
 	const toggleCode = useCallback(
 		(code: string) => {
+			// The listbox routes both add and remove through toggle; disable it
+			// wholesale so the option list can't mutate filters while options are
+			// loading/error. Existing selections are still removable via their chips.
+			if (disabled) return;
 			if (selectedCodes.includes(code)) {
 				removeCode(code);
 			} else {
 				addCode(code);
 			}
 		},
-		[selectedCodes, addCode, removeCode],
+		[disabled, selectedCodes, addCode, removeCode],
 	);
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -206,8 +223,9 @@ export function LanguagePickerCombobox({
 								<button
 									type="button"
 									onClick={() => removeCode(code)}
+									disabled={isSaving}
 									aria-label={`Remove ${languageLabel(code)} language`}
-									className="-mr-0.5 grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 theme-text-muted transition-[color,opacity] duration-150 hover:theme-text active:scale-[0.9]"
+									className="-mr-0.5 grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 theme-text-muted transition-[color,opacity] duration-150 hover:theme-text active:scale-[0.9] disabled:cursor-default disabled:opacity-50"
 								>
 									<XIcon size={9} weight="bold" aria-hidden />
 								</button>
@@ -248,8 +266,11 @@ export function LanguagePickerCombobox({
 				id={listboxId}
 				role="listbox"
 				aria-multiselectable="true"
+				aria-disabled={disabled || undefined}
 				aria-label="Languages"
-				className="mt-1 border theme-border-color overflow-y-auto"
+				className={`mt-1 border theme-border-color overflow-y-auto ${
+					disabled ? "opacity-50" : ""
+				}`}
 				style={{ maxHeight: 220 }}
 			>
 				{displayOptions.length === 0 ? (
@@ -270,22 +291,31 @@ export function LanguagePickerCombobox({
 								id={optionId(index)}
 								role="option"
 								aria-selected={isSelected}
+								aria-disabled={disabled || undefined}
 								tabIndex={-1}
-								className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer transition-[background-color] duration-100 ${
+								className={`flex items-center justify-between px-3 py-2 text-sm transition-[background-color] duration-100 ${
+									disabled ? "cursor-not-allowed" : "cursor-pointer"
+								} ${
 									isActive
 										? "bg-(--t-surface)"
 										: isSelected
 											? "bg-(--t-surface-dim)"
 											: ""
 								} theme-text`}
-								onClick={() => toggleCode(opt.code)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										toggleCode(opt.code);
-									}
-								}}
-								onPointerMove={() => handleActiveChange(index)}
+								onClick={disabled ? undefined : () => toggleCode(opt.code)}
+								onKeyDown={
+									disabled
+										? undefined
+										: (e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													e.preventDefault();
+													toggleCode(opt.code);
+												}
+											}
+								}
+								onPointerMove={
+									disabled ? undefined : () => handleActiveChange(index)
+								}
 							>
 								<span>{opt.label}</span>
 								<span className="flex items-center gap-2">

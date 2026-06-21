@@ -26,6 +26,8 @@ export interface ReleaseYearControlProps {
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 	options: PlaylistMatchFilterOptions;
 	disabled?: boolean;
+	/** True while a save is in flight — freezes chip removal (see §7 vs save). */
+	isSaving?: boolean;
 }
 
 type Mode = "exact" | "before" | "after" | "range";
@@ -77,6 +79,7 @@ export function ReleaseYearControlA({
 	onFiltersChange,
 	options,
 	disabled = false,
+	isSaving = false,
 }: ReleaseYearControlProps) {
 	const baseId = useId();
 	const { min, max } = options.releaseYears;
@@ -121,6 +124,8 @@ export function ReleaseYearControlA({
 	};
 
 	const clearFilter = () => {
+		// Frozen during a pending save so the removal isn't lost on reconcile.
+		if (isSaving) return;
 		const { releaseYear: _dropped, ...rest } = filters;
 		setError(undefined);
 		onFiltersChange(normalizeMatchFilters({ ...rest }));
@@ -196,8 +201,9 @@ export function ReleaseYearControlA({
 						<button
 							type="button"
 							onClick={clearFilter}
+							disabled={isSaving}
 							aria-label="Remove release year filter"
-							className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9]"
+							className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9] disabled:cursor-default disabled:opacity-50"
 							style={{ color: "var(--t-primary)" }}
 						>
 							<XIcon size={9} weight="bold" aria-hidden />
