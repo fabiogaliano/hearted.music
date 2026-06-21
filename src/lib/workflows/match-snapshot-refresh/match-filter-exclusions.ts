@@ -61,8 +61,12 @@ function emptyFailedChecks(): Record<MatchFilterType, number> {
 	return { languages: 0, releaseYear: 0, likedAt: 0, vocalGender: 0 };
 }
 
-function emptyDegradedSummary(
+// Invalid stored filters are detected during the parse pass, before any metadata
+// load. A later degrade (metadata failure / eval throw) must still surface that
+// accounting — it's independent of metadata — so callers pass the map through.
+function degradedSummary(
 	filterMetadata: boolean,
+	invalidStoredFiltersByPlaylist: Record<string, number>,
 ): MatchFiltersExclusionSummary {
 	return {
 		activeFilterPlaylistCount: 0,
@@ -70,7 +74,7 @@ function emptyDegradedSummary(
 		excludedPairCount: 0,
 		failedChecksByType: emptyFailedChecks(),
 		excludedPairsByPlaylist: {},
-		invalidStoredFiltersByPlaylist: {},
+		invalidStoredFiltersByPlaylist,
 		degraded: { baseExclusions: false, filterMetadata },
 	};
 }
@@ -134,6 +138,66 @@ export async function loadMatchFilterExclusions({
 	playlists,
 	candidateSongIds,
 }: LoadMatchFilterExclusionsInput): Promise<LoadMatchFilterExclusionsResult> {
+	// Parse playlists FIRST. A refresh where no target playlist has active hard
+	// filters (the common default {version:1} case) must not touch the metadata
+	// tables at all — so the active-filter set is determined before any DB read.
+	// Invalid stored filters are logged/counted here too, independent of metadata.
+	const activePlaylists: Array<{
+		id: string;
+		filters: PlaylistMatchFiltersV1;
+	}> = [];
+	const invalidStoredFiltersByPlaylist: Record<string, number> = {};
+
+	for (const playlist of playlists) {
+		const parseResult = parseStoredMatchFilters(playlist.match_filters);
+
+		// parseStoredMatchFilters always returns ok:true (stored data is never
+		// hard-rejected — it normalizes to {version:1} instead), but we narrow
+		// through `ok` so the type system can see `wasNormalized` on the success arm.
+		if (!parseResult.ok) {
+			continue;
+		}
+
+		if (parseResult.wasNormalized) {
+			log.warn("match:invalid-stored-filters", {
+				accountId,
+				playlistId: playlist.id,
+				detail:
+					"Known field had invalid data; normalized to default. Hard-filter exclusions skipped for this playlist.",
+			});
+			// Each playlist appears exactly once per call, so this is always a fresh entry.
+			invalidStoredFiltersByPlaylist[playlist.id] = 1;
+			// Skip this playlist's filter exclusions only.
+			continue;
+		}
+
+		// Short-circuit: nothing to evaluate if no filters are active.
+		if (!hasActiveMatchFilters(parseResult.value)) {
+			continue;
+		}
+
+		activePlaylists.push({ id: playlist.id, filters: parseResult.value });
+	}
+
+	// No active filters anywhere → the empty exclusion set is the complete,
+	// correct answer. Return before loading metadata so a default-config refresh
+	// does zero song/liked-date DB reads and can't degrade on a metadata failure
+	// that is irrelevant to it. (Not a degraded result — filterMetadata stays false.)
+	if (activePlaylists.length === 0) {
+		return {
+			exclusions: new Set(),
+			summary: {
+				activeFilterPlaylistCount: 0,
+				candidatePairCount: 0,
+				excludedPairCount: 0,
+				failedChecksByType: emptyFailedChecks(),
+				excludedPairsByPlaylist: {},
+				invalidStoredFiltersByPlaylist,
+				degraded: { baseExclusions: false, filterMetadata: false },
+			},
+		};
+	}
+
 	const nowMs = Date.now();
 
 	const metaResult = await loadFilterMetadata(accountId, candidateSongIds);
@@ -145,7 +209,7 @@ export async function loadMatchFilterExclusions({
 		});
 		return {
 			exclusions: new Set(),
-			summary: emptyDegradedSummary(true),
+			summary: degradedSummary(true, invalidStoredFiltersByPlaylist),
 		};
 	}
 
@@ -154,7 +218,6 @@ export async function loadMatchFilterExclusions({
 	const exclusions = new Set<string>();
 	const failedChecksByType = emptyFailedChecks();
 	const excludedPairsByPlaylist: Record<string, number> = {};
-	const invalidStoredFiltersByPlaylist: Record<string, number> = {};
 	let activeFilterPlaylistCount = 0;
 	let candidatePairCount = 0;
 
@@ -171,36 +234,8 @@ export async function loadMatchFilterExclusions({
 				likedAt: likedAtMs.get(songId) ?? null,
 			});
 		}
-		for (const playlist of playlists) {
-			const parseResult = parseStoredMatchFilters(playlist.match_filters);
 
-			// parseStoredMatchFilters always returns ok:true (stored data is never
-			// hard-rejected — it normalizes to {version:1} instead), but we narrow
-			// through `ok` so the type system can see `wasNormalized` on the success arm.
-			if (!parseResult.ok) {
-				continue;
-			}
-
-			if (parseResult.wasNormalized) {
-				log.warn("match:invalid-stored-filters", {
-					accountId,
-					playlistId: playlist.id,
-					detail:
-						"Known field had invalid data; normalized to default. Hard-filter exclusions skipped for this playlist.",
-				});
-				// Each playlist appears exactly once per call, so this is always a fresh entry.
-				invalidStoredFiltersByPlaylist[playlist.id] = 1;
-				// Skip this playlist's filter exclusions only.
-				continue;
-			}
-
-			const filters = parseResult.value;
-
-			// Short-circuit: nothing to evaluate if no filters are active.
-			if (!hasActiveMatchFilters(filters)) {
-				continue;
-			}
-
+		for (const { id, filters } of activePlaylists) {
 			activeFilterPlaylistCount += 1;
 			candidatePairCount += candidateSongIds.length;
 
@@ -220,9 +255,8 @@ export async function loadMatchFilterExclusions({
 				);
 
 				if (!passes) {
-					exclusions.add(`${songId}:${playlist.id}`);
-					excludedPairsByPlaylist[playlist.id] =
-						(excludedPairsByPlaylist[playlist.id] ?? 0) + 1;
+					exclusions.add(`${songId}:${id}`);
+					excludedPairsByPlaylist[id] = (excludedPairsByPlaylist[id] ?? 0) + 1;
 				}
 			}
 		}
@@ -236,7 +270,7 @@ export async function loadMatchFilterExclusions({
 		});
 		return {
 			exclusions: new Set(),
-			summary: emptyDegradedSummary(true),
+			summary: degradedSummary(true, invalidStoredFiltersByPlaylist),
 		};
 	}
 
