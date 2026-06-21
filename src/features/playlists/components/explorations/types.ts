@@ -11,6 +11,7 @@
  */
 
 import type { ReactNode } from "react";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 
 /**
@@ -48,6 +49,8 @@ export interface PlaylistSummary {
 	/** What the user wrote this playlist is for — the matching intent. */
 	intent: string | null;
 	genres: string[];
+	/** Parsed hard filters — always normalized, never raw DB JSON. */
+	matchFilters: PlaylistMatchFiltersV1;
 }
 
 /** A track row for the detail panel. Mirrors server PlaylistTrack, minus ids. */

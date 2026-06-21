@@ -1,4 +1,7 @@
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
+
+const NO_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
 
 /**
  * Sample playlists + tracks for the exploration stories — real Spotify covers
@@ -118,6 +121,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 			"https://mosaic.scdn.co/640/ab67616d00001e0213f2466b83507515291acce4ab67616d00001e022f8790ed72296c2614607575ab67616d00001e02bc18bdade69ec5ef0bb25b17ab67616d00001e02c88bae7846e62a8ba59ee0bd",
 		intent: "a bit of insecurity in my mind about relationships",
 		genres: ["indie pop", "indie rock", "alternative"],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "house",
@@ -128,6 +132,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 			"https://mosaic.scdn.co/640/ab67616d00001e0203e3be2931712ce7c775b21eab67616d00001e022b89c8de96dcc7d5e05a48edab67616d00001e0237b51b1bfcf7028ef9e11bf1ab67616d00001e0268881375078c577509bb8681",
 		intent: null,
 		genres: ["pop", "art pop", "baroque pop"],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "sbsr",
@@ -138,6 +143,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 			"https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84c1975a91a3224aa534fc35ba",
 		intent: null,
 		genres: ["pop rock", "art rock", "rock", "alternative rock"],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "dubolt",
@@ -148,6 +154,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 			"https://mosaic.scdn.co/640/ab67616d00001e0201dbb413cc80ae630f1e66a3ab67616d00001e02107d051e4c35ac3c8fe3470dab67616d00001e02203f8c1682441cdd02d0fa85ab67616d00001e02d3e8d904b8b9beca4d33583e",
 		intent: null,
 		genres: [],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "souvenir",
@@ -157,6 +164,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl: null,
 		intent: null,
 		genres: [],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "yilkes",
@@ -167,6 +175,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 			"https://i.scdn.co/image/ab67616d00001e02382514f0114ba8f4a16d5db4",
 		intent: null,
 		genres: [],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "jj",
@@ -176,6 +185,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl: null,
 		intent: null,
 		genres: [],
+		matchFilters: NO_FILTERS,
 	},
 	{
 		id: "hello",
@@ -185,6 +195,7 @@ export const samplePlaylists: PlaylistSummary[] = [
 		imageUrl: null,
 		intent: null,
 		genres: [],
+		matchFilters: NO_FILTERS,
 	},
 ];
 
