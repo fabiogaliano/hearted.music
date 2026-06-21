@@ -156,6 +156,25 @@ describe("decidePlaylist – write-female", () => {
 		expect(d.kind).toBe("write-female");
 		expect(d.isTarget).toBe(true);
 	});
+
+	it("normalizes valid-but-noncanonical stored filters before writing", () => {
+		// Duplicate language codes pass both the forgiving read parser and the
+		// strict save parser (neither dedupes), so without normalization the
+		// backfill would persist the duplicates — diverging from the editor save
+		// path and violating CMHF-18's normalized-write requirement.
+		const d = decidePlaylist(
+			makeRow({
+				match_intent: "female vocalist jazz",
+				match_filters: {
+					version: 1,
+					languages: { codes: ["en", "en", "es"] },
+				},
+			}),
+		);
+		expect(d.kind).toBe("write-female");
+		expect(d.newFilters?.languages).toEqual({ codes: ["en", "es"] });
+		expect(d.newFilters?.vocalGender).toBe("female");
+	});
 });
 
 describe("decidePlaylist – write-male", () => {

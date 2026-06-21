@@ -6,14 +6,18 @@ import {
 	acknowledgePlaylistCreate,
 	acknowledgePlaylistDelete,
 	acknowledgePlaylistUpdate,
+	savePlaylistMatchConfig,
 } from "../playlists.functions";
 
 const {
 	mockAuthContext,
 	mockUpsertPlaylists,
 	mockGetPlaylistBySpotifyId,
+	mockGetPlaylistById,
 	mockDeletePlaylist,
 	mockUpdatePlaylistMetadata,
+	mockUpdatePlaylistMatchConfig,
+	mockApplyLibraryProcessingChange,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -21,8 +25,11 @@ const {
 	},
 	mockUpsertPlaylists: vi.fn(),
 	mockGetPlaylistBySpotifyId: vi.fn(),
+	mockGetPlaylistById: vi.fn(),
 	mockDeletePlaylist: vi.fn(),
 	mockUpdatePlaylistMetadata: vi.fn(),
+	mockUpdatePlaylistMatchConfig: vi.fn(),
+	mockApplyLibraryProcessingChange: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -54,11 +61,14 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getTargetPlaylists: vi.fn().mockResolvedValue({ ok: true, value: [] }),
 	getPlaylistBySpotifyId: (...args: unknown[]) =>
 		mockGetPlaylistBySpotifyId(...args),
+	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 	getPlaylistSongs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
 	deletePlaylist: (...args: unknown[]) => mockDeletePlaylist(...args),
 	setPlaylistTarget: vi.fn(),
 	updatePlaylistMetadata: (...args: unknown[]) =>
 		mockUpdatePlaylistMetadata(...args),
+	updatePlaylistMatchConfig: (...args: unknown[]) =>
+		mockUpdatePlaylistMatchConfig(...args),
 }));
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
@@ -66,7 +76,8 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 }));
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
-	applyLibraryProcessingChange: vi.fn(),
+	applyLibraryProcessingChange: (...args: unknown[]) =>
+		mockApplyLibraryProcessingChange(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -248,5 +259,69 @@ describe("acknowledgePlaylistDelete", () => {
 				data: { uri: "spotify:playlist:abc123" },
 			}),
 		).rejects.toThrow("Failed to acknowledge playlist delete");
+	});
+});
+
+describe("savePlaylistMatchConfig", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockAuthContext.session = { accountId: "acct-1" };
+		mockGetPlaylistById.mockResolvedValue(Result.ok(makePlaylist()));
+		mockUpdatePlaylistMatchConfig.mockResolvedValue(Result.ok(makePlaylist()));
+		mockApplyLibraryProcessingChange.mockResolvedValue(Result.ok(null));
+	});
+
+	it("normalizes duplicate language codes before persisting and returning", async () => {
+		const result = await savePlaylistMatchConfig({
+			data: {
+				playlistId: "uuid-1",
+				matchIntent: null,
+				genrePills: [],
+				matchFilters: {
+					version: 1,
+					languages: { codes: ["en", "en", "pt", "en"] },
+				},
+			},
+		});
+
+		const deduped = { version: 1, languages: { codes: ["en", "pt"] } };
+		expect(result.matchFilters).toEqual(deduped);
+		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
+			"acct-1",
+			"uuid-1",
+			expect.objectContaining({ matchFilters: deduped }),
+		);
+	});
+
+	it("rejects ownership mismatch before writing", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-other" })),
+		);
+
+		await expect(
+			savePlaylistMatchConfig({
+				data: {
+					playlistId: "uuid-1",
+					matchIntent: null,
+					genrePills: [],
+					matchFilters: { version: 1 },
+				},
+			}),
+		).rejects.toThrow("Playlist not found");
+		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();
+	});
+
+	it("throws on invalid match filters without writing", async () => {
+		await expect(
+			savePlaylistMatchConfig({
+				data: {
+					playlistId: "uuid-1",
+					matchIntent: null,
+					genrePills: [],
+					matchFilters: { version: 1, languages: { codes: ["xx-invented"] } },
+				},
+			}),
+		).rejects.toThrow("Invalid match filters");
+		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();
 	});
 });
