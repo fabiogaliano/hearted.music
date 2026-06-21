@@ -22,4 +22,9 @@ rationale.
 
 ## Decisions
 
-- (none yet)
+- CMHF-01: Language catalog includes 82 entries covering all 60 ISO 639-1 codes emitted by `eld` (confirmed from `node_modules/eld/src/ngrams/large.js`) plus additional widely-filterable languages. `eld` emits only ISO 639-1 codes; no 639-3 codes found in the large model — the "occasionally 639-3" note in detector.ts is defensive wording in a comment, not an active code path.
+- CMHF-01: `parseStoredMatchFilters` returns `ParseResult<PlaylistMatchFiltersV1>` always with `ok: true` (normalizing invalid to `{ version: 1 }`); `parseSaveMatchFilters` returns `ok: false` on rejection. Both use the same `ParseResult<T>` discriminated union type.
+- CMHF-01: `SongFilterMetadata.likedAt` stored as `number | null` (ms since epoch) so predicate code stays pure without Date construction in callers; callers convert timestamp to ms before passing.
+- CMHF-01: `orderLanguageOptions` sorts catalog-only entries alphabetically by label using `localeCompare`, matching the "alphabetically" requirement in the plan.
+- CMHF-01: Labels use en-dash (–) for range separators and `≤`/`≥` for before/after, derived purely from normalized values.
+- Review patch F1: introduced `StoredParseResult<T>` (= `StoredParseSuccess<T> | ParseFailure`) alongside the existing `ParseResult<T>` rather than extending `ParseSuccess` — avoids breaking the `parseSaveMatchFilters` return type while cleanly scoping `wasNormalized` to the forgiving read path only.
