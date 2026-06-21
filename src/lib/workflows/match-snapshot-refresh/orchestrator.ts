@@ -27,6 +27,7 @@ import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipel
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
+import { loadMatchFilterExclusions } from "./match-filter-exclusions";
 import { loadTargetPlaylistProfiles } from "./profiles";
 import type {
 	MatchSnapshotRefreshPlan,
@@ -364,12 +365,57 @@ export async function executeMatchSnapshotRefresh(
 		};
 	});
 
-	let exclusionSet: Set<string> | undefined;
-	try {
-		exclusionSet = await loadExclusionSet(accountId);
-	} catch {
+	// Run both loads concurrently — they are independent DB calls.
+	// If the base load fails we continue with an empty base and mark the summary
+	// degraded so filter exclusions still apply and hard-filter enforcement is not
+	// silently bypassed on a transient base-load error.
+	let baseExclusionSet: Set<string> = new Set();
+	let baseExclusionsFailed = false;
+	const [baseResult, filterResult] = await Promise.all([
+		loadExclusionSet(accountId).catch((err: unknown) => err),
+		loadMatchFilterExclusions({
+			accountId,
+			playlists,
+			candidateSongIds: songIds,
+		}),
+	]);
+
+	if (baseResult instanceof Error || !(baseResult instanceof Set)) {
 		log.warn("match:exclusion-set-failed", { actor: who });
+		baseExclusionsFailed = true;
+	} else {
+		baseExclusionSet = baseResult;
 	}
+
+	const { exclusions: filterExclusions, summary: filterSummary } = filterResult;
+
+	log.info("match:filter-exclusions", {
+		actor: who,
+		activeFilterPlaylists: filterSummary.activeFilterPlaylistCount,
+		excludedPairs: filterSummary.excludedPairCount,
+		candidatePairs: filterSummary.candidatePairCount,
+		failedChecks: filterSummary.failedChecksByType,
+		// Log a fresh object so the logged value is always accurate even if
+		// filterSummary.degraded were frozen.
+		degraded: {
+			...filterSummary.degraded,
+			baseExclusions: baseExclusionsFailed,
+		},
+	});
+
+	// filterSummary.degraded.baseExclusions is the orchestrator's responsibility;
+	// loadMatchFilterExclusions always leaves it false (decisions §8).
+	filterSummary.degraded.baseExclusions = baseExclusionsFailed;
+
+	const effectiveExclusionSet = new Set([
+		...baseExclusionSet,
+		...filterExclusions,
+	]);
+
+	// Computed once and reused at both matchBatch and writeMatchSnapshot so the
+	// two call sites are guaranteed the identical effective set.
+	const exclusionSetArg =
+		effectiveExclusionSet.size > 0 ? effectiveExclusionSet : undefined;
 
 	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
 	const songEmbeddings = new Map<string, number[]>();
@@ -405,7 +451,9 @@ export async function executeMatchSnapshotRefresh(
 		matchingSongs,
 		profiles,
 		songEmbeddings,
-		exclusionSet ? { exclusionSet } : undefined,
+		exclusionSetArg !== undefined
+			? { exclusionSet: exclusionSetArg }
+			: undefined,
 	);
 
 	if (Result.isError(matchResult)) {
@@ -497,7 +545,7 @@ export async function executeMatchSnapshotRefresh(
 				profiles,
 				results: resultEntries,
 				matchedSongIds,
-				exclusionSet,
+				exclusionSet: exclusionSetArg,
 				rerankDocumentMode,
 			}),
 	});

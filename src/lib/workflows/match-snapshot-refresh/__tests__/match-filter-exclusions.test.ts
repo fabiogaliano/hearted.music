@@ -673,6 +673,65 @@ describe("loadMatchFilterExclusions — nowMs for likedAt today", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Evaluation throws → degraded, not a rejection (Decisions §8)
+// ---------------------------------------------------------------------------
+
+describe("loadMatchFilterExclusions — evaluation throw degrades gracefully", () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it("returns empty exclusions + degraded.filterMetadata=true when a predicate throws", async () => {
+		// Provide metadata so the happy path would normally proceed to evaluation.
+		const sm = new Map([
+			[
+				"song-1",
+				{
+					language: "pt",
+					languageSecondary: null,
+					releaseYear: 2015,
+					vocalGender: null,
+				},
+			],
+		]);
+		mockLoadFilterMetadata.mockResolvedValue(okMaps(sm));
+
+		// Force a throw during evaluation by making the mock reject after the
+		// metadata load succeeds. We do this by replacing the underlying predicate
+		// module via a poisoned match_filters JSON that causes parseStoredMatchFilters
+		// to blow up — but that function is robust, so the more reliable path is to
+		// simulate the throw via a getter trap on the songMetaCache object returned by
+		// the mock. Since that map is internal, the simplest approach is to make
+		// loadFilterMetadata resolve with a songMeta whose .get() throws.
+		const poisonedMeta = new Map<
+			string,
+			{
+				language: string;
+				languageSecondary: null;
+				releaseYear: number;
+				vocalGender: null;
+			}
+		>();
+		Object.defineProperty(poisonedMeta, "get", {
+			value: () => {
+				throw new Error("simulated predicate crash");
+			},
+		});
+		mockLoadFilterMetadata.mockResolvedValue(okMaps(poisonedMeta));
+
+		const { exclusions, summary } = await loadMatchFilterExclusions({
+			accountId: "acc-1",
+			playlists: [{ id: "pl-1", match_filters: langFilters }],
+			candidateSongIds: ["song-1"],
+		});
+
+		// Must not reject — returns degraded result instead.
+		expect(exclusions.size).toBe(0);
+		expect(summary.degraded.filterMetadata).toBe(true);
+		expect(summary.excludedPairCount).toBe(0);
+		expect(summary.activeFilterPlaylistCount).toBe(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // degraded.baseExclusions is always false (CMHF-12's responsibility)
 // ---------------------------------------------------------------------------
 
