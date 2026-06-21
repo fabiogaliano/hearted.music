@@ -25,6 +25,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import { detectVocalGender } from "@/lib/domains/taste/match-filters/vocals-detector";
+import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import {
 	parseStoredMatchFilters,
 	parseSaveMatchFilters,
@@ -241,7 +242,12 @@ export function decidePlaylist(row: PlaylistRow): PlaylistDecision {
 	return {
 		...base,
 		kind: detection.kind === "female" ? "write-female" : "write-male",
-		newFilters: saveCheck.value,
+		// Validation accepts valid-but-noncanonical input (e.g. duplicate language
+		// codes); canonicalize before writing so the backfill upholds the same
+		// "storage never holds a denormalized object" invariant as the editor save
+		// path (playlists.functions saveMatchConfig) and CMHF-18's normalized-write
+		// requirement.
+		newFilters: normalizeMatchFilters(saveCheck.value),
 	};
 }
 

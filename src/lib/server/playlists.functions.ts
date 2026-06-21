@@ -27,6 +27,7 @@ import {
 	lookupLanguage,
 	SUPPORTED_LANGUAGE_CODES,
 } from "@/lib/domains/taste/match-filters/languages";
+import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type {
 	PlaylistMatchFilterOptions,
@@ -553,7 +554,10 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 			if (!filtersParseResult.ok) {
 				throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
 			}
-			const matchFilters = filtersParseResult.value;
+			// Validation accepts e.g. duplicate language codes; normalize to the
+			// canonical form before persisting and returning so storage never holds
+			// (and clients never round-trip) a denormalized object.
+			const matchFilters = normalizeMatchFilters(filtersParseResult.value);
 
 			const updateResult = await updatePlaylistMatchConfig(
 				session.accountId,
