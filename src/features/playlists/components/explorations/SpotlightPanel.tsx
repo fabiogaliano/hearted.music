@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
@@ -16,6 +16,7 @@ import type {
 	PlaylistSummary,
 	PlaylistTrackVM,
 } from "./types";
+import { useVocalsAutoFill } from "./useVocalsAutoFill";
 import { WritingSurface } from "./WritingSurface";
 
 /**
@@ -140,6 +141,11 @@ export function SpotlightPanel({
 	const [draftMatchFilters, setDraftMatchFilters] =
 		useState<PlaylistMatchFiltersV1>({ version: 1 });
 
+	// The saved intent text at the moment the editor was most recently opened.
+	// Passed to useVocalsAutoFill so it can pre-seed the dismissal set and
+	// prevent auto-fill from firing on unchanged saved text when the editor reopens.
+	const autoFillInitialTextRef = useRef<string>("");
+
 	// Reseed all three saved fields when a different playlist opens. Also resets
 	// transient edit/save state so a new panel starts clean.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
@@ -152,6 +158,15 @@ export function SpotlightPanel({
 		setSaveError(null);
 	}, [playlist?.id]);
 
+	useVocalsAutoFill({
+		isEditing,
+		lockManualEntry: guidedIntent,
+		draftDescription,
+		draftMatchFilters,
+		setDraftMatchFilters,
+		initialText: autoFillInitialTextRef.current,
+	});
+
 	useEffect(() => {
 		if (!open || !closable) return;
 		const onKey = (event: KeyboardEvent) => {
@@ -162,7 +177,11 @@ export function SpotlightPanel({
 	}, [open, closable, onClose]);
 
 	const openEditor = () => {
-		setDraftDescription(description ?? "");
+		const initialText = description ?? "";
+		// Record the text the session starts from so the auto-fill hook can
+		// pre-seed it as dismissed — unchanged saved intent must not auto-fill.
+		autoFillInitialTextRef.current = initialText;
+		setDraftDescription(initialText);
 		setDraftGenres(genres);
 		setDraftMatchFilters(matchFilters);
 		setIsEditing(true);
@@ -187,6 +206,9 @@ export function SpotlightPanel({
 		nextDescription: string,
 		nextGenres: readonly string[],
 	) => {
+		// Guided mode — auto-fill is suppressed (lockManualEntry), but still
+		// seed the ref so the hook initialText is consistent if mode ever changes.
+		autoFillInitialTextRef.current = nextDescription;
 		setDraftDescription(nextDescription);
 		setDraftGenres([...nextGenres]);
 		setDraftMatchFilters(matchFilters);
