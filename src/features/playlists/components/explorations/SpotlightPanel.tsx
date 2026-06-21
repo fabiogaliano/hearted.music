@@ -1,7 +1,13 @@
-import type React from "react";
 import { useEffect, useState } from "react";
+import type {
+	PlaylistMatchFilterOptions,
+	PlaylistMatchFiltersV1,
+} from "@/lib/domains/taste/match-filters/types";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
+import { ActiveFilterChips } from "./match-filters/ActiveFilterChips";
+import type { OptionsState } from "./match-filters/AdvancedFiltersAssembly";
+import { AdvancedFiltersAssembly } from "./match-filters/AdvancedFiltersAssembly";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
 import type {
@@ -10,6 +16,16 @@ import type {
 	PlaylistTrackVM,
 } from "./types";
 import { WritingSurface } from "./WritingSurface";
+
+/**
+ * Empty options object used when CMHF-14 has not yet provided real options.
+ * Controls will render disabled (optionsState="loading"), but draft chips remain removable.
+ */
+const EMPTY_OPTIONS: PlaylistMatchFilterOptions = {
+	languages: [],
+	releaseYears: { min: null, max: null },
+	likedAt: { oldest: null, today: "", yearCounts: [] },
+};
 
 // The hue-washed band behind the hero + writing surface (and the guided example
 // picker, which lifts off it as a lighter card).
@@ -22,7 +38,15 @@ interface SpotlightPanelProps {
 	open: boolean;
 	onClose: () => void;
 	onToggleTarget?: (id: string) => void;
-	onSave?: (id: string, intent: string | null, genres: string[]) => void;
+	/** Called when the user saves; receives all three match-config fields together.
+	 *  CMHF-15 will replace the two separate RPCs with savePlaylistMatchConfig,
+	 *  which accepts exactly this shape. */
+	onSave?: (
+		id: string,
+		intent: string | null,
+		genres: string[],
+		matchFilters: PlaylistMatchFiltersV1,
+	) => void;
 	topGenres?: readonly string[];
 	/** More track pages exist — TrackList renders a scroll sentinel. */
 	tracksHasMore?: boolean;
@@ -37,13 +61,16 @@ interface SpotlightPanelProps {
 	 *  popover. Ignored in guided mode (which uses its own per-playlist slot). */
 	intentExamples?: readonly DescriptionExample[];
 	/**
-	 * Advanced filters panel rendered in the WritingSurface edit slot.
-	 * Optional — omitting leaves production behavior unchanged.
-	 * CMHF-13 will wire the real AdvancedFiltersAssembly here with real server state;
-	 * CMHF-06 stories pass mock state. The slot is only rendered in edit mode
-	 * (WritingSurface already gates advancedFilters to the editing branch).
+	 * Filter options from getPlaylistMatchFilterOptions (CMHF-14 wires the real query).
+	 * Omit or pass undefined until CMHF-14 is ready — defaults to EMPTY_OPTIONS with
+	 * optionsState="loading" so controls are disabled but draft chips remain removable.
 	 */
-	advancedFiltersSlot?: React.ReactNode;
+	matchFilterOptions?: PlaylistMatchFilterOptions;
+	/**
+	 * Loading/error state for filter options. CMHF-14 sets this from the query status.
+	 * Defaults to "loading" so the UI is safely disabled before options arrive.
+	 */
+	matchFilterOptionsState?: OptionsState;
 }
 
 /**
@@ -73,7 +100,8 @@ export function SpotlightPanel({
 	onLoadMoreTracks,
 	guided,
 	intentExamples,
-	advancedFiltersSlot,
+	matchFilterOptions,
+	matchFilterOptionsState,
 }: SpotlightPanelProps) {
 	// Expand the guided config into local constants so the rest of the component
 	// reads the same way it did before — production defaults are explicit here and
@@ -90,15 +118,21 @@ export function SpotlightPanel({
 		playlist?.intent ?? null,
 	);
 	const [genres, setGenres] = useState<string[]>(playlist?.genres ?? []);
+	const [matchFilters, setMatchFilters] = useState<PlaylistMatchFiltersV1>(
+		playlist?.matchFilters ?? { version: 1 },
+	);
 	const [isEditing, setIsEditing] = useState(false);
 	const [draftDescription, setDraftDescription] = useState("");
 	const [draftGenres, setDraftGenres] = useState<string[]>([]);
+	const [draftMatchFilters, setDraftMatchFilters] =
+		useState<PlaylistMatchFiltersV1>({ version: 1 });
 
-	// Reseed the writing surface when a different playlist opens.
+	// Reseed all three draft fields when a different playlist opens.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
 	useEffect(() => {
 		setDescription(playlist?.intent ?? null);
 		setGenres(playlist?.genres ?? []);
+		setMatchFilters(playlist?.matchFilters ?? { version: 1 });
 		setIsEditing(false);
 	}, [playlist?.id]);
 
@@ -114,6 +148,7 @@ export function SpotlightPanel({
 	const openEditor = () => {
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
+		setDraftMatchFilters(matchFilters);
 		setIsEditing(true);
 	};
 
@@ -130,21 +165,25 @@ export function SpotlightPanel({
 	}, [playlist?.id, playlist?.isTarget, playlist?.intent, autoEditOnAdd]);
 	// Picking a ready-made example seeds the draft from it and jumps straight into
 	// editing — bypassing openEditor's reseed-from-saved, since the point is to
-	// start from the example rather than the current intent.
+	// start from the example rather than the current intent. Filters carry over
+	// from the saved state since examples don't touch filter state.
 	const pickExample = (
 		nextDescription: string,
 		nextGenres: readonly string[],
 	) => {
 		setDraftDescription(nextDescription);
 		setDraftGenres([...nextGenres]);
+		setDraftMatchFilters(matchFilters);
 		setIsEditing(true);
 	};
 	const save = () => {
 		const nextDescription = draftDescription.trim() || null;
 		setDescription(nextDescription);
 		setGenres(draftGenres);
+		setMatchFilters(draftMatchFilters);
 		setIsEditing(false);
-		if (playlist) onSave(playlist.id, nextDescription, draftGenres);
+		if (playlist)
+			onSave(playlist.id, nextDescription, draftGenres, draftMatchFilters);
 	};
 
 	return (
@@ -252,12 +291,30 @@ export function SpotlightPanel({
 																/>
 															) : undefined
 														}
-														advancedFilters={advancedFiltersSlot}
+														collapsedFiltersSlot={
+															!isEditing && !guidedIntent ? (
+																<ActiveFilterChips filters={matchFilters} />
+															) : undefined
+														}
+														advancedFilters={
+															isEditing && !guidedIntent ? (
+																<AdvancedFiltersAssembly
+																	filters={draftMatchFilters}
+																	onFiltersChange={setDraftMatchFilters}
+																	options={matchFilterOptions ?? EMPTY_OPTIONS}
+																	optionsState={
+																		matchFilterOptionsState ?? "loading"
+																	}
+																/>
+															) : undefined
+														}
 														onEditDescription={openEditor}
 														onEditGenres={openEditor}
 														onDraftDescriptionChange={setDraftDescription}
 														onDraftGenresChange={setDraftGenres}
 														onSave={save}
+														// Only exits editing; openEditor reseeds all three drafts
+														// from saved values on the next open, so drafts need no reset here.
 														onCancel={() => setIsEditing(false)}
 													/>
 												</div>

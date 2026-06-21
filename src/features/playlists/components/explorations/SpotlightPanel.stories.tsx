@@ -1,7 +1,6 @@
 import type { Story } from "@ladle/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import {
 	FILTERS_DENSE_LANGUAGES,
 	FILTERS_MULTI_CHIP,
@@ -12,7 +11,6 @@ import {
 	sampleTracks,
 	TOP_GENRES,
 } from "./fixtures";
-import { AdvancedFiltersAssembly } from "./match-filters/AdvancedFiltersAssembly";
 import { MOCK_FILTER_OPTIONS } from "./match-filters/mock-filter-options";
 import { SpotlightPanel as Panel } from "./SpotlightPanel";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
@@ -73,27 +71,23 @@ SpotlightPanel.meta = {
 };
 
 /**
- * Harness for CMHF-06 drawer-width compositions. Passes AdvancedFiltersAssembly
- * into SpotlightPanel's advancedFiltersSlot prop, which threads through to
- * WritingSurface's advancedFilters slot in edit mode.
+ * Harness for CMHF-06/CMHF-13 drawer-width compositions.
+ * SpotlightPanel now owns matchFilters draft state internally; callers supply
+ * matchFilterOptions + matchFilterOptionsState (the CMHF-14 seam).
  */
 function WithFiltersHarness({
 	playlist,
 	tracks = [],
-	initialFilters,
 	options,
 	optionsState,
 }: {
 	playlist: PlaylistSummary;
 	tracks?: PlaylistTrackVM[];
-	initialFilters: PlaylistMatchFiltersV1;
 	options: typeof MOCK_FILTER_OPTIONS;
 	optionsState: "ready" | "loading" | "error";
 }) {
 	const [open, setOpen] = useState(true);
 	const [isTarget, setIsTarget] = useState(playlist.isTarget);
-	const [filters, setFilters] =
-		useState<PlaylistMatchFiltersV1>(initialFilters);
 
 	return (
 		<div className="theme-bg relative min-h-screen overflow-hidden p-10">
@@ -105,14 +99,8 @@ function WithFiltersHarness({
 				onClose={() => setOpen(false)}
 				onToggleTarget={() => setIsTarget((t) => !t)}
 				topGenres={TOP_GENRES}
-				advancedFiltersSlot={
-					<AdvancedFiltersAssembly
-						filters={filters}
-						onFiltersChange={setFilters}
-						options={options}
-						optionsState={optionsState}
-					/>
-				}
+				matchFilterOptions={options}
+				matchFilterOptionsState={optionsState}
 			/>
 		</div>
 	);
@@ -125,7 +113,6 @@ export const DrawerNoFilters: Story = () => (
 	<WithFiltersHarness
 		playlist={byId("mce")}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={{ version: 1 }}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
@@ -142,14 +129,13 @@ export const DrawerMultipleChips: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("mce"), matchFilters: FILTERS_MULTI_CHIP }}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
 );
 DrawerMultipleChips.meta = {
 	description:
-		"Real drawer width. Multiple active chips (3 languages + release year + vocals). Trigger shows count badge of 5.",
+		"Real drawer width. Multiple active chips (3 languages + release year + vocals). Trigger shows count badge of 5. Chips visible in collapsed state (display-only); edit mode shows remove actions.",
 };
 
 /**
@@ -162,7 +148,6 @@ export const DrawerExpandedAllControls: Story<{
 		key={optionsState}
 		playlist={byId("mce")}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={{ version: 1 }}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState={optionsState}
 	/>
@@ -190,7 +175,6 @@ export const DrawerVocalsDetected: Story = () => (
 			matchFilters: FILTERS_VOCALS_DETECTED,
 		}}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_VOCALS_DETECTED}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
@@ -207,7 +191,6 @@ export const DrawerOptionsLoading: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("mce"), matchFilters: FILTERS_MULTI_CHIP }}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="loading"
 	/>
@@ -224,7 +207,6 @@ export const DrawerOptionsError: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("mce"), matchFilters: FILTERS_MULTI_CHIP }}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="error"
 	/>
@@ -241,7 +223,6 @@ export const DrawerDenseLanguages: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("mce"), matchFilters: FILTERS_DENSE_LANGUAGES }}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_DENSE_LANGUAGES}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
@@ -257,7 +238,6 @@ DrawerDenseLanguages.meta = {
 export const DrawerLongPlaylistName: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("longname"), matchFilters: FILTERS_MULTI_CHIP }}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
@@ -275,7 +255,6 @@ export const DrawerNarrowWidth: Story = () => (
 	<WithFiltersHarness
 		playlist={byId("mce")}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>
@@ -292,7 +271,6 @@ export const DrawerSparseOptions: Story = () => (
 	<WithFiltersHarness
 		playlist={{ ...byId("mce"), matchFilters: FILTERS_SPARSE_BOUNDS }}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_SPARSE_BOUNDS}
 		options={MOCK_SPARSE_OPTIONS}
 		optionsState="ready"
 	/>
@@ -315,7 +293,6 @@ export const DrawerWithIntentAndGenres: Story = () => (
 			matchFilters: FILTERS_MULTI_CHIP,
 		}}
 		tracks={sampleTracks.mce ?? []}
-		initialFilters={FILTERS_MULTI_CHIP}
 		options={MOCK_FILTER_OPTIONS}
 		optionsState="ready"
 	/>

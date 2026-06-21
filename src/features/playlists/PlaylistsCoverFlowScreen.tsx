@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import {
 	savePlaylistGenrePills,
 	savePlaylistMatchIntent,
@@ -175,6 +176,10 @@ export function PlaylistsCoverFlowScreen({
 		id: string,
 		intent: string | null,
 		genres: string[],
+		// matchFilters is received here so CMHF-15 can wire savePlaylistMatchConfig
+		// without needing to change SpotlightPanel's onSave signature again.
+		// Until then the two existing separate RPCs keep running.
+		_matchFilters: PlaylistMatchFiltersV1,
 	) => {
 		try {
 			await Promise.all([

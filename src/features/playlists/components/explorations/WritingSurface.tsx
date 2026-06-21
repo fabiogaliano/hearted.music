@@ -63,10 +63,15 @@ interface WritingSurfaceProps {
 	/**
 	 * Advanced filters panel, rendered below the Genres area and above Save/Cancel.
 	 * Optional — omitting leaves the layout unchanged and existing usages unaffected.
-	 * CMHF-13 will pass <AdvancedFiltersPanel> with real filter state here.
 	 * Only rendered in edit mode where filters can be mutated.
 	 */
 	advancedFilters?: ReactNode;
+	/**
+	 * Display-only filter chips rendered in collapsed (non-editing) state under the
+	 * intent/genre area. No remove affordance — editing requires entering edit mode,
+	 * matching the genres interaction pattern (decisions §7 "Collapsed/non-editing state").
+	 */
+	collapsedFiltersSlot?: ReactNode;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -99,6 +104,7 @@ export function WritingSurface({
 	examplesSlot,
 	intentExamples,
 	advancedFilters,
+	collapsedFiltersSlot,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -356,6 +362,8 @@ export function WritingSurface({
 					Add genres
 				</button>
 			)}
+
+			{collapsedFiltersSlot}
 		</div>
 	);
 }
