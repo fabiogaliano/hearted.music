@@ -29,6 +29,7 @@ import {
 	accountTopGenresQueryOptions,
 	playlistKeys,
 	playlistManagementQueryOptions,
+	playlistMatchFilterOptionsQueryOptions,
 	playlistTracksInfiniteQueryOptions,
 } from "./queries";
 
@@ -141,6 +142,29 @@ export function PlaylistsCoverFlowScreen({
 	}, [selected]);
 	const panelPlaylist = selected ?? lastShown;
 
+	// Only fetch filter options when a target playlist panel is open — the editor
+	// (and therefore the filter controls) is only reachable for target playlists.
+	// The query is account-scoped with a 5min staleTime, so a second target playlist
+	// reuses the cached result. We gate on `selected` (not panelPlaylist) so the
+	// query disables as soon as the panel starts closing, not after the fade-out.
+	const {
+		data: filterOptionsData,
+		isPending: filterOptionsPending,
+		isError: filterOptionsError,
+	} = useQuery({
+		...playlistMatchFilterOptionsQueryOptions(accountId),
+		enabled: selected?.isTarget === true,
+	});
+
+	const matchFilterOptionsState =
+		selected?.isTarget !== true
+			? ("loading" as const)
+			: filterOptionsPending
+				? ("loading" as const)
+				: filterOptionsError
+					? ("error" as const)
+					: ("ready" as const);
+
 	const tracksQuery = useInfiniteQuery(
 		playlistTracksInfiniteQueryOptions(selectedId),
 	);
@@ -231,6 +255,8 @@ export function PlaylistsCoverFlowScreen({
 				tracksLoadingMore={tracksQuery.isFetchingNextPage}
 				onLoadMoreTracks={loadMoreTracks}
 				intentExamples={ALL_DEMO_INTENT_EXAMPLES}
+				matchFilterOptions={filterOptionsData}
+				matchFilterOptionsState={matchFilterOptionsState}
 			/>
 		</>
 	);

@@ -47,7 +47,10 @@ export interface AdvancedFiltersAssemblyProps {
  */
 function OptionsStateNotice({ state }: { state: "loading" | "error" }) {
 	return (
+		// role="status" (implicit aria-live="polite") so the loading->ready/error
+		// transition is announced while the editor is open.
 		<p
+			role="status"
 			className="text-[11px] theme-text-muted"
 			style={{ fontFamily: fonts.body }}
 		>
