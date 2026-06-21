@@ -79,3 +79,7 @@ export async function getPlaylistManagementData(): Promise<never> {
 export async function getPlaylistTracksPage(): Promise<never> {
 	throw new Error("getPlaylistTracksPage is not available in Ladle");
 }
+
+export async function getPlaylistMatchFilterOptions(): Promise<never> {
+	throw new Error("getPlaylistMatchFilterOptions is not available in Ladle");
+}
