@@ -7,6 +7,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
+import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import {
 	savePlaylistGenrePills,
 	savePlaylistMatchIntent,
@@ -34,7 +35,43 @@ interface PlaylistsCoverFlowScreenProps {
 	accountId: string;
 }
 
-function toSummary(playlist: Playlist, isTarget: boolean): PlaylistSummary {
+/**
+ * Exported for unit-testing the warn contract: when wasNormalized is true
+ * the caller (toSummary) must emit a structured warning with full context so
+ * ops can trace corrupt stored data back to the owning account + playlist.
+ */
+export function parseSummaryMatchFilters(
+	accountId: string,
+	playlistId: string,
+	raw: unknown,
+): ReturnType<typeof parseStoredMatchFilters> {
+	const parsed = parseStoredMatchFilters(raw);
+	// StoredParseResult always resolves to ok:true (normalizes, never hard-fails).
+	// The ok guard is still required to narrow the union — TypeScript cannot see
+	// wasNormalized/value on the ParseFailure arm without it.
+	if (parsed.ok && parsed.wasNormalized) {
+		// Invalid stored match_filters must not crash the screen — normalize to
+		// { version: 1 } and log so ops can diagnose without user-facing errors.
+		console.warn("[playlists] invalid stored match_filters normalized", {
+			accountId,
+			playlistId,
+			raw,
+		});
+	}
+	return parsed;
+}
+
+function toSummary(
+	playlist: Playlist,
+	isTarget: boolean,
+	accountId: string,
+): PlaylistSummary {
+	const parsed = parseSummaryMatchFilters(
+		accountId,
+		playlist.id,
+		playlist.match_filters,
+	);
+	const matchFilters = parsed.ok ? parsed.value : { version: 1 as const };
 	return {
 		id: playlist.id,
 		name: playlist.name,
@@ -43,6 +80,7 @@ function toSummary(playlist: Playlist, isTarget: boolean): PlaylistSummary {
 		imageUrl: playlist.image_url,
 		intent: playlist.match_intent,
 		genres: playlist.genre_pills ?? [],
+		matchFilters,
 	};
 }
 
@@ -76,8 +114,8 @@ export function PlaylistsCoverFlowScreen({
 	}, [data?.targetPlaylistIds, optimisticTargets]);
 
 	const summaries = useMemo(
-		() => playlists.map((p) => toSummary(p, targetIds.has(p.id))),
-		[playlists, targetIds],
+		() => playlists.map((p) => toSummary(p, targetIds.has(p.id), accountId)),
+		[playlists, targetIds, accountId],
 	);
 
 	const routeRefById = useMemo(

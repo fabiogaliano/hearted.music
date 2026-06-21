@@ -84,6 +84,8 @@ export function SandboxPlaylistsCoverFlowScreen() {
 					imageUrl: p.imageUrl ?? null,
 					intent: meta?.intent ?? null,
 					genres: meta?.genres ?? [],
+					// Demo playlists carry no stored filters.
+					matchFilters: { version: 1 },
 				};
 			}),
 		[targetIds, metadata],

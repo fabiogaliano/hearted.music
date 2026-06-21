@@ -14,6 +14,7 @@ function summary(id: string, isTarget: boolean): PlaylistSummary {
 		imageUrl: null,
 		intent: null,
 		genres: [],
+		matchFilters: { version: 1 },
 	};
 }
 
