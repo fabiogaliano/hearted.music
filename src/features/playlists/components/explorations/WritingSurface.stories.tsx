@@ -12,6 +12,7 @@ import {
 	MOCK_SPARSE_OPTIONS,
 	TOP_GENRES,
 } from "./fixtures";
+import { ActiveFilterChips } from "./match-filters/ActiveFilterChips";
 import { AdvancedFiltersAssembly } from "./match-filters/AdvancedFiltersAssembly";
 import { MOCK_FILTER_OPTIONS } from "./match-filters/mock-filter-options";
 import { WritingSurface as Surface } from "./WritingSurface";
@@ -98,7 +99,9 @@ WritingSurface.argTypes = {
 };
 
 /**
- * Wires AdvancedFiltersAssembly into WritingSurface's advancedFilters slot.
+ * Wires AdvancedFiltersAssembly into WritingSurface's advancedFilters slot and
+ * ActiveFilterChips into collapsedFiltersSlot. Production-shaped: saved filters
+ * and draft filters are separate — draft seeds from saved on open, cancel reverts.
  * All CMHF-06 required states come from the optionsState + initialFilters args.
  */
 function WithFiltersHarness({
@@ -120,6 +123,8 @@ function WithFiltersHarness({
 		initialDescription,
 	);
 	const [genres, setGenres] = useState<string[]>(initialGenres);
+	const [savedFilters, setSavedFilters] =
+		useState<PlaylistMatchFiltersV1>(initialFilters);
 	const [isEditing, setIsEditing] = useState(startEditing);
 	const [draftDescription, setDraftDescription] = useState(
 		startEditing ? (initialDescription ?? "") : "",
@@ -127,12 +132,13 @@ function WithFiltersHarness({
 	const [draftGenres, setDraftGenres] = useState<string[]>(
 		startEditing ? initialGenres : [],
 	);
-	const [filters, setFilters] =
+	const [draftFilters, setDraftFilters] =
 		useState<PlaylistMatchFiltersV1>(initialFilters);
 
 	const open = () => {
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
+		setDraftFilters(savedFilters);
 		setIsEditing(true);
 	};
 
@@ -152,14 +158,18 @@ function WithFiltersHarness({
 				onSave={() => {
 					setDescription(draftDescription.trim() || null);
 					setGenres(draftGenres);
+					setSavedFilters(draftFilters);
 					setIsEditing(false);
 				}}
 				onCancel={() => setIsEditing(false)}
+				collapsedFiltersSlot={
+					!isEditing ? <ActiveFilterChips filters={savedFilters} /> : undefined
+				}
 				advancedFilters={
 					isEditing ? (
 						<AdvancedFiltersAssembly
-							filters={filters}
-							onFiltersChange={setFilters}
+							filters={draftFilters}
+							onFiltersChange={setDraftFilters}
 							options={options}
 							optionsState={optionsState}
 						/>
@@ -400,6 +410,9 @@ function WithFiltersHarnessLegacy({
 		initialDescription,
 	);
 	const [genres, setGenres] = useState<string[]>(initialGenres);
+	const [savedFilters, setSavedFilters] = useState<PlaylistMatchFiltersV1>(
+		FILTER_PRESETS[filterPreset] ?? { version: 1 },
+	);
 	const [isEditing, setIsEditing] = useState(startEditing);
 	const [draftDescription, setDraftDescription] = useState(
 		startEditing ? (initialDescription ?? "") : "",
@@ -407,13 +420,14 @@ function WithFiltersHarnessLegacy({
 	const [draftGenres, setDraftGenres] = useState<string[]>(
 		startEditing ? initialGenres : [],
 	);
-	const [filters, setFilters] = useState<PlaylistMatchFiltersV1>(
+	const [draftFilters, setDraftFilters] = useState<PlaylistMatchFiltersV1>(
 		FILTER_PRESETS[filterPreset] ?? { version: 1 },
 	);
 
 	const open = () => {
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
+		setDraftFilters(savedFilters);
 		setIsEditing(true);
 	};
 
@@ -433,14 +447,18 @@ function WithFiltersHarnessLegacy({
 				onSave={() => {
 					setDescription(draftDescription.trim() || null);
 					setGenres(draftGenres);
+					setSavedFilters(draftFilters);
 					setIsEditing(false);
 				}}
 				onCancel={() => setIsEditing(false)}
+				collapsedFiltersSlot={
+					!isEditing ? <ActiveFilterChips filters={savedFilters} /> : undefined
+				}
 				advancedFilters={
 					isEditing ? (
 						<AdvancedFiltersAssembly
-							filters={filters}
-							onFiltersChange={setFilters}
+							filters={draftFilters}
+							onFiltersChange={setDraftFilters}
 							options={MOCK_FILTER_OPTIONS}
 							optionsState="ready"
 						/>
