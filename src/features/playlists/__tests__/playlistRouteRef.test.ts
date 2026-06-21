@@ -13,6 +13,7 @@ function createPlaylist(overrides: Partial<Playlist>): Playlist {
 		name: "Ambient Morning",
 		description: null,
 		match_intent: null,
+		match_filters: { version: 1 },
 		snapshot_id: null,
 		is_public: true,
 		song_count: 42,
