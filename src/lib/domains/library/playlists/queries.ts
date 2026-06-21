@@ -8,10 +8,12 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type {
+	Json,
 	Tables,
 	TablesInsert,
 	TablesUpdate,
 } from "@/lib/data/database.types";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	chunkedWrite,
@@ -405,6 +407,38 @@ export function updatePlaylistMatchIntent(
 		supabase
 			.from("playlist")
 			.update({ match_intent: value })
+			.eq("id", playlistId)
+			.eq("account_id", accountId)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * One statement covers all three fields so a handler crash mid-write cannot
+ * leave match_intent and genre_pills updated while match_filters is still
+ * stale (or vice versa). The caller must validate matchFilters into a
+ * PlaylistMatchFiltersV1 before calling — the `as Json` cast below is forced
+ * by the Supabase client API, not a bypass of that validation.
+ */
+export function updatePlaylistMatchConfig(
+	accountId: string,
+	playlistId: string,
+	config: {
+		matchIntent: string | null;
+		genrePills: string[];
+		matchFilters: PlaylistMatchFiltersV1;
+	},
+): Promise<Result<Playlist, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("playlist")
+			.update({
+				match_intent: config.matchIntent,
+				genre_pills: config.genrePills,
+				match_filters: config.matchFilters as Json,
+			})
 			.eq("id", playlistId)
 			.eq("account_id", accountId)
 			.select()
