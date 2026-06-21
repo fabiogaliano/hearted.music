@@ -417,3 +417,84 @@ DrawerSavePending.meta = {
 	description:
 		"CMHF-15: Save never settles. Verifies 'Saving…' button text, disabled Save and Cancel buttons, and that the editor stays open.",
 };
+
+// ---------------------------------------------------------------------------
+// CMHF-17: vocals detector editor auto-fill stories
+// ---------------------------------------------------------------------------
+
+/**
+ * CMHF-17: Auto-fill from intent text — type a phrase that triggers the detector.
+ *
+ * Enter edit mode, then type (or clear + retype) in the intent field:
+ *   - "songs with female vocals" → Female chip appears after 300 ms debounce
+ *   - "deep male vocals" → Male chip appears
+ *   - "female and male duet" → no chip (ambiguous)
+ *   - Clear the chip then keep the text unchanged → chip stays gone
+ *   - Change the text → detection runs again
+ *   - Reopen the editor on unchanged saved text → chip does not re-appear
+ */
+export const DrawerVocalsAutoFill: Story = () => (
+	<WithFiltersHarness
+		playlist={{
+			...byId("mce"),
+			intent: null,
+			matchFilters: { version: 1 },
+		}}
+		tracks={sampleTracks.mce ?? []}
+		options={MOCK_FILTER_OPTIONS}
+		optionsState="ready"
+	/>
+);
+DrawerVocalsAutoFill.meta = {
+	description:
+		"CMHF-17: Vocals detector auto-fill. Enter edit mode and type into the intent field. 'female vocals' fills the Female chip after 300 ms; clearing the chip prevents re-add on the same text; changing text re-enables detection; ambiguous text (both signals) does not fill.",
+};
+
+/**
+ * CMHF-17: Auto-fill respects saved vocalGender — no overwrite.
+ *
+ * The playlist already has vocalGender: "male" saved. Even if the intent text
+ * contains "female", the saved value must not be overwritten.
+ */
+export const DrawerVocalsAutoFillNoOverwrite: Story = () => (
+	<WithFiltersHarness
+		playlist={{
+			...byId("mce"),
+			intent: "songs with female vocals",
+			matchFilters: { version: 1, vocalGender: "male" },
+		}}
+		tracks={sampleTracks.mce ?? []}
+		options={MOCK_FILTER_OPTIONS}
+		optionsState="ready"
+	/>
+);
+DrawerVocalsAutoFillNoOverwrite.meta = {
+	description:
+		"CMHF-17: Saved vocalGender='male' is preserved even though the intent says 'female vocals'. Auto-fill must not overwrite an existing (saved or manual) vocalGender.",
+};
+
+/**
+ * CMHF-17: No auto-fill on re-open with unchanged saved intent.
+ *
+ * Playlist saved with intent "songs with female vocals" and no vocalGender
+ * (the user previously dismissed the chip and saved without it). Opening the
+ * editor on the same text must not trigger auto-fill.
+ */
+export const DrawerVocalsNoReAddOnOpen: Story = () => (
+	<WithFiltersHarness
+		playlist={{
+			...byId("mce"),
+			// Saved intent that contains a female signal but no vocalGender — simulates
+			// a previous session where the user dismissed the chip and saved without it.
+			intent: "songs with female vocals",
+			matchFilters: { version: 1 },
+		}}
+		tracks={sampleTracks.mce ?? []}
+		options={MOCK_FILTER_OPTIONS}
+		optionsState="ready"
+	/>
+);
+DrawerVocalsNoReAddOnOpen.meta = {
+	description:
+		"CMHF-17: Saved intent contains 'female vocals' but no vocalGender (user previously dismissed). Opening the editor must not auto-add the chip. Only if the user edits the text will detection run again.",
+};
