@@ -16,6 +16,7 @@ import {
 	getTargetPlaylists,
 	setPlaylistTarget,
 	updatePlaylistGenrePills,
+	updatePlaylistMatchConfig,
 	updatePlaylistMatchIntent,
 	updatePlaylistMetadata,
 	upsertPlaylists,
@@ -26,7 +27,11 @@ import {
 	lookupLanguage,
 	SUPPORTED_LANGUAGE_CODES,
 } from "@/lib/domains/taste/match-filters/languages";
-import type { PlaylistMatchFilterOptions } from "@/lib/domains/taste/match-filters/types";
+import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import type {
+	PlaylistMatchFilterOptions,
+	PlaylistMatchFiltersV1,
+} from "@/lib/domains/taste/match-filters/types";
 import {
 	canonicalizeGenre,
 	isGenre,
@@ -494,6 +499,96 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 
 		return { success: true, matchIntent };
 	});
+
+export type SavePlaylistMatchConfigInput = {
+	playlistId: string;
+	matchIntent: string | null;
+	genrePills: string[];
+	matchFilters: PlaylistMatchFiltersV1;
+};
+
+export type SavePlaylistMatchConfigResult = {
+	matchIntent: string | null;
+	genrePills: string[];
+	matchFilters: PlaylistMatchFiltersV1;
+};
+
+// match_intent is TEXT with a 5000-char DB CHECK; matchFilters is jsonb.
+// Bound the raw string fields at the boundary to avoid hitting DB constraints.
+const SaveMatchConfigSchema = z.object({
+	playlistId: z.uuid(),
+	matchIntent: z.string().max(5000).nullable(),
+	genrePills: z.array(z.string()),
+	matchFilters: z.unknown(),
+});
+
+export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => SaveMatchConfigSchema.parse(data))
+	.handler(
+		async ({ data, context }): Promise<SavePlaylistMatchConfigResult> => {
+			const { session } = context;
+
+			// Service-role client bypasses RLS, so we must verify ownership before writing.
+			const playlistResult = await getPlaylistById(
+				session.accountId,
+				data.playlistId,
+			);
+			if (
+				Result.isError(playlistResult) ||
+				!playlistResult.value ||
+				playlistResult.value.account_id !== session.accountId
+			) {
+				throw new Error("Playlist not found");
+			}
+
+			// Trim only leading/trailing whitespace; internal whitespace/newlines
+			// are intentional user input and must be preserved exactly.
+			const trimmed = data.matchIntent?.trim() ?? "";
+			const matchIntent = trimmed.length > 0 ? trimmed : null;
+
+			const genrePills = sanitizeGenrePills(data.genrePills);
+
+			const filtersParseResult = parseSaveMatchFilters(data.matchFilters);
+			if (!filtersParseResult.ok) {
+				throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
+			}
+			const matchFilters = filtersParseResult.value;
+
+			const updateResult = await updatePlaylistMatchConfig(
+				session.accountId,
+				data.playlistId,
+				{ matchIntent, genrePills, matchFilters },
+			);
+			if (Result.isError(updateResult)) {
+				throw new Error(
+					`Failed to save match config: ${updateResult.error.message}`,
+				);
+			}
+
+			// match_intent, genre_pills, and match_filters all feed the playlist
+			// profile and matching snapshot, so invalidate unconditionally after a
+			// successful write — same signal as the individual save functions.
+			const applyResult = await applyLibraryProcessingChange(
+				PlaylistManagementChanges.sessionFlushed({
+					accountId: session.accountId,
+					targetMembershipChanged: false,
+					targetMetadataChanged: true,
+				}),
+			);
+			if (Result.isError(applyResult)) {
+				// Non-fatal: all three fields are written; invalidation failure is
+				// logged but does not roll back or mask the save. The snapshot will
+				// recompute on the next organic trigger.
+				console.error(
+					"[playlists] match config saved but snapshot invalidation failed:",
+					applyResult.error,
+				);
+			}
+
+			return { matchIntent, genrePills, matchFilters };
+		},
+	);
 
 // ============================================================================
 // Genre pills quick-picks
