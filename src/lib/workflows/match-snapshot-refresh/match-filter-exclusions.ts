@@ -151,19 +151,6 @@ export async function loadMatchFilterExclusions({
 
 	const { songMeta, likedAtMs } = metaResult.value;
 
-	// Build the song metadata map once so inner loops are O(1) lookups.
-	const songMetaCache = new Map<string, SongFilterMetadata>();
-	for (const songId of candidateSongIds) {
-		const sm = songMeta.get(songId);
-		songMetaCache.set(songId, {
-			language: sm?.language ?? null,
-			languageSecondary: sm?.languageSecondary ?? null,
-			releaseYear: sm?.releaseYear ?? null,
-			vocalGender: sm?.vocalGender ?? null,
-			likedAt: likedAtMs.get(songId) ?? null,
-		});
-	}
-
 	const exclusions = new Set<string>();
 	const failedChecksByType = emptyFailedChecks();
 	const excludedPairsByPlaylist: Record<string, number> = {};
@@ -171,60 +158,86 @@ export async function loadMatchFilterExclusions({
 	let activeFilterPlaylistCount = 0;
 	let candidatePairCount = 0;
 
-	for (const playlist of playlists) {
-		const parseResult = parseStoredMatchFilters(playlist.match_filters);
-
-		// parseStoredMatchFilters always returns ok:true (stored data is never
-		// hard-rejected — it normalizes to {version:1} instead), but we narrow
-		// through `ok` so the type system can see `wasNormalized` on the success arm.
-		if (!parseResult.ok) {
-			continue;
-		}
-
-		if (parseResult.wasNormalized) {
-			log.warn("match:invalid-stored-filters", {
-				accountId,
-				playlistId: playlist.id,
-				detail:
-					"Known field had invalid data; normalized to default. Hard-filter exclusions skipped for this playlist.",
-			});
-			// Each playlist appears exactly once per call, so this is always a fresh entry.
-			invalidStoredFiltersByPlaylist[playlist.id] = 1;
-			// Skip this playlist's filter exclusions only.
-			continue;
-		}
-
-		const filters = parseResult.value;
-
-		// Short-circuit: nothing to evaluate if no filters are active.
-		if (!hasActiveMatchFilters(filters)) {
-			continue;
-		}
-
-		activeFilterPlaylistCount += 1;
-		candidatePairCount += candidateSongIds.length;
-
+	try {
+		// Build the song metadata map once so inner loops are O(1) lookups.
+		const songMetaCache = new Map<string, SongFilterMetadata>();
 		for (const songId of candidateSongIds) {
-			const meta = songMetaCache.get(songId);
-			if (meta === undefined) {
-				// Should not happen since we pre-built the cache for all candidateSongIds,
-				// but guard defensively to avoid throwing inside the hot loop.
+			const sm = songMeta.get(songId);
+			songMetaCache.set(songId, {
+				language: sm?.language ?? null,
+				languageSecondary: sm?.languageSecondary ?? null,
+				releaseYear: sm?.releaseYear ?? null,
+				vocalGender: sm?.vocalGender ?? null,
+				likedAt: likedAtMs.get(songId) ?? null,
+			});
+		}
+		for (const playlist of playlists) {
+			const parseResult = parseStoredMatchFilters(playlist.match_filters);
+
+			// parseStoredMatchFilters always returns ok:true (stored data is never
+			// hard-rejected — it normalizes to {version:1} instead), but we narrow
+			// through `ok` so the type system can see `wasNormalized` on the success arm.
+			if (!parseResult.ok) {
 				continue;
 			}
 
-			const passes = evaluateWithAccounting(
-				filters,
-				meta,
-				nowMs,
-				failedChecksByType,
-			);
+			if (parseResult.wasNormalized) {
+				log.warn("match:invalid-stored-filters", {
+					accountId,
+					playlistId: playlist.id,
+					detail:
+						"Known field had invalid data; normalized to default. Hard-filter exclusions skipped for this playlist.",
+				});
+				// Each playlist appears exactly once per call, so this is always a fresh entry.
+				invalidStoredFiltersByPlaylist[playlist.id] = 1;
+				// Skip this playlist's filter exclusions only.
+				continue;
+			}
 
-			if (!passes) {
-				exclusions.add(`${songId}:${playlist.id}`);
-				excludedPairsByPlaylist[playlist.id] =
-					(excludedPairsByPlaylist[playlist.id] ?? 0) + 1;
+			const filters = parseResult.value;
+
+			// Short-circuit: nothing to evaluate if no filters are active.
+			if (!hasActiveMatchFilters(filters)) {
+				continue;
+			}
+
+			activeFilterPlaylistCount += 1;
+			candidatePairCount += candidateSongIds.length;
+
+			for (const songId of candidateSongIds) {
+				const meta = songMetaCache.get(songId);
+				if (meta === undefined) {
+					// Should not happen since we pre-built the cache for all candidateSongIds,
+					// but guard defensively to avoid throwing inside the hot loop.
+					continue;
+				}
+
+				const passes = evaluateWithAccounting(
+					filters,
+					meta,
+					nowMs,
+					failedChecksByType,
+				);
+
+				if (!passes) {
+					exclusions.add(`${songId}:${playlist.id}`);
+					excludedPairsByPlaylist[playlist.id] =
+						(excludedPairsByPlaylist[playlist.id] ?? 0) + 1;
+				}
 			}
 		}
+	} catch (err) {
+		// Decisions §8: hard-filter problems must degrade, not be fatal.
+		// Any predicate or evaluation throw is caught here so the caller is
+		// guaranteed a no-throw result.
+		log.error("match:filter-eval-failed", {
+			accountId,
+			error: err instanceof Error ? err.message : String(err),
+		});
+		return {
+			exclusions: new Set(),
+			summary: emptyDegradedSummary(true),
+		};
 	}
 
 	const summary: MatchFiltersExclusionSummary = {
