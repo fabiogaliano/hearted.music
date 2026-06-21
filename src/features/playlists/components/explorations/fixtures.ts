@@ -1,7 +1,46 @@
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import type {
+	PlaylistMatchFilterOptions,
+	PlaylistMatchFiltersV1,
+} from "@/lib/domains/taste/match-filters/types";
 import type { PlaylistSummary, PlaylistTrackVM } from "./types";
 
 const NO_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
+
+/**
+ * CMHF-06 fixtures: pre-built filter states for Ladle review stories.
+ * Named for the state they exercise, not an internal key.
+ */
+
+export const FILTERS_MULTI_CHIP: PlaylistMatchFiltersV1 = {
+	version: 1,
+	languages: { codes: ["pt", "es", "fr"] },
+	releaseYear: { kind: "after", start: 2000 },
+	vocalGender: "female",
+};
+
+export const FILTERS_VOCALS_DETECTED: PlaylistMatchFiltersV1 = {
+	version: 1,
+	vocalGender: "female",
+};
+
+export const FILTERS_DENSE_LANGUAGES: PlaylistMatchFiltersV1 = {
+	version: 1,
+	languages: { codes: ["en", "pt", "es", "fr", "de", "ja", "ko", "it"] },
+};
+
+export const FILTERS_SPARSE_BOUNDS: PlaylistMatchFiltersV1 = {
+	version: 1,
+	languages: { codes: ["en"] },
+	releaseYear: { kind: "range", start: 1990, end: 2000 },
+	likedAt: { kind: "after", startDate: "2021-06-01" },
+};
+
+/** Sparse option bounds: no release-year data, no liked-date oldest. */
+export const MOCK_SPARSE_OPTIONS: PlaylistMatchFilterOptions = {
+	languages: [{ code: "en", label: "English", count: 12, source: "detected" }],
+	releaseYears: { min: null, max: null },
+	likedAt: { oldest: null, today: "2026-06-21", yearCounts: [] },
+};
 
 /**
  * Sample playlists + tracks for the exploration stories — real Spotify covers
@@ -196,6 +235,23 @@ export const samplePlaylists: PlaylistSummary[] = [
 		intent: null,
 		genres: [],
 		matchFilters: NO_FILTERS,
+	},
+	{
+		id: "longname",
+		name: "Songs That Sound Like Early Morning Fog on the Coast of Northern California in the Late 1970s",
+		isTarget: true,
+		songCount: 3,
+		imageUrl:
+			"https://i.scdn.co/image/ab67616d00001e0213f2466b83507515291acce4",
+		intent:
+			"hazy psychedelic folk with a coastal drift — think Joni Mitchell meets Grateful Dead at dawn",
+		genres: [
+			"folk rock",
+			"psychedelic folk",
+			"singer-songwriter",
+			"west coast",
+		],
+		matchFilters: FILTERS_MULTI_CHIP,
 	},
 ];
 

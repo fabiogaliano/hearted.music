@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useState } from "react";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
@@ -35,6 +36,14 @@ interface SpotlightPanelProps {
 	/** Global intent examples for the production editor's "(i)" shuffle-to-fill
 	 *  popover. Ignored in guided mode (which uses its own per-playlist slot). */
 	intentExamples?: readonly DescriptionExample[];
+	/**
+	 * Advanced filters panel rendered in the WritingSurface edit slot.
+	 * Optional — omitting leaves production behavior unchanged.
+	 * CMHF-13 will wire the real AdvancedFiltersAssembly here with real server state;
+	 * CMHF-06 stories pass mock state. The slot is only rendered in edit mode
+	 * (WritingSurface already gates advancedFilters to the editing branch).
+	 */
+	advancedFiltersSlot?: React.ReactNode;
 }
 
 /**
@@ -64,6 +73,7 @@ export function SpotlightPanel({
 	onLoadMoreTracks,
 	guided,
 	intentExamples,
+	advancedFiltersSlot,
 }: SpotlightPanelProps) {
 	// Expand the guided config into local constants so the rest of the component
 	// reads the same way it did before — production defaults are explicit here and
@@ -242,6 +252,7 @@ export function SpotlightPanel({
 																/>
 															) : undefined
 														}
+														advancedFilters={advancedFiltersSlot}
 														onEditDescription={openEditor}
 														onEditGenres={openEditor}
 														onDraftDescriptionChange={setDraftDescription}
