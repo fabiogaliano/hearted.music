@@ -498,3 +498,62 @@ WritingSurfaceWithAdvancedFilters.argTypes = {
 		control: { type: "select" },
 	},
 };
+
+/**
+ * CMHF-15: inline save error state.
+ * Simulates the state SpotlightPanel produces after a failed save: editor open,
+ * draft intact, isSaving=false, saveError set. Cancel would clear the error.
+ */
+export const SaveError: Story = () => (
+	<div className="theme-bg mx-auto max-w-lg p-10">
+		<Surface
+			description="songs that feel like a slow sunday"
+			genres={["indie pop", "dream pop"]}
+			isEditing={true}
+			draftDescription="songs that feel like a slow sunday"
+			draftGenres={["indie pop", "dream pop"]}
+			topGenres={TOP_GENRES}
+			isSaving={false}
+			saveError="Couldn't save changes. Try again."
+			onEditDescription={() => {}}
+			onEditGenres={() => {}}
+			onDraftDescriptionChange={() => {}}
+			onDraftGenresChange={() => {}}
+			onSave={() => {}}
+			onCancel={() => {}}
+		/>
+	</div>
+);
+SaveError.meta = {
+	description:
+		"CMHF-15: inline save error displayed near Save. Editor stays open, draft intact. role=alert for screen readers.",
+};
+
+/**
+ * CMHF-15: save pending state.
+ * Simulates SpotlightPanel while the save RPC is in flight: isSaving=true, no error.
+ */
+export const SavePending: Story = () => (
+	<div className="theme-bg mx-auto max-w-lg p-10">
+		<Surface
+			description="songs that feel like a slow sunday"
+			genres={["indie pop", "dream pop"]}
+			isEditing={true}
+			draftDescription="songs that feel like a slow sunday"
+			draftGenres={["indie pop", "dream pop"]}
+			topGenres={TOP_GENRES}
+			isSaving={true}
+			saveError={null}
+			onEditDescription={() => {}}
+			onEditGenres={() => {}}
+			onDraftDescriptionChange={() => {}}
+			onDraftGenresChange={() => {}}
+			onSave={() => {}}
+			onCancel={() => {}}
+		/>
+	</div>
+);
+SavePending.meta = {
+	description:
+		"CMHF-15: Save button shows 'Saving…' and is disabled. Cancel disabled while in flight.",
+};

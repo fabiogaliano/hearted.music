@@ -1,6 +1,8 @@
 import type { Story } from "@ladle/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import type { SavePlaylistMatchConfigResult } from "@/lib/server/playlists.functions";
 import {
 	FILTERS_DENSE_LANGUAGES,
 	FILTERS_MULTI_CHIP,
@@ -300,4 +302,118 @@ export const DrawerWithIntentAndGenres: Story = () => (
 DrawerWithIntentAndGenres.meta = {
 	description:
 		"Real drawer width. Full composition: intent text + 3 genre pills + multiple active filter chips. Verifies the three areas (intent, genres, advanced filters) stack cleanly at real drawer width.",
+};
+
+// ---------------------------------------------------------------------------
+// CMHF-15: async save success / error / pending harness stories
+// ---------------------------------------------------------------------------
+
+/**
+ * Async save harness used by the CMHF-15 save stories below.
+ * saveBehavior controls what happens when the user clicks Save:
+ * - "success": resolves after 800 ms with normalized values (mirrors server trim).
+ * - "fail": rejects after 800 ms, showing the inline error near Save.
+ * - "hang": never settles — verifies the "Saving…" pending state.
+ */
+function AsyncSaveHarness({
+	playlist,
+	tracks = [],
+	saveBehavior,
+}: {
+	playlist: PlaylistSummary;
+	tracks?: PlaylistTrackVM[];
+	saveBehavior: "success" | "fail" | "hang";
+}) {
+	const [open, setOpen] = useState(true);
+	const [isTarget, setIsTarget] = useState(playlist.isTarget);
+
+	const handleSave = (
+		_id: string,
+		intent: string | null,
+		genres: string[],
+		matchFilters: PlaylistMatchFiltersV1,
+	): Promise<SavePlaylistMatchConfigResult> => {
+		return new Promise((resolve, reject) => {
+			if (saveBehavior === "hang") return;
+			setTimeout(() => {
+				if (saveBehavior === "fail") {
+					reject(new Error("stubbed save failure"));
+				} else {
+					// Mirror server normalization: trim intent, return as-is for genres/filters.
+					const trimmed = intent?.trim() ?? "";
+					resolve({
+						matchIntent: trimmed.length > 0 ? trimmed : null,
+						genrePills: genres,
+						matchFilters,
+					});
+				}
+			}, 800);
+		});
+	};
+
+	return (
+		<div className="theme-bg relative min-h-screen overflow-hidden p-10">
+			<Button onClick={() => setOpen(true)}>Open panel</Button>
+			<Panel
+				playlist={{ ...playlist, isTarget }}
+				tracks={tracks}
+				open={open}
+				onClose={() => setOpen(false)}
+				onToggleTarget={() => setIsTarget((t) => !t)}
+				topGenres={TOP_GENRES}
+				matchFilterOptions={MOCK_FILTER_OPTIONS}
+				matchFilterOptionsState="ready"
+				onSave={handleSave}
+			/>
+		</div>
+	);
+}
+
+/**
+ * CMHF-15: Save succeeds — editor closes and collapsed display shows normalized values.
+ * Enter edit mode, change intent/genres/filters, click Save. After ~800 ms the panel
+ * closes and the collapsed display reflects the server's normalized response.
+ */
+export const DrawerSaveSuccess: Story = () => (
+	<AsyncSaveHarness
+		playlist={byId("mce")}
+		tracks={sampleTracks.mce ?? []}
+		saveBehavior="success"
+	/>
+);
+DrawerSaveSuccess.meta = {
+	description:
+		"CMHF-15: Save resolves after 800 ms. Editor closes on success; collapsed display shows normalized server values. Enter edit mode, change intent/genres, click Save.",
+};
+
+/**
+ * CMHF-15: Save fails — editor stays open, draft preserved, inline error shown near Save.
+ * Enter edit mode, click Save. After ~800 ms the inline error appears; Cancel clears it.
+ */
+export const DrawerSaveError: Story = () => (
+	<AsyncSaveHarness
+		playlist={byId("mce")}
+		tracks={sampleTracks.mce ?? []}
+		saveBehavior="fail"
+	/>
+);
+DrawerSaveError.meta = {
+	description:
+		"CMHF-15: Save rejects after 800 ms. Inline error 'Couldn't save changes. Try again.' appears near Save. Editor stays open, draft is preserved. Cancel clears error.",
+};
+
+/**
+ * CMHF-15: Save pending — Save shows "Saving…", button disabled, editor stays open.
+ * Enter edit mode and click Save. The promise never settles, verifying frozen pending UI.
+ */
+export const DrawerSavePending: Story = () => (
+	<AsyncSaveHarness
+		playlist={byId("mce")}
+		tracks={sampleTracks.mce ?? []}
+		saveBehavior="hang"
+	/>
+);
+DrawerSavePending.meta = {
+	description:
+		"CMHF-15: Save never settles. Verifies 'Saving…' button text, disabled Save and Cancel buttons, and that the editor stays open.",
 };

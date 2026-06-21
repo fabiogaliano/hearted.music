@@ -9,10 +9,7 @@ import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-exam
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import {
-	savePlaylistGenrePills,
-	savePlaylistMatchIntent,
-} from "@/lib/server/playlists.functions";
+import { savePlaylistMatchConfig } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
 import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
@@ -200,25 +197,23 @@ export function PlaylistsCoverFlowScreen({
 		id: string,
 		intent: string | null,
 		genres: string[],
-		// matchFilters is received here so CMHF-15 can wire savePlaylistMatchConfig
-		// without needing to change SpotlightPanel's onSave signature again.
-		// Until then the two existing separate RPCs keep running.
-		_matchFilters: PlaylistMatchFiltersV1,
+		matchFilters: PlaylistMatchFiltersV1,
 	) => {
-		try {
-			await Promise.all([
-				savePlaylistMatchIntent({
-					data: { playlistId: id, matchIntent: intent },
-				}),
-				savePlaylistGenrePills({ data: { playlistId: id, genres } }),
-			]);
-			markMetadataChanged();
-			queryClient.invalidateQueries({
-				queryKey: playlistKeys.management(accountId),
-			});
-		} catch (error) {
-			console.warn("Failed to save playlist metadata", { id, error });
-		}
+		const result = await savePlaylistMatchConfig({
+			data: {
+				playlistId: id,
+				matchIntent: intent,
+				genrePills: genres,
+				matchFilters,
+			},
+		});
+		// Fire-and-forget side effects after a confirmed write — invalidation failure
+		// is already logged server-side and is non-fatal from the UI's perspective.
+		markMetadataChanged();
+		queryClient.invalidateQueries({
+			queryKey: playlistKeys.management(accountId),
+		});
+		return result;
 	};
 
 	if (!data) {

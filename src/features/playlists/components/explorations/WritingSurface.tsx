@@ -36,6 +36,8 @@ interface WritingSurfaceProps {
 	draftGenres: string[];
 	topGenres?: readonly string[];
 	isSaving?: boolean;
+	/** Inline save error shown near Save on failure. Null/undefined = no error displayed. */
+	saveError?: string | null;
 	/** Render the intent in the display serif — the brand's editorial voice. */
 	intentSerif?: boolean;
 	/** Names the collapsed description for a card→panel shared-element morph. */
@@ -96,6 +98,7 @@ export function WritingSurface({
 	draftGenres,
 	topGenres,
 	isSaving = false,
+	saveError = null,
 	intentSerif = false,
 	descriptionViewTransitionName,
 	hideUnmatchableWarning = false,
@@ -259,30 +262,46 @@ export function WritingSurface({
 
 				{advancedFilters}
 
-				<div className="flex items-center justify-end gap-2">
-					{!lockManualEntry && (
+				<div className="flex flex-col gap-2">
+					{saveError && (
+						<p
+							role="alert"
+							className="text-xs"
+							style={{
+								fontFamily: fonts.body,
+								color: "var(--t-destructive, hsl(0 72% 51%))",
+							}}
+						>
+							{saveError}
+						</p>
+					)}
+					<div className="flex items-center justify-end gap-2">
+						{!lockManualEntry && (
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={onCancel}
+								disabled={isSaving}
+								style={{ fontFamily: fonts.body }}
+							>
+								Cancel
+							</Button>
+						)}
 						<Button
-							variant="ghost"
 							size="sm"
-							onClick={onCancel}
-							disabled={isSaving}
+							onClick={onSave}
+							disabled={
+								isSaving || (lockManualEntry && !draftDescription.trim())
+							}
+							// Guided mode: once an example is picked Save becomes the next
+							// action, so breathe the same pulse as the add toggle to point the
+							// user at it. Before a pick it's disabled, so it stays quiet.
+							className={lockManualEntry && picked ? "xpl-pulse" : undefined}
 							style={{ fontFamily: fonts.body }}
 						>
-							Cancel
+							{isSaving ? "Saving…" : "Save"}
 						</Button>
-					)}
-					<Button
-						size="sm"
-						onClick={onSave}
-						disabled={isSaving || (lockManualEntry && !draftDescription.trim())}
-						// Guided mode: once an example is picked Save becomes the next
-						// action, so breathe the same pulse as the add toggle to point the
-						// user at it. Before a pick it's disabled, so it stays quiet.
-						className={lockManualEntry && picked ? "xpl-pulse" : undefined}
-						style={{ fontFamily: fonts.body }}
-					>
-						{isSaving ? "Saving…" : "Save"}
-					</Button>
+					</div>
 				</div>
 			</div>
 		);
