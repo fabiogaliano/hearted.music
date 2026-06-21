@@ -25,6 +25,7 @@ function makeArgs(overrides: {
 	draftMatchFilters?: PlaylistMatchFiltersV1;
 	initialText?: string;
 	setDraftMatchFilters?: (next: PlaylistMatchFiltersV1) => void;
+	sessionKey?: string | null;
 }) {
 	return {
 		isEditing: true,
@@ -33,6 +34,9 @@ function makeArgs(overrides: {
 		draftMatchFilters: BASE_FILTERS,
 		initialText: "",
 		setDraftMatchFilters: vi.fn(),
+		// A stable default so rerenders stay within one edit session unless a test
+		// explicitly switches playlists via sessionKey.
+		sessionKey: "pl-default",
 		...overrides,
 	};
 }
@@ -334,6 +338,88 @@ describe("no re-add on editor open with unchanged saved text", () => {
 			makeArgs({
 				draftDescription: "songs with female vocals, soft and melancholic",
 				initialText: "songs with female vocals",
+				draftMatchFilters: BASE_FILTERS,
+				setDraftMatchFilters: setFilters,
+			}),
+		);
+		flush();
+
+		expect(setFilters).toHaveBeenCalledOnce();
+		expect(setFilters.mock.calls[0][0]).toMatchObject({
+			vocalGender: "female",
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Dismissals are session-scoped — do not leak across playlists
+// ---------------------------------------------------------------------------
+
+describe("dismissal does not leak across playlists with identical initial text", () => {
+	it("re-detects in a second playlist sharing the same initial text after a dismissal in the first", () => {
+		const setFilters = vi.fn();
+		const sharedInitial = "rock playlist";
+		const typed = "rock playlist female vocals";
+
+		// Playlist A opens on `sharedInitial`; the user types `typed`, which differs
+		// from the seeded initial text, so auto-fill fires.
+		const { rerender } = renderHook((props) => useVocalsAutoFill(props), {
+			initialProps: makeArgs({
+				sessionKey: "pl-A",
+				initialText: sharedInitial,
+				draftDescription: typed,
+				draftMatchFilters: BASE_FILTERS,
+				setDraftMatchFilters: setFilters,
+			}),
+		});
+		flush();
+		expect(setFilters).toHaveBeenCalledOnce();
+
+		// Auto-fill applied, then the user dismisses the chip in A (text unchanged):
+		// `typed` becomes a dismissed string for playlist A.
+		rerender(
+			makeArgs({
+				sessionKey: "pl-A",
+				initialText: sharedInitial,
+				draftDescription: typed,
+				draftMatchFilters: { version: 1, vocalGender: "female" },
+				setDraftMatchFilters: setFilters,
+			}),
+		);
+		rerender(
+			makeArgs({
+				sessionKey: "pl-A",
+				initialText: sharedInitial,
+				draftDescription: typed,
+				draftMatchFilters: BASE_FILTERS,
+				setDraftMatchFilters: setFilters,
+			}),
+		);
+		setFilters.mockClear();
+
+		// Switch to a DIFFERENT playlist that opens on the SAME saved (initial)
+		// text. Its draft starts at that saved text (reseed), so nothing fills yet.
+		rerender(
+			makeArgs({
+				sessionKey: "pl-B",
+				initialText: sharedInitial,
+				draftDescription: sharedInitial,
+				draftMatchFilters: BASE_FILTERS,
+				setDraftMatchFilters: setFilters,
+			}),
+		);
+		flush();
+		expect(setFilters).not.toHaveBeenCalled();
+
+		// The user types the exact text that was dismissed in playlist A. Because
+		// the dismissal set was reset on the session switch (keyed on identity, not
+		// the identical initial text), detection fires here instead of being
+		// wrongly suppressed by A's dismissal.
+		rerender(
+			makeArgs({
+				sessionKey: "pl-B",
+				initialText: sharedInitial,
+				draftDescription: typed,
 				draftMatchFilters: BASE_FILTERS,
 				setDraftMatchFilters: setFilters,
 			}),
