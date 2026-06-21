@@ -60,6 +60,13 @@ interface WritingSurfaceProps {
 	 *  only when editing manually (suppressed in lockManualEntry/guided mode, which
 	 *  has its own inline examplesSlot). Omitted hides the popover entirely. */
 	intentExamples?: readonly DescriptionExample[];
+	/**
+	 * Advanced filters panel, rendered below the Genres area and above Save/Cancel.
+	 * Optional — omitting leaves the layout unchanged and existing usages unaffected.
+	 * CMHF-13 will pass <AdvancedFiltersPanel> with real filter state here.
+	 * Only rendered in edit mode where filters can be mutated.
+	 */
+	advancedFilters?: ReactNode;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -91,6 +98,7 @@ export function WritingSurface({
 	lockManualEntry = false,
 	examplesSlot,
 	intentExamples,
+	advancedFilters,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -242,6 +250,8 @@ export function WritingSurface({
 						autoFocus={focusTargetRef.current === "genres"}
 					/>
 				</div>
+
+				{advancedFilters}
 
 				<div className="flex items-center justify-end gap-2">
 					{!lockManualEntry && (
