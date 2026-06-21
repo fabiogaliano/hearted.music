@@ -434,6 +434,60 @@ describe("loadMatchFilterExclusions — no active filters", () => {
 		expect(exclusions.size).toBe(0);
 		expect(summary.activeFilterPlaylistCount).toBe(0);
 	});
+
+	it("does NOT load filter metadata when no playlist has active filters", async () => {
+		mockLoadFilterMetadata.mockResolvedValue(okMaps());
+
+		await loadMatchFilterExclusions({
+			accountId: "acc-1",
+			playlists: [
+				playlist("pl-1", { version: 1 }),
+				playlist("pl-2", { version: 1 }),
+			],
+			candidateSongIds: ["song-1", "song-2"],
+		});
+
+		// The whole point of the short-circuit: a default-config refresh never
+		// touches the song/liked-date metadata tables.
+		expect(mockLoadFilterMetadata).not.toHaveBeenCalled();
+	});
+
+	it("does NOT load metadata when the only playlists have invalid stored filters, but still reports them", async () => {
+		mockLoadFilterMetadata.mockResolvedValue(okMaps());
+
+		const invalidFilters = {
+			version: 1,
+			releaseYear: { kind: "after", start: "not-a-year" },
+		};
+
+		const { exclusions, summary } = await loadMatchFilterExclusions({
+			accountId: "acc-1",
+			playlists: [playlist("pl-bad", invalidFilters)],
+			candidateSongIds: ["song-1"],
+		});
+
+		expect(mockLoadFilterMetadata).not.toHaveBeenCalled();
+		expect(exclusions.size).toBe(0);
+		// Invalid-filter accounting is independent of the metadata load and must
+		// survive the early return.
+		expect(summary.invalidStoredFiltersByPlaylist["pl-bad"]).toBe(1);
+		expect(summary.degraded.filterMetadata).toBe(false);
+	});
+
+	it("DOES load filter metadata once any playlist has an active filter", async () => {
+		mockLoadFilterMetadata.mockResolvedValue(okMaps());
+
+		await loadMatchFilterExclusions({
+			accountId: "acc-1",
+			playlists: [
+				playlist("pl-none", { version: 1 }),
+				playlist("pl-active", langFilters),
+			],
+			candidateSongIds: ["song-1"],
+		});
+
+		expect(mockLoadFilterMetadata).toHaveBeenCalledOnce();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -457,6 +511,30 @@ describe("loadMatchFilterExclusions — metadata load failure", () => {
 		expect(summary.degraded.baseExclusions).toBe(false);
 		expect(summary.excludedPairCount).toBe(0);
 		expect(summary.activeFilterPlaylistCount).toBe(0);
+	});
+
+	it("preserves invalid-filter accounting when metadata load fails", async () => {
+		mockLoadFilterMetadata.mockResolvedValue(errMeta("connection refused"));
+
+		const invalidFilters = {
+			version: 1,
+			releaseYear: { kind: "after", start: "not-a-year" },
+		};
+
+		const { summary } = await loadMatchFilterExclusions({
+			accountId: "acc-1",
+			playlists: [
+				playlist("pl-bad", invalidFilters),
+				// A valid active-filter playlist so the metadata load is reached (and fails).
+				playlist("pl-active", langFilters),
+			],
+			candidateSongIds: ["song-1"],
+		});
+
+		// The parse pass ran before the (failing) metadata load, so its accounting
+		// must survive the degrade rather than being reset to {}.
+		expect(summary.degraded.filterMetadata).toBe(true);
+		expect(summary.invalidStoredFiltersByPlaylist["pl-bad"]).toBe(1);
 	});
 });
 
