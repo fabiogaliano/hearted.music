@@ -12,6 +12,7 @@
  */
 
 import { z } from "zod";
+import { isValidDateOnly } from "./dates";
 import { isLanguageCatalogCode } from "./languages";
 import type {
 	ParseResult,
@@ -22,54 +23,77 @@ import type {
 const YEAR_MIN = 1000;
 const YEAR_MAX = 9999;
 
+// Strict: rejects malformed strings AND well-formed-but-impossible dates like
+// 2024-02-31, which a regex alone would accept (see ./dates).
 const dateOnlyString = z
 	.string()
-	.regex(/^\d{4}-\d{2}-\d{2}$/, "Must be a YYYY-MM-DD date string");
+	.refine(isValidDateOnly, "Must be a real YYYY-MM-DD calendar date");
 
 const releaseYearValue = z.number().int().min(YEAR_MIN).max(YEAR_MAX);
 
-const releaseYearSchema = z.discriminatedUnion("kind", [
-	z.object({ kind: z.literal("exact"), year: releaseYearValue }),
-	z.object({ kind: z.literal("before"), end: releaseYearValue }),
-	z.object({ kind: z.literal("after"), start: releaseYearValue }),
-	z
-		.object({
-			kind: z.literal("range"),
-			start: releaseYearValue,
-			end: releaseYearValue,
-		})
-		.refine((v) => v.start <= v.end, {
+// On the save (strict) path every nested object also rejects unknown keys, so a
+// stray field like `releaseYear.label` is a hard error rather than silently
+// stripped — "save-time validation rejects unknown keys" must hold at every
+// depth, not just the top level. The stored (forgiving) path keeps the default
+// strip behavior so unknown keys from future schema versions are ignored.
+function objectShape<Shape extends z.ZodRawShape>(
+	shape: Shape,
+	strict: boolean,
+) {
+	return strict ? z.object(shape).strict() : z.object(shape);
+}
+
+function releaseYearSchema(strict: boolean) {
+	return z.discriminatedUnion("kind", [
+		objectShape({ kind: z.literal("exact"), year: releaseYearValue }, strict),
+		objectShape({ kind: z.literal("before"), end: releaseYearValue }, strict),
+		objectShape({ kind: z.literal("after"), start: releaseYearValue }, strict),
+		objectShape(
+			{
+				kind: z.literal("range"),
+				start: releaseYearValue,
+				end: releaseYearValue,
+			},
+			strict,
+		).refine((v) => v.start <= v.end, {
 			message: "range.start must be <= range.end",
 		}),
-]);
+	]);
+}
 
-const likedAtEndSchema = z.discriminatedUnion("kind", [
-	z.object({ kind: z.literal("date"), date: dateOnlyString }),
-	z.object({ kind: z.literal("today") }),
-]);
+function likedAtEndSchema(strict: boolean) {
+	return z.discriminatedUnion("kind", [
+		objectShape({ kind: z.literal("date"), date: dateOnlyString }, strict),
+		objectShape({ kind: z.literal("today") }, strict),
+	]);
+}
 
-const likedAtSchema = z.discriminatedUnion("kind", [
-	z.object({ kind: z.literal("before"), endDate: dateOnlyString }),
-	z.object({ kind: z.literal("after"), startDate: dateOnlyString }),
-	z
-		.object({
-			kind: z.literal("range"),
-			startDate: dateOnlyString,
-			end: likedAtEndSchema,
-		})
-		.refine(
+function likedAtSchema(strict: boolean) {
+	return z.discriminatedUnion("kind", [
+		objectShape({ kind: z.literal("before"), endDate: dateOnlyString }, strict),
+		objectShape(
+			{ kind: z.literal("after"), startDate: dateOnlyString },
+			strict,
+		),
+		objectShape(
+			{
+				kind: z.literal("range"),
+				startDate: dateOnlyString,
+				end: likedAtEndSchema(strict),
+			},
+			strict,
+		).refine(
 			(v) => {
 				if (v.end.kind !== "date") return true;
 				return v.startDate <= v.end.date;
 			},
 			{ message: "range end date must be on/after startDate" },
 		),
-]);
+	]);
+}
 
 function languageCodesSchema(strict: boolean) {
-	const base = strict
-		? z.object({ codes: z.array(z.string()) }).strict()
-		: z.object({ codes: z.array(z.string()) });
+	const base = objectShape({ codes: z.array(z.string()) }, strict);
 
 	return base.refine(
 		(v) => v.codes.length > 0 && v.codes.every((c) => isLanguageCatalogCode(c)),
@@ -80,24 +104,26 @@ function languageCodesSchema(strict: boolean) {
 	);
 }
 
-const coreFields = {
-	version: z.literal(1),
-	releaseYear: releaseYearSchema.optional(),
-	likedAt: likedAtSchema.optional(),
-	vocalGender: z.enum(["female", "male"]).optional(),
-};
+function coreFields(strict: boolean) {
+	return {
+		version: z.literal(1),
+		releaseYear: releaseYearSchema(strict).optional(),
+		likedAt: likedAtSchema(strict).optional(),
+		vocalGender: z.enum(["female", "male"]).optional(),
+	};
+}
 
-/** Strict schema — rejects unknown keys, used for save-path validation. */
+/** Strict schema — rejects unknown keys at every depth, used for save validation. */
 const saveSchema = z
 	.object({
-		...coreFields,
+		...coreFields(true),
 		languages: languageCodesSchema(true).optional(),
 	})
 	.strict();
 
 /** Passthrough schema — ignores unknown stored keys, used for read-path parsing. */
 const storedSchema = z.object({
-	...coreFields,
+	...coreFields(false),
 	languages: languageCodesSchema(false).optional(),
 });
 

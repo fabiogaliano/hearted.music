@@ -47,6 +47,34 @@ describe("parseSaveMatchFilters (strict)", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("rejects unknown keys inside releaseYear object", () => {
+		const result = parseSaveMatchFilters({
+			version: 1,
+			releaseYear: { kind: "exact", year: 2000, label: "x" },
+		});
+		expect(result.ok).toBe(false);
+	});
+
+	it("rejects unknown keys inside likedAt object", () => {
+		const result = parseSaveMatchFilters({
+			version: 1,
+			likedAt: { kind: "before", endDate: "2022-12-31", note: "x" },
+		});
+		expect(result.ok).toBe(false);
+	});
+
+	it("rejects unknown keys inside the nested likedAt.end object", () => {
+		const result = parseSaveMatchFilters({
+			version: 1,
+			likedAt: {
+				kind: "range",
+				startDate: "2022-01-01",
+				end: { kind: "date", date: "2022-12-31", extra: true },
+			},
+		});
+		expect(result.ok).toBe(false);
+	});
+
 	it("accepts releaseYear exact", () => {
 		const result = parseSaveMatchFilters({
 			version: 1,
@@ -163,6 +191,26 @@ describe("parseSaveMatchFilters (strict)", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("rejects a well-formed but nonexistent calendar date", () => {
+		const result = parseSaveMatchFilters({
+			version: 1,
+			likedAt: { kind: "before", endDate: "2024-02-31" },
+		});
+		expect(result.ok).toBe(false);
+	});
+
+	it("rejects an impossible date inside a range start", () => {
+		const result = parseSaveMatchFilters({
+			version: 1,
+			likedAt: {
+				kind: "range",
+				startDate: "2023-02-29",
+				end: { kind: "date", date: "2023-12-31" },
+			},
+		});
+		expect(result.ok).toBe(false);
+	});
+
 	it("accepts vocalGender female", () => {
 		const result = parseSaveMatchFilters({ version: 1, vocalGender: "female" });
 		expect(result.ok).toBe(true);
@@ -217,6 +265,30 @@ describe("parseStoredMatchFilters (forgiving)", () => {
 		}
 	});
 
+	it("strips (does not reject) unknown keys nested in releaseYear/likedAt", () => {
+		const result = parseStoredMatchFilters({
+			version: 1,
+			releaseYear: { kind: "exact", year: 2000, label: "x" },
+			likedAt: {
+				kind: "range",
+				startDate: "2022-01-01",
+				end: { kind: "date", date: "2022-12-31", extra: true },
+			},
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			// Forgiving path keeps the valid data and quietly drops the extras —
+			// not normalized to default, since the known fields are themselves valid.
+			expect(result.wasNormalized).toBe(false);
+			expect(result.value.releaseYear).toEqual({ kind: "exact", year: 2000 });
+			expect(result.value.likedAt).toEqual({
+				kind: "range",
+				startDate: "2022-01-01",
+				end: { kind: "date", date: "2022-12-31" },
+			});
+		}
+	});
+
 	it("normalizes whole object to { version: 1 } when a known field has invalid data", () => {
 		const result = parseStoredMatchFilters({
 			version: 1,
@@ -267,6 +339,18 @@ describe("parseStoredMatchFilters (forgiving)", () => {
 		expect(result.ok).toBe(true);
 		if (result.ok) {
 			expect(result.value).toEqual({ version: 1 });
+		}
+	});
+
+	it("normalizes to { version: 1 } when a stored likedAt date is a nonexistent calendar day", () => {
+		const result = parseStoredMatchFilters({
+			version: 1,
+			likedAt: { kind: "after", startDate: "2024-02-31" },
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.value).toEqual({ version: 1 });
+			expect(result.wasNormalized).toBe(true);
 		}
 	});
 
