@@ -93,6 +93,7 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		name: "Test Playlist",
 		description: null,
 		match_intent: null,
+		match_filters: { version: 1 },
 		snapshot_id: null,
 		is_public: true,
 		song_count: 0,

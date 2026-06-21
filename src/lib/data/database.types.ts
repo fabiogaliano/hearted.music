@@ -1849,6 +1849,7 @@ export type Database = {
 					image_url: string | null;
 					is_public: boolean | null;
 					is_target: boolean | null;
+					match_filters: Json;
 					match_intent: string | null;
 					name: string;
 					snapshot_id: string | null;
@@ -1865,6 +1866,7 @@ export type Database = {
 					image_url?: string | null;
 					is_public?: boolean | null;
 					is_target?: boolean | null;
+					match_filters?: Json;
 					match_intent?: string | null;
 					name: string;
 					snapshot_id?: string | null;
@@ -1881,6 +1883,7 @@ export type Database = {
 					image_url?: string | null;
 					is_public?: boolean | null;
 					is_target?: boolean | null;
+					match_filters?: Json;
 					match_intent?: string | null;
 					name?: string;
 					snapshot_id?: string | null;

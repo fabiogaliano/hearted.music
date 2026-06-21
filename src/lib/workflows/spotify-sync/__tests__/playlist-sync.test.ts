@@ -21,6 +21,7 @@ function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 		created_at: "2026-03-27T00:00:00Z",
 		description: "old description",
 		match_intent: null,
+		match_filters: { version: 1 },
 		id: "playlist-1",
 		image_url: "https://img.example/old.jpg",
 		is_public: true,

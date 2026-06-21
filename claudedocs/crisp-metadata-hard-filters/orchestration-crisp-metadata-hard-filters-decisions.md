@@ -28,3 +28,6 @@ rationale.
 - CMHF-01: `orderLanguageOptions` sorts catalog-only entries alphabetically by label using `localeCompare`, matching the "alphabetically" requirement in the plan.
 - CMHF-01: Labels use en-dash (–) for range separators and `≤`/`≥` for before/after, derived purely from normalized values.
 - Review patch F1: introduced `StoredParseResult<T>` (= `StoredParseSuccess<T> | ParseFailure`) alongside the existing `ParseResult<T>` rather than extending `ParseSuccess` — avoids breaking the `parseSaveMatchFilters` return type while cleanly scoping `wasNormalized` to the forgiving read path only.
+- CMHF-02: Migration timestamp `20260621120000` chosen (strictly after latest `20260619200000`); vocal_gender comment updated in same migration rather than a separate one since the story required both DDL and that comment update together.
+- CMHF-02: `makePlaylist`/`createPlaylist` fixture builders in 4 test files updated to include `match_filters: { version: 1 }` — required because the `Row` type now mandates the field; Insert/Update remain optional (DB default covers them).
+- CMHF-02: `bun run typecheck` (tsgo --noEmit) produced zero errors after fixture fixes — no pre-existing unrelated errors surfaced.
