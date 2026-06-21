@@ -27,6 +27,33 @@ const EMPTY: Draft = {
 	footnote: "",
 };
 
+// Pick-and-send presets. Each fills the whole draft; the operator still sets the
+// recipient and can tweak any field before sending. Body uses blank lines for
+// paragraphs (the server turns them into <p>), matching Fábio's letter voice.
+interface Template {
+	id: string;
+	label: string;
+	draft: Draft;
+}
+
+const TEMPLATES: Template[] = [
+	{
+		id: "gift-500-unlocks",
+		label: "Gift 500 unlocks",
+		draft: {
+			subject: "500 unlocks, on me",
+			headline: "For the songs you kept.",
+			body: `You're here early, before there's much to show for it, and that means more than you know. So I've put 500 unlocks on your account. Nothing to do, they're already there on the email you signed up with.
+
+It's still rough around the edges, and far from perfect. If you ever want to tell me how it feels, that'd mean a lot. Reply here, or tap the bubble in the bottom-right corner of the app.`,
+			ctaLabel: "Open hearted.",
+			ctaUrl: "https://hearted.music",
+			preheader: "I've put 500 unlocks on your account, on me.",
+			footnote: "— ♡ hearted.music",
+		},
+	},
+];
+
 interface SendResult {
 	to: string;
 	subject: string;
@@ -113,6 +140,29 @@ export function EmailSection() {
 					envelope as the verify/reset flows) via Resend. The preview updates as
 					you type.
 				</p>
+
+				<div className="field">
+					<label htmlFor="email-template">Start from a template</label>
+					<div className="btn-row" id="email-template">
+						{TEMPLATES.map((t) => (
+							<button
+								key={t.id}
+								type="button"
+								className="btn"
+								onClick={() => setDraft(t.draft)}
+							>
+								{t.label}
+							</button>
+						))}
+						<button
+							type="button"
+							className="btn"
+							onClick={() => setDraft(EMPTY)}
+						>
+							Clear
+						</button>
+					</div>
+				</div>
 
 				<div className="field">
 					<label htmlFor="email-to">
