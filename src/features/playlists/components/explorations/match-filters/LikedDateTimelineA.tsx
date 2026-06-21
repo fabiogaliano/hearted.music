@@ -19,6 +19,7 @@
 
 import { XIcon } from "@phosphor-icons/react";
 import { useId, useState } from "react";
+import { isValidDateOnly } from "@/lib/domains/taste/match-filters/dates";
 import { likedAtLabel } from "@/lib/domains/taste/match-filters/labels";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import type {
@@ -34,6 +35,8 @@ export interface LikedDateTimelineProps {
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 	options: PlaylistMatchFilterOptions;
 	disabled?: boolean;
+	/** True while a save is in flight — freezes chip removal (see §7 vs save). */
+	isSaving?: boolean;
 }
 
 type DateMode = "before" | "after" | "range" | "today";
@@ -44,14 +47,6 @@ const MODE_LABELS: Record<DateMode, string> = {
 	range: "Range",
 	today: "↑ Today",
 };
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function isValidDate(s: string): boolean {
-	if (!DATE_PATTERN.test(s)) return false;
-	const d = new Date(`${s}T00:00:00Z`);
-	return !Number.isNaN(d.getTime());
-}
 
 /** Build year preset list from yearCounts, newest first. */
 function buildYearPresets(
@@ -93,6 +88,7 @@ export function LikedDateTimelineA({
 	onFiltersChange,
 	options,
 	disabled = false,
+	isSaving = false,
 }: LikedDateTimelineProps) {
 	const baseId = useId();
 	const { oldest, today, yearCounts } = options.likedAt;
@@ -129,6 +125,8 @@ export function LikedDateTimelineA({
 	};
 
 	const clearFilter = () => {
+		// Frozen during a pending save so the removal isn't lost on reconcile.
+		if (isSaving) return;
 		const { likedAt: _dropped, ...rest } = filters;
 		setError(undefined);
 		onFiltersChange(normalizeMatchFilters({ ...rest }));
@@ -137,7 +135,7 @@ export function LikedDateTimelineA({
 	const handleApply = () => {
 		switch (mode) {
 			case "before": {
-				if (!isValidDate(beforeDate)) {
+				if (!isValidDateOnly(beforeDate)) {
 					setError("Enter a date as YYYY-MM-DD");
 					return;
 				}
@@ -145,7 +143,7 @@ export function LikedDateTimelineA({
 				return;
 			}
 			case "after": {
-				if (!isValidDate(afterDate)) {
+				if (!isValidDateOnly(afterDate)) {
 					setError("Enter a date as YYYY-MM-DD");
 					return;
 				}
@@ -153,7 +151,7 @@ export function LikedDateTimelineA({
 				return;
 			}
 			case "range": {
-				if (!isValidDate(rangeStart) || !isValidDate(rangeEnd)) {
+				if (!isValidDateOnly(rangeStart) || !isValidDateOnly(rangeEnd)) {
 					setError("Enter dates as YYYY-MM-DD");
 					return;
 				}
@@ -169,7 +167,7 @@ export function LikedDateTimelineA({
 				return;
 			}
 			case "today": {
-				if (!isValidDate(rangeStart)) {
+				if (!isValidDateOnly(rangeStart)) {
 					setError("Enter a start date as YYYY-MM-DD");
 					return;
 				}
@@ -210,8 +208,9 @@ export function LikedDateTimelineA({
 						<button
 							type="button"
 							onClick={clearFilter}
+							disabled={isSaving}
 							aria-label="Remove liked date filter"
-							className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9]"
+							className="grid size-[16px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 transition-[color] duration-150 hover:theme-text active:scale-[0.9] disabled:cursor-default disabled:opacity-50"
 							style={{ color: "var(--t-primary)" }}
 						>
 							<XIcon size={9} weight="bold" aria-hidden />
