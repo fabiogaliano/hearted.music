@@ -3,6 +3,7 @@ import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
+import type { SavePlaylistMatchConfigResult } from "@/lib/server/playlists.functions";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
 import { ActiveFilterChips } from "./match-filters/ActiveFilterChips";
@@ -38,15 +39,20 @@ interface SpotlightPanelProps {
 	open: boolean;
 	onClose: () => void;
 	onToggleTarget?: (id: string) => void;
-	/** Called when the user saves; receives all three match-config fields together.
-	 *  CMHF-15 will replace the two separate RPCs with savePlaylistMatchConfig,
-	 *  which accepts exactly this shape. */
+	/**
+	 * Called when the user saves. Receives all three match-config fields together.
+	 * Must return a Promise — SpotlightPanel awaits it to decide whether to close
+	 * (on fulfillment) or stay open and show an inline error (on rejection).
+	 * The resolved value is the server-normalized config, used to reconcile local
+	 * saved state so collapsed display reflects server normalization (trimmed intent,
+	 * sanitized genres, normalized filters) rather than raw draft values.
+	 */
 	onSave?: (
 		id: string,
 		intent: string | null,
 		genres: string[],
 		matchFilters: PlaylistMatchFiltersV1,
-	) => void;
+	) => Promise<SavePlaylistMatchConfigResult>;
 	topGenres?: readonly string[];
 	/** More track pages exist — TrackList renders a scroll sentinel. */
 	tracksHasMore?: boolean;
@@ -93,7 +99,12 @@ export function SpotlightPanel({
 	open,
 	onClose,
 	onToggleTarget = () => {},
-	onSave = () => {},
+	onSave = () =>
+		Promise.resolve({
+			matchIntent: null,
+			genrePills: [],
+			matchFilters: { version: 1 as const },
+		}),
 	topGenres,
 	tracksHasMore = false,
 	tracksLoadingMore = false,
@@ -122,18 +133,23 @@ export function SpotlightPanel({
 		playlist?.matchFilters ?? { version: 1 },
 	);
 	const [isEditing, setIsEditing] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const [saveError, setSaveError] = useState<string | null>(null);
 	const [draftDescription, setDraftDescription] = useState("");
 	const [draftGenres, setDraftGenres] = useState<string[]>([]);
 	const [draftMatchFilters, setDraftMatchFilters] =
 		useState<PlaylistMatchFiltersV1>({ version: 1 });
 
-	// Reseed all three draft fields when a different playlist opens.
+	// Reseed all three saved fields when a different playlist opens. Also resets
+	// transient edit/save state so a new panel starts clean.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
 	useEffect(() => {
 		setDescription(playlist?.intent ?? null);
 		setGenres(playlist?.genres ?? []);
 		setMatchFilters(playlist?.matchFilters ?? { version: 1 });
 		setIsEditing(false);
+		setIsSaving(false);
+		setSaveError(null);
 	}, [playlist?.id]);
 
 	useEffect(() => {
@@ -176,14 +192,30 @@ export function SpotlightPanel({
 		setDraftMatchFilters(matchFilters);
 		setIsEditing(true);
 	};
-	const save = () => {
-		const nextDescription = draftDescription.trim() || null;
-		setDescription(nextDescription);
-		setGenres(draftGenres);
-		setMatchFilters(draftMatchFilters);
-		setIsEditing(false);
-		if (playlist)
-			onSave(playlist.id, nextDescription, draftGenres, draftMatchFilters);
+	const save = async () => {
+		if (!playlist) return;
+		// Clear any previous save error at the start of a new attempt.
+		setSaveError(null);
+		setIsSaving(true);
+		try {
+			const normalized = await onSave(
+				playlist.id,
+				draftDescription.trim() || null,
+				draftGenres,
+				draftMatchFilters,
+			);
+			// Reconcile local saved state from the server's normalized response so
+			// collapsed display reflects server normalization (trimmed intent,
+			// sanitized genres, normalized filters) rather than raw draft values.
+			setDescription(normalized.matchIntent);
+			setGenres(normalized.genrePills);
+			setMatchFilters(normalized.matchFilters);
+			setIsEditing(false);
+		} catch {
+			setSaveError("Couldn't save changes. Try again.");
+		} finally {
+			setIsSaving(false);
+		}
 	};
 
 	return (
@@ -276,6 +308,8 @@ export function SpotlightPanel({
 														draftDescription={draftDescription}
 														draftGenres={draftGenres}
 														topGenres={topGenres}
+														isSaving={isSaving}
+														saveError={saveError}
 														hideUnmatchableWarning={hideUnmatchableWarning}
 														intentPlaceholder={intentPlaceholder}
 														lockManualEntry={guidedIntent}
@@ -312,10 +346,19 @@ export function SpotlightPanel({
 														onEditGenres={openEditor}
 														onDraftDescriptionChange={setDraftDescription}
 														onDraftGenresChange={setDraftGenres}
-														onSave={save}
-														// Only exits editing; openEditor reseeds all three drafts
-														// from saved values on the next open, so drafts need no reset here.
-														onCancel={() => setIsEditing(false)}
+														onSave={() => {
+															void save();
+														}}
+														// Cancel reverts the draft to saved state and clears the inline save
+														// error. openEditor also reseeds on the next open, but resetting here
+														// keeps draft state from lingering dirty while collapsed.
+														onCancel={() => {
+															setDraftDescription(description ?? "");
+															setDraftGenres(genres);
+															setDraftMatchFilters(matchFilters);
+															setIsEditing(false);
+															setSaveError(null);
+														}}
 													/>
 												</div>
 											</div>

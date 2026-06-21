@@ -3,16 +3,20 @@
  *
  * The real module is a TanStack server-function file: its handlers pull drizzle /
  * postgres / supabase (node-only) into the module graph, which can't bundle for
- * the browser. The playlist detail stories (genre quick-picks query + the pills
- * autosave hook) reach this module transitively, so aliasing the whole module
- * here severs that chain.
+ * the browser. The playlist detail stories reach this module transitively, so
+ * aliasing the whole module here severs that chain.
  *
- * Only the exports the Ladle graph references are provided. savePlaylistGenrePills
- * is controllable so a story can exercise the autosave error toast; the others
- * are import-satisfying no-ops that the rendered components never call.
+ * savePlaylistMatchConfig is controllable so stories can exercise success,
+ * failure, and pending (hang) states. The legacy separate-save stubs remain so
+ * any older story paths that still import them don't break.
  */
 
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
+import type {
+	SavePlaylistMatchConfigInput,
+	SavePlaylistMatchConfigResult,
+} from "@/lib/server/playlists.functions";
 
 const STATIC_TOP_GENRES = [
 	"rock",
@@ -25,25 +29,41 @@ const STATIC_TOP_GENRES = [
 	"synthpop",
 ];
 
-export type SaveGenrePillsBehavior = "success" | "fail";
+// "hang" never settles — drives the frozen "Saving…" story state.
+export type SaveMatchConfigBehavior = "success" | "fail" | "hang";
 
-let saveBehavior: SaveGenrePillsBehavior = "success";
+let saveMatchConfigBehavior: SaveMatchConfigBehavior = "success";
 
-export function setSaveGenrePillsBehavior(next: SaveGenrePillsBehavior) {
-	saveBehavior = next;
-}
-
-// "hang" never settles — drives the dialog's frozen "Saving…" story.
-export type SaveMatchIntentBehavior = "success" | "fail" | "hang";
-
-let saveMatchIntentBehavior: SaveMatchIntentBehavior = "success";
-
-export function setSaveMatchIntentBehavior(next: SaveMatchIntentBehavior) {
-	saveMatchIntentBehavior = next;
+export function setSaveMatchConfigBehavior(next: SaveMatchConfigBehavior) {
+	saveMatchConfigBehavior = next;
 }
 
 export async function getAccountTopGenres(): Promise<{ genres: string[] }> {
 	return { genres: [...STATIC_TOP_GENRES] };
+}
+
+export async function savePlaylistMatchConfig(args: {
+	data: SavePlaylistMatchConfigInput;
+}): Promise<SavePlaylistMatchConfigResult> {
+	if (saveMatchConfigBehavior === "fail") {
+		throw new Error("stubbed match config save failure");
+	}
+	if (saveMatchConfigBehavior === "hang") {
+		return new Promise<SavePlaylistMatchConfigResult>(() => {});
+	}
+	// Mirror server normalization: trim intent, sanitize genres, pass filters through.
+	const trimmed = args.data.matchIntent?.trim() ?? "";
+	const matchIntent = trimmed.length > 0 ? trimmed : null;
+	const genrePills = sanitizeGenrePills(args.data.genrePills);
+	const matchFilters: PlaylistMatchFiltersV1 = args.data.matchFilters;
+	return { matchIntent, genrePills, matchFilters };
+}
+
+// Legacy separate-save stubs kept so any remaining import paths don't break.
+export type SaveGenrePillsBehavior = "success" | "fail";
+let saveBehavior: SaveGenrePillsBehavior = "success";
+export function setSaveGenrePillsBehavior(next: SaveGenrePillsBehavior) {
+	saveBehavior = next;
 }
 
 export async function savePlaylistGenrePills(args: {
@@ -52,8 +72,13 @@ export async function savePlaylistGenrePills(args: {
 	if (saveBehavior === "fail") {
 		throw new Error("stubbed genre pills save failure");
 	}
-	// Mirror the server's sanitize so the UI adopts a realistic response.
 	return { success: true, pills: sanitizeGenrePills(args.data.genres) };
+}
+
+export type SaveMatchIntentBehavior = "success" | "fail" | "hang";
+let saveMatchIntentBehavior: SaveMatchIntentBehavior = "success";
+export function setSaveMatchIntentBehavior(next: SaveMatchIntentBehavior) {
+	saveMatchIntentBehavior = next;
 }
 
 export async function savePlaylistMatchIntent(args: {
@@ -67,7 +92,6 @@ export async function savePlaylistMatchIntent(args: {
 			() => {},
 		);
 	}
-	// Mirror the server's trim/empty→null so the UI adopts a realistic response.
 	const trimmed = args.data.matchIntent?.trim() ?? "";
 	return { success: true, matchIntent: trimmed.length > 0 ? trimmed : null };
 }

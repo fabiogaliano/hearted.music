@@ -12,6 +12,7 @@ import {
 } from "@/features/onboarding/playlistPreviewTour";
 import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
 import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
 import type {
@@ -111,11 +112,24 @@ export function SandboxPlaylistsCoverFlowScreen() {
 	}, [selected]);
 	const panelPlaylist = selected ?? lastShown;
 
-	const handleSave = (id: string, intent: string | null, genres: string[]) => {
+	const handleSave = (
+		id: string,
+		intent: string | null,
+		genres: string[],
+		matchFilters: PlaylistMatchFiltersV1,
+	) => {
 		setDemoPlaylistMetadata(id, { intent, genres });
 		// Onboarding closes the panel on save so the rehearsal flows straight back to
 		// the cover flow to flag the next one — production keeps it open to keep editing.
 		setSelectedId(null);
+		// The sandbox never hits the server; resolve immediately with the draft values
+		// so SpotlightPanel can reconcile local saved state the same way it does in production.
+		const trimmed = intent?.trim() ?? "";
+		return Promise.resolve({
+			matchIntent: trimmed.length > 0 ? trimmed : null,
+			genrePills: genres,
+			matchFilters,
+		});
 	};
 
 	// One cohesive guided config — its presence activates rehearsal mode in both
