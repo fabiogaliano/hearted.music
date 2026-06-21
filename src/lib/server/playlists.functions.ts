@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import {
+	getLanguageColumnsForSongs,
+	getLikedAtAggregates,
+	getReleaseYearAggregates,
+} from "@/lib/domains/library/liked-songs/filter-options-queries";
 import { getAccountTopGenres as queryAccountTopGenres } from "@/lib/domains/library/liked-songs/queries";
 import {
 	deletePlaylist,
@@ -17,11 +22,18 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import {
+	isLanguageCatalogCode,
+	lookupLanguage,
+	SUPPORTED_LANGUAGE_CODES,
+} from "@/lib/domains/taste/match-filters/languages";
+import type { PlaylistMatchFilterOptions } from "@/lib/domains/taste/match-filters/types";
+import {
 	canonicalizeGenre,
 	isGenre,
 	sanitizeGenrePills,
 } from "@/lib/integrations/lastfm/whitelist";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
@@ -578,4 +590,154 @@ export const flushPlaylistManagementSession = createServerFn({
 		}
 
 		return { flushed: true };
+	});
+
+// ============================================================================
+// Filter options read
+// ============================================================================
+
+/**
+ * Returns compact filter option data for the current account's matching-eligible
+ * library. The population is identical to getEntitledDataEnrichedSongIds so
+ * displayed counts and bounds are always aligned with actual suggestions.
+ *
+ * Decision — catalog payload: we include both "detected" (found in the library)
+ * and "catalog" (not detected but selectable) entries. The client needs the full
+ * catalog for the language picker regardless; returning it here in one payload
+ * means CMHF-14 never needs a second round-trip to hydrate catalog-only entries.
+ * Detected entries come first sorted by count desc, then catalog-only entries
+ * sorted alphabetically — mirroring the picker's ordering contract.
+ *
+ * Decision — uncataloged detected codes: excluded from the returned payload but
+ * logged so the catalog can be expanded. The client can only select catalog codes,
+ * so silently dropping them from the response is the safe path.
+ */
+export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.handler(async ({ context }): Promise<PlaylistMatchFilterOptions> => {
+		const { session } = context;
+		const accountId = session.accountId;
+
+		// One RPC call for the matching-eligible song ids, then three compact
+		// aggregation queries in parallel. No full song rows are loaded.
+		let eligibleSongIds: string[];
+		try {
+			eligibleSongIds = await getEntitledDataEnrichedSongIds(accountId);
+		} catch (err) {
+			console.error("[filter-options] eligibility fetch failed:", err);
+			throw new Error("Failed to load filter options");
+		}
+
+		const [languageResult, releaseYearResult, likedAtResult] =
+			await Promise.all([
+				getLanguageColumnsForSongs(eligibleSongIds),
+				getReleaseYearAggregates(eligibleSongIds),
+				getLikedAtAggregates(accountId, eligibleSongIds),
+			]);
+
+		if (Result.isError(languageResult)) {
+			console.error(
+				"[filter-options] language aggregation failed:",
+				languageResult.error,
+			);
+			throw new Error("Failed to load filter options");
+		}
+		if (Result.isError(releaseYearResult)) {
+			console.error(
+				"[filter-options] release-year aggregation failed:",
+				releaseYearResult.error,
+			);
+			throw new Error("Failed to load filter options");
+		}
+		if (Result.isError(likedAtResult)) {
+			console.error(
+				"[filter-options] liked-at aggregation failed:",
+				likedAtResult.error,
+			);
+			throw new Error("Failed to load filter options");
+		}
+
+		// Build language counts — primary + secondary, once per code per song.
+		const detectedCounts = new Map<string, number>();
+		for (const row of languageResult.value) {
+			const codesForSong = new Set<string>();
+
+			if (row.language) codesForSong.add(row.language);
+			if (row.language_secondary) codesForSong.add(row.language_secondary);
+
+			for (const code of codesForSong) {
+				if (!isLanguageCatalogCode(code)) {
+					// Skip here; logging is de-duped in the second pass (uncatalogedCodes
+					// set) to avoid one warn per song on large libraries.
+					continue;
+				}
+				detectedCounts.set(code, (detectedCounts.get(code) ?? 0) + 1);
+			}
+		}
+
+		// Log uncataloged codes once each so the catalog maintainer can expand it.
+		const uncatalogedCodes = new Set<string>();
+		for (const row of languageResult.value) {
+			for (const code of [row.language, row.language_secondary]) {
+				if (
+					code &&
+					!isLanguageCatalogCode(code) &&
+					!uncatalogedCodes.has(code)
+				) {
+					uncatalogedCodes.add(code);
+					console.warn(
+						"[filter-options] detected language code not in catalog — excluded from options:",
+						code,
+					);
+				}
+			}
+		}
+
+		// Detected entries sorted by count desc, then catalog-only alphabetically.
+		const detected: PlaylistMatchFilterOptions["languages"] = [
+			...detectedCounts,
+		]
+			.sort(([, a], [, b]) => b - a)
+			.map(([code, count]) => {
+				const entry = lookupLanguage(code);
+				return {
+					code,
+					label: entry?.label ?? code,
+					count,
+					source: "detected" as const,
+				};
+			});
+
+		const detectedCodeSet = new Set(detectedCounts.keys());
+		const catalogOnly: PlaylistMatchFilterOptions["languages"] = [
+			...SUPPORTED_LANGUAGE_CODES,
+		]
+			.filter((code) => !detectedCodeSet.has(code))
+			.map((code) => {
+				const entry = lookupLanguage(code);
+				return {
+					code,
+					label: entry?.label ?? code,
+					count: 0,
+					source: "catalog" as const,
+				};
+			})
+			.sort((a, b) => a.label.localeCompare(b.label));
+
+		const today = new Date().toISOString().slice(0, 10);
+
+		return {
+			languages: [...detected, ...catalogOnly],
+			releaseYears: {
+				min: releaseYearResult.value.min,
+				max: releaseYearResult.value.max,
+				counts: releaseYearResult.value.counts,
+			},
+			likedAt: {
+				oldest: likedAtResult.value.oldest,
+				today,
+				yearCounts: likedAtResult.value.yearCounts,
+			},
+		};
 	});
