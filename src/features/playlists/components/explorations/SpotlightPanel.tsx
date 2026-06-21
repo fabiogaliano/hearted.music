@@ -146,6 +146,13 @@ export function SpotlightPanel({
 	// prevent auto-fill from firing on unchanged saved text when the editor reopens.
 	const autoFillInitialTextRef = useRef<string>("");
 
+	// Identity of the playlist currently on screen, kept fresh every render. An
+	// in-flight save captures the id it is saving; comparing against this ref when
+	// the RPC resolves lets a stale save bail out instead of reconciling playlist
+	// A's server result into a panel that has since switched to playlist B.
+	const currentPlaylistIdRef = useRef<string | null>(playlist?.id ?? null);
+	currentPlaylistIdRef.current = playlist?.id ?? null;
+
 	// Reseed all three saved fields when a different playlist opens. Also resets
 	// transient edit/save state so a new panel starts clean.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
@@ -165,6 +172,7 @@ export function SpotlightPanel({
 		draftMatchFilters,
 		setDraftMatchFilters,
 		initialText: autoFillInitialTextRef.current,
+		sessionKey: playlist?.id ?? null,
 	});
 
 	useEffect(() => {
@@ -216,16 +224,21 @@ export function SpotlightPanel({
 	};
 	const save = async () => {
 		if (!playlist) return;
+		const savedPlaylistId = playlist.id;
 		// Clear any previous save error at the start of a new attempt.
 		setSaveError(null);
 		setIsSaving(true);
 		try {
 			const normalized = await onSave(
-				playlist.id,
+				savedPlaylistId,
 				draftDescription.trim() || null,
 				draftGenres,
 				draftMatchFilters,
 			);
+			// Ignore a resolution that lands after the user switched/closed onto a
+			// different playlist — otherwise A's server result would reconcile into
+			// whichever playlist the panel shows now.
+			if (currentPlaylistIdRef.current !== savedPlaylistId) return;
 			// Reconcile local saved state from the server's normalized response so
 			// collapsed display reflects server normalization (trimmed intent,
 			// sanitized genres, normalized filters) rather than raw draft values.
@@ -234,9 +247,14 @@ export function SpotlightPanel({
 			setMatchFilters(normalized.matchFilters);
 			setIsEditing(false);
 		} catch {
+			// Same staleness guard for the failure path: don't surface A's error on
+			// B's panel.
+			if (currentPlaylistIdRef.current !== savedPlaylistId) return;
 			setSaveError("Couldn't save changes. Try again.");
 		} finally {
-			setIsSaving(false);
+			// Leave the new playlist's saving flag alone if we've since switched —
+			// the reseed effect already reset it for that playlist.
+			if (currentPlaylistIdRef.current === savedPlaylistId) setIsSaving(false);
 		}
 	};
 
@@ -361,6 +379,7 @@ export function SpotlightPanel({
 																	optionsState={
 																		matchFilterOptionsState ?? "loading"
 																	}
+																	isSaving={isSaving}
 																/>
 															) : undefined
 														}
