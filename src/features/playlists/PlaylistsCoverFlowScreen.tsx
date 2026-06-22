@@ -4,7 +4,7 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
@@ -60,14 +60,8 @@ export function parseSummaryMatchFilters(
 function toSummary(
 	playlist: Playlist,
 	isTarget: boolean,
-	accountId: string,
+	matchFilters: PlaylistMatchFiltersV1,
 ): PlaylistSummary {
-	const parsed = parseSummaryMatchFilters(
-		accountId,
-		playlist.id,
-		playlist.match_filters,
-	);
-	const matchFilters = parsed.ok ? parsed.value : { version: 1 as const };
 	return {
 		id: playlist.id,
 		name: playlist.name,
@@ -110,9 +104,26 @@ export function PlaylistsCoverFlowScreen({
 	}, [data?.targetPlaylistIds, optimisticTargets]);
 
 	const summaries = useMemo(
-		() => playlists.map((p) => toSummary(p, targetIds.has(p.id), accountId)),
-		[playlists, targetIds, accountId],
+		() =>
+			playlists.map((p) => {
+				const parsed = parseStoredMatchFilters(p.match_filters);
+				// StoredParseResult always resolves ok:true (it normalizes rather than
+				// hard-failing); the guard just narrows the union.
+				const matchFilters = parsed.ok ? parsed.value : { version: 1 as const };
+				return toSummary(p, targetIds.has(p.id), matchFilters);
+			}),
+		[playlists, targetIds],
 	);
+
+	// Surface corrupt stored match_filters as a diagnostic outside render, so the
+	// warn doesn't double-fire under StrictMode or on unrelated re-renders the way
+	// it would from inside the summaries useMemo. parseSummaryMatchFilters owns the
+	// warn (and its test); this re-parse is cheap for the small playlist set.
+	useEffect(() => {
+		for (const p of playlists) {
+			parseSummaryMatchFilters(accountId, p.id, p.match_filters);
+		}
+	}, [playlists, accountId]);
 
 	const routeRefById = useMemo(
 		() => new Map(playlists.map((p) => [p.id, buildPlaylistRouteRef(p)])),
@@ -188,7 +199,10 @@ export function PlaylistsCoverFlowScreen({
 				params: { playlistRef: ref },
 			});
 	};
-	const close = () => void navigate({ to: "/playlists" });
+	const close = useCallback(
+		() => void navigate({ to: "/playlists" }),
+		[navigate],
+	);
 
 	const handleSave = async (
 		id: string,

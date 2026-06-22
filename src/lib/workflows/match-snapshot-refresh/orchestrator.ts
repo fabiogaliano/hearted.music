@@ -381,7 +381,11 @@ export async function executeMatchSnapshotRefresh(
 	]);
 
 	if (baseResult instanceof Error || !(baseResult instanceof Set)) {
-		log.warn("match:exclusion-set-failed", { actor: who });
+		log.warn("match:exclusion-set-failed", {
+			actor: who,
+			error:
+				baseResult instanceof Error ? baseResult.message : String(baseResult),
+		});
 		baseExclusionsFailed = true;
 	} else {
 		baseExclusionSet = baseResult;

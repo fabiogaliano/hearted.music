@@ -217,10 +217,22 @@ export function SpotlightPanel({
 	// undescribed playlist lands there too, instead of the collapsed Edit affordance.
 	// A described playlist (or any playlist once the cycle releases, where
 	// autoEditOnAdd is off) stays collapsed.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reacts to identity/target/intent; openEditor reads the current saved seeds
+	//
+	// Seeds are read straight from the `playlist` prop, not from the committed
+	// description/genres/matchFilters state: when this fires on an identity change,
+	// the reseed effect above has only *queued* the new playlist's values, so the
+	// state copies still hold the previous playlist's data this flush. The prop is
+	// already the new playlist, so a direct B→C switch can't seed C with B's intent.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: genres/matchFilters are read fresh from the prop, intentionally excluded so a background refetch can't reopen a mid-edit panel
 	useEffect(() => {
 		const described = !!playlist?.intent && playlist.intent.trim() !== "";
-		if (autoEditOnAdd && playlist?.isTarget && !described) openEditor();
+		if (!autoEditOnAdd || !playlist?.isTarget || described) return;
+		const initialText = playlist.intent ?? "";
+		autoFillInitialTextRef.current = initialText;
+		setDraftDescription(initialText);
+		setDraftGenres(playlist.genres ?? []);
+		setDraftMatchFilters(playlist.matchFilters ?? { version: 1 });
+		setIsEditing(true);
 	}, [playlist?.id, playlist?.isTarget, playlist?.intent, autoEditOnAdd]);
 	// Picking a ready-made example seeds the draft from it and jumps straight into
 	// editing — bypassing openEditor's reseed-from-saved, since the point is to
