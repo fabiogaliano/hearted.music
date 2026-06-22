@@ -267,14 +267,12 @@ function VocalsSegment({
 
 // Layout only — the .mf-field class owns the well's border, fill, recessed
 // shadow and themed placeholder so the inputs read on the low-contrast band.
-function fieldStyle(): CSSProperties {
-	return {
-		width: 92,
-		padding: "7px 10px",
-		fontSize: 13,
-		fontVariantNumeric: "tabular-nums",
-	};
-}
+const fieldLayout: CSSProperties = {
+	width: 92,
+	padding: "7px 10px",
+	fontSize: 13,
+	fontVariantNumeric: "tabular-nums",
+};
 
 // Layout only — the .mf-chip class owns the outline/pressed look and press feel.
 const chipLayout: CSSProperties = {
@@ -348,7 +346,7 @@ function EraEditor({
 				<input
 					key={`low-${bounds.low}`}
 					className="mf-field"
-					style={fieldStyle()}
+					style={fieldLayout}
 					inputMode="numeric"
 					placeholder={`From ${min}`}
 					defaultValue={bounds.low}
@@ -360,7 +358,7 @@ function EraEditor({
 				<input
 					key={`high-${bounds.high}`}
 					className="mf-field"
-					style={fieldStyle()}
+					style={fieldLayout}
 					inputMode="numeric"
 					placeholder={`To ${max}`}
 					defaultValue={bounds.high}
@@ -439,7 +437,7 @@ function LikedEditor({
 				<input
 					key={`from-${from}`}
 					className="mf-field"
-					style={{ ...fieldStyle(), width: 124 }}
+					style={{ ...fieldLayout, width: 124 }}
 					placeholder={`From ${oldest}`}
 					defaultValue={from}
 					disabled={disabled}
@@ -466,7 +464,7 @@ function LikedEditor({
 						<input
 							key={`to-${to}`}
 							className="mf-field"
-							style={{ ...fieldStyle(), width: 124 }}
+							style={{ ...fieldLayout, width: 124 }}
 							placeholder={`To ${today}`}
 							defaultValue={to}
 							disabled={disabled}
@@ -740,7 +738,14 @@ export function MatchFiltersFieldList({
 				<button
 					type="button"
 					disabled={isSaving}
-					onClick={() => onFiltersChange({ version: 1 })}
+					onClick={() => {
+						onFiltersChange({ version: 1 });
+						// Clearing the model must also drop the view state derived from
+						// it, otherwise just-cleared facets linger as empty "Any" rows
+						// instead of folding back into the Add chips.
+						setRevealed(new Set());
+						setOpen(null);
+					}}
 					style={{
 						marginTop: 12,
 						padding: 0,

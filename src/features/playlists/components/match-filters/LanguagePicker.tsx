@@ -31,6 +31,11 @@ import type {
 import { fonts } from "@/lib/theme/fonts";
 import "../playlist-ui.css";
 
+// Stable empty fallback so an unselected picker doesn't hand a fresh [] to the
+// useMemo deps each render, which would recompute the ordered/display lists for
+// nothing on every parent re-render.
+const EMPTY_CODES: string[] = [];
+
 export interface LanguagePickerProps {
 	filters: PlaylistMatchFiltersV1;
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
@@ -82,7 +87,7 @@ export function LanguagePicker({
 	const listboxId = `${baseId}-listbox`;
 	const optionId = (i: number) => `${baseId}-opt-${i}`;
 
-	const selectedCodes = filters.languages?.codes ?? [];
+	const selectedCodes = filters.languages?.codes ?? EMPTY_CODES;
 	const detectedCounts = useMemo(() => buildDetectedCounts(options), [options]);
 
 	const orderedAll = useMemo(
@@ -99,12 +104,6 @@ export function LanguagePicker({
 		const rest = results.filter((o) => !selectedSet.has(o.code));
 		return [...sel, ...rest];
 	}, [query, orderedAll, selectedCodes]);
-
-	// Reset active index when search query changes
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset to 0 on every new query
-	useEffect(() => {
-		setActiveIndex(0);
-	}, [query]);
 
 	// Focus search when palette opens; restore trigger focus on close
 	useEffect(() => {
@@ -296,7 +295,12 @@ export function LanguagePicker({
 							}
 							placeholder="Search languages…"
 							value={query}
-							onChange={(e) => setQuery(e.target.value)}
+							onChange={(e) => {
+								setQuery(e.target.value);
+								// Reset highlight to the top match as the result set
+								// changes; the open/close effect resets on cleared query.
+								setActiveIndex(0);
+							}}
 							onKeyDown={handleSearchKeyDown}
 							className="w-full border-0 bg-transparent text-sm theme-text placeholder:theme-text-muted focus-visible:outline-none"
 						/>

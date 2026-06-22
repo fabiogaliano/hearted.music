@@ -9,6 +9,12 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
+import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
+
+// Matches filter-metadata-loader: cap concurrent in-flight batches so a large
+// library doesn't open dozens of simultaneous PostgREST connections.
+const BATCH_CONCURRENCY = 4;
 
 /**
  * Compact per-song language data from the matching-eligible population.
@@ -34,26 +40,31 @@ export async function getLanguageColumnsForSongs(
 
 	const supabase = createAdminSupabaseClient();
 
-	// Batching is not needed here: the caller already holds the entitled song id
-	// list (bounded by billing), and the PostgREST .in() is embedded in the query
-	// string. Libraries > ~1000 could push URL length — chunking added as guard.
-	const BATCH_SIZE = 500;
+	// PostgREST .in() encodes ids into the query string, so chunk by the URL-safe
+	// limit and run the batches concurrently rather than one serial round-trip
+	// after another.
+	const batches = chunkArray(songIds, DB_IN_FILTER_CHUNK_SIZE);
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		async (batch) => {
+			const { data, error } = await supabase
+				.from("song")
+				.select("id, language, language_secondary")
+				.in("id", batch);
+			if (error) {
+				return Result.err(
+					new DatabaseError({ code: error.code, message: error.message }),
+				);
+			}
+			return Result.ok(data ?? []);
+		},
+	);
+
 	const rows: EligibleSongLanguageRow[] = [];
-
-	for (let i = 0; i < songIds.length; i += BATCH_SIZE) {
-		const batch = songIds.slice(i, i + BATCH_SIZE);
-		const { data, error } = await supabase
-			.from("song")
-			.select("id, language, language_secondary")
-			.in("id", batch);
-
-		if (error) {
-			return Result.err(
-				new DatabaseError({ code: error.code, message: error.message }),
-			);
-		}
-
-		for (const row of data ?? []) {
+	for (const result of batchResults) {
+		if (Result.isError(result)) return result;
+		for (const row of result.value) {
 			rows.push({
 				song_id: row.id,
 				language: row.language,
@@ -89,24 +100,29 @@ export async function getReleaseYearAggregates(
 
 	const supabase = createAdminSupabaseClient();
 
-	const BATCH_SIZE = 500;
+	const batches = chunkArray(songIds, DB_IN_FILTER_CHUNK_SIZE);
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		async (batch) => {
+			const { data, error } = await supabase
+				.from("song")
+				.select("release_year")
+				.in("id", batch)
+				.not("release_year", "is", null);
+			if (error) {
+				return Result.err(
+					new DatabaseError({ code: error.code, message: error.message }),
+				);
+			}
+			return Result.ok(data ?? []);
+		},
+	);
+
 	const yearFreq = new Map<number, number>();
-
-	for (let i = 0; i < songIds.length; i += BATCH_SIZE) {
-		const batch = songIds.slice(i, i + BATCH_SIZE);
-		const { data, error } = await supabase
-			.from("song")
-			.select("release_year")
-			.in("id", batch)
-			.not("release_year", "is", null);
-
-		if (error) {
-			return Result.err(
-				new DatabaseError({ code: error.code, message: error.message }),
-			);
-		}
-
-		for (const row of data ?? []) {
+	for (const result of batchResults) {
+		if (Result.isError(result)) return result;
+		for (const row of result.value) {
 			if (row.release_year == null) continue;
 			yearFreq.set(row.release_year, (yearFreq.get(row.release_year) ?? 0) + 1);
 		}
@@ -159,26 +175,31 @@ export async function getLikedAtAggregates(
 
 	const supabase = createAdminSupabaseClient();
 
-	const BATCH_SIZE = 500;
+	const batches = chunkArray(eligibleSongIds, DB_IN_FILTER_CHUNK_SIZE);
+	const batchResults = await mapWithConcurrency(
+		batches,
+		BATCH_CONCURRENCY,
+		async (batch) => {
+			const { data, error } = await supabase
+				.from("liked_song")
+				.select("liked_at")
+				.eq("account_id", accountId)
+				.is("unliked_at", null)
+				.in("song_id", batch);
+			if (error) {
+				return Result.err(
+					new DatabaseError({ code: error.code, message: error.message }),
+				);
+			}
+			return Result.ok(data ?? []);
+		},
+	);
+
 	let oldestTs: string | null = null;
 	const yearFreq = new Map<number, number>();
-
-	for (let i = 0; i < eligibleSongIds.length; i += BATCH_SIZE) {
-		const batch = eligibleSongIds.slice(i, i + BATCH_SIZE);
-		const { data, error } = await supabase
-			.from("liked_song")
-			.select("liked_at")
-			.eq("account_id", accountId)
-			.is("unliked_at", null)
-			.in("song_id", batch);
-
-		if (error) {
-			return Result.err(
-				new DatabaseError({ code: error.code, message: error.message }),
-			);
-		}
-
-		for (const row of data ?? []) {
+	for (const result of batchResults) {
+		if (Result.isError(result)) return result;
+		for (const row of result.value) {
 			if (!row.liked_at) continue;
 
 			// Track the chronologically oldest timestamp across batches.
