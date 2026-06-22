@@ -19,3 +19,8 @@ export function isValidDateOnly(value: string): boolean {
 	// won't match the input, so the original was not a real day.
 	return parsed.toISOString().slice(0, 10) === value;
 }
+
+/** The UTC calendar date (`YYYY-MM-DD`) for a given epoch-ms instant. */
+export function utcDateString(ms: number): string {
+	return new Date(ms).toISOString().slice(0, 10);
+}

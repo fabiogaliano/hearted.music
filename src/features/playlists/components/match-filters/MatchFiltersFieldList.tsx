@@ -23,8 +23,8 @@
 
 import { CaretRightIcon } from "@phosphor-icons/react";
 import type { CSSProperties, ReactNode } from "react";
-import { useMemo, useState } from "react";
-import { languageLabel } from "@/lib/domains/taste/match-filters/labels";
+import { useState } from "react";
+import { languageLabel } from "@/lib/domains/taste/match-filters/languages";
 import type {
 	LikedAtFilterV1,
 	PlaylistMatchFilterOptions,
@@ -50,6 +50,10 @@ import "../playlist-ui.css";
 export type OptionsState = "ready" | "loading" | "error";
 
 const EASE = "var(--ease-out-expo)";
+
+// Stable empty fallback so an unselected language facet doesn't hand a fresh []
+// to LanguagePicker each render, which would recompute its ordered/display lists.
+const EMPTY_CODES: string[] = [];
 
 const c = {
 	surface: "var(--t-surface)",
@@ -294,14 +298,10 @@ function EraEditor({
 	const bounds = yearToBounds(value);
 	const min = options.releaseYears.min ?? 1960;
 	const max = options.releaseYears.max ?? 2026;
-	const decades = useMemo(() => {
-		const out: Array<{ label: string; lo: number; hi: number }> = [];
-		const start = Math.floor(min / 10) * 10;
-		for (let d = start; d <= max; d += 10) {
-			out.push({ label: `${d}s`, lo: d, hi: d + 9 });
-		}
-		return out;
-	}, [min, max]);
+	const decades: Array<{ label: string; lo: number; hi: number }> = [];
+	for (let d = Math.floor(min / 10) * 10; d <= max; d += 10) {
+		decades.push({ label: `${d}s`, lo: d, hi: d + 9 });
+	}
 	const band: [number, number] | null =
 		value?.kind === "range"
 			? [value.start, value.end]
@@ -611,8 +611,13 @@ export function MatchFiltersFieldList({
 			value: languageSummary(filters.languages?.codes, languageLabel),
 			editor: (
 				<LanguagePicker
-					filters={filters}
-					onFiltersChange={onFiltersChange}
+					value={filters.languages?.codes ?? EMPTY_CODES}
+					onChange={(codes) =>
+						onFiltersChange({
+							...filters,
+							languages: codes.length > 0 ? { codes } : undefined,
+						})
+					}
 					options={options}
 					disabled={editFrozen}
 					isSaving={isSaving}

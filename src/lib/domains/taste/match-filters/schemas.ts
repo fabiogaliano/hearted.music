@@ -4,21 +4,17 @@
  * Two parsers with intentionally distinct names to prevent accidental misuse:
  *
  * - `parseSaveMatchFilters`: STRICT — rejects unknown keys, used before writes.
+ *   Returns a `Result` so callers branch on validity without try/catch.
  * - `parseStoredMatchFilters`: FORGIVING — ignores unknown stored keys, but any
  *   known field with invalid data normalizes the entire object to `{ version: 1 }`.
- *
- * Both return a typed ParseResult rather than throwing so callers can branch on
- * success/failure without try/catch.
+ *   It can't fail, so it returns the value plus a `wasNormalized` flag directly.
  */
 
+import { Result } from "better-result";
 import { z } from "zod";
 import { isValidDateOnly } from "./dates";
 import { isLanguageCatalogCode } from "./languages";
-import type {
-	ParseResult,
-	PlaylistMatchFiltersV1,
-	StoredParseResult,
-} from "./types";
+import type { PlaylistMatchFiltersV1 } from "./types";
 
 const YEAR_MIN = 1000;
 const YEAR_MAX = 9999;
@@ -135,12 +131,12 @@ const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
  */
 export function parseSaveMatchFilters(
 	raw: unknown,
-): ParseResult<PlaylistMatchFiltersV1> {
+): Result<PlaylistMatchFiltersV1, string> {
 	const result = saveSchema.safeParse(raw);
 	if (!result.success) {
-		return { ok: false, error: result.error.message };
+		return Result.err(result.error.message);
 	}
-	return { ok: true, value: result.data satisfies PlaylistMatchFiltersV1 };
+	return Result.ok(result.data satisfies PlaylistMatchFiltersV1);
 }
 
 /**
@@ -152,15 +148,15 @@ export function parseSaveMatchFilters(
  * was reset to the default — callers MUST log an internal warning when this is true
  * (per Decisions §6).
  */
-export function parseStoredMatchFilters(
-	raw: unknown,
-): StoredParseResult<PlaylistMatchFiltersV1> {
+export function parseStoredMatchFilters(raw: unknown): {
+	value: PlaylistMatchFiltersV1;
+	wasNormalized: boolean;
+} {
 	const result = storedSchema.safeParse(raw);
 	if (!result.success) {
-		return { ok: true, value: DEFAULT_FILTERS, wasNormalized: true };
+		return { value: DEFAULT_FILTERS, wasNormalized: true };
 	}
 	return {
-		ok: true,
 		value: result.data satisfies PlaylistMatchFiltersV1,
 		wasNormalized: false,
 	};

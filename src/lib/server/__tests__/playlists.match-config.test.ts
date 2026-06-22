@@ -135,13 +135,15 @@ describe("savePlaylistMatchConfig", () => {
 
 	// ── Ownership ────────────────────────────────────────────────────────────
 
-	it("throws 'Playlist not found' when playlist lookup fails", async () => {
+	it("throws 'Failed to load playlist' when the playlist lookup errors", async () => {
+		// A DB error is surfaced distinctly from a missing/other-account playlist so
+		// the failure isn't silently masked as "not found" (matches getPlaylistTracksPage).
 		mockGetPlaylistById.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
 		);
 
 		await expect(savePlaylistMatchConfig({ data: BASE_INPUT })).rejects.toThrow(
-			"Playlist not found",
+			"Failed to load playlist",
 		);
 
 		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();

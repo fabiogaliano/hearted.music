@@ -22,6 +22,7 @@ import {
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
+import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import {
 	isLanguageCatalogCode,
 	lookupLanguage,
@@ -101,7 +102,7 @@ const PLAYLIST_TRACKS_DEFAULT_LIMIT = 50;
 const PLAYLIST_TRACKS_MAX_LIMIT = 100;
 
 const PlaylistTracksPageSchema = z.object({
-	playlistId: z.string().uuid(),
+	playlistId: z.uuid(),
 	cursor: z.number().int().min(0).optional(),
 	limit: z.number().int().min(1).max(PLAYLIST_TRACKS_MAX_LIMIT).optional(),
 });
@@ -200,7 +201,7 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 // ============================================================================
 
 const SetTargetSchema = z.object({
-	playlistId: z.string().uuid(),
+	playlistId: z.uuid(),
 	isTarget: z.boolean(),
 });
 
@@ -367,7 +368,7 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 // ============================================================================
 
 const SaveGenrePillsSchema = z.object({
-	playlistId: z.string().uuid(),
+	playlistId: z.uuid(),
 	genres: z.array(z.string()),
 });
 
@@ -437,7 +438,7 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 // a DB CHECK). Bound the raw input here so an authed client can't push past the
 // constraint into a DB error; the handler then trims and collapses empty → null.
 const SaveMatchIntentSchema = z.object({
-	playlistId: z.string().uuid(),
+	playlistId: z.uuid(),
 	matchIntent: z.string().max(5000).nullable(),
 });
 
@@ -535,11 +536,22 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 				session.accountId,
 				data.playlistId,
 			);
-			if (
-				Result.isError(playlistResult) ||
-				!playlistResult.value ||
-				playlistResult.value.account_id !== session.accountId
-			) {
+			if (Result.isError(playlistResult)) {
+				console.warn("Failed to load playlist", {
+					playlistId: data.playlistId,
+					error: playlistResult.error,
+				});
+				throw new Error("Failed to load playlist");
+			}
+			if (playlistResult.value === null) {
+				throw new Error("Playlist not found");
+			}
+			if (playlistResult.value.account_id !== session.accountId) {
+				console.warn("Playlist access denied: account mismatch", {
+					playlistId: data.playlistId,
+					ownerAccountId: playlistResult.value.account_id,
+					sessionAccountId: session.accountId,
+				});
 				throw new Error("Playlist not found");
 			}
 
@@ -551,7 +563,7 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 			const genrePills = sanitizeGenrePills(data.genrePills);
 
 			const filtersParseResult = parseSaveMatchFilters(data.matchFilters);
-			if (!filtersParseResult.ok) {
+			if (Result.isError(filtersParseResult)) {
 				throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
 			}
 			// Validation accepts e.g. duplicate language codes; normalize to the
@@ -824,7 +836,7 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 			})
 			.sort((a, b) => a.label.localeCompare(b.label));
 
-		const today = new Date().toISOString().slice(0, 10);
+		const today = utcDateString(Date.now());
 
 		return {
 			languages: [...detected, ...catalogOnly],

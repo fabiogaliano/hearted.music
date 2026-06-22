@@ -10,6 +10,7 @@
  * Predicates are pure functions — no IO, no side effects.
  */
 
+import { utcDateString } from "./dates";
 import type {
 	LikedAtFilterV1,
 	PlaylistMatchFiltersV1,
@@ -39,10 +40,6 @@ function dayAfterMidnightUtcMs(dateStr: string): number {
 /** Returns the UTC midnight start of the given YYYY-MM-DD date. */
 function midnightUtcMs(dateStr: string): number {
 	return new Date(`${dateStr}T00:00:00.000Z`).getTime();
-}
-
-function currentUtcDateString(nowMs: number): string {
-	return new Date(nowMs).toISOString().slice(0, 10);
 }
 
 export function passesLanguageFilter(
@@ -96,7 +93,7 @@ export function passesLikedAtFilter(
 			const startMs = midnightUtcMs(filter.startDate);
 			const endExclusive =
 				filter.end.kind === "today"
-					? dayAfterMidnightUtcMs(currentUtcDateString(nowMs))
+					? dayAfterMidnightUtcMs(utcDateString(nowMs))
 					: dayAfterMidnightUtcMs(filter.end.date);
 			return likedAtMs >= startMs && likedAtMs < endExclusive;
 		}

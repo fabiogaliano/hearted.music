@@ -14,7 +14,7 @@
 
 import { type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { languageLabel } from "@/lib/domains/taste/match-filters/labels";
+import { languageLabel } from "@/lib/domains/taste/match-filters/languages";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { fonts } from "@/lib/theme/fonts";
 import {
