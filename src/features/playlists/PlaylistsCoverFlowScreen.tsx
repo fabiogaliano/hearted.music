@@ -42,10 +42,7 @@ export function parseSummaryMatchFilters(
 	raw: unknown,
 ): ReturnType<typeof parseStoredMatchFilters> {
 	const parsed = parseStoredMatchFilters(raw);
-	// StoredParseResult always resolves to ok:true (normalizes, never hard-fails).
-	// The ok guard is still required to narrow the union — TypeScript cannot see
-	// wasNormalized/value on the ParseFailure arm without it.
-	if (parsed.ok && parsed.wasNormalized) {
+	if (parsed.wasNormalized) {
 		// Invalid stored match_filters must not crash the screen — normalize to
 		// { version: 1 } and log so ops can diagnose without user-facing errors.
 		console.warn("[playlists] invalid stored match_filters normalized", {
@@ -106,10 +103,7 @@ export function PlaylistsCoverFlowScreen({
 	const summaries = useMemo(
 		() =>
 			playlists.map((p) => {
-				const parsed = parseStoredMatchFilters(p.match_filters);
-				// StoredParseResult always resolves ok:true (it normalizes rather than
-				// hard-failing); the guard just narrows the union.
-				const matchFilters = parsed.ok ? parsed.value : { version: 1 as const };
+				const matchFilters = parseStoredMatchFilters(p.match_filters).value;
 				return toSummary(p, targetIds.has(p.id), matchFilters);
 			}),
 		[playlists, targetIds],

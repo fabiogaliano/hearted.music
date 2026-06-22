@@ -20,8 +20,6 @@ import { parseSummaryMatchFilters } from "../PlaylistsCoverFlowScreen";
 describe("parseStoredMatchFilters — valid stored shapes", () => {
 	it("accepts the no-filter default shape", () => {
 		const result = parseStoredMatchFilters({ version: 1 });
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(false);
 	});
@@ -32,8 +30,6 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 			languages: { codes: ["en"] },
 		};
 		const result = parseStoredMatchFilters(raw);
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value.languages?.codes).toEqual(["en"]);
 		expect(result.wasNormalized).toBe(false);
 	});
@@ -43,8 +39,6 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 			version: 1,
 			vocalGender: "female",
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value.vocalGender).toBe("female");
 		expect(result.wasNormalized).toBe(false);
 	});
@@ -54,8 +48,6 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 			version: 1,
 			releaseYear: { kind: "exact", year: 2010 },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value.releaseYear).toEqual({ kind: "exact", year: 2010 });
 		expect(result.wasNormalized).toBe(false);
 	});
@@ -69,8 +61,6 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 				end: { kind: "date", date: "2024-12-31" },
 			},
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value.likedAt).toBeDefined();
 		expect(result.wasNormalized).toBe(false);
 	});
@@ -83,8 +73,6 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 			vocalGender: "male",
 			unknownFutureField: "some-value",
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.wasNormalized).toBe(false);
 		expect(result.value.vocalGender).toBe("male");
 	});
@@ -93,24 +81,18 @@ describe("parseStoredMatchFilters — valid stored shapes", () => {
 describe("parseStoredMatchFilters — invalid stored shapes normalize to { version: 1 }", () => {
 	it("normalizes null to default", () => {
 		const result = parseStoredMatchFilters(null);
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
 
 	it("normalizes an empty object to default (missing version)", () => {
 		const result = parseStoredMatchFilters({});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
 
 	it("normalizes wrong version number to default", () => {
 		const result = parseStoredMatchFilters({ version: 99 });
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -121,8 +103,6 @@ describe("parseStoredMatchFilters — invalid stored shapes normalize to { versi
 			version: 1,
 			vocalGender: "mixed",
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -132,8 +112,6 @@ describe("parseStoredMatchFilters — invalid stored shapes normalize to { versi
 			version: 1,
 			languages: { codes: [] },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -143,8 +121,6 @@ describe("parseStoredMatchFilters — invalid stored shapes normalize to { versi
 			version: 1,
 			releaseYear: { kind: "unknown-kind", year: 2010 },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -154,8 +130,6 @@ describe("parseStoredMatchFilters — invalid stored shapes normalize to { versi
 			version: 1,
 			releaseYear: { kind: "range", start: 2020, end: 2010 },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -165,24 +139,18 @@ describe("parseStoredMatchFilters — invalid stored shapes normalize to { versi
 			version: 1,
 			likedAt: { kind: "before", endDate: "not-a-date" },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
 
 	it("normalizes a plain string to default", () => {
 		const result = parseStoredMatchFilters("corrupted string data");
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
 
 	it("normalizes an array to default", () => {
 		const result = parseStoredMatchFilters([{ version: 1 }]);
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});
@@ -247,8 +215,6 @@ describe("parseStoredMatchFilters — no-salvaging-siblings rule", () => {
 			vocalGender: "mixed",
 			languages: { codes: ["en"] },
 		});
-		expect(result.ok).toBe(true);
-		if (!result.ok) return;
 		expect(result.value).toEqual({ version: 1 });
 		expect(result.wasNormalized).toBe(true);
 	});

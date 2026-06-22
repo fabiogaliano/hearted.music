@@ -7,11 +7,7 @@
  */
 
 import { isLanguageCatalogCode } from "./languages";
-import type {
-	LikedAtFilterV1,
-	PlaylistMatchFiltersV1,
-	ReleaseYearFilterV1,
-} from "./types";
+import type { PlaylistMatchFiltersV1 } from "./types";
 
 /** Deduplicate language codes preserving first-seen order. */
 function dedupeLanguageCodes(codes: string[]): string[] {
@@ -36,18 +32,6 @@ function normalizeLanguages(
 	return codes.length > 0 ? { codes } : undefined;
 }
 
-function normalizeReleaseYear(
-	raw: ReleaseYearFilterV1 | undefined,
-): ReleaseYearFilterV1 | undefined {
-	return raw ?? undefined;
-}
-
-function normalizeLikedAt(
-	raw: LikedAtFilterV1 | undefined,
-): LikedAtFilterV1 | undefined {
-	return raw ?? undefined;
-}
-
 /**
  * Produce the canonical storage form of a filters object.
  * Inactive (undefined) filters are omitted; empty language arrays normalize away.
@@ -61,11 +45,9 @@ export function normalizeMatchFilters(
 	const languages = normalizeLanguages(raw.languages);
 	if (languages !== undefined) normalized.languages = languages;
 
-	const releaseYear = normalizeReleaseYear(raw.releaseYear);
-	if (releaseYear !== undefined) normalized.releaseYear = releaseYear;
+	if (raw.releaseYear !== undefined) normalized.releaseYear = raw.releaseYear;
 
-	const likedAt = normalizeLikedAt(raw.likedAt);
-	if (likedAt !== undefined) normalized.likedAt = likedAt;
+	if (raw.likedAt !== undefined) normalized.likedAt = raw.likedAt;
 
 	if (raw.vocalGender !== undefined) normalized.vocalGender = raw.vocalGender;
 

@@ -121,6 +121,14 @@ export function lookupLanguage(
 	return { code: entry.code, label: entry.label };
 }
 
+/**
+ * Display label for a single language code, falling back to the raw code when
+ * lookup fails (shouldn't happen for stored, catalog-validated codes).
+ */
+export function languageLabel(code: string): string {
+	return lookupLanguage(code)?.label ?? code;
+}
+
 export function isLanguageCatalogCode(code: string): boolean {
 	return CATALOG_BY_CODE.has(code);
 }

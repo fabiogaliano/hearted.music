@@ -151,13 +151,6 @@ export async function loadMatchFilterExclusions({
 	for (const playlist of playlists) {
 		const parseResult = parseStoredMatchFilters(playlist.match_filters);
 
-		// parseStoredMatchFilters always returns ok:true (stored data is never
-		// hard-rejected — it normalizes to {version:1} instead), but we narrow
-		// through `ok` so the type system can see `wasNormalized` on the success arm.
-		if (!parseResult.ok) {
-			continue;
-		}
-
 		if (parseResult.wasNormalized) {
 			log.warn("match:invalid-stored-filters", {
 				accountId,

@@ -70,20 +70,3 @@ export type MatchFilterLanguageOption = {
 	code: string;
 	label: string;
 };
-
-/** Typed parse success/failure to prevent callers from accessing value on failure. */
-export type ParseSuccess<T> = { ok: true; value: T };
-export type ParseFailure = { ok: false; error: string };
-export type ParseResult<T> = ParseSuccess<T> | ParseFailure;
-
-/**
- * Extended success type for the forgiving read parser.
- * wasNormalized is true only when a known field had invalid data and the object
- * was reset to { version: 1 } — callers use this to emit a warning log.
- */
-export type StoredParseSuccess<T> = {
-	ok: true;
-	value: T;
-	wasNormalized: boolean;
-};
-export type StoredParseResult<T> = StoredParseSuccess<T> | ParseFailure;

@@ -80,32 +80,27 @@ export function useVocalsAutoFill({
 		dismissedTexts.current.add(initialText);
 	}
 
-	// Track the previous vocalGender so we can detect a user-initiated clear.
-	// When vocalGender transitions from a value to undefined while draftDescription
-	// is unchanged, the user tapped the X — record it as dismissed.
+	// Detect a user-initiated clear during render — the same prev-vs-current ref
+	// comparison the session reset above uses, not a synchronization with an
+	// external system, so it doesn't belong in an effect. When vocalGender
+	// transitions from a value to undefined while draftDescription is unchanged,
+	// the user tapped the X → record this exact text as dismissed.
 	const prevVocalGenderRef = useRef<"female" | "male" | undefined>(
 		draftMatchFilters.vocalGender,
 	);
 	const prevDescriptionRef = useRef<string>(draftDescription);
 
-	useEffect(() => {
-		const prevGender = prevVocalGenderRef.current;
-		const prevDesc = prevDescriptionRef.current;
-
-		// Update tracking refs.
-		prevVocalGenderRef.current = draftMatchFilters.vocalGender;
-		prevDescriptionRef.current = draftDescription;
-
-		// User cleared the vocals chip (gender went from a value to undefined)
-		// while the description text did not change → dismiss this exact text.
-		if (
-			prevGender !== undefined &&
-			draftMatchFilters.vocalGender === undefined &&
-			draftDescription === prevDesc
-		) {
-			dismissedTexts.current.add(draftDescription);
-		}
-	});
+	const prevGender = prevVocalGenderRef.current;
+	const prevDesc = prevDescriptionRef.current;
+	prevVocalGenderRef.current = draftMatchFilters.vocalGender;
+	prevDescriptionRef.current = draftDescription;
+	if (
+		prevGender !== undefined &&
+		draftMatchFilters.vocalGender === undefined &&
+		draftDescription === prevDesc
+	) {
+		dismissedTexts.current.add(draftDescription);
+	}
 
 	// Auto-fill effect — debounced, runs only in edit mode (not guided).
 	useEffect(() => {

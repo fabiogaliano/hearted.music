@@ -2,17 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { VocalsDetectionResult } from "../vocals-detector";
 import { detectVocalGender } from "../vocals-detector";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function expectGender(text: string, kind: VocalsDetectionResult["kind"]): void {
 	expect(detectVocalGender(text)).toEqual({ kind });
 }
-
-// ---------------------------------------------------------------------------
-// No signal
-// ---------------------------------------------------------------------------
 
 describe("no signal", () => {
 	it("returns none for empty string", () => {
@@ -27,10 +19,6 @@ describe("no signal", () => {
 		expectGender("jazz piano trio", "none");
 	});
 });
-
-// ---------------------------------------------------------------------------
-// Female keyword families
-// ---------------------------------------------------------------------------
 
 describe("female keyword families", () => {
 	it("detects 'female' standalone", () => {
@@ -102,10 +90,6 @@ describe("female keyword families", () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// Male keyword families
-// ---------------------------------------------------------------------------
-
 describe("male keyword families", () => {
 	it("detects 'male' standalone", () => {
 		expectGender("songs with male vocals", "male");
@@ -176,10 +160,6 @@ describe("male keyword families", () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// Case-insensitivity
-// ---------------------------------------------------------------------------
-
 describe("case-insensitivity", () => {
 	it("detects 'FEMALE' uppercase", () => {
 		expectGender("FEMALE VOCALS ONLY", "female");
@@ -197,10 +177,6 @@ describe("case-insensitivity", () => {
 		expectGender("Male-Fronted metal bands", "male");
 	});
 });
-
-// ---------------------------------------------------------------------------
-// Ambiguous: both female and male signals present
-// ---------------------------------------------------------------------------
 
 describe("ambiguous (both signals)", () => {
 	it("returns ambiguous when both 'female' and 'male' appear", () => {
@@ -223,10 +199,6 @@ describe("ambiguous (both signals)", () => {
 		expectGender("duets with a woman and a man singing together", "ambiguous");
 	});
 });
-
-// ---------------------------------------------------------------------------
-// Word-boundary rules — no false positives from substrings
-// ---------------------------------------------------------------------------
 
 describe("word-boundary rules", () => {
 	// "woman" must not match inside "womanhood" — 'h' follows 'n', no word boundary.
@@ -270,10 +242,6 @@ describe("word-boundary rules", () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// No hidden inference from artist names or unrelated proper nouns
-// ---------------------------------------------------------------------------
-
 describe("no hidden inference", () => {
 	it("does not infer from a name like 'Roman' (contains 'man' sub-string)", () => {
 		expectGender("playlist inspired by Roman Polanski films", "none");
@@ -314,10 +282,6 @@ describe("no hidden inference", () => {
 		expectGender("Spider-Man playlist", "male");
 	});
 });
-
-// ---------------------------------------------------------------------------
-// Edge cases
-// ---------------------------------------------------------------------------
 
 describe("edge cases", () => {
 	it("handles text with only whitespace", () => {

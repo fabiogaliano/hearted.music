@@ -198,12 +198,6 @@ export function decidePlaylist(row: PlaylistRow): PlaylistDecision {
 	// cause wasNormalized=true which we treat as skip-invalid.
 	const stored = parseStoredMatchFilters(row.match_filters);
 
-	// The forgiving parser always returns ok:true (it normalizes to { version:1 }
-	// on invalid data), but the union type includes ParseFailure, so we narrow first.
-	if (!stored.ok) {
-		return { ...base, kind: "skip-invalid" };
-	}
-
 	if (stored.wasNormalized) {
 		// wasNormalized means an existing known field was invalid; the stored
 		// object is corrupt. Skip rather than silently clobber.
@@ -232,7 +226,7 @@ export function decidePlaylist(row: PlaylistRow): PlaylistDecision {
 	// Validate through the strict save-time parser to catch any edge case where
 	// the merged object has unexpected structure before writing.
 	const saveCheck = parseSaveMatchFilters(newFilters);
-	if (!saveCheck.ok) {
+	if (Result.isError(saveCheck)) {
 		warn(
 			`playlist ${row.id}: merged filters failed strict validation (${saveCheck.error}) — skipping`,
 		);

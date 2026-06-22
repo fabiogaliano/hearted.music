@@ -17,28 +17,22 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { languageLabel } from "@/lib/domains/taste/match-filters/labels";
 import {
+	languageLabel,
 	orderLanguageOptions,
 	searchLanguages,
 } from "@/lib/domains/taste/match-filters/languages";
-import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import type {
 	MatchFilterLanguageOption,
 	PlaylistMatchFilterOptions,
-	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
 import { fonts } from "@/lib/theme/fonts";
 import "../playlist-ui.css";
 
-// Stable empty fallback so an unselected picker doesn't hand a fresh [] to the
-// useMemo deps each render, which would recompute the ordered/display lists for
-// nothing on every parent re-render.
-const EMPTY_CODES: string[] = [];
-
 export interface LanguagePickerProps {
-	filters: PlaylistMatchFiltersV1;
-	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
+	/** Selected language codes; pass a stable reference for an empty selection. */
+	value: string[];
+	onChange: (codes: string[]) => void;
 	options: PlaylistMatchFilterOptions;
 	disabled?: boolean;
 	/**
@@ -68,8 +62,8 @@ function buildDetectedCounts(
 }
 
 export function LanguagePicker({
-	filters,
-	onFiltersChange,
+	value,
+	onChange,
 	options,
 	disabled = false,
 	isSaving = false,
@@ -87,7 +81,7 @@ export function LanguagePicker({
 	const listboxId = `${baseId}-listbox`;
 	const optionId = (i: number) => `${baseId}-opt-${i}`;
 
-	const selectedCodes = filters.languages?.codes ?? EMPTY_CODES;
+	const selectedCodes = value;
 	const detectedCounts = useMemo(() => buildDetectedCounts(options), [options]);
 
 	const orderedAll = useMemo(
@@ -128,41 +122,31 @@ export function LanguagePicker({
 		return () => document.removeEventListener("pointerdown", handler);
 	}, [open]);
 
-	const announce = useCallback((msg: string) => setAnnouncement(msg), []);
-
 	const toggleCode = useCallback(
 		(code: string) => {
 			const isSelected = selectedCodes.includes(code);
 			const remaining = isSelected
 				? selectedCodes.filter((c) => c !== code)
 				: [...selectedCodes, code];
-			const next = normalizeMatchFilters({
-				...filters,
-				languages: remaining.length > 0 ? { codes: remaining } : undefined,
-			});
-			onFiltersChange(next);
-			announce(
+			onChange(remaining);
+			setAnnouncement(
 				isSelected
 					? `Removed ${languageLabel(code)}. ${remaining.length} languages selected.`
 					: `Added ${languageLabel(code)}. ${remaining.length} languages selected.`,
 			);
 		},
-		[filters, onFiltersChange, selectedCodes, announce],
+		[onChange, selectedCodes],
 	);
 
 	const removeCode = useCallback(
 		(code: string) => {
 			const remaining = selectedCodes.filter((c) => c !== code);
-			const next = normalizeMatchFilters({
-				...filters,
-				languages: remaining.length > 0 ? { codes: remaining } : undefined,
-			});
-			onFiltersChange(next);
-			announce(
+			onChange(remaining);
+			setAnnouncement(
 				`Removed ${languageLabel(code)}. ${remaining.length} languages selected.`,
 			);
 		},
-		[filters, onFiltersChange, selectedCodes, announce],
+		[onChange, selectedCodes],
 	);
 
 	const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
