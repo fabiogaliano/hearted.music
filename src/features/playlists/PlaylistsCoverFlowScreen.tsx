@@ -11,12 +11,9 @@ import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schem
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { savePlaylistMatchConfig } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
-import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
-import type {
-	PlaylistSummary,
-	PlaylistTrackVM,
-} from "./components/explorations/types";
+import { CoverFlowPlaylists } from "./components/CoverFlowPlaylists";
+import { SpotlightPanel } from "./components/SpotlightPanel";
+import type { PlaylistSummary, PlaylistTrackVM } from "./components/types";
 import { usePlaylistSession } from "./hooks/usePlaylistSession";
 import {
 	buildPlaylistRouteRef,

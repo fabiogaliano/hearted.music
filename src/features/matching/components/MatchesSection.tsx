@@ -8,7 +8,7 @@ import {
 import { memo, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
-import { Cover } from "@/features/playlists/components/explorations/Cover";
+import { Cover } from "@/features/playlists/components/Cover";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";

@@ -2,7 +2,7 @@ import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
 import type { PlaylistTrackVM } from "./types";
-import "./playlist-explorations.css";
+import "./playlist-ui.css";
 
 interface TrackListProps {
 	tracks: PlaylistTrackVM[];

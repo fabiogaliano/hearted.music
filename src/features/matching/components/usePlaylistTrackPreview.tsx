@@ -13,8 +13,8 @@ import {
 	useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { TrackList } from "@/features/playlists/components/explorations/TrackList";
-import type { PlaylistTrackVM } from "@/features/playlists/components/explorations/types";
+import { TrackList } from "@/features/playlists/components/TrackList";
+import type { PlaylistTrackVM } from "@/features/playlists/components/types";
 import { playlistTracksInfiniteQueryOptions } from "@/features/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 

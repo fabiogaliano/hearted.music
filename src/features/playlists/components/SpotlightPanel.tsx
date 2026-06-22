@@ -6,9 +6,9 @@ import type {
 import type { SavePlaylistMatchConfigResult } from "@/lib/server/playlists.functions";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { DescriptionExamplesShuffle } from "./DescriptionExamplesShuffle";
-import { ActiveFilterChips } from "./match-filters/ActiveFilterChips";
-import type { OptionsState } from "./match-filters/AdvancedFiltersAssembly";
-import { AdvancedFiltersAssembly } from "./match-filters/AdvancedFiltersAssembly";
+import type { OptionsState } from "./match-filters/MatchFiltersFieldList";
+import { MatchFiltersFieldList } from "./match-filters/MatchFiltersFieldList";
+import { MatchFiltersSummary } from "./match-filters/MatchFiltersSummary";
 import { SpotlightHero } from "./SpotlightHero";
 import { TrackList } from "./TrackList";
 import type {
@@ -141,6 +141,13 @@ export function SpotlightPanel({
 	const [draftMatchFilters, setDraftMatchFilters] =
 		useState<PlaylistMatchFiltersV1>({ version: 1 });
 
+	// True once the matching band has finished opening. While open we drop the
+	// band's overflow clip so the editor's downward popovers (genre search, info
+	// tips) can spill past the band into the track-list area instead of being
+	// sliced at the boundary. Re-clipped the moment it collapses so a closed band
+	// never leaks its content.
+	const [bandSettled, setBandSettled] = useState(playlist?.isTarget ?? false);
+
 	// The saved intent text at the moment the editor was most recently opened.
 	// Passed to useVocalsAutoFill so it can pre-seed the dismissal set and
 	// prevent auto-fill from firing on unchanged saved text when the editor reopens.
@@ -164,6 +171,20 @@ export function SpotlightPanel({
 		setIsSaving(false);
 		setSaveError(null);
 	}, [playlist?.id]);
+
+	// Settle the band via a timeout rather than transitionend so reduced-motion —
+	// where the grid-rows transition is suppressed and never fires an end event —
+	// still un-clips. ~420ms matches the 400ms open animation; collapsing re-clips
+	// synchronously so the closing band stays masked.
+	useEffect(() => {
+		const target = playlist?.isTarget ?? false;
+		if (!target) {
+			setBandSettled(false);
+			return;
+		}
+		const id = window.setTimeout(() => setBandSettled(true), 420);
+		return () => window.clearTimeout(id);
+	}, [playlist?.isTarget]);
 
 	useVocalsAutoFill({
 		isEditing,
@@ -326,7 +347,7 @@ export function SpotlightPanel({
 										}}
 									>
 										<div
-											className="min-h-0 overflow-hidden"
+											className={`min-h-0 ${playlist.isTarget && bandSettled ? "overflow-visible" : "overflow-hidden"}`}
 											inert={!playlist.isTarget}
 										>
 											{/* data-tour spotlight target for the "write intent" beat —
@@ -367,12 +388,15 @@ export function SpotlightPanel({
 														}
 														collapsedFiltersSlot={
 															!isEditing && !guidedIntent ? (
-																<ActiveFilterChips filters={matchFilters} />
+																<MatchFiltersSummary
+																	filters={matchFilters}
+																	onEdit={openEditor}
+																/>
 															) : undefined
 														}
 														advancedFilters={
 															isEditing && !guidedIntent ? (
-																<AdvancedFiltersAssembly
+																<MatchFiltersFieldList
 																	filters={draftMatchFilters}
 																	onFiltersChange={setDraftMatchFilters}
 																	options={matchFilterOptions ?? EMPTY_OPTIONS}

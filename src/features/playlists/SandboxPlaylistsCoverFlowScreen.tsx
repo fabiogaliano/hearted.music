@@ -13,12 +13,12 @@ import {
 import { DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import { DEMO_PLAYLISTS } from "@/lib/content/landing/demo-matches";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { CoverFlowPlaylists } from "./components/explorations/CoverFlowPlaylists";
-import { SpotlightPanel } from "./components/explorations/SpotlightPanel";
+import { CoverFlowPlaylists } from "./components/CoverFlowPlaylists";
+import { SpotlightPanel } from "./components/SpotlightPanel";
 import type {
 	GuidedPlaylistsConfig,
 	PlaylistSummary,
-} from "./components/explorations/types";
+} from "./components/types";
 
 /**
  * The /playlists screen as it appears during the flag-playlists onboarding

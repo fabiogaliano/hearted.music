@@ -1,9 +1,9 @@
 import type { Story } from "@ladle/react";
 import { type ReactNode, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import { GenrePillsPicker } from "../GenrePillsPicker";
 import { TOP_GENRES } from "./fixtures";
-import "./playlist-explorations.css";
+import { GenrePillsPicker } from "./GenrePillsPicker";
+import "./playlist-ui.css";
 import { WritingSurface } from "./WritingSurface";
 
 /**
