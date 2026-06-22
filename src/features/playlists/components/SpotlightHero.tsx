@@ -47,10 +47,13 @@ export function SpotlightHero({
 	return (
 		<div
 			data-tour="intent-hero"
-			className="-mx-5 -mt-[30px] mb-0 flex flex-col items-start gap-5 px-5 pt-9 pb-8 md:-mx-10 md:-mt-[34px] md:flex-row md:items-center md:gap-8 md:px-10 md:pr-20"
+			className="-mx-5 -mt-[30px] mb-0 flex flex-col items-start gap-5 px-5 pt-9 pb-8 md:-mx-10 md:-mt-[34px] md:flex-row md:items-center md:gap-8 md:px-10"
 			style={{
-				background:
-					"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))",
+				// A clean darker step in the SAME hue + saturation as the page bg
+				// (surface-dim, L81 vs bg L88) — a pure monochromatic elevation step,
+				// not the old color-mix(primary …) which desaturated the band into a
+				// cold grey that clashed with the warm-lavender body below it.
+				background: "var(--t-surface-dim)",
 			}}
 		>
 			<div className="aspect-square w-full max-w-[260px] mx-auto flex-none md:mx-0 md:w-[clamp(150px,16vw,184px)] md:max-w-none">
@@ -59,13 +62,13 @@ export function SpotlightHero({
 					size="fill"
 					style={{
 						boxShadow:
-							"0 12px 30px -18px color-mix(in srgb, var(--t-text) 42%, transparent), inset 0 0 0 1px rgba(0,0,0,0.08)",
+							"0 12px 30px -18px color-mix(in srgb, var(--t-text) 42%, transparent), inset 0 0 0 1px rgba(0,0,0,0.10)",
 					}}
 				/>
 			</div>
 			<div
 				data-tour="add-target"
-				className="@container flex w-full min-w-0 flex-1 flex-col items-center gap-5 md:w-auto md:max-w-[34rem] md:items-start"
+				className="@container flex w-full min-w-0 flex-1 flex-col items-center gap-5 md:w-auto md:items-start"
 			>
 				<h2
 					className="theme-text text-center leading-[1.04] font-extralight tracking-tight text-balance break-words md:text-left"

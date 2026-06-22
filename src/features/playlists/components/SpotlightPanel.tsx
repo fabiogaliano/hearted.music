@@ -29,11 +29,6 @@ const EMPTY_OPTIONS: PlaylistMatchFilterOptions = {
 	likedAt: { oldest: null, today: "", yearCounts: [] },
 };
 
-// The hue-washed band behind the hero + writing surface (and the guided example
-// picker, which lifts off it as a lighter card).
-const BAND_BG =
-	"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))";
-
 interface SpotlightPanelProps {
 	playlist: PlaylistSummary | null;
 	tracks?: PlaylistTrackVM[];
@@ -309,7 +304,7 @@ export function SpotlightPanel({
 								type="button"
 								onClick={onClose}
 								aria-label="Close"
-								className="theme-text-muted absolute top-[26px] right-[22px] z-30 grid size-10 place-items-center text-[17px] transition-[color,transform] duration-150 hover:text-(--t-text) active:scale-[0.94] md:right-[30px]"
+								className="theme-text-muted absolute top-[26px] right-0 z-30 grid size-10 place-items-center text-[17px] transition-[color,transform] duration-150 hover:text-(--t-text) active:scale-[0.96] motion-reduce:transition-none md:right-5"
 							>
 								✕
 							</button>
@@ -350,17 +345,23 @@ export function SpotlightPanel({
 											className={`min-h-0 ${playlist.isTarget && bandSettled ? "overflow-visible" : "overflow-hidden"}`}
 											inert={!playlist.isTarget}
 										>
-											{/* data-tour spotlight target for the "write intent" beat —
-										    exactly the hue-washed writing surface, so the union with the
-										    hero band frames just the mauve region, not the empty track
-										    list below it. Inert in production. */}
+											{/* data-tour spotlight target for the "write intent" beat.
+										    Two-tone hierarchy grouped by meaning: the hero AND the
+										    matching config share one continuous band (--t-surface-dim),
+										    reading as a single "what this is / how it matches" zone;
+										    only the track list below sits on the lighter page bg. One
+										    even lightness step, same hue+saturation, no temperature
+										    break — and the tonal boundary lands between the rules and
+										    the contents, where it belongs. The config's internal
+										    structure comes from its hairline-divided sections, not a
+										    competing fill. Inert in production. */}
 											<div
 												data-tour="intent-zone"
-												className="relative z-20 px-5 pt-1 pb-9 md:px-10"
-												style={{ background: BAND_BG }}
+												className="theme-border-color relative z-20 border-b px-5 pt-2 pb-8 md:px-10"
+												style={{ background: "var(--t-surface-dim)" }}
 											>
 												<div
-													className={`max-w-[56ch] transition-opacity duration-300 ease-[var(--ease-out-expo)] motion-reduce:transition-none ${playlist.isTarget ? "opacity-100" : "opacity-0"}`}
+													className={`transition-opacity duration-300 ease-[var(--ease-out-expo)] motion-reduce:transition-none ${playlist.isTarget ? "opacity-100" : "opacity-0"}`}
 												>
 													<WritingSurface
 														description={description}
@@ -430,7 +431,12 @@ export function SpotlightPanel({
 										</div>
 									</div>
 
-									<div className="mt-8 flex flex-col gap-8">
+									<div
+										className={`mt-8 flex flex-col gap-8 transition-opacity duration-300 ease-[var(--ease-out-quart)] motion-reduce:transition-none ${isEditing ? "opacity-40" : "opacity-100"}`}
+									>
+										{/* While editing the matching config the track list recedes so
+									    the form holds focus (Direction B). It stays in the DOM and
+									    scrollable — just dimmed — rather than unmounting. */}
 										{/* The pick-an-intent examples helper lives only in guided
 									    onboarding now (the examplesSlot inside the intent field).
 									    Once onboarding is done, the production editor stands on its

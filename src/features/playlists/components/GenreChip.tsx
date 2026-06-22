@@ -42,7 +42,7 @@ export function GenreChip({
 					type="button"
 					onClick={onRemove}
 					aria-label={`Remove ${label}`}
-					className="-mr-1 grid size-[18px] cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 opacity-70 transition-opacity duration-150 ease hover:opacity-100"
+					className="relative -mr-1 grid size-[18px] cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 opacity-70 transition-opacity duration-150 ease before:absolute before:-inset-[3px] before:content-[''] hover:opacity-100"
 					style={{ color: "inherit" }}
 				>
 					<XIcon size={11} weight="bold" aria-hidden />

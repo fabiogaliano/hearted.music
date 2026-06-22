@@ -9,6 +9,14 @@
  *     fields, the model stays in before/after/range/exact.
  */
 
+import {
+	ClockIcon,
+	HeartIcon,
+	MicrophoneIcon,
+	type Icon as PhosphorIcon,
+	TranslateIcon,
+} from "@phosphor-icons/react";
+
 import type {
 	LikedAtFilterV1,
 	ReleaseYearFilterV1,
@@ -16,15 +24,27 @@ import type {
 
 export type FacetKey = "language" | "vocals" | "era" | "liked";
 
-// 16px stroked glyphs, one per facet. Kept here so the row, the Add pill, and the
-// collapsed summary all draw the same mark for a facet.
-export const FACET_ICON: Record<FacetKey, string> = {
-	language:
-		"M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12M8 2a6 6 0 010 12 6 6 0 010-12",
-	vocals: "M8 2v8M5 7a3 3 0 006 0M8 13v1M5.5 14h5",
-	era: "M8 8V4M8 8l2.5 1.5M8 14a6 6 0 100-12 6 6 0 000 12z",
-	liked:
-		"M8 13S2.5 9.5 2.5 6A2.5 2.5 0 018 4a2.5 2.5 0 015.5 2c0 3.5-5.5 7-5.5 7z",
+export type FacetIcon = PhosphorIcon;
+
+// One Phosphor mark per facet, rendered at 14–16px. Shared so the row, the Add
+// pill, and the collapsed summary draw the same glyph — and so the weight tracks
+// the rest of the app (regular ~1px stroke) instead of the old bespoke 1.4px
+// paths, which read heavier than every other icon on screen.
+export const FACET_ICON: Record<FacetKey, FacetIcon> = {
+	language: TranslateIcon,
+	vocals: MicrophoneIcon,
+	era: ClockIcon,
+	liked: HeartIcon,
+};
+
+// Human label per facet, matching the field-list row wording so the collapsed
+// summary names a filter the same way the editor does. The summary chips show
+// only an icon + value to stay compact, so the name surfaces on hover.
+export const FACET_LABEL: Record<FacetKey, string> = {
+	language: "Language",
+	vocals: "Vocals",
+	era: "Release era",
+	liked: "Liked date",
 };
 
 export function eraLabel(filter: ReleaseYearFilterV1): string {

@@ -1,12 +1,21 @@
 import type { Story } from "@ladle/react";
 import { useState } from "react";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
+import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
+import type { ThemeColor } from "@/lib/theme/types";
 import {
 	MatchFiltersFieldList,
 	type OptionsState,
 } from "./MatchFiltersFieldList";
 import { MOCK_FILTER_OPTIONS } from "./mock-filter-options";
+
+// The hue-washed band the writing surface (and these filters) actually render on
+// in SpotlightPanel — see SpotlightPanel BAND_BG. Stories must reproduce it, or
+// border/surface tokens look fine here and wash out in production.
+const BAND_BG =
+	"color-mix(in srgb, var(--t-primary) 12%, var(--t-surface-dim))";
 
 /**
  * The production match-filters surface (Structure A "field list"). Active filters
@@ -35,62 +44,87 @@ const PRESETS: Record<string, PlaylistMatchFiltersV1> = {
 	},
 };
 
-type Args = { preset: string; width: number; optionsState: OptionsState };
+type Args = {
+	preset: string;
+	width: number;
+	optionsState: OptionsState;
+	theme: ThemeColor;
+};
 
 export default { title: "Match Filters" };
 
-function Harness({ preset, width, optionsState }: Args) {
+function Harness({ preset, width, optionsState, theme }: Args) {
 	const [filters, setFilters] = useState<PlaylistMatchFiltersV1>(
 		PRESETS[preset] ?? { version: 1 },
 	);
 	return (
-		<div
-			className="theme-bg"
-			style={{
-				minHeight: "100vh",
-				padding: "2rem 1.25rem",
-				fontFamily: fonts.body,
-			}}
-		>
-			<div style={{ maxWidth: width, margin: "0 auto" }}>
-				<div
-					style={{
-						fontSize: 11,
-						fontWeight: 600,
-						letterSpacing: "0.08em",
-						textTransform: "uppercase",
-						color: "var(--t-text-muted)",
-						marginBottom: 4,
-					}}
-				>
-					Filters
+		<ThemeHueProvider theme={themes[theme]}>
+			<div
+				className="theme-bg"
+				style={{
+					minHeight: "100vh",
+					padding: "2rem 1.25rem",
+					fontFamily: fonts.body,
+				}}
+			>
+				<div style={{ maxWidth: width, margin: "0 auto" }}>
+					<div
+						style={{
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: "0.08em",
+							textTransform: "uppercase",
+							color: "var(--t-text-muted)",
+							marginBottom: 8,
+						}}
+					>
+						Filters
+					</div>
+					{/* Reproduce the SpotlightPanel band the surface sits on. */}
+					<div style={{ background: BAND_BG, borderRadius: 14, padding: 18 }}>
+						<MatchFiltersFieldList
+							filters={filters}
+							onFiltersChange={setFilters}
+							options={MOCK_FILTER_OPTIONS}
+							optionsState={optionsState}
+						/>
+					</div>
 				</div>
-				<MatchFiltersFieldList
-					filters={filters}
-					onFiltersChange={setFilters}
-					options={MOCK_FILTER_OPTIONS}
-					optionsState={optionsState}
-				/>
 			</div>
-		</div>
+		</ThemeHueProvider>
 	);
 }
 
-export const FieldList: Story<Args> = ({ preset, width, optionsState }) => (
+export const FieldList: Story<Args> = ({
+	preset,
+	width,
+	optionsState,
+	theme,
+}) => (
 	<Harness
-		key={`${preset}-${width}-${optionsState}`}
+		key={`${preset}-${width}-${optionsState}-${theme}`}
 		preset={preset}
 		width={width}
 		optionsState={optionsState}
+		theme={theme}
 	/>
 );
 FieldList.storyName = "Filters";
-FieldList.args = { preset: "a few active", width: 600, optionsState: "ready" };
+FieldList.args = {
+	preset: "a few active",
+	width: 520,
+	optionsState: "ready",
+	theme: "blue",
+};
 FieldList.argTypes = {
 	preset: { options: Object.keys(PRESETS), control: { type: "select" } },
 	width: { options: [380, 520, 600, 760], control: { type: "inline-radio" } },
 	optionsState: {
 		options: ["ready", "loading", "error"],
+		control: { type: "inline-radio" },
+	},
+	theme: {
+		options: Object.keys(themes) as ThemeColor[],
 		control: { type: "inline-radio" },
 	},
 };

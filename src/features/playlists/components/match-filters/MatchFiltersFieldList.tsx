@@ -21,6 +21,7 @@
  *     be dropped before options arrive, and only freezes during a save in flight.
  */
 
+import { CaretRightIcon } from "@phosphor-icons/react";
 import type { CSSProperties, ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { languageLabel } from "@/lib/domains/taste/match-filters/labels";
@@ -36,6 +37,7 @@ import {
 	deriveLiked,
 	eraLabel,
 	FACET_ICON,
+	type FacetIcon,
 	type FacetKey,
 	languageSummary,
 	likedLabel,
@@ -43,6 +45,7 @@ import {
 	yearToBounds,
 } from "./facet-helpers";
 import { LanguagePicker } from "./LanguagePicker";
+import "../playlist-ui.css";
 
 export type OptionsState = "ready" | "loading" | "error";
 
@@ -58,47 +61,36 @@ const c = {
 	onPrimary: "var(--t-text-on-primary)",
 } as const;
 
-function Icon({ path, active }: { path: string; active: boolean }) {
+function Icon({ icon: Glyph, active }: { icon: FacetIcon; active: boolean }) {
+	// Color via CSS (Phosphor fills with currentColor) so the active flip
+	// transitions; weight="regular" matches the rest of the app's icon set.
 	return (
-		<svg
-			width={16}
-			height={16}
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke={active ? c.primary : c.muted}
-			strokeWidth={1.4}
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			role="presentation"
+		<Glyph
+			size={16}
+			weight="regular"
 			aria-hidden="true"
-			style={{ flexShrink: 0, transition: `stroke 200ms ${EASE}` }}
-		>
-			<path d={path} />
-		</svg>
+			style={{
+				flexShrink: 0,
+				color: active ? c.primary : c.muted,
+				transition: `color 200ms ${EASE}`,
+			}}
+		/>
 	);
 }
 
 function Chevron({ open }: { open: boolean }) {
 	return (
-		<svg
-			width={14}
-			height={14}
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke={c.muted}
-			strokeWidth={1.4}
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			role="presentation"
+		<CaretRightIcon
+			size={14}
+			weight="regular"
 			aria-hidden="true"
 			style={{
 				flexShrink: 0,
+				color: c.muted,
 				transform: open ? "rotate(90deg)" : "rotate(0deg)",
 				transition: `transform 200ms ${EASE}`,
 			}}
-		>
-			<path d="M6 4l4 4-4 4" />
-		</svg>
+		/>
 	);
 }
 
@@ -118,7 +110,7 @@ function Expand({ open, children }: { open: boolean; children: ReactNode }) {
 }
 
 function FacetRow({
-	iconPath,
+	icon,
 	label,
 	value,
 	open,
@@ -127,7 +119,7 @@ function FacetRow({
 	removeDisabled,
 	children,
 }: {
-	iconPath: string;
+	icon: FacetIcon;
 	label: string;
 	value: string | null;
 	open: boolean;
@@ -138,7 +130,12 @@ function FacetRow({
 }) {
 	const active = value !== null;
 	return (
-		<div style={{ borderBottom: `1px solid ${c.border}` }}>
+		<div
+			style={{
+				borderBottom:
+					"1px solid color-mix(in srgb, var(--t-text) 9%, transparent)",
+			}}
+		>
 			<div style={{ display: "flex", alignItems: "center" }}>
 				<button
 					type="button"
@@ -159,7 +156,7 @@ function FacetRow({
 						font: "inherit",
 					}}
 				>
-					<Icon path={iconPath} active={active} />
+					<Icon icon={icon} active={active} />
 					<span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>
 						{label}
 					</span>
@@ -184,6 +181,7 @@ function FacetRow({
 						onClick={onRemove}
 						disabled={removeDisabled}
 						aria-label={`Remove ${label} filter`}
+						className="mf-remove"
 						style={{
 							display: "grid",
 							placeItems: "center",
@@ -194,9 +192,6 @@ function FacetRow({
 							borderRadius: 999,
 							border: "none",
 							background: "transparent",
-							color: c.muted,
-							cursor: removeDisabled ? "default" : "pointer",
-							opacity: removeDisabled ? 0.4 : 1,
 							font: "inherit",
 							fontSize: 15,
 							lineHeight: 1,
@@ -249,6 +244,7 @@ function VocalsSegment({
 						type="button"
 						disabled={disabled}
 						aria-pressed={selected}
+						className="mf-seg"
 						onClick={() => onChange(o.key === "any" ? undefined : o.key)}
 						style={{
 							padding: "5px 14px",
@@ -259,7 +255,6 @@ function VocalsSegment({
 							fontWeight: 500,
 							color: selected ? c.onPrimary : c.text,
 							background: selected ? c.primary : "transparent",
-							transition: `background 180ms ${EASE}, color 180ms ${EASE}`,
 						}}
 					>
 						{o.label}
@@ -270,30 +265,22 @@ function VocalsSegment({
 	);
 }
 
+// Layout only — the .mf-field class owns the well's border, fill, recessed
+// shadow and themed placeholder so the inputs read on the low-contrast band.
 function fieldStyle(): CSSProperties {
 	return {
 		width: 92,
 		padding: "7px 10px",
-		borderRadius: 8,
-		border: `1px solid ${c.border}`,
-		background: c.surface,
-		color: c.text,
 		fontSize: 13,
 		fontVariantNumeric: "tabular-nums",
 	};
 }
 
-function chipStyle(): CSSProperties {
-	return {
-		padding: "5px 10px",
-		borderRadius: 999,
-		border: `1px solid ${c.border}`,
-		background: c.dim,
-		color: c.text,
-		fontSize: 12,
-		cursor: "pointer",
-	};
-}
+// Layout only — the .mf-chip class owns the outline/pressed look and press feel.
+const chipLayout: CSSProperties = {
+	padding: "5px 10px",
+	fontSize: 12,
+};
 
 function EraEditor({
 	value,
@@ -360,6 +347,7 @@ function EraEditor({
 			<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
 				<input
 					key={`low-${bounds.low}`}
+					className="mf-field"
 					style={fieldStyle()}
 					inputMode="numeric"
 					placeholder={`From ${min}`}
@@ -371,6 +359,7 @@ function EraEditor({
 				<span style={{ color: c.muted, fontSize: 13 }}>to</span>
 				<input
 					key={`high-${bounds.high}`}
+					className="mf-field"
 					style={fieldStyle()}
 					inputMode="numeric"
 					placeholder={`To ${max}`}
@@ -392,14 +381,8 @@ function EraEditor({
 							type="button"
 							disabled={disabled}
 							aria-pressed={selected}
-							style={{
-								...chipStyle(),
-								cursor: disabled ? "default" : "pointer",
-								opacity: disabled ? 0.5 : 1,
-								background: selected ? c.primary : c.dim,
-								color: selected ? c.onPrimary : c.text,
-								borderColor: selected ? c.primary : c.border,
-							}}
+							className="mf-chip"
+							style={chipLayout}
 							onClick={() => clickDecade(d.lo, d.hi)}
 						>
 							{d.label}
@@ -455,6 +438,7 @@ function LikedEditor({
 			>
 				<input
 					key={`from-${from}`}
+					className="mf-field"
 					style={{ ...fieldStyle(), width: 124 }}
 					placeholder={`From ${oldest}`}
 					defaultValue={from}
@@ -469,15 +453,9 @@ function LikedEditor({
 					<button
 						type="button"
 						disabled={disabled}
-						style={{
-							...chipStyle(),
-							borderRadius: 8,
-							cursor: disabled ? "default" : "pointer",
-							opacity: disabled ? 0.5 : 1,
-							background: c.primary,
-							color: c.onPrimary,
-							borderColor: c.primary,
-						}}
+						aria-pressed={true}
+						className="mf-chip"
+						style={{ ...chipLayout, borderRadius: 8 }}
 						onClick={() => onChange(deriveLiked(from, "", false, oldest))}
 						aria-label="Rolling through today — tap to use a fixed end date instead"
 					>
@@ -487,6 +465,7 @@ function LikedEditor({
 					<>
 						<input
 							key={`to-${to}`}
+							className="mf-field"
 							style={{ ...fieldStyle(), width: 124 }}
 							placeholder={`To ${today}`}
 							defaultValue={to}
@@ -499,12 +478,8 @@ function LikedEditor({
 						<button
 							type="button"
 							disabled={disabled}
-							style={{
-								...chipStyle(),
-								borderRadius: 8,
-								cursor: disabled ? "default" : "pointer",
-								opacity: disabled ? 0.5 : 1,
-							}}
+							className="mf-chip"
+							style={{ ...chipLayout, borderRadius: 8 }}
 							onClick={() => onChange(deriveLiked(from, "", true, oldest))}
 						>
 							Through today
@@ -529,14 +504,8 @@ function LikedEditor({
 							type="button"
 							disabled={disabled}
 							aria-pressed={selected}
-							style={{
-								...chipStyle(),
-								cursor: disabled ? "default" : "pointer",
-								opacity: disabled ? 0.5 : 1,
-								background: selected ? c.primary : c.dim,
-								color: selected ? c.onPrimary : c.text,
-								borderColor: selected ? c.primary : c.border,
-							}}
+							className="mf-chip"
+							style={chipLayout}
 							onClick={() =>
 								onChange(
 									selected
@@ -633,7 +602,7 @@ export function MatchFiltersFieldList({
 	const facets: Array<{
 		key: FacetKey;
 		label: string;
-		icon: string;
+		icon: FacetIcon;
 		value: string | null;
 		editor: ReactNode;
 	}> = [
@@ -712,12 +681,24 @@ export function MatchFiltersFieldList({
 
 	return (
 		<div style={{ fontFamily: fonts.body }}>
+			{/* Section eyebrow parallel to "Matching intent" / "Genres" (same Label
+			    recipe), so the filters read as a peer section, not a stray block. */}
+			<span
+				className="text-[11px] font-medium uppercase tracking-[0.18em]"
+				style={{
+					display: "block",
+					marginBottom: 10,
+					color: "color-mix(in srgb, var(--t-text) 70%, var(--t-text-muted))",
+				}}
+			>
+				Filters
+			</span>
 			{optionsState !== "ready" && <OptionsStateNotice state={optionsState} />}
 
 			{visible.map((f) => (
 				<FacetRow
 					key={f.key}
-					iconPath={f.icon}
+					icon={f.icon}
 					label={f.label}
 					value={f.value}
 					open={open === f.key}
@@ -746,21 +727,9 @@ export function MatchFiltersFieldList({
 							disabled={editFrozen}
 							onClick={() => reveal(f.key)}
 							aria-label={`Add ${f.label} filter`}
-							style={{
-								display: "inline-flex",
-								alignItems: "center",
-								gap: 6,
-								padding: "6px 12px",
-								borderRadius: 999,
-								border: `1px dashed ${c.border}`,
-								background: "transparent",
-								color: c.text,
-								fontSize: 13,
-								cursor: editFrozen ? "default" : "pointer",
-								opacity: editFrozen ? 0.5 : 1,
-							}}
+							className="mf-add"
 						>
-							<Icon path={f.icon} active={false} />
+							<Icon icon={f.icon} active={false} />
 							{f.label}
 						</button>
 					))}
