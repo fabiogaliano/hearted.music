@@ -8,12 +8,12 @@ import {
 } from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
-import { GenrePillsPicker } from "../GenrePillsPicker";
 import type { DescriptionExample } from "./DescriptionExamplesShuffle";
 import { GenreChip } from "./GenreChip";
+import { GenrePillsPicker } from "./GenrePillsPicker";
 import { InfoTip } from "./InfoTip";
 import { IntentExamplesPopover } from "./IntentExamplesPopover";
-import "./playlist-explorations.css";
+import "./playlist-ui.css";
 
 const GENRE_MAX = 5;
 // Caution accent for the "can't be matched" notice — amber, not red: an unfilled
@@ -230,7 +230,10 @@ export function WritingSurface({
 					)}
 				</div>
 
-				<div className="xpl-genres xpl-reveal flex flex-col gap-2">
+				{/* z-10 keeps the genre search popover above the filter rows below it —
+				    they're sibling subtrees, so without an explicit order the later
+				    filter section can paint its chevrons over the open dropdown. */}
+				<div className="xpl-genres xpl-reveal relative z-10 flex flex-col gap-2">
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-1.5">
 							<Label>Genres</Label>
@@ -260,7 +263,9 @@ export function WritingSurface({
 					/>
 				</div>
 
-				{advancedFilters}
+				{advancedFilters && (
+					<div className="relative z-0">{advancedFilters}</div>
+				)}
 
 				<div className="flex flex-col gap-2">
 					{saveError && (

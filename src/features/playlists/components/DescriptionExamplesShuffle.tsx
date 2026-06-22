@@ -1,7 +1,7 @@
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import "./playlist-explorations.css";
+import "./playlist-ui.css";
 
 export interface DescriptionExample {
 	description: string;

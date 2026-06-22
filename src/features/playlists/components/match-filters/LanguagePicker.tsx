@@ -1,5 +1,5 @@
 /**
- * Direction B — Trigger → floating command-palette popover.
+ * LanguagePicker — trigger → floating command-palette popover.
  *
  * A compact trigger row (showing selected chips) opens a full-width overlay
  * with a search input at the top and a scrollable options list below.
@@ -29,13 +29,25 @@ import type {
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
 import { fonts } from "@/lib/theme/fonts";
-import "../playlist-explorations.css";
+import "../playlist-ui.css";
 
 export interface LanguagePickerProps {
 	filters: PlaylistMatchFiltersV1;
 	onFiltersChange: (next: PlaylistMatchFiltersV1) => void;
 	options: PlaylistMatchFilterOptions;
 	disabled?: boolean;
+	/**
+	 * True while a save is in flight. Unlike `disabled` (options loading/error,
+	 * where chips stay removable per §7), a pending save also freezes chip removal
+	 * so a removal can't be lost when the save reconciles the submitted draft.
+	 */
+	isSaving?: boolean;
+	/**
+	 * Visually hide the built-in "Language" eyebrow when the picker is nested under
+	 * a row that already names the facet. The label stays in the DOM (sr-only) so
+	 * the trigger's aria-labelledby accessible name is preserved.
+	 */
+	hideLabel?: boolean;
 }
 
 function buildDetectedCounts(
@@ -50,11 +62,13 @@ function buildDetectedCounts(
 	return map;
 }
 
-export function LanguagePickerCommandPalette({
+export function LanguagePicker({
 	filters,
 	onFiltersChange,
 	options,
 	disabled = false,
+	isSaving = false,
+	hideLabel = false,
 }: LanguagePickerProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -196,7 +210,11 @@ export function LanguagePickerCommandPalette({
 	return (
 		<div ref={containerRef} style={{ fontFamily: fonts.body }}>
 			<div
-				className="text-[11px] tracking-[0.08em] uppercase theme-text-muted mb-2"
+				className={
+					hideLabel
+						? "sr-only"
+						: "text-[11px] tracking-[0.08em] uppercase theme-text-muted mb-2"
+				}
 				id={`${baseId}-label`}
 			>
 				Language
@@ -218,8 +236,9 @@ export function LanguagePickerCommandPalette({
 								<button
 									type="button"
 									onClick={() => removeCode(code)}
+									disabled={isSaving}
 									aria-label={`Remove ${languageLabel(code)} language`}
-									className="grid size-[14px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 theme-text-muted hover:theme-text"
+									className="grid size-[14px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 theme-text-muted hover:theme-text disabled:cursor-default disabled:opacity-50"
 								>
 									<XIcon size={8} weight="bold" aria-hidden />
 								</button>

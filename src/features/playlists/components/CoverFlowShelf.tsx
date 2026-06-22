@@ -10,7 +10,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
 import { ShelfCaption } from "./ShelfCaption";
 import type { PlaylistSummary } from "./types";
-import "./playlist-explorations.css";
+import "./playlist-ui.css";
 
 const prefersReduced = () =>
 	typeof window !== "undefined" &&
