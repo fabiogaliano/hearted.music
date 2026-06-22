@@ -23,10 +23,11 @@ const CAUTION = "hsl(36, 72%, 44%)";
 const EMPTY_DESCRIPTION =
 	"Your liked songs find their way here by what you write. Describe what this playlist is for — a moment, a feeling, a sound.";
 
-// Eyebrows + the Edit affordance: weighted 70% toward full ink so they clear
-// 4.5:1 on the darker masthead band (measured — 55% landed at ~4.0, just under).
-const EYEBROW_COLOR =
-	"color-mix(in srgb, var(--t-text) 70%, var(--t-text-muted))";
+// Section eyebrows + the Edit affordance. Direction B moved the writing surface
+// onto the lighter --t-surface plane, so the standard muted token clears 4.5:1
+// easily — no need for the band-era 70%-ink boost. Matches every other section
+// label in the app.
+const EYEBROW_COLOR = "var(--t-text-muted)";
 
 interface WritingSurfaceProps {
 	description: string | null;
@@ -175,15 +176,20 @@ export function WritingSurface({
 			rows={1}
 			disabled={isSaving}
 			readOnly={lockManualEntry}
-			className={`theme-text w-full resize-none overflow-hidden bg-transparent p-0 outline-none placeholder:text-(--t-text-muted) disabled:opacity-60 ${lockManualEntry ? "cursor-default" : ""} ${intentClass}`}
+			className={`theme-text w-full max-w-[56ch] resize-none overflow-hidden bg-transparent p-0 outline-none placeholder:text-(--t-text-muted) disabled:opacity-60 ${lockManualEntry ? "cursor-default" : ""} ${intentClass}`}
 			style={{ fontFamily: intentFont }}
 		/>
 	);
 
 	if (isEditing) {
 		return (
-			<div className="relative flex flex-col gap-7">
-				<div className="flex flex-col gap-1.5">
+			// gap-0: the flat .match-zone sections own their own vertical rhythm
+			// (padding + a hairline rule between them) on the lifted surface plane.
+			// Same lit tint + -mx-3 bleed as the collapsed region so entering edit
+			// keeps the block lit with no colour jump — the hover settles into a
+			// persistent state rather than swapping to a bare surface.
+			<div className="relative -mx-3 flex flex-col bg-[color-mix(in_srgb,var(--t-surface)_55%,transparent)] px-3 py-3">
+				<div className="match-zone flex flex-col gap-1.5">
 					<div className="flex items-center gap-1.5">
 						<Label>Matching intent</Label>
 						{!lockManualEntry &&
@@ -233,7 +239,7 @@ export function WritingSurface({
 				{/* z-10 keeps the genre search popover above the filter rows below it —
 				    they're sibling subtrees, so without an explicit order the later
 				    filter section can paint its chevrons over the open dropdown. */}
-				<div className="xpl-genres xpl-reveal relative z-10 flex flex-col gap-2">
+				<div className="match-zone xpl-genres xpl-reveal relative z-10 flex flex-col gap-2">
 					<div className="flex items-center justify-between gap-2">
 						<div className="flex items-center gap-1.5">
 							<Label>Genres</Label>
@@ -264,10 +270,21 @@ export function WritingSurface({
 				</div>
 
 				{advancedFilters && (
-					<div className="relative z-0">{advancedFilters}</div>
+					// Reveals with the genre region (same entrance) since it too is new
+					// in edit mode; a small delay cascades it just after genres so the
+					// new editable regions arrive in reading order, not all at once.
+					<div
+						className="match-zone xpl-reveal relative z-0"
+						style={{ animationDelay: "50ms" }}
+					>
+						{advancedFilters}
+					</div>
 				)}
 
-				<div className="flex flex-col gap-2">
+				<div
+					className="xpl-reveal flex flex-col gap-2 pt-4"
+					style={{ animationDelay: "90ms" }}
+				>
 					{saveError && (
 						<p
 							role="alert"
@@ -313,7 +330,13 @@ export function WritingSurface({
 	}
 
 	return (
-		<div className="relative flex flex-col gap-4">
+		// The whole collapsed config (intent + genres + filters) is one editable
+		// unit — each row opens the same editor — so it hovers as one region rather
+		// than three. A background-only row hover (the house card/row idiom) lights
+		// the block; the "Edit" eyebrow brightens with it via group-hover/edit, so
+		// the cue fires no matter which row the cursor is over. The -mx-3/px-3 bleed
+		// gives the hover fill some air past the text without shifting resting layout.
+		<div className="group/edit relative -mx-3 flex flex-col gap-4 px-3 py-3 transition-colors duration-150 ease-[var(--ease-out-quart)] hover:bg-[color-mix(in_srgb,var(--t-surface)_55%,transparent)] motion-reduce:transition-none">
 			{!hideUnmatchableWarning && !description && genres.length === 0 && (
 				<div
 					className="flex items-start gap-2.5 border-l-2 px-3 py-2.5"
@@ -342,19 +365,19 @@ export function WritingSurface({
 			<button
 				type="button"
 				onClick={enterDescription}
-				className="group/desc block w-full cursor-pointer text-left"
+				className="block w-full cursor-pointer text-left"
 			>
 				<div className="flex items-baseline justify-between gap-4">
 					<Label>Matching intent</Label>
 					<span
-						className="flex-none text-[11px] tracking-[0.12em] text-[color-mix(in_srgb,var(--t-text)_70%,var(--t-text-muted))] uppercase transition-colors duration-150 group-hover/desc:text-(--t-text)"
+						className="flex-none text-[11px] tracking-[0.12em] text-(--t-text-muted) uppercase transition-colors duration-150 group-hover/edit:text-(--t-text)"
 						style={{ fontFamily: fonts.body }}
 					>
 						Edit
 					</span>
 				</div>
 				<p
-					className={`mt-1.5 text-pretty ${intentClass} ${description ? "theme-text" : "theme-text-muted"}`}
+					className={`mt-1.5 max-w-[56ch] text-pretty ${intentClass} ${description ? "theme-text" : "theme-text-muted"}`}
 					style={{
 						fontFamily: intentFont,
 						viewTransitionName: descriptionViewTransitionName,

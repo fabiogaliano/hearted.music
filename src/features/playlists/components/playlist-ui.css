@@ -119,11 +119,12 @@
 }
 
 /* The shared GenrePillsPicker is styled for a light surface; on the writing
-   surface's darker band its hairline border, muted labels and tint chips go
-   low-contrast (the same value problem the masthead pass fixed). These overrides
-   are scoped to .xpl-genres so prod styles.css is untouched, and the higher
-   specificity (.xpl-genres .genre-picker …) wins regardless of load order. The
-   popover stays as-is — it's its own --t-surface card and already reads fine. */
+   surface's --t-surface-dim band (a tonal step below the page bg) its default
+   theme-border hairline goes near-invisible (only ~4% darker than the band), so
+   the dashed pill and suggestion outlines need an ink-mixed edge to read. These
+   overrides are scoped to .xpl-genres so prod styles.css is untouched, and the
+   higher specificity (.xpl-genres .genre-picker …) wins regardless of load
+   order. The popover stays as-is — it's its own --t-surface card. */
 /* The picker's built-in meter is replaced by the writing surface's own Genres
    header — same <Label> component as Intent (so the two read identically) plus an
    info affordance — so hide the prod one. */
@@ -144,20 +145,20 @@
 .xpl-genres .genre-picker .gp-chip-x:disabled {
 	cursor: default;
 }
-/* The "+ add genre" input pill + its prefix/placeholder need a darker edge and
+/* The "+ add genre" input pill + its prefix/placeholder need an ink-mixed edge and
    readable hint text against the band. */
 .xpl-genres .genre-picker .gp-pill {
-	border-color: color-mix(in srgb, var(--t-text) 60%, transparent);
+	border-color: color-mix(in srgb, var(--t-text) 45%, transparent);
 }
 .xpl-genres .genre-picker .gp-pill-prefix,
 .xpl-genres .genre-picker .gp-pill-input::placeholder {
-	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
+	color: color-mix(in srgb, var(--t-text) 55%, var(--t-text-muted));
 	opacity: 1;
 }
 /* Quick-pick suggestion outlines. */
 .xpl-genres .genre-picker .gp-opt {
-	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
-	border-color: color-mix(in srgb, var(--t-text) 35%, transparent);
+	color: color-mix(in srgb, var(--t-text) 55%, var(--t-text-muted));
+	border-color: color-mix(in srgb, var(--t-text) 30%, transparent);
 }
 .xpl-genres .genre-picker .gp-opt:hover {
 	color: var(--t-text);
@@ -169,4 +170,218 @@
    muted state. The over-cap shake is what signals "can't add". */
 .xpl-genres .genre-picker {
 	--t-invalid: var(--t-text-muted);
+}
+
+/* ── Match-intent section zones (Direction B) ──────────────────────────────
+   The whole match-intent area (Matching intent / Genres / Filters) now sits on
+   ONE lifted --t-surface plane owned by the panel (SpotlightPanel's intent-zone).
+   So each section is flat and square — separated from the next by a single
+   hairline rule (the same color-mix(--t-text 9%) the filter FacetRows use), with
+   vertical padding for rhythm. No card: no radius, no fill, no shadow. Horizontal
+   padding comes from the plane, so the rule insets to the content column. No
+   overflow:hidden — the genre search popover is absolutely positioned and must
+   escape the section. */
+.match-zone {
+	padding: 16px 0;
+	border-bottom: 1px solid color-mix(in srgb, var(--t-text) 9%, transparent);
+}
+/* The last section before the Save/Cancel actions carries no rule — the plane's
+   own bottom border closes the group. */
+.match-zone:last-of-type {
+	border-bottom: 0;
+}
+
+/* ── Match-filters edit surface ───────────────────────────────────────────
+   The editor shares the writing surface's hue-band with the Matching-intent and
+   Genres sections directly above it, so it speaks THEIR chip language instead of
+   boxing itself into a separate container (a card here reads as a foreign unit).
+   The grammar, lifted from the genre picker (.xpl-genres overrides):
+       selected value → solid --t-primary chip   (like a chosen genre)
+       option         → outline chip               (like a genre suggestion)
+       unset facet    → dashed "add" pill          (like "+ add genre")
+   Borders + labels mix from --t-text so they clear the band — the same values the
+   genre picker uses, so the two sections read as one family. */
+
+/* Numeric / date entry — a clearly-distinct field is allowed to differ from the
+   transparent chips; a faint recess + a firm border reads as editable. */
+.mf-field {
+	border-radius: 8px;
+	border: 1px solid color-mix(in srgb, var(--t-text) 28%, transparent);
+	background: color-mix(in srgb, var(--t-text) 6%, transparent);
+	color: var(--t-text);
+	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--t-text) 6%, transparent);
+	transition:
+		border-color 150ms ease,
+		box-shadow 150ms ease;
+}
+.mf-field::placeholder {
+	color: var(--t-text-muted);
+}
+.mf-field:hover:not(:disabled) {
+	border-color: color-mix(in srgb, var(--t-text) 42%, transparent);
+}
+.mf-field:disabled {
+	opacity: 0.55;
+	cursor: default;
+}
+
+/* Option chip — mirrors .xpl-genres .gp-opt (outline, label mixed off --t-text). */
+.mf-chip {
+	border-radius: 999px;
+	border: 1px solid color-mix(in srgb, var(--t-text) 35%, transparent);
+	background: transparent;
+	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
+	cursor: pointer;
+	white-space: nowrap;
+	transition:
+		background-color 150ms ease,
+		border-color 150ms ease,
+		color 150ms ease,
+		transform 150ms var(--ease-out-quart);
+}
+.mf-chip:hover:not(:disabled) {
+	color: var(--t-text);
+	border-color: var(--t-text-muted);
+	background: color-mix(in srgb, var(--t-text) 7%, transparent);
+}
+.mf-chip:active:not(:disabled) {
+	transform: scale(0.96);
+}
+.mf-chip:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+/* Selected value — solid primary, identical to a chosen genre chip. */
+.mf-chip[aria-pressed="true"] {
+	background: var(--t-primary);
+	border-color: transparent;
+	color: var(--t-text-on-primary);
+}
+.mf-chip[aria-pressed="true"]:hover:not(:disabled) {
+	background: var(--t-primary-hover);
+	border-color: transparent;
+}
+
+/* Unset facet — dashed add pill, mirroring "+ add genre" (.xpl-genres .gp-pill). */
+.mf-add {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: 999px;
+	border: 1px dashed color-mix(in srgb, var(--t-text) 50%, transparent);
+	background: transparent;
+	color: color-mix(in srgb, var(--t-text) 72%, var(--t-text-muted));
+	font-size: 13px;
+	cursor: pointer;
+	transition:
+		background-color 150ms ease,
+		border-color 150ms ease,
+		color 150ms ease,
+		transform 150ms var(--ease-out-quart);
+}
+.mf-add:hover:not(:disabled) {
+	color: var(--t-text);
+	border-color: var(--t-text-muted);
+	background: color-mix(in srgb, var(--t-text) 5%, transparent);
+}
+.mf-add:active:not(:disabled) {
+	transform: scale(0.96);
+}
+.mf-add:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.mf-seg {
+	transition:
+		background-color 180ms var(--ease-out-expo),
+		color 180ms var(--ease-out-expo),
+		transform 150ms var(--ease-out-quart);
+}
+.mf-seg:active:not(:disabled) {
+	transform: scale(0.96);
+}
+
+/* 28px visual, extended to a 40px hit target without disturbing the row. */
+.mf-remove {
+	position: relative;
+	color: var(--t-text-muted);
+	cursor: pointer;
+	transition:
+		color 150ms ease,
+		transform 150ms var(--ease-out-quart);
+}
+.mf-remove::after {
+	content: "";
+	position: absolute;
+	inset: -6px;
+}
+.mf-remove:hover:not(:disabled) {
+	color: var(--t-text);
+}
+.mf-remove:active:not(:disabled) {
+	transform: scale(0.9);
+}
+.mf-remove:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+/* Selected language tokens — a solid primary chip, identical to a chosen genre,
+   so "things you've picked" read the same in both sections. */
+.mf-lang-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	border-radius: 999px;
+	padding: 3px 10px;
+	color: var(--t-text-on-primary);
+	border: 1px solid transparent;
+	background: var(--t-primary);
+}
+.mf-lang-chip-x {
+	position: relative;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	margin-right: -2px;
+	border: 0;
+	padding: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	opacity: 0.7;
+	transition:
+		opacity 150ms ease,
+		transform 150ms var(--ease-out-quart);
+}
+/* 14px glyph extended to a 40px tap target. */
+.mf-lang-chip-x::after {
+	content: "";
+	position: absolute;
+	inset: -13px;
+}
+.mf-lang-chip-x:hover:not(:disabled) {
+	opacity: 1;
+}
+.mf-lang-chip-x:active:not(:disabled) {
+	transform: scale(0.9);
+}
+.mf-lang-chip-x:disabled {
+	opacity: 0.4;
+	cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mf-chip:active:not(:disabled),
+	.mf-add:active:not(:disabled),
+	.mf-seg:active:not(:disabled),
+	.mf-remove:active:not(:disabled),
+	.mf-lang-chip-x:active:not(:disabled) {
+		transform: none;
+	}
 }

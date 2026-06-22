@@ -44,15 +44,34 @@ describe("MatchFiltersSummary", () => {
 		expect(screen.queryByRole("tooltip")).toBeNull();
 	});
 
-	it("does not attach the hover list when two or fewer languages fit", () => {
+	it("names the facet on hover, even when the value isn't truncated", () => {
 		render(
 			<MatchFiltersSummary
-				filters={{ version: 1, languages: { codes: ["en", "pt"] } }}
+				filters={{
+					version: 1,
+					vocalGender: "female",
+					languages: { codes: ["en", "pt"] },
+				}}
 				onEdit={vi.fn()}
 			/>,
 		);
-		const value = screen.getByText("English, Portuguese");
-		fireEvent.pointerEnter(value);
+
+		// Nothing revealed until hover.
 		expect(screen.queryByRole("tooltip")).toBeNull();
+
+		// The vocals chip is just a mic glyph + "Female" — the value is already
+		// clear, so the tip names the facet only (no redundant value).
+		const vocals = screen.getByText("Female");
+		fireEvent.pointerEnter(vocals);
+		expect(screen.getByRole("tooltip").textContent).toBe("Vocals");
+		fireEvent.pointerLeave(vocals);
+		expect(screen.queryByRole("tooltip")).toBeNull();
+
+		// A language chip that fits still gains the name prefix.
+		const langs = screen.getByText("English, Portuguese");
+		fireEvent.pointerEnter(langs);
+		expect(screen.getByRole("tooltip")).toHaveTextContent(
+			"Language: English, Portuguese",
+		);
 	});
 });

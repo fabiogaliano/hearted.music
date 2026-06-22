@@ -229,8 +229,8 @@ export function LanguagePicker({
 				>
 					{selectedCodes.map((code) => (
 						<li key={code}>
-							<span className="inline-flex items-center gap-1 rounded-full border bg-(--t-surface-dim) px-2 py-0.5 theme-border-color xpl-chip-enter">
-								<span className="text-[11px] leading-none tracking-[0.04em] theme-text">
+							<span className="mf-lang-chip xpl-chip-enter">
+								<span className="text-[11px] leading-none tracking-[0.04em]">
 									{languageLabel(code)}
 								</span>
 								<button
@@ -238,9 +238,9 @@ export function LanguagePicker({
 									onClick={() => removeCode(code)}
 									disabled={isSaving}
 									aria-label={`Remove ${languageLabel(code)} language`}
-									className="grid size-[14px] shrink-0 cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 theme-text-muted hover:theme-text disabled:cursor-default disabled:opacity-50"
+									className="mf-lang-chip-x"
 								>
-									<XIcon size={8} weight="bold" aria-hidden />
+									<XIcon size={10} weight="bold" aria-hidden />
 								</button>
 							</span>
 						</li>

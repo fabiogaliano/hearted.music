@@ -20,39 +20,35 @@ import { fonts } from "@/lib/theme/fonts";
 import {
 	eraLabel,
 	FACET_ICON,
+	FACET_LABEL,
+	type FacetIcon,
 	type FacetKey,
 	languageSummary,
 	likedLabel,
 	vocalsLabel,
 } from "./facet-helpers";
 
-function SummaryIcon({ path }: { path: string }) {
+function SummaryIcon({ icon: Glyph }: { icon: FacetIcon }) {
 	return (
-		<svg
-			width={14}
-			height={14}
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="var(--t-text-muted)"
-			strokeWidth={1.4}
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			role="presentation"
+		<Glyph
+			size={14}
+			weight="regular"
+			color="var(--t-text-muted)"
 			aria-hidden="true"
 			style={{ flexShrink: 0 }}
-		>
-			<path d={path} />
-		</svg>
+		/>
 	);
 }
 
 /**
- * Pointer-hover reveal for the truncated language value. Supplementary, so it
- * carries no focusable trigger and stays valid inside the Edit-filters button.
- * The card is portalled to <body> with fixed positioning so the drawer's and the
- * collapsing band's overflow-hidden can't clip it to a sliver at the band edge.
+ * Pointer-hover reveal that names the facet (and shows its full value) for a
+ * chip that otherwise reads as just an icon + value. Supplementary, so it
+ * carries no focusable trigger and stays valid inside the Edit-filters button;
+ * keyboard users get the names by opening the editor. The card is portalled to
+ * <body> with fixed positioning so the drawer's and the collapsing band's
+ * overflow-hidden can't clip it to a sliver at the band edge.
  */
-function OverflowTip({ children, tip }: { children: ReactNode; tip: string }) {
+function HoverTip({ children, tip }: { children: ReactNode; tip: string }) {
 	const ref = useRef<HTMLSpanElement>(null);
 	const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 	const show = () => {
@@ -91,29 +87,39 @@ function OverflowTip({ children, tip }: { children: ReactNode; tip: string }) {
 	);
 }
 
+// Facets whose value is self-explanatory in the chip ("Female", "From 2000") —
+// their hover tip names the facet only, since repeating the value adds nothing.
+// Language and liked keep the value: language to reveal the truncated full list,
+// liked to spell out the date the chip abbreviates.
+const NAME_ONLY_TIP: ReadonlySet<FacetKey> = new Set(["vocals", "era"]);
+
+function facetTip(key: FacetKey, value: string, overflowAll?: string): string {
+	const name = FACET_LABEL[key];
+	return NAME_ONLY_TIP.has(key) ? name : `${name}: ${overflowAll ?? value}`;
+}
+
 function Chip({
 	icon,
 	value,
-	overflowAll,
+	tip,
 }: {
-	icon: string;
+	icon: FacetIcon;
 	value: string;
-	/** Full comma-joined list, shown on hover when the value is truncated. */
-	overflowAll?: string;
+	/** The hover-reveal text — names the facet the bare icon can't (see facetTip). */
+	tip: string;
 }) {
-	const text = (
-		<span
-			className="text-xs theme-text"
-			style={{ fontVariantNumeric: "tabular-nums" }}
-		>
-			{value}
-		</span>
-	);
 	return (
-		<span className="theme-border-color inline-flex items-center gap-1.5 rounded-full border bg-(--t-surface-dim) px-2.5 py-1 transition-colors duration-150 group-hover/filters:border-(--t-primary)">
-			<SummaryIcon path={icon} />
-			{overflowAll ? <OverflowTip tip={overflowAll}>{text}</OverflowTip> : text}
-		</span>
+		<HoverTip tip={tip}>
+			<span className="theme-border-color inline-flex items-center gap-1.5 rounded-full border bg-(--t-bg) px-2.5 py-1">
+				<SummaryIcon icon={icon} />
+				<span
+					className="text-xs theme-text"
+					style={{ fontVariantNumeric: "tabular-nums" }}
+				>
+					{value}
+				</span>
+			</span>
+		</HoverTip>
 	);
 }
 
@@ -127,7 +133,7 @@ export function MatchFiltersSummary({
 }) {
 	const items: Array<{
 		key: FacetKey;
-		icon: string;
+		icon: FacetIcon;
 		value: string;
 		overflowAll?: string;
 	}> = [];
@@ -178,7 +184,7 @@ export function MatchFiltersSummary({
 				type="button"
 				onClick={onEdit}
 				aria-label="Edit filters"
-				className="group/filters flex w-fit cursor-pointer flex-wrap items-center gap-2 text-left"
+				className="flex w-fit cursor-pointer flex-wrap items-center gap-2 text-left"
 				style={{ fontFamily: fonts.body }}
 			>
 				{items.map((item) => (
@@ -186,7 +192,7 @@ export function MatchFiltersSummary({
 						key={item.key}
 						icon={item.icon}
 						value={item.value}
-						overflowAll={item.overflowAll}
+						tip={facetTip(item.key, item.value, item.overflowAll)}
 					/>
 				))}
 			</button>
@@ -204,7 +210,7 @@ export function MatchFiltersSummary({
 					<Chip
 						icon={item.icon}
 						value={item.value}
-						overflowAll={item.overflowAll}
+						tip={facetTip(item.key, item.value, item.overflowAll)}
 					/>
 				</li>
 			))}

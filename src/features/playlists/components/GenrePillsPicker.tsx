@@ -18,7 +18,9 @@ import {
 
 const DEFAULT_MAX_PILLS = 5;
 const DROPDOWN_LIMIT = 12;
-const SUGGESTION_LIMIT = 6;
+// A short, quiet row of quick picks — not a wall of options competing with the
+// chips you've already chosen (Direction B taming of the suggestion dump).
+const SUGGESTION_LIMIT = 3;
 
 interface GenrePillsPickerProps {
 	/** Canonical pills, controlled by the caller. */
