@@ -124,10 +124,14 @@ class MatchingService {
 		_profilingService: PlaylistProfilingService | null,
 		config?: Partial<MatchingConfig>,
 	) {
-		this.config = {
-			...DEFAULT_MATCHING_CONFIG,
-			...config,
-		};
+		const merged = { ...DEFAULT_MATCHING_CONFIG, ...config };
+		// noEmbeddingMode implies skipVectorScoring so the embedding factor is
+		// always 0, driving hasEmbedding=false in computeRawScored and causing
+		// computeAdaptiveWeights to redistribute the embedding weight onto
+		// audio+genre (see MatchingConfig.noEmbeddingMode for the exact math).
+		this.config = merged.noEmbeddingMode
+			? { ...merged, skipVectorScoring: true }
+			: merged;
 	}
 
 	/**
