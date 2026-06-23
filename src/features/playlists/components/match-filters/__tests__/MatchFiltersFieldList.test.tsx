@@ -151,4 +151,35 @@ describe("MatchFiltersFieldList — options loading (§7)", () => {
 
 		expect(screen.queryByText(/loading filter options/i)).toBeNull();
 	});
+
+	// Regression: a saved liked-date filter keeps the facet visible, so LikedEditor
+	// mounts even while options are still loading (likedAt.today === ""). Its preset
+	// spans call shiftDate(today, ...); shiftDate("") must not build an Invalid Date
+	// whose toISOString() throws a RangeError and crashes the panel before options arrive.
+	it("renders an active liked-date filter without crashing while options load", () => {
+		const LOADING_OPTIONS: PlaylistMatchFilterOptions = {
+			languages: [],
+			releaseYears: { min: null, max: null },
+			likedAt: { oldest: null, today: "", yearCounts: [] },
+		};
+		const LIKED_ACTIVE: PlaylistMatchFiltersV1 = {
+			version: 1,
+			likedAt: { kind: "after", startDate: "2021-06-01" },
+		};
+
+		expect(() =>
+			render(
+				<MatchFiltersFieldList
+					filters={LIKED_ACTIVE}
+					onFiltersChange={vi.fn()}
+					options={LOADING_OPTIONS}
+					optionsState="loading"
+				/>,
+			),
+		).not.toThrow();
+
+		expect(
+			screen.getByRole("button", { name: "Remove Liked date filter" }),
+		).toBeInTheDocument();
+	});
 });
