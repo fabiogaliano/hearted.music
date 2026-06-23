@@ -2,7 +2,7 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	get as getSongAnalysis,
-	insert as insertSongAnalysis,
+	upsert as upsertSongAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { recordLlmUsage } from "../llm-usage-queries";
@@ -13,7 +13,7 @@ import { runAllRules } from "../voice/tier1-rules";
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: vi.fn(),
-	insert: vi.fn(),
+	upsert: vi.fn(),
 }));
 vi.mock("../llm-usage-queries", () => ({
 	recordLlmUsage: vi.fn(),
@@ -89,7 +89,7 @@ describe("analyzeSong cache control", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(getSongAnalysis).mockResolvedValue(Result.ok(null) as any);
-		vi.mocked(insertSongAnalysis).mockResolvedValue(Result.ok({} as any));
+		vi.mocked(upsertSongAnalysis).mockResolvedValue(Result.ok({} as any));
 		vi.mocked(recordLlmUsage).mockResolvedValue(Result.ok(undefined));
 	});
 
@@ -130,7 +130,7 @@ describe("analyzeSong cache control", () => {
 
 		expect(Result.isOk(result)).toBe(true);
 		expect(generateObject).toHaveBeenCalledTimes(1);
-		expect(insertSongAnalysis).toHaveBeenCalledTimes(1);
+		expect(upsertSongAnalysis).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -181,7 +181,7 @@ describe("analyzeSong cleanup pass", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.mocked(getSongAnalysis).mockResolvedValue(Result.ok(null) as any);
-		vi.mocked(insertSongAnalysis).mockResolvedValue(Result.ok({} as any));
+		vi.mocked(upsertSongAnalysis).mockResolvedValue(Result.ok({} as any));
 		vi.mocked(recordLlmUsage).mockResolvedValue(Result.ok(undefined));
 	});
 
@@ -208,7 +208,7 @@ describe("analyzeSong cleanup pass", () => {
 		// generation call + at least one rewrite pass
 		expect(generateObject.mock.calls.length).toBeGreaterThanOrEqual(2);
 
-		const insertArg = vi.mocked(insertSongAnalysis).mock.calls[0][0];
+		const insertArg = vi.mocked(upsertSongAnalysis).mock.calls[0][0];
 		const stored = insertArg.analysis as unknown as SongRead;
 		expect(stored.take).toBe(cleanRead.take);
 		expect(
@@ -271,7 +271,7 @@ describe("analyzeSong cleanup pass", () => {
 		expect(generateObject).toHaveBeenCalledTimes(1);
 
 		// No rewrite ran, so cleanup columns stay null (not 0) for instrumentals.
-		const insertArg = vi.mocked(insertSongAnalysis).mock.calls[0][0];
+		const insertArg = vi.mocked(upsertSongAnalysis).mock.calls[0][0];
 		expect(insertArg.cleanup_passes).toBeNull();
 		expect(insertArg.cleanup_tells_before).toBeNull();
 		expect(insertArg.cleanup_tells_after).toBeNull();

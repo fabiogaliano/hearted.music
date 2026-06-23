@@ -19,7 +19,7 @@
 import { Result } from "better-result";
 import postgres from "postgres";
 import { env } from "@/env";
-import { insert as insertSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
+import { upsert as upsertSongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import {
 	SongReadSchema,
 	type SongRead,
@@ -134,7 +134,7 @@ async function main() {
 		if (WRITE) {
 			// Preserve the stored audio_features sub-object; only the read prose changes.
 			const cleanedBlob = { ...storedBlob, ...res.read };
-			const stored = await insertSongAnalysis({
+			const stored = await upsertSongAnalysis({
 				song_id: row.song_id,
 				analysis: cleanedBlob as never,
 				model: row.model,

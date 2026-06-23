@@ -98,29 +98,34 @@ export async function get(
 // ============================================================================
 
 /**
- * Inserts a new song analysis record.
- * Multiple analyses can exist per song (different models/versions).
+ * Upserts a song analysis record, keyed on (song_id, model, prompt_version).
+ * A re-run with the same model + prompt overwrites in place; a model or prompt
+ * change creates a new row (cross-version history is preserved).
+ *
+ * Routed through the upsert_song_analysis RPC rather than supabase-js .upsert()
+ * because the conflict UPDATE must bump created_at to the server clock — the
+ * enrichment selector compares latest_analysis.created_at against lyrics/embedding
+ * timestamps to terminate the reanalyze and re-embed loops, and supabase-js cannot
+ * express now() in an upsert. See migration 20260623170000_song_analysis_upsert.
  */
-export function insert(
+export function upsert(
 	data: InsertData,
 ): Promise<Result<SongAnalysis, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
 		supabase
-			.from("song_analysis")
-			.insert({
-				song_id: data.song_id,
-				analysis: data.analysis as Json,
-				model: data.model,
-				prompt_version: data.prompt_version ?? null,
-				tokens_used: data.tokens_used ?? null,
-				cost_cents: data.cost_cents ?? null,
-				cleanup_passes: data.cleanup_passes ?? null,
-				cleanup_tells_before: data.cleanup_tells_before ?? null,
-				cleanup_tells_after: data.cleanup_tells_after ?? null,
-				cleanup_error: data.cleanup_error ?? null,
+			.rpc("upsert_song_analysis", {
+				p_song_id: data.song_id,
+				p_analysis: data.analysis as Json,
+				p_model: data.model,
+				p_prompt_version: data.prompt_version ?? undefined,
+				p_tokens_used: data.tokens_used ?? undefined,
+				p_cost_cents: data.cost_cents ?? undefined,
+				p_cleanup_passes: data.cleanup_passes ?? undefined,
+				p_cleanup_tells_before: data.cleanup_tells_before ?? undefined,
+				p_cleanup_tells_after: data.cleanup_tells_after ?? undefined,
+				p_cleanup_error: data.cleanup_error ?? undefined,
 			})
-			.select()
 			.single(),
 	);
 }

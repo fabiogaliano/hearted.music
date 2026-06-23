@@ -3,9 +3,9 @@ import { z } from "zod";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import {
 	get as getSongAnalysis,
-	insert as insertSongAnalysis,
 	type SongAnalysis,
 	type InsertData as SongAnalysisInsertData,
+	upsert as upsertSongAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -255,7 +255,7 @@ export class SongAnalysisService {
 			input.audioFeatures,
 		);
 
-		const storeResult = await insertSongAnalysis({
+		const storeResult = await upsertSongAnalysis({
 			song_id: songId,
 			analysis: analysisData as SongAnalysisInsertData["analysis"],
 			model: llmResult.value.model,

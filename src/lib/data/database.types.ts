@@ -3858,6 +3858,45 @@ export type Database = {
 				};
 				Returns: undefined;
 			};
+			upsert_song_analysis: {
+				Args: {
+					p_analysis: Json;
+					p_cleanup_error?: string;
+					p_cleanup_passes?: number;
+					p_cleanup_tells_after?: number;
+					p_cleanup_tells_before?: number;
+					p_cost_cents?: number;
+					p_model: string;
+					p_prompt_version?: string;
+					p_song_id: string;
+					p_tokens_used?: number;
+				};
+				Returns: {
+					analysis: Json;
+					cleanup_error: string | null;
+					cleanup_passes: number | null;
+					cleanup_tells_after: number | null;
+					cleanup_tells_before: number | null;
+					cost_cents: number | null;
+					cost_usd: number | null;
+					created_at: string;
+					id: string;
+					input_tokens: number | null;
+					model: string;
+					output_tokens: number | null;
+					prompt_version: string | null;
+					provider: string | null;
+					song_id: string;
+					tokens_used: number | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "song_analysis";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			uuidv7: { Args: never; Returns: string };
 			validate_extension_token: {
 				Args: { p_token_hash: string };
