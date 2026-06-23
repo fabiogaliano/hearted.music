@@ -204,69 +204,55 @@ export class EmbeddingService {
 			return Result.ok({ succeeded: [], failed: [] });
 		}
 
-		// 1. Check for existing embeddings
-		const existingResult = await getSongEmbeddingsBatch(
-			songIds,
-			this.model,
-			"full",
-		);
+		// 1. Fetch existing embeddings and current analyses together. The cache
+		// decision compares the current analysis text hash to the stored
+		// content_hash — NOT mere row existence — so a re-analyzed song (e.g. late
+		// lyrics arriving) re-embeds instead of keeping its stale vector. embedSong
+		// already does this per-song; embedBatch must match or stale embeddings
+		// persist behind the existence check.
+		const [existingResult, analysesResult] = await Promise.all([
+			getSongEmbeddingsBatch(songIds, this.model, "full"),
+			getSongAnalysis(songIds),
+		]);
 		if (Result.isError(existingResult)) {
 			return Result.err(existingResult.error);
 		}
-		const existingMap = existingResult.value;
-
-		// Separate cached vs needs embedding
-		const cached: EmbedSongResult[] = [];
-		const needsEmbedding: string[] = [];
-
-		for (const songId of songIds) {
-			const existing = existingMap.get(songId);
-			if (existing) {
-				cached.push({ songId, embedding: existing, cached: true });
-			} else {
-				needsEmbedding.push(songId);
-			}
-		}
-
-		if (needsEmbedding.length === 0) {
-			return Result.ok({ succeeded: cached, failed: [] });
-		}
-
-		// 2. Get analyses for songs needing embedding
-		// Note: getSongAnalysis(string[]) returns Map<string, SongAnalysis>
-		const analysesResult = await getSongAnalysis(needsEmbedding);
 		if (Result.isError(analysesResult)) {
 			return Result.err(analysesResult.error);
 		}
+		const existingMap = existingResult.value;
 		const analysisMap = analysesResult.value;
 
-		// Separate songs with/without analysis
-		const embeddingInputs = await Promise.all(
-			needsEmbedding.map(async (songId) => {
+		const cached: EmbedSongResult[] = [];
+		const failed: Array<{ songId: string; error: string }> = [];
+		const toEmbed: Array<{ songId: string; text: string; hash: string }> = [];
+
+		await Promise.all(
+			songIds.map(async (songId) => {
+				const existing = existingMap.get(songId);
 				const songAnalysis = analysisMap.get(songId);
+
+				// No current analysis: cannot (re)embed. Surface an existing vector if
+				// present, otherwise record the missing-analysis failure.
 				if (!songAnalysis) {
-					return { kind: "failed" as const, songId, error: "Missing analysis" };
+					if (existing) {
+						cached.push({ songId, embedding: existing, cached: true });
+					} else {
+						failed.push({ songId, error: "Missing analysis" });
+					}
+					return;
 				}
 
 				const text = this.buildEmbeddingText(songAnalysis);
 				const hash = await this.hashContent(text);
-				return { kind: "embed" as const, songId, text, hash };
+
+				if (existing && existing.content_hash === hash) {
+					cached.push({ songId, embedding: existing, cached: true });
+				} else {
+					toEmbed.push({ songId, text, hash });
+				}
 			}),
 		);
-
-		const toEmbed: Array<{ songId: string; text: string; hash: string }> = [];
-		const failed: Array<{ songId: string; error: string }> = [];
-		for (const input of embeddingInputs) {
-			if (input.kind === "failed") {
-				failed.push({ songId: input.songId, error: input.error });
-			} else {
-				toEmbed.push({
-					songId: input.songId,
-					text: input.text,
-					hash: input.hash,
-				});
-			}
-		}
 
 		if (toEmbed.length === 0) {
 			return Result.ok({ succeeded: cached, failed });

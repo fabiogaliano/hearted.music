@@ -1,5 +1,9 @@
 import { Result } from "better-result";
-import { get } from "@/lib/domains/enrichment/content-analysis/queries";
+import {
+	get,
+	type SongAnalysis,
+} from "@/lib/domains/enrichment/content-analysis/queries";
+import type { SongEmbedding } from "@/lib/domains/enrichment/embeddings/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
@@ -7,6 +11,22 @@ import type { StageFailure, StageOutcome } from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_embedding" as const;
+
+/**
+ * An embedding is stale when it predates the song's latest analysis — a
+ * re-analyzed song (e.g. late lyrics arriving) writes a newer analysis row, so
+ * the prior vector no longer reflects the current analysis. Missing timestamps
+ * are treated as not-stale: with nothing to compare we leave the embedding be.
+ */
+function embeddingIsStale(
+	embedding: SongEmbedding,
+	analysis: SongAnalysis,
+): boolean {
+	const embeddedAt = Date.parse(embedding.created_at);
+	const analyzedAt = Date.parse(analysis.created_at);
+	if (Number.isNaN(embeddedAt) || Number.isNaN(analyzedAt)) return false;
+	return embeddedAt < analyzedAt;
+}
 
 export async function getReadyForSongEmbedding(
 	batchSongIds: string[],
@@ -28,7 +48,7 @@ export async function getReadyForSongEmbedding(
 		);
 	}
 
-	const analysisMap = analysisResult.value as Map<string, unknown>;
+	const analysisMap = analysisResult.value;
 	const embeddingsMap = embeddingsResult.value;
 
 	const ready: string[] = [];
@@ -36,9 +56,18 @@ export async function getReadyForSongEmbedding(
 	const done: string[] = [];
 
 	for (const id of batchSongIds) {
-		if (embeddingsMap.has(id)) {
-			done.push(id);
-		} else if (analysisMap.has(id)) {
+		const analysis = analysisMap.get(id);
+		const embedding = embeddingsMap.get(id);
+
+		if (embedding) {
+			// Existence alone is not "done": a stale embedding (older than the
+			// latest analysis) must be re-offered so the refreshed analysis embeds.
+			if (analysis && embeddingIsStale(embedding, analysis)) {
+				ready.push(id);
+			} else {
+				done.push(id);
+			}
+		} else if (analysis) {
 			ready.push(id);
 		} else {
 			notReady.push(id);

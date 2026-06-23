@@ -90,6 +90,48 @@ describe("getReadyForSongEmbedding", () => {
 		expect(result.notReady).toEqual(["s3"]);
 	});
 
+	it("re-offers a stale embedding (older than the latest analysis) as ready", async () => {
+		mockGetEmbeddings.mockResolvedValue(
+			Result.ok(
+				new Map([
+					["s1", { song_id: "s1", created_at: "2026-01-01T00:00:00Z" }],
+				]),
+			),
+		);
+		mockGetAnalysis.mockResolvedValue(
+			Result.ok(new Map([["s1", { created_at: "2026-02-01T00:00:00Z" }]])),
+		);
+
+		const result = await getReadyForSongEmbedding(
+			["s1"],
+			makeCtx().embeddingService,
+		);
+
+		expect(result.ready).toEqual(["s1"]);
+		expect(result.done).toEqual([]);
+	});
+
+	it("keeps a current embedding (at least as new as the analysis) as done", async () => {
+		mockGetEmbeddings.mockResolvedValue(
+			Result.ok(
+				new Map([
+					["s1", { song_id: "s1", created_at: "2026-02-01T00:00:00Z" }],
+				]),
+			),
+		);
+		mockGetAnalysis.mockResolvedValue(
+			Result.ok(new Map([["s1", { created_at: "2026-01-01T00:00:00Z" }]])),
+		);
+
+		const result = await getReadyForSongEmbedding(
+			["s1"],
+			makeCtx().embeddingService,
+		);
+
+		expect(result.done).toEqual(["s1"]);
+		expect(result.ready).toEqual([]);
+	});
+
 	it("throws when analysis lookup fails", async () => {
 		mockGetAnalysis.mockResolvedValue(
 			Result.err({ message: "connection refused" }),

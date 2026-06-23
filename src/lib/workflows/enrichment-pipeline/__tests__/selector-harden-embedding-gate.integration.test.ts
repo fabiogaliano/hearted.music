@@ -199,6 +199,22 @@ describe.skipIf(!IS_LOCAL)(
 
 			await insertAnalysis(f.songId);
 
+			// Settle the lyrics outcome (confirmed instrumental) so the lyrics-refresh
+			// probe does not re-open needs_analysis — this isolates the embedding gate.
+			await supabase
+				.from("song_lyrics")
+				.insert({
+					song_id: f.songId,
+					source: "genius",
+					document: null,
+					content_hash: "no-content",
+					has_annotations: false,
+					schema_version: 0,
+					fetch_status: "instrumental",
+					fetch_source: "genius",
+				})
+				.throwOnError();
+
 			const rows = await callSelector(f.accountId);
 			const row = rows.find((r) => r.song_id === f.songId);
 
@@ -231,6 +247,36 @@ describe.skipIf(!IS_LOCAL)(
 
 			// Fully enriched — may still appear for other stages but not embedding
 			expect(row?.needs_embedding ?? false).toBe(false);
+		});
+
+		it("embedding older than the latest analysis → needs_embedding is TRUE (stale refresh)", async () => {
+			// A re-analysis (late lyrics) writes a newer analysis row; an embedding
+			// created before it is stale and must be re-offered so the refreshed,
+			// lyrics-informed analysis embeds instead of keeping the old vector.
+			if (!supabase || !fixture) throw new Error("missing");
+			const f = fixture;
+
+			await insertAnalysis(f.songId);
+
+			const past = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+			await supabase
+				.from("song_embedding")
+				.insert({
+					song_id: f.songId,
+					kind: "song_analysis",
+					model: "test-model",
+					model_version: "1",
+					dims: 512,
+					content_hash: "stale-embed-hash",
+					embedding: ZERO_VECTOR,
+					created_at: past,
+				})
+				.throwOnError();
+
+			const rows = await callSelector(f.accountId);
+			const row = rows.find((r) => r.song_id === f.songId);
+
+			expect(row?.needs_embedding).toBe(true);
 		});
 
 		// ── Incident scenario: blocked analysis + no analysis row ─────────────────
