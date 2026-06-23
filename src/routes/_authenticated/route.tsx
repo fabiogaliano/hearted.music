@@ -19,6 +19,7 @@ import { ListIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
+	type ErrorComponentProps,
 	Outlet,
 	redirect,
 	useLocation,
@@ -26,6 +27,7 @@ import {
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "sonner";
 import { ConsentBanner } from "@/components/consent/ConsentBanner";
+import { RouteErrorFallback } from "@/components/RouteErrorFallback";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWelcomeDialog";
@@ -43,6 +45,7 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
+import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { sendVerificationEmail } from "@/lib/platform/auth/auth-client";
 import {
@@ -69,7 +72,17 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 		)
 	: null;
 
+function AuthenticatedErrorComponent({ error }: ErrorComponentProps) {
+	useEffect(() => {
+		console.error("[AuthenticatedError]", error);
+		captureRouteError(error, { route: "_authenticated" });
+	}, [error]);
+
+	return <RouteErrorFallback />;
+}
+
 export const Route = createFileRoute("/_authenticated")({
+	errorComponent: AuthenticatedErrorComponent,
 	beforeLoad: async ({ location, context }) => {
 		const { queryClient } = context;
 
