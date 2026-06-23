@@ -58,9 +58,9 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 			staleTime: 0,
 		});
 
-		// Completed onboarding? Go to dashboard
+		// Completed onboarding? Go to the real playlists screen
 		if (data.session.status === "complete") {
-			throw redirect({ to: "/dashboard" });
+			throw redirect({ to: "/playlists" });
 		}
 
 		// Step progression validation

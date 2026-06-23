@@ -676,7 +676,7 @@ describe("ClaimHandleStep", () => {
 		}
 	});
 
-	it("claimed with complete session: navigates to /dashboard", async () => {
+	it("claimed with complete session: navigates to /playlists", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 		const onboarding = makeOnboarding("complete");
 		mockClaimHandleAndAdvance.mockResolvedValue({
@@ -698,7 +698,7 @@ describe("ClaimHandleStep", () => {
 
 		await waitFor(() => {
 			expect(mockNavigate).toHaveBeenCalledWith(
-				expect.objectContaining({ to: "/dashboard" }),
+				expect.objectContaining({ to: "/playlists" }),
 			);
 		});
 	});
@@ -1222,7 +1222,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	// Test 6: Intermediate-step navigation via resolveSession.
-	// Complements the existing "claimed with complete session → /dashboard" test.
+	// Complements the existing "claimed with complete session → /playlists" test.
 	// Uses plan-selection — the real post-claim advance target — which still maps
 	// to /onboarding?step=, exercising the search-param navigation branch.
 	it("claimed with intermediate session: navigates to /onboarding?step=plan-selection via resolveSession", async () => {
@@ -1254,9 +1254,10 @@ describe("ClaimHandleStep", () => {
 				}),
 			);
 		});
-		// Must NOT navigate to /dashboard for a non-complete step.
+		// Must NOT navigate to /playlists (the complete destination) for a
+		// non-complete step.
 		expect(mockNavigate).not.toHaveBeenCalledWith(
-			expect.objectContaining({ to: "/dashboard" }),
+			expect.objectContaining({ to: "/playlists" }),
 		);
 	});
 

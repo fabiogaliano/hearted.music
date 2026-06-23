@@ -4,8 +4,7 @@ export type AllowedPath =
 	| "/onboarding"
 	| "/playlists"
 	| "/liked-songs"
-	| "/match"
-	| "/dashboard";
+	| "/match";
 
 /**
  * Route resolution from the canonical session.
@@ -26,8 +25,11 @@ export function resolveSession(session: OnboardingSession): {
 		// song/match walkthroughs rather than rendering inside the orchestrator.
 		case "flag-playlists":
 			return { allowedPath: "/playlists" };
+		// Completed users land on the real /playlists screen — same route as the
+		// flag-playlists preview, but rendered without preview chrome because the
+		// session status is "complete".
 		case "complete":
-			return { allowedPath: "/dashboard" };
+			return { allowedPath: "/playlists" };
 		case "welcome":
 		case "pick-color":
 		case "install-extension":

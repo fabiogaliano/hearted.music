@@ -39,9 +39,9 @@ describe("resolveSession", () => {
 		});
 	});
 
-	it("maps complete to /dashboard", () => {
+	it("maps complete to /playlists", () => {
 		expect(resolveSession({ status: "complete" })).toEqual({
-			allowedPath: "/dashboard",
+			allowedPath: "/playlists",
 		});
 	});
 
