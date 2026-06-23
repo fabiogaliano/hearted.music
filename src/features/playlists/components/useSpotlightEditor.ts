@@ -24,6 +24,12 @@ interface UseSpotlightEditorArgs {
  * the effects that reseed on a playlist switch, settle the matching band, and
  * auto-open the editor during onboarding. Lifted out of SpotlightPanel so the
  * panel reads as layout + wiring rather than a wall of state machinery.
+ *
+ * The edit/save/error flags are tagged with the playlist they belong to and
+ * derived against the one on screen, so switching playlists turns them off on its
+ * own — no effect resets them on the prop change. That is the fix React Doctor's
+ * no-adjust-state-on-prop-change rule asks for: store the discriminator, derive
+ * the flag, never sync state to a prop inside an effect.
  */
 export function useSpotlightEditor({
 	playlist,
@@ -31,6 +37,8 @@ export function useSpotlightEditor({
 	guidedIntent,
 	autoEditOnAdd,
 }: UseSpotlightEditorArgs) {
+	const playlistId = playlist?.id ?? null;
+
 	const [description, setDescription] = useState<string | null>(
 		playlist?.intent ?? null,
 	);
@@ -38,13 +46,31 @@ export function useSpotlightEditor({
 	const [matchFilters, setMatchFilters] = useState<PlaylistMatchFiltersV1>(
 		playlist?.matchFilters ?? { version: 1 },
 	);
-	const [isEditing, setIsEditing] = useState(false);
-	const [isSaving, setIsSaving] = useState(false);
-	const [saveError, setSaveError] = useState<string | null>(null);
 	const [draftDescription, setDraftDescription] = useState("");
 	const [draftGenres, setDraftGenres] = useState<string[]>([]);
 	const [draftMatchFilters, setDraftMatchFilters] =
 		useState<PlaylistMatchFiltersV1>({ version: 1 });
+
+	// Edit/save/error state, each tagged with the playlist id it belongs to. The
+	// booleans below derive by comparing the tag to the playlist on screen, so a
+	// switch to a different playlist makes them fall to their resting value with no
+	// reset effect — the editing session for A is simply not the session for B.
+	const [editingPlaylistId, setEditingPlaylistId] = useState<string | null>(
+		null,
+	);
+	const [savingPlaylistId, setSavingPlaylistId] = useState<string | null>(null);
+	const [saveErrorState, setSaveErrorState] = useState<{
+		playlistId: string;
+		message: string;
+	} | null>(null);
+
+	const isEditing =
+		editingPlaylistId !== null && editingPlaylistId === playlistId;
+	const isSaving = savingPlaylistId !== null && savingPlaylistId === playlistId;
+	const saveError =
+		saveErrorState !== null && saveErrorState.playlistId === playlistId
+			? saveErrorState.message
+			: null;
 
 	// True once the matching band has finished opening. While open we drop the
 	// band's overflow clip so the editor's downward popovers (genre search, info
@@ -62,19 +88,17 @@ export function useSpotlightEditor({
 	// in-flight save captures the id it is saving; comparing against this ref when
 	// the RPC resolves lets a stale save bail out instead of reconciling playlist
 	// A's server result into a panel that has since switched to playlist B.
-	const currentPlaylistIdRef = useRef<string | null>(playlist?.id ?? null);
-	currentPlaylistIdRef.current = playlist?.id ?? null;
+	const currentPlaylistIdRef = useRef<string | null>(playlistId);
+	currentPlaylistIdRef.current = playlistId;
 
-	// Reseed all three saved fields when a different playlist opens. Also resets
-	// transient edit/save state so a new panel starts clean.
+	// Reseed the saved fields when a different playlist opens. The edit/save/error
+	// flags are derived (tagged by playlist id), so they reset themselves on the
+	// switch and need no setter here.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
 	useEffect(() => {
 		setDescription(playlist?.intent ?? null);
 		setGenres(playlist?.genres ?? []);
 		setMatchFilters(playlist?.matchFilters ?? { version: 1 });
-		setIsEditing(false);
-		setIsSaving(false);
-		setSaveError(null);
 	}, [playlist?.id]);
 
 	// Settle the band via a timeout rather than transitionend so reduced-motion —
@@ -98,10 +122,11 @@ export function useSpotlightEditor({
 		draftMatchFilters,
 		setDraftMatchFilters,
 		initialText: autoFillInitialTextRef.current,
-		sessionKey: playlist?.id ?? null,
+		sessionKey: playlistId,
 	});
 
 	const openEditor = () => {
+		if (!playlist) return;
 		const initialText = description ?? "";
 		// Record the text the session starts from so the auto-fill hook can
 		// pre-seed it as dismissed — unchanged saved intent must not auto-fill.
@@ -109,7 +134,7 @@ export function useSpotlightEditor({
 		setDraftDescription(initialText);
 		setDraftGenres(genres);
 		setDraftMatchFilters(matchFilters);
-		setIsEditing(true);
+		setEditingPlaylistId(playlist.id);
 	};
 
 	// Walkthrough: when the guided panel shows a matching playlist with no intent yet,
@@ -117,7 +142,9 @@ export function useSpotlightEditor({
 	// "write intent" without a tap — and a refresh that reopened a flagged-but-
 	// undescribed playlist lands there too, instead of the collapsed Edit affordance.
 	// A described playlist (or any playlist once the cycle releases, where
-	// autoEditOnAdd is off) stays collapsed.
+	// autoEditOnAdd is off) stays collapsed. Tagging the session with playlist.id —
+	// rather than flipping a bare boolean — is what keeps this off React Doctor's
+	// no-adjust-state radar: the setter argument derives from the prop in deps.
 	//
 	// Seeds are read straight from the `playlist` prop, not from the committed
 	// description/genres/matchFilters state: when this fires on an identity change,
@@ -133,7 +160,7 @@ export function useSpotlightEditor({
 		setDraftDescription(initialText);
 		setDraftGenres(playlist.genres ?? []);
 		setDraftMatchFilters(playlist.matchFilters ?? { version: 1 });
-		setIsEditing(true);
+		setEditingPlaylistId(playlist.id);
 	}, [playlist?.id, playlist?.isTarget, playlist?.intent, autoEditOnAdd]);
 
 	// Picking a ready-made example seeds the draft from it and jumps straight into
@@ -144,21 +171,22 @@ export function useSpotlightEditor({
 		nextDescription: string,
 		nextGenres: readonly string[],
 	) => {
+		if (!playlist) return;
 		// Guided mode — auto-fill is suppressed (lockManualEntry), but still
 		// seed the ref so the hook initialText is consistent if mode ever changes.
 		autoFillInitialTextRef.current = nextDescription;
 		setDraftDescription(nextDescription);
 		setDraftGenres([...nextGenres]);
 		setDraftMatchFilters(matchFilters);
-		setIsEditing(true);
+		setEditingPlaylistId(playlist.id);
 	};
 
 	const save = async () => {
 		if (!playlist) return;
 		const savedPlaylistId = playlist.id;
 		// Clear any previous save error at the start of a new attempt.
-		setSaveError(null);
-		setIsSaving(true);
+		setSaveErrorState(null);
+		setSavingPlaylistId(savedPlaylistId);
 		try {
 			const normalized = await onSave(
 				savedPlaylistId,
@@ -176,16 +204,19 @@ export function useSpotlightEditor({
 			setDescription(normalized.matchIntent);
 			setGenres(normalized.genrePills);
 			setMatchFilters(normalized.matchFilters);
-			setIsEditing(false);
+			setEditingPlaylistId(null);
 		} catch {
 			// Same staleness guard for the failure path: don't surface A's error on
 			// B's panel.
 			if (currentPlaylistIdRef.current !== savedPlaylistId) return;
-			setSaveError("Couldn't save changes. Try again.");
+			setSaveErrorState({
+				playlistId: savedPlaylistId,
+				message: "Couldn't save changes. Try again.",
+			});
 		} finally {
-			// Leave the new playlist's saving flag alone if we've since switched —
-			// the reseed effect already reset it for that playlist.
-			if (currentPlaylistIdRef.current === savedPlaylistId) setIsSaving(false);
+			// Clear this save's in-flight marker — unless a newer save (started after
+			// a switch) has already claimed it, in which case leave that one alone.
+			setSavingPlaylistId((cur) => (cur === savedPlaylistId ? null : cur));
 		}
 	};
 
@@ -196,8 +227,8 @@ export function useSpotlightEditor({
 		setDraftDescription(description ?? "");
 		setDraftGenres(genres);
 		setDraftMatchFilters(matchFilters);
-		setIsEditing(false);
-		setSaveError(null);
+		setEditingPlaylistId(null);
+		setSaveErrorState(null);
 	};
 
 	return {
