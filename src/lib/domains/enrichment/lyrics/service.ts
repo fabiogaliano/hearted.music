@@ -1,31 +1,31 @@
 /**
- * LyricsService - Provider-ordered lyrics fetching (LRCLIB → Genius fallback).
+ * LyricsService — LRCLIB lyric text, enriched with Genius annotations.
  *
- * Provider order (Decision 1): LRCLIB first, Genius fallback only when LRCLIB
- * returns no record (not_found). LRCLIB's instrumental flag is authoritative.
+ * Flow (Genius HTML scrape removed — it was behind a Cloudflare JS challenge and
+ * never once succeeded in production):
+ *   1. LRCLIB is the sole source of lyric text. Its instrumental verdict is
+ *      authoritative; its not_found is definitive. Requires album + duration.
+ *   2. When LRCLIB returns lyrics, Genius is consulted via its API *only* for
+ *      crowd-sourced annotations: search for the song (gated by the search
+ *      confidence floor), fetch referents, and place each referent's `fragment`
+ *      onto the LRCLIB lines by fuzzy match (see annotation-placement.ts).
  *
- * Spurious-match override (Decision 4): LRCLIB instrumental:true overrides a
- * Genius lyric match whose combined confidence is below MIN_COMBINED_SCORE (0.6).
- * A high-confidence Genius match stays lyrical even if LRCLIB says instrumental.
+ * Annotation enrichment is best-effort: a missed Genius search, a referents
+ * failure, or nothing aligning all fall back to storing the plain LRCLIB lyrics.
+ * Every successful lyrics fetch logs an aggregate ("placed N/M annotations") so
+ * the path is never silent.
  *
- * Genius instrumental-page detection (Decision 2): when the Genius lyrics
- * container is absent and the page carries the known instrumental marker, the
- * outcome is instrumental rather than a parse error.
- *
- * Preserved from v0 (ported):
- * - ConcurrencyLimiter(5, 50-200ms jitter) for rate limiting
- * - Search strategy with 0.6 threshold, 55/45 title/artist weights
+ * Preserved from v0: ConcurrencyLimiter(5, 50-200ms jitter) rate limiting; the
+ * search strategy with its 0.6 title/artist floor.
  */
 
 import { Result } from "better-result";
 import { env } from "@/env";
-import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	GeniusConfigError,
 	type GeniusError,
 	GeniusFetchError,
 	GeniusNotFoundError,
-	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
@@ -41,28 +41,21 @@ import type {
 	ResponseReferents,
 	SearchResponse,
 } from "./types/genius.types";
-import type { LyricsOutcome } from "./types/lyrics.types";
-import { formatLyricsCompact } from "./utils/lyrics-formatter";
-import { parseLyrics } from "./utils/lyrics-parser";
+import type {
+	LyricsOutcome,
+	TransformedLyricsBySection,
+} from "./types/lyrics.types";
 import {
-	type TransformedLyricsBySection,
-	transformLyrics,
-} from "./utils/lyrics-transformer";
+	ANNOTATION_PLACEMENT_FLOOR,
+	type AnnotationPlacementResult,
+	placeAnnotations,
+} from "./utils/annotation-placement";
+import { formatLyricsCompact } from "./utils/lyrics-formatter";
 import {
 	debugCandidates,
 	findBestMatch,
 	generateQueryVariants,
 } from "./utils/search-strategy";
-
-// The Genius page includes this string verbatim when the track is instrumental.
-// It is copy, not an API contract — the snapshot test pins it so a copy change
-// breaks loudly rather than silently routing the track through the parse-error path.
-export const GENIUS_INSTRUMENTAL_MARKER = "This song is an instrumental";
-
-// Minimum combined similarity score to trust a Genius match as lyrical even
-// when LRCLIB reports instrumental:true (Decision 4). Mirrors MIN_COMBINED_SCORE
-// from utils/search-strategy.ts.
-const GENIUS_LYRIC_CONFIDENCE_FLOOR = 0.6;
 
 interface LyricsServiceConfig {
 	accessToken: string;
@@ -83,8 +76,8 @@ const sharedLimiter = new ConcurrencyLimiter(5, 50, 200);
 const REQUEST_TIMEOUT_MS = 15_000;
 
 // Retry only transient fetch failures: network/timeout (no status) or 5xx.
-// 4xx, parse failures, and not-found are permanent. Genius exposes no
-// Retry-After, so plain bounded backoff is all we apply.
+// 4xx and not-found are permanent. Genius exposes no Retry-After, so plain
+// bounded backoff is all we apply.
 function isGeniusRetryable(error: GeniusError): boolean {
 	if (error instanceof GeniusFetchError) {
 		return error.statusCode === undefined || error.statusCode >= 500;
@@ -112,16 +105,7 @@ export interface FetchOutcomeParams {
 	distiller?: LyricsDistiller;
 }
 
-// Typed result from the internal HTML fetch, discriminated by whether the page
-// is a lyrics page or the Genius instrumental page.
-type FetchedHtml =
-	| {
-			kind: "sections";
-			sections: ReturnType<typeof parseLyrics>;
-	  }
-	| { kind: "instrumental" };
-
-// SearchSong now carries the match score so callers can apply Decision 4.
+// Genius search hit carrying the match score (used for logging/debug only now).
 type SearchHit = ResponseHitsResult & { score: number };
 
 export class LyricsService {
@@ -163,79 +147,14 @@ export class LyricsService {
 	}
 
 	/**
-	 * Fetches lyrics with annotations for a song.
-	 * Returns Result with GeniusError on failure.
-	 */
-	public async getLyrics(
-		artist: string,
-		song: string,
-	): Promise<Result<TransformedLyricsBySection[], GeniusError>> {
-		const searchResult = await this.searchSong(artist, song);
-		if (Result.isError(searchResult)) {
-			return Result.err(searchResult.error);
-		}
-
-		const [lyricsResult, referentsResult] = await Promise.all([
-			this.fetchHtml(searchResult.value.url),
-			this.fetchReferents(searchResult.value.id),
-		]);
-
-		if (Result.isError(lyricsResult)) {
-			return Result.err(lyricsResult.error);
-		}
-		if (Result.isError(referentsResult)) {
-			return Result.err(referentsResult.error);
-		}
-
-		if (lyricsResult.value.kind === "instrumental") {
-			// When fetchHtml detects the Genius instrumental marker, there are no
-			// sections to return via this path. Callers needing instrumental signals
-			// should use fetchAndStoreOutcome.
-			return Result.err(
-				new GeniusParseError(
-					searchResult.value.url,
-					"Page declares instrumental",
-				),
-			);
-		}
-
-		return Result.ok(
-			transformLyrics(lyricsResult.value.sections, referentsResult.value),
-		);
-	}
-
-	/**
-	 * Fetches lyrics formatted with annotations.
-	 * Returns Result with section headers and annotation lines.
-	 */
-	public async getLyricsText(
-		artist: string,
-		song: string,
-	): Promise<Result<string, GeniusError>> {
-		const sectionsResult = await this.getLyrics(artist, song);
-		if (Result.isError(sectionsResult)) {
-			return Result.err(sectionsResult.error);
-		}
-		return Result.ok(formatLyricsCompact(sectionsResult.value));
-	}
-
-	/**
-	 * Provider-ordered lyrics fetch that returns a typed LyricsOutcome and
-	 * persists Genius lyrics to the cache with optional distillation.
-	 *
-	 * Provider order:
-	 * 1. LRCLIB (when albumName + durationMs are provided). Definitive outcomes
-	 *    (lyrics, instrumental) are returned unless the override gate applies.
-	 * 2. Genius fallback when LRCLIB returns not_found or metadata is absent.
-	 *
-	 * Spurious-match override (Decision 4): LRCLIB instrumental:true overrides
-	 * a Genius match below GENIUS_LYRIC_CONFIDENCE_FLOOR; a high-confidence
-	 * Genius match stays lyrical.
+	 * Fetches a song's lyrics and persists exactly one song_lyrics row for the
+	 * attempt. LRCLIB lyrics are enriched with Genius annotations; instrumental
+	 * and not_found produce no-document sentinel rows via upsertFetchOutcome.
 	 *
 	 * Returns Result<LyricsOutcome, GeniusError | LrclibError>. The error channel
-	 * means a transient provider failure — the outcome is unconfirmed and the
-	 * song should be retried. A definitive "no lyrics" is represented as
-	 * LyricsOutcome { kind: "not_found" | "instrumental" }, not an error.
+	 * means a transient provider failure — the outcome is unconfirmed and the song
+	 * should be retried. A definitive "no lyrics" is LyricsOutcome
+	 * { kind: "not_found" | "instrumental" }, not an error.
 	 */
 	public async fetchAndStoreOutcome(
 		params: FetchOutcomeParams,
@@ -247,17 +166,16 @@ export class LyricsService {
 			return Result.err(resolved.error);
 		}
 
-		const { outcome, geniusSections } = resolved.value;
+		const { outcome, sections } = resolved.value;
 
-		// Single persistence call site (Decision 5): every successful fetch attempt
-		// writes exactly one row regardless of outcome kind. The Genius-lyrics case
-		// passes the parsed sections so the full document is stored; all other kinds
-		// produce no-document sentinel rows via upsertFetchOutcome.
+		// Single persistence call site: every successful fetch attempt writes exactly
+		// one row. The lyrics case passes the annotated LRCLIB sections so the full
+		// document is stored; other kinds produce no-document sentinel rows.
 		if (params.songId) {
 			const persistResult = await upsertFetchOutcome(
 				params.songId,
 				outcome,
-				geniusSections,
+				sections,
 			);
 			if (Result.isError(persistResult)) {
 				console.warn(
@@ -270,124 +188,61 @@ export class LyricsService {
 	}
 
 	/**
-	 * Resolves the LyricsOutcome without any persistence side-effects.
-	 * Separated from fetchAndStoreOutcome so the single-persistence-site
-	 * invariant is obvious.
-	 *
-	 * Returns the outcome plus the parsed Genius sections when the match is a
-	 * Genius lyric result; sections are undefined for all other outcomes so
-	 * upsertFetchOutcome can pass them directly to the DB helper.
+	 * Resolves the LyricsOutcome without persistence side-effects. Returns the
+	 * annotated LRCLIB sections for the lyrics case (so upsertFetchOutcome stores
+	 * the full document); undefined for instrumental/not_found.
 	 */
 	private async resolveOutcome(params: FetchOutcomeParams): Promise<
 		Result<
 			{
 				outcome: LyricsOutcome;
-				geniusSections: ReturnType<typeof transformLyrics> | undefined;
+				sections: TransformedLyricsBySection[] | undefined;
 			},
 			GeniusError | LrclibError
 		>
 	> {
-		// ── 1. Try LRCLIB ─────────────────────────────────────────────────────
-		let lrclibInstrumental = false;
-
-		if (params.albumName !== undefined && params.durationMs !== undefined) {
-			const lrclibResult = await this.lrclib.fetchLyrics({
-				trackName: params.song,
-				artistName: params.artist,
-				albumName: params.albumName,
-				durationMs: params.durationMs,
-			});
-
-			if (Result.isOk(lrclibResult)) {
-				const lrclibOutcome = lrclibResult.value;
-
-				if (lrclibOutcome.kind === "instrumental") {
-					// Remember the LRCLIB verdict; still query Genius in case it has a
-					// high-confidence lyric match that should override (Decision 4).
-					lrclibInstrumental = true;
-				} else if (lrclibOutcome.kind === "lyrics") {
-					// LRCLIB found lyrics — return immediately. No Genius fallback needed.
-					// LRCLIB has no annotations so there is nothing to distill.
-					return Result.ok({
-						outcome: lrclibOutcome,
-						geniusSections: undefined,
-					});
-				}
-				// kind === "not_found": LRCLIB has no record, fall through to Genius.
-			}
-			// On LRCLIB transient error: fall through to Genius so an LRCLIB
-			// outage doesn't hard-block the pipeline.
-		}
-
-		// ── 2. Genius fallback ────────────────────────────────────────────────
-		const searchResult = await this.searchSong(params.artist, params.song);
-		if (Result.isError(searchResult)) {
-			if (lrclibInstrumental) {
-				// LRCLIB said instrumental; Genius found nothing — trust LRCLIB.
-				return Result.ok({
-					outcome: { kind: "instrumental", source: "lrclib" },
-					geniusSections: undefined,
-				});
-			}
-			if (searchResult.error instanceof GeniusNotFoundError) {
-				// Genius has no match for the track — definitive not_found. A 404 is
-				// not a transient failure; the song is simply absent from Genius.
-				return Result.ok({
-					outcome: { kind: "not_found" },
-					geniusSections: undefined,
-				});
-			}
-			// Transient Genius error (fetch/parse/config) — unconfirmed, retry-eligible.
-			return Result.err(searchResult.error);
-		}
-
-		const geniusUrl = searchResult.value.url;
-		const geniusScore = searchResult.value.score;
-
-		const [htmlResult, referentsResult] = await Promise.all([
-			this.fetchHtml(geniusUrl),
-			this.fetchReferents(searchResult.value.id),
-		]);
-
-		if (Result.isError(htmlResult)) {
-			if (lrclibInstrumental) {
-				return Result.ok({
-					outcome: { kind: "instrumental", source: "lrclib" },
-					geniusSections: undefined,
-				});
-			}
-			return Result.err(htmlResult.error);
-		}
-
-		const fetched = htmlResult.value;
-
-		// ── 2a. Genius instrumental page signal (Decision 2) ──────────────────
-		if (fetched.kind === "instrumental") {
+		// LRCLIB is the sole lyric source. Without album + duration we cannot query
+		// it, and with the Genius scrape gone there is no fallback → not_found.
+		if (params.albumName === undefined || params.durationMs === undefined) {
 			return Result.ok({
-				outcome: { kind: "instrumental", source: "genius_page" },
-				geniusSections: undefined,
+				outcome: { kind: "not_found" },
+				sections: undefined,
 			});
 		}
 
-		// ── 2b. Spurious-match override (Decision 4) ──────────────────────────
-		if (lrclibInstrumental && geniusScore < GENIUS_LYRIC_CONFIDENCE_FLOOR) {
-			// Low-confidence Genius match + LRCLIB says instrumental → trust LRCLIB.
+		const lrclibResult = await this.lrclib.fetchLyrics({
+			trackName: params.song,
+			artistName: params.artist,
+			albumName: params.albumName,
+			durationMs: params.durationMs,
+		});
+		if (Result.isError(lrclibResult)) {
+			// Transient LRCLIB failure — unconfirmed, retry-eligible.
+			return Result.err(lrclibResult.error);
+		}
+
+		const lrclibOutcome = lrclibResult.value;
+
+		// LRCLIB's instrumental verdict is authoritative (the Genius override is gone).
+		if (lrclibOutcome.kind === "instrumental") {
 			return Result.ok({
 				outcome: { kind: "instrumental", source: "lrclib" },
-				geniusSections: undefined,
+				sections: undefined,
 			});
 		}
+		if (lrclibOutcome.kind === "not_found") {
+			return Result.ok({ outcome: { kind: "not_found" }, sections: undefined });
+		}
 
-		// ── 2c. Genius lyric match — distill + format ────────────────────────
-		const referents = Result.isOk(referentsResult) ? referentsResult.value : [];
-		const geniusSections = transformLyrics(fetched.sections, referents);
+		// LRCLIB returned lyrics — enrich with Genius annotations (best-effort).
+		const placement = await this.attachAnnotations(params, lrclibOutcome.text);
 
 		const distillations = params.distiller
-			? await params.distiller(geniusSections)
+			? await params.distiller(placement.sections)
 			: undefined;
 
 		const text = formatLyricsCompact(
-			geniusSections,
+			placement.sections,
 			distillations ? { distillations } : undefined,
 		);
 
@@ -395,11 +250,47 @@ export class LyricsService {
 			outcome: {
 				kind: "lyrics",
 				text,
-				source: "genius",
-				confidence: geniusScore,
+				source: "lrclib",
+				confidence: lrclibOutcome.confidence,
 			},
-			geniusSections,
+			sections: placement.sections,
 		});
+	}
+
+	/**
+	 * Best-effort Genius annotation enrichment for LRCLIB lyrics. Never fails the
+	 * result: any miss (no confident Genius match, referents failure, nothing
+	 * aligning) yields the plain LRCLIB document with zero annotations.
+	 */
+	private async attachAnnotations(
+		params: FetchOutcomeParams,
+		lrclibText: string,
+	): Promise<AnnotationPlacementResult> {
+		const searchResult = await this.searchSong(params.artist, params.song);
+		if (Result.isError(searchResult)) {
+			// No confident Genius song match (or transient error) → plain lyrics.
+			const plain = placeAnnotations(lrclibText, []);
+			this.logPlacement(params, plain);
+			return plain;
+		}
+
+		const referentsResult = await this.fetchReferents(searchResult.value.id);
+		const referents = Result.isOk(referentsResult) ? referentsResult.value : [];
+
+		const placement = placeAnnotations(lrclibText, referents, {
+			floor: ANNOTATION_PLACEMENT_FLOOR,
+		});
+		this.logPlacement(params, placement);
+		return placement;
+	}
+
+	private logPlacement(
+		params: FetchOutcomeParams,
+		placement: AnnotationPlacementResult,
+	): void {
+		console.info(
+			`[LyricsService] placed ${placement.placed}/${placement.total} annotations for ${params.artist} - ${params.song}`,
+		);
 	}
 
 	private async searchSong(
@@ -503,68 +394,6 @@ export class LyricsService {
 		// Page doesn't exist or error - return empty
 		if (Result.isError(result)) return [];
 		return result.value.response?.referents || [];
-	}
-
-	/**
-	 * Fetches the Genius page HTML and parses it.
-	 *
-	 * Returns { kind: "instrumental" } when the page carries the instrumental
-	 * marker but no lyrics container (Decision 2). Returns { kind: "sections" }
-	 * with the parsed sections on success. Returns GeniusError on fetch/parse
-	 * failures.
-	 */
-	private async fetchHtml(
-		url: string,
-	): Promise<Result<FetchedHtml, GeniusError>> {
-		const responseResult = await withRetry(
-			() =>
-				this.limiter.run(() =>
-					Result.tryPromise({
-						try: async () => {
-							const res = await fetch(url, {
-								signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-							});
-							if (!res.ok) {
-								throw new GeniusFetchError(url, res.status);
-							}
-							return res.text();
-						},
-						catch: (error) =>
-							error instanceof GeniusFetchError
-								? error
-								: new GeniusFetchError(url),
-					}),
-				),
-			GENIUS_RETRY_OPTIONS,
-		);
-		if (Result.isError(responseResult)) {
-			return Result.err(responseResult.error);
-		}
-		const html = responseResult.value;
-
-		if (!html.includes("lyrics-root")) {
-			return Result.err(
-				new GeniusParseError(url, "Lyrics content not found on page"),
-			);
-		}
-
-		try {
-			const sections = parseLyrics(html);
-			return Result.ok({ kind: "sections", sections });
-		} catch (error) {
-			// parseLyrics throws when [data-lyrics-container="true"] is absent.
-			// Before surfacing a parse error, check whether the page explicitly
-			// declares the track as instrumental — if so the absence of a lyrics
-			// container is expected, not a provider fault (Decision 2).
-			if (html.includes(GENIUS_INSTRUMENTAL_MARKER)) {
-				return Result.ok({ kind: "instrumental" });
-			}
-			if (error instanceof GeniusParseError) {
-				return Result.err(error);
-			}
-			const reason = errorMessage(error);
-			return Result.err(new GeniusParseError(url, reason));
-		}
 	}
 }
 

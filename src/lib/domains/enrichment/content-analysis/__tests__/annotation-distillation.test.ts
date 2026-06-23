@@ -12,8 +12,8 @@ vi.mock("../llm-usage-queries", () => ({
 	recordLlmUsage: vi.fn(),
 }));
 
+import type { TransformedLyricsBySection } from "@/lib/domains/enrichment/lyrics/types/lyrics.types";
 import { normalizeAnnotationText } from "@/lib/domains/enrichment/lyrics/utils/lyrics-formatter";
-import type { TransformedLyricsBySection } from "@/lib/domains/enrichment/lyrics/utils/lyrics-transformer";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { ensureAnnotationDistillations } from "../annotation-distillation";
 import {

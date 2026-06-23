@@ -12,12 +12,30 @@ export interface AnnotationInfo {
 	geniusAnnotationId?: number;
 }
 
-export interface LyricsSection {
-	type: string;
-	lines: { id: number; text: string }[];
-	annotationLinks: {
-		[url: string]: number[];
+/**
+ * A single lyric line in the stored/formatted document, optionally carrying the
+ * annotations placed on it. `range` records the line's position (start/end line
+ * id); for annotations matched across multiple LRCLIB lines it spans them.
+ */
+export interface TransformedLine {
+	id: number;
+	text: string;
+	range?: {
+		start: number;
+		end: number;
 	};
+	annotations?: AnnotationInfo[];
+}
+
+/**
+ * The canonical document shape stored in song_lyrics.document and consumed by the
+ * formatter and content-analysis. With LRCLIB as the lyric source there is a
+ * single section ("lyrics"); the shape is kept multi-section for the stored
+ * envelope's stability.
+ */
+export interface TransformedLyricsBySection {
+	type: string;
+	lines: TransformedLine[];
 }
 
 // Discriminated union describing every terminal result a lyrics fetch can produce.

@@ -27,9 +27,11 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import type { LyricsOutcome } from "./types/lyrics.types";
+import type {
+	LyricsOutcome,
+	TransformedLyricsBySection,
+} from "./types/lyrics.types";
 import { formatLyricsCompact } from "./utils/lyrics-formatter";
-import type { TransformedLyricsBySection } from "./utils/lyrics-transformer";
 
 export type SongLyrics = Tables<"song_lyrics">;
 

@@ -7,7 +7,7 @@
  *   1. Upsert songs into `song` table (prerequisite — services need the UUID)
  *   2. Audio features   → ReccoBeatsService → song_audio_feature
  *   3. Genre tagging     → Last.fm → song.genres
- *   4. Song analysis     → Lyrics (Genius) + LLM → song_analysis
+ *   4. Song analysis     → Lyrics (LRCLIB) + LLM → song_analysis
  *   5. Song embedding    → EmbeddingService → song_embedding
  *
  * Stages that require an account (content_activation, playlist_profiling) are skipped.
@@ -28,8 +28,8 @@ import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
 import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import { LlmService } from "@/lib/integrations/llm/service";
-import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { fetchLrclibPlainLyrics } from "../lib/lrclib-plain-lyrics";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import type { LandingSongManifest } from "@/lib/content/landing/landing-songs";
 
@@ -78,7 +78,6 @@ async function main() {
 	// --- Check env ---
 	console.log("Environment:");
 	const geminiKey = checkEnvKey("GEMINI_API_KEY", true);
-	const geniusToken = checkEnvKey("GENIUS_CLIENT_TOKEN", false);
 	checkEnvKey("LASTFM_API_KEY", false);
 	checkEnvKey("DEEPINFRA_API_KEY", false);
 	console.log();
@@ -160,13 +159,10 @@ async function main() {
 	// -------------------------------------------------------------------------
 	// Stage 3: Song analysis (Lyrics + LLM)
 	// -------------------------------------------------------------------------
-	console.log("── Stage 3: Song analysis (Genius + LLM) ──");
+	console.log("── Stage 3: Song analysis (LRCLIB + LLM) ──");
 
 	const llm = new LlmService({ provider: "google", apiKey: geminiKey! });
 	const analysisService = new SongAnalysisService(llm);
-	const lyricsService = geniusToken
-		? new LyricsService({ accessToken: geniusToken })
-		: null;
 
 	// Reload songs to get freshly-persisted genres from stage 2
 	const refreshedSongs = await songQueries.getByIds(songs.map((s) => s.id));
@@ -185,19 +181,9 @@ async function main() {
 		const artist = song.artists[0] ?? "Unknown";
 		process.stdout.write(`  ${artist} — ${song.name} … `);
 
-		// Fetch lyrics
-		let lyrics: string | null = null;
-		if (lyricsService) {
-			const lr = await lyricsService.getLyricsText(artist, song.name);
-			if (Result.isOk(lr) && lr.value) {
-				lyrics = lr.value;
-				process.stdout.write("lyrics ✓ ");
-			} else {
-				process.stdout.write("no lyrics ");
-			}
-		} else {
-			process.stdout.write("(no Genius token) ");
-		}
+		// Fetch lyrics from LRCLIB (canonical source since the Genius scrape was removed)
+		const lyrics = await fetchLrclibPlainLyrics(artist, song.name);
+		process.stdout.write(lyrics ? "lyrics ✓ " : "no lyrics ");
 
 		const af = audioMap.get(song.id) ?? null;
 		const genres = genresMap.get(song.id);

@@ -1,10 +1,10 @@
 import { Result } from "better-result";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { createLyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import { getLyricsFormatLegend } from "@/lib/domains/enrichment/lyrics/utils/lyrics-formatter";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { createLastFmService } from "@/lib/integrations/lastfm/service";
+import { fetchLrclibPlainLyrics } from "../lib/lrclib-plain-lyrics";
 import type { TestSong } from "./test-songs";
 
 export interface SongData {
@@ -93,22 +93,11 @@ export class DataFetcher {
 		song: TestSong,
 		errors: string[],
 	): Promise<string | null> {
-		const serviceResult = createLyricsService();
-		if (Result.isError(serviceResult)) {
-			errors.push(`Lyrics: ${serviceResult.error.message}`);
-			return null;
+		const lyrics = await fetchLrclibPlainLyrics(song.artist, song.title);
+		if (!lyrics) {
+			errors.push(`Lyrics: no LRCLIB match for ${song.artist} - ${song.title}`);
 		}
-
-		const result = await serviceResult.value.getLyricsText(
-			song.artist,
-			song.title,
-		);
-		if (Result.isError(result)) {
-			errors.push(`Lyrics: ${result.error.message}`);
-			return null;
-		}
-
-		return result.value;
+		return lyrics;
 	}
 
 	private async fetchAudioFeatures(

@@ -14,8 +14,10 @@
  * Lyric line three
  *   > [21 votes] Community annotation with enough votes...
  */
-import type { AnnotationInfo } from "../types/lyrics.types";
-import type { TransformedLyricsBySection } from "./lyrics-transformer";
+import type {
+	AnnotationInfo,
+	TransformedLyricsBySection,
+} from "../types/lyrics.types";
 
 interface FormatOptions {
 	/** Minimum votes for community annotations (default: 5) */

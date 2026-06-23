@@ -8,12 +8,12 @@ import * as likedSongData from "@/lib/domains/library/liked-songs/queries";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { LlmService } from "@/lib/integrations/llm/service";
 import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/song-analysis";
-import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
 import * as songData from "@/lib/domains/library/songs/queries";
 import { LastFmService } from "@/lib/integrations/lastfm/service";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { AudioFeaturesService } from "@/lib/integrations/audio/service";
 import { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
+import { fetchLrclibPlainLyrics } from "../lib/lrclib-plain-lyrics";
 
 const username = process.argv[2] || "kapran0s";
 const limit = parseInt(process.argv[3] || "5", 10);
@@ -22,7 +22,6 @@ const dryRun = process.argv.includes("--dry-run");
 async function main() {
 	// Check env vars upfront
 	const geminiKey = process.env.GEMINI_API_KEY;
-	const geniusToken = process.env.GENIUS_CLIENT_TOKEN;
 	const lastfmKey = process.env.LASTFM_API_KEY;
 
 	if (!dryRun) {
@@ -30,12 +29,7 @@ async function main() {
 			console.error("❌ Missing GEMINI_API_KEY");
 			process.exit(1);
 		}
-		if (!geniusToken) {
-			console.error("❌ Missing GENIUS_CLIENT_TOKEN");
-			process.exit(1);
-		}
 		console.log(`✓ GEMINI_API_KEY: ${geminiKey.substring(0, 8)}...`);
-		console.log(`✓ GENIUS_CLIENT_TOKEN: ${geniusToken.substring(0, 8)}...`);
 		if (lastfmKey) {
 			console.log(`✓ LASTFM_API_KEY: ${lastfmKey.substring(0, 8)}...`);
 		} else {
@@ -99,7 +93,6 @@ async function main() {
 
 	const llm = new LlmService({ provider: "google", apiKey: geminiKey! });
 	const analysisService = new SongAnalysisService(llm);
-	const lyricsService = new LyricsService({ accessToken: geniusToken! });
 	const lastfm = lastfmKey ? new LastFmService(lastfmKey) : null;
 	const reccobeats = new ReccoBeatsService();
 	const audioService = new AudioFeaturesService(reccobeats);
@@ -136,15 +129,9 @@ async function main() {
 		const title = song.song_name;
 		process.stdout.write(`📝 ${artist} - ${title}... `);
 
-		// 1. Fetch lyrics from Genius (missing lyrics → instrumental path)
-		let lyrics: string | null = null;
-		const lyricsResult = await lyricsService.getLyricsText(artist, title);
-		if (Result.isOk(lyricsResult) && lyricsResult.value) {
-			lyrics = lyricsResult.value;
-			process.stdout.write(`lyrics ✓ `);
-		} else {
-			process.stdout.write(`no lyrics (instrumental) `);
-		}
+		// 1. Fetch lyrics from LRCLIB (missing lyrics → instrumental path)
+		const lyrics = await fetchLrclibPlainLyrics(artist, title);
+		process.stdout.write(lyrics ? `lyrics ✓ ` : `no lyrics (instrumental) `);
 
 		// 2. Get audio features (prefetched + persisted via ReccoBeats)
 		const audioFeatures = audioMap.get(song.song_id) ?? null;

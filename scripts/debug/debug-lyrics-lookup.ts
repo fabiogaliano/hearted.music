@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * Reproduce the worker's Genius lyrics lookup for a single song, with the
- * service's debug flag on. Uses getLyrics (no persistence) so it's read-only.
+ * Reproduce the worker's lyric lookup for a single song, read-only. With the
+ * Genius scrape removed, LRCLIB is the canonical lyric source, so this fetches
+ * the LRCLIB plain text by (artist, title) — no persistence, no annotations.
  *
- * Usage: DEBUG_LYRICS_SEARCH=true bun run scripts/debug/debug-lyrics-lookup.ts "Artist" "Title"
+ * Usage: bun run scripts/debug/debug-lyrics-lookup.ts "Artist" "Title"
  */
-import { Result } from "better-result";
-import { LyricsService } from "@/lib/domains/enrichment/lyrics/service";
+import { fetchLrclibPlainLyrics } from "../lib/lrclib-plain-lyrics";
 
 const [artist, title] = process.argv.slice(2);
 if (!artist || !title) {
@@ -14,33 +14,13 @@ if (!artist || !title) {
 	process.exit(1);
 }
 
-const token = process.env.GENIUS_CLIENT_TOKEN;
-if (!token) {
-	console.error("GENIUS_CLIENT_TOKEN not set");
-	process.exit(1);
-}
+const lyrics = await fetchLrclibPlainLyrics(artist, title);
 
-const service = new LyricsService({ accessToken: token });
-const result = await service.getLyrics(artist, title);
-
-if (Result.isError(result)) {
-	const err = result.error;
-	console.log("FAILED");
-	console.log("error class:", err.constructor.name);
-	console.log("message:", err.message);
-	for (const key of ["statusCode", "url", "artist", "song", "reason"]) {
-		if (key in err)
-			console.log(`${key}:`, (err as unknown as Record<string, unknown>)[key]);
-	}
+if (!lyrics) {
+	console.log("MISS (no LRCLIB lyrics for this artist/title)");
 } else {
-	const sections = result.value;
+	const lines = lyrics.split("\n");
 	console.log("SUCCESS");
-	console.log("sections:", sections.length);
-	console.log(
-		"total lines:",
-		sections.reduce((n, s) => n + s.lines.length, 0),
-	);
-	for (const s of sections.slice(0, 3)) {
-		console.log(`-- [${s.type}]`, s.lines.slice(0, 2).map((l) => l.text));
-	}
+	console.log("lines:", lines.length);
+	console.log("preview:", lines.slice(0, 6));
 }

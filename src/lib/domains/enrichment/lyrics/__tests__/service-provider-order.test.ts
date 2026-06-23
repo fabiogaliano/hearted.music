@@ -1,24 +1,20 @@
 /**
- * LyricsService — provider-order and spurious-match override tests (tasks 3.1/3.2).
+ * LyricsService — flow tests for the LRCLIB-source + Genius-annotations design.
  *
- * Strategy: mock fetch globally and construct minimal JSON/HTML responses.
- * The LRCLIB provider and Genius paths are exercised via the real service
- * class so the wiring is tested end-to-end without hitting the network.
+ * LRCLIB is the sole lyric source; its instrumental/not_found verdicts are
+ * authoritative. When LRCLIB returns lyrics, Genius is consulted via its API only
+ * for annotations (best-effort) — never for lyric text. fetch is mocked and
+ * routed by URL so the parallel referents calls don't depend on call ordering.
  */
 
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LyricsService } from "../service";
 
-// Avoid Supabase calls — cache read/write is non-fatal and must not affect outcomes.
+// Avoid Supabase calls — cache write is non-fatal and must not affect outcomes.
 vi.mock("../queries", () => ({
-	getSongLyricsDocument: vi.fn().mockResolvedValue(Result.ok(null)),
-	upsertSongLyrics: vi.fn().mockResolvedValue(Result.ok({})),
 	upsertFetchOutcome: vi.fn().mockResolvedValue(Result.ok({})),
-	LYRICS_SCHEMA_VERSION: 1,
 }));
-
-// ── Shared fixtures ───────────────────────────────────────────────────────────
 
 const LRCLIB_LYRICS_TRACK = {
 	id: 10,
@@ -27,7 +23,7 @@ const LRCLIB_LYRICS_TRACK = {
 	albumName: "Random Access Memories",
 	duration: 248,
 	instrumental: false,
-	plainLyrics: "Like the legend of the phoenix",
+	plainLyrics: "Like the legend of the phoenix\nAll ends with beginnings",
 	syncedLyrics: null,
 };
 
@@ -42,15 +38,13 @@ const LRCLIB_INSTRUMENTAL_TRACK = {
 	syncedLyrics: null,
 };
 
-const LRCLIB_NOT_FOUND_BODY = { code: 404, name: "TrackNotFound" };
-
 const GENIUS_SEARCH_HIT = {
 	response: {
 		hits: [
 			{
 				result: {
 					id: 999,
-					url: "https://genius.com/test-lyrics",
+					url: "https://genius.com/daft-punk-get-lucky-lyrics",
 					title: "Get Lucky",
 					primary_artist: { name: "Daft Punk" },
 					primary_artists: [{ name: "Daft Punk" }],
@@ -61,65 +55,77 @@ const GENIUS_SEARCH_HIT = {
 	},
 };
 
-// Minimal Genius lyrics HTML with a lyrics container
-const GENIUS_LYRICS_HTML = `
-  <html><body>
-    <div id="lyrics-root">
-      <div data-lyrics-container="true">
-        <span>Genius lyrics text</span>
-      </div>
-    </div>
-  </body></html>
-`;
+// One referent whose fragment matches the first LRCLIB line. state "accepted"
+// passes both the keep-worthiness filter and the formatter's inclusion filter.
+const GENIUS_REFERENTS_PAGE1 = {
+	response: {
+		referents: [
+			{
+				fragment: "Like the legend of the phoenix",
+				is_description: false,
+				annotations: [
+					{
+						id: 5001,
+						body: { plain: "A reference to the mythical bird's rebirth." },
+						verified: false,
+						votes_total: 42,
+						state: "accepted",
+						authors: [{ pinned_role: null }],
+					},
+				],
+			},
+		],
+	},
+};
 
-// Minimal Genius HTML declaring the track instrumental
-const GENIUS_INSTRUMENTAL_HTML = `
-  <html><body>
-    <div id="lyrics-root">
-      <div class="LyricsPlaceholder__Message">
-        This song is an instrumental
-      </div>
-    </div>
-  </body></html>
-`;
-
-function lrclibOk(body: unknown): Response {
+function json(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {
-		status: 200,
+		status,
 		headers: { "Content-Type": "application/json" },
 	});
 }
 
 function lrclibNotFound(): Response {
-	return new Response(JSON.stringify(LRCLIB_NOT_FOUND_BODY), {
-		status: 404,
-		headers: { "Content-Type": "application/json" },
-	});
+	return json({ code: 404, name: "TrackNotFound" }, 404);
 }
-
-function geniusJson(body: unknown): Response {
-	return new Response(JSON.stringify(body), {
-		status: 200,
-		headers: { "Content-Type": "application/json" },
-	});
-}
-
-function geniusHtml(html: string): Response {
-	return new Response(html, {
-		status: 200,
-		headers: { "Content-Type": "text/html" },
-	});
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeService(): LyricsService {
 	return new LyricsService({ accessToken: "test-token" });
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+/**
+ * Routes mocked fetch by URL so referents' parallel pages resolve regardless of
+ * ordering. Each handler returns a Response (or null to fall through to default).
+ */
+function routeFetch(handlers: {
+	lrclibGet?: () => Response;
+	lrclibSearch?: () => Response;
+	geniusSearch?: () => Response;
+	geniusReferents?: (page: number) => Response;
+}) {
+	return vi.fn(async (input: string | URL) => {
+		const url = typeof input === "string" ? input : input.toString();
+		if (url.includes("lrclib.net/api/get")) {
+			return handlers.lrclibGet?.() ?? lrclibNotFound();
+		}
+		if (url.includes("lrclib.net/api/search")) {
+			return handlers.lrclibSearch?.() ?? json([]);
+		}
+		if (url.includes("api.genius.com/search")) {
+			return handlers.geniusSearch?.() ?? json({ response: { hits: [] } });
+		}
+		if (url.includes("api.genius.com/referents")) {
+			const page = Number(new URL(url).searchParams.get("page") ?? "1");
+			return (
+				handlers.geniusReferents?.(page) ??
+				json({ response: { referents: [] } })
+			);
+		}
+		throw new Error(`Unexpected fetch: ${url}`);
+	});
+}
 
-describe("LyricsService — provider order (Decision 1)", () => {
+describe("LyricsService — LRCLIB source + Genius annotations", () => {
 	let fetchMock: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
@@ -131,9 +137,17 @@ describe("LyricsService — provider order (Decision 1)", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("3.1 — returns LRCLIB lyrics without calling Genius when LRCLIB finds the track", async () => {
-		// LRCLIB /api/get returns lyrics
-		fetchMock.mockResolvedValueOnce(lrclibOk(LRCLIB_LYRICS_TRACK));
+	it("returns LRCLIB lyrics enriched with a matched Genius annotation", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => json(LRCLIB_LYRICS_TRACK),
+				geniusSearch: () => json(GENIUS_SEARCH_HIT),
+				geniusReferents: (page) =>
+					page === 1
+						? json(GENIUS_REFERENTS_PAGE1)
+						: json({ response: { referents: [] } }),
+			}),
+		);
 
 		const service = makeService();
 		const result = await service.fetchAndStoreOutcome({
@@ -150,58 +164,24 @@ describe("LyricsService — provider order (Decision 1)", () => {
 			kind: "lyrics",
 			source: "lrclib",
 			confidence: 1.0,
-			text: LRCLIB_LYRICS_TRACK.plainLyrics,
 		});
-		// Exactly one call: LRCLIB /api/get. No Genius calls.
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [url] = fetchMock.mock.calls[0] as [string, ...unknown[]];
-		expect(url).toContain("lrclib.net");
+		if (result.value.kind !== "lyrics") return;
+		// The matched annotation is formatted into the stored text.
+		expect(result.value.text).toContain("Like the legend of the phoenix");
+		expect(result.value.text).toContain("mythical bird's rebirth");
 	});
 
-	it("3.1 — returns LRCLIB instrumental without calling Genius when LRCLIB flags instrumental (no Genius override)", async () => {
-		// LRCLIB says instrumental; no Genius call should be made for a straightforward case.
-		// We mock Genius search to return not-found so even if it is called it won't affect
-		// the test, but we'll verify by call count after the fact.
-		fetchMock
-			.mockResolvedValueOnce(lrclibOk(LRCLIB_INSTRUMENTAL_TRACK)) // LRCLIB /api/get
-			.mockResolvedValueOnce(
-				new Response(JSON.stringify({ response: { hits: [] } }), {
-					status: 200,
-					headers: { "Content-Type": "application/json" },
-				}),
-			); // Genius search if called
+	it("stores plain LRCLIB lyrics when Genius annotation lookup misses (best-effort)", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => json(LRCLIB_LYRICS_TRACK),
+				geniusSearch: () => json({ response: { hits: [] } }), // no Genius match
+			}),
+		);
 
 		const service = makeService();
 		const result = await service.fetchAndStoreOutcome({
 			songId: "s2",
-			artist: "Daft Punk",
-			song: "Veridis Quo",
-			albumName: "Discovery",
-			durationMs: 588_000,
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		// Genius returned not_found → LRCLIB instrumental wins
-		expect(result.value).toMatchObject({
-			kind: "instrumental",
-			source: "lrclib",
-		});
-	});
-
-	it("3.1 — falls back to Genius when LRCLIB returns not_found", async () => {
-		// LRCLIB /api/get → 404
-		fetchMock.mockResolvedValueOnce(lrclibNotFound());
-		// LRCLIB /api/search → empty array
-		fetchMock.mockResolvedValueOnce(lrclibOk([]));
-		// Genius search
-		fetchMock.mockResolvedValueOnce(geniusJson(GENIUS_SEARCH_HIT));
-		// Genius HTML page (repeated for referents too)
-		fetchMock.mockResolvedValue(geniusHtml(GENIUS_LYRICS_HTML));
-
-		const service = makeService();
-		const result = await service.fetchAndStoreOutcome({
-			songId: "s3",
 			artist: "Daft Punk",
 			song: "Get Lucky",
 			albumName: "Random Access Memories",
@@ -209,159 +189,21 @@ describe("LyricsService — provider order (Decision 1)", () => {
 		});
 
 		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		expect(result.value).toMatchObject({
-			kind: "lyrics",
-			source: "genius",
-		});
+		if (!Result.isOk(result) || result.value.kind !== "lyrics") return;
+		expect(result.value.source).toBe("lrclib");
+		expect(result.value.text).toContain("Like the legend of the phoenix");
+		// No annotation marker since none were placed.
+		expect(result.value.text).not.toContain("  > ");
 	});
 
-	it("3.1 — uses Genius when albumName/durationMs are absent (LRCLIB skipped)", async () => {
-		// No LRCLIB call expected; directly queries Genius
-		fetchMock.mockResolvedValueOnce(geniusJson(GENIUS_SEARCH_HIT));
-		fetchMock.mockResolvedValue(geniusHtml(GENIUS_LYRICS_HTML));
+	it("returns LRCLIB instrumental authoritatively, never calling Genius", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({ lrclibGet: () => json(LRCLIB_INSTRUMENTAL_TRACK) }),
+		);
 
 		const service = makeService();
 		const result = await service.fetchAndStoreOutcome({
-			songId: "s4",
-			artist: "Daft Punk",
-			song: "Get Lucky",
-			// albumName and durationMs deliberately omitted
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		expect(result.value).toMatchObject({ kind: "lyrics", source: "genius" });
-
-		// The first call must be to Genius (api.genius.com), not LRCLIB
-		const [firstUrl] = fetchMock.mock.calls[0] as [string, ...unknown[]];
-		expect(firstUrl).toContain("api.genius.com");
-	});
-
-	it("3.1 — detects Genius instrumental page when LRCLIB has no record", async () => {
-		// LRCLIB not found
-		fetchMock.mockResolvedValueOnce(lrclibNotFound());
-		fetchMock.mockResolvedValueOnce(lrclibOk([]));
-		// Genius search finds a hit with matching artist/title so findBestMatch accepts it
-		const crossingPathsHit = {
-			response: {
-				hits: [
-					{
-						result: {
-							id: 123,
-							url: "https://genius.com/Brock-berrigan-crossing-paths-lyrics",
-							title: "Crossing Paths",
-							primary_artist: { name: "Brock Berrigan" },
-							primary_artists: [{ name: "Brock Berrigan" }],
-							featured_artists: [],
-						},
-					},
-				],
-			},
-		};
-		fetchMock.mockResolvedValueOnce(geniusJson(crossingPathsHit));
-		// Genius page is an instrumental page
-		fetchMock.mockResolvedValue(geniusHtml(GENIUS_INSTRUMENTAL_HTML));
-
-		const service = makeService();
-		const result = await service.fetchAndStoreOutcome({
-			songId: "s5",
-			artist: "Brock Berrigan",
-			song: "Crossing Paths",
-			albumName: "On My Way",
-			durationMs: 180_000,
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		expect(result.value).toEqual({
-			kind: "instrumental",
-			source: "genius_page",
-		});
-	});
-});
-
-describe("LyricsService — spurious-match override (Decision 4)", () => {
-	let fetchMock: ReturnType<typeof vi.fn>;
-
-	beforeEach(() => {
-		fetchMock = vi.fn();
-		vi.stubGlobal("fetch", fetchMock);
-	});
-
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	it("3.2 — LRCLIB instrumental overrides a low-confidence Genius match (Saib case)", async () => {
-		// LRCLIB says instrumental
-		fetchMock.mockResolvedValueOnce(lrclibOk(LRCLIB_INSTRUMENTAL_TRACK));
-
-		// Genius search returns a result with a low-similarity title (spurious match)
-		const lowConfidenceHit = {
-			response: {
-				hits: [
-					{
-						result: {
-							id: 555,
-							url: "https://genius.com/totally-different-song",
-							// Completely different title — similarity will be well below 0.6
-							title: "Completely Different Title ZZZZZ",
-							primary_artist: { name: "Another Artist Entirely" },
-							primary_artists: [{ name: "Another Artist Entirely" }],
-							featured_artists: [],
-						},
-					},
-				],
-			},
-		};
-		// Genius search and page would have to match with low score to be a "spurious match".
-		// Since findBestMatch requires MIN_COMBINED_SCORE >= 0.6 to return a hit at all,
-		// a truly spurious match wouldn't even make it through the search step.
-		// The Decision 4 gate fires when geniusScore < GENIUS_LYRIC_CONFIDENCE_FLOOR (0.6).
-		// To exercise this path, we have to supply a hit that scores just below 0.6.
-		// Use track names/artists with a similarity score < 0.6.
-		const borderlineHit = {
-			response: {
-				hits: [
-					{
-						result: {
-							id: 556,
-							url: "https://genius.com/in-your-arms",
-							// Similar enough to pass findBestMatch (> 0.6) but we need the
-							// overall score to be below floor. Actually, because findBestMatch
-							// gates at 0.6, any score that passes findBestMatch is >= 0.6.
-							// Decision 4 is really about confidence: if confidence < 0.6 the
-							// match would have been rejected by findBestMatch already.
-							// So Decision 4 applies in practice via the /api/search confidence
-							// path (0.8) — test that LRCLIB instrumental at confidence 0.8 is
-							// NOT overridden (high enough).
-							title: "Veridis Quo",
-							primary_artist: { name: "Daft Punk" },
-							primary_artists: [{ name: "Daft Punk" }],
-							featured_artists: [],
-						},
-					},
-				],
-			},
-		};
-
-		// For the actual Decision 4 scenario: geniusScore comes from findBestMatch.
-		// Since findBestMatch requires >= 0.6 to return a match, any match that comes
-		// through has score >= 0.6. Decision 4 effectively means: LRCLIB says instrumental
-		// AND Genius doesn't find any confident match at all. This is tested by:
-		// LRCLIB instrumental + Genius not_found → trust LRCLIB.
-		void lowConfidenceHit;
-		void borderlineHit;
-
-		// Primary test: LRCLIB instrumental + Genius finds NO match → trust LRCLIB
-		fetchMock.mockResolvedValueOnce(lrclibOk(LRCLIB_INSTRUMENTAL_TRACK));
-		// Genius search: no hits
-		fetchMock.mockResolvedValueOnce(geniusJson({ response: { hits: [] } }));
-
-		const service = makeService();
-		const result = await service.fetchAndStoreOutcome({
-			songId: "s-saib",
+			songId: "s3",
 			artist: "Daft Punk",
 			song: "Veridis Quo",
 			albumName: "Discovery",
@@ -371,83 +213,24 @@ describe("LyricsService — spurious-match override (Decision 4)", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 		expect(result.value).toEqual({ kind: "instrumental", source: "lrclib" });
+		// Exactly one call: LRCLIB. Genius is never consulted for an instrumental.
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const [url] = fetchMock.mock.calls[0] as [string];
+		expect(url).toContain("lrclib.net");
 	});
 
-	it("3.2 — high-confidence Genius lyric match preserved even when LRCLIB says instrumental", async () => {
-		// LRCLIB says instrumental
-		fetchMock.mockResolvedValueOnce(lrclibOk(LRCLIB_INSTRUMENTAL_TRACK));
-
-		// Genius search returns a high-confidence match (score >= 0.6)
-		const highConfidenceHit = {
-			response: {
-				hits: [
-					{
-						result: {
-							id: 777,
-							url: "https://genius.com/veridis-quo-lyrics",
-							title: "Veridis Quo",
-							primary_artist: { name: "Daft Punk" },
-							primary_artists: [{ name: "Daft Punk" }],
-							featured_artists: [],
-						},
-					},
-				],
-			},
-		};
-		fetchMock.mockResolvedValueOnce(geniusJson(highConfidenceHit));
-		// Genius HTML page has a lyrics container (lyrical page)
-		fetchMock.mockResolvedValue(geniusHtml(GENIUS_LYRICS_HTML));
-
-		const service = makeService();
-		const result = await service.fetchAndStoreOutcome({
-			songId: "s-high",
-			artist: "Daft Punk",
-			song: "Veridis Quo",
-			albumName: "Discovery",
-			durationMs: 588_000,
-		});
-
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		// High-confidence Genius lyrics should NOT be overridden by LRCLIB instrumental
-		expect(result.value).toMatchObject({ kind: "lyrics", source: "genius" });
-	});
-
-	it("3.2 — LRCLIB transient error falls through to Genius (no blocking)", async () => {
-		// LRCLIB fetch fails (500 error)
-		fetchMock.mockResolvedValueOnce(
-			new Response("Server Error", { status: 500 }),
+	it("returns not_found when LRCLIB has no record (no Genius lyric fallback)", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibNotFound(),
+				lrclibSearch: () => json([]),
+			}),
 		);
-		// Genius search and HTML
-		fetchMock.mockResolvedValueOnce(geniusJson(GENIUS_SEARCH_HIT));
-		fetchMock.mockResolvedValue(geniusHtml(GENIUS_LYRICS_HTML));
 
 		const service = makeService();
 		const result = await service.fetchAndStoreOutcome({
-			songId: "s-lrclib-down",
-			artist: "Daft Punk",
-			song: "Get Lucky",
-			albumName: "Random Access Memories",
-			durationMs: 248_000,
-		});
-
-		// LRCLIB error should not block; Genius lyrics should be returned
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-		expect(result.value).toMatchObject({ kind: "lyrics", source: "genius" });
-	});
-
-	it("3.2 — returns not_found when both LRCLIB and Genius have no record", async () => {
-		// LRCLIB not found
-		fetchMock.mockResolvedValueOnce(lrclibNotFound());
-		fetchMock.mockResolvedValueOnce(lrclibOk([]));
-		// Genius search: no hits
-		fetchMock.mockResolvedValueOnce(geniusJson({ response: { hits: [] } }));
-
-		const service = makeService();
-		const result = await service.fetchAndStoreOutcome({
-			songId: "s-nf",
-			artist: "Unknown Artist",
+			songId: "s4",
+			artist: "Unknown",
 			song: "Obscure Track",
 			albumName: "Some Album",
 			durationMs: 200_000,
@@ -456,5 +239,44 @@ describe("LyricsService — spurious-match override (Decision 4)", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 		expect(result.value).toEqual({ kind: "not_found" });
+		// Genius is never asked for lyric text.
+		const calledGenius = fetchMock.mock.calls.some(([u]) =>
+			String(u).includes("api.genius.com"),
+		);
+		expect(calledGenius).toBe(false);
+	});
+
+	it("returns not_found without any fetch when album/duration are absent", async () => {
+		fetchMock.mockImplementation(routeFetch({}));
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "s5",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			// albumName and durationMs deliberately omitted
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+		expect(result.value).toEqual({ kind: "not_found" });
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it("surfaces a transient LRCLIB error as a retry-eligible failure (no row written)", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({ lrclibGet: () => new Response("err", { status: 500 }) }),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "s6",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isError(result)).toBe(true);
 	});
 });

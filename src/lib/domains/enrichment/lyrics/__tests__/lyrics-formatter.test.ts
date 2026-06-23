@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { TransformedLyricsBySection } from "../types/lyrics.types";
 import {
 	formatLyricsCompact,
 	getLyricsFormatLegend,
 	normalizeAnnotationText,
 } from "../utils/lyrics-formatter";
-import type { TransformedLyricsBySection } from "../utils/lyrics-transformer";
 
 const REPEATED = "The blonde girl is widely read as a specific real person.";
 

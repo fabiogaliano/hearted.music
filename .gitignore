@@ -34,3 +34,7 @@ v1_hearted_brand
 # release-year backfill runtime artifacts (local cache + temp write SQL)
 scripts/spotify-hash-sync/.release-year-cache.json
 scripts/spotify-hash-sync/.release-year-write.sql
+
+# Regenerable lyrics-eval report output (run via scripts/lyrics-eval/run-snapshots.ts)
+claudedocs/lyrics-eval-live.json
+claudedocs/lyrics-eval-snapshots.json

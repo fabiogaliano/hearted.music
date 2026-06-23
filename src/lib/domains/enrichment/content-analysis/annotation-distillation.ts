@@ -15,8 +15,8 @@
  */
 
 import { Result } from "better-result";
+import type { TransformedLyricsBySection } from "@/lib/domains/enrichment/lyrics/types/lyrics.types";
 import { normalizeAnnotationText } from "@/lib/domains/enrichment/lyrics/utils/lyrics-formatter";
-import type { TransformedLyricsBySection } from "@/lib/domains/enrichment/lyrics/utils/lyrics-transformer";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import {
 	type AnnotationDistillationRow,

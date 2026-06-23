@@ -1,0 +1,3 @@
+# Cached raw Genius HTML / referents / LRCLIB text for offline re-runs.
+# Heavy (~15MB) and contains third-party copyrighted lyric text — never commit.
+.cache/

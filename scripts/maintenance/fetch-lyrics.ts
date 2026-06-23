@@ -1,11 +1,13 @@
 #!/usr/bin/env bun
 /**
- * Backfill lyrics for songs via the Genius LyricsService.
+ * Backfill lyrics for songs via the LyricsService (LRCLIB + Genius annotations).
  *
- * Default scope is songs that already have an analysis (the set with a
- * generated compound_mood worth validating against lyrics). Pass --all to
- * cover every song in the library. fetchAndStoreOutcome is idempotent and
- * upserts on (song_id, source), so re-runs skip already-fetched songs.
+ * LRCLIB is keyed on track+artist+album+duration, so we select album_name and
+ * duration_ms alongside name/artist; songs missing either resolve as not_found
+ * (the same gate the worker applies). Default scope is songs that already have
+ * an analysis (the set with a generated compound_mood worth validating against
+ * lyrics). Pass --all to cover every song in the library. fetchAndStoreOutcome
+ * is idempotent and upserts on (song_id, source), so re-runs skip fetched songs.
  *
  *   bun run scripts/maintenance/fetch-lyrics.ts          # analyzed songs only
  *   bun run scripts/maintenance/fetch-lyrics.ts --all    # entire library
@@ -23,6 +25,8 @@ interface Target {
 	song_id: string;
 	name: string;
 	artist: string;
+	album_name: string | null;
+	duration_ms: number | null;
 }
 
 async function main() {
@@ -36,12 +40,14 @@ async function main() {
 
 	const targets = ALL
 		? await sql<Target[]>`
-				SELECT s.id AS song_id, s.name, s.artists[1] AS artist
+				SELECT s.id AS song_id, s.name, s.artists[1] AS artist,
+				       s.album_name, s.duration_ms
 				FROM song s
 				WHERE s.artists[1] IS NOT NULL
 				ORDER BY s.name`
 		: await sql<Target[]>`
-				SELECT DISTINCT s.id AS song_id, s.name, s.artists[1] AS artist
+				SELECT DISTINCT s.id AS song_id, s.name, s.artists[1] AS artist,
+				       s.album_name, s.duration_ms
 				FROM song s
 				JOIN song_analysis sa ON sa.song_id = s.id
 				WHERE s.artists[1] IS NOT NULL
@@ -62,6 +68,8 @@ async function main() {
 				songId: t.song_id,
 				artist: t.artist,
 				song: t.name,
+				albumName: t.album_name ?? undefined,
+				durationMs: t.duration_ms ?? undefined,
 			});
 			return { t, r };
 		}),
