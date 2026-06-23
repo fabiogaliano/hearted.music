@@ -279,4 +279,41 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 
 		expect(Result.isError(result)).toBe(true);
 	});
+
+	it("retries a transient 5xx from Genius search and still places the annotation", async () => {
+		// Annotation enrichment is best-effort and swallows failures, so a retry
+		// regression would degrade silently (annotations quietly stop appearing).
+		// This guards the live withRetry/isGeniusRetryable path on the search call.
+		let geniusSearchCalls = 0;
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => json(LRCLIB_LYRICS_TRACK),
+				geniusSearch: () => {
+					geniusSearchCalls += 1;
+					return geniusSearchCalls === 1
+						? new Response("upstream", { status: 503 })
+						: json(GENIUS_SEARCH_HIT);
+				},
+				geniusReferents: (page) =>
+					page === 1
+						? json(GENIUS_REFERENTS_PAGE1)
+						: json({ response: { referents: [] } }),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "s7",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result) || result.value.kind !== "lyrics") return;
+		// The 503 was retried (≥2 search calls) and the annotation still landed.
+		expect(geniusSearchCalls).toBeGreaterThanOrEqual(2);
+		expect(result.value.text).toContain("mythical bird's rebirth");
+	});
 });

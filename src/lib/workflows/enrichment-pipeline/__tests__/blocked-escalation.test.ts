@@ -182,7 +182,7 @@ describe("recordStageFailure — blocked escalation integration", () => {
 				...BASE_PARAMS,
 				failureCode: code,
 				errorMessage:
-					"GeniusParseError: no lyrics container — https://genius.com/foo",
+					"GeniusFetchError: Failed to fetch lyrics page (503) — https://api.genius.com/search",
 			});
 
 			expect(Result.isOk(result)).toBe(true);
@@ -194,7 +194,7 @@ describe("recordStageFailure — blocked escalation integration", () => {
 			expect(recorded.suppressUntil).toBeNull();
 			// The real error message is preserved for observability.
 			expect(recorded.errorMessage).toBe(
-				"GeniusParseError: no lyrics container — https://genius.com/foo",
+				"GeniusFetchError: Failed to fetch lyrics page (503) — https://api.genius.com/search",
 			);
 		});
 

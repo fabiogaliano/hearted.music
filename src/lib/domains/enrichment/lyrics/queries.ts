@@ -59,12 +59,6 @@ const AnnotationInfoSchema = z.object({
 const TransformedLineSchema = z.object({
 	id: z.number(),
 	text: z.string(),
-	range: z
-		.object({
-			start: z.number(),
-			end: z.number(),
-		})
-		.optional(),
 	annotations: z.array(AnnotationInfoSchema).optional(),
 });
 
@@ -101,12 +95,6 @@ function toDocumentJson(document: LyricsDocument): Json {
 			lines: section.lines.map((line) => ({
 				id: line.id,
 				text: line.text,
-				range: line.range
-					? {
-							start: line.range.start,
-							end: line.range.end,
-						}
-					: undefined,
 				annotations: line.annotations?.map((annotation) => ({
 					text: annotation.text,
 					verified: annotation.verified,

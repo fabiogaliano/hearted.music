@@ -105,11 +105,7 @@ export function placeAnnotations(
 	}
 
 	const transformedLines: TransformedLine[] = lines.map((text, index) => {
-		const line: TransformedLine = {
-			id: index + 1,
-			text,
-			range: { start: index + 1, end: index + 1 },
-		};
+		const line: TransformedLine = { id: index + 1, text };
 		const annotations = byLine.get(index);
 		if (annotations?.length) line.annotations = annotations;
 		return line;

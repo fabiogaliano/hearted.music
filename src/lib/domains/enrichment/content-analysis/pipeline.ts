@@ -47,7 +47,6 @@ import {
 	type GeniusError,
 	GeniusFetchError,
 	GeniusNotFoundError,
-	GeniusParseError,
 } from "@/lib/shared/errors/external/genius";
 import { chunkArray } from "@/lib/shared/utils/concurrency";
 import { createLrclibProvider } from "../lyrics/providers/lrclib";
@@ -165,7 +164,6 @@ type LyricsCache = Map<string, LyricsCacheEntry>;
 function isGeniusError(error: unknown): error is GeniusError {
 	return (
 		error instanceof GeniusNotFoundError ||
-		error instanceof GeniusParseError ||
 		error instanceof GeniusFetchError ||
 		error instanceof GeniusConfigError
 	);

@@ -175,8 +175,8 @@ describe.skipIf(!IS_LOCAL)(
 
 		it("no analysis row → needs_embedding is FALSE (blocked song does not pollute the work queue)", async () => {
 			// The incident scenario: Crossing Paths had no analysis row (analysis
-			// blocked by GeniusParseError) but needs_embedding was true, driving a
-			// hot loop. With Change 1 applied, needs_embedding must be false when
+			// blocked by a lyrics provider error) but needs_embedding was true, driving
+			// a hot loop. With Change 1 applied, needs_embedding must be false when
 			// there is no analysis row.
 			// Audio features + genres are pre-seeded so only analysis/embedding flags vary.
 			if (!supabase || !fixture) throw new Error("missing");

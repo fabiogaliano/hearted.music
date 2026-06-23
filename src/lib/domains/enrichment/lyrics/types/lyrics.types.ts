@@ -14,16 +14,11 @@ export interface AnnotationInfo {
 
 /**
  * A single lyric line in the stored/formatted document, optionally carrying the
- * annotations placed on it. `range` records the line's position (start/end line
- * id); for annotations matched across multiple LRCLIB lines it spans them.
+ * annotations placed on it.
  */
 export interface TransformedLine {
 	id: number;
 	text: string;
-	range?: {
-		start: number;
-		end: number;
-	};
 	annotations?: AnnotationInfo[];
 }
 

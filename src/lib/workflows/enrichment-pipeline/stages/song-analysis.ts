@@ -18,10 +18,7 @@ import {
 	getLatestLyricsSnapshots,
 	type LatestLyricsSnapshot,
 } from "@/lib/domains/enrichment/lyrics/queries";
-import {
-	GeniusFetchError,
-	GeniusParseError,
-} from "@/lib/shared/errors/external/genius";
+import { GeniusFetchError } from "@/lib/shared/errors/external/genius";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import type { StageFailure, StageOutcome } from "../stage-outcomes";
@@ -51,14 +48,6 @@ function blockedSkipErrorDetail(
 	fallbackMessage: string,
 ): Pick<StageFailure, "message" | "provider" | "statusCode" | "causeTag"> {
 	if (!error) return { message: fallbackMessage };
-
-	if (error instanceof GeniusParseError) {
-		return {
-			message: `GeniusParseError: ${error.reason} — ${error.url}`,
-			provider: "genius",
-			causeTag: "parse_error",
-		};
-	}
 
 	if (error instanceof GeniusFetchError) {
 		return {

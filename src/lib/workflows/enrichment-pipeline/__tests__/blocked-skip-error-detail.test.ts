@@ -33,10 +33,7 @@ vi.mock("@/lib/domains/enrichment/lyrics/queries", () => ({
 }));
 
 import type { AnalysisFailureClassification } from "@/lib/domains/enrichment/content-analysis/failure-classification";
-import {
-	GeniusFetchError,
-	GeniusParseError,
-} from "@/lib/shared/errors/external/genius";
+import { GeniusFetchError } from "@/lib/shared/errors/external/genius";
 import type { PipelineBatch } from "../batch";
 import type { StageOutcome } from "../stage-outcomes";
 import { runSongAnalysis } from "../stages/song-analysis";
@@ -117,15 +114,15 @@ beforeEach(() => {
 });
 
 describe("runSongAnalysis: blocked-skip error detail (§7.1)", () => {
-	it("GeniusParseError in blockedSkipErrors threads class, URL, and causeTag into the StageFailure", async () => {
-		const parseError = new GeniusParseError(
-			"https://genius.com/Brock-berrigan-crossing-paths-lyrics",
-			"no lyrics container",
+	it("a blocked-lyrics provider error threads class, URL, and status into the StageFailure", async () => {
+		const fetchError = new GeniusFetchError(
+			"https://api.genius.com/search?q=crossing-paths",
+			503,
 		);
 		mockAnalyzeSongBatch.mockResolvedValue({
 			...emptyBatchOutcome(),
 			skippedUnconfirmedLyrics: ["crossing-paths"],
-			blockedSkipErrors: new Map([["crossing-paths", parseError]]),
+			blockedSkipErrors: new Map([["crossing-paths", fetchError]]),
 		});
 		mockSongAnalysisGet
 			.mockResolvedValueOnce(Result.ok(new Map()))
@@ -141,17 +138,17 @@ describe("runSongAnalysis: blocked-skip error detail (§7.1)", () => {
 		expect(failure.failureCode).toBe("analysis_blocked_lyrics_unavailable");
 
 		// Must contain the error class and URL — NOT the canned message.
-		expect(failure.message).toContain("GeniusParseError");
+		expect(failure.message).toContain("GeniusFetchError");
 		expect(failure.message).toContain(
-			"https://genius.com/Brock-berrigan-crossing-paths-lyrics",
+			"https://api.genius.com/search?q=crossing-paths",
 		);
 		expect(failure.message).not.toBe(
 			"Analysis skipped: audio confirmed missing, lyrics provider unavailable",
 		);
 
 		expect(failure.provider).toBe("genius");
-		expect(failure.causeTag).toBe("parse_error");
-		expect(failure.statusCode).toBeUndefined();
+		expect(failure.causeTag).toBe("fetch_error");
+		expect(failure.statusCode).toBe(503);
 	});
 
 	it("GeniusFetchError threads HTTP status code and URL into the StageFailure", async () => {

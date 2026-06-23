@@ -19,21 +19,6 @@ export class GeniusNotFoundError extends TaggedError("GeniusNotFoundError")<{
 	}
 }
 
-/** Failed to parse lyrics HTML from Genius page */
-export class GeniusParseError extends TaggedError("GeniusParseError")<{
-	url: string;
-	reason: string;
-	message: string;
-}>() {
-	constructor(url: string, reason: string) {
-		super({
-			url,
-			reason,
-			message: `Failed to parse lyrics: ${reason}`,
-		});
-	}
-}
-
 /** Failed to fetch Genius page */
 export class GeniusFetchError extends TaggedError("GeniusFetchError")<{
 	url: string;
@@ -65,6 +50,5 @@ export class GeniusConfigError extends TaggedError("GeniusConfigError")<{
 /** All Genius/Lyrics errors */
 export type GeniusError =
 	| GeniusNotFoundError
-	| GeniusParseError
 	| GeniusFetchError
 	| GeniusConfigError;
