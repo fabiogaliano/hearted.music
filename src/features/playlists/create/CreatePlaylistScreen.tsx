@@ -2,9 +2,9 @@
  * CreatePlaylistScreen — the page shell for /playlists/new.
  *
  * Lays out the four regions of the creation flow with intentional
- * hearted-style spacing and typography. T5 (config surface) is live;
- * T6 (preview list + suggestions tray) are now wired; T7 (create flow)
- * remains as a labelled thin placeholder.
+ * hearted-style spacing and typography. The create bar anchors the bottom
+ * with a flat bordered footer that maps the result to inline success,
+ * partial, reconnect, or extension-unavailable states.
  *
  * The screen is deliberately calm — no loaders in the shell itself; the
  * useCreatePlaylistDraft hook drives per-region loading state.
@@ -20,6 +20,7 @@ import {
 	getBrowserTarget,
 	getExtensionStoreUrl,
 } from "@/lib/extension/browser-target";
+import type { CreatePlaylistFromDraftResult } from "@/lib/extension/create-playlist-from-draft";
 import {
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
@@ -27,8 +28,12 @@ import {
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import { ConfigSurface } from "./config/ConfigSurface";
+import { CreateBar } from "./create-flow/CreateBar";
+import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
+import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
+import { PartialState } from "./create-flow/PartialState";
+import { SuccessState } from "./create-flow/SuccessState";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
-import { CreateBarPlaceholder } from "./placeholders/CreateBarPlaceholder";
 import { PreviewList } from "./preview/PreviewList";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
@@ -38,6 +43,20 @@ type SpotifyGateState =
 	| "ok"
 	| "extension-unavailable"
 	| "reconnect-required";
+
+/**
+ * Result state held by the screen after the orchestrator returns.
+ * null = not yet attempted.
+ */
+type FlowResult =
+	| null
+	| { status: "success"; playlistName: string; spotifyId: string }
+	| {
+			status: "partial";
+			spotifyId: string;
+			failedTrackCount: number;
+			totalSongCount: number;
+	  };
 
 interface CreatePlaylistScreenProps {
 	accountId: string;
@@ -51,6 +70,7 @@ export function CreatePlaylistScreen({
 	const navigate = useNavigate();
 	const draft = useCreatePlaylistDraft();
 	const [showPaywall, setShowPaywall] = useState(false);
+	const [flowResult, setFlowResult] = useState<FlowResult>(null);
 
 	// Track IDs of songs added to the preview this session so PreviewList can
 	// briefly highlight them on entry. Cleared after the pulse animation plays out
@@ -98,8 +118,7 @@ export function CreatePlaylistScreen({
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
-	// T7 will also check gate state at the create touchpoint — this is just the
-	// early-awareness check scoped to the shell header.
+	// CreateBar re-checks via the same gate state on submit.
 	const [gateState, setGateState] = useState<SpotifyGateState>("checking");
 
 	useEffect(() => {
@@ -120,6 +139,47 @@ export function CreatePlaylistScreen({
 			cancelled = true;
 		};
 	}, []);
+
+	// Holds the name committed just before the orchestrator runs. A ref avoids
+	// the stale-closure risk: handleCreateResult fires after an async boundary,
+	// so reading a ref is safer than relying on the closure-captured state value.
+	const submittedNameRef = useRef<string>("");
+	const onNameCommit = useCallback((name: string) => {
+		submittedNameRef.current = name;
+	}, []);
+
+	function handleCreateResult(result: CreatePlaylistFromDraftResult) {
+		if (result.status === "success") {
+			setFlowResult({
+				status: "success",
+				playlistName: submittedNameRef.current,
+				spotifyId: result.spotifyId,
+			});
+		} else if (result.status === "partial") {
+			setFlowResult({
+				status: "partial",
+				spotifyId: result.spotifyId,
+				failedTrackCount: result.failedTrackCount,
+				totalSongCount: draft.preview.length,
+			});
+		} else if (result.status === "reconnect-required") {
+			// The gate was "ok" when submit started but auth expired mid-flight.
+			// Update gate so the create section swaps to the reconnect affordance.
+			setGateState("reconnect-required");
+		} else if (result.status === "extension-unavailable") {
+			setGateState("extension-unavailable");
+		}
+		// error: handled in CreateBar via toast; no flow result change needed.
+	}
+
+	// Not-enough note: eligible but fewer than the slider max.
+	const showNotEnoughNote =
+		draft.totalEligible > 0 &&
+		draft.totalEligible < draft.config.maxSongs &&
+		!draft.isLoading;
+
+	// Warming: no eligible songs, still loading (backfill just kicked off).
+	const isWarming = draft.totalEligible === 0 && draft.isLoading;
 
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
@@ -232,13 +292,26 @@ export function CreatePlaylistScreen({
 						</span>
 					)}
 				</div>
-				<PreviewList
-					songs={draft.preview}
-					isLoading={draft.isLoading}
-					onRemoveSong={draft.removeSong}
-					onRestoreSong={draft.restoreSong}
-					newSongIds={newSongIds}
-				/>
+
+				{draft.totalEligible === 0 && !draft.isLoading ? (
+					<LibraryEmptyState isWarming={false} />
+				) : isWarming ? (
+					<LibraryEmptyState isWarming={true} />
+				) : (
+					<PreviewList
+						songs={draft.preview}
+						isLoading={draft.isLoading}
+						onRemoveSong={draft.removeSong}
+						onRestoreSong={draft.restoreSong}
+						newSongIds={newSongIds}
+					/>
+				)}
+
+				{showNotEnoughNote && (
+					<div className="mt-3">
+						<NotEnoughSongsNote totalEligible={draft.totalEligible} />
+					</div>
+				)}
 			</section>
 
 			<section className="mb-10">
@@ -257,10 +330,41 @@ export function CreatePlaylistScreen({
 				/>
 			</section>
 
-			<CreateBarPlaceholder
-				previewCount={draft.preview.length}
-				intentApplied={draft.intentApplied}
-			/>
+			{/* Create section — flat bordered footer anchored below the suggestions tray */}
+			<div className="theme-border-color border border-t-0">
+				<div className="theme-border-color border-b px-6 py-3">
+					<span
+						className="theme-text-muted text-[11px] tracking-[0.2em] uppercase"
+						style={{ fontFamily: fonts.body }}
+					>
+						Create
+					</span>
+				</div>
+
+				{flowResult?.status === "success" ? (
+					<SuccessState
+						playlistName={flowResult.playlistName}
+						spotifyId={flowResult.spotifyId}
+					/>
+				) : flowResult?.status === "partial" ? (
+					<PartialState
+						spotifyId={flowResult.spotifyId}
+						failedTrackCount={flowResult.failedTrackCount}
+						totalSongCount={flowResult.totalSongCount}
+					/>
+				) : (
+					<CreateBar
+						songIds={draft.preview.map((s) => s.id)}
+						genrePills={draft.config.genrePills}
+						matchFilters={draft.config.matchFilters}
+						intentApplied={draft.intentApplied}
+						intent={draft.config.intent ?? null}
+						gateState={gateState}
+						onNameCommit={onNameCommit}
+						onResult={handleCreateResult}
+					/>
+				)}
+			</div>
 
 			{showPaywall && (
 				<UpgradeDialog
