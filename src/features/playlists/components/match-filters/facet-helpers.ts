@@ -123,10 +123,13 @@ export function boundsToYear(
 }
 
 // Date math on a known ISO string — deterministic, never reads the wall clock.
+// Empty `iso` (filter options not yet loaded → likedAt.today is "") yields ""
+// instead of an Invalid Date whose toISOString() would throw a RangeError.
 export function shiftDate(
 	iso: string,
 	opts: { days?: number; months?: number; years?: number },
 ): string {
+	if (!iso) return "";
 	const d = new Date(`${iso}T00:00:00Z`);
 	if (opts.days) d.setUTCDate(d.getUTCDate() - opts.days);
 	if (opts.months) d.setUTCMonth(d.getUTCMonth() - opts.months);
