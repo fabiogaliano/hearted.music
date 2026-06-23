@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent } from "react";
+import { hasActiveMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
@@ -277,6 +278,12 @@ export function SpotlightPanel({
 																	onEdit={openEditor}
 																/>
 															) : undefined
+														}
+														onAddFilters={
+															!guidedIntent &&
+															!hasActiveMatchFilters(matchFilters)
+																? openEditor
+																: undefined
 														}
 														advancedFilters={
 															isEditing && !guidedIntent ? (

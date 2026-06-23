@@ -11,6 +11,31 @@ const CAUTION = "hsl(36, 72%, 44%)";
 const EMPTY_DESCRIPTION =
 	"Your liked songs find their way here by what you write. Describe what this playlist is for — a moment, a feeling, a sound.";
 
+/**
+ * The pill that invites filling an empty facet — "Add genres" / "Add filters".
+ * One definition so the two read as siblings; the label is the accessible name,
+ * so it needs no aria-label.
+ */
+function AddButton({
+	onClick,
+	children,
+}: {
+	onClick: () => void;
+	children: ReactNode;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className="theme-border-color inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border bg-(--t-surface) px-3 py-1 text-xs text-(--t-primary) transition-[color,border-color,background-color] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
+			style={{ fontFamily: fonts.body }}
+		>
+			<PlusIcon size={12} weight="bold" aria-hidden />
+			{children}
+		</button>
+	);
+}
+
 interface WritingSurfaceCollapsedProps {
 	description: string | null;
 	genres: string[];
@@ -20,6 +45,9 @@ interface WritingSurfaceCollapsedProps {
 	collapsedFiltersSlot?: ReactNode;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
+	/** Present only when no filters are active (and not in guided mode): shows an
+	 *  "Add filters" pill beside "Add genres" that opens the editor. */
+	onAddFilters?: () => void;
 }
 
 /**
@@ -36,6 +64,7 @@ export function WritingSurfaceCollapsed({
 	collapsedFiltersSlot,
 	onEditDescription,
 	onEditGenres,
+	onAddFilters,
 }: WritingSurfaceCollapsedProps) {
 	// The intent leads the body: notably larger than the 11px eyebrow / 12px chips.
 	const intentClass = intentSerif
@@ -99,28 +128,29 @@ export function WritingSurfaceCollapsed({
 				</p>
 			</button>
 
-			{genres.length > 0 ? (
-				<button
-					type="button"
-					onClick={onEditGenres}
-					aria-label="Edit genres"
-					className="flex w-fit cursor-pointer flex-wrap items-center gap-1.5 text-left"
-				>
-					{genres.map((genre) => (
-						<GenreChip key={genre}>{genre}</GenreChip>
-					))}
-				</button>
-			) : (
-				<button
-					type="button"
-					onClick={onEditGenres}
-					className="theme-border-color inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border bg-(--t-surface) px-3 py-1 text-xs text-(--t-primary) transition-[color,border-color,background-color] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
-					style={{ fontFamily: fonts.body }}
-				>
-					<PlusIcon size={12} weight="bold" aria-hidden />
-					Add genres
-				</button>
-			)}
+			{/* Genres and the empty-filters affordance share one row so "Add filters"
+			    sits to the right of "Add genres" (or the genre chips). Active filters
+			    keep their own summary row below via collapsedFiltersSlot. */}
+			<div className="flex flex-wrap items-start gap-2">
+				{genres.length > 0 ? (
+					<button
+						type="button"
+						onClick={onEditGenres}
+						aria-label="Edit genres"
+						className="flex w-fit cursor-pointer flex-wrap items-center gap-1.5 text-left"
+					>
+						{genres.map((genre) => (
+							<GenreChip key={genre}>{genre}</GenreChip>
+						))}
+					</button>
+				) : (
+					<AddButton onClick={onEditGenres}>Add genres</AddButton>
+				)}
+
+				{onAddFilters && (
+					<AddButton onClick={onAddFilters}>Add filters</AddButton>
+				)}
+			</div>
 
 			{collapsedFiltersSlot}
 		</div>

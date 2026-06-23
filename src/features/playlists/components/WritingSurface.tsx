@@ -50,6 +50,12 @@ interface WritingSurfaceProps {
 	 * matching the genres interaction pattern (decisions §7 "Collapsed/non-editing state").
 	 */
 	collapsedFiltersSlot?: ReactNode;
+	/**
+	 * Opens the editor from an "Add filters" pill shown beside "Add genres" in the
+	 * collapsed state. Pass only when no filters are active; omit to hide the pill
+	 * (e.g. guided mode, or when filters already have a summary row).
+	 */
+	onAddFilters?: () => void;
 	onEditDescription: () => void;
 	onEditGenres: () => void;
 	onDraftDescriptionChange: (value: string) => void;
@@ -86,6 +92,7 @@ export function WritingSurface({
 	intentExamples,
 	advancedFilters,
 	collapsedFiltersSlot,
+	onAddFilters,
 	onEditDescription,
 	onEditGenres,
 	onDraftDescriptionChange,
@@ -138,6 +145,7 @@ export function WritingSurface({
 			descriptionViewTransitionName={descriptionViewTransitionName}
 			hideUnmatchableWarning={hideUnmatchableWarning}
 			collapsedFiltersSlot={collapsedFiltersSlot}
+			onAddFilters={onAddFilters}
 			onEditDescription={enterDescription}
 			onEditGenres={enterGenres}
 		/>
