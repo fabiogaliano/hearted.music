@@ -11,7 +11,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { parseSummaryMatchFilters } from "../PlaylistsCoverFlowScreen";
+import { parseSummaryMatchFilters } from "../parseSummaryMatchFilters";
 
 // ============================================================================
 // parseStoredMatchFilters — forgiving read-path parser

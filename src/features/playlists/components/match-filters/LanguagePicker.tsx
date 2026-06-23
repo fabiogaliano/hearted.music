@@ -7,7 +7,7 @@
  * No inline list visible until triggered — minimal footprint when collapsed.
  */
 
-import { CaretDownIcon, XIcon } from "@phosphor-icons/react";
+import { CaretDownIcon } from "@phosphor-icons/react";
 import {
 	type KeyboardEvent,
 	useCallback,
@@ -27,6 +27,8 @@ import type {
 	PlaylistMatchFilterOptions,
 } from "@/lib/domains/taste/match-filters/types";
 import { fonts } from "@/lib/theme/fonts";
+import { LanguageChips } from "./LanguageChips";
+import { LanguageCommandPalette } from "./LanguageCommandPalette";
 import "../playlist-ui.css";
 
 export interface LanguagePickerProps {
@@ -203,33 +205,11 @@ export function LanguagePicker({
 				Language
 			</div>
 
-			{/* Selected chips — sibling of trigger so browser does not suppress
-			    pointer-events via disabled-button inheritance (decisions §7) */}
-			{selectedCodes.length > 0 && (
-				<ul
-					className="m-0 list-none flex flex-wrap gap-1 p-0 mb-1.5"
-					aria-label="Selected languages"
-				>
-					{selectedCodes.map((code) => (
-						<li key={code}>
-							<span className="mf-lang-chip xpl-chip-enter">
-								<span className="text-[11px] leading-none tracking-[0.04em]">
-									{languageLabel(code)}
-								</span>
-								<button
-									type="button"
-									onClick={() => removeCode(code)}
-									disabled={isSaving}
-									aria-label={`Remove ${languageLabel(code)} language`}
-									className="mf-lang-chip-x"
-								>
-									<XIcon size={10} weight="bold" aria-hidden />
-								</button>
-							</span>
-						</li>
-					))}
-				</ul>
-			)}
+			<LanguageChips
+				selectedCodes={selectedCodes}
+				isSaving={isSaving}
+				onRemove={removeCode}
+			/>
 
 			{/* Trigger: caret + placeholder only — no selected chips inside */}
 			<button
@@ -260,104 +240,20 @@ export function LanguagePicker({
 
 			{/* Command palette popover — sits in normal flow (full-width overlay) */}
 			{open && (
-				<div
-					className="border theme-border-color theme-bg mt-1 xpl-reveal"
-					style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}
-				>
-					{/* Search input */}
-					<div className="border-b theme-border-color px-3 py-2">
-						<input
-							ref={searchRef}
-							type="text"
-							role="combobox"
-							aria-label="Search languages"
-							aria-expanded="true"
-							aria-controls={listboxId}
-							aria-autocomplete="list"
-							aria-activedescendant={
-								displayOptions.length > 0 ? optionId(activeIndex) : undefined
-							}
-							placeholder="Search languages…"
-							value={query}
-							onChange={(e) => {
-								setQuery(e.target.value);
-								// Reset highlight to the top match as the result set
-								// changes; the open/close effect resets on cleared query.
-								setActiveIndex(0);
-							}}
-							onKeyDown={handleSearchKeyDown}
-							className="w-full border-0 bg-transparent text-sm theme-text placeholder:theme-text-muted focus-visible:outline-none"
-						/>
-					</div>
-
-					{/* Options list. APG combobox pattern: focus on input, listbox navigated
-					    via aria-activedescendant — div[role=listbox] is correct here. */}
-					<div
-						id={listboxId}
-						role="listbox"
-						aria-multiselectable="true"
-						aria-label="Languages"
-						className="overflow-y-auto"
-						style={{ maxHeight: 240 }}
-					>
-						{displayOptions.length === 0 ? (
-							<div
-								role="presentation"
-								className="px-3 py-3 text-sm theme-text-muted"
-							>
-								No languages match &ldquo;{query.trim()}&rdquo;
-							</div>
-						) : (
-							displayOptions.map((opt, index) => {
-								const isSelected = selectedCodes.includes(opt.code);
-								const isActive = index === activeIndex;
-								const count = detectedCounts.get(opt.code);
-								return (
-									<div
-										key={opt.code}
-										id={optionId(index)}
-										role="option"
-										aria-selected={isSelected}
-										tabIndex={-1}
-										className={`flex items-center justify-between px-3 py-2.5 text-sm cursor-pointer transition-[background-color] duration-100 ${
-											isActive
-												? "bg-(--t-surface)"
-												: isSelected
-													? "bg-(--t-surface-dim)"
-													: ""
-										} theme-text`}
-										onClick={() => toggleCode(opt.code)}
-										onKeyDown={(e) => {
-											if (e.key === "Enter" || e.key === " ") {
-												e.preventDefault();
-												toggleCode(opt.code);
-											}
-										}}
-										onPointerMove={() => setActiveIndex(index)}
-									>
-										<span>{opt.label}</span>
-										<span className="flex items-center gap-3">
-											{count !== undefined && (
-												<span className="text-[11px] tabular-nums theme-text-muted">
-													{count} songs
-												</span>
-											)}
-											{isSelected && (
-												<span
-													className="text-[10px] tracking-[0.06em] uppercase"
-													style={{ color: "var(--t-primary)" }}
-													aria-hidden
-												>
-													✓
-												</span>
-											)}
-										</span>
-									</div>
-								);
-							})
-						)}
-					</div>
-				</div>
+				<LanguageCommandPalette
+					query={query}
+					onQueryChange={setQuery}
+					searchRef={searchRef}
+					listboxId={listboxId}
+					optionId={optionId}
+					activeIndex={activeIndex}
+					onActiveIndexChange={setActiveIndex}
+					displayOptions={displayOptions}
+					selectedCodes={selectedCodes}
+					detectedCounts={detectedCounts}
+					onToggleCode={toggleCode}
+					onSearchKeyDown={handleSearchKeyDown}
+				/>
 			)}
 
 			<div aria-live="polite" className="sr-only">
