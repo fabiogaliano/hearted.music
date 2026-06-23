@@ -1,12 +1,13 @@
 /**
- * Server functions for the stateless playlist creation preview engine.
+ * Server functions for the stateless playlist creation preview engine
+ * and the draft→Spotify commit path.
  *
- * previewPlaylistDraft is the sole entry point: it validates input, resolves
- * the account's billing/eligibility context, and delegates all scoring and
- * ranking logic to the pure domain functions in src/lib/domains/playlists/.
- *
- * No playlist rows, snapshot rows, or profile rows are written here.
- * Everything is computed in-memory and discarded after the response.
+ * previewPlaylistDraft: stateless preview engine (no writes).
+ * resolveSpotifyUserId: read the Spotify user ID cached on the account row.
+ * persistNewPlaylistConfig: persist match config onto a newly-created playlist
+ *   and return the ordered track URIs for the bulk-add step.
+ * recordPlaylistMatchDecisions: bulk-write match_decision "added" rows for the
+ *   songs committed to the new playlist so they don't resurface as suggestions.
  */
 
 import { createServerFn } from "@tanstack/react-start";
@@ -16,6 +17,11 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { getSongEmbeddingsBatch } from "@/lib/domains/enrichment/embeddings/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import {
+	getPlaylistBySpotifyId,
+	updatePlaylistMatchConfig,
+} from "@/lib/domains/library/playlists/queries";
+import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { loadPhase1Candidates } from "@/lib/domains/playlists/candidate-loader";
 import {
 	assembleDraft,
@@ -29,6 +35,10 @@ import {
 	isIntentEligible,
 } from "@/lib/domains/playlists/intent-eligibility";
 import type { SongVM } from "@/lib/domains/playlists/types";
+import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
+import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import { upsertMatchDecisions } from "@/lib/domains/taste/song-matching/decision-queries";
+import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 // ============================================================================
@@ -238,4 +248,238 @@ export const previewPlaylistDraft = createServerFn({ method: "POST" })
 			effectiveIntentApplied,
 			filteredCandidates,
 		);
+	});
+
+// ============================================================================
+// Spotify userId resolution
+// ============================================================================
+
+/**
+ * Returns the Spotify user ID cached on the account row.
+ *
+ * `account.spotify_id` is populated during extension sync via applyUserProfile
+ * in the extension-sync runner — no extension change is needed. This is a GET
+ * because it only reads; the caching write happens at sync time, not here.
+ *
+ * Returns null when the user has never completed an extension sync with a
+ * logged-in Spotify session (new account, extension not connected, etc.).
+ */
+export const resolveSpotifyUserId = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<{ spotifyUserId: string | null }> => {
+		// account.spotify_id is set during extension sync; expose it here so the
+		// client never stores it or passes it back to the server as a parameter.
+		const spotifyUserId = context.account.spotify_id ?? null;
+		return { spotifyUserId };
+	});
+
+// ============================================================================
+// Persist match config onto a newly-created playlist
+// ============================================================================
+
+const SPOTIFY_PLAYLIST_ID_RE = /^[a-zA-Z0-9]+$/;
+
+const PersistNewPlaylistConfigSchema = z.object({
+	/**
+	 * Spotify playlist ID (not URI) — extracted from the URI returned by
+	 * createPlaylistAcknowledged before calling this function.
+	 */
+	spotifyId: z.string().min(1).regex(SPOTIFY_PLAYLIST_ID_RE),
+	/** Ordered song UUIDs from the previewed draft. */
+	songIds: z.array(z.uuid()).max(50),
+	/** Natural-language intent phrase (premium). */
+	intent: z.string().max(5000).nullable(),
+	/** Genre pills from the draft config. */
+	genrePills: z.array(z.string()).max(10),
+	/** Match filters from the draft config. */
+	matchFilters: z.unknown(),
+	/** Whether the client reports intent was applied in the preview. */
+	intentApplied: z.boolean(),
+});
+
+export interface PersistNewPlaylistConfigResult {
+	/** Ordered Spotify track URIs for the bulk-add step, in the same order as songIds. */
+	trackUris: string[];
+}
+
+/**
+ * Persists the draft config onto a newly-created playlist row and resolves
+ * the ordered track URIs so the caller can bulk-add them to Spotify.
+ *
+ * Responsibilities:
+ * - Re-checks intent eligibility server-side (never trusts intentApplied from client).
+ * - Writes match_intent / genre_pills / match_filters to the playlist row via
+ *   updatePlaylistMatchConfig (the same write path used by the managed-playlist editor).
+ * - Returns the ordered Spotify track URIs so the orchestrator can bulk-add them
+ *   in one addToPlaylist call (no extra round-trip needed).
+ *
+ * Ownership check: verifies the playlist belongs to this account before writing
+ * (the service-role client bypasses RLS).
+ */
+export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => PersistNewPlaylistConfigSchema.parse(data))
+	.handler(
+		async ({ data, context }): Promise<PersistNewPlaylistConfigResult> => {
+			const { accountId } = context.session;
+			const supabase = createAdminSupabaseClient();
+
+			// Verify the playlist belongs to this account (service-role bypasses RLS).
+			const playlistResult = await getPlaylistBySpotifyId(
+				accountId,
+				data.spotifyId,
+			);
+			if (Result.isError(playlistResult)) {
+				throw new Error("Failed to look up playlist");
+			}
+			if (
+				playlistResult.value === null ||
+				playlistResult.value.account_id !== accountId
+			) {
+				throw new Error("Playlist not found");
+			}
+			const playlistId = playlistResult.value.id;
+
+			// Server-side intent eligibility re-check: billing state + unlock count
+			// resolved in parallel with song lookup to avoid serial waits.
+			const [billingResult, unlockedCount, songsResult] = await Promise.all([
+				readBillingState(supabase, accountId),
+				getUnlockedSongCount(accountId),
+				getSongsByIds(data.songIds),
+			]);
+
+			const billingState = Result.isOk(billingResult)
+				? billingResult.value
+				: // Degrade to free tier on billing read failure (safe default)
+					{
+						plan: "free" as const,
+						creditBalance: 0,
+						subscriptionStatus: "none" as const,
+						cancelAtPeriodEnd: false,
+						subscriptionPeriodEnd: null,
+						unlimitedAccess: { kind: "none" as const },
+						queueBand: "low" as const,
+					};
+
+			// intent is only persisted when the server independently confirms eligibility
+			// AND the client-reported intentApplied flag is true. The client flag gates
+			// intent writes only when the feature was actually used in the preview —
+			// eligibility alone doesn't mean intent should be saved (e.g. user cleared
+			// the field before creating).
+			const eligible = isIntentEligible(billingState, unlockedCount);
+			const trimmedIntent = data.intent?.trim() ?? "";
+			const effectiveIntent =
+				eligible && data.intentApplied && trimmedIntent.length > 0
+					? trimmedIntent
+					: null;
+
+			const genrePills = sanitizeGenrePills(data.genrePills);
+
+			const filtersParseResult = parseSaveMatchFilters(data.matchFilters);
+			if (Result.isError(filtersParseResult)) {
+				throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
+			}
+			const matchFilters = normalizeMatchFilters(filtersParseResult.value);
+
+			const updateResult = await updatePlaylistMatchConfig(
+				accountId,
+				playlistId,
+				{
+					matchIntent: effectiveIntent,
+					genrePills,
+					matchFilters,
+				},
+			);
+			if (Result.isError(updateResult)) {
+				throw new Error(
+					`Failed to persist playlist config: ${updateResult.error.message}`,
+				);
+			}
+
+			// Build the ordered track URI list from the song rows.
+			// Songs not found in the DB (e.g. deleted) are silently dropped — the
+			// playlist was created with whatever exists. Preserve the caller's ordering.
+			if (Result.isError(songsResult)) {
+				// Non-fatal: track URIs can't be resolved. Return empty so the
+				// orchestrator skips the add step rather than failing the whole commit.
+				console.error(
+					"[persistNewPlaylistConfig] song lookup failed:",
+					songsResult.error,
+				);
+				return { trackUris: [] };
+			}
+
+			const songById = new Map(songsResult.value.map((s) => [s.id, s]));
+			const trackUris: string[] = [];
+			for (const id of data.songIds) {
+				const song = songById.get(id);
+				if (song?.spotify_id) {
+					trackUris.push(`spotify:track:${song.spotify_id}`);
+				}
+			}
+
+			return { trackUris };
+		},
+	);
+
+// ============================================================================
+// Bulk match_decision recording
+// ============================================================================
+
+const RecordPlaylistMatchDecisionsSchema = z.object({
+	/**
+	 * Spotify playlist ID — used to look up the internal playlist UUID.
+	 */
+	spotifyId: z.string().min(1).regex(SPOTIFY_PLAYLIST_ID_RE),
+	/** Song UUIDs to record "added" decisions for. */
+	songIds: z.array(z.uuid()).max(50),
+});
+
+/**
+ * Writes match_decision "added" rows for (song, playlist) pairs so those songs
+ * don't resurface as suggestions for the new playlist.
+ *
+ * Uses upsertMatchDecisions (batch path) — no snapshot linkage since the draft
+ * was assembled outside the match snapshot system. snapshotId and servedRank are
+ * intentionally null: these are implicit positives from the creation flow, not
+ * surfaced suggestions the user acted on.
+ *
+ * Non-fatal from the orchestrator's perspective — a failure here doesn't undo
+ * the created playlist or its tracks.
+ */
+export const recordPlaylistMatchDecisions = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => RecordPlaylistMatchDecisionsSchema.parse(data))
+	.handler(async ({ data, context }): Promise<{ recorded: number }> => {
+		const { accountId } = context.session;
+
+		if (data.songIds.length === 0) return { recorded: 0 };
+
+		// Look up the internal playlist UUID — match_decision FK references playlist.id.
+		const playlistResult = await getPlaylistBySpotifyId(
+			accountId,
+			data.spotifyId,
+		);
+		if (Result.isError(playlistResult) || playlistResult.value === null) {
+			throw new Error("Playlist not found for match decision recording");
+		}
+		const playlistId = playlistResult.value.id;
+
+		const decisions = data.songIds.map((songId) => ({
+			accountId,
+			songId,
+			playlistId,
+			decision: "added" as const,
+			snapshotId: null,
+			servedRank: null,
+		}));
+
+		const result = await upsertMatchDecisions(decisions);
+		if (Result.isError(result)) {
+			throw new Error(
+				`Failed to record match decisions: ${result.error.message}`,
+			);
+		}
+
+		return { recorded: result.value.length };
 	});
