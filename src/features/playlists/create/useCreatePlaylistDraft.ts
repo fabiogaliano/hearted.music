@@ -47,6 +47,13 @@ export interface CreatePlaylistDraftActions {
 	removeSong: (id: string) => void;
 	/** Move a suggestion into pinnedSongIds; clears any previous exclusion. */
 	addSong: (id: string) => void;
+	/**
+	 * Reverse a remove without force-pinning the song.
+	 * Removes the song from excludedSongIds so the preview engine can include it
+	 * again if the current config selects it — the song re-enters only if the
+	 * scoring would still put it in range.
+	 */
+	restoreSong: (id: string) => void;
 	reset: () => void;
 }
 
@@ -156,6 +163,13 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		}));
 	}, []);
 
+	const restoreSong = useCallback((id: string) => {
+		setSelection((prev) => ({
+			pinnedSongIds: prev.pinnedSongIds,
+			excludedSongIds: prev.excludedSongIds.filter((eid) => eid !== id),
+		}));
+	}, []);
+
 	const reset = useCallback(() => {
 		setConfig({
 			intent: DEFAULT_DRAFT_CONFIG.intent,
@@ -184,6 +198,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		setMaxSongs,
 		removeSong,
 		addSong,
+		restoreSong,
 		reset,
 	};
 }

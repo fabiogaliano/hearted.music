@@ -3,8 +3,8 @@
  *
  * Lays out the four regions of the creation flow with intentional
  * hearted-style spacing and typography. T5 (config surface) is live;
- * T6 (preview list + suggestions tray) and T7 (create flow) remain as
- * labelled thin placeholders for subsequent tasks.
+ * T6 (preview list + suggestions tray) are now wired; T7 (create flow)
+ * remains as a labelled thin placeholder.
  *
  * The screen is deliberately calm — no loaders in the shell itself; the
  * useCreatePlaylistDraft hook drives per-region loading state.
@@ -13,7 +13,7 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
@@ -29,8 +29,8 @@ import { fonts } from "@/lib/theme/fonts";
 import { ConfigSurface } from "./config/ConfigSurface";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { CreateBarPlaceholder } from "./placeholders/CreateBarPlaceholder";
-import { PreviewRegionPlaceholder } from "./placeholders/PreviewRegionPlaceholder";
-import { SuggestionsRegionPlaceholder } from "./placeholders/SuggestionsRegionPlaceholder";
+import { PreviewList } from "./preview/PreviewList";
+import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
 
 type SpotifyGateState =
@@ -51,6 +51,43 @@ export function CreatePlaylistScreen({
 	const navigate = useNavigate();
 	const draft = useCreatePlaylistDraft();
 	const [showPaywall, setShowPaywall] = useState(false);
+
+	// Track IDs of songs added to the preview this session so PreviewList can
+	// briefly highlight them on entry. Cleared after the pulse animation plays out
+	// (1.5s covers the full opacity+y animation). Timers are cleaned up on unmount
+	// to avoid setState-after-unmount leaks.
+	const [newSongIds, setNewSongIds] = useState<ReadonlySet<string>>(new Set());
+	const newSongTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+		new Map(),
+	);
+
+	useEffect(() => {
+		const timeouts = newSongTimeoutsRef.current;
+		return () => {
+			for (const tid of timeouts.values()) clearTimeout(tid);
+			timeouts.clear();
+		};
+	}, []);
+
+	const handleAddSong = useCallback(
+		(id: string) => {
+			draft.addSong(id);
+			setNewSongIds((prev) => new Set([...prev, id]));
+			// Clear the highlight after the pulse animation completes
+			const existing = newSongTimeoutsRef.current.get(id);
+			if (existing) clearTimeout(existing);
+			const tid = setTimeout(() => {
+				setNewSongIds((prev) => {
+					const next = new Set(prev);
+					next.delete(id);
+					return next;
+				});
+				newSongTimeoutsRef.current.delete(id);
+			}, 1500);
+			newSongTimeoutsRef.current.set(id, tid);
+		},
+		[draft.addSong],
+	);
 
 	// Intent eligibility was seeded by the route loader; this read is synchronous
 	// from cache. Defaults to false (locked) so the teaser renders first-paint
@@ -195,10 +232,12 @@ export function CreatePlaylistScreen({
 						</span>
 					)}
 				</div>
-				<PreviewRegionPlaceholder
-					preview={draft.preview}
+				<PreviewList
+					songs={draft.preview}
 					isLoading={draft.isLoading}
 					onRemoveSong={draft.removeSong}
+					onRestoreSong={draft.restoreSong}
+					newSongIds={newSongIds}
 				/>
 			</section>
 
@@ -212,9 +251,9 @@ export function CreatePlaylistScreen({
 					</span>
 					<div className="theme-border-color h-px flex-1 border-t" />
 				</div>
-				<SuggestionsRegionPlaceholder
+				<SuggestionsTray
 					suggestions={draft.suggestions}
-					onAddSong={draft.addSong}
+					onAddSong={handleAddSong}
 				/>
 			</section>
 

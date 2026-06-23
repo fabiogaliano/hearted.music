@@ -35,6 +35,13 @@ function addSong(state: SelectionState, id: string): SelectionState {
 	};
 }
 
+function restoreSong(state: SelectionState, id: string): SelectionState {
+	return {
+		pinnedSongIds: state.pinnedSongIds,
+		excludedSongIds: state.excludedSongIds.filter((eid) => eid !== id),
+	};
+}
+
 const emptyState: SelectionState = {
 	pinnedSongIds: [],
 	excludedSongIds: [],
@@ -133,5 +140,58 @@ describe("remove → add round-trip", () => {
 
 		expect(state.pinnedSongIds).toContain("song-01");
 		expect(state.excludedSongIds).not.toContain("song-01");
+	});
+});
+
+describe("restoreSong", () => {
+	it("removes the song from excludedSongIds", () => {
+		const state: SelectionState = {
+			pinnedSongIds: [],
+			excludedSongIds: ["song-01", "song-02"],
+		};
+		const next = restoreSong(state, "song-01");
+		expect(next.excludedSongIds).not.toContain("song-01");
+		expect(next.excludedSongIds).toContain("song-02");
+	});
+
+	it("does not add the song to pinnedSongIds (restore ≠ force-pin)", () => {
+		const state: SelectionState = {
+			pinnedSongIds: [],
+			excludedSongIds: ["song-01"],
+		};
+		const next = restoreSong(state, "song-01");
+		expect(next.pinnedSongIds).not.toContain("song-01");
+	});
+
+	it("is idempotent when the song was not excluded", () => {
+		const state: SelectionState = {
+			pinnedSongIds: ["song-02"],
+			excludedSongIds: [],
+		};
+		const next = restoreSong(state, "song-01");
+		expect(next).toEqual(state);
+	});
+
+	it("leaves other ids untouched", () => {
+		const state: SelectionState = {
+			pinnedSongIds: ["song-02"],
+			excludedSongIds: ["song-01", "song-03"],
+		};
+		const next = restoreSong(state, "song-01");
+		expect(next.pinnedSongIds).toContain("song-02");
+		expect(next.excludedSongIds).toContain("song-03");
+	});
+});
+
+describe("remove → restore round-trip (undo flow)", () => {
+	it("restores the song to neither pinned nor excluded after remove+restore", () => {
+		let state = emptyState;
+		state = removeSong(state, "song-01");
+		expect(state.excludedSongIds).toContain("song-01");
+		state = restoreSong(state, "song-01");
+
+		// After undo: not excluded (engine can include it), not force-pinned
+		expect(state.excludedSongIds).not.toContain("song-01");
+		expect(state.pinnedSongIds).not.toContain("song-01");
 	});
 });
