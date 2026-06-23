@@ -2,17 +2,20 @@
  * CreatePlaylistScreen — the page shell for /playlists/new.
  *
  * Lays out the four regions of the creation flow with intentional
- * hearted-style spacing and typography. T5 (config surface), T6 (preview
- * list + suggestions tray), and T7 (create flow) are rendered as labelled
- * thin placeholders so subsequent tasks can address each piece by name.
+ * hearted-style spacing and typography. T5 (config surface) is live;
+ * T6 (preview list + suggestions tray) and T7 (create flow) remain as
+ * labelled thin placeholders for subsequent tasks.
  *
  * The screen is deliberately calm — no loaders in the shell itself; the
  * useCreatePlaylistDraft hook drives per-region loading state.
  */
 
 import { ArrowLeftIcon } from "@phosphor-icons/react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
+import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	getBrowserTarget,
 	getExtensionStoreUrl,
@@ -23,8 +26,8 @@ import {
 } from "@/lib/extension/detect";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
-import { MaxSongsSlider } from "./MaxSongsSlider";
-import { ConfigRegionPlaceholder } from "./placeholders/ConfigRegionPlaceholder";
+import { ConfigSurface } from "./config/ConfigSurface";
+import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { CreateBarPlaceholder } from "./placeholders/CreateBarPlaceholder";
 import { PreviewRegionPlaceholder } from "./placeholders/PreviewRegionPlaceholder";
 import { SuggestionsRegionPlaceholder } from "./placeholders/SuggestionsRegionPlaceholder";
@@ -36,9 +39,25 @@ type SpotifyGateState =
 	| "extension-unavailable"
 	| "reconnect-required";
 
-export function CreatePlaylistScreen() {
+interface CreatePlaylistScreenProps {
+	accountId: string;
+	billingState: BillingState;
+}
+
+export function CreatePlaylistScreen({
+	accountId,
+	billingState,
+}: CreatePlaylistScreenProps) {
 	const navigate = useNavigate();
 	const draft = useCreatePlaylistDraft();
+	const [showPaywall, setShowPaywall] = useState(false);
+
+	// Intent eligibility was seeded by the route loader; this read is synchronous
+	// from cache. Defaults to false (locked) so the teaser renders first-paint
+	// even if the loader somehow didn't pre-warm (defensive).
+	const { data: isIntentEligible = false } = useQuery(
+		intentEligibilityQueryOptions(),
+	);
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
@@ -122,8 +141,6 @@ export function CreatePlaylistScreen() {
 				)}
 			</header>
 
-			{/* CONFIG REGION — MaxSongsSlider is live; genre pills, filters, and
-			    intent are seams for T5. */}
 			<section className="mb-10">
 				<div className="mb-6 flex items-center gap-4 px-1">
 					<span
@@ -135,21 +152,21 @@ export function CreatePlaylistScreen() {
 					<div className="theme-border-color h-px flex-1 border-t" />
 				</div>
 
-				<div className="grid grid-cols-[1fr_280px] gap-10">
-					{/* Left: T5 will fill genre pills + intent editor + filters here. */}
-					<ConfigRegionPlaceholder />
-
-					{/* Right: MaxSongsSlider — live and fully functional. */}
-					<div className="flex flex-col gap-2">
-						<MaxSongsSlider
-							value={draft.config.maxSongs}
-							onChange={draft.setMaxSongs}
-						/>
-					</div>
-				</div>
+				<ConfigSurface
+					accountId={accountId}
+					isIntentEligible={isIntentEligible}
+					intent={draft.config.intent}
+					genrePills={draft.config.genrePills}
+					matchFilters={draft.config.matchFilters}
+					maxSongs={draft.config.maxSongs}
+					onIntentChange={draft.setIntent}
+					onGenrePillsChange={draft.setGenrePills}
+					onMatchFiltersChange={draft.setMatchFilters}
+					onMaxSongsChange={draft.setMaxSongs}
+					onOpenPaywall={() => setShowPaywall(true)}
+				/>
 			</section>
 
-			{/* PREVIEW REGION — seam for T6 */}
 			<section className="mb-10">
 				<div className="mb-6 flex items-center justify-between gap-4 px-1">
 					<div className="flex items-center gap-4">
@@ -185,7 +202,6 @@ export function CreatePlaylistScreen() {
 				/>
 			</section>
 
-			{/* SUGGESTIONS REGION — seam for T6 */}
 			<section className="mb-10">
 				<div className="mb-6 flex items-center gap-4 px-1">
 					<span
@@ -202,11 +218,17 @@ export function CreatePlaylistScreen() {
 				/>
 			</section>
 
-			{/* CREATE BAR — seam for T7 */}
 			<CreateBarPlaceholder
 				previewCount={draft.preview.length}
 				intentApplied={draft.intentApplied}
 			/>
+
+			{showPaywall && (
+				<UpgradeDialog
+					billingState={billingState}
+					onClose={() => setShowPaywall(false)}
+				/>
+			)}
 		</div>
 	);
 }
