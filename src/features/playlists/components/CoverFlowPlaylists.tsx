@@ -67,7 +67,7 @@ export function CoverFlowPlaylists({
 	// cover into the middle and shove the others around. Newly added ids append to
 	// the end; ids already matching at mount keep their original relative order.
 	const [order, setOrder] = useState<string[]>(() =>
-		playlists.filter((p) => p.isTarget).map((p) => p.id),
+		playlists.flatMap((p) => (p.isTarget ? [p.id] : [])),
 	);
 	const matching = useMemo(() => {
 		const rank = new Map(order.map((id, index) => [id, index]));
