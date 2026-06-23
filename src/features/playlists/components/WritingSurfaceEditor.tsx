@@ -98,6 +98,7 @@ export function WritingSurfaceEditor({
 	const intentField = (
 		<textarea
 			ref={textareaRef}
+			aria-label="Matching intent"
 			value={draftDescription}
 			onChange={(event) => onDraftDescriptionChange(event.target.value)}
 			onInput={autosize}

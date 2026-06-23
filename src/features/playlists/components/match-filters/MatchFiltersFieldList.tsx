@@ -210,6 +210,12 @@ function FacetRow({
 	);
 }
 
+const VOCALS_OPTS: Array<{ key: "any" | "female" | "male"; label: string }> = [
+	{ key: "any", label: "Any" },
+	{ key: "female", label: "Female" },
+	{ key: "male", label: "Male" },
+];
+
 function VocalsSegment({
 	value,
 	onChange,
@@ -219,11 +225,6 @@ function VocalsSegment({
 	onChange: (v: "female" | "male" | undefined) => void;
 	disabled?: boolean;
 }) {
-	const opts: Array<{ key: "any" | "female" | "male"; label: string }> = [
-		{ key: "any", label: "Any" },
-		{ key: "female", label: "Female" },
-		{ key: "male", label: "Male" },
-	];
 	const current = value ?? "any";
 	return (
 		<fieldset
@@ -240,7 +241,7 @@ function VocalsSegment({
 			}}
 		>
 			<legend className="sr-only">Vocals</legend>
-			{opts.map((o) => {
+			{VOCALS_OPTS.map((o) => {
 				const selected = o.key === current;
 				return (
 					<button
