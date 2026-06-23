@@ -1,12 +1,16 @@
 import { browser } from "../shared/browser";
 import {
 	addToPlaylist,
+	moveInPlaylist,
 	removeFromPlaylist,
 } from "../shared/spotify-client/mutations";
 import {
 	createPlaylist,
 	deletePlaylist,
+	removePlaylistCover,
+	setPlaylistVisibility,
 	updatePlaylist,
+	uploadPlaylistCover,
 } from "../shared/spotify-client/playlist-v2";
 import {
 	fetchPlaylistMetadata,
@@ -31,9 +35,13 @@ export type TokenProvider = {
 type CommandResultMap = {
 	addToPlaylist: Awaited<ReturnType<typeof addToPlaylist>>;
 	removeFromPlaylist: Awaited<ReturnType<typeof removeFromPlaylist>>;
+	moveInPlaylist: Awaited<ReturnType<typeof moveInPlaylist>>;
 	createPlaylist: Awaited<ReturnType<typeof createPlaylist>>;
 	updatePlaylist: Awaited<ReturnType<typeof updatePlaylist>>;
 	deletePlaylist: Awaited<ReturnType<typeof deletePlaylist>>;
+	uploadPlaylistCover: Awaited<ReturnType<typeof uploadPlaylistCover>>;
+	removePlaylistCover: Awaited<ReturnType<typeof removePlaylistCover>>;
+	setPlaylistVisibility: Awaited<ReturnType<typeof setPlaylistVisibility>>;
 	queryArtistOverview: Awaited<ReturnType<typeof queryArtistOverview>>;
 	fetchPlaylistMetadata: Awaited<ReturnType<typeof fetchPlaylistMetadata>>;
 };
@@ -55,6 +63,13 @@ const commandExecutors: CommandExecutorMap = {
 		),
 	removeFromPlaylist: async (token, payload) =>
 		removeFromPlaylist(token, payload.playlistUri, payload.uids),
+	moveInPlaylist: async (token, payload) =>
+		moveInPlaylist(
+			token,
+			payload.playlistUri,
+			payload.uids,
+			payload.newPosition,
+		),
 	createPlaylist: async (token, payload) =>
 		createPlaylist(token, payload.name, payload.userId),
 	updatePlaylist: async (token, payload) =>
@@ -64,6 +79,17 @@ const commandExecutors: CommandExecutorMap = {
 		}),
 	deletePlaylist: async (token, payload) =>
 		deletePlaylist(token, payload.playlistUri, payload.userId),
+	uploadPlaylistCover: async (token, payload) =>
+		uploadPlaylistCover(token, payload.playlistId, payload.imageBase64),
+	removePlaylistCover: async (token, payload) =>
+		removePlaylistCover(token, payload.playlistId),
+	setPlaylistVisibility: async (token, payload) =>
+		setPlaylistVisibility(
+			token,
+			payload.playlistUri,
+			payload.userId,
+			payload.isPublic,
+		),
 	queryArtistOverview: async (token, payload) =>
 		queryArtistOverview(token, payload.artistUri, payload.locale),
 	fetchPlaylistMetadata: async (token, payload) =>
@@ -103,6 +129,16 @@ function mapErrorToResponse(
 			errorCode: "RATE_LIMITED",
 			message,
 			retryable: true,
+			commandId,
+		};
+	}
+
+	if (/too large/i.test(message)) {
+		return {
+			ok: false,
+			errorCode: "INVALID_PARAMS",
+			message,
+			retryable: false,
 			commandId,
 		};
 	}

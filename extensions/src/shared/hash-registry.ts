@@ -16,6 +16,10 @@ export const DEFAULT_HASHES: Record<string, string> = {
 		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
 	removeFromPlaylist:
 		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
+	// moveItemsInPlaylist shares the same persisted query as add/remove — Spotify
+	// bundles all three into one query, routing by operationName (verified 2026-06-23).
+	moveItemsInPlaylist:
+		"47b2a1234b17748d332dd0431534f22450e9ecbb3d5ddcdacbd83368636a0990",
 	queryArtistOverview:
 		"ae0e2958a4ab645b35ca19ac04d0495ae12d9c5d7b7286217674801a9aab281a",
 	getTrack: "612585ae06ba435ad26369870deaae23b5c8800a256cd8a57e08eddc25a37294",

@@ -40,6 +40,21 @@ export type RemoveFromPlaylistPayload = {
 	uids: string[];
 };
 
+export type PlaylistMovePosition = {
+	moveType:
+		| "BEFORE_UID"
+		| "AFTER_UID"
+		| "TOP_OF_PLAYLIST"
+		| "BOTTOM_OF_PLAYLIST";
+	fromUid: string | null;
+};
+
+export type MoveInPlaylistPayload = {
+	playlistUri: string;
+	uids: string[];
+	newPosition: PlaylistMovePosition;
+};
+
 export type CreatePlaylistPayload = {
 	name: string;
 	userId: string;
@@ -56,6 +71,23 @@ export type DeletePlaylistPayload = {
 	userId: string;
 };
 
+export type UploadPlaylistCoverPayload = {
+	playlistId: string;
+	/** JPEG image as base64 (raw or `data:image/...;base64,` prefixed), max 10MB. */
+	imageBase64: string;
+};
+
+export type RemovePlaylistCoverPayload = {
+	playlistId: string;
+};
+
+export type SetPlaylistVisibilityPayload = {
+	playlistUri: string;
+	userId: string;
+	/** Spotify's "public" flag — profile visibility/discoverability, not link access. */
+	isPublic: boolean;
+};
+
 export type QueryArtistOverviewPayload = {
 	artistUri: string;
 	locale?: string;
@@ -68,9 +100,13 @@ export type FetchPlaylistMetadataPayload = {
 export type SpotifyCommandMap = {
 	addToPlaylist: AddToPlaylistPayload;
 	removeFromPlaylist: RemoveFromPlaylistPayload;
+	moveInPlaylist: MoveInPlaylistPayload;
 	createPlaylist: CreatePlaylistPayload;
 	updatePlaylist: UpdatePlaylistPayload;
 	deletePlaylist: DeletePlaylistPayload;
+	uploadPlaylistCover: UploadPlaylistCoverPayload;
+	removePlaylistCover: RemovePlaylistCoverPayload;
+	setPlaylistVisibility: SetPlaylistVisibilityPayload;
 	queryArtistOverview: QueryArtistOverviewPayload;
 	fetchPlaylistMetadata: FetchPlaylistMetadataPayload;
 };
@@ -94,9 +130,13 @@ type ParseResult<T> =
 const COMMAND_NAMES: SpotifyCommandName[] = [
 	"addToPlaylist",
 	"removeFromPlaylist",
+	"moveInPlaylist",
 	"createPlaylist",
 	"updatePlaylist",
 	"deletePlaylist",
+	"uploadPlaylistCover",
+	"removePlaylistCover",
+	"setPlaylistVisibility",
 	"queryArtistOverview",
 	"fetchPlaylistMetadata",
 ];
@@ -144,6 +184,23 @@ const payloadValidators: {
 			typeof payload.playlistUri === "string" && isStringArray(payload.uids)
 		);
 	},
+	moveInPlaylist: (payload): payload is MoveInPlaylistPayload => {
+		if (!isRecord(payload)) return false;
+		const pos = payload.newPosition;
+		if (!isRecord(pos)) return false;
+		const moveTypeOk =
+			pos.moveType === "BEFORE_UID" ||
+			pos.moveType === "AFTER_UID" ||
+			pos.moveType === "TOP_OF_PLAYLIST" ||
+			pos.moveType === "BOTTOM_OF_PLAYLIST";
+		const fromUidOk = pos.fromUid === null || typeof pos.fromUid === "string";
+		return (
+			typeof payload.playlistUri === "string" &&
+			isStringArray(payload.uids) &&
+			moveTypeOk &&
+			fromUidOk
+		);
+	},
 	createPlaylist: (payload): payload is CreatePlaylistPayload => {
 		if (!isRecord(payload)) return false;
 		return typeof payload.name === "string" && typeof payload.userId === "string";
@@ -161,6 +218,25 @@ const payloadValidators: {
 		return (
 			typeof payload.playlistUri === "string" &&
 			typeof payload.userId === "string"
+		);
+	},
+	uploadPlaylistCover: (payload): payload is UploadPlaylistCoverPayload => {
+		if (!isRecord(payload)) return false;
+		return (
+			typeof payload.playlistId === "string" &&
+			typeof payload.imageBase64 === "string"
+		);
+	},
+	removePlaylistCover: (payload): payload is RemovePlaylistCoverPayload => {
+		if (!isRecord(payload)) return false;
+		return typeof payload.playlistId === "string";
+	},
+	setPlaylistVisibility: (payload): payload is SetPlaylistVisibilityPayload => {
+		if (!isRecord(payload)) return false;
+		return (
+			typeof payload.playlistUri === "string" &&
+			typeof payload.userId === "string" &&
+			typeof payload.isPublic === "boolean"
 		);
 	},
 	queryArtistOverview: (payload): payload is QueryArtistOverviewPayload => {

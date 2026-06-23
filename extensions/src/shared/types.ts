@@ -10,13 +10,17 @@ export type {
 	CreatePlaylistPayload,
 	DeletePlaylistPayload,
 	FetchPlaylistMetadataPayload,
+	MoveInPlaylistPayload,
 	QueryArtistOverviewPayload,
 	RemoveFromPlaylistPayload,
+	RemovePlaylistCoverPayload,
+	SetPlaylistVisibilityPayload,
 	SpotifyCommand,
 	SpotifyCommandMap,
 	SpotifyCommandName,
 	SpotifyErrorCode,
 	UpdatePlaylistPayload,
+	UploadPlaylistCoverPayload,
 } from "../../../shared/spotify-command-protocol";
 
 export type SpotifyTokenPayload = {

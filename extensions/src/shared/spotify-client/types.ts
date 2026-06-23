@@ -5,11 +5,22 @@ import type {
 } from "../types";
 import type {
 	PathfinderAddToPlaylistResponse,
+	PathfinderMoveInPlaylistResponse,
 	PathfinderQueryArtistOverviewResponse,
 	PathfinderRemoveFromPlaylistResponse,
 	PlaylistV2ChangesResponse,
 	PlaylistV2CreateResponse,
 } from "./responses.types";
+
+export type PlaylistMovePosition = {
+	moveType:
+		| "BEFORE_UID"
+		| "AFTER_UID"
+		| "TOP_OF_PLAYLIST"
+		| "BOTTOM_OF_PLAYLIST";
+	/** Anchor item the moved items land relative to; null for TOP/BOTTOM moves. */
+	fromUid: string | null;
+};
 
 // --- Read Operation Results ---
 
@@ -62,11 +73,28 @@ export type RemoveFromPlaylistResult = {
 	typename: PathfinderRemoveFromPlaylistResponse["data"]["removeItemsFromPlaylist"]["__typename"];
 };
 
+export type MoveInPlaylistResult = {
+	typename: PathfinderMoveInPlaylistResponse["data"]["moveItemsInPlaylist"]["__typename"];
+};
+
 export type CreatePlaylistResult = PlaylistV2CreateResponse;
 
 export type UpdatePlaylistResult = PlaylistV2ChangesResponse;
 
 export type DeletePlaylistResult = PlaylistV2ChangesResponse;
+
+export type UploadPlaylistCoverResult = {
+	revision: PlaylistV2ChangesResponse["revision"];
+	picture: string;
+};
+
+export type RemovePlaylistCoverResult = {
+	revision: PlaylistV2ChangesResponse["revision"];
+};
+
+export type SetPlaylistVisibilityResult = {
+	revision: PlaylistV2ChangesResponse["revision"];
+};
 
 // --- Progress Callback ---
 
@@ -104,6 +132,12 @@ export type SpotifyClient = {
 		playlistUri: string,
 		uids: string[],
 	) => Promise<RemoveFromPlaylistResult>;
+	moveInPlaylist: (
+		token: string,
+		playlistUri: string,
+		uids: string[],
+		newPosition: PlaylistMovePosition,
+	) => Promise<MoveInPlaylistResult>;
 
 	// Playlist v2 operations
 	createPlaylist: (
@@ -121,6 +155,21 @@ export type SpotifyClient = {
 		playlistUri: string,
 		userId: string,
 	) => Promise<DeletePlaylistResult>;
+	uploadPlaylistCover: (
+		token: string,
+		playlistId: string,
+		imageBase64: string,
+	) => Promise<UploadPlaylistCoverResult>;
+	removePlaylistCover: (
+		token: string,
+		playlistId: string,
+	) => Promise<RemovePlaylistCoverResult>;
+	setPlaylistVisibility: (
+		token: string,
+		playlistUri: string,
+		userId: string,
+		isPublic: boolean,
+	) => Promise<SetPlaylistVisibilityResult>;
 };
 
 // --- Unsupported Operation Error ---

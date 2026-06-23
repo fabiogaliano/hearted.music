@@ -24,6 +24,7 @@ describe("mutations", () => {
 	let queryPathfinder: ReturnType<typeof vi.fn>;
 	let addToPlaylist: typeof import("../shared/spotify-client/mutations").addToPlaylist;
 	let removeFromPlaylist: typeof import("../shared/spotify-client/mutations").removeFromPlaylist;
+	let moveInPlaylist: typeof import("../shared/spotify-client/mutations").moveInPlaylist;
 
 	beforeEach(async () => {
 		vi.clearAllMocks();
@@ -32,6 +33,7 @@ describe("mutations", () => {
 		const mutations = await import("../shared/spotify-client/mutations");
 		addToPlaylist = mutations.addToPlaylist;
 		removeFromPlaylist = mutations.removeFromPlaylist;
+		moveInPlaylist = mutations.moveInPlaylist;
 	});
 
 	describe("addToPlaylist", () => {
@@ -106,6 +108,34 @@ describe("mutations", () => {
 				},
 			);
 			expect(result).toEqual({ typename: "RemoveItemsResponse" });
+		});
+	});
+
+	describe("moveInPlaylist", () => {
+		it("sends moveItemsInPlaylist with uids and target position", async () => {
+			queryPathfinder.mockResolvedValueOnce({
+				data: {
+					moveItemsInPlaylist: { __typename: "MoveItemsInPlaylistResponse" },
+				},
+			});
+
+			const result = await moveInPlaylist(
+				"token-789",
+				"spotify:playlist:ghi",
+				["uid-a"],
+				{ moveType: "BEFORE_UID", fromUid: "uid-b" },
+			);
+
+			expect(queryPathfinder).toHaveBeenCalledWith(
+				"token-789",
+				"moveItemsInPlaylist",
+				{
+					playlistUri: "spotify:playlist:ghi",
+					uids: ["uid-a"],
+					newPosition: { moveType: "BEFORE_UID", fromUid: "uid-b" },
+				},
+			);
+			expect(result).toEqual({ typename: "MoveItemsInPlaylistResponse" });
 		});
 	});
 });

@@ -1,5 +1,12 @@
-import { addToPlaylist, removeFromPlaylist } from "./mutations";
-import { createPlaylist, deletePlaylist, updatePlaylist } from "./playlist-v2";
+import { addToPlaylist, moveInPlaylist, removeFromPlaylist } from "./mutations";
+import {
+	createPlaylist,
+	deletePlaylist,
+	removePlaylistCover,
+	setPlaylistVisibility,
+	updatePlaylist,
+	uploadPlaylistCover,
+} from "./playlist-v2";
 import {
 	fetchAllLikedTracks,
 	fetchPlaylistTracks,
@@ -36,8 +43,14 @@ export function createSpotifyClient(): SpotifyClient {
 		removeFromPlaylist: async (token, playlistUri, uids) => {
 			return removeFromPlaylist(token, playlistUri, uids);
 		},
+		moveInPlaylist: async (token, playlistUri, uids, newPosition) => {
+			return moveInPlaylist(token, playlistUri, uids, newPosition);
+		},
 		createPlaylist,
 		updatePlaylist,
 		deletePlaylist,
+		uploadPlaylistCover,
+		removePlaylistCover,
+		setPlaylistVisibility,
 	};
 }

@@ -21,6 +21,7 @@ const TRACKED_OPS = [
 	"profileAttributes",
 	"addToPlaylist",
 	"removeFromPlaylist",
+	"moveItemsInPlaylist",
 	"queryArtistOverview",
 	"getTrack",
 ] as const;
@@ -292,10 +293,11 @@ async function captureMutationHashes(): Promise<Map<string, string>> {
 			return captured;
 		}
 
-		// addToPlaylist and removeFromPlaylist share the same hash
+		// add/remove/move share one persisted query, routed by operationName
 		captured.set("removeFromPlaylist", captured.get("addToPlaylist")!);
+		captured.set("moveItemsInPlaylist", captured.get("addToPlaylist")!);
 		console.log(
-			`  ✓ removeFromPlaylist → shared hash invariant applied`,
+			`  ✓ removeFromPlaylist, moveItemsInPlaylist → shared hash invariant applied`,
 		);
 	} catch (err) {
 		console.log(`  ⚠ Mutation capture failed: ${err}`);
@@ -403,11 +405,20 @@ async function main() {
 
 	cli("close");
 
-	// Enforce addToPlaylist/removeFromPlaylist shared hash invariant
-	const addHash = allCaptured.get("addToPlaylist");
-	const removeHash = allCaptured.get("removeFromPlaylist");
-	if (addHash && !removeHash) allCaptured.set("removeFromPlaylist", addHash);
-	if (removeHash && !addHash) allCaptured.set("addToPlaylist", removeHash);
+	// Enforce shared hash invariant across add/remove/move (one persisted query)
+	const SHARED_HASH_OPS = [
+		"addToPlaylist",
+		"removeFromPlaylist",
+		"moveItemsInPlaylist",
+	] as const;
+	const sharedHash = SHARED_HASH_OPS.map((op) => allCaptured.get(op)).find(
+		Boolean,
+	);
+	if (sharedHash) {
+		for (const op of SHARED_HASH_OPS) {
+			if (!allCaptured.has(op)) allCaptured.set(op, sharedHash);
+		}
+	}
 
 	console.log("\n─── Results ───────────────────────────────");
 

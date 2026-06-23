@@ -1,6 +1,7 @@
 import {
 	type CommandResponse,
 	createSpotifyCommand,
+	type PlaylistMovePosition,
 	SPOTIFY_PROTOCOL_VERSION,
 	type SpotifyCommandMap,
 	type SpotifyCommandName,
@@ -10,9 +11,13 @@ import { sendExtensionCommand } from "./detect";
 
 type AddToPlaylistResult = { typename: string };
 type RemoveFromPlaylistResult = { typename: string };
+type MoveInPlaylistResult = { typename: string };
 type CreatePlaylistResult = { uri: string; revision: string };
 type UpdatePlaylistResult = { revision: string };
 type DeletePlaylistResult = { revision: string };
+type UploadPlaylistCoverResult = { revision: string; picture: string };
+type RemovePlaylistCoverResult = { revision: string };
+type SetPlaylistVisibilityResult = { revision: string };
 
 type ArtistImageSource = { url: string; width: number; height: number };
 type ArtistOverviewResult = {
@@ -31,9 +36,13 @@ type PlaylistMetadataResult = {
 type SpotifyCommandResultMap = {
 	addToPlaylist: AddToPlaylistResult;
 	removeFromPlaylist: RemoveFromPlaylistResult;
+	moveInPlaylist: MoveInPlaylistResult;
 	createPlaylist: CreatePlaylistResult;
 	updatePlaylist: UpdatePlaylistResult;
 	deletePlaylist: DeletePlaylistResult;
+	uploadPlaylistCover: UploadPlaylistCoverResult;
+	removePlaylistCover: RemovePlaylistCoverResult;
+	setPlaylistVisibility: SetPlaylistVisibilityResult;
 	queryArtistOverview: ArtistOverviewResult;
 	fetchPlaylistMetadata: PlaylistMetadataResult;
 };
@@ -95,6 +104,18 @@ export async function removeFromPlaylist(
 	});
 }
 
+export async function moveInPlaylist(
+	playlistUri: string,
+	uids: string[],
+	newPosition: PlaylistMovePosition,
+): Promise<CommandResponse<MoveInPlaylistResult>> {
+	return sendSpotifyCommand("moveInPlaylist", {
+		playlistUri,
+		uids,
+		newPosition,
+	});
+}
+
 export async function createPlaylist(
 	name: string,
 	userId: string,
@@ -122,6 +143,45 @@ export async function deletePlaylist(
 	return sendSpotifyCommand("deletePlaylist", {
 		playlistUri,
 		userId,
+	});
+}
+
+/**
+ * Sets a playlist's cover image. `imageBase64` is a JPEG as base64 (raw or a
+ * `data:image/...;base64,` data URL), max 10MB — the extension enforces the limit
+ * and returns INVALID_PARAMS for anything larger.
+ */
+export async function uploadPlaylistCover(
+	playlistId: string,
+	imageBase64: string,
+): Promise<CommandResponse<UploadPlaylistCoverResult>> {
+	return sendSpotifyCommand("uploadPlaylistCover", {
+		playlistId,
+		imageBase64,
+	});
+}
+
+export async function removePlaylistCover(
+	playlistId: string,
+): Promise<CommandResponse<RemovePlaylistCoverResult>> {
+	return sendSpotifyCommand("removePlaylistCover", {
+		playlistId,
+	});
+}
+
+/**
+ * Sets a playlist's profile visibility (Spotify's "public" flag — whether it
+ * shows on your profile and is discoverable, not link access control).
+ */
+export async function setPlaylistVisibility(
+	playlistUri: string,
+	userId: string,
+	isPublic: boolean,
+): Promise<CommandResponse<SetPlaylistVisibilityResult>> {
+	return sendSpotifyCommand("setPlaylistVisibility", {
+		playlistUri,
+		userId,
+		isPublic,
 	});
 }
 

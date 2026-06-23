@@ -188,7 +188,11 @@ describeIf("live contract: Schema Anchors", () => {
 });
 
 describeIf("live contract: Hash Registry", () => {
-	const MUTATION_OPS = new Set(["addToPlaylist", "removeFromPlaylist"]);
+	const MUTATION_OPS = new Set([
+		"addToPlaylist",
+		"removeFromPlaylist",
+		"moveItemsInPlaylist",
+	]);
 
 	const MINIMAL_VARIABLES: Record<string, Record<string, unknown>> = {
 		profileAttributes: {},

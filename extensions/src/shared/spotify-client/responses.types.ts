@@ -6,7 +6,9 @@ import type { LibraryV3 } from "./contracts/pathfinder/libraryV3.types";
 import type { ProfileAttributes } from "./contracts/pathfinder/profileAttributes.types";
 import type { QueryArtistOverview } from "./contracts/pathfinder/queryArtistOverview.types";
 import type {
+	ImageUploadContract,
 	PlaylistV2CreateContract as PlaylistV2CreateContractBase,
+	PlaylistV2RegisterImageContract,
 	PlaylistV2RevisionContract,
 } from "./contracts/playlist-v2.types";
 
@@ -53,9 +55,20 @@ export interface PathfinderRemoveFromPlaylistResponse {
 	};
 }
 
+export interface PathfinderMoveInPlaylistResponse {
+	data: {
+		moveItemsInPlaylist: {
+			__typename: string;
+		};
+	};
+}
+
 // Playlist v2 write contracts (spclient REST responses)
 export type PlaylistV2CreateContract = PlaylistV2CreateContractBase;
 export type PlaylistV2ChangesContract = PlaylistV2RevisionContract;
+
+export type PlaylistV2RegisterImageResponse = PlaylistV2RegisterImageContract;
+export type ImageUploadResponse = ImageUploadContract;
 
 // Backward-compatible aliases
 export type PlaylistV2CreateResponse = PlaylistV2CreateContract;

@@ -1,9 +1,15 @@
 import { queryPathfinder } from "../pathfinder";
 import type {
 	PathfinderAddToPlaylistResponse,
+	PathfinderMoveInPlaylistResponse,
 	PathfinderRemoveFromPlaylistResponse,
 } from "./responses.types";
-import type { AddToPlaylistResult, RemoveFromPlaylistResult } from "./types";
+import type {
+	AddToPlaylistResult,
+	MoveInPlaylistResult,
+	PlaylistMovePosition,
+	RemoveFromPlaylistResult,
+} from "./types";
 
 export async function addToPlaylist(
 	token: string,
@@ -26,6 +32,32 @@ export async function addToPlaylist(
 
 	return {
 		typename: data.data.addItemsToPlaylist.__typename,
+	};
+}
+
+/**
+ * Reorders items already in a playlist. Shares the persisted query with
+ * add/remove; `uids` are the items to move and `newPosition` anchors them
+ * (e.g. BEFORE_UID a given item, or TOP/BOTTOM of the playlist).
+ */
+export async function moveInPlaylist(
+	token: string,
+	playlistUri: string,
+	uids: string[],
+	newPosition: PlaylistMovePosition,
+): Promise<MoveInPlaylistResult> {
+	const data = await queryPathfinder<PathfinderMoveInPlaylistResponse>(
+		token,
+		"moveItemsInPlaylist",
+		{
+			playlistUri,
+			uids,
+			newPosition,
+		},
+	);
+
+	return {
+		typename: data.data.moveItemsInPlaylist.__typename,
 	};
 }
 

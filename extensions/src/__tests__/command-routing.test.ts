@@ -20,6 +20,7 @@ vi.mock("../shared/spotify-client/reads", () => ({
 vi.mock("../shared/spotify-client/mutations", () => ({
 	addToPlaylist: vi.fn().mockResolvedValue({ typename: "Success" }),
 	removeFromPlaylist: vi.fn().mockResolvedValue({ typename: "Success" }),
+	moveInPlaylist: vi.fn().mockResolvedValue({ typename: "Success" }),
 }));
 
 vi.mock("../shared/spotify-client/playlist-v2", () => ({
@@ -28,6 +29,11 @@ vi.mock("../shared/spotify-client/playlist-v2", () => ({
 		.mockResolvedValue({ uri: "spotify:playlist:new", revision: "r1" }),
 	updatePlaylist: vi.fn().mockResolvedValue({ revision: "r2" }),
 	deletePlaylist: vi.fn().mockResolvedValue({ revision: "r3" }),
+	uploadPlaylistCover: vi
+		.fn()
+		.mockResolvedValue({ revision: "r4", picture: "pic-id" }),
+	removePlaylistCover: vi.fn().mockResolvedValue({ revision: "r5" }),
+	setPlaylistVisibility: vi.fn().mockResolvedValue({ revision: "r6" }),
 }));
 
 const globalAny = globalThis as any;
@@ -272,6 +278,108 @@ describe("handleSpotifyCommand", () => {
 				"test-token-abc",
 				"spotify:playlist:del",
 				"user123",
+			);
+		});
+
+		it("routes moveInPlaylist to mutations.moveInPlaylist", async () => {
+			const { moveInPlaylist } = await import(
+				"../shared/spotify-client/mutations"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "moveInPlaylist",
+				payload: {
+					playlistUri: "spotify:playlist:abc",
+					uids: ["uid-a"],
+					newPosition: { moveType: "BEFORE_UID", fromUid: "uid-b" },
+				},
+				commandId: "cmd-move",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			expect(moveInPlaylist).toHaveBeenCalledWith(
+				"test-token-abc",
+				"spotify:playlist:abc",
+				["uid-a"],
+				{ moveType: "BEFORE_UID", fromUid: "uid-b" },
+			);
+		});
+
+		it("routes removePlaylistCover to playlist-v2.removePlaylistCover", async () => {
+			const { removePlaylistCover } = await import(
+				"../shared/spotify-client/playlist-v2"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "removePlaylistCover",
+				payload: { playlistId: "pl-cover" },
+				commandId: "cmd-remove-cover",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			if (result.ok) expect(result.data).toEqual({ revision: "r5" });
+			expect(removePlaylistCover).toHaveBeenCalledWith(
+				"test-token-abc",
+				"pl-cover",
+			);
+		});
+
+		it("routes setPlaylistVisibility to playlist-v2.setPlaylistVisibility", async () => {
+			const { setPlaylistVisibility } = await import(
+				"../shared/spotify-client/playlist-v2"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "setPlaylistVisibility",
+				payload: {
+					playlistUri: "spotify:playlist:vis",
+					userId: "user123",
+					isPublic: false,
+				},
+				commandId: "cmd-vis",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			if (result.ok) expect(result.data).toEqual({ revision: "r6" });
+			expect(setPlaylistVisibility).toHaveBeenCalledWith(
+				"test-token-abc",
+				"spotify:playlist:vis",
+				"user123",
+				false,
+			);
+		});
+
+		it("routes uploadPlaylistCover to playlist-v2.uploadPlaylistCover", async () => {
+			const { uploadPlaylistCover } = await import(
+				"../shared/spotify-client/playlist-v2"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "uploadPlaylistCover",
+				payload: { playlistId: "pl-cover", imageBase64: "/9j/4AAQ" },
+				commandId: "cmd-cover",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.data).toEqual({ revision: "r4", picture: "pic-id" });
+			}
+			expect(uploadPlaylistCover).toHaveBeenCalledWith(
+				"test-token-abc",
+				"pl-cover",
+				"/9j/4AAQ",
 			);
 		});
 
