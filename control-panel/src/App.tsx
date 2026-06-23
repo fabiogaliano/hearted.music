@@ -7,6 +7,7 @@ import {
 	GaugeIcon,
 	HeartIcon,
 	type Icon,
+	MicrophoneStageIcon,
 	PulseIcon,
 	SparkleIcon,
 	TerminalWindowIcon,
@@ -26,8 +27,10 @@ import { AudioReviewSection } from "./sections/AudioReviewSection";
 import { BillingSection } from "./sections/BillingSection";
 import { EmailSection } from "./sections/EmailSection";
 import { EnrichmentSection } from "./sections/EnrichmentSection";
+import { InstrumentalReviewSection } from "./sections/InstrumentalReviewSection";
 import { JobsSection } from "./sections/JobsSection";
 import { LibrarySection } from "./sections/LibrarySection";
+import { LyricsReviewSection } from "./sections/LyricsReviewSection";
 import { OperationsSection } from "./sections/OperationsSection";
 import { Overview } from "./sections/Overview";
 import { ReleaseYearSection } from "./sections/ReleaseYearSection";
@@ -95,6 +98,18 @@ const NAV: NavEntry[] = [
 		label: "Release year",
 		icon: CalendarBlankIcon,
 		render: (k) => <ReleaseYearSection refreshKey={k} />,
+	},
+	{
+		key: "lyrics-review",
+		label: "Lyrics review",
+		icon: MicrophoneStageIcon,
+		render: (k) => <LyricsReviewSection refreshKey={k} />,
+	},
+	{
+		key: "instrumental-review",
+		label: "Instrumental review",
+		icon: WaveformIcon,
+		render: (k) => <InstrumentalReviewSection refreshKey={k} />,
 	},
 	{
 		key: "email",

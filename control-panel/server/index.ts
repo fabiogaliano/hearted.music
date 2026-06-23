@@ -22,6 +22,20 @@ import {
 	sendStyledEmail,
 } from "./email";
 import {
+	approveInstrumentalReview,
+	countPendingInstrumentalReviews,
+	type InstrumentalReviewRow,
+	listInstrumentalReviews,
+	rejectInstrumentalReview,
+} from "./instrumental-reviews";
+import {
+	countLyricsBuckets,
+	type LyricsFilter,
+	listLyricsReviews,
+	markInstrumental,
+	saveManualLyrics,
+} from "./lyrics-reviews";
+import {
 	accountsByLiked,
 	billingMetrics,
 	enrichmentMetrics,
@@ -233,6 +247,83 @@ const server = Bun.serve({
 					year?: unknown;
 				};
 				return json(await setReleaseYear(setYearMatch[1]!, body.year));
+			}
+
+			if (path === "/api/lyrics-reviews" && req.method === "GET") {
+				const filterParam = url.searchParams.get("filter");
+				const filter: LyricsFilter =
+					filterParam === "instrumental" ? "instrumental" : "needs_review";
+				const [reviews, counts] = await Promise.all([
+					listLyricsReviews(filter),
+					countLyricsBuckets(),
+				]);
+				return json({
+					reviews,
+					needsReviewTotal: counts.needsReview,
+					instrumentalTotal: counts.instrumental,
+				});
+			}
+
+			const lyricsMatch = path.match(
+				/^\/api\/lyrics-reviews\/([0-9a-fA-F-]+)\/lyrics$/,
+			);
+			if (lyricsMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					text?: unknown;
+				};
+				return json(await saveManualLyrics(lyricsMatch[1]!, body.text));
+			}
+
+			const instrumentalMatch = path.match(
+				/^\/api\/lyrics-reviews\/([0-9a-fA-F-]+)\/instrumental$/,
+			);
+			if (instrumentalMatch && req.method === "POST") {
+				return json(await markInstrumental(instrumentalMatch[1]!));
+			}
+
+			if (path === "/api/instrumental-reviews" && req.method === "GET") {
+				const statusParam = url.searchParams.get("status") ?? "pending";
+				const status: InstrumentalReviewRow["status"] =
+					statusParam === "approved" || statusParam === "rejected"
+						? statusParam
+						: "pending";
+				const [reviews, pendingTotal] = await Promise.all([
+					listInstrumentalReviews(status),
+					countPendingInstrumentalReviews(),
+				]);
+				return json({ reviews, pendingTotal });
+			}
+
+			const approveInstrMatch = path.match(
+				/^\/api\/instrumental-reviews\/([0-9a-fA-F-]+)\/approve$/,
+			);
+			if (approveInstrMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					reviewedBy?: string;
+				};
+				return json(
+					await approveInstrumentalReview(
+						approveInstrMatch[1]!,
+						body.reviewedBy ?? "control-panel",
+					),
+				);
+			}
+
+			const rejectInstrMatch = path.match(
+				/^\/api\/instrumental-reviews\/([0-9a-fA-F-]+)\/reject$/,
+			);
+			if (rejectInstrMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as {
+					reviewedBy?: string;
+					reason?: string;
+				};
+				return json(
+					await rejectInstrumentalReview(
+						rejectInstrMatch[1]!,
+						body.reviewedBy ?? "control-panel",
+						body.reason?.trim() || null,
+					),
+				);
 			}
 
 			if (path === "/api/email/send" && req.method === "POST") {

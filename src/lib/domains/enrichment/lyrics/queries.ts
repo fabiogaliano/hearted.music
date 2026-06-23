@@ -333,6 +333,48 @@ export async function upsertFetchOutcome(
 }
 
 /**
+ * Source key for an instrumental verdict reached by content analysis (genre /
+ * instrumentalness), not by a provider fetch. Distinct (song_id, source) slot so
+ * it can't collide with the worker's lrclib/genius/not_found rows or the operator's
+ * 'manual' rows. fetch_source stays NULL — it isn't a provider, and the
+ * song_lyrics fetch_source CHECK forbids any value but NULL/lrclib/genius/genius_page.
+ */
+const ANALYSIS_SOURCE = "analysis";
+
+/**
+ * Settles a song as instrumental from a content-analysis verdict by writing the
+ * sentinel song_lyrics row. updated_at=now() (default on insert; the
+ * song_lyrics_updated_at trigger bumps it on the conflict path) makes it the
+ * song's latest fetch, so the enrichment selector's re-open clause
+ * (fetch_status IS NULL OR 'not_found') goes false and the song stops being
+ * re-probed for lyrics it will never have.
+ */
+export async function settleInstrumentalFromAnalysis(
+	songId: string,
+): Promise<Result<SongLyrics, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("song_lyrics")
+			.upsert(
+				{
+					song_id: songId,
+					source: ANALYSIS_SOURCE,
+					document: null,
+					content_hash: NO_CONTENT_HASH,
+					has_annotations: false,
+					schema_version: NO_CONTENT_SCHEMA_VERSION,
+					fetch_status: "instrumental",
+					fetch_source: null,
+				},
+				{ onConflict: "song_id,source" },
+			)
+			.select()
+			.single(),
+	);
+}
+
+/**
  * Returns the most-recent stored fetch outcome for a song, or null when the
  * song has never been attempted.
  *

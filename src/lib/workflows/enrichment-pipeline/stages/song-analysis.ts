@@ -358,11 +358,29 @@ async function probeLyricsRefreshCandidates(
 
 		const fetchOutcome = outcomeResult.value;
 		if (fetchOutcome.kind === "not_found") {
-			failures.push({
-				songId,
-				failureCode: FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING,
-				message: "Lyrics still unavailable; will retry later",
-			});
+			// Probe membership invariant: a song reaches here only with an existing
+			// analysis and no lyrics document — so that analysis was made without
+			// lyrics and is therefore instrumental. Lyrics are STILL unavailable, so
+			// settle the instrumental verdict into the lyrics state. This is the
+			// durable retry of analyzeSong's one-shot settle: a transient settle
+			// failure on the first analysis would otherwise leave the song looping
+			// through this branch every pass. Once settled, its latest fetch becomes
+			// 'instrumental' and the selector stops re-opening it.
+			const settled =
+				await deps.songAnalysisService.settleInstrumentalDetermination({
+					songId,
+					genres: song.genres,
+					instrumentalness: audioFeatures.get(songId)?.instrumentalness ?? null,
+				});
+			if (settled) {
+				succeededSongIds.push(songId);
+			} else {
+				failures.push({
+					songId,
+					failureCode: FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING,
+					message: "Lyrics still unavailable; instrumental settle deferred",
+				});
+			}
 			continue;
 		}
 

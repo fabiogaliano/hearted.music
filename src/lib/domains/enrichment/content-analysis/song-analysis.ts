@@ -11,9 +11,18 @@ import type { LlmService } from "@/lib/integrations/llm/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import type { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import type { LlmError } from "@/lib/shared/errors/external/llm";
+import { settleInstrumentalFromAnalysis } from "../lyrics/queries";
 import type { LyricsOutcome } from "../lyrics/types/lyrics.types";
 import { getLyricsFormatLegend } from "../lyrics/utils/lyrics-formatter";
-import { hasInstrumentalGenre } from "./instrumental-genres";
+import {
+	hasInstrumentalGenre,
+	matchedInstrumentalGenre,
+} from "./instrumental-genres";
+import {
+	hasRejectedInstrumentalReview,
+	type InstrumentalReviewSignal,
+	upsertPendingInstrumentalReview,
+} from "./instrumental-review-queries";
 import { type RecordLlmUsageInput, recordLlmUsage } from "./llm-usage-queries";
 import {
 	ACTIVE_INSTRUMENTAL_VERSION,
@@ -150,6 +159,26 @@ export class SongAnalysisService {
 
 		const isInstrumental = contentType === "instrumental";
 
+		// True when the instrumental verdict came from the genre / instrumentalness
+		// heuristic rather than an authoritative provider-confirmed instrumental
+		// outcome (step 1). Only these fallible determinations are settled into the
+		// lyrics state and surfaced for operator review.
+		const audioDeterminedInstrumental =
+			isInstrumental && input.fetchOutcome?.kind !== "instrumental";
+
+		// Honor a prior operator rejection ("this has vocals") before spending an LLM
+		// call: skip the heuristic and wait for real lyrics instead of re-classifying
+		// instrumental and re-surfacing a review the operator already dismissed.
+		if (
+			audioDeterminedInstrumental &&
+			(await hasRejectedInstrumentalReview(songId))
+		) {
+			console.info(
+				`[SongAnalysis] song ${songId} (${input.artist} – ${input.title}) instrumental verdict vetoed by a prior operator rejection. Recording as retry candidate (awaiting lyrics).`,
+			);
+			return Result.ok({ kind: "retry_candidate", songId });
+		}
+
 		const prompt = isInstrumental
 			? this.buildInstrumentalPrompt(input)
 			: this.buildPrompt(input);
@@ -272,12 +301,77 @@ export class SongAnalysisService {
 			return Result.err(storeResult.error);
 		}
 
+		// Settle the lyrics state and log the determination for operator review. A
+		// genre/instrumentalness verdict that leaves song_lyrics on 'not_found' is
+		// exactly what makes the selector re-probe the song forever; writing the
+		// instrumental row closes that loop. Best-effort — never fails the analysis.
+		if (audioDeterminedInstrumental) {
+			await this.settleInstrumentalDetermination({
+				songId,
+				genres: input.genres,
+				instrumentalness:
+					input.instrumentalness ??
+					input.audioFeatures?.instrumentalness ??
+					null,
+			});
+		}
+
 		return Result.ok({
 			songId,
 			analysis: storeResult.value,
 			tokensUsed: llmResult.value.tokens?.total,
 			cached: false,
 		});
+	}
+
+	/**
+	 * Propagate a genre/instrumentalness instrumental verdict to the lyrics state
+	 * (so the selector stops re-probing) and record it as a pending operator review
+	 * (the heuristic occasionally mislabels a vocal track). Best-effort and ordered:
+	 * a failed settle skips the review so the two never drift out of sync.
+	 *
+	 * Returns true only when the lyrics settle succeeded. analyzeSong runs this once
+	 * after a song's first analysis and ignores the result (best-effort). The
+	 * re-probe stage re-invokes it for any still-not_found song that already carries
+	 * an instrumental analysis — the durable retry for a settle that transiently
+	 * failed here, which would otherwise leave the song looping in the re-probe path
+	 * forever — and uses the boolean to tell a resolved song from one to retry.
+	 */
+	async settleInstrumentalDetermination(input: {
+		songId: string;
+		genres?: string[] | null;
+		instrumentalness?: number | null;
+	}): Promise<boolean> {
+		const settled = await settleInstrumentalFromAnalysis(input.songId);
+		if (Result.isError(settled)) {
+			console.warn(
+				`[SongAnalysis] failed to settle instrumental lyrics state for ${input.songId}: ${settled.error.message}`,
+			);
+			return false;
+		}
+
+		const matchedGenre =
+			input.genres && input.genres.length > 0
+				? matchedInstrumentalGenre(input.genres)
+				: null;
+		// Classifier precedence: a genre keyword (step 3) wins over the
+		// instrumentalness tiebreak (step 4), so a match means genre decided it.
+		const signal: InstrumentalReviewSignal = matchedGenre
+			? "genre"
+			: "instrumentalness";
+
+		const review = await upsertPendingInstrumentalReview({
+			songId: input.songId,
+			signal,
+			instrumentalness: input.instrumentalness ?? null,
+			matchedGenre,
+		});
+		if (Result.isError(review)) {
+			console.warn(
+				`[SongAnalysis] failed to record instrumental review for ${input.songId}: ${review.error.message}`,
+			);
+		}
+		return true;
 	}
 
 	// Best-effort ledger write: a failed cost insert is logged, never propagated, so

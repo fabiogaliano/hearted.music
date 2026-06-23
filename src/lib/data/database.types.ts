@@ -2458,6 +2458,63 @@ export type Database = {
 					},
 				];
 			};
+			song_instrumental_review: {
+				Row: {
+					created_at: string;
+					id: string;
+					instrumentalness: number | null;
+					matched_genre: string | null;
+					rejection_reason: string | null;
+					reviewed_at: string | null;
+					reviewed_by: string | null;
+					signal: string;
+					song_id: string;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					created_at?: string;
+					id?: string;
+					instrumentalness?: number | null;
+					matched_genre?: string | null;
+					rejection_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					signal: string;
+					song_id: string;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					created_at?: string;
+					id?: string;
+					instrumentalness?: number | null;
+					matched_genre?: string | null;
+					rejection_reason?: string | null;
+					reviewed_at?: string | null;
+					reviewed_by?: string | null;
+					signal?: string;
+					song_id?: string;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "song_instrumental_review_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "song_instrumental_review_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			song_lyrics: {
 				Row: {
 					content_hash: string;

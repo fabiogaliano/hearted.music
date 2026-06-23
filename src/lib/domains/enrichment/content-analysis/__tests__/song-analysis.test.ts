@@ -18,6 +18,19 @@ vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 vi.mock("../llm-usage-queries", () => ({
 	recordLlmUsage: vi.fn(),
 }));
+vi.mock("../../lyrics/queries", () => ({
+	settleInstrumentalFromAnalysis: vi.fn(),
+}));
+vi.mock("../instrumental-review-queries", () => ({
+	hasRejectedInstrumentalReview: vi.fn(),
+	upsertPendingInstrumentalReview: vi.fn(),
+}));
+
+import { settleInstrumentalFromAnalysis } from "../../lyrics/queries";
+import {
+	hasRejectedInstrumentalReview,
+	upsertPendingInstrumentalReview,
+} from "../instrumental-review-queries";
 
 const service = new SongAnalysisService({} as any);
 const classify = (input: Partial<AnalyzeSongInput>) =>
@@ -307,5 +320,125 @@ describe("analyzeSong cleanup pass", () => {
 		expect(vi.mocked(recordLlmUsage).mock.calls.length).toBeGreaterThanOrEqual(
 			1,
 		);
+	});
+});
+
+describe("analyzeSong instrumental settle + review (Task 2)", () => {
+	const instrumentalOutput = {
+		headline: "h",
+		compound_mood: "Quiet Calm",
+		mood_description: "d",
+		sonic_texture: "s",
+	};
+
+	function instrumentalGen() {
+		return vi.fn().mockResolvedValue(
+			Result.ok({
+				output: instrumentalOutput,
+				model: "google-vertex:gemini-2.5-flash",
+				modelId: "gemini-2.5-flash",
+				provider: "google-vertex",
+				tokens: {
+					prompt: 1,
+					completion: 1,
+					total: 2,
+					cacheReadTokens: 0,
+					reasoningTokens: 0,
+				},
+				costUsd: 0.0001,
+			}),
+		);
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(getSongAnalysis).mockResolvedValue(Result.ok(null) as any);
+		vi.mocked(upsertSongAnalysis).mockResolvedValue(Result.ok({} as any));
+		vi.mocked(recordLlmUsage).mockResolvedValue(Result.ok(undefined));
+		vi.mocked(settleInstrumentalFromAnalysis).mockResolvedValue(
+			Result.ok({} as any),
+		);
+		vi.mocked(upsertPendingInstrumentalReview).mockResolvedValue(
+			Result.ok({ id: "rev-1" }),
+		);
+		vi.mocked(hasRejectedInstrumentalReview).mockResolvedValue(false);
+	});
+
+	it("settles + logs a pending review for a genre-determined instrumental (fetch not_found)", async () => {
+		const svc = new SongAnalysisService({
+			generateObject: instrumentalGen(),
+		} as any);
+		const res = await svc.analyzeSong({
+			songId: "s1",
+			artist: "A",
+			title: "T",
+			lyrics: "",
+			genres: ["ambient"],
+			instrumentalness: 0.3,
+			fetchOutcome: { kind: "not_found" },
+		});
+
+		expect(Result.isOk(res)).toBe(true);
+		expect(settleInstrumentalFromAnalysis).toHaveBeenCalledWith("s1");
+		const reviewArg = vi.mocked(upsertPendingInstrumentalReview).mock
+			.calls[0][0];
+		expect(reviewArg.signal).toBe("genre");
+		expect(reviewArg.matchedGenre).toBe("ambient");
+	});
+
+	it("records signal=instrumentalness when no genre matched", async () => {
+		const svc = new SongAnalysisService({
+			generateObject: instrumentalGen(),
+		} as any);
+		await svc.analyzeSong({
+			songId: "s2",
+			artist: "A",
+			title: "T",
+			lyrics: "",
+			instrumentalness: 0.95,
+			fetchOutcome: { kind: "not_found" },
+		});
+
+		const reviewArg = vi.mocked(upsertPendingInstrumentalReview).mock
+			.calls[0][0];
+		expect(reviewArg.signal).toBe("instrumentalness");
+		expect(reviewArg.instrumentalness).toBe(0.95);
+		expect(reviewArg.matchedGenre).toBeNull();
+	});
+
+	it("does NOT settle when the instrumental verdict came from the fetch outcome", async () => {
+		const svc = new SongAnalysisService({
+			generateObject: instrumentalGen(),
+		} as any);
+		await svc.analyzeSong({
+			songId: "s3",
+			artist: "A",
+			title: "T",
+			fetchOutcome: { kind: "instrumental", source: "lrclib" },
+		});
+
+		expect(settleInstrumentalFromAnalysis).not.toHaveBeenCalled();
+		expect(upsertPendingInstrumentalReview).not.toHaveBeenCalled();
+	});
+
+	it("honors a prior rejection: retry_candidate, no LLM call, no settle", async () => {
+		vi.mocked(hasRejectedInstrumentalReview).mockResolvedValue(true);
+		const generateObject = instrumentalGen();
+		const svc = new SongAnalysisService({ generateObject } as any);
+
+		const res = await svc.analyzeSong({
+			songId: "s4",
+			artist: "A",
+			title: "T",
+			lyrics: "",
+			genres: ["ambient"],
+			fetchOutcome: { kind: "not_found" },
+		});
+
+		expect(Result.isOk(res)).toBe(true);
+		expect(isRetryCandidate((res as any).value)).toBe(true);
+		expect(generateObject).not.toHaveBeenCalled();
+		expect(upsertSongAnalysis).not.toHaveBeenCalled();
+		expect(settleInstrumentalFromAnalysis).not.toHaveBeenCalled();
 	});
 });

@@ -59,3 +59,14 @@ const INSTRUMENTAL_GENRE_SET: ReadonlySet<string> = new Set(
 export function hasInstrumentalGenre(genres: string[]): boolean {
 	return genres.some((g) => INSTRUMENTAL_GENRE_SET.has(normaliseGenre(g)));
 }
+
+/**
+ * Returns the first supplied genre that matches the curated instrumental set, or
+ * null when none do. Used to record WHICH genre drove an instrumental
+ * determination for operator review.
+ */
+export function matchedInstrumentalGenre(genres: string[]): string | null {
+	return (
+		genres.find((g) => INSTRUMENTAL_GENRE_SET.has(normaliseGenre(g))) ?? null
+	);
+}

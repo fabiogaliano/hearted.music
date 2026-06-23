@@ -197,8 +197,9 @@ describe("runSongAnalysis: returns StageOutcome", () => {
 		expect(outcome.succeededSongIds).toEqual(["s1"]);
 	});
 
-	it("probes analyzed songs with no lyrics row and records a refresh backoff on repeated not_found", async () => {
+	it("settles the instrumental verdict when a probed song stays not_found", async () => {
 		const analyzeSong = vi.fn();
+		const settleInstrumentalDetermination = vi.fn().mockResolvedValue(true);
 		const fetchAndStoreOutcome = vi
 			.fn()
 			.mockResolvedValue(Result.ok({ kind: "not_found" }));
@@ -223,7 +224,7 @@ describe("runSongAnalysis: returns StageOutcome", () => {
 		mockCreateSongBatchAnalyzerDeps.mockReturnValue(
 			Result.ok({
 				lyricsService: { fetchAndStoreOutcome },
-				songAnalysisService: { analyzeSong },
+				songAnalysisService: { analyzeSong, settleInstrumentalDetermination },
 				concurrency: 5,
 			}),
 		);
@@ -233,7 +234,57 @@ describe("runSongAnalysis: returns StageOutcome", () => {
 		);
 
 		expect(fetchAndStoreOutcome).toHaveBeenCalledTimes(1);
+		// No re-analysis — the existing instrumental analysis is reused; we only
+		// settle its verdict into the lyrics state so the re-probe loop closes.
 		expect(analyzeSong).not.toHaveBeenCalled();
+		expect(settleInstrumentalDetermination).toHaveBeenCalledWith(
+			expect.objectContaining({ songId: "s1" }),
+		);
+		// Resolved, not a pending-retry failure.
+		expect(outcome.succeededSongIds).toContain("s1");
+		expect(outcome.failures).toHaveLength(0);
+	});
+
+	it("records a refresh backoff when the instrumental settle itself fails", async () => {
+		const settleInstrumentalDetermination = vi.fn().mockResolvedValue(false);
+		const fetchAndStoreOutcome = vi
+			.fn()
+			.mockResolvedValue(Result.ok({ kind: "not_found" }));
+		mockSongAnalysisGet.mockResolvedValue(
+			Result.ok(
+				new Map([["s1", { id: "a1", created_at: "2026-01-01T00:00:00Z" }]]),
+			),
+		);
+		mockGetLatestLyricsSnapshots.mockResolvedValue(
+			Result.ok(
+				new Map([
+					[
+						"s1",
+						makeLyricsSnapshot("s1", {
+							latestFetchStatus: null,
+							latestLyricsUpdatedAt: null,
+						}),
+					],
+				]),
+			),
+		);
+		mockCreateSongBatchAnalyzerDeps.mockReturnValue(
+			Result.ok({
+				lyricsService: { fetchAndStoreOutcome },
+				songAnalysisService: {
+					analyzeSong: vi.fn(),
+					settleInstrumentalDetermination,
+				},
+				concurrency: 5,
+			}),
+		);
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1"])),
+		);
+
+		expect(settleInstrumentalDetermination).toHaveBeenCalledTimes(1);
+		expect(outcome.succeededSongIds).not.toContain("s1");
 		expect(outcome.failures).toContainEqual(
 			expect.objectContaining({
 				songId: "s1",
