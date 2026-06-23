@@ -47,6 +47,8 @@ export function describeTrigger(
 			return "songs finished enriching";
 		case "playlist_management_session_flushed":
 			return "matching playlists changed";
+		case "enrichment_work_available":
+			return "maintenance recovery";
 		case "songs_unlocked":
 			return "songs unlocked";
 		case "unlimited_activated":

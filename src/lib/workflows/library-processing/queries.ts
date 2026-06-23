@@ -3,6 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
+	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -69,6 +70,20 @@ export async function getOrCreateLibraryProcessingState(
 		return created;
 	}
 	return Result.ok(toState(created.value));
+}
+
+export async function findStatesWithoutEnrichmentActiveJob(): Promise<
+	Result<LibraryProcessingState[], DbError>
+> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany(
+		supabase
+			.from("library_processing_state")
+			.select("*")
+			.is("enrichment_active_job_id", null),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(result.value.map(toState));
 }
 
 export type TerminalActiveRef = {

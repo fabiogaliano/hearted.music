@@ -59,6 +59,7 @@ export interface AnalyzeSongInput {
 	// replace is a harmless no-op and existing callers are unaffected.
 	exampleText?: string;
 	annotationsBlock?: string;
+	ignoreExistingAnalysis?: boolean;
 }
 
 export interface AnalyzeSongResult {
@@ -124,16 +125,18 @@ export class SongAnalysisService {
 	> {
 		const { songId } = input;
 
-		const existingResult = await getSongAnalysis(songId);
-		if (Result.isError(existingResult)) {
-			return Result.err(existingResult.error);
-		}
-		if (existingResult.value) {
-			return Result.ok({
-				songId,
-				analysis: existingResult.value,
-				cached: true,
-			});
+		if (!input.ignoreExistingAnalysis) {
+			const existingResult = await getSongAnalysis(songId);
+			if (Result.isError(existingResult)) {
+				return Result.err(existingResult.error);
+			}
+			if (existingResult.value) {
+				return Result.ok({
+					songId,
+					analysis: existingResult.value,
+					cached: true,
+				});
+			}
 		}
 
 		const contentType = this.classifyContentType(input);

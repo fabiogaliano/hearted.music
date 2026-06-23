@@ -166,6 +166,13 @@ export function reconcileLibraryProcessing(
 			break;
 		}
 
+		case "enrichment_work_available": {
+			if (!isStale(enrichment)) {
+				enrichment = advanceRequestedAt(enrichment, requestMarker);
+			}
+			break;
+		}
+
 		case "songs_unlocked": {
 			enrichment = advanceRequestedAt(enrichment, requestMarker);
 			if (hasTargetPlaylists) {

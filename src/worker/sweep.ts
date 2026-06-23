@@ -17,6 +17,10 @@ import { errorMessage } from "@/lib/shared/errors/error-message";
 import { deleteOrphanedSyncPayloads } from "@/lib/workflows/extension-sync/payload-cleanup";
 import { deleteSyncPayload } from "@/lib/workflows/extension-sync/payload-storage";
 import {
+	type IdleEnrichmentRecoveryResult,
+	recoverIdleEnrichmentWorkflows,
+} from "@/lib/workflows/library-processing/idle-recovery";
+import {
 	type DeadLetterRecoveryResult,
 	recoverDeadLetteredLibraryProcessingJobs,
 	recoverTerminalLibraryProcessingRefs,
@@ -34,6 +38,10 @@ export type RecoverDeadLetteredFn = (
 
 export type RecoverTerminalRefsFn = () => Promise<TerminalRefRecoveryResult[]>;
 
+export type RecoverIdleEnrichmentFn = () => Promise<
+	IdleEnrichmentRecoveryResult[]
+>;
+
 export type DeleteOrphanedPayloadsFn = (jobs: Job[]) => Promise<void>;
 
 export type ClaimPayloadCleanupFn = () => Promise<
@@ -50,6 +58,7 @@ export type SweepDeps = {
 	markDeadLibraryProcessingJobs: SweepRpc;
 	recoverDeadLetteredLibraryProcessingJobs: RecoverDeadLetteredFn;
 	recoverTerminalLibraryProcessingRefs: RecoverTerminalRefsFn;
+	recoverIdleEnrichmentWorkflows: RecoverIdleEnrichmentFn;
 	sweepStaleExtensionSyncJobs: SweepRpc;
 	markDeadExtensionSyncJobs: SweepRpc;
 	deleteOrphanedSyncPayloads: DeleteOrphanedPayloadsFn;
@@ -64,6 +73,7 @@ export function createDefaultSweepDeps(): SweepDeps {
 		markDeadLibraryProcessingJobs,
 		recoverDeadLetteredLibraryProcessingJobs,
 		recoverTerminalLibraryProcessingRefs,
+		recoverIdleEnrichmentWorkflows,
 		sweepStaleExtensionSyncJobs,
 		markDeadExtensionSyncJobs,
 		deleteOrphanedSyncPayloads,
@@ -157,6 +167,24 @@ export async function runSweepTick(deps: SweepDeps): Promise<void> {
 					workflow: r.workflow,
 					jobStatus: r.jobStatus,
 					recoveryStrategy: r.recoveryStrategy,
+				});
+			}
+		}
+	});
+
+	await runStep("recover-idle-enrichment", async () => {
+		const idleRecoveryResults = await deps.recoverIdleEnrichmentWorkflows();
+		for (const r of idleRecoveryResults) {
+			if (Result.isError(r.outcome)) {
+				log.error("idle-enrichment-recovery-failed", {
+					accountId: r.accountId,
+					latestJobStatus: r.latestJobStatus,
+					error: r.outcome.error,
+				});
+			} else {
+				log.info("idle-enrichment-recovered", {
+					accountId: r.accountId,
+					latestJobStatus: r.latestJobStatus,
 				});
 			}
 		}

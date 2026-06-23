@@ -85,6 +85,55 @@ describe("classifyContentType (replaces detectInstrumental)", () => {
 	});
 });
 
+describe("analyzeSong cache control", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(getSongAnalysis).mockResolvedValue(Result.ok(null) as any);
+		vi.mocked(insertSongAnalysis).mockResolvedValue(Result.ok({} as any));
+		vi.mocked(recordLlmUsage).mockResolvedValue(Result.ok(undefined));
+	});
+
+	it("bypasses the existing-analysis cache when ignoreExistingAnalysis is true", async () => {
+		vi.mocked(getSongAnalysis).mockResolvedValue(
+			Result.ok({ song_id: "s1", analysis: {}, model: "cached" } as any),
+		);
+		const generateObject = vi.fn().mockResolvedValue(
+			Result.ok({
+				output: {
+					headline: "h",
+					compound_mood: "Quiet Calm",
+					mood_description: "d",
+					sonic_texture: "s",
+				},
+				model: "google-vertex:gemini-2.5-flash",
+				modelId: "gemini-2.5-flash",
+				provider: "google-vertex",
+				tokens: {
+					prompt: 1,
+					completion: 1,
+					total: 2,
+					cacheReadTokens: 0,
+					reasoningTokens: 0,
+				},
+				costUsd: 0.0001,
+			}),
+		);
+		const svc = new SongAnalysisService({ generateObject } as any);
+
+		const result = await svc.analyzeSong({
+			songId: "s1",
+			artist: "A",
+			title: "T",
+			fetchOutcome: { kind: "instrumental", source: "lrclib" },
+			ignoreExistingAnalysis: true,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		expect(generateObject).toHaveBeenCalledTimes(1);
+		expect(insertSongAnalysis).toHaveBeenCalledTimes(1);
+	});
+});
+
 // Locks the post-generation cleanup pass wired into analyzeSong (see song-analysis.ts). The pass is
 // the proven tier1 lever — Round 5b measured 5.28 → 0.19 HIGH tells/read on the real population — so a
 // future change must not silently drop it. A fake LlmService returns a read with one AI tell from the

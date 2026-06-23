@@ -526,6 +526,48 @@ describe("reconcileLibraryProcessing", () => {
 		});
 	});
 
+	describe("enrichment_work_available", () => {
+		it("advances a settled workflow and ensures enrichment", () => {
+			const { state, effects } = reconcile(
+				makeState({
+					enrichment: {
+						requestedAt: "2026-03-27T10:00:00Z",
+						settledAt: "2026-03-27T10:00:00Z",
+						activeJobId: null,
+					},
+				}),
+				{ kind: "enrichment_work_available", accountId: "acct-1" },
+			);
+
+			expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+			expect(effects).toHaveLength(1);
+			expect(effects[0]).toMatchObject({
+				kind: "ensure_enrichment_job",
+				satisfiesRequestedAt: "2026-03-27T12:00:00Z",
+			});
+		});
+
+		it("keeps the existing request marker when already stale", () => {
+			const { state, effects } = reconcile(
+				makeState({
+					enrichment: {
+						requestedAt: "2026-03-27T10:00:00Z",
+						settledAt: null,
+						activeJobId: null,
+					},
+				}),
+				{ kind: "enrichment_work_available", accountId: "acct-1" },
+			);
+
+			expect(state.enrichment.requestedAt).toBe("2026-03-27T10:00:00Z");
+			expect(effects).toHaveLength(1);
+			expect(effects[0]).toMatchObject({
+				kind: "ensure_enrichment_job",
+				satisfiesRequestedAt: "2026-03-27T10:00:00Z",
+			});
+		});
+	});
+
 	describe("billing changes", () => {
 		describe("songs_unlocked", () => {
 			it("advances enrichment regardless of hasTargetPlaylists", () => {

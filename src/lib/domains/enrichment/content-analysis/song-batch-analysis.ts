@@ -202,6 +202,10 @@ export interface SongBatchAnalyzerDeps {
 	concurrency: number;
 }
 
+export interface AnalyzeSongBatchOptions {
+	forceAnalyzeSongIds?: ReadonlySet<string>;
+}
+
 /**
  * Jobless batch analysis: classifies inputs and runs analysis without
  * creating or managing any job rows. Returns structured buckets the
@@ -210,6 +214,7 @@ export interface SongBatchAnalyzerDeps {
 export async function analyzeSongBatch(
 	songs: BatchSong[],
 	deps: SongBatchAnalyzerDeps,
+	options: AnalyzeSongBatchOptions = {},
 ): Promise<BatchAnalysisOutcome> {
 	if (songs.length === 0) {
 		return {
@@ -324,6 +329,8 @@ export async function analyzeSongBatch(
 					// Thread the fetch outcome into the classifier so step 1
 					// (confirmed-instrumental) fires when appropriate.
 					fetchOutcome: cachedEntry?.outcome,
+					ignoreExistingAnalysis:
+						options.forceAnalyzeSongIds?.has(song.songId) ?? false,
 				};
 
 				const result = await deps.songAnalysisService.analyzeSong(input);

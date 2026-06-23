@@ -23,10 +23,12 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
+	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type { LyricsOutcome } from "./types/lyrics.types";
+import { formatLyricsCompact } from "./utils/lyrics-formatter";
 import type { TransformedLyricsBySection } from "./utils/lyrics-transformer";
 
 export type SongLyrics = Tables<"song_lyrics">;
@@ -248,6 +250,14 @@ export interface StoredFetchOutcome {
 	fetchSource: string | null;
 }
 
+export interface LatestLyricsSnapshot {
+	songId: string;
+	latestFetchStatus: "lyrics" | "instrumental" | "not_found" | null;
+	latestFetchUpdatedAt: string | null;
+	latestLyricsText: string | null;
+	latestLyricsUpdatedAt: string | null;
+}
+
 /**
  * Writes (or overwrites) a song_lyrics row representing the outcome of one
  * fetch attempt.  Covers all three LyricsOutcome kinds:
@@ -380,3 +390,77 @@ export async function getSongFetchOutcome(
 }
 
 const FetchStatusSchema = z.enum(["lyrics", "instrumental", "not_found"]);
+
+export async function getLatestLyricsSnapshots(
+	songIds: string[],
+): Promise<Result<Map<string, LatestLyricsSnapshot>, DbError>> {
+	if (songIds.length === 0) {
+		return Result.ok(new Map());
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany<{
+		song_id: string;
+		fetch_status: string;
+		updated_at: string;
+		document: Json | null;
+	}>(
+		supabase
+			.from("song_lyrics")
+			.select("song_id, fetch_status, updated_at, document")
+			.in("song_id", songIds)
+			.order("updated_at", { ascending: false }),
+	);
+	if (Result.isError(result)) {
+		return Result.err(result.error);
+	}
+
+	const snapshots = new Map<string, LatestLyricsSnapshot>();
+	for (const songId of songIds) {
+		snapshots.set(songId, {
+			songId,
+			latestFetchStatus: null,
+			latestFetchUpdatedAt: null,
+			latestLyricsText: null,
+			latestLyricsUpdatedAt: null,
+		});
+	}
+
+	for (const row of result.value) {
+		const snapshot = snapshots.get(row.song_id);
+		if (!snapshot) {
+			continue;
+		}
+
+		if (snapshot.latestFetchStatus === null) {
+			const parsedStatus = FetchStatusSchema.safeParse(row.fetch_status);
+			if (!parsedStatus.success) {
+				return Result.err(
+					new DatabaseError({
+						code: "invalid_fetch_status",
+						message: `Unrecognised fetch_status value: ${row.fetch_status}`,
+					}),
+				);
+			}
+			snapshot.latestFetchStatus = parsedStatus.data;
+			snapshot.latestFetchUpdatedAt = row.updated_at;
+		}
+
+		if (
+			snapshot.latestLyricsUpdatedAt === null &&
+			row.fetch_status === "lyrics" &&
+			row.document !== null
+		) {
+			const parsedDocument = parseDocument(row.document);
+			if (Result.isError(parsedDocument)) {
+				return parsedDocument;
+			}
+			snapshot.latestLyricsUpdatedAt = row.updated_at;
+			snapshot.latestLyricsText = formatLyricsCompact(
+				parsedDocument.value.sections,
+			);
+		}
+	}
+
+	return Result.ok(snapshots);
+}

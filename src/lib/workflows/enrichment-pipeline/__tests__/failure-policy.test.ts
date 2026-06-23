@@ -162,6 +162,58 @@ describe("applyFailurePolicy", () => {
 		expect(
 			BACKOFF_CODES.has(FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE),
 		).toBe(true);
+		expect(BACKOFF_CODES.has(FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE)).toBe(
+			true,
+		);
+		expect(
+			BACKOFF_CODES.has(FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING),
+		).toBe(true);
+	});
+
+	it("analysis_retry_candidate backs off from 6h to a 7d cap", () => {
+		const cases: { count: number; minutes: number }[] = [
+			{ count: 0, minutes: 6 * 60 },
+			{ count: 1, minutes: 12 * 60 },
+			{ count: 2, minutes: 24 * 60 },
+			{ count: 3, minutes: 48 * 60 },
+			{ count: 4, minutes: 96 * 60 },
+			{ count: 5, minutes: 168 * 60 },
+			{ count: 50, minutes: 168 * 60 },
+		];
+		for (const { count, minutes } of cases) {
+			const out = applyFailurePolicy({
+				failureCode: FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE,
+				priorUnresolvedCount: count,
+				now: FIXED_NOW,
+				random: () => 1,
+			});
+			expect(out.isTerminal).toBe(false);
+			const delta = (out.suppressUntil as Date).getTime() - FIXED_NOW.getTime();
+			expect(minutesFromNow(delta)).toBe(minutes);
+		}
+	});
+
+	it("analysis_lyrics_refresh_pending backs off from 24h to a 30d cap", () => {
+		const cases: { count: number; minutes: number }[] = [
+			{ count: 0, minutes: 24 * 60 },
+			{ count: 1, minutes: 48 * 60 },
+			{ count: 2, minutes: 96 * 60 },
+			{ count: 3, minutes: 192 * 60 },
+			{ count: 4, minutes: 384 * 60 },
+			{ count: 5, minutes: 30 * 24 * 60 },
+			{ count: 50, minutes: 30 * 24 * 60 },
+		];
+		for (const { count, minutes } of cases) {
+			const out = applyFailurePolicy({
+				failureCode: FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING,
+				priorUnresolvedCount: count,
+				now: FIXED_NOW,
+				random: () => 1,
+			});
+			expect(out.isTerminal).toBe(false);
+			const delta = (out.suppressUntil as Date).getTime() - FIXED_NOW.getTime();
+			expect(minutesFromNow(delta)).toBe(minutes);
+		}
 	});
 
 	it.each([

@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockSongAnalysisGet = vi.fn();
 const mockAnalyzeSongBatch = vi.fn();
 const mockCreateSongBatchAnalyzerDeps = vi.fn();
+const mockGetLatestLyricsSnapshots = vi.fn();
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: (ids: string[]) => mockSongAnalysisGet(ids),
@@ -25,6 +26,11 @@ vi.mock(
 			mockCreateSongBatchAnalyzerDeps(...args),
 	}),
 );
+
+vi.mock("@/lib/domains/enrichment/lyrics/queries", () => ({
+	getLatestLyricsSnapshots: (...args: unknown[]) =>
+		mockGetLatestLyricsSnapshots(...args),
+}));
 
 import type { AnalysisFailureClassification } from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import {
@@ -103,6 +109,7 @@ function expectAttempted(
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+	mockGetLatestLyricsSnapshots.mockResolvedValue(Result.ok(new Map()));
 	mockCreateSongBatchAnalyzerDeps.mockReturnValue(
 		Result.ok({ lyricsService: null, songAnalysisService: {}, concurrency: 5 }),
 	);

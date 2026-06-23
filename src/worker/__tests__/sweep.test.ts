@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import type { IdleEnrichmentRecoveryResult } from "@/lib/workflows/library-processing/idle-recovery";
 import type {
 	DeadLetterRecoveryResult,
 	TerminalRefRecoveryResult,
@@ -54,6 +55,7 @@ function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 		markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		recoverDeadLetteredLibraryProcessingJobs: vi.fn().mockResolvedValue([]),
 		recoverTerminalLibraryProcessingRefs: vi.fn().mockResolvedValue([]),
+		recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue([]),
 		sweepStaleExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		markDeadExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
 		deleteOrphanedSyncPayloads: vi.fn().mockResolvedValue(undefined),
@@ -385,6 +387,61 @@ describe("runSweepTick", () => {
 				workflow: "match_snapshot_refresh",
 				jobStatus: "failed",
 				recoveryStrategy: "conservative_failure",
+				error: applyError,
+			},
+		);
+	});
+
+	it("calls idle-enrichment recovery on every sweep tick", async () => {
+		const deps = makeDeps();
+		await runSweepTick(deps);
+
+		expect(deps.recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
+	});
+
+	it("logs successful idle-enrichment recoveries", async () => {
+		const idleResults: IdleEnrichmentRecoveryResult[] = [
+			{
+				accountId: "acct-1",
+				latestJobStatus: "completed",
+				outcome: Result.ok(makeApplyOutcome("enrichment_work_available")),
+			},
+		];
+		const deps = makeDeps({
+			recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue(idleResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.info).toHaveBeenCalledWith("idle-enrichment-recovered", {
+			accountId: "acct-1",
+			latestJobStatus: "completed",
+		});
+	});
+
+	it("logs failed idle-enrichment recoveries", async () => {
+		const applyError = {
+			kind: "load_state" as const,
+			cause: new DatabaseError({ code: "500", message: "db down" }),
+		};
+		const idleResults: IdleEnrichmentRecoveryResult[] = [
+			{
+				accountId: "acct-1",
+				latestJobStatus: null,
+				outcome: Result.err(applyError),
+			},
+		];
+		const deps = makeDeps({
+			recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue(idleResults),
+		});
+
+		await runSweepTick(deps);
+
+		expect(logMod.log.error).toHaveBeenCalledWith(
+			"idle-enrichment-recovery-failed",
+			{
+				accountId: "acct-1",
+				latestJobStatus: null,
 				error: applyError,
 			},
 		);

@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockSongAnalysisGet = vi.fn();
 const mockAnalyzeSongBatch = vi.fn();
 const mockCreateSongBatchAnalyzerDeps = vi.fn();
+const mockGetLatestLyricsSnapshots = vi.fn();
+const mockGetAudioFeaturesBatch = vi.fn();
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: (ids: string[]) => mockSongAnalysisGet(ids),
@@ -17,6 +19,15 @@ vi.mock(
 			mockCreateSongBatchAnalyzerDeps(...args),
 	}),
 );
+
+vi.mock("@/lib/domains/enrichment/lyrics/queries", () => ({
+	getLatestLyricsSnapshots: (...args: unknown[]) =>
+		mockGetLatestLyricsSnapshots(...args),
+}));
+
+vi.mock("@/lib/domains/enrichment/audio-features/queries", () => ({
+	getBatch: (...args: unknown[]) => mockGetAudioFeaturesBatch(...args),
+}));
 
 import type { AnalysisFailureClassification } from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import type { PipelineBatch } from "../batch";
@@ -91,6 +102,25 @@ function emptyBatchOutcome() {
 	};
 }
 
+function makeLyricsSnapshot(
+	songId: string,
+	overrides: Partial<{
+		latestFetchStatus: "lyrics" | "instrumental" | "not_found" | null;
+		latestFetchUpdatedAt: string | null;
+		latestLyricsText: string | null;
+		latestLyricsUpdatedAt: string | null;
+	}> = {},
+) {
+	return {
+		songId,
+		latestFetchStatus: null,
+		latestFetchUpdatedAt: null,
+		latestLyricsText: null,
+		latestLyricsUpdatedAt: null,
+		...overrides,
+	};
+}
+
 function expectAttempted(
 	outcome: StageOutcome,
 ): Extract<StageOutcome, { kind: "attempted" }> {
@@ -103,6 +133,8 @@ function expectAttempted(
 beforeEach(() => {
 	vi.clearAllMocks();
 	mockSongAnalysisGet.mockResolvedValue(Result.ok(new Map()));
+	mockGetLatestLyricsSnapshots.mockResolvedValue(Result.ok(new Map()));
+	mockGetAudioFeaturesBatch.mockResolvedValue(Result.ok(new Map()));
 	mockCreateSongBatchAnalyzerDeps.mockReturnValue(
 		Result.ok({
 			lyricsService: null,
@@ -116,13 +148,98 @@ beforeEach(() => {
 describe("runSongAnalysis: returns StageOutcome", () => {
 	it("returns skipped when all candidates already have analyses", async () => {
 		mockSongAnalysisGet.mockResolvedValue(
-			Result.ok(new Map([["s1", { id: "a1" }]])),
+			Result.ok(
+				new Map([["s1", { id: "a1", created_at: "2026-01-01T00:00:00Z" }]]),
+			),
 		);
 
 		const outcome = await runSongAnalysis(makeCtx(), makeBatch(["s1"]));
 
 		expect(outcome.kind).toBe("skipped");
 		expect(outcome.candidateSongIds).toEqual(["s1"]);
+	});
+
+	it("re-analyzes when lyrics are newer than the stored analysis", async () => {
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(
+				Result.ok(
+					new Map([["s1", { id: "a1", created_at: "2026-01-01T00:00:00Z" }]]),
+				),
+			)
+			.mockResolvedValueOnce(Result.ok(new Map([["s1", { id: "a2" }]])));
+		mockGetLatestLyricsSnapshots.mockResolvedValue(
+			Result.ok(
+				new Map([
+					[
+						"s1",
+						makeLyricsSnapshot("s1", {
+							latestFetchStatus: "lyrics",
+							latestFetchUpdatedAt: "2026-01-02T00:00:00Z",
+							latestLyricsText: "word ".repeat(60),
+							latestLyricsUpdatedAt: "2026-01-02T00:00:00Z",
+						}),
+					],
+				]),
+			),
+		);
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1"])),
+		);
+
+		expect(mockAnalyzeSongBatch).toHaveBeenCalledWith(
+			expect.any(Array),
+			expect.anything(),
+			expect.objectContaining({
+				forceAnalyzeSongIds: new Set(["s1"]),
+			}),
+		);
+		expect(outcome.succeededSongIds).toEqual(["s1"]);
+	});
+
+	it("probes analyzed songs with no lyrics row and records a refresh backoff on repeated not_found", async () => {
+		const analyzeSong = vi.fn();
+		const fetchAndStoreOutcome = vi
+			.fn()
+			.mockResolvedValue(Result.ok({ kind: "not_found" }));
+		mockSongAnalysisGet.mockResolvedValue(
+			Result.ok(
+				new Map([["s1", { id: "a1", created_at: "2026-01-01T00:00:00Z" }]]),
+			),
+		);
+		mockGetLatestLyricsSnapshots.mockResolvedValue(
+			Result.ok(
+				new Map([
+					[
+						"s1",
+						makeLyricsSnapshot("s1", {
+							latestFetchStatus: null,
+							latestLyricsUpdatedAt: null,
+						}),
+					],
+				]),
+			),
+		);
+		mockCreateSongBatchAnalyzerDeps.mockReturnValue(
+			Result.ok({
+				lyricsService: { fetchAndStoreOutcome },
+				songAnalysisService: { analyzeSong },
+				concurrency: 5,
+			}),
+		);
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1"])),
+		);
+
+		expect(fetchAndStoreOutcome).toHaveBeenCalledTimes(1);
+		expect(analyzeSong).not.toHaveBeenCalled();
+		expect(outcome.failures).toContainEqual(
+			expect.objectContaining({
+				songId: "s1",
+				failureCode: "analysis_lyrics_refresh_pending",
+			}),
+		);
 	});
 });
 
@@ -207,6 +324,27 @@ describe("runSongAnalysis: analysis-input gate (tri-state)", () => {
 			songId: "everything-down",
 			failureCode: "analysis_blocked_both_unavailable",
 		});
+	});
+
+	it("maps retry candidates to non-terminal analysis_retry_candidate failures", async () => {
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			retryCandidateSongIds: ["unknown-signal"],
+		});
+		mockSongAnalysisGet
+			.mockResolvedValueOnce(Result.ok(new Map()))
+			.mockResolvedValueOnce(Result.ok(new Map()));
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["unknown-signal"])),
+		);
+
+		expect(outcome.failures).toHaveLength(1);
+		expect(outcome.failures[0]).toMatchObject({
+			songId: "unknown-signal",
+			failureCode: "analysis_retry_candidate",
+		});
+		expect(outcome.succeededSongIds).toEqual([]);
 	});
 
 	it("does not double-classify skipped songs as permanent", async () => {

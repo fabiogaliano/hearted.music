@@ -63,6 +63,7 @@ export type LibraryProcessingChange =
 			targetMembershipChanged: boolean;
 			targetMetadataChanged: boolean;
 	  }
+	| { kind: "enrichment_work_available"; accountId: string }
 	| { kind: "songs_unlocked"; accountId: string; songIds: string[] }
 	| { kind: "unlimited_activated"; accountId: string }
 	| { kind: "candidate_access_revoked"; accountId: string };

@@ -19,6 +19,8 @@ export const FAILURE_CODES = {
 	ANALYSIS_BLOCKED_AUDIO_UNAVAILABLE: "analysis_blocked_audio_unavailable",
 	ANALYSIS_BLOCKED_BOTH_UNAVAILABLE: "analysis_blocked_both_unavailable",
 	ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE: "analysis_postrun_lookup_unavailable",
+	ANALYSIS_RETRY_CANDIDATE: "analysis_retry_candidate",
+	ANALYSIS_LYRICS_REFRESH_PENDING: "analysis_lyrics_refresh_pending",
 	PERMANENT: "permanent",
 	VALIDATION: "validation",
 	CONTENT_ACTIVATION_FAILED: "content_activation_failed",
@@ -30,6 +32,8 @@ export const FAILURE_CODES = {
 export const BACKOFF_CODES: ReadonlySet<string> = new Set<string>([
 	FAILURE_CODES.PROVIDER_TRANSIENT,
 	FAILURE_CODES.ANALYSIS_POSTRUN_LOOKUP_UNAVAILABLE,
+	FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE,
+	FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING,
 	// Blocked codes participate so the escalation ladder can query the count and
 	// terminalize a song once it has failed identically too many times (§7.2).
 	FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE,
@@ -79,24 +83,40 @@ const PROVIDER_UNAVAILABLE_SUPPRESS_MS = 6 * HOUR_MS;
 const ANALYSIS_BLOCKED_SUPPRESS_MS = 6 * HOUR_MS;
 const TRANSIENT_BASE_MS = 15 * MIN_MS;
 const TRANSIENT_CAP_MS = 24 * HOUR_MS;
+const RETRY_CANDIDATE_BASE_MS = 6 * HOUR_MS;
+const RETRY_CANDIDATE_CAP_MS = 7 * DAY_MS;
+const LYRICS_REFRESH_BASE_MS = 24 * HOUR_MS;
+const LYRICS_REFRESH_CAP_MS = 30 * DAY_MS;
 
 // Unknown codes: non-terminal, modest backoff — neither wedges the selector
 // nor hot-loops.
 const UNKNOWN_DEFAULT_SUPPRESS_MS = PROVIDER_UNAVAILABLE_SUPPRESS_MS;
+
+function computeJitteredBackoffMs(
+	baseMs: number,
+	capMs: number,
+	priorUnresolvedCount: number,
+	random: () => number,
+): number {
+	const exponent = Math.max(0, priorUnresolvedCount);
+	const raw = baseMs * 2 ** exponent;
+	const backoff = Number.isFinite(raw) ? Math.min(raw, capMs) : capMs;
+	// Equal jitter (AWS): keep half the window, randomize the rest, so a batch
+	// that failed together doesn't wake in lockstep and re-hammer the provider.
+	return backoff / 2 + random() * (backoff / 2);
+}
 
 function computeTransientSuppressMs(
 	priorUnresolvedCount: number,
 	retryAfterMs: number | undefined,
 	random: () => number,
 ): number {
-	const exponent = Math.max(0, priorUnresolvedCount);
-	const raw = TRANSIENT_BASE_MS * 2 ** exponent;
-	const backoff = Number.isFinite(raw)
-		? Math.min(raw, TRANSIENT_CAP_MS)
-		: TRANSIENT_CAP_MS;
-	// Equal jitter (AWS): keep half the window, randomize the rest, so a batch
-	// that failed together doesn't wake in lockstep and re-hammer the provider.
-	const jittered = backoff / 2 + random() * (backoff / 2);
+	const jittered = computeJitteredBackoffMs(
+		TRANSIENT_BASE_MS,
+		TRANSIENT_CAP_MS,
+		priorUnresolvedCount,
+		random,
+	);
 	// Retry-After acts as a floor: never retry before it elapses, but stay within
 	// the transient cap so a hostile header can't wedge us.
 	const floored =
@@ -129,6 +149,32 @@ export function applyFailurePolicy(
 			const ms = computeTransientSuppressMs(
 				input.priorUnresolvedCount ?? 0,
 				input.retryAfterMs,
+				input.random ?? Math.random,
+			);
+			return {
+				isTerminal: false,
+				suppressUntil: new Date(now.getTime() + ms),
+			};
+		}
+
+		case FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE: {
+			const ms = computeJitteredBackoffMs(
+				RETRY_CANDIDATE_BASE_MS,
+				RETRY_CANDIDATE_CAP_MS,
+				input.priorUnresolvedCount ?? 0,
+				input.random ?? Math.random,
+			);
+			return {
+				isTerminal: false,
+				suppressUntil: new Date(now.getTime() + ms),
+			};
+		}
+
+		case FAILURE_CODES.ANALYSIS_LYRICS_REFRESH_PENDING: {
+			const ms = computeJitteredBackoffMs(
+				LYRICS_REFRESH_BASE_MS,
+				LYRICS_REFRESH_CAP_MS,
+				input.priorUnresolvedCount ?? 0,
 				input.random ?? Math.random,
 			);
 			return {

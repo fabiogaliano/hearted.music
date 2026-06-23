@@ -239,6 +239,23 @@ describe("analyzeSongBatch", () => {
 			expect(outcome.analyzedSongIds).toEqual(["s1"]);
 			expect(mockAnalyzeSong).toHaveBeenCalledOnce();
 		});
+
+		it("forces re-analysis when forceAnalyzeSongIds includes the song", async () => {
+			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
+				Result.ok(new Map<string, AudioFeature>()),
+			);
+
+			await analyzeSongBatch([makeSong("s1", "Has lyrics")], deps, {
+				forceAnalyzeSongIds: new Set(["s1"]),
+			});
+
+			expect(mockAnalyzeSong).toHaveBeenCalledWith(
+				expect.objectContaining({
+					songId: "s1",
+					ignoreExistingAnalysis: true,
+				}),
+			);
+		});
 	});
 
 	describe("failed bucket", () => {
