@@ -1,5 +1,12 @@
 import { InfoIcon } from "@phosphor-icons/react";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useEffectEvent,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import { fonts } from "@/lib/theme/fonts";
 import {
 	type DescriptionExample,
@@ -61,6 +68,9 @@ export function IntentExamplesPopover({
 	// Clear any pending timer if the tip unmounts mid-delay.
 	useEffect(() => clearTimers, [clearTimers]);
 
+	// useEffectEvent keeps the capture-phase listener from re-binding on every parent
+	// render — it re-runs only when `open` flips, while still reading the latest state.
+	const closeOnEscape = useEffectEvent(() => setNow(false));
 	// Escape closes the popover, not the whole panel: a capture-phase listener runs
 	// ahead of the panel's bubble-phase document handler, and stopPropagation keeps
 	// the keystroke from reaching it.
@@ -69,12 +79,12 @@ export function IntentExamplesPopover({
 		const onKey = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
 				event.stopPropagation();
-				setNow(false);
+				closeOnEscape();
 			}
 		};
 		document.addEventListener("keydown", onKey, true);
 		return () => document.removeEventListener("keydown", onKey, true);
-	}, [open, setNow]);
+	}, [open]);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: a hover-region wrapper bridging the trigger and its card, not a control itself — the focusable trigger button inside owns the real semantics.

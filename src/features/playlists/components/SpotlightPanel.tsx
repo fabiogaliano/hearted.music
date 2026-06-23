@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
@@ -28,6 +28,10 @@ const EMPTY_OPTIONS: PlaylistMatchFilterOptions = {
 	releaseYears: { min: null, max: null },
 	likedAt: { oldest: null, today: "", yearCounts: [] },
 };
+
+// Stable empty default so an omitted `tracks` prop reuses one reference instead of
+// allocating a fresh [] each render (which would defeat referential-equality checks).
+const EMPTY_TRACKS: PlaylistTrackVM[] = [];
 
 interface SpotlightPanelProps {
 	playlist: PlaylistSummary | null;
@@ -91,7 +95,7 @@ interface SpotlightPanelProps {
  */
 export function SpotlightPanel({
 	playlist,
-	tracks = [],
+	tracks = EMPTY_TRACKS,
 	open,
 	onClose,
 	onToggleTarget = () => {},
@@ -141,14 +145,17 @@ export function SpotlightPanel({
 		cancel,
 	} = useSpotlightEditor({ playlist, onSave, guidedIntent, autoEditOnAdd });
 
+	// useEffectEvent so a new onClose identity from the parent doesn't tear down and
+	// rebind the keydown listener — it re-binds only when open/closable change.
+	const onEscape = useEffectEvent(() => onClose());
 	useEffect(() => {
 		if (!open || !closable) return;
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") onClose();
+			if (event.key === "Escape") onEscape();
 		};
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
-	}, [open, closable, onClose]);
+	}, [open, closable]);
 
 	return (
 		<div

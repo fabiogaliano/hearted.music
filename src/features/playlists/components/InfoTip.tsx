@@ -3,6 +3,7 @@ import {
 	type ReactNode,
 	useCallback,
 	useEffect,
+	useEffectEvent,
 	useId,
 	useRef,
 	useState,
@@ -74,14 +75,18 @@ export function InfoTip({ label, children, tone = "info" }: InfoTipProps) {
 	// Clear any pending timer if the tip unmounts mid-delay.
 	useEffect(() => clearTimers, [clearTimers]);
 
+	// useEffectEvent so the keydown listener re-binds only when `open` flips, not
+	// whenever setNow's identity changes — the close intent reads the latest state
+	// without being a reactive dependency.
+	const closeOnEscape = useEffectEvent(() => setNow(false));
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") setNow(false);
+			if (event.key === "Escape") closeOnEscape();
 		};
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
-	}, [open, setNow]);
+	}, [open]);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: a hover-region wrapper that bridges the trigger button and its card, not a control itself — the focusable trigger lives inside and owns the real semantics.

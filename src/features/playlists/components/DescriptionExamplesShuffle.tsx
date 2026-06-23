@@ -40,9 +40,9 @@ export function DescriptionExamplesShuffle({
 			<span className="desc-examples-legend" style={{ fontFamily: fonts.body }}>
 				Examples
 			</span>
-			{/* `key` remounts the body on shuffle so the swap animation replays — no
-			    manual DOM poke to re-trigger the CSS. */}
-			<div key={index} className="desc-examples-body">
+			{/* Keying on the shown example's text remounts the body on shuffle so the
+			    swap animation replays — no manual DOM poke to re-trigger the CSS. */}
+			<div key={current.description} className="desc-examples-body">
 				<p className="desc-examples-quote" style={{ fontFamily: fonts.body }}>
 					“{current.description}”
 				</p>

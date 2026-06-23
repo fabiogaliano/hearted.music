@@ -1,5 +1,5 @@
 import { XIcon } from "@phosphor-icons/react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
 // A chosen genre is a solid accent pill. In this low-chroma palette a faint tint
@@ -13,10 +13,12 @@ const chipStyle: CSSProperties = {
 };
 
 interface GenreChipProps {
-	children: ReactNode;
+	/** The genre name. A chip is always a text label, so this is a string — not
+	 *  arbitrary nodes — which is what lets the remove control derive its name. */
+	children: string;
 	/** When set, the chip shows a remove control and reads as interactive. */
 	onRemove?: () => void;
-	/** Accessible label for the remove control; defaults to a string child. */
+	/** Accessible label for the remove control; defaults to the genre name. */
 	removeLabel?: string;
 	/** Play the scale+blur enter on mount — for chips added during a session. */
 	enter?: boolean;
@@ -29,8 +31,7 @@ export function GenreChip({
 	removeLabel,
 	enter,
 }: GenreChipProps) {
-	const label =
-		removeLabel ?? (typeof children === "string" ? children : "genre");
+	const label = removeLabel ?? children;
 	return (
 		<span
 			className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs whitespace-nowrap ${enter ? "xpl-chip-enter" : ""}`}
