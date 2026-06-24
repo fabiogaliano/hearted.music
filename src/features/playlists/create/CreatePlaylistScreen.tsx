@@ -144,6 +144,16 @@ export function CreatePlaylistScreen({
 	// the stale-closure risk: handleCreateResult fires after an async boundary,
 	// so reading a ref is safer than relying on the closure-captured state value.
 	const submittedNameRef = useRef<string>("");
+
+	// When the create bar unmounts and the result state mounts (success or
+	// partial), keyboard focus would otherwise fall to <body>. Move it into
+	// the result region so AT users land on the status message immediately.
+	const resultRegionRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (flowResult !== null) {
+			resultRegionRef.current?.focus();
+		}
+	}, [flowResult]);
 	const onNameCommit = useCallback((name: string) => {
 		submittedNameRef.current = name;
 	}, []);
@@ -342,16 +352,23 @@ export function CreatePlaylistScreen({
 				</div>
 
 				{flowResult?.status === "success" ? (
-					<SuccessState
-						playlistName={flowResult.playlistName}
-						spotifyId={flowResult.spotifyId}
-					/>
+					// tabIndex={-1} lets the ref.focus() land here without putting the
+					// container itself in the tab order — focus immediately moves to the
+					// first interactive element (the Spotify link or Done button) via AT.
+					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
+						<SuccessState
+							playlistName={flowResult.playlistName}
+							spotifyId={flowResult.spotifyId}
+						/>
+					</div>
 				) : flowResult?.status === "partial" ? (
-					<PartialState
-						spotifyId={flowResult.spotifyId}
-						failedTrackCount={flowResult.failedTrackCount}
-						totalSongCount={flowResult.totalSongCount}
-					/>
+					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
+						<PartialState
+							spotifyId={flowResult.spotifyId}
+							failedTrackCount={flowResult.failedTrackCount}
+							totalSongCount={flowResult.totalSongCount}
+						/>
+					</div>
 				) : (
 					<CreateBar
 						songIds={draft.preview.map((s) => s.id)}

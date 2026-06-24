@@ -115,11 +115,7 @@ export function MaxSongsSlider({
 				>
 					Songs
 				</label>
-				<div
-					className="flex items-baseline gap-2"
-					aria-live="polite"
-					aria-atomic="true"
-				>
+				<div className="flex items-baseline gap-2" aria-hidden="true">
 					<span
 						className="theme-text text-2xl font-extralight tabular-nums leading-none"
 						style={{ fontFamily: fonts.display }}
