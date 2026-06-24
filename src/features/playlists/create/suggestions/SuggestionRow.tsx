@@ -1,0 +1,112 @@
+/**
+ * SuggestionRow — one system-suggested song in the tray.
+ *
+ * Visually distinct from PreviewSongRow (picked rows): uses a slightly dimmed,
+ * dashed-left-border treatment to communicate "system proposed, not yet yours."
+ * The flat bordered materiality is preserved — no gradients, no elevation.
+ *
+ * The add (+) button is a real focusable button with aria-label and a ≥40px
+ * hit area. Keyboard: Enter/Space activate via native button behaviour.
+ */
+
+import { PlusIcon } from "@phosphor-icons/react";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import type { SongVM } from "@/lib/domains/playlists/types";
+import { cn } from "@/lib/shared/utils/utils";
+import { fonts } from "@/lib/theme/fonts";
+
+interface SuggestionRowProps {
+	song: SongVM;
+	onAdd: (id: string) => void;
+}
+
+export function SuggestionRow({ song, onAdd }: SuggestionRowProps) {
+	return (
+		<div
+			className={cn(
+				// Bleed row idiom — same negative margin pattern as other rows
+				"-mx-3 flex items-center gap-4 border-b px-3 py-2.5 last:border-b-0",
+				// Distinct suggestion treatment: muted border, slightly faded text
+				"theme-border-color",
+			)}
+			// Left accent: dashed left border signals "suggested, not pinned"
+			style={{ borderLeft: "2px dashed var(--t-border)" }}
+		>
+			{/* Album art — dimmed vs. preview rows to reinforce secondary status */}
+			<div
+				className="image-outline h-9 w-9 flex-none overflow-hidden"
+				style={{ flexShrink: 0, opacity: 0.75 }}
+			>
+				{song.imageUrl ? (
+					<img
+						src={song.imageUrl}
+						alt=""
+						aria-hidden="true"
+						className="h-full w-full object-cover"
+					/>
+				) : (
+					<AlbumPlaceholder />
+				)}
+			</div>
+
+			{/* Title + artist — muted tone vs. picked rows */}
+			<div className="min-w-0 flex-1">
+				<p
+					className="theme-text-muted truncate leading-[1.15]"
+					style={{
+						fontFamily: fonts.display,
+						fontSize: "0.9375rem",
+						fontWeight: 300,
+						// Slightly less prominent than a picked row
+						opacity: 0.85,
+					}}
+					title={song.name}
+				>
+					{song.name}
+				</p>
+				<p
+					className="theme-text-muted truncate text-xs"
+					style={{ fontFamily: fonts.body, opacity: 0.7 }}
+				>
+					{song.artist}
+				</p>
+			</div>
+
+			{/* Genre pill — optional */}
+			{song.genres.length > 0 && (
+				<span
+					className="theme-text-muted hidden flex-none text-[10px] lg:block"
+					style={{
+						fontFamily: fonts.body,
+						letterSpacing: "0.07em",
+						opacity: 0.45,
+					}}
+				>
+					{song.genres[0]}
+				</span>
+			)}
+
+			{/* Add button — ≥40px hit area */}
+			<button
+				type="button"
+				onClick={() => onAdd(song.id)}
+				aria-label={`Add ${song.name} to playlist`}
+				className={cn(
+					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
+					"transition-opacity duration-150 hover:opacity-70 active:scale-[0.96]",
+					"focus-visible:outline-2 focus-visible:outline-offset-2",
+					"[outline-color:var(--t-primary)]",
+				)}
+				style={{
+					minWidth: 40,
+					minHeight: 40,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<PlusIcon size={14} weight="regular" aria-hidden />
+			</button>
+		</div>
+	);
+}

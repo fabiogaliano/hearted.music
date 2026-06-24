@@ -39,12 +39,17 @@ export async function getEntitledDataEnrichedSongIds(
 }
 
 /**
- * Selects the next batch using the billing-aware selector RPC.
- * Returns a typed work plan with per-song stage flags and pre-partitioned sub-batches.
+ * Selects the next batch using two RPCs and merges their results.
  *
- * All stage flags (audio_features, genre_tagging, analysis, embedding,
- * content_activation) are entitlement-gated. Optional Phase A signals with a
- * recorded source_not_found marker are masked off so they aren't retried.
+ * Phase-1 (audio_features, genre_tagging) uses a separate, ungated selector
+ * that runs for every actively-liked song. Phase-2/3 (song_analysis,
+ * song_embedding, content_activation) continue to use the entitlement-gated
+ * selector so those expensive ML/AI stages only run for entitled songs.
+ *
+ * The merge is additive: a song that needs Phase-1 work but is not entitled
+ * appears in needAudioFeatures/needGenreTagging only. A song that has Phase-1
+ * data and is entitled may appear in needAnalysis/needEmbedding/needContentActivation
+ * only. A song that needs both shows up in both sub-batches.
  */
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
@@ -52,64 +57,115 @@ export async function selectEnrichmentWorkPlan(
 ): Promise<EnrichmentWorkPlan> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_enrichment_work",
-		{ p_account_id: accountId, p_limit: maxSongs },
-	);
+	// Run both selectors in parallel; Phase-1 is ungated, Phase-2/3 is gated.
+	const [phase1Result, phase23Result] = await Promise.all([
+		supabase.rpc("select_phase1_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: maxSongs,
+		}),
+		supabase.rpc("select_liked_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: maxSongs,
+		}),
+	]);
 
-	if (error) {
-		throw new Error(`Failed to select enrichment work plan: ${error.message}`);
+	if (phase1Result.error) {
+		throw new Error(
+			`Failed to select Phase-1 enrichment work plan: ${phase1Result.error.message}`,
+		);
+	}
+	if (phase23Result.error) {
+		throw new Error(
+			`Failed to select enrichment work plan: ${phase23Result.error.message}`,
+		);
 	}
 
-	const rows = data ?? [];
+	const phase1Rows = phase1Result.data ?? [];
+	const phase23Rows = phase23Result.data ?? [];
 
-	const flags: SongStageFlags[] = rows.map((row) => ({
-		songId: row.song_id,
-		needsAudioFeatures: row.needs_audio_features,
-		needsGenreTagging: row.needs_genre_tagging,
-		needsAnalysis: row.needs_analysis,
-		needsEmbedding: row.needs_embedding,
-		needsContentActivation: row.needs_content_activation,
+	// Build per-song flag maps from each selector's results.
+	const audioFeaturesNeeded = new Set(
+		phase1Rows.filter((r) => r.needs_audio_features).map((r) => r.song_id),
+	);
+	const genreTaggingNeeded = new Set(
+		phase1Rows.filter((r) => r.needs_genre_tagging).map((r) => r.song_id),
+	);
+
+	const analysisNeeded = new Set(
+		phase23Rows.filter((r) => r.needs_analysis).map((r) => r.song_id),
+	);
+	const embeddingNeeded = new Set(
+		phase23Rows.filter((r) => r.needs_embedding).map((r) => r.song_id),
+	);
+	const contentActivationNeeded = new Set(
+		phase23Rows.filter((r) => r.needs_content_activation).map((r) => r.song_id),
+	);
+
+	// Union all song IDs across both selectors; preserve Phase-1 order first.
+	const allIds = new Set<string>();
+	for (const r of phase1Rows) allIds.add(r.song_id);
+	for (const r of phase23Rows) allIds.add(r.song_id);
+	const allSongIds = [...allIds];
+
+	const flags: SongStageFlags[] = allSongIds.map((songId) => ({
+		songId,
+		needsAudioFeatures: audioFeaturesNeeded.has(songId),
+		needsGenreTagging: genreTaggingNeeded.has(songId),
+		needsAnalysis: analysisNeeded.has(songId),
+		needsEmbedding: embeddingNeeded.has(songId),
+		needsContentActivation: contentActivationNeeded.has(songId),
 	}));
 
 	return {
-		allSongIds: flags.map((f) => f.songId),
+		allSongIds,
 		flags,
-		needAudioFeatures: flags
-			.filter((f) => f.needsAudioFeatures)
-			.map((f) => f.songId),
-		needGenreTagging: flags
-			.filter((f) => f.needsGenreTagging)
-			.map((f) => f.songId),
-		needAnalysis: flags.filter((f) => f.needsAnalysis).map((f) => f.songId),
-		needEmbedding: flags.filter((f) => f.needsEmbedding).map((f) => f.songId),
-		needContentActivation: flags
-			.filter((f) => f.needsContentActivation)
-			.map((f) => f.songId),
+		needAudioFeatures: [...audioFeaturesNeeded],
+		needGenreTagging: [...genreTaggingNeeded],
+		needAnalysis: [...analysisNeeded],
+		needEmbedding: [...embeddingNeeded],
+		needContentActivation: [...contentActivationNeeded],
 	};
 }
 
 /**
- * Probes whether more songs still need enrichment work (billing-aware).
+ * Probes whether more songs still need enrichment work (Phase-1 or Phase-2/3).
  * Used to determine requestSatisfied after a chunk completes.
+ *
+ * Checks the ungated Phase-1 selector first (cheap, covers all songs), then
+ * falls back to the entitlement-gated selector so that entitled songs with
+ * pending analysis/embedding/activation are also detected.
  */
 export async function hasMoreSongsNeedingEnrichmentWork(
 	accountId: string,
 ): Promise<boolean> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_enrichment_work",
-		{ p_account_id: accountId, p_limit: 1 },
-	);
+	const [phase1Result, phase23Result] = await Promise.all([
+		supabase.rpc("select_phase1_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: 1,
+		}),
+		supabase.rpc("select_liked_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: 1,
+		}),
+	]);
 
-	if (error) {
+	if (phase1Result.error) {
 		throw new Error(
-			`Failed to probe songs needing enrichment work: ${error.message}`,
+			`Failed to probe songs needing enrichment work: ${phase1Result.error.message}`,
+		);
+	}
+	if (phase23Result.error) {
+		throw new Error(
+			`Failed to probe songs needing enrichment work: ${phase23Result.error.message}`,
 		);
 	}
 
-	return (data ?? []).length > 0;
+	return (
+		(phase1Result.data ?? []).length > 0 ||
+		(phase23Result.data ?? []).length > 0
+	);
 }
 
 export async function loadBatchSongs(

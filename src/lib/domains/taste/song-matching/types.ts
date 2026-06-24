@@ -123,6 +123,29 @@ export interface MatchingConfig {
 	readonly maxResultsPerSong: number;
 	/** Skip vector scoring (for testing) */
 	readonly skipVectorScoring: boolean;
+	/**
+	 * No-embedding scoring mode.
+	 *
+	 * When true, vector scoring is disabled entirely and the embedding weight is
+	 * redistributed proportionally onto audio and genre by computeAdaptiveWeights.
+	 * This is the path used by the free-tier playlist-creation preview engine,
+	 * which scores candidates using only Phase-1 (deterministic) signals.
+	 *
+	 * Effect on default weights (embedding 0.5, audio 0.3, genre 0.2):
+	 *   embedding drops out → 0.5 redistributed to remaining in proportion.
+	 *   audio  = 0.3 + 0.5 × (0.3 / 0.5) = 0.60
+	 *   genre  = 0.2 + 0.5 × (0.2 / 0.5) = 0.40
+	 *
+	 * Effect on pill weights (embedding 0.35, audio 0.25, genre 0.40):
+	 *   audio  = 0.25 + 0.35 × (0.25 / 0.65) ≈ 0.385
+	 *   genre  = 0.40 + 0.35 × (0.40 / 0.65) ≈ 0.615
+	 *
+	 * Both cases sum to 1.0 by construction (computeAdaptiveWeights invariant).
+	 * Enabling this flag automatically sets skipVectorScoring and must be
+	 * combined with passing no song embeddings to matchBatch so hasEmbedding
+	 * is false for every candidate — triggering the redistribution path.
+	 */
+	readonly noEmbeddingMode?: boolean;
 	/** Per-signal candidate-set normalization before fusion */
 	readonly normalization: NormalizationConfig;
 }
