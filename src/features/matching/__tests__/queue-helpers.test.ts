@@ -25,7 +25,7 @@ function makeQueue(
 function makeItem(
 	id: string,
 	position: number,
-	state: "pending" | "presented" | "completed" | "skipped" | "unavailable",
+	state: "pending" | "active" | "resolved",
 ) {
 	return {
 		id,
@@ -48,20 +48,20 @@ describe("deriveUnresolvedIds", () => {
 	it("returns empty array when all items are resolved", () => {
 		const queue = makeQueue({
 			items: [
-				makeItem("a", 0, "completed"),
-				makeItem("b", 1, "skipped"),
-				makeItem("c", 2, "unavailable"),
+				makeItem("a", 0, "resolved"),
+				makeItem("b", 1, "resolved"),
+				makeItem("c", 2, "resolved"),
 			],
 		});
 		expect(deriveUnresolvedIds(queue)).toEqual([]);
 	});
 
-	it("returns only pending and presented items, sorted by position", () => {
+	it("returns only pending and active items, sorted by position", () => {
 		const queue = makeQueue({
 			items: [
 				makeItem("a", 2, "pending"),
-				makeItem("b", 0, "presented"),
-				makeItem("c", 1, "completed"),
+				makeItem("b", 0, "active"),
+				makeItem("c", 1, "resolved"),
 				makeItem("d", 3, "pending"),
 			],
 		});
