@@ -9,6 +9,8 @@ import {
 	MATCH_RANKING_SCHEMA_VERSION,
 	type PlaylistForRanking,
 	RERANK_INSTRUCTION_BY_ORIENTATION,
+	rankMatchSuggestionLists,
+	rankPlaylistSuggestionLists,
 	rankSongSuggestionLists,
 	type SongForRanking,
 	type StoredMatchPairForRanking,
@@ -551,5 +553,457 @@ describe("rankSongSuggestionLists", () => {
 			// Each list starts at rank 1 (index 0), independently
 			expect(r.rankedPairs.length).toBeGreaterThan(0);
 		}
+	});
+
+	it("stops early when isSuperseded fires between song suggestion lists", async () => {
+		// Three songs; superseded fires after the first iteration.
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.7),
+			makePair("s3", "pl2", 0.6),
+		];
+		const s3: SongForRanking = {
+			id: "s3",
+			name: "Gamma Song",
+			artists: ["Artist C"],
+			genres: ["jazz"],
+		};
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+		]);
+
+		let callCount = 0;
+		const isSuperseded = vi.fn(async () => {
+			callCount++;
+			// Return true on the second call (after first song is processed).
+			return callCount >= 2;
+		});
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs: [...songs, s3],
+			playlists,
+			rerankerService: reranker,
+			isSuperseded,
+		});
+
+		// Stopped early — should have fewer than 3 results.
+		expect(results.length).toBeLessThan(3);
+		expect(isSuperseded).toHaveBeenCalled();
+	});
+});
+
+const songsForPlaylist: SongForRanking[] = [
+	{ id: "s1", name: "Alpha Song", artists: ["Artist A"], genres: ["pop"] },
+	{
+		id: "s2",
+		name: "Beta Song",
+		artists: ["Artist B"],
+		genres: ["rock"],
+		analysisText: "Heavy guitars with melodic undertones",
+	},
+	{ id: "s3", name: "Gamma Song", artists: ["Artist C"], genres: ["jazz"] },
+];
+
+const playlistsForPlaylist: PlaylistForRanking[] = [
+	{ id: "pl1", name: "Chill Vibes", matchIntent: "relaxing music" },
+	{ id: "pl2", name: "Party Mix", genrePills: ["pop"] },
+];
+
+describe("rankPlaylistSuggestionLists", () => {
+	it("returns one RankedSuggestionLists per playlist with orientation=playlist", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.6),
+			makePair("s1", "pl2", 0.7),
+		];
+		const reranker = mockReranker([
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "s2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		expect(results).toHaveLength(2);
+		for (const r of results) {
+			expect(r.orientation).toBe("playlist");
+		}
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		expect(pl1).toBeDefined();
+		expect(pl1?.rankedPairs).toHaveLength(2);
+	});
+
+	it("full rerank: pairs have source=rerank and non-null rerankerScore", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s2", "pl1", 0.6)];
+		// Reranker inverts the order: s2 scores higher
+		const reranker = mockReranker([
+			{ id: "s2", score: 0.9, rerankerScore: 0.95 },
+			{ id: "s1", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		const [first, second] = pl1?.rankedPairs ?? [];
+
+		// s2 should be rank 1 (higher orderingScore after rerank)
+		expect(first.songId).toBe("s2");
+		expect(first.source).toBe("rerank");
+		expect(first.rerankerScore).toBe(0.95);
+		expect(first.orderingScore).toBe(0.9);
+
+		expect(second.songId).toBe("s1");
+		expect(second.source).toBe("rerank");
+		expect(second.rerankerScore).toBe(0.7);
+	});
+
+	it("partial rerank tail: tail candidates are fused_fallback with null rerankerScore", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.6),
+			makePair("s3", "pl1", 0.4),
+		];
+		const reranker = mockReranker([
+			// s1 got a raw cross-encoder score → source=rerank
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+			// s2 and s3 are tail → no rerankerScore → fused_fallback
+			{ id: "s2", score: 0.6 },
+			{ id: "s3", score: 0.4 },
+		]);
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		expect(pl1?.rankedPairs).toHaveLength(3);
+
+		const ranked = pl1?.rankedPairs ?? [];
+		const s1Row = ranked.find((p) => p.songId === "s1");
+		const s2Row = ranked.find((p) => p.songId === "s2");
+		const s3Row = ranked.find((p) => p.songId === "s3");
+
+		expect(s1Row?.source).toBe("rerank");
+		expect(s1Row?.rerankerScore).toBe(0.9);
+
+		// Tail rows must be fused_fallback with null rerankerScore
+		expect(s2Row?.source).toBe("fused_fallback");
+		expect(s2Row?.rerankerScore).toBeNull();
+		expect(s2Row?.orderingScore).toBe(0.6);
+
+		expect(s3Row?.source).toBe("fused_fallback");
+		expect(s3Row?.rerankerScore).toBeNull();
+		expect(s3Row?.orderingScore).toBe(0.4);
+	});
+
+	it("dense ranks are by orderingScore desc, songId asc as tiebreak", async () => {
+		// Two songs with equal orderingScore — songId asc decides
+		const pairs = [makePair("s2", "pl1", 0.5), makePair("s1", "pl1", 0.5)];
+		const reranker = skippingReranker();
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		// s1 < s2 lexicographically → s1 is rank 1 (index 0)
+		expect(pl1?.rankedPairs[0].songId).toBe("s1");
+		expect(pl1?.rankedPairs[1].songId).toBe("s2");
+	});
+
+	it("reranker failure → all pairs are fused_fallback ordered by fusedScore", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s2", "pl1", 0.6)];
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: failingReranker(),
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		expect(pl1?.rankedPairs).toHaveLength(2);
+		for (const pair of pl1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+			expect(pair.rerankerScore).toBeNull();
+		}
+		// Ordered by fusedScore desc
+		expect(pl1?.rankedPairs[0].songId).toBe("s1");
+		expect(pl1?.rankedPairs[0].orderingScore).toBe(0.8);
+	});
+
+	it("reranker skip (reranked=false) → all pairs are fused_fallback", async () => {
+		const pairs = [makePair("s1", "pl1", 0.7), makePair("s2", "pl1", 0.9)];
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: skippingReranker(),
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		for (const pair of pl1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+		}
+		// s2 has higher fusedScore → rank 1
+		expect(pl1?.rankedPairs[0].songId).toBe("s2");
+	});
+
+	it("missing playlist metadata → all pairs are fused_fallback (no query doc)", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s2", "pl1", 0.6)];
+		const reranker = mockReranker([
+			{ id: "s1", score: 0.9, rerankerScore: 0.95 },
+		]);
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: [], // no metadata available
+			rerankerService: reranker,
+		});
+
+		// Reranker should never be called since there's no query document.
+		expect(reranker.rerank).not.toHaveBeenCalled();
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		for (const pair of pl1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+		}
+	});
+
+	it("documentMode reflects song candidate document mode (analysis when analysisText present)", async () => {
+		// s2 has analysisText → its candidate document should be 'analysis' mode.
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s2", "pl1", 0.6)];
+		const reranker = mockReranker([
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "s2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		const pl1 = results.find((r) => r.subjectId === "pl1");
+		const s1Row = pl1?.rankedPairs.find((p) => p.songId === "s1");
+		const s2Row = pl1?.rankedPairs.find((p) => p.songId === "s2");
+
+		// s1 has no analysisText → metadata mode
+		expect(s1Row?.documentMode).toBe("metadata");
+		// s2 has analysisText → analysis mode
+		expect(s2Row?.documentMode).toBe("analysis");
+	});
+
+	it("stops early when isSuperseded fires between playlist suggestion lists", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.6),
+			makePair("s1", "pl2", 0.7),
+		];
+		const reranker = mockReranker([
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "s2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		let callCount = 0;
+		const isSuperseded = vi.fn(async () => {
+			callCount++;
+			// Fire after the first playlist is processed.
+			return callCount >= 2;
+		});
+
+		const results = await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+			isSuperseded,
+		});
+
+		// Only one playlist was processed before superseded fired.
+		expect(results.length).toBeLessThan(2);
+		expect(isSuperseded).toHaveBeenCalled();
+	});
+
+	it("does not mutate the input storedPairs array", async () => {
+		const pairs: StoredMatchPairForRanking[] = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.6),
+		];
+		const originalOrder = pairs.map((p) => p.songId);
+		const reranker = mockReranker([
+			{ id: "s2", score: 0.9, rerankerScore: 0.95 },
+			{ id: "s1", score: 0.7, rerankerScore: 0.65 },
+		]);
+
+		await rankPlaylistSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		expect(pairs.map((p) => p.songId)).toEqual(originalOrder);
+	});
+});
+
+describe("rankMatchSuggestionLists", () => {
+	it("returns completed status and both orientations when no superseded check", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s2", "pl1", 0.6),
+			makePair("s1", "pl2", 0.7),
+		];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "pl2", score: 0.75, rerankerScore: 0.7 },
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "s2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const result = await rankMatchSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		expect(result.status).toBe("completed");
+		expect(result.byOrientation.has("song")).toBe(true);
+		expect(result.byOrientation.has("playlist")).toBe(true);
+
+		const songLists = result.byOrientation.get("song") ?? [];
+		for (const sl of songLists) {
+			expect(sl.orientation).toBe("song");
+		}
+
+		const playlistLists = result.byOrientation.get("playlist") ?? [];
+		for (const pl of playlistLists) {
+			expect(pl.orientation).toBe("playlist");
+		}
+	});
+
+	it("uses MATCH_RANKING_ORIENTATIONS by default (both song and playlist)", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "s1", score: 0.85, rerankerScore: 0.9 },
+		]);
+
+		const result = await rankMatchSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		expect(result.byOrientation.size).toBe(MATCH_RANKING_ORIENTATIONS.length);
+		for (const orientation of MATCH_RANKING_ORIENTATIONS) {
+			expect(result.byOrientation.has(orientation)).toBe(true);
+		}
+	});
+
+	it("accepts a subset orientations parameter and only computes those", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+		]);
+
+		const result = await rankMatchSuggestionLists({
+			orientations: ["song"],
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		expect(result.status).toBe("completed");
+		expect(result.byOrientation.has("song")).toBe(true);
+		expect(result.byOrientation.has("playlist")).toBe(false);
+	});
+
+	it("returns superseded status when isSuperseded fires between orientations", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+		]);
+
+		let callCount = 0;
+		// Fires after song orientation completes (before playlist starts).
+		const isSuperseded = vi.fn(async () => {
+			callCount++;
+			return callCount >= 2;
+		});
+
+		const result = await rankMatchSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+			isSuperseded,
+		});
+
+		expect(result.status).toBe("superseded");
+		// byOrientation has whatever was completed before stop
+		expect(isSuperseded).toHaveBeenCalled();
+	});
+
+	it("returns superseded status and partial byOrientation when isSuperseded fires before first orientation", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8)];
+		const reranker = mockReranker([]);
+
+		// Always superseded — fires immediately.
+		const isSuperseded = vi.fn(async () => true);
+
+		const result = await rankMatchSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+			isSuperseded,
+		});
+
+		expect(result.status).toBe("superseded");
+		// Nothing ranked yet since it was superseded immediately.
+		expect(result.byOrientation.size).toBe(0);
+	});
+
+	it("song orientation produces correct RankedSuggestionLists subjectIds", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s2", "pl2", 0.7)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "pl2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const result = await rankMatchSuggestionLists({
+			storedPairs: pairs,
+			songs: songsForPlaylist,
+			playlists: playlistsForPlaylist,
+			rerankerService: reranker,
+		});
+
+		const songLists = result.byOrientation.get("song") ?? [];
+		const subjectIds = new Set(songLists.map((sl) => sl.subjectId));
+		expect(subjectIds).toContain("s1");
+		expect(subjectIds).toContain("s2");
 	});
 });
