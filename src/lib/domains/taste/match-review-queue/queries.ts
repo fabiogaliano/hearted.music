@@ -10,7 +10,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
-import { DatabaseError } from "@/lib/shared/errors/database";
+import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -22,10 +22,21 @@ import type {
 	MatchReviewSession,
 	MatchReviewSessionRow,
 	MatchReviewSessionSnapshotRow,
+	QueueItemLifecycleState,
 	QueueItemResolution,
 	QueueItemState,
 	SessionStatus,
 } from "./types";
+
+/**
+ * Narrows a raw DB string to QueueItemLifecycleState. Throws if the DB emits
+ * a value that violates the CHECK constraint — this would mean a migration ran
+ * without updating this narrowing (prevents silent data corruption).
+ */
+function toLifecycleState(s: string): QueueItemLifecycleState {
+	if (s === "pending" || s === "active" || s === "resolved") return s;
+	throw new Error(`Unexpected queue_item_lifecycle_state from DB: ${s}`);
+}
 
 function mapSessionRow(row: MatchReviewSessionRow): MatchReviewSession {
 	return {
@@ -45,12 +56,15 @@ function mapItemRow(row: MatchReviewQueueItemRow): MatchReviewQueueItem {
 		id: row.id,
 		sessionId: row.session_id,
 		accountId: row.account_id,
-		songId: row.song_id,
+		// song_id is always set for song-orientation items (enforced by the
+		// exactly-one-subject CHECK); playlist items use this mapper only on
+		// the song-mode path today.
+		songId: row.song_id as string,
 		sourceSnapshotId: row.source_snapshot_id,
 		position: row.position,
-		state: row.state as QueueItemState,
+		state: toLifecycleState(row.state),
 		resolution: row.resolution as QueueItemResolution | null,
-		sourceScore: row.source_score,
+		sourceScore: row.source_fit_score,
 		wasNewAtEnqueue: row.was_new_at_enqueue,
 		presentedAt: row.presented_at,
 		resolvedAt: row.resolved_at,
@@ -175,43 +189,56 @@ export interface QueueItemInsert {
 }
 
 /**
- * Batch-inserts queue items. Returns the inserted rows mapped to domain types.
- *
- * Uses upsert with ignoreDuplicates on (session_id, song_id) so that a
- * concurrent append for the same session+song silently wins for the first
- * writer and the second writer gets back the rows that were actually inserted
- * (possibly empty). This makes concurrent same-snapshot appends safe: the
- * TOCTOU window between the idempotency pre-check and the insert no longer
- * causes a ConstraintError on the song-uniqueness index.
+ * Batch-inserts song-orientation queue items via an RPC that targets the
+ * partial unique index `idx_match_review_queue_item_session_song_subject`
+ * (WHERE orientation = 'song'). PostgREST cannot target partial indexes via
+ * `onConflict` column lists, so we use an explicit SQL path. Duplicate
+ * (session_id, song_id) rows are silently skipped (ON CONFLICT DO NOTHING),
+ * making concurrent same-snapshot appends safe without a ConstraintError.
  */
 export async function insertQueueItems(
 	items: QueueItemInsert[],
-): Promise<Result<MatchReviewQueueItem[], DbError>> {
+): Promise<Result<void, DbError>> {
 	if (items.length === 0) {
-		return Promise.resolve(Result.ok<MatchReviewQueueItem[], DbError>([]));
+		return Promise.resolve(Result.ok<void, DbError>(undefined));
 	}
 
+	const sessionId = items[0].sessionId;
+	const accountId = items[0].accountId;
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("match_review_queue_item")
-			.upsert(
-				items.map((item) => ({
-					session_id: item.sessionId,
-					account_id: item.accountId,
-					song_id: item.songId,
-					source_snapshot_id: item.sourceSnapshotId,
-					position: item.position,
-					state: "pending" as const,
-					source_score: item.sourceScore,
-					was_new_at_enqueue: item.wasNewAtEnqueue,
-				})),
-				{ onConflict: "session_id,song_id", ignoreDuplicates: true },
-			)
-			.select(),
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(result.value.map(mapItemRow));
+	const { error } = await supabase.rpc("insert_queue_song_items", {
+		p_session_id: sessionId,
+		p_account_id: accountId,
+		p_items: items.map((item) => ({
+			song_id: item.songId,
+			source_snapshot_id: item.sourceSnapshotId,
+			position: item.position,
+			source_fit_score: item.sourceScore,
+			was_new_at_enqueue: item.wasNewAtEnqueue,
+		})),
+	});
+
+	if (error) {
+		if (error.code === "23505") {
+			return Result.err(
+				new ConstraintError("unique", error.details ?? error.message),
+			);
+		}
+		if (error.code === "23503") {
+			return Result.err(
+				new ConstraintError("foreign_key", error.details ?? error.message),
+			);
+		}
+		if (error.code === "23514") {
+			return Result.err(
+				new ConstraintError("check", error.details ?? error.message),
+			);
+		}
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(undefined);
 }
 
 /**
@@ -247,11 +274,17 @@ export async function fetchQueuedSongIds(
 			.eq("session_id", sessionId),
 	);
 	if (Result.isError(result)) return result;
-	return Result.ok(new Set(result.value.map((r) => r.song_id)));
+	return Result.ok(
+		new Set(
+			result.value
+				.map((r) => r.song_id)
+				.filter((id): id is string => id !== null),
+		),
+	);
 }
 
 /**
- * Counts queue items that are not yet resolved (pending or presented).
+ * Counts queue items that are not yet resolved.
  * Drives the dashboard CTA badge and the caught-up detection.
  */
 export async function countUnresolvedItems(
@@ -263,7 +296,7 @@ export async function countUnresolvedItems(
 		.from("match_review_queue_item")
 		.select("id", { count: "exact", head: true })
 		.eq("session_id", sessionId)
-		.in("state", ["pending", "presented"]);
+		.in("state", ["pending", "active"]);
 
 	if (error) {
 		return Result.err(
@@ -274,14 +307,13 @@ export async function countUnresolvedItems(
 }
 
 /**
- * Updates a queue item's state to "presented" and records presented_at.
+ * Advances a queue item to the 'active' lifecycle state and records presented_at.
  *
- * The `.in("state", ["pending", "presented"])` guard makes the transition
- * conditional: only an unresolved card may become presented. A resolved item
- * (completed/skipped/unavailable) — or one that raced with finish/dismiss — is
- * NOT updated, so a stale navigation can never resurrect a decided card. The
- * "presented" value is kept in the allowed set so re-presenting an already
- * presented item stays idempotent.
+ * The `.in("state", ["pending", "active"])` guard makes the transition
+ * conditional: only an unresolved card may become active. A resolved item —
+ * or one that raced with finish/dismiss — is NOT updated, so a stale navigation
+ * can never resurrect a decided card. 'active' is kept in the allowed set so
+ * re-presenting an already-active item stays idempotent.
  *
  * Returns Result.ok(null) when no eligible row matched (resolved, raced, or
  * foreign): maybeSingle yields no row without erroring, so the caller can treat
@@ -299,13 +331,13 @@ export async function updateQueueItemPresented(
 		supabase
 			.from("match_review_queue_item")
 			.update({
-				state: "presented",
+				state: "active",
 				presented_at: now,
 				updated_at: now,
 			})
 			.eq("id", itemId)
 			.eq("account_id", accountId)
-			.in("state", ["pending", "presented"])
+			.in("state", ["pending", "active"])
 			.select()
 			.maybeSingle(),
 	);
@@ -314,26 +346,24 @@ export async function updateQueueItemPresented(
 }
 
 /**
- * Updates a queue item's state and resolution when the user decides.
- * resolution must be one of the DB CHECK values.
+ * Resolves a queue item and records the outcome in the resolution column.
  *
- * The `.in("state", ["pending", "presented"])` guard mirrors
- * updateQueueItemPresented: the resolution is conditional on the item still being
- * unresolved, so two concurrent finish/dismiss flows can't clobber each other —
- * the first writer wins and the loser matches no row. Without it the update was
- * last-writer-wins and a stale action could overwrite an already-resolved item's
- * state/resolution/resolved_at.
+ * The state column always becomes 'resolved' (B9-C); the `_legacyState`
+ * parameter is kept for caller compatibility until a later story removes it.
  *
- * Returns Result.ok(null) when no eligible row matched (already resolved or
- * raced): maybeSingle yields no row without erroring, so the caller can treat a
- * lost race distinctly from a genuine DB failure.
+ * The `.in("state", ["pending", "active"])` guard makes the transition
+ * conditional: the first concurrent writer wins and the second writer matches
+ * no row without erroring. The caller can treat Result.ok(null) as a lost race.
  *
  * accountId scopes the UPDATE so no pre-check bypass can write to a foreign item.
  */
 export async function updateQueueItemResolved(
 	itemId: string,
 	accountId: string,
-	state: Extract<QueueItemState, "completed" | "skipped" | "unavailable">,
+	_legacyState: Extract<
+		QueueItemState,
+		"completed" | "skipped" | "unavailable"
+	>,
 	resolution: QueueItemResolution,
 	now: string,
 ): Promise<Result<MatchReviewQueueItem | null, DbError>> {
@@ -342,14 +372,14 @@ export async function updateQueueItemResolved(
 		supabase
 			.from("match_review_queue_item")
 			.update({
-				state,
+				state: "resolved",
 				resolution,
 				resolved_at: now,
 				updated_at: now,
 			})
 			.eq("id", itemId)
 			.eq("account_id", accountId)
-			.in("state", ["pending", "presented"])
+			.in("state", ["pending", "active"])
 			.select()
 			.maybeSingle(),
 	);
@@ -610,10 +640,14 @@ export async function fetchPendingSongIds(
 			.from("match_review_queue_item")
 			.select("song_id")
 			.eq("session_id", sessionId)
-			.in("state", ["pending", "presented"])
+			.in("state", ["pending", "active"])
 			.order("position", { ascending: true })
 			.limit(limit),
 	);
 	if (Result.isError(result)) return result;
-	return Result.ok(result.value.map((r) => r.song_id));
+	return Result.ok(
+		result.value
+			.map((r) => r.song_id)
+			.filter((id): id is string => id !== null),
+	);
 }

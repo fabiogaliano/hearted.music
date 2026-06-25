@@ -110,7 +110,7 @@ async function seed() {
 	for (const [itemId, songId] of ALL_ITEMS) {
 		await client`
       INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state)
-      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"presented"})
+      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"active"})
     `;
 		position += 1;
 	}

@@ -1546,48 +1546,57 @@ export type Database = {
 					account_id: string;
 					created_at: string;
 					id: string;
+					orientation: string;
+					playlist_id: string | null;
 					position: number;
 					presented_at: string | null;
 					resolution: string | null;
 					resolved_at: string | null;
 					session_id: string;
-					song_id: string;
-					source_score: number;
+					song_id: string | null;
+					source_fit_score: number;
 					source_snapshot_id: string;
 					state: string;
 					updated_at: string;
+					visible_pairs_captured_at: string | null;
 					was_new_at_enqueue: boolean;
 				};
 				Insert: {
 					account_id: string;
 					created_at?: string;
 					id?: string;
+					orientation?: string;
+					playlist_id?: string | null;
 					position: number;
 					presented_at?: string | null;
 					resolution?: string | null;
 					resolved_at?: string | null;
 					session_id: string;
-					song_id: string;
-					source_score?: number;
+					song_id?: string | null;
+					source_fit_score?: number;
 					source_snapshot_id: string;
 					state: string;
 					updated_at?: string;
+					visible_pairs_captured_at?: string | null;
 					was_new_at_enqueue?: boolean;
 				};
 				Update: {
 					account_id?: string;
 					created_at?: string;
 					id?: string;
+					orientation?: string;
+					playlist_id?: string | null;
 					position?: number;
 					presented_at?: string | null;
 					resolution?: string | null;
 					resolved_at?: string | null;
 					session_id?: string;
-					song_id?: string;
-					source_score?: number;
+					song_id?: string | null;
+					source_fit_score?: number;
 					source_snapshot_id?: string;
 					state?: string;
 					updated_at?: string;
+					visible_pairs_captured_at?: string | null;
 					was_new_at_enqueue?: boolean;
 				};
 				Relationships: [
@@ -1596,6 +1605,13 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_queue_item_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
 						referencedColumns: ["id"];
 					},
 					{
@@ -1634,6 +1650,7 @@ export type Database = {
 					completed_at: string | null;
 					created_at: string;
 					id: string;
+					orientation: string;
 					status: string;
 					strictness_min_score: number;
 					strictness_preset: string;
@@ -1644,6 +1661,7 @@ export type Database = {
 					completed_at?: string | null;
 					created_at?: string;
 					id?: string;
+					orientation?: string;
 					status: string;
 					strictness_min_score: number;
 					strictness_preset: string;
@@ -1654,6 +1672,7 @@ export type Database = {
 					completed_at?: string | null;
 					created_at?: string;
 					id?: string;
+					orientation?: string;
 					status?: string;
 					strictness_min_score?: number;
 					strictness_preset?: string;
@@ -1675,18 +1694,21 @@ export type Database = {
 					applied_at: string;
 					session_id: string;
 					snapshot_id: string;
+					visibility_config_hash: string;
 				};
 				Insert: {
 					appended_item_count?: number;
 					applied_at?: string;
 					session_id: string;
 					snapshot_id: string;
+					visibility_config_hash?: string;
 				};
 				Update: {
 					appended_item_count?: number;
 					applied_at?: string;
 					session_id?: string;
 					snapshot_id?: string;
+					visibility_config_hash?: string;
 				};
 				Relationships: [
 					{
@@ -3541,6 +3563,10 @@ export type Database = {
 					p_requested_by?: string;
 				};
 				Returns: Json;
+			};
+			insert_queue_song_items: {
+				Args: { p_account_id: string; p_items: Json; p_session_id: string };
+				Returns: undefined;
 			};
 			insert_song_unlocks_without_charge: {
 				Args: {

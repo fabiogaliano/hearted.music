@@ -585,12 +585,11 @@ export async function getQueueSummary(
 }
 
 /**
- * Marks a queue item as presented: sets state=presented, records presented_at,
+ * Marks a queue item as active: sets state=active, records presented_at,
  * and clears newness for the song durably.
  *
  * Newness clearing is best-effort — a failure must not fail the state
- * transition; the item is still marked presented even if the newness write
- * fails.
+ * transition; the item is still marked active even if the newness write fails.
  */
 export async function markItemPresented(
 	itemId: string,
@@ -601,11 +600,10 @@ export async function markItemPresented(
 	const itemResult = await updateQueueItemPresented(itemId, accountId, now);
 	if (Result.isError(itemResult)) return itemResult;
 
-	// null means no eligible row was updated: the item is already resolved
-	// (completed/skipped/unavailable) or raced with finish/dismiss. The update
-	// is guarded by .in("state", ["pending", "presented"]) so a resolved card
-	// can never be resurrected to "presented". Don't clear newness in that case —
-	// the card is no longer being presented.
+	// null means no eligible row was updated: the item is already resolved or
+	// raced with finish/dismiss. The update is guarded by
+	// .in("state", ["pending", "active"]) so a resolved card can never be
+	// resurrected. Don't clear newness in that case — the card is not presented.
 	if (itemResult.value === null) return itemResult;
 
 	// Best-effort, but awaited: in a serverless handler a fire-and-forget promise
@@ -622,13 +620,16 @@ export async function markItemPresented(
 }
 
 /**
- * Marks a queue item as resolved. The caller supplies the final state and
- * resolution based on the decision type:
+ * Marks a queue item as resolved. The DB state is always 'resolved' (B9-C);
+ * the outcome is captured by `resolution`:
  *
- * - After one or more adds + finish: state=completed, resolution=added
- * - After dismiss: state=completed, resolution=dismissed
- * - Skip (next song with no adds): state=skipped, resolution=skipped
- * - Song became unavailable: state=unavailable, resolution=unavailable
+ * - After one or more adds + finish: resolution=added
+ * - After dismiss: resolution=dismissed
+ * - Skip (next song with no adds): resolution=skipped
+ * - Song became unavailable: resolution=unavailable
+ *
+ * `_legacyState` is accepted for backward-compatible call sites but is ignored
+ * internally — `updateQueueItemResolved` always writes `state='resolved'`.
  *
  * Returns Result.ok(null) when the item was already resolved (the conditional
  * update in updateQueueItemResolved matched no unresolved row): a concurrent
@@ -638,9 +639,18 @@ export async function markItemPresented(
 export async function markItemResolved(
 	itemId: string,
 	accountId: string,
-	state: Extract<QueueItemState, "completed" | "skipped" | "unavailable">,
+	_legacyState: Extract<
+		QueueItemState,
+		"completed" | "skipped" | "unavailable"
+	>,
 	resolution: QueueItemResolution,
 ): Promise<Result<MatchReviewQueueItem | null, DbError>> {
 	const now = new Date().toISOString();
-	return updateQueueItemResolved(itemId, accountId, state, resolution, now);
+	return updateQueueItemResolved(
+		itemId,
+		accountId,
+		_legacyState,
+		resolution,
+		now,
+	);
 }
