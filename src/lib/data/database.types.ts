@@ -871,6 +871,7 @@ export type Database = {
 				Row: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -888,6 +889,7 @@ export type Database = {
 				Insert: {
 					account_id: string;
 					attempts?: number;
+					available_at?: string;
 					completed_at?: string | null;
 					created_at?: string;
 					error?: string | null;
@@ -905,6 +907,7 @@ export type Database = {
 				Update: {
 					account_id?: string;
 					attempts?: number;
+					available_at?: string;
 					completed_at?: string | null;
 					created_at?: string;
 					error?: string | null;
@@ -2895,6 +2898,7 @@ export type Database = {
 					demo_song_id: string | null;
 					id: string;
 					match_strictness: string;
+					match_view_mode: string;
 					onboarding_completed_at: string | null;
 					onboarding_step: string;
 					phase_job_ids: Json | null;
@@ -2910,6 +2914,7 @@ export type Database = {
 					demo_song_id?: string | null;
 					id?: string;
 					match_strictness?: string;
+					match_view_mode?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
@@ -2925,6 +2930,7 @@ export type Database = {
 					demo_song_id?: string | null;
 					id?: string;
 					match_strictness?: string;
+					match_view_mode?: string;
 					onboarding_completed_at?: string | null;
 					onboarding_step?: string;
 					phase_job_ids?: Json | null;
@@ -3173,6 +3179,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3199,6 +3206,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3225,6 +3233,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3251,6 +3260,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3741,6 +3751,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3767,6 +3778,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3793,6 +3805,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -3819,6 +3832,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -4022,6 +4036,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -4048,6 +4063,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
@@ -4074,6 +4090,7 @@ export type Database = {
 				Returns: {
 					account_id: string;
 					attempts: number;
+					available_at: string;
 					completed_at: string | null;
 					created_at: string;
 					error: string | null;
