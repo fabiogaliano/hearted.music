@@ -131,6 +131,7 @@ describe("runClaimedJob", () => {
 
 	it("dispatches match_snapshot_refresh jobs", async () => {
 		const execResult = {
+			status: "published" as const,
 			accountId: "acct-1",
 			jobId: "job-2",
 			published: true,
@@ -268,6 +269,7 @@ describe("runClaimedJob", () => {
 			});
 
 			vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue({
+				status: "published" as const,
 				accountId: "acct-1",
 				jobId: "job-2",
 				published: true,
@@ -394,6 +396,7 @@ describe("runClaimedJob", () => {
 
 		it("returns settled for match_snapshot_refresh settlement", async () => {
 			const execResult = {
+				status: "published" as const,
 				accountId: "acct-1",
 				jobId: "job-2",
 				published: true,

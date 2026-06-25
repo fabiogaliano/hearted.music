@@ -15,6 +15,7 @@ export const MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE: Record<
 	enrichment_stopped: 0,
 	match_snapshot_published: 0,
 	match_snapshot_failed: 0,
+	match_snapshot_superseded: 0,
 	enrichment_work_available: 0,
 	songs_unlocked: 0,
 	unlimited_activated: 0,

@@ -377,8 +377,11 @@ describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", ()
 		setupHappyPath({ baseSongIds: ["song-1"] });
 		mockLoadExclusionSet.mockRejectedValue(new Error("transient failure"));
 
-		const result = await executeMatchSnapshotRefresh("acc-1", makePlan());
-		expect(result.published).toBe(true);
+		const outcome = await executeMatchSnapshotRefresh("acc-1", makePlan());
+		expect(outcome.status).toBe("published");
+		if (outcome.status === "published") {
+			expect(outcome.result.published).toBe(true);
+		}
 	});
 
 	it("filter metadata failure → empty filter exclusions, base exclusions still applied", async () => {
