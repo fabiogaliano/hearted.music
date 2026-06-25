@@ -688,7 +688,7 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 
 		const decisions = visibleUndecided.map((mr) => ({
 			playlistId: mr.playlist_id,
-			servedRank: rankByPlaylist.get(mr.playlist_id) ?? null,
+			modelRank: rankByPlaylist.get(mr.playlist_id) ?? null,
 		}));
 
 		const dismissResult = await dismissQueueItemAtomically(

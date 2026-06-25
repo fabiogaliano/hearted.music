@@ -229,8 +229,8 @@ describe("dismissQueueItemAtomically", () => {
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		const result = await dismissQueueItemAtomically("item-1", "acct-1", [
-			{ playlistId: "pl-1", servedRank: 1 },
-			{ playlistId: "pl-2", servedRank: null },
+			{ playlistId: "pl-1", modelRank: 1 },
+			{ playlistId: "pl-2", modelRank: null },
 		]);
 
 		expect(result).toBeOk();
@@ -238,8 +238,8 @@ describe("dismissQueueItemAtomically", () => {
 			p_item_id: "item-1",
 			p_account_id: "acct-1",
 			p_decisions: [
-				{ playlist_id: "pl-1", served_rank: 1 },
-				{ playlist_id: "pl-2", served_rank: null },
+				{ playlist_id: "pl-1", model_rank: 1 },
+				{ playlist_id: "pl-2", model_rank: null },
 			],
 		});
 	});

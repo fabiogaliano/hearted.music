@@ -1235,11 +1235,13 @@ export type Database = {
 					decided_at: string;
 					decision: string;
 					id: string;
+					model_rank: number | null;
 					playlist_id: string;
 					queue_item_id: string | null;
-					served_rank: number | null;
+					served_orientation: string | null;
 					snapshot_id: string | null;
 					song_id: string;
+					visible_rank: number | null;
 				};
 				Insert: {
 					account_id: string;
@@ -1247,11 +1249,13 @@ export type Database = {
 					decided_at?: string;
 					decision: string;
 					id?: string;
+					model_rank?: number | null;
 					playlist_id: string;
 					queue_item_id?: string | null;
-					served_rank?: number | null;
+					served_orientation?: string | null;
 					snapshot_id?: string | null;
 					song_id: string;
+					visible_rank?: number | null;
 				};
 				Update: {
 					account_id?: string;
@@ -1259,11 +1263,13 @@ export type Database = {
 					decided_at?: string;
 					decision?: string;
 					id?: string;
+					model_rank?: number | null;
 					playlist_id?: string;
 					queue_item_id?: string | null;
-					served_rank?: number | null;
+					served_orientation?: string | null;
 					snapshot_id?: string | null;
 					song_id?: string;
+					visible_rank?: number | null;
 				};
 				Relationships: [
 					{
@@ -1313,42 +1319,45 @@ export type Database = {
 			match_event: {
 				Row: {
 					account_id: string;
-					display_rank: number | null;
 					event: string;
 					id: string;
+					model_rank: number | null;
 					occurred_at: string;
 					playlist_id: string;
 					queue_item_id: string | null;
-					served_rank: number | null;
+					served_orientation: string | null;
 					session_id: string | null;
 					snapshot_id: string | null;
 					song_id: string;
+					visible_rank: number | null;
 				};
 				Insert: {
 					account_id: string;
-					display_rank?: number | null;
 					event: string;
 					id?: string;
+					model_rank?: number | null;
 					occurred_at?: string;
 					playlist_id: string;
 					queue_item_id?: string | null;
-					served_rank?: number | null;
+					served_orientation?: string | null;
 					session_id?: string | null;
 					snapshot_id?: string | null;
 					song_id: string;
+					visible_rank?: number | null;
 				};
 				Update: {
 					account_id?: string;
-					display_rank?: number | null;
 					event?: string;
 					id?: string;
+					model_rank?: number | null;
 					occurred_at?: string;
 					playlist_id?: string;
 					queue_item_id?: string | null;
-					served_rank?: number | null;
+					served_orientation?: string | null;
 					session_id?: string | null;
 					snapshot_id?: string | null;
 					song_id?: string;
+					visible_rank?: number | null;
 				};
 				Relationships: [
 					{
@@ -1534,6 +1543,98 @@ export type Database = {
 					},
 					{
 						foreignKeyName: "match_result_ranking_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_item_visible_pair: {
+				Row: {
+					account_id: string;
+					captured_at: string;
+					fit_score: number;
+					model_rank: number;
+					orientation: string;
+					playlist_id: string;
+					queue_item_id: string;
+					session_id: string;
+					snapshot_id: string | null;
+					song_id: string;
+					visible_rank: number;
+				};
+				Insert: {
+					account_id: string;
+					captured_at?: string;
+					fit_score: number;
+					model_rank: number;
+					orientation: string;
+					playlist_id: string;
+					queue_item_id: string;
+					session_id: string;
+					snapshot_id?: string | null;
+					song_id: string;
+					visible_rank: number;
+				};
+				Update: {
+					account_id?: string;
+					captured_at?: string;
+					fit_score?: number;
+					model_rank?: number;
+					orientation?: string;
+					playlist_id?: string;
+					queue_item_id?: string;
+					session_id?: string;
+					snapshot_id?: string | null;
+					song_id?: string;
+					visible_rank?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_item_visible_pair_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_queue_item_id_fkey";
+						columns: ["queue_item_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_queue_item";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_session";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_review_item_visible_pair_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";

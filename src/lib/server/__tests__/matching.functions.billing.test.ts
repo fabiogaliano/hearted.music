@@ -339,7 +339,7 @@ describe("match decision served-context logging", () => {
 		});
 	}
 
-	it("logs snapshot_id and served_rank for a surfaced add", async () => {
+	it("logs snapshot_id and model_rank for a surfaced add", async () => {
 		mockOwnership();
 		mockGetServedRanksForSong.mockResolvedValue(
 			Result.ok([{ playlist_id: "pl-1", rank: 3 }]),
@@ -360,7 +360,7 @@ describe("match decision served-context logging", () => {
 			"song-1",
 			"pl-1",
 			"added",
-			{ snapshotId: "snap-1", servedRank: 3 },
+			{ snapshotId: "snap-1", modelRank: 3 },
 		);
 	});
 
@@ -376,7 +376,7 @@ describe("match decision served-context logging", () => {
 			"song-1",
 			"pl-1",
 			"added",
-			{ snapshotId: null, servedRank: null },
+			{ snapshotId: null, modelRank: null },
 		);
 	});
 
@@ -400,11 +400,11 @@ describe("match decision served-context logging", () => {
 			"song-1",
 			"pl-1",
 			"added",
-			{ snapshotId: null, servedRank: null },
+			{ snapshotId: null, modelRank: null },
 		);
 	});
 
-	it("logs a null served_rank when the song was surfaced but not for this playlist", async () => {
+	it("logs a null model_rank when the song was surfaced but not for this playlist", async () => {
 		mockOwnership({ ownedPlaylistIds: ["pl-2"] });
 		// The song is in the snapshot, but only for pl-9 — pl-2 was never top-K.
 		mockGetServedRanksForSong.mockResolvedValue(
@@ -420,7 +420,7 @@ describe("match decision served-context logging", () => {
 			"song-1",
 			"pl-2",
 			"added",
-			{ snapshotId: "snap-1", servedRank: null },
+			{ snapshotId: "snap-1", modelRank: null },
 		);
 	});
 });

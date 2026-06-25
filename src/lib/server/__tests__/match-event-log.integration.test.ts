@@ -116,7 +116,7 @@ async function seed() {
 	}
 
 	// Visible matches (score >= strictness). rank is the model/snapshot rank the
-	// RPCs persist as served_rank.
+	// RPCs persist as model_rank.
 	const visible: Array<[string, string, number, number]> = [
 		[SONG_ADD, PLAYLIST_A, 0.9, 1],
 		[SONG_DIS, PLAYLIST_A, 0.9, 1],
@@ -173,16 +173,15 @@ describeLocal("match queue RPCs write to match_event", () => {
 		expect(decisions.map((d) => d.decision)).toEqual(["added"]);
 
 		const events = await db()`
-      SELECT event, served_rank, display_rank, queue_item_id, session_id FROM match_event
+      SELECT event, model_rank, visible_rank, queue_item_id, session_id FROM match_event
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_ADD}
     `;
 		expect(events).toHaveLength(1);
 		expect(events[0].event).toBe("added");
-		// served_rank is the model rank passed in.
-		expect(events[0].served_rank).toBe(1);
-		// display_rank is intentionally unwired until presentation-slate capture
-		// exists — assert it stays NULL so no partial write slips in early.
-		expect(events[0].display_rank).toBeNull();
+		// model_rank is the model/snapshot rank passed in via p_served_rank.
+		expect(events[0].model_rank).toBe(1);
+		// visible_rank is unwired until visible-pair capture (MSR-23) — stays NULL.
+		expect(events[0].visible_rank).toBeNull();
 		expect(events[0].queue_item_id).toBe(ITEM_ADD);
 		expect(events[0].session_id).toBe(SESSION);
 	});
@@ -196,7 +195,7 @@ describeLocal("match queue RPCs write to match_event", () => {
 			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_AGUARD}, ${ACCOUNT}, ${PLAYLIST_A}, ${1}) AS r`;
 		expect(added[0].r).toBe("added");
 
-		const payload = db().json([{ playlist_id: PLAYLIST_A, served_rank: 1 }]);
+		const payload = db().json([{ playlist_id: PLAYLIST_A, model_rank: 1 }]);
 		const dismissed =
 			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_AGUARD}, ${ACCOUNT}, ${payload}) AS r`;
 		expect(dismissed[0].r).toBe("dismissed");
@@ -219,7 +218,7 @@ describeLocal("match queue RPCs write to match_event", () => {
 	it("dismiss writes a 'dismissed' decision and a 'dismissed' event", async () => {
 		// sql.json binds a real jsonb value — a stringified array under
 		// fetch_types:false reaches the function as text, which it rejects.
-		const payload = db().json([{ playlist_id: PLAYLIST_A, served_rank: 1 }]);
+		const payload = db().json([{ playlist_id: PLAYLIST_A, model_rank: 1 }]);
 		const result =
 			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_DIS}, ${ACCOUNT}, ${payload}) AS r`;
 		expect(result[0].r).toBe("dismissed");
@@ -244,15 +243,15 @@ describeLocal("match queue RPCs write to match_event", () => {
 		expect(result[0].r).toBe("skipped");
 
 		const events = await db()`
-      SELECT event, served_rank, display_rank FROM match_event
+      SELECT event, model_rank, visible_rank FROM match_event
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_SKIP} AND playlist_id = ${PLAYLIST_A}
     `;
 		expect(events).toHaveLength(1);
 		expect(events[0].event).toBe("skipped");
-		// served_rank carries the model rank from match_result so skips can be
-		// debiased by position; display_rank stays NULL until slate capture exists.
-		expect(events[0].served_rank).toBe(1);
-		expect(events[0].display_rank).toBeNull();
+		// model_rank carries the model/snapshot rank so skips can be debiased by
+		// position; visible_rank is unwired until visible-pair capture (MSR-23).
+		expect(events[0].model_rank).toBe(1);
+		expect(events[0].visible_rank).toBeNull();
 
 		// match_decision must hold nothing for a skip — its CHECK only allows
 		// added/dismissed, and the exclusion set is built from it.

@@ -391,7 +391,7 @@ export const addSongToPlaylist = createServerFn({ method: "POST" })
 			"added",
 			{
 				snapshotId: served.snapshotId,
-				servedRank: served.rankByPlaylist.get(data.playlistId) ?? null,
+				modelRank: served.rankByPlaylist.get(data.playlistId) ?? null,
 			},
 		);
 		return { success: Result.isOk(result) };

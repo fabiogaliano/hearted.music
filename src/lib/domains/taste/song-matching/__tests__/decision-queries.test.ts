@@ -92,7 +92,9 @@ function fakeDecision(overrides: Partial<MatchDecision> = {}): MatchDecision {
 		decided_at: "2026-03-17T00:00:00Z",
 		created_at: "2026-03-17T00:00:00Z",
 		snapshot_id: null,
-		served_rank: null,
+		model_rank: null,
+		visible_rank: null,
+		served_orientation: null,
 		queue_item_id: null,
 		...overrides,
 	};
@@ -145,21 +147,21 @@ describe("upsertMatchDecision", () => {
 		expect(data.decided_at).toBeDefined();
 	});
 
-	it("writes the served-ranking context (snapshot_id + served_rank)", async () => {
+	it("writes the served-ranking context (snapshot_id + model_rank)", async () => {
 		upsertResponse = { data: fakeDecision(), error: null };
 
 		await upsertMatchDecision(ACCOUNT_ID, SONG_ID, PLAYLIST_ID, "added", {
 			snapshotId: "snap-1",
-			servedRank: 4,
+			modelRank: 4,
 		});
 
 		assert(lastUpsertArgs !== null);
 		const data = lastUpsertArgs.data as Record<string, unknown>;
 		expect(data.snapshot_id).toBe("snap-1");
-		expect(data.served_rank).toBe(4);
+		expect(data.model_rank).toBe(4);
 	});
 
-	it("defaults snapshot_id + served_rank to null when omitted", async () => {
+	it("defaults snapshot_id + model_rank to null when omitted", async () => {
 		upsertResponse = { data: fakeDecision(), error: null };
 
 		await upsertMatchDecision(ACCOUNT_ID, SONG_ID, PLAYLIST_ID, "dismissed");
@@ -167,7 +169,7 @@ describe("upsertMatchDecision", () => {
 		assert(lastUpsertArgs !== null);
 		const data = lastUpsertArgs.data as Record<string, unknown>;
 		expect(data.snapshot_id).toBeNull();
-		expect(data.served_rank).toBeNull();
+		expect(data.model_rank).toBeNull();
 	});
 
 	it("returns a ConstraintError on foreign key violation", async () => {
@@ -296,7 +298,7 @@ describe("upsertMatchDecisions", () => {
 				playlistId: "pl-surfaced",
 				decision: "dismissed",
 				snapshotId: "snap-1",
-				servedRank: 2,
+				modelRank: 2,
 			},
 			{
 				accountId: ACCOUNT_ID,
@@ -304,7 +306,7 @@ describe("upsertMatchDecisions", () => {
 				playlistId: "pl-implicit",
 				decision: "dismissed",
 				snapshotId: "snap-1",
-				servedRank: null,
+				modelRank: null,
 			},
 		]);
 
@@ -312,10 +314,10 @@ describe("upsertMatchDecisions", () => {
 		const rows = lastUpsertArgs.data as Record<string, unknown>[];
 		expect(rows).toHaveLength(2);
 		expect(rows[0].snapshot_id).toBe("snap-1");
-		expect(rows[0].served_rank).toBe(2);
+		expect(rows[0].model_rank).toBe(2);
 		// Surfaced negative carries its rank; implicit negative nulls it.
 		expect(rows[1].snapshot_id).toBe("snap-1");
-		expect(rows[1].served_rank).toBeNull();
+		expect(rows[1].model_rank).toBeNull();
 	});
 
 	it("defaults snapshot_id + served_rank to null when omitted from a row", async () => {
@@ -333,7 +335,7 @@ describe("upsertMatchDecisions", () => {
 		assert(lastUpsertArgs !== null);
 		const rows = lastUpsertArgs.data as Record<string, unknown>[];
 		expect(rows[0].snapshot_id).toBeNull();
-		expect(rows[0].served_rank).toBeNull();
+		expect(rows[0].model_rank).toBeNull();
 	});
 
 	it("returns error on database failure", async () => {
