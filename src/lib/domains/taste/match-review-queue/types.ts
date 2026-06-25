@@ -29,8 +29,11 @@ export type MatchReviewSubject =
 	| { orientation: "playlist"; playlistId: string };
 
 /**
- * Legacy DB-mirrored state kept for row-level compatibility until the schema
- * migration (MSR-XX) lands. New code should use QueueItemLifecycleState.
+ * Legacy DB-mirrored state from before the B9-C lifecycle split. The DB now
+ * only stores `pending | active | resolved`; the terminal value is encoded in
+ * `QueueItemResolution`. Kept only for the `_legacyState` parameter in
+ * `updateQueueItemResolved` / `markItemResolved` until those callers are
+ * removed in a later story (tracked in the orchestration deviation log).
  */
 export type QueueItemState =
 	| "pending"
@@ -66,7 +69,7 @@ export interface MatchReviewQueueItem {
 	songId: string;
 	sourceSnapshotId: string;
 	position: number;
-	state: QueueItemState;
+	state: QueueItemLifecycleState;
 	resolution: QueueItemResolution | null;
 	sourceScore: number;
 	wasNewAtEnqueue: boolean;

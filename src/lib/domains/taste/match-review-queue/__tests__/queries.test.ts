@@ -28,14 +28,17 @@ const ROW = {
 	song_id: "song-1",
 	source_snapshot_id: "snap-1",
 	position: 0,
-	state: "presented",
+	state: "active",
 	resolution: null,
-	source_score: 0.85,
+	source_fit_score: 0.85,
 	was_new_at_enqueue: false,
 	presented_at: "2026-06-16T00:00:00Z",
 	resolved_at: null,
 	created_at: "2026-06-16T00:00:00Z",
 	updated_at: "2026-06-16T00:00:00Z",
+	orientation: "song",
+	playlist_id: null,
+	visible_pairs_captured_at: null,
 };
 
 /**
@@ -64,14 +67,14 @@ describe("updateQueueItemPresented", () => {
 		vi.clearAllMocks();
 	});
 
-	it("guards the transition to only pending/presented rows", async () => {
+	it("guards the transition to only pending/active rows", async () => {
 		const { inSpy } = mockPresentedUpdate(ROW);
 
 		await updateQueueItemPresented("item-1", "acct-1", "2026-06-16T00:00:00Z");
 
 		// The conditional update must restrict to unresolved states so a resolved
-		// card (completed/skipped/unavailable) can never be resurrected.
-		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "presented"]);
+		// card can never be resurrected (B9-C lifecycle: active replaces presented).
+		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "active"]);
 	});
 
 	it("returns the mapped item when an eligible row is updated", async () => {
@@ -87,7 +90,7 @@ describe("updateQueueItemPresented", () => {
 		if (Result.isOk(result)) {
 			expect(result.value).not.toBeNull();
 			expect(result.value?.id).toBe("item-1");
-			expect(result.value?.state).toBe("presented");
+			expect(result.value?.state).toBe("active");
 		}
 	});
 
@@ -114,8 +117,8 @@ describe("updateQueueItemResolved", () => {
 		vi.clearAllMocks();
 	});
 
-	it("guards the resolution to only pending/presented rows", async () => {
-		// Same conditional-update shape as the presented transition, so two
+	it("guards the resolution to only pending/active rows", async () => {
+		// Same conditional-update shape as the active transition, so two
 		// concurrent finish/dismiss flows can't clobber each other's resolution.
 		const { inSpy } = mockPresentedUpdate(ROW);
 
@@ -127,7 +130,7 @@ describe("updateQueueItemResolved", () => {
 			"2026-06-16T00:00:00Z",
 		);
 
-		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "presented"]);
+		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "active"]);
 	});
 
 	it("returns ok(null) when the item was already resolved (no eligible row)", async () => {

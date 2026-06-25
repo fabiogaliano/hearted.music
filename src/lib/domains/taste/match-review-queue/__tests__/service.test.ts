@@ -11,6 +11,7 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
 import { deriveUndecidedSongsForQueue } from "../service";
+import type { MatchReviewQueueItem } from "../types";
 
 // ============================================================================
 // Pure derivation tests — no mocks needed
@@ -303,7 +304,9 @@ function fakeSession() {
 	};
 }
 
-function fakeQueueItem(overrides: Record<string, unknown> = {}) {
+function fakeQueueItem(
+	overrides: Partial<MatchReviewQueueItem> = {},
+): MatchReviewQueueItem {
 	return {
 		id: "item-001",
 		sessionId: SESSION_ID,
@@ -311,7 +314,7 @@ function fakeQueueItem(overrides: Record<string, unknown> = {}) {
 		songId: "song-001",
 		sourceSnapshotId: SNAPSHOT_ID,
 		position: 0,
-		state: "pending" as const,
+		state: "pending",
 		resolution: null,
 		sourceScore: 0.8,
 		wasNewAtEnqueue: false,
@@ -329,6 +332,7 @@ function fakeSnapshotRow() {
 		snapshot_id: SNAPSHOT_ID,
 		appended_item_count: 0,
 		applied_at: "2026-06-15T00:00:00Z",
+		visibility_config_hash: "legacy",
 	};
 }
 
@@ -354,7 +358,7 @@ beforeEach(() => {
 		Result.ok(new Set<string>()),
 	);
 	vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
-	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok([]));
+	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 	vi.mocked(queries.insertSessionSnapshot).mockResolvedValue(
 		Result.ok(fakeSnapshotRow()),
 	);
@@ -797,9 +801,7 @@ describe("createOrResumeQueue pass rollover", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
-		vi.mocked(queries.insertQueueItems).mockResolvedValue(
-			Result.ok([fakeQueueItem({ songId: "song-skipped" })]),
-		);
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 		vi.mocked(createAdminSupabaseClient).mockReturnValue(
 			activeSnapshotClient(["song-skipped"]),
 		);
@@ -901,9 +903,7 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
-		vi.mocked(queries.insertQueueItems).mockResolvedValue(
-			Result.ok([fakeQueueItem({ songId: "song-ok" })]),
-		);
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 
 		const result = await appendSnapshotDelta(
 			fakeSession(), // strictnessMinScore: 0.5
@@ -950,9 +950,7 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set(["song-already-queued"])),
 		);
 		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(4));
-		vi.mocked(queries.insertQueueItems).mockResolvedValue(
-			Result.ok([fakeQueueItem({ songId: "song-new", position: 5 })]),
-		);
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 
 		const result = await appendSnapshotDelta(
 			fakeSession(),
@@ -1172,9 +1170,7 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
-		vi.mocked(queries.insertQueueItems).mockResolvedValue(
-			Result.ok([fakeQueueItem({ songId: "song-x" })]),
-		);
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 		// Items inserted, but recording the snapshot row races with a concurrent
 		// call → composite-PK ConstraintError. That is a benign idempotency no-op.
 		vi.mocked(queries.insertSessionSnapshot).mockResolvedValue(
@@ -1220,9 +1216,9 @@ describe("getQueueSummary", () => {
 // ============================================================================
 
 describe("markItemPresented", () => {
-	it("updates state to presented and records presented_at", async () => {
+	it("updates state to active and records presented_at", async () => {
 		const presentedItem = fakeQueueItem({
-			state: "presented",
+			state: "active",
 			presentedAt: "2026-06-15T00:00:00Z",
 		});
 		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
@@ -1233,7 +1229,7 @@ describe("markItemPresented", () => {
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("presented");
+			expect(result.value?.state).toBe("active");
 		}
 	});
 
@@ -1241,7 +1237,7 @@ describe("markItemPresented", () => {
 		// The positive path: a successful presented transition must durably clear the
 		// song's newness so it never re-flags after the user has seen the card.
 		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "presented" })),
+			Result.ok(fakeQueueItem({ state: "active" })),
 		);
 
 		await markItemPresented("item-001", ACCOUNT_ID, "song-001");
@@ -1258,7 +1254,7 @@ describe("markItemPresented", () => {
 		// transition (the item is presented regardless). The await-in-try/catch keeps
 		// the write reliable in serverless while still swallowing the error.
 		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "presented" })),
+			Result.ok(fakeQueueItem({ state: "active" })),
 		);
 		vi.mocked(queries.clearSongNewness).mockRejectedValue(
 			new Error("newness write failed"),
@@ -1268,7 +1264,7 @@ describe("markItemPresented", () => {
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("presented");
+			expect(result.value?.state).toBe("active");
 		}
 	});
 
@@ -1296,7 +1292,7 @@ describe("markItemPresented", () => {
 describe("markItemResolved", () => {
 	it("marks an item skipped with resolution=skipped", async () => {
 		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "skipped", resolution: "skipped" })),
+			Result.ok(fakeQueueItem({ state: "resolved", resolution: "skipped" })),
 		);
 
 		const result = await markItemResolved(
@@ -1308,14 +1304,14 @@ describe("markItemResolved", () => {
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("skipped");
+			expect(result.value?.state).toBe("resolved");
 			expect(result.value?.resolution).toBe("skipped");
 		}
 	});
 
 	it("marks an item completed with resolution=added after one or more adds", async () => {
 		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "completed", resolution: "added" })),
+			Result.ok(fakeQueueItem({ state: "resolved", resolution: "added" })),
 		);
 
 		const result = await markItemResolved(
@@ -1327,14 +1323,14 @@ describe("markItemResolved", () => {
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("completed");
+			expect(result.value?.state).toBe("resolved");
 			expect(result.value?.resolution).toBe("added");
 		}
 	});
 
 	it("marks an item completed with resolution=dismissed", async () => {
 		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "completed", resolution: "dismissed" })),
+			Result.ok(fakeQueueItem({ state: "resolved", resolution: "dismissed" })),
 		);
 
 		const result = await markItemResolved(
@@ -1351,7 +1347,7 @@ describe("markItemResolved", () => {
 	});
 
 	it("returns ok(null) when the conditional resolve matched no row (already resolved)", async () => {
-		// updateQueueItemResolved is guarded by .in("state", ["pending", "presented"])
+		// updateQueueItemResolved is guarded by .in("state", ["pending", "active"])
 		// so a concurrent finish/dismiss that already resolved the item leaves this
 		// stale call matching nothing — it must surface as ok(null), not a fake success.
 		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(

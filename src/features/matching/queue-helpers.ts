@@ -3,9 +3,9 @@ import type { MatchReviewResult } from "@/lib/server/match-review-queue.function
 /**
  * Derives ordered unresolved item ids from the queue summary.
  *
- * Only pending and presented items need a card — completed/skipped/unavailable
- * items are already decided. Sorting by position preserves the server-assigned
- * enqueue order (new songs first, then score-descending).
+ * Only pending and active items need a card — resolved items are already
+ * decided. Sorting by position preserves the server-assigned enqueue order
+ * (new songs first, then score-descending).
  *
  * This pure function is extracted from the route component so it can be unit-
  * tested without a DOM or query client.
@@ -13,7 +13,7 @@ import type { MatchReviewResult } from "@/lib/server/match-review-queue.function
 export function deriveUnresolvedIds(queue: MatchReviewResult | null): string[] {
 	if (!queue) return [];
 	return queue.items
-		.filter((item) => item.state === "pending" || item.state === "presented")
+		.filter((item) => item.state === "pending" || item.state === "active")
 		.sort((a, b) => a.position - b.position)
 		.map((item) => item.id);
 }

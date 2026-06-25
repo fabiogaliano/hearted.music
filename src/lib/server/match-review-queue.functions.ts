@@ -115,12 +115,12 @@ async function fetchOwnedQueueItem(
 		id: data.id,
 		sessionId: data.session_id,
 		accountId: data.account_id,
-		songId: data.song_id,
+		songId: data.song_id as string,
 		sourceSnapshotId: data.source_snapshot_id,
 		position: data.position,
 		state: data.state as MatchReviewQueueItem["state"],
 		resolution: data.resolution as MatchReviewQueueItem["resolution"],
-		sourceScore: data.source_score,
+		sourceScore: data.source_fit_score,
 		wasNewAtEnqueue: data.was_new_at_enqueue,
 		presentedAt: data.presented_at,
 		resolvedAt: data.resolved_at,
@@ -131,12 +131,7 @@ async function fetchOwnedQueueItem(
 
 /** Derived from unresolved item count — never from null song data. */
 function deriveCaughtUp(items: MatchReviewQueueItem[]): boolean {
-	return items.every(
-		(item) =>
-			item.state === "completed" ||
-			item.state === "skipped" ||
-			item.state === "unavailable",
-	);
+	return items.every((item) => item.state === "resolved");
 }
 
 /**
@@ -510,8 +505,8 @@ export const markMatchReviewItemPresented = createServerFn({ method: "POST" })
 // Queue-aware mutations (Phase 4)
 // ============================================================================
 
-/** Completed states that block further decisions from being recorded. */
-const RESOLVED_STATES = new Set(["completed", "skipped", "unavailable"]);
+// No RESOLVED_STATES set needed — the B9-C lifecycle split means `state === 'resolved'`
+// is the single terminal check for both add and dismiss guards.
 
 const AddFromQueueSchema = z.object({
 	itemId: z.uuid(),
@@ -548,7 +543,7 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "not-found" };
 		}
 
-		if (RESOLVED_STATES.has(item.state)) {
+		if (item.state === "resolved") {
 			return { success: false, reason: "already-resolved" };
 		}
 
@@ -625,7 +620,7 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "not-found" };
 		}
 
-		if (RESOLVED_STATES.has(item.state)) {
+		if (item.state === "resolved") {
 			return { success: false, reason: "already-resolved" };
 		}
 
