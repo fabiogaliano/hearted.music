@@ -34,8 +34,8 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
 import { Route as AuthenticatedPlaylistsNewRouteImport } from './routes/_authenticated/playlists.new'
+import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
 import { Route as ApiExtensionSyncStatusRouteImport } from './routes/api/extension/sync/status'
@@ -167,16 +167,16 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPlaylistsPlaylistRefRoute =
-  AuthenticatedPlaylistsPlaylistRefRouteImport.update({
-    id: '/$playlistRef',
-    path: '/$playlistRef',
-    getParentRoute: () => AuthenticatedPlaylistsRoute,
-  } as any)
 const AuthenticatedPlaylistsNewRoute =
   AuthenticatedPlaylistsNewRouteImport.update({
     id: '/new',
     path: '/new',
+    getParentRoute: () => AuthenticatedPlaylistsRoute,
+  } as any)
+const AuthenticatedPlaylistsPlaylistRefRoute =
+  AuthenticatedPlaylistsPlaylistRefRouteImport.update({
+    id: '/$playlistRef',
+    path: '/$playlistRef',
     getParentRoute: () => AuthenticatedPlaylistsRoute,
   } as any)
 const AuthenticatedCheckoutSuccessRoute =
@@ -627,18 +627,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/playlists/$playlistRef': {
-      id: '/_authenticated/playlists/$playlistRef'
-      path: '/$playlistRef'
-      fullPath: '/playlists/$playlistRef'
-      preLoaderRoute: typeof AuthenticatedPlaylistsPlaylistRefRouteImport
-      parentRoute: typeof AuthenticatedPlaylistsRoute
-    }
     '/_authenticated/playlists/new': {
       id: '/_authenticated/playlists/new'
       path: '/new'
       fullPath: '/playlists/new'
       preLoaderRoute: typeof AuthenticatedPlaylistsNewRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsRoute
+    }
+    '/_authenticated/playlists/$playlistRef': {
+      id: '/_authenticated/playlists/$playlistRef'
+      path: '/$playlistRef'
+      fullPath: '/playlists/$playlistRef'
+      preLoaderRoute: typeof AuthenticatedPlaylistsPlaylistRefRouteImport
       parentRoute: typeof AuthenticatedPlaylistsRoute
     }
     '/_authenticated/checkout/success': {
