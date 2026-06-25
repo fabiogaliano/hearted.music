@@ -201,7 +201,7 @@ function AuthenticatedLayout() {
 	// badge and CTA are always consistent. Replaces the old snapshot-derived
 	// matchingSession.totalSongs path that was removed in Phase 7.
 	const { data: matchReviewSummary } = useQuery({
-		...matchReviewSummaryQueryOptions(session.accountId),
+		...matchReviewSummaryQueryOptions(session.accountId, "song"),
 		enabled: isComplete,
 	});
 	const pendingSuggestions = matchReviewSummary?.pendingCount ?? 0;

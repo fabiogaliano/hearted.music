@@ -1,3 +1,9 @@
+/**
+ * UI/route-layer toggle mode (B2). Distinct from MatchOrientation (domain/server).
+ * Canonical URL: `/match` = song mode; `/match?mode=playlist` = playlist mode.
+ */
+export type MatchViewMode = "song" | "playlist";
+
 interface SongAnalysis {
 	headline: string;
 	compound_mood: string;

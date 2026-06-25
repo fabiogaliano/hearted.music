@@ -145,10 +145,10 @@ export function SettingsPage({
 				// fallback in /match. An in-progress queue retains the strictness it was
 				// created with by design; only the summary + threshold-based fallback change.
 				queryClient.invalidateQueries({
-					queryKey: matchReviewSummaryKeys.summary(accountId),
+					queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
 				});
 				queryClient.invalidateQueries({
-					queryKey: matchReviewKeys.review(accountId),
+					queryKey: matchReviewKeys.review(accountId, "song"),
 				});
 				queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			} catch {
