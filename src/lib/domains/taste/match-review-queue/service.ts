@@ -18,6 +18,7 @@ import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
+	strictnessScore,
 } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
@@ -57,7 +58,12 @@ interface UndecidedSong {
  * Extracted so tests can drive it without a DB.
  */
 export function deriveUndecidedSongsForQueue(
-	matchResults: Array<{ song_id: string; playlist_id: string; score: number }>,
+	matchResults: Array<{
+		song_id: string;
+		playlist_id: string;
+		score: number;
+		fused_score: number | null;
+	}>,
 	decidedPairs: Set<string>,
 	minScore: number,
 	newSongIds: Set<string>,
@@ -68,14 +74,15 @@ export function deriveUndecidedSongsForQueue(
 	>();
 
 	for (const mr of matchResults) {
-		if (mr.score < minScore) continue;
+		const rowScore = strictnessScore(mr);
+		if (rowScore < minScore) continue;
 		const existing = songMap.get(mr.song_id) ?? {
 			maxScore: 0,
 			hasUndecided: false,
 		};
 		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
 		songMap.set(mr.song_id, {
-			maxScore: Math.max(existing.maxScore, mr.score),
+			maxScore: Math.max(existing.maxScore, rowScore),
 			hasUndecided: existing.hasUndecided || isUndecided,
 		});
 	}

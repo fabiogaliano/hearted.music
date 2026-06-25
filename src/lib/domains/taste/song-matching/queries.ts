@@ -78,10 +78,14 @@ export async function isSnapshotOwnedByAccount(
 // Match Result Operations
 // ============================================================================
 
-/** The columns the undecided-derivation reads — never the factors JSONB blobs. */
+/**
+ * The columns the undecided-derivation reads — never the factors JSONB blobs.
+ * fused_score is included so callers can use strictnessScore(row) (MSR-02)
+ * instead of reading the legacy ordering score directly.
+ */
 export type MatchResultRow = Pick<
 	MatchResult,
-	"song_id" | "playlist_id" | "score"
+	"song_id" | "playlist_id" | "score" | "fused_score"
 >;
 
 /**
@@ -100,7 +104,7 @@ export function getMatchResults(
 	return fromSupabaseMany(
 		supabase
 			.from("match_result")
-			.select("song_id, playlist_id, score")
+			.select("song_id, playlist_id, score, fused_score")
 			.eq("snapshot_id", snapshotId)
 			.order("score", { ascending: false })
 			.order("song_id", { ascending: true })
