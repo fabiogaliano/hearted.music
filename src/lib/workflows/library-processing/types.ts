@@ -58,6 +58,11 @@ export type LibraryProcessingChange =
 			jobId: string;
 	  }
 	| {
+			kind: "match_snapshot_superseded";
+			accountId: string;
+			jobId: string;
+	  }
+	| {
 			kind: "playlist_management_session_flushed";
 			accountId: string;
 			targetMembershipChanged: boolean;

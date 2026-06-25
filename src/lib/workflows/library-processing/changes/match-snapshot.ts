@@ -14,4 +14,11 @@ export const MatchSnapshotChanges = {
 	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_failed" }> {
 		return { kind: "match_snapshot_failed", ...opts };
 	},
+
+	superseded(opts: {
+		accountId: string;
+		jobId: string;
+	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_superseded" }> {
+		return { kind: "match_snapshot_superseded", ...opts };
+	},
 };

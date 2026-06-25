@@ -26,14 +26,34 @@ import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
+import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
 import { loadMatchFilterExclusions } from "./match-filter-exclusions";
 import { loadTargetPlaylistProfiles } from "./profiles";
+import { isMatchRefreshJobSuperseded } from "./superseded";
 import type {
+	MatchSnapshotRefreshOutcome,
 	MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshResult,
 } from "./types";
 import { writeEmptySnapshot, writeMatchSnapshot } from "./write-match-snapshot";
+
+// Queries current state to check if a newer request has arrived since
+// this job was scheduled. Returns false on any state-load error so that
+// transient DB issues do not silently drop real work.
+async function checkIfSuperseded(
+	accountId: string,
+	satisfiesRequestedAt: string,
+): Promise<boolean> {
+	const stateResult = await loadLibraryProcessingState(accountId);
+	if (Result.isError(stateResult) || stateResult.value === null) {
+		return false;
+	}
+	return isMatchRefreshJobSuperseded(
+		{ satisfies_requested_at: satisfiesRequestedAt },
+		stateResult.value.matchSnapshotRefresh.requestedAt,
+	);
+}
 
 async function persistRefreshProgress(
 	jobId: string | undefined,
@@ -211,7 +231,8 @@ export async function executeMatchSnapshotRefresh(
 	plan: MatchSnapshotRefreshPlan,
 	jobId?: string,
 	actor?: string,
-): Promise<MatchSnapshotRefreshResult> {
+	satisfiesRequestedAt?: string,
+): Promise<MatchSnapshotRefreshOutcome> {
 	// Resolve a label when the caller didn't pass one (e.g. matching-lab replays)
 	// so every step log still names the account.
 	const who = actor ?? (await resolveAccountLabel(accountId));
@@ -281,14 +302,22 @@ export async function executeMatchSnapshotRefresh(
 		names: previewNames(playlists.map((p) => p.name)),
 	});
 
+	if (
+		satisfiesRequestedAt &&
+		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
+	) {
+		return { status: "superseded" };
+	}
+
 	if (playlists.length === 0) {
 		progress.candidateCount = 0;
 		progress.matchedSongCount = 0;
-		return publishSnapshot({
+		const snapshotResult = await publishSnapshot({
 			jobId,
 			progress,
 			writer: () => writeEmptySnapshot(accountId),
 		});
+		return { status: "published", result: snapshotResult };
 	}
 
 	if (profiles.length !== playlists.length) {
@@ -311,9 +340,16 @@ export async function executeMatchSnapshotRefresh(
 		playlists: playlists.length,
 	});
 
+	if (
+		satisfiesRequestedAt &&
+		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
+	) {
+		return { status: "superseded" };
+	}
+
 	if (songIds.length === 0) {
 		progress.matchedSongCount = 0;
-		return publishSnapshot({
+		const snapshotResult = await publishSnapshot({
 			jobId,
 			progress,
 			writer: () =>
@@ -325,6 +361,7 @@ export async function executeMatchSnapshotRefresh(
 					matchedSongIds: [],
 				}),
 		});
+		return { status: "published", result: snapshotResult };
 	}
 
 	const songsResult = await getByIds(songIds);
@@ -421,6 +458,13 @@ export async function executeMatchSnapshotRefresh(
 	const exclusionSetArg =
 		effectiveExclusionSet.size > 0 ? effectiveExclusionSet : undefined;
 
+	if (
+		satisfiesRequestedAt &&
+		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
+	) {
+		return { status: "superseded" };
+	}
+
 	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
 	const songEmbeddings = new Map<string, number[]>();
 	if (Result.isOk(embeddingsResult)) {
@@ -446,6 +490,13 @@ export async function executeMatchSnapshotRefresh(
 		songs: matchingSongs.length,
 		playlists: profiles.length,
 	});
+
+	if (
+		satisfiesRequestedAt &&
+		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
+	) {
+		return { status: "superseded" };
+	}
 
 	const matchingService = createMatchingService(
 		embeddingService,
@@ -539,7 +590,14 @@ export async function executeMatchSnapshotRefresh(
 		}
 	}
 
-	return publishSnapshot({
+	if (
+		satisfiesRequestedAt &&
+		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
+	) {
+		return { status: "superseded" };
+	}
+
+	const snapshotResult = await publishSnapshot({
 		jobId,
 		progress,
 		writer: () =>
@@ -553,4 +611,5 @@ export async function executeMatchSnapshotRefresh(
 				rerankDocumentMode,
 			}),
 	});
+	return { status: "published", result: snapshotResult };
 }

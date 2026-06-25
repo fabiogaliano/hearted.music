@@ -11,7 +11,6 @@ import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refr
 import {
 	type MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshPlanSchema,
-	type MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { workerConfig } from "./config";
 
@@ -27,12 +26,15 @@ export interface EnrichmentExecuteResult {
 	failedCount: number;
 }
 
-export interface MatchSnapshotRefreshExecuteResult {
-	accountId: string;
-	jobId: string;
-	published: boolean;
-	isEmpty: boolean;
-}
+export type MatchSnapshotRefreshExecuteResult =
+	| {
+			status: "published";
+			accountId: string;
+			jobId: string;
+			published: boolean;
+			isEmpty: boolean;
+	  }
+	| { status: "superseded"; accountId: string; jobId: string };
 
 export function startHeartbeat(jobId: string): { stop: () => void } {
 	const interval = setInterval(async () => {
@@ -105,12 +107,20 @@ export async function executeMatchSnapshotRefreshJob(
 
 	log.info("▶ MATCH RUN", { actor, jobId: job.id, accountId });
 
-	const result: MatchSnapshotRefreshResult = await executeMatchSnapshotRefresh(
+	const outcome = await executeMatchSnapshotRefresh(
 		accountId,
 		plan,
 		job.id,
 		actor,
+		job.satisfies_requested_at ?? undefined,
 	);
+
+	if (outcome.status === "superseded") {
+		log.info("■ MATCH SUPERSEDED", { actor, jobId: job.id, accountId });
+		return { status: "superseded", accountId, jobId: job.id };
+	}
+
+	const result = outcome.result;
 
 	log.info("■ MATCH DONE", {
 		actor,
@@ -125,6 +135,7 @@ export async function executeMatchSnapshotRefreshJob(
 	});
 
 	return {
+		status: "published",
 		accountId,
 		jobId: job.id,
 		published: result.published,

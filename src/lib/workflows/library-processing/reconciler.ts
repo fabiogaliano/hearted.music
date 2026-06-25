@@ -203,6 +203,13 @@ export function reconcileLibraryProcessing(
 			break;
 		}
 
+		case "match_snapshot_superseded": {
+			// Clear the active job without advancing settledAt — the newer request
+			// that superseded this job still needs to be processed.
+			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh, change.jobId);
+			break;
+		}
+
 		default: {
 			change satisfies never;
 		}

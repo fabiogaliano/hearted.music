@@ -183,6 +183,46 @@ async function runMatchSnapshotRefreshJob(
 	try {
 		const result = await executeMatchSnapshotRefreshJob(job, actor);
 
+		if (result.status === "superseded") {
+			const completedResult = await markJobCompleted(job.id);
+			if (Result.isError(completedResult)) {
+				log.error("mark-completed-failed", {
+					actor,
+					jobId: job.id,
+					accountId: job.account_id,
+					error: completedResult.error.message,
+				});
+				throw new Error(completedResult.error.message);
+			}
+
+			await writeMeasurement(
+				job,
+				actor,
+				"match_snapshot_refresh",
+				startedAt,
+				"superseded",
+			);
+
+			const change = MatchSnapshotChanges.superseded({
+				accountId: result.accountId,
+				jobId: result.jobId,
+			});
+			const settlement = await settleLibraryProcessing(change, {
+				actor,
+				jobId: job.id,
+				accountId: result.accountId,
+				workflow: "match_snapshot_refresh",
+				changeKind: change.kind,
+			});
+
+			return {
+				status: "completed",
+				workflow: "match_snapshot_refresh",
+				result,
+				settlement,
+			};
+		}
+
 		const completedResult = await markJobCompleted(job.id);
 		if (Result.isError(completedResult)) {
 			log.error("mark-completed-failed", {

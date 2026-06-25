@@ -17,3 +17,7 @@ export interface MatchSnapshotRefreshResult {
 	readonly isEmpty: boolean;
 	readonly noOp: boolean;
 }
+
+export type MatchSnapshotRefreshOutcome =
+	| { status: "published"; result: MatchSnapshotRefreshResult }
+	| { status: "superseded" };
