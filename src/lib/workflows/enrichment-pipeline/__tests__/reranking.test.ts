@@ -7,7 +7,8 @@ import type {
 import type { RerankerService } from "@/lib/integrations/reranker/service";
 import { rerankMatches } from "../reranking";
 
-// Character cap from reranking.ts — tests should match the real constant.
+// Character cap defined in match-ranking.ts and used by reranking.ts via import.
+// Keep this in sync with ANALYSIS_TAIL_MAX_CHARS in match-ranking.ts.
 const ANALYSIS_TAIL_MAX_CHARS = 1600;
 
 const songs: MatchingSong[] = [

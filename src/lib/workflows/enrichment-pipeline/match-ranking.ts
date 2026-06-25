@@ -8,8 +8,14 @@
  * existed in reranking.ts.
  */
 
+import { Result } from "better-result";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import { DEFAULT_RERANK_INSTRUCTION } from "@/lib/integrations/providers/types";
+import type {
+	MatchCandidate,
+	RerankerService,
+} from "@/lib/integrations/reranker/service";
+import { log } from "@/lib/observability/logger";
 
 export type { MatchOrientation };
 
@@ -76,8 +82,8 @@ export const MATCH_RANKING_SCHEMA_VERSION = "oriented-suggestion-lists-v1";
 /**
  * Per-orientation task instruction forwarded to the cross-encoder (E3).
  *
- * Song orientation:     query = playlist profile,  document = song metadata/analysis.
- * Playlist orientation: query = song profile,       document = playlist metadata.
+ * Song orientation:     query = song document (metadata/analysis),  candidates = playlist documents.
+ * Playlist orientation: query = playlist document,                   candidates = song documents.
  */
 export const RERANK_INSTRUCTION_BY_ORIENTATION: Readonly<
 	Record<MatchOrientation, string>
@@ -175,4 +181,216 @@ export function buildPlaylistRerankDocument(
 		document: `${playlist.name}${intentPart}${genrePart}`,
 		documentMode: "metadata",
 	};
+}
+
+/**
+ * Minimal stored pair fields needed by the song-orientation ranker.
+ * Accepts any superset (e.g. full MatchResult) without importing the whole type.
+ */
+export interface StoredMatchPairForRanking {
+	readonly songId: string;
+	readonly playlistId: string;
+	/** Pre-rerank fused retrieval score. Used as orderingScore for fused_fallback rows. */
+	readonly fusedScore: number;
+}
+
+/** Song metadata needed to build the reranker query document. */
+export interface SongForRanking extends SongRerankDocumentInput {
+	readonly id: string;
+}
+
+/** Playlist metadata needed to build reranker candidate documents. */
+export interface PlaylistForRanking extends PlaylistRerankDocumentInput {
+	readonly id: string;
+}
+
+/**
+ * Rank each song's playlist suggestions using the song as query and playlists
+ * as cross-encoder candidate documents (E1, E5, song orientation).
+ *
+ * For each song present in storedPairs:
+ *   1. Build a query document from the song's metadata (+ optional analysis prose).
+ *   2. Build a candidate document for every stored playlist suggestion.
+ *   3. Call the reranker with the song-orientation instruction.
+ *   4. Assign RankedPair fields:
+ *      - Reranked candidates: source='rerank', orderingScore=blended score,
+ *        rerankerScore=raw provider score.
+ *      - Tail candidates (below threshold or not sent): source='fused_fallback',
+ *        orderingScore=fusedScore, rerankerScore=null.
+ *   5. Sort by orderingScore desc then playlistId asc and assign dense ranks.
+ *
+ * Returns one RankedSuggestionLists per song. Songs missing from the `songs`
+ * array still produce a result — every pair falls back to fused_fallback
+ * ordering since no query document can be built.
+ *
+ * MSR-15 adds the playlist-oriented counterpart; keep signatures parallel.
+ */
+export async function rankSongSuggestionLists(params: {
+	storedPairs: readonly StoredMatchPairForRanking[];
+	songs: readonly SongForRanking[];
+	playlists: readonly PlaylistForRanking[];
+	rerankerService: RerankerService;
+}): Promise<RankedSuggestionLists[]> {
+	const { storedPairs, songs, playlists, rerankerService } = params;
+
+	const songMap = new Map(songs.map((s) => [s.id, s]));
+	const playlistMap = new Map(playlists.map((p) => [p.id, p]));
+
+	// Group stored pairs by song — do not mutate the input array.
+	const bySong = new Map<string, StoredMatchPairForRanking[]>();
+	for (const pair of storedPairs) {
+		let bucket = bySong.get(pair.songId);
+		if (!bucket) {
+			bucket = [];
+			bySong.set(pair.songId, bucket);
+		}
+		bucket.push(pair);
+	}
+
+	let songsReranked = 0;
+	let songsSkipped = 0;
+
+	const results: RankedSuggestionLists[] = [];
+
+	for (const [songId, pairs] of bySong) {
+		const song = songMap.get(songId);
+
+		// Build the query document from the song. When song metadata is missing
+		// we cannot produce a meaningful reranker query, so all pairs fall back.
+		const queryResult = song ? buildSongRerankDocument(song) : null;
+
+		// Stable pre-sort: fusedScore desc, playlistId asc — determines ordering
+		// within fused_fallback buckets and the initial candidate order passed to
+		// the reranker (higher-confidence pairs rank first before cross-encoding).
+		const sortedPairs = pairs.toSorted(
+			(a, b) =>
+				b.fusedScore - a.fusedScore || a.playlistId.localeCompare(b.playlistId),
+		);
+
+		// Map playlistId → fusedScore for fast lookup when building ranked pairs.
+		const fusedScoreByPlaylist = new Map(
+			sortedPairs.map((p) => [p.playlistId, p.fusedScore]),
+		);
+
+		// Build reranker candidates: playlist document as the ranked document.
+		const candidates: MatchCandidate[] = sortedPairs.map((pair) => {
+			const playlist = playlistMap.get(pair.playlistId);
+			const { document: doc } = playlist
+				? buildPlaylistRerankDocument(playlist)
+				: { document: pair.playlistId };
+			return {
+				id: pair.playlistId,
+				score: pair.fusedScore,
+				document: doc,
+			};
+		});
+
+		// Produce fused_fallback ranked pairs using stable pre-sort order.
+		// Array index 0 = rank 1; no rank field on RankedPair (implied by position).
+		const makeFusedFallbackPairs = (): RankedPair[] =>
+			sortedPairs.map((pair) => {
+				const playlist = playlistMap.get(pair.playlistId);
+				const documentMode: RankingDocumentMode = playlist
+					? buildPlaylistRerankDocument(playlist).documentMode
+					: "metadata";
+				return {
+					songId,
+					playlistId: pair.playlistId,
+					orderingScore: pair.fusedScore,
+					rerankerScore: null,
+					source: "fused_fallback" as const,
+					documentMode,
+				};
+			});
+
+		// Skip reranking when no query document is available.
+		if (!queryResult) {
+			results.push({
+				orientation: "song",
+				subjectId: songId,
+				rankedPairs: makeFusedFallbackPairs(),
+			});
+			songsSkipped++;
+			continue;
+		}
+
+		const rerankResult = await rerankerService.rerank(
+			queryResult.document,
+			candidates,
+			{ instruction: RERANK_INSTRUCTION_BY_ORIENTATION.song },
+		);
+
+		if (Result.isError(rerankResult) || !rerankResult.value.reranked) {
+			// Reranker failed or returned reranked:false — fall back entirely.
+			results.push({
+				orientation: "song",
+				subjectId: songId,
+				rankedPairs: makeFusedFallbackPairs(),
+			});
+			if (Result.isError(rerankResult)) {
+				log.warn("rank-song:reranker-failed", {
+					songId,
+					error: rerankResult.error.message,
+				});
+			}
+			songsSkipped++;
+			continue;
+		}
+
+		songsReranked++;
+
+		// Build ranked pairs from the reranker result. The returned candidates
+		// array interleaves reranked entries (with metadata.rerank_score set) and
+		// unreranked tail entries (no rerank_score). Distinguish by presence of the
+		// raw score in metadata.
+		const rankedPairs: RankedPair[] = rerankResult.value.candidates.map(
+			(candidate) => {
+				const rawScore = candidate.metadata?.rerank_score;
+				const isReranked = typeof rawScore === "number";
+				const fusedScore = fusedScoreByPlaylist.get(candidate.id) ?? 0;
+
+				const playlist = playlistMap.get(candidate.id);
+				const documentMode: RankingDocumentMode = playlist
+					? buildPlaylistRerankDocument(playlist).documentMode
+					: "metadata";
+
+				return {
+					songId,
+					playlistId: candidate.id,
+					// Reranked rows use the blended score as the authoritative sort key.
+					// Fused-fallback rows use the pre-rerank fusedScore so the ordering
+					// is strictly determined by retrieval quality alone.
+					orderingScore: isReranked ? candidate.score : fusedScore,
+					rerankerScore: isReranked ? rawScore : null,
+					source: isReranked
+						? ("rerank" as const)
+						: ("fused_fallback" as const),
+					documentMode,
+				};
+			},
+		);
+
+		// Dense-rank by orderingScore desc, playlistId asc — index already sorted
+		// by the reranker's ordering (reranked block sorted by blended score, tail
+		// preserves original order). Re-sort to collapse any interleaving.
+		// Array index 0 = rank 1 per RankedSuggestionLists contract.
+		const finalPairs = rankedPairs.toSorted(
+			(a, b) =>
+				b.orderingScore - a.orderingScore ||
+				a.playlistId.localeCompare(b.playlistId),
+		);
+
+		results.push({
+			orientation: "song",
+			subjectId: songId,
+			rankedPairs: finalPairs,
+		});
+	}
+
+	log.info("rank-song:done", {
+		songs: `${songsReranked}/${bySong.size}`,
+		skipped: songsSkipped,
+	});
+
+	return results;
 }

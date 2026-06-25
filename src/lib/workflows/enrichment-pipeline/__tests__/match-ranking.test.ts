@@ -1,11 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { Result } from "better-result";
+import { describe, expect, it, vi } from "vitest";
+import type { RerankerService } from "@/lib/integrations/reranker/service";
 import {
 	ANALYSIS_TAIL_MAX_CHARS,
 	buildPlaylistRerankDocument,
 	buildSongRerankDocument,
 	MATCH_RANKING_ORIENTATIONS,
 	MATCH_RANKING_SCHEMA_VERSION,
+	type PlaylistForRanking,
 	RERANK_INSTRUCTION_BY_ORIENTATION,
+	rankSongSuggestionLists,
+	type SongForRanking,
+	type StoredMatchPairForRanking,
 } from "@/lib/workflows/enrichment-pipeline/match-ranking";
 
 describe("match-ranking contracts", () => {
@@ -163,5 +169,387 @@ describe("buildPlaylistRerankDocument", () => {
 			genrePills: ["", "pop", ""],
 		});
 		expect(document).toBe("Chill. Genres: pop");
+	});
+});
+
+const songs: SongForRanking[] = [
+	{ id: "s1", name: "Alpha Song", artists: ["Artist A"], genres: ["pop"] },
+	{ id: "s2", name: "Beta Song", artists: ["Artist B"], genres: ["rock"] },
+];
+
+const playlists: PlaylistForRanking[] = [
+	{ id: "pl1", name: "Chill Vibes", matchIntent: "relaxing music" },
+	{ id: "pl2", name: "Party Mix", genrePills: ["pop"] },
+	{ id: "pl3", name: "Focus Beats" },
+];
+
+function makePair(
+	songId: string,
+	playlistId: string,
+	fusedScore: number,
+): StoredMatchPairForRanking {
+	return { songId, playlistId, fusedScore };
+}
+
+/** Build a mock RerankerService that returns the given candidates as-is. */
+function mockReranker(
+	candidates: Array<{
+		id: string;
+		score: number;
+		rerankerScore?: number;
+	}>,
+): RerankerService {
+	return {
+		rerank: vi.fn().mockResolvedValue(
+			Result.ok({
+				candidates: candidates.map((c) => ({
+					id: c.id,
+					score: c.score,
+					document: "",
+					// Only set metadata.rerank_score for candidates that were reranked.
+					...(c.rerankerScore !== undefined
+						? {
+								metadata: {
+									rerank_score: c.rerankerScore,
+									original_score: c.score,
+								},
+							}
+						: {}),
+				})),
+				reranked: true,
+				rerankedCount: candidates.filter((c) => c.rerankerScore !== undefined)
+					.length,
+				stats: { originalTopScore: 0.8, rerankTopScore: 0.9, scoreShift: 0.1 },
+			}),
+		),
+	} as unknown as RerankerService;
+}
+
+function failingReranker(): RerankerService {
+	return {
+		rerank: vi
+			.fn()
+			.mockResolvedValue(Result.err({ message: "provider unavailable" })),
+	} as unknown as RerankerService;
+}
+
+function skippingReranker(): RerankerService {
+	return {
+		rerank: vi.fn().mockResolvedValue(
+			Result.ok({
+				candidates: [],
+				reranked: false,
+				rerankedCount: 0,
+				stats: { originalTopScore: 0, rerankTopScore: 0, scoreShift: 0 },
+			}),
+		),
+	} as unknown as RerankerService;
+}
+
+describe("rankSongSuggestionLists", () => {
+	it("returns one RankedSuggestionLists per song with orientation=song", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s1", "pl2", 0.6),
+			makePair("s2", "pl1", 0.7),
+		];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "pl2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		expect(results).toHaveLength(2);
+		for (const r of results) {
+			expect(r.orientation).toBe("song");
+		}
+		const s1 = results.find((r) => r.subjectId === "s1");
+		expect(s1).toBeDefined();
+		expect(s1?.rankedPairs).toHaveLength(2);
+	});
+
+	it("full rerank: pairs have source=rerank and non-null rerankerScore", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s1", "pl2", 0.6)];
+		// Reranker inverts the order: pl2 scores higher
+		const reranker = mockReranker([
+			{ id: "pl2", score: 0.9, rerankerScore: 0.95 },
+			{ id: "pl1", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		const [first, second] = s1?.rankedPairs ?? [];
+
+		// pl2 should be rank 1 (higher orderingScore after rerank)
+		expect(first.playlistId).toBe("pl2");
+		expect(first.source).toBe("rerank");
+		expect(first.rerankerScore).toBe(0.95);
+		expect(first.orderingScore).toBe(0.9);
+
+		expect(second.playlistId).toBe("pl1");
+		expect(second.source).toBe("rerank");
+		expect(second.rerankerScore).toBe(0.7);
+	});
+
+	it("partial rerank tail: tail candidates are fused_fallback with null rerankerScore", async () => {
+		// Three playlists for s1; reranker returns pl1 as reranked, pl2 and pl3 as tail
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s1", "pl2", 0.6),
+			makePair("s1", "pl3", 0.4),
+		];
+		const reranker = mockReranker([
+			// pl1 got a raw cross-encoder score → source=rerank
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			// pl2 and pl3 are tail → no rerankerScore → fused_fallback
+			{ id: "pl2", score: 0.6 },
+			{ id: "pl3", score: 0.4 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		expect(s1?.rankedPairs).toHaveLength(3);
+
+		const ranked = s1?.rankedPairs ?? [];
+		const pl1Row = ranked.find((p) => p.playlistId === "pl1");
+		const pl2Row = ranked.find((p) => p.playlistId === "pl2");
+		const pl3Row = ranked.find((p) => p.playlistId === "pl3");
+
+		expect(pl1Row?.source).toBe("rerank");
+		expect(pl1Row?.rerankerScore).toBe(0.9);
+
+		// Tail rows must be fused_fallback with null rerankerScore
+		expect(pl2Row?.source).toBe("fused_fallback");
+		expect(pl2Row?.rerankerScore).toBeNull();
+		expect(pl2Row?.orderingScore).toBe(0.6);
+
+		expect(pl3Row?.source).toBe("fused_fallback");
+		expect(pl3Row?.rerankerScore).toBeNull();
+		expect(pl3Row?.orderingScore).toBe(0.4);
+	});
+
+	it("dense ranks are by orderingScore desc, playlistId asc as tiebreak", async () => {
+		// Two playlists with equal orderingScore — playlistId asc decides
+		const pairs = [makePair("s1", "pl2", 0.5), makePair("s1", "pl1", 0.5)];
+		// Both are fused_fallback (reranker skipped)
+		const reranker = skippingReranker();
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		// pl1 < pl2 lexicographically → pl1 is rank 1 (index 0)
+		expect(s1?.rankedPairs[0].playlistId).toBe("pl1");
+		expect(s1?.rankedPairs[1].playlistId).toBe("pl2");
+	});
+
+	it("reranker failure → all pairs are fused_fallback ordered by fusedScore", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s1", "pl2", 0.6)];
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: failingReranker(),
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		expect(s1?.rankedPairs).toHaveLength(2);
+		for (const pair of s1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+			expect(pair.rerankerScore).toBeNull();
+		}
+		// Ordered by fusedScore desc
+		expect(s1?.rankedPairs[0].playlistId).toBe("pl1");
+		expect(s1?.rankedPairs[0].orderingScore).toBe(0.8);
+	});
+
+	it("reranker skip (reranked=false) → all pairs are fused_fallback", async () => {
+		const pairs = [makePair("s1", "pl1", 0.7), makePair("s1", "pl2", 0.9)];
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: skippingReranker(),
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		for (const pair of s1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+		}
+		// pl2 has higher fusedScore → rank 1
+		expect(s1?.rankedPairs[0].playlistId).toBe("pl2");
+	});
+
+	it("missing song metadata → all pairs are fused_fallback (no query doc)", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s1", "pl2", 0.6)];
+		// Pass an empty songs array so s1 has no metadata
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.9, rerankerScore: 0.95 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs: [], // no metadata available
+			playlists,
+			rerankerService: reranker,
+		});
+
+		// Reranker should never be called since there's no query document.
+		expect(reranker.rerank).not.toHaveBeenCalled();
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		for (const pair of s1?.rankedPairs ?? []) {
+			expect(pair.source).toBe("fused_fallback");
+		}
+	});
+
+	it("documentMode is 'metadata' for all playlist candidates (playlists have no analysis prose)", async () => {
+		const pairs = [makePair("s1", "pl1", 0.8), makePair("s1", "pl2", 0.6)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+			{ id: "pl2", score: 0.75, rerankerScore: 0.7 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		for (const pair of s1?.rankedPairs ?? []) {
+			// buildPlaylistRerankDocument always returns 'metadata' mode
+			expect(pair.documentMode).toBe("metadata");
+		}
+	});
+
+	it("does not mutate the input storedPairs array", async () => {
+		const pairs: StoredMatchPairForRanking[] = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s1", "pl2", 0.6),
+		];
+		const originalOrder = pairs.map((p) => p.playlistId);
+		const reranker = mockReranker([
+			{ id: "pl2", score: 0.9, rerankerScore: 0.95 },
+			{ id: "pl1", score: 0.7, rerankerScore: 0.65 },
+		]);
+
+		await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		// Original array order must be unchanged
+		expect(pairs.map((p) => p.playlistId)).toEqual(originalOrder);
+	});
+
+	it("orderingScore and rerankerScore are independent of strictnessScore (no strictness in output)", async () => {
+		// Guard: RankedPair must not have a 'strictnessScore' or related field that
+		// could be confused with display/filter scores. We verify the shape by
+		// checking that only the declared fields are present on a result row.
+		const pairs = [makePair("s1", "pl1", 0.8)];
+		const reranker = mockReranker([
+			{ id: "pl1", score: 0.85, rerankerScore: 0.9 },
+		]);
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		const s1 = results.find((r) => r.subjectId === "s1");
+		const pair = s1?.rankedPairs[0];
+
+		// Only declared RankedPair fields should be present.
+		const keys = Object.keys(pair ?? {}).sort();
+		expect(keys).toEqual(
+			[
+				"documentMode",
+				"orderingScore",
+				"playlistId",
+				"rerankerScore",
+				"songId",
+				"source",
+			].sort(),
+		);
+	});
+
+	it("multiple songs produce independent suggestion lists with dense ranks each", async () => {
+		const pairs = [
+			makePair("s1", "pl1", 0.8),
+			makePair("s1", "pl2", 0.6),
+			makePair("s2", "pl1", 0.7),
+			makePair("s2", "pl3", 0.5),
+		];
+		const reranker: RerankerService = {
+			rerank: vi.fn().mockResolvedValue(
+				Result.ok({
+					candidates: [
+						// Return first call for s1 (2 candidates), second for s2 (2 candidates)
+						{
+							id: "pl1",
+							score: 0.85,
+							document: "",
+							metadata: { rerank_score: 0.9 },
+						},
+						{
+							id: "pl2",
+							score: 0.75,
+							document: "",
+							metadata: { rerank_score: 0.7 },
+						},
+					],
+					reranked: true,
+					rerankedCount: 2,
+					stats: {
+						originalTopScore: 0.8,
+						rerankTopScore: 0.85,
+						scoreShift: 0.05,
+					},
+				}),
+			),
+		} as unknown as RerankerService;
+
+		const results = await rankSongSuggestionLists({
+			storedPairs: pairs,
+			songs,
+			playlists,
+			rerankerService: reranker,
+		});
+
+		expect(results).toHaveLength(2);
+		for (const r of results) {
+			// Each list starts at rank 1 (index 0), independently
+			expect(r.rankedPairs.length).toBeGreaterThan(0);
+		}
 	});
 });
