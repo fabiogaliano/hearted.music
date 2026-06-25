@@ -496,6 +496,76 @@ describe("recoverTerminalLibraryProcessingRefs", () => {
 		});
 	});
 
+	it("reconstructs match_snapshot_superseded from superseded measurement", async () => {
+		const job = makeJob({
+			id: "j-superseded-ms",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-superseded-ms",
+					workflow: "match_snapshot_refresh",
+					outcome: "superseded",
+					details: null,
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_superseded" })),
+		);
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results).toHaveLength(1);
+		expect(results[0].recoveryStrategy).toBe("completed_from_measurement");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "match_snapshot_superseded",
+			accountId: "acct-1",
+			jobId: "j-superseded-ms",
+		});
+	});
+
+	it("does not treat a superseded match_snapshot_refresh as failed", async () => {
+		const job = makeJob({
+			id: "j-sup-not-fail",
+			status: "completed",
+			type: "match_snapshot_refresh" as Job["type"],
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([
+				{ state: makeState(), workflow: "match_snapshot_refresh", job },
+			]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-sup-not-fail",
+					workflow: "match_snapshot_refresh",
+					outcome: "superseded",
+					details: null,
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(
+			Result.ok(makeApplyOutcome({ changeKind: "match_snapshot_superseded" })),
+		);
+
+		await recoverTerminalLibraryProcessingRefs();
+
+		// Must not emit the failed change kind
+		const calls = applyMock.mock.calls;
+		for (const [change] of calls) {
+			expect(change.kind).not.toBe("match_snapshot_failed");
+		}
+	});
+
 	it("falls back to conservative failure when measurement is missing", async () => {
 		const job = makeJob({
 			id: "j-no-meas",

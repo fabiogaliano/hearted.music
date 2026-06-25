@@ -132,6 +132,19 @@ function isMatchSnapshotMeasurementValid(
 	return typeof d.published === "boolean" && typeof d.isEmpty === "boolean";
 }
 
+// A completed job whose measurement outcome is "superseded" exited via the
+// cooperative cancellation path — not a failure. Recovery replays the
+// superseded change so settledAt stays unchanged and the stale workflow
+// can re-ensure a fresh job.
+function isMatchSnapshotMeasurementSuperseded(
+	measurement: JobExecutionMeasurement,
+): boolean {
+	return (
+		measurement.workflow === "match_snapshot_refresh" &&
+		measurement.outcome === "superseded"
+	);
+}
+
 async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
 	change: LibraryProcessingChange;
 	strategy: TerminalRefRecoveryResult["recoveryStrategy"];
@@ -193,6 +206,16 @@ async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
 				reason: "error",
 			}),
 			strategy: "conservative_failure",
+		};
+	}
+
+	if (isMatchSnapshotMeasurementSuperseded(measurementResult.value)) {
+		return {
+			change: MatchSnapshotChanges.superseded({
+				accountId: job.account_id,
+				jobId: job.id,
+			}),
+			strategy: "completed_from_measurement",
 		};
 	}
 
