@@ -1,6 +1,10 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
+import {
+	latestRequestedAt,
+	mergeMatchRefreshProgress,
+} from "@/lib/platform/jobs/match-refresh-merge";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import { createInitialMatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
@@ -9,7 +13,10 @@ import {
 	type JobType,
 } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
+import {
+	fromSupabaseMaybe,
+	fromSupabaseSingle,
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 function enrichmentProgressToJson(progress: EnrichmentChunkProgress): Json {
 	const stages: { [key: string]: Json | undefined } = {};
@@ -140,16 +147,57 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 	satisfiesRequestedAt: string;
 	queuePriority: number;
 	needsTargetSongEnrichment: boolean;
+	availableAt: string;
 }): Promise<Result<Job, DbError>> {
 	let lastError: Result<Job, DbError> | undefined;
 
-	for (let attempt = 0; attempt < 2; attempt++) {
+	for (let attempt = 0; attempt < 3; attempt++) {
 		const existing = await getActiveJob(
 			opts.accountId,
 			"match_snapshot_refresh",
 		);
 		if (Result.isError(existing)) return existing;
-		if (existing.value) return Result.ok(existing.value);
+
+		if (existing.value) {
+			// Running jobs are claimed and executing — leave them alone.
+			if (existing.value.status === "running") {
+				return Result.ok(existing.value);
+			}
+
+			// Pending job: merge the new request into the existing one so repeated
+			// triggers coalesce rather than queuing multiple refreshes.
+			// The available_at update is the pull-forward mechanism: an immediate
+			// trigger (availableAt = now) can overtake a debounced job.
+			const mergedProgress = mergeMatchRefreshProgress(
+				existing.value.progress,
+				opts.needsTargetSongEnrichment,
+			);
+
+			const supabase = createAdminSupabaseClient();
+			const updated = await fromSupabaseMaybe(
+				supabase
+					.from("job")
+					.update({
+						satisfies_requested_at: latestRequestedAt(
+							existing.value.satisfies_requested_at,
+							opts.satisfiesRequestedAt,
+						),
+						queue_priority: opts.queuePriority,
+						available_at: opts.availableAt,
+						progress: mergedProgress as unknown as Json,
+					})
+					.eq("id", existing.value.id)
+					.eq("status", "pending")
+					.select()
+					.single(),
+			);
+
+			if (Result.isError(updated)) return updated;
+			// null means the job was claimed (moved to running) between our read and
+			// the update — loop to re-read and act on the new state.
+			if (updated.value !== null) return Result.ok(updated.value);
+			continue;
+		}
 
 		const supabase = createAdminSupabaseClient();
 		const created = await fromSupabaseSingle(
@@ -164,6 +212,7 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 					),
 					satisfies_requested_at: opts.satisfiesRequestedAt,
 					queue_priority: opts.queuePriority,
+					available_at: opts.availableAt,
 				})
 				.select()
 				.single(),
