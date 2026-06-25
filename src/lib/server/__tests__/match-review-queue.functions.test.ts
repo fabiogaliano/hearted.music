@@ -737,7 +737,7 @@ describe("addSongToPlaylistFromQueueItem", () => {
 	});
 
 	it("rejects when queue item is already resolved (already-resolved)", async () => {
-		mockItemOwnership({ ...BASE_ITEM, state: "completed" });
+		mockItemOwnership({ ...BASE_ITEM, state: "resolved" });
 
 		const result = await addSongToPlaylistFromQueueItem({
 			data: { itemId: "item-1", playlistId: "pl-1" },
@@ -840,7 +840,7 @@ describe("dismissMatchReviewItem", () => {
 	});
 
 	it("rejects when queue item is already resolved (already-resolved)", async () => {
-		mockItemOwnership({ ...BASE_ITEM, state: "skipped" });
+		mockItemOwnership({ ...BASE_ITEM, state: "resolved" });
 
 		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -908,7 +908,7 @@ describe("dismissMatchReviewItem", () => {
 			[
 				{
 					playlistId: "pl-1",
-					servedRank: 1,
+					modelRank: 1,
 				},
 			],
 		);
@@ -1221,7 +1221,7 @@ describe("dismissMatchReviewItem", () => {
 			[
 				{
 					playlistId: "pl-1",
-					servedRank: 1,
+					modelRank: 1,
 				},
 			],
 		);
@@ -1419,7 +1419,7 @@ describe("startOrResumeMatchReview", () => {
 		vi.mocked(fetchQueueItems).mockResolvedValue(
 			Result.ok([
 				fakeDomainItem({ id: "item-1", state: "pending", position: 0 }),
-				fakeDomainItem({ id: "item-2", state: "presented", position: 1 }),
+				fakeDomainItem({ id: "item-2", state: "active", position: 1 }),
 			]),
 		);
 
@@ -1438,8 +1438,8 @@ describe("startOrResumeMatchReview", () => {
 		// All resolved — caught up must come from the states, never from null song data.
 		vi.mocked(fetchQueueItems).mockResolvedValue(
 			Result.ok([
-				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
-				fakeDomainItem({ id: "item-2", state: "skipped", position: 1 }),
+				fakeDomainItem({ id: "item-1", state: "resolved", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "resolved", position: 1 }),
 			]),
 		);
 
@@ -1507,7 +1507,7 @@ describe("getMatchReview", () => {
 		);
 		vi.mocked(fetchQueueItems).mockResolvedValue(
 			Result.ok([
-				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
+				fakeDomainItem({ id: "item-1", state: "resolved", position: 0 }),
 			]),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
@@ -1574,8 +1574,8 @@ describe("getMatchReview", () => {
 		);
 		vi.mocked(fetchQueueItems).mockResolvedValue(
 			Result.ok([
-				fakeDomainItem({ id: "item-1", state: "completed", position: 0 }),
-				fakeDomainItem({ id: "item-2", state: "unavailable", position: 1 }),
+				fakeDomainItem({ id: "item-1", state: "resolved", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "resolved", position: 1 }),
 			]),
 		);
 
