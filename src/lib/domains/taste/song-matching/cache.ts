@@ -12,13 +12,23 @@ import {
 	hashMatchingConfig,
 	hashMatchSnapshot,
 	hashPlaylistSet,
+	hashRankingConfig,
 	hashRerankerConfig,
 	stableStringify,
 } from "@/lib/domains/enrichment/embeddings/hashing";
 import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import { getMlProvider } from "@/lib/integrations/providers/factory";
 import { DEFAULT_RERANKER_CONFIG } from "@/lib/integrations/reranker/service";
+import {
+	MATCH_RANKING_ORIENTATIONS,
+	MATCH_RANKING_SCHEMA_VERSION,
+	RERANK_INSTRUCTION_BY_ORIENTATION,
+} from "@/lib/workflows/enrichment-pipeline/match-ranking";
 import { DEFAULT_MATCHING_CONFIG } from "./config";
+import {
+	MATCH_STORED_PAIRS_PER_PLAYLIST,
+	MATCH_STORED_PAIRS_PER_SONG,
+} from "./retention";
 import type {
 	MatchingConfig,
 	MatchingPlaylistProfile,
@@ -38,6 +48,7 @@ export async function computeMatchSnapshotMetadata(
 	configHash: string;
 	exclusionSetHash?: string;
 	rerankerConfigHash: string;
+	rankingConfigHash: string;
 	modelBundleHash: string;
 	effectiveConfig: MatchingConfig;
 }> {
@@ -91,12 +102,21 @@ export async function computeMatchSnapshotMetadata(
 		throw modelBundleHashResult.error;
 	}
 
+	const rankingConfigHash = await hashRankingConfig({
+		schemaVersion: MATCH_RANKING_SCHEMA_VERSION,
+		instructionByOrientation: RERANK_INSTRUCTION_BY_ORIENTATION,
+		orientations: MATCH_RANKING_ORIENTATIONS,
+		storedPairsPerSong: MATCH_STORED_PAIRS_PER_SONG,
+		storedPairsPerPlaylist: MATCH_STORED_PAIRS_PER_PLAYLIST,
+	});
+
 	const snapshotHash = await hashMatchSnapshot({
 		candidateSetHash,
 		playlistSetHash,
 		configHash,
 		exclusionSetHash,
 		rerankerConfigHash,
+		rankingConfigHash,
 		modelBundleHash: modelBundleHashResult.value,
 	});
 
@@ -107,6 +127,7 @@ export async function computeMatchSnapshotMetadata(
 		configHash,
 		exclusionSetHash,
 		rerankerConfigHash,
+		rankingConfigHash,
 		modelBundleHash: modelBundleHashResult.value,
 		effectiveConfig,
 	};

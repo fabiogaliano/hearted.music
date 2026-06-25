@@ -188,6 +188,30 @@ export async function hashRerankerConfig(
 }
 
 /**
+ * Hash ranking config for snapshot invalidation when orientation instructions,
+ * stored-pair limits, or schema version change independently of candidate data.
+ * Prefix: rk_
+ */
+export async function hashRankingConfig(params: {
+	schemaVersion: string;
+	instructionByOrientation: Record<string, string>;
+	orientations: readonly string[];
+	storedPairsPerSong: number;
+	storedPairsPerPlaylist: number;
+}): Promise<string> {
+	const content = stableStringify({
+		schemaVersion: params.schemaVersion,
+		// Sort orientations so insertion order doesn't affect the hash.
+		orientations: [...params.orientations].sort(),
+		instructionByOrientation: params.instructionByOrientation,
+		storedPairsPerSong: params.storedPairsPerSong,
+		storedPairsPerPlaylist: params.storedPairsPerPlaylist,
+	});
+	const hash = await shortHash(content);
+	return `rk_${hash}`;
+}
+
+/**
  * Hash full match snapshot for cache lookup.
  * Prefix: snap_
  */
@@ -198,6 +222,7 @@ export async function hashMatchSnapshot(params: {
 	modelBundleHash?: string;
 	exclusionSetHash?: string;
 	rerankerConfigHash?: string;
+	rankingConfigHash?: string;
 }): Promise<string> {
 	const content = stableStringify(params);
 	const hash = await shortHash(content);
