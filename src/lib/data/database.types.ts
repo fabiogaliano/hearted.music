@@ -1470,6 +1470,77 @@ export type Database = {
 					},
 				];
 			};
+			match_result_ranking: {
+				Row: {
+					created_at: string;
+					document_mode: string;
+					id: string;
+					ordering_score: number;
+					orientation: string;
+					playlist_id: string;
+					rank: number;
+					reranker_score: number | null;
+					snapshot_id: string;
+					song_id: string;
+					source: string;
+				};
+				Insert: {
+					created_at?: string;
+					document_mode: string;
+					id?: string;
+					ordering_score: number;
+					orientation: string;
+					playlist_id: string;
+					rank: number;
+					reranker_score?: number | null;
+					snapshot_id: string;
+					song_id: string;
+					source: string;
+				};
+				Update: {
+					created_at?: string;
+					document_mode?: string;
+					id?: string;
+					ordering_score?: number;
+					orientation?: string;
+					playlist_id?: string;
+					rank?: number;
+					reranker_score?: number | null;
+					snapshot_id?: string;
+					song_id?: string;
+					source?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_result_ranking_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_result_ranking_snapshot_id_song_id_playlist_id_fkey";
+						columns: ["snapshot_id", "song_id", "playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "match_result";
+						referencedColumns: ["snapshot_id", "song_id", "playlist_id"];
+					},
+					{
+						foreignKeyName: "match_result_ranking_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_result_ranking_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			match_review_queue_item: {
 				Row: {
 					account_id: string;
@@ -2502,14 +2573,14 @@ export type Database = {
 					{
 						foreignKeyName: "song_instrumental_review_song_id_fkey";
 						columns: ["song_id"];
-						isOneToOne: false;
+						isOneToOne: true;
 						referencedRelation: "liked_song_decorated";
 						referencedColumns: ["song_id"];
 					},
 					{
 						foreignKeyName: "song_instrumental_review_song_id_fkey";
 						columns: ["song_id"];
-						isOneToOne: false;
+						isOneToOne: true;
 						referencedRelation: "song";
 						referencedColumns: ["id"];
 					},
