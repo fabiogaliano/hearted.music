@@ -458,7 +458,7 @@ export type DismissQueueItemAtomicStatus =
 
 export interface DismissQueueItemAtomicDecision {
 	playlistId: string;
-	servedRank: number | null;
+	modelRank: number | null;
 }
 
 function isDismissQueueItemAtomicStatus(
@@ -479,7 +479,7 @@ export async function dismissQueueItemAtomically(
 ): Promise<Result<DismissQueueItemAtomicStatus, DbError>> {
 	const decisionsJson: Json = decisions.map((decision) => ({
 		playlist_id: decision.playlistId,
-		served_rank: decision.servedRank,
+		model_rank: decision.modelRank,
 	}));
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(

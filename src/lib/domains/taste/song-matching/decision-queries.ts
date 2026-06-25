@@ -24,7 +24,7 @@ type DecisionType = "added" | "dismissed";
  * `served` records the ranking the user acted on (matching roadmap #6). Both
  * fields are nullable: the server resolves them best-effort and passes null when
  * the served snapshot can't be tied to a match_result — never blocking the
- * decision. A null `servedRank` under a non-null `snapshotId` is the signal
+ * decision. A null `modelRank` under a non-null `snapshotId` is the signal
  * that the (song, playlist) pair was never surfaced in that snapshot.
  *
  * `queueItemId` links the decision back to the queue item it was made from.
@@ -37,7 +37,7 @@ export function upsertMatchDecision(
 	decision: DecisionType,
 	served?: {
 		snapshotId?: string | null;
-		servedRank?: number | null;
+		modelRank?: number | null;
 		queueItemId?: string | null;
 	},
 ): Promise<Result<MatchDecision, DbError>> {
@@ -53,7 +53,7 @@ export function upsertMatchDecision(
 					decision,
 					decided_at: new Date().toISOString(),
 					snapshot_id: served?.snapshotId ?? null,
-					served_rank: served?.servedRank ?? null,
+					model_rank: served?.modelRank ?? null,
 					queue_item_id: served?.queueItemId ?? null,
 				},
 				{ onConflict: "account_id,song_id,playlist_id" },
@@ -67,9 +67,9 @@ export function upsertMatchDecision(
  * Batch upserts match decisions.
  * On conflict (same account + song + playlist), updates the decision and decided_at.
  *
- * Per-decision `snapshotId` / `servedRank` carry the served-ranking context (see
+ * Per-decision `snapshotId` / `modelRank` carry the served-ranking context (see
  * `upsertMatchDecision`). A dismiss spans many playlists in one snapshot: those
- * with a match_result carry `servedRank` (surfaced negatives), the rest null it
+ * with a match_result carry `modelRank` (surfaced negatives), the rest null it
  * (implicit negatives) — both kept distinct in the same batch.
  *
  * `queueItemId` links each decision back to the queue item it was made from.
@@ -82,7 +82,7 @@ export function upsertMatchDecisions(
 		playlistId: string;
 		decision: DecisionType;
 		snapshotId?: string | null;
-		servedRank?: number | null;
+		modelRank?: number | null;
 		queueItemId?: string | null;
 	}[],
 ): Promise<Result<MatchDecision[], DbError>> {
@@ -102,7 +102,7 @@ export function upsertMatchDecisions(
 					decision: d.decision,
 					decided_at: new Date().toISOString(),
 					snapshot_id: d.snapshotId ?? null,
-					served_rank: d.servedRank ?? null,
+					model_rank: d.modelRank ?? null,
 					queue_item_id: d.queueItemId ?? null,
 				})),
 				{ onConflict: "account_id,song_id,playlist_id" },
