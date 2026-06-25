@@ -21,14 +21,11 @@ import type {
 	RerankerService,
 } from "@/lib/integrations/reranker/service";
 import { log } from "@/lib/observability/logger";
-
-/**
- * Maximum character budget for the analysis tail portion of a document.
- * ~400 tokens × 4 chars/token, leaving room for the metadata prefix and
- * the reranker template overhead (~100 token reserve).
- * Truncation always falls on a word boundary.
- */
-const ANALYSIS_TAIL_MAX_CHARS = 1600;
+// buildSongRerankDocument is the single source of truth for song document
+// formatting (MSR-13/14). This file previously had an inline copy — removed to
+// prevent format drift between the legacy rerankMatches path and the new
+// oriented ranking path (rankSongSuggestionLists).
+import { buildSongRerankDocument } from "./match-ranking";
 
 interface PlaylistInfo {
 	readonly id: string;
@@ -100,24 +97,12 @@ export async function rerankMatches(
 
 		const candidates: MatchCandidate[] = rankedEntries.map((e) => {
 			const song = songMap.get(e.songId);
-			const genres = song?.genres?.join(", ") ?? "";
-			const metadataPrefix = `${song?.name ?? "Unknown"} by ${song?.artists?.join(", ") ?? "Unknown"}. Genres: ${genres}.`;
-
-			const rawAnalysis = analysisText.get(e.songId);
-			let doc: string;
-			if (rawAnalysis) {
-				// Truncate the analysis tail at a word boundary to keep the whole doc
-				// within ~400 tokens. We never truncate the metadata prefix or query.
-				let tail = rawAnalysis;
-				if (tail.length > ANALYSIS_TAIL_MAX_CHARS) {
-					const slice = tail.slice(0, ANALYSIS_TAIL_MAX_CHARS);
-					const lastSpace = slice.lastIndexOf(" ");
-					tail = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
-				}
-				doc = `${metadataPrefix}\n\n${tail}`;
-			} else {
-				doc = metadataPrefix;
-			}
+			const { document: doc } = buildSongRerankDocument({
+				name: song?.name ?? "Unknown",
+				artists: song?.artists ?? ["Unknown"],
+				genres: song?.genres ?? null,
+				analysisText: analysisText.get(e.songId),
+			});
 
 			return {
 				id: e.songId,
