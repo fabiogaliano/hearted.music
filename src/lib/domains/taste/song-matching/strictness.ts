@@ -22,3 +22,23 @@ export const STRICTNESS_MIN_SCORE: Record<MatchStrictness, number> = {
 	balanced: 0.5,
 	strict: 0.65,
 };
+
+/**
+ * The single source of truth for strictness comparison and match-percent
+ * display (E7, A5, I1).
+ *
+ * fused_score is the pre-rerank weighted-sum — the authoritative quality
+ * signal set at write time and never overwritten by the reranker. score is
+ * the legacy ordering field that may hold the reranked value on rows written
+ * before match_result_ranking existed; we fall back to it only when
+ * fused_score is absent.
+ *
+ * No read path should compare against the reranker/ordering score for
+ * strictness or display — callers must go through this helper.
+ */
+export function strictnessScore(row: {
+	score: number;
+	fused_score: number | null;
+}): number {
+	return row.fused_score ?? row.score;
+}

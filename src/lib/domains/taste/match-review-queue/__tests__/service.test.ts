@@ -17,10 +17,16 @@ import { deriveUndecidedSongsForQueue } from "../service";
 // ============================================================================
 
 describe("deriveUndecidedSongsForQueue", () => {
-	const mr = (song_id: string, playlist_id: string, score: number) => ({
+	const mr = (
+		song_id: string,
+		playlist_id: string,
+		score: number,
+		fused_score: number | null = null,
+	) => ({
 		song_id,
 		playlist_id,
 		score,
+		fused_score,
 	});
 
 	it("returns empty when no match results", () => {
@@ -120,10 +126,16 @@ describe("deriveUndecidedSongsForQueue", () => {
 // function exported for queue seeding.
 
 describe("queue ordering (new first, max score desc, id asc)", () => {
-	const mr = (song_id: string, playlist_id: string, score: number) => ({
+	const mr = (
+		song_id: string,
+		playlist_id: string,
+		score: number,
+		fused_score: number | null = null,
+	) => ({
 		song_id,
 		playlist_id,
 		score,
+		fused_score,
 	});
 
 	function deriveOrdered(
@@ -771,7 +783,14 @@ describe("createOrResumeQueue pass rollover", () => {
 			Result.ok({ ...fakeSession(), id: "session-fresh-sync" }),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-skipped", playlist_id: "pl-A", score: 0.8 }]),
+			Result.ok([
+				{
+					song_id: "song-skipped",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
 		);
 		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
 		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
@@ -856,8 +875,18 @@ describe("appendSnapshotDelta", () => {
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
 			Result.ok([
-				{ song_id: "song-ok", playlist_id: "pl-A", score: 0.8 },
-				{ song_id: "song-low", playlist_id: "pl-B", score: 0.3 }, // below 0.5
+				{
+					song_id: "song-ok",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+				{
+					song_id: "song-low",
+					playlist_id: "pl-B",
+					score: 0.3,
+					fused_score: null,
+				}, // below 0.5
 			]),
 		);
 		// Entitlement: both entitled
@@ -894,8 +923,18 @@ describe("appendSnapshotDelta", () => {
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
 			Result.ok([
-				{ song_id: "song-already-queued", playlist_id: "pl-A", score: 0.9 },
-				{ song_id: "song-new", playlist_id: "pl-B", score: 0.8 },
+				{
+					song_id: "song-already-queued",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-new",
+					playlist_id: "pl-B",
+					score: 0.8,
+					fused_score: null,
+				},
 			]),
 		);
 		// Both songs are entitled
@@ -935,7 +974,14 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-decided", playlist_id: "pl-A", score: 0.8 }]),
+			Result.ok([
+				{
+					song_id: "song-decided",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
 		);
 		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
 			Result.ok([
@@ -982,7 +1028,14 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-1", playlist_id: "pl-A", score: 0.8 }]),
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
 		);
 		// Entitlement RPC returns empty — song-1 is not entitled
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
@@ -1010,7 +1063,14 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-x", playlist_id: "pl-A", score: 0.9 }]),
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
 		);
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from: vi.fn().mockReturnThis(),
@@ -1052,7 +1112,14 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-1", playlist_id: "pl-A", score: 0.8 }]),
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
 		);
 		// Entitlement RPC errors. Reading this as an empty entitled set would derive
 		// zero items and then mark the snapshot applied — permanently skipping every
@@ -1085,7 +1152,14 @@ describe("appendSnapshotDelta", () => {
 			Result.ok(new Set<string>()),
 		);
 		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([{ song_id: "song-x", playlist_id: "pl-A", score: 0.9 }]),
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
 		);
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from: vi.fn().mockReturnThis(),
