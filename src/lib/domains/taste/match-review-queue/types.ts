@@ -13,14 +13,38 @@ export type MatchReviewQueueItemRow = Tables<"match_review_queue_item">;
 export type MatchReviewSessionSnapshotRow =
 	Tables<"match_review_session_snapshot">;
 
-// Mirrors the DB CHECK constraints so the service layer gets static
-// exhaustiveness checking without duplicating the check in migration code.
+/**
+ * Canonical internal direction for a match review pass (A2, B1).
+ * Use `orientation` for domain/server/schema; UI toggle uses `mode` (B2).
+ */
+export type MatchOrientation = "song" | "playlist";
+
+/**
+ * Discriminated union for the reviewed entity in a queue item (B3).
+ * Replaces the song-only `songId: string` field so illegal subject states
+ * are unrepresentable in exported server/UI boundaries.
+ */
+export type MatchReviewSubject =
+	| { orientation: "song"; songId: string }
+	| { orientation: "playlist"; playlistId: string };
+
+/**
+ * Legacy DB-mirrored state kept for row-level compatibility until the schema
+ * migration (MSR-XX) lands. New code should use QueueItemLifecycleState.
+ */
 export type QueueItemState =
 	| "pending"
 	| "presented"
 	| "completed"
 	| "skipped"
 	| "unavailable";
+
+/**
+ * New split lifecycle state (B9-C). Resolution outcome is captured separately
+ * in QueueItemResolution. `active` replaces `presented`; `resolved` replaces
+ * `completed | skipped | unavailable`.
+ */
+export type QueueItemLifecycleState = "pending" | "active" | "resolved";
 
 export type QueueItemResolution =
 	| "added"
@@ -30,6 +54,11 @@ export type QueueItemResolution =
 
 export type SessionStatus = "active" | "completed" | "abandoned";
 
+/**
+ * Legacy domain object used by existing service/server code that reads the
+ * song-only DB schema. New cross-orientation code should use
+ * MatchReviewQueueItemDto instead.
+ */
 export interface MatchReviewQueueItem {
 	id: string;
 	sessionId: string;
@@ -38,6 +67,27 @@ export interface MatchReviewQueueItem {
 	sourceSnapshotId: string;
 	position: number;
 	state: QueueItemState;
+	resolution: QueueItemResolution | null;
+	sourceScore: number;
+	wasNewAtEnqueue: boolean;
+	presentedAt: string | null;
+	resolvedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+/**
+ * Exported queue item DTO that uses MatchReviewSubject so orientation is
+ * always explicit and `{ songId?, playlistId? }` ambiguity is eliminated (E8).
+ */
+export interface MatchReviewQueueItemDto {
+	id: string;
+	sessionId: string;
+	accountId: string;
+	subject: MatchReviewSubject;
+	sourceSnapshotId: string;
+	position: number;
+	state: QueueItemLifecycleState;
 	resolution: QueueItemResolution | null;
 	sourceScore: number;
 	wasNewAtEnqueue: boolean;
@@ -67,6 +117,41 @@ export interface MatchReviewSummary {
 	hasActiveQueue: boolean;
 	pendingCount: number;
 	previewSongIds: string[];
+}
+
+/**
+ * A single preview entry in an orientation-aware summary (E9).
+ * Replaces the ad-hoc `{ id, image, name, artist }` shapes used by the server
+ * layer so both song-mode and playlist-mode previews share one type.
+ */
+export interface MatchReviewSummaryPreviewItem {
+	id: string;
+	imageUrl: string | null;
+	name: string;
+	artist: string;
+}
+
+/**
+ * Lightweight preview snapshot used by the dashboard CTA and sidebar badge (E9).
+ * orientation tells callers which subject type generated the count.
+ */
+export interface MatchReviewSummaryPreview {
+	orientation: MatchOrientation;
+	pendingCount: number;
+	previewItems: MatchReviewSummaryPreviewItem[];
+	hasActiveQueue: boolean;
+}
+
+/**
+ * Full orientation-aware summary result returned by server functions (E9).
+ * Supersedes the server-local MatchReviewSummaryResult once MSR-XX migrates
+ * callers.
+ */
+export interface MatchReviewSummaryResult {
+	orientation: MatchOrientation;
+	pendingCount: number;
+	previewItems: MatchReviewSummaryPreviewItem[];
+	hasActiveQueue: boolean;
 }
 
 export interface AppendResult {
