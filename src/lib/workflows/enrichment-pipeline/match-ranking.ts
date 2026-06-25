@@ -1,9 +1,11 @@
 /**
- * Oriented ranking contracts for the match enrichment pipeline.
+ * Oriented ranking contracts and document builders for the match enrichment
+ * pipeline.
  *
  * Types and constants used by both the ranking write path (MSR-12–15) and the
- * presentation/capture path (MSR-22). Actual ranking behavior is not wired
- * here; this module is a compile-stable shared contract (MSR-04).
+ * presentation/capture path (MSR-22). Document builders live here so MSR-14/15
+ * can call them directly without duplicating the formatting logic that already
+ * existed in reranking.ts.
  */
 
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
@@ -84,3 +86,93 @@ export const RERANK_INSTRUCTION_BY_ORIENTATION: Readonly<
 	playlist:
 		"Given a song's mood and themes, judge if this playlist is a good home for it.",
 } as const;
+
+// ============================================================================
+// Document builders (E5)
+// ============================================================================
+
+/**
+ * Maximum character budget for the analysis tail portion of a song document.
+ * ~400 tokens × 4 chars/token with a reserve for metadata prefix and template
+ * overhead. Truncation always falls on a word boundary.
+ */
+export const ANALYSIS_TAIL_MAX_CHARS = 1600;
+
+/** Input for building a song reranker document. */
+export interface SongRerankDocumentInput {
+	readonly name: string;
+	readonly artists: readonly string[];
+	readonly genres: readonly string[] | null;
+	/** When provided, appended after the metadata prefix (analysis mode). */
+	readonly analysisText?: string | null;
+}
+
+/** Input for building a playlist reranker document. */
+export interface PlaylistRerankDocumentInput {
+	readonly name: string;
+	readonly matchIntent?: string | null;
+	readonly genrePills?: readonly string[] | null;
+}
+
+/** Pair of (document string, document mode) returned by the builders. */
+export interface RerankDocumentResult {
+	readonly document: string;
+	readonly documentMode: RankingDocumentMode;
+}
+
+/**
+ * Builds the reranker document for a song candidate (E5, song orientation).
+ *
+ * When analysisText is provided and non-empty the document is 'analysis' mode
+ * (metadata prefix + truncated prose). Otherwise it is 'metadata' mode
+ * (metadata prefix only). The format is identical to the inline document
+ * construction in reranking.ts so both paths produce byte-compatible strings.
+ */
+export function buildSongRerankDocument(
+	song: SongRerankDocumentInput,
+): RerankDocumentResult {
+	const genres = song.genres?.join(", ") ?? "";
+	const metadataPrefix = `${song.name} by ${song.artists.join(", ")}. Genres: ${genres}.`;
+
+	const rawAnalysis = song.analysisText;
+	if (rawAnalysis) {
+		// Truncate at a word boundary so the total doc stays within ~400 tokens.
+		let tail = rawAnalysis;
+		if (tail.length > ANALYSIS_TAIL_MAX_CHARS) {
+			const slice = tail.slice(0, ANALYSIS_TAIL_MAX_CHARS);
+			const lastSpace = slice.lastIndexOf(" ");
+			tail = lastSpace > 0 ? slice.slice(0, lastSpace) : slice;
+		}
+		return {
+			document: `${metadataPrefix}\n\n${tail}`,
+			documentMode: "analysis",
+		};
+	}
+
+	return { document: metadataPrefix, documentMode: "metadata" };
+}
+
+/**
+ * Builds the reranker document for a playlist candidate (E5, playlist
+ * orientation).
+ *
+ * The format mirrors buildIntentText (playlist-profiling/calculations.ts) so
+ * the document is byte-compatible with how playlists are described in profile
+ * embeddings. Playlists carry no separate analysis prose, so this always
+ * returns 'metadata' mode.
+ */
+export function buildPlaylistRerankDocument(
+	playlist: PlaylistRerankDocumentInput,
+): RerankDocumentResult {
+	// Match the intent-text separator used in playlist profile embeddings so
+	// the cross-encoder sees a familiar format for this content type.
+	const intentPart = playlist.matchIntent ? ` — ${playlist.matchIntent}` : "";
+	const activePills = playlist.genrePills?.filter((p) => p.length > 0) ?? [];
+	const genrePart =
+		activePills.length > 0 ? `. Genres: ${activePills.join(", ")}` : "";
+
+	return {
+		document: `${playlist.name}${intentPart}${genrePart}`,
+		documentMode: "metadata",
+	};
+}

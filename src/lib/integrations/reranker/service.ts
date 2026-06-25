@@ -98,12 +98,19 @@ export class RerankerService {
 	 *
 	 * @param query - The query text (e.g., playlist profile)
 	 * @param candidates - Candidates from stage-1 matching
+	 * @param options - Per-call overrides; never mutates shared service config
 	 * @returns Reranked candidates with blended scores
 	 */
 	async rerank(
 		query: string,
 		candidates: MatchCandidate[],
+		options?: { instruction?: string },
 	): Promise<Result<RerankResult, RerankerServiceError>> {
+		// Per-call instruction wins over the service default when provided.
+		// This intentionally does NOT write back to this.config so concurrent or
+		// sequential calls from other orientations keep their own defaults.
+		const effectiveInstruction =
+			options?.instruction ?? this.config.instruction;
 		// Guard: no candidates
 		if (candidates.length === 0) {
 			return Result.ok(this.createEmptyResult());
@@ -145,7 +152,7 @@ export class RerankerService {
 
 		// Call provider reranker — thread config fields so they reach the model
 		const rerankResult = await providerResult.value.rerank(query, documents, {
-			instruction: this.config.instruction,
+			instruction: effectiveInstruction,
 			model: this.config.model,
 		});
 
