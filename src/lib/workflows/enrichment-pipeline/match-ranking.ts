@@ -93,10 +93,6 @@ export const RERANK_INSTRUCTION_BY_ORIENTATION: Readonly<
 		"Given a song's mood and themes, judge if this playlist is a good home for it.",
 } as const;
 
-// ============================================================================
-// Document builders (E5)
-// ============================================================================
-
 /**
  * Maximum character budget for the analysis tail portion of a song document.
  * ~400 tokens × 4 chars/token with a reserve for metadata prefix and template
@@ -205,6 +201,17 @@ export interface PlaylistForRanking extends PlaylistRerankDocumentInput {
 }
 
 /**
+ * Combined result returned by the combined entry point (MSR-15, E2/E1/D).
+ *
+ * 'completed'  – all requested orientations finished without interruption.
+ * 'superseded' – isSuperseded fired mid-run; byOrientation may be partial.
+ */
+export interface RankMatchSuggestionListsResult {
+	status: "completed" | "superseded";
+	byOrientation: Map<MatchOrientation, RankedSuggestionLists[]>;
+}
+
+/**
  * Rank each song's playlist suggestions using the song as query and playlists
  * as cross-encoder candidate documents (E1, E5, song orientation).
  *
@@ -223,15 +230,19 @@ export interface PlaylistForRanking extends PlaylistRerankDocumentInput {
  * array still produce a result — every pair falls back to fused_fallback
  * ordering since no query document can be built.
  *
- * MSR-15 adds the playlist-oriented counterpart; keep signatures parallel.
+ * isSuperseded is checked between suggestion lists so a superseded job stops
+ * early and returns the partial results accumulated so far (MSR-15).
  */
 export async function rankSongSuggestionLists(params: {
 	storedPairs: readonly StoredMatchPairForRanking[];
 	songs: readonly SongForRanking[];
 	playlists: readonly PlaylistForRanking[];
 	rerankerService: RerankerService;
+	/** Optional checkpoint: if it returns true between iterations, ranking stops early. */
+	isSuperseded?: () => Promise<boolean>;
 }): Promise<RankedSuggestionLists[]> {
-	const { storedPairs, songs, playlists, rerankerService } = params;
+	const { storedPairs, songs, playlists, rerankerService, isSuperseded } =
+		params;
 
 	const songMap = new Map(songs.map((s) => [s.id, s]));
 	const playlistMap = new Map(playlists.map((p) => [p.id, p]));
@@ -253,6 +264,12 @@ export async function rankSongSuggestionLists(params: {
 	const results: RankedSuggestionLists[] = [];
 
 	for (const [songId, pairs] of bySong) {
+		// Superseded checkpoint between suggestion lists (MSR-15). Stops early
+		// so a newer job can proceed without waiting for remaining songs.
+		if (isSuperseded && (await isSuperseded())) {
+			log.info("rank-song:superseded", { rankedSoFar: results.length });
+			break;
+		}
 		const song = songMap.get(songId);
 
 		// Build the query document from the song. When song metadata is missing
@@ -393,4 +410,273 @@ export async function rankSongSuggestionLists(params: {
 	});
 
 	return results;
+}
+
+/**
+ * Rank each playlist's song suggestions using the playlist as query and songs
+ * as cross-encoder candidate documents (E1, E5, playlist orientation, MSR-15).
+ *
+ * Mirror of rankSongSuggestionLists with inverted roles:
+ *   query   = buildPlaylistRerankDocument(playlist)
+ *   candidates = buildSongRerankDocument(song) for each song paired with this playlist
+ *
+ * For each playlist present in storedPairs:
+ *   1. Build a query document from the playlist metadata (name + intent + pills).
+ *   2. Build a candidate document for every stored song suggestion.
+ *   3. Call the reranker with the playlist-orientation instruction.
+ *   4. Assign RankedPair fields:
+ *      - Reranked candidates: source='rerank', orderingScore=blended score,
+ *        rerankerScore=raw provider score.
+ *      - Tail candidates (below threshold or not sent): source='fused_fallback',
+ *        orderingScore=fusedScore, rerankerScore=null.
+ *   5. Sort by orderingScore desc then songId asc and assign dense ranks.
+ *
+ * documentMode is derived from the song candidate document (songs can be
+ * 'analysis' mode when analysis prose is available; playlists are always
+ * 'metadata'). This is the converse of song orientation where the candidate
+ * playlist document always produces 'metadata'.
+ *
+ * isSuperseded is checked between suggestion lists so a superseded job stops
+ * early and returns the partial results accumulated so far.
+ */
+export async function rankPlaylistSuggestionLists(params: {
+	storedPairs: readonly StoredMatchPairForRanking[];
+	songs: readonly SongForRanking[];
+	playlists: readonly PlaylistForRanking[];
+	rerankerService: RerankerService;
+	/** Optional checkpoint: if it returns true between iterations, ranking stops early. */
+	isSuperseded?: () => Promise<boolean>;
+}): Promise<RankedSuggestionLists[]> {
+	const { storedPairs, songs, playlists, rerankerService, isSuperseded } =
+		params;
+
+	const songMap = new Map(songs.map((s) => [s.id, s]));
+	const playlistMap = new Map(playlists.map((p) => [p.id, p]));
+
+	// Group stored pairs by playlist — do not mutate the input array.
+	const byPlaylist = new Map<string, StoredMatchPairForRanking[]>();
+	for (const pair of storedPairs) {
+		let bucket = byPlaylist.get(pair.playlistId);
+		if (!bucket) {
+			bucket = [];
+			byPlaylist.set(pair.playlistId, bucket);
+		}
+		bucket.push(pair);
+	}
+
+	let playlistsReranked = 0;
+	let playlistsSkipped = 0;
+
+	const results: RankedSuggestionLists[] = [];
+
+	for (const [playlistId, pairs] of byPlaylist) {
+		// Superseded checkpoint between suggestion lists (MSR-15). Stops early
+		// so a newer job can proceed without waiting for remaining playlists.
+		if (isSuperseded && (await isSuperseded())) {
+			log.info("rank-playlist:superseded", { rankedSoFar: results.length });
+			break;
+		}
+
+		const playlist = playlistMap.get(playlistId);
+
+		// Build the query document from the playlist. When playlist metadata is
+		// missing we cannot produce a meaningful reranker query, so all pairs fall back.
+		const queryResult = playlist ? buildPlaylistRerankDocument(playlist) : null;
+
+		// Stable pre-sort: fusedScore desc, songId asc — determines ordering
+		// within fused_fallback buckets and the initial candidate order passed to
+		// the reranker (higher-confidence pairs rank first before cross-encoding).
+		const sortedPairs = pairs.toSorted(
+			(a, b) => b.fusedScore - a.fusedScore || a.songId.localeCompare(b.songId),
+		);
+
+		// Map songId → fusedScore for fast lookup when building ranked pairs.
+		const fusedScoreBySong = new Map(
+			sortedPairs.map((p) => [p.songId, p.fusedScore]),
+		);
+
+		// Build reranker candidates: song document as the ranked document.
+		const candidates: MatchCandidate[] = sortedPairs.map((pair) => {
+			const song = songMap.get(pair.songId);
+			const { document: doc } = song
+				? buildSongRerankDocument(song)
+				: { document: pair.songId };
+			return {
+				id: pair.songId,
+				score: pair.fusedScore,
+				document: doc,
+			};
+		});
+
+		// Produce fused_fallback ranked pairs using stable pre-sort order.
+		// documentMode comes from the song document since songs can be 'analysis' mode.
+		const makeFusedFallbackPairs = (): RankedPair[] =>
+			sortedPairs.map((pair) => {
+				const song = songMap.get(pair.songId);
+				const documentMode: RankingDocumentMode = song
+					? buildSongRerankDocument(song).documentMode
+					: "metadata";
+				return {
+					songId: pair.songId,
+					playlistId,
+					orderingScore: pair.fusedScore,
+					rerankerScore: null,
+					source: "fused_fallback" as const,
+					documentMode,
+				};
+			});
+
+		// Skip reranking when no query document is available.
+		if (!queryResult) {
+			results.push({
+				orientation: "playlist",
+				subjectId: playlistId,
+				rankedPairs: makeFusedFallbackPairs(),
+			});
+			playlistsSkipped++;
+			continue;
+		}
+
+		const rerankResult = await rerankerService.rerank(
+			queryResult.document,
+			candidates,
+			{ instruction: RERANK_INSTRUCTION_BY_ORIENTATION.playlist },
+		);
+
+		if (Result.isError(rerankResult) || !rerankResult.value.reranked) {
+			// Reranker failed or returned reranked:false — fall back entirely.
+			results.push({
+				orientation: "playlist",
+				subjectId: playlistId,
+				rankedPairs: makeFusedFallbackPairs(),
+			});
+			if (Result.isError(rerankResult)) {
+				log.warn("rank-playlist:reranker-failed", {
+					playlistId,
+					error: rerankResult.error.message,
+				});
+			}
+			playlistsSkipped++;
+			continue;
+		}
+
+		playlistsReranked++;
+
+		// Build ranked pairs from the reranker result. Distinguish reranked
+		// candidates (metadata.rerank_score present) from tail candidates (no score).
+		const rankedPairs: RankedPair[] = rerankResult.value.candidates.map(
+			(candidate) => {
+				const rawScore = candidate.metadata?.rerank_score;
+				const isReranked = typeof rawScore === "number";
+				const fusedScore = fusedScoreBySong.get(candidate.id) ?? 0;
+
+				const song = songMap.get(candidate.id);
+				const documentMode: RankingDocumentMode = song
+					? buildSongRerankDocument(song).documentMode
+					: "metadata";
+
+				return {
+					songId: candidate.id,
+					playlistId,
+					orderingScore: isReranked ? candidate.score : fusedScore,
+					rerankerScore: isReranked ? rawScore : null,
+					source: isReranked
+						? ("rerank" as const)
+						: ("fused_fallback" as const),
+					documentMode,
+				};
+			},
+		);
+
+		// Dense-rank by orderingScore desc, songId asc — re-sort to collapse any
+		// interleaving between reranked block and tail.
+		// Array index 0 = rank 1 per RankedSuggestionLists contract.
+		const finalPairs = rankedPairs.toSorted(
+			(a, b) =>
+				b.orderingScore - a.orderingScore || a.songId.localeCompare(b.songId),
+		);
+
+		results.push({
+			orientation: "playlist",
+			subjectId: playlistId,
+			rankedPairs: finalPairs,
+		});
+	}
+
+	log.info("rank-playlist:done", {
+		playlists: `${playlistsReranked}/${byPlaylist.size}`,
+		skipped: playlistsSkipped,
+	});
+
+	return results;
+}
+
+/**
+ * Combined entry point that produces RankedSuggestionLists for every requested
+ * orientation (MSR-15, E2 D). Iterates MATCH_RANKING_ORIENTATIONS (or a subset
+ * provided by the caller) and delegates to the per-orientation rankers.
+ *
+ * isSuperseded is forwarded into each per-orientation ranking loop AND checked
+ * between orientations so the job can stop before starting the next orientation.
+ *
+ * Returns status='superseded' when isSuperseded fired at any checkpoint.
+ * byOrientation always contains the partial or complete results collected before
+ * the stop, so callers can decide whether to publish or discard.
+ */
+export async function rankMatchSuggestionLists(params: {
+	orientations?: readonly MatchOrientation[];
+	storedPairs: readonly StoredMatchPairForRanking[];
+	songs: readonly SongForRanking[];
+	playlists: readonly PlaylistForRanking[];
+	rerankerService: RerankerService;
+	/** Optional checkpoint forwarded into per-orientation loops and checked between orientations. */
+	isSuperseded?: () => Promise<boolean>;
+}): Promise<RankMatchSuggestionListsResult> {
+	const {
+		storedPairs,
+		songs,
+		playlists,
+		rerankerService,
+		isSuperseded,
+		orientations = MATCH_RANKING_ORIENTATIONS,
+	} = params;
+
+	const byOrientation = new Map<MatchOrientation, RankedSuggestionLists[]>();
+
+	for (const orientation of orientations) {
+		// Check before starting each orientation so a superseded job does not
+		// begin an expensive full-orientation ranking pass unnecessarily.
+		if (isSuperseded && (await isSuperseded())) {
+			log.info("rank-match:superseded-before-orientation", { orientation });
+			return { status: "superseded", byOrientation };
+		}
+
+		if (orientation === "song") {
+			const rankedLists = await rankSongSuggestionLists({
+				storedPairs,
+				songs,
+				playlists,
+				rerankerService,
+				isSuperseded,
+			});
+			byOrientation.set("song", rankedLists);
+		} else {
+			const rankedLists = await rankPlaylistSuggestionLists({
+				storedPairs,
+				songs,
+				playlists,
+				rerankerService,
+				isSuperseded,
+			});
+			byOrientation.set("playlist", rankedLists);
+		}
+
+		// Check immediately after each orientation before moving to the next.
+		if (isSuperseded && (await isSuperseded())) {
+			log.info("rank-match:superseded-after-orientation", { orientation });
+			return { status: "superseded", byOrientation };
+		}
+	}
+
+	return { status: "completed", byOrientation };
 }
