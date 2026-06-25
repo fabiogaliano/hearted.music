@@ -6,10 +6,16 @@ import { flattenAnalysisText } from "@/lib/domains/enrichment/embeddings/analysi
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import {
+	MATCH_STORED_PAIRS_PER_PLAYLIST,
+	MATCH_STORED_PAIRS_PER_SONG,
+	retainStoredMatchPairs,
+} from "@/lib/domains/taste/song-matching/retention";
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingAudioFeatures,
 	MatchingSong,
+	MatchResult,
 } from "@/lib/domains/taste/song-matching/types";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
@@ -24,7 +30,11 @@ import {
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
-import { rerankMatches } from "@/lib/workflows/enrichment-pipeline/reranking";
+import {
+	type PlaylistForRanking,
+	rankMatchSuggestionLists,
+	type SongForRanking,
+} from "@/lib/workflows/enrichment-pipeline/match-ranking";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
@@ -36,7 +46,11 @@ import type {
 	MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshResult,
 } from "./types";
-import { writeEmptySnapshot, writeMatchSnapshot } from "./write-match-snapshot";
+import {
+	type RankingRowPayload,
+	writeEmptySnapshot,
+	writeMatchSnapshot,
+} from "./write-match-snapshot";
 
 // Queries current state to check if a newer request has arrived since
 // this job was scheduled. Returns false on any state-load error so that
@@ -518,15 +532,37 @@ export async function executeMatchSnapshotRefresh(
 		throw new Error("[target-refresh] Matching failed");
 	}
 
-	// Recorded into the snapshot hash so it reflects the documents actually
-	// sent to the reranker, not the intended mode.
+	// Flatten all matched pairs and apply bilateral retention so both oriented
+	// suggestion lists have sufficient pairs (song-top-N ∪ playlist-top-N).
+	const allPairs: MatchResult[] = [];
+	for (const results of matchResult.value.matches.values()) {
+		allPairs.push(...results);
+	}
+	const storedPairs = retainStoredMatchPairs({
+		thresholdedPairs: allPairs,
+		perSongLimit: MATCH_STORED_PAIRS_PER_SONG,
+		perPlaylistLimit: MATCH_STORED_PAIRS_PER_PLAYLIST,
+	});
+
+	// Recorded into the snapshot hash so it reflects documents actually built.
 	let rerankDocumentMode: "analysis" | "metadata" = "metadata";
 
-	if (rerankerService && matchResult.value.matches.size > 0) {
-		// Fetch analyses only for songs that actually have matches — not the full
-		// candidate set — to avoid unnecessary DB load.
-		const matchedSongIdsForRerank = [...matchResult.value.matches.keys()];
-		const analysesResult = await getSongAnalyses(matchedSongIdsForRerank);
+	// Rankings keyed by "songId:playlistId" — one row per (pair, orientation).
+	const rankingsByPair = new Map<string, RankingRowPayload[]>();
+	// Song-orientation rank keyed by "songId:playlistId" for legacy score/rank
+	// mirror (C12): new read paths use match_result_ranking; old read paths use
+	// the mirror value on match_result.score / match_result.rank.
+	const songOrientationRankByPair = new Map<
+		string,
+		{ rank: number; orderingScore: number }
+	>();
+
+	if (storedPairs.length > 0) {
+		// Load analyses for stored-pair songs — avoids fetching the full candidate
+		// set when most songs have no pairs (empty-match case skips this entirely).
+		const storedSongIdSet = new Set(storedPairs.map((p) => p.songId));
+		const storedSongIds = [...storedSongIdSet];
+		const analysesResult = await getSongAnalyses(storedSongIds);
 		const analysisTextMap = new Map<string, string>();
 		if (Result.isOk(analysesResult)) {
 			for (const [songId, analysis] of analysesResult.value) {
@@ -540,16 +576,74 @@ export async function executeMatchSnapshotRefresh(
 		}
 		rerankDocumentMode = analysisTextMap.size > 0 ? "analysis" : "metadata";
 
-		await rerankMatches(
-			matchResult.value.matches,
-			matchingSongs,
-			playlists,
-			rerankerService,
-			analysisTextMap,
-		);
+		const songsForRanking: SongForRanking[] = songsResult.value
+			.filter((s) => storedSongIdSet.has(s.id))
+			.map((s) => ({
+				id: s.id,
+				name: s.name,
+				artists: s.artists,
+				genres: s.genres,
+				analysisText: analysisTextMap.get(s.id) ?? null,
+			}));
+
+		const playlistsForRanking: PlaylistForRanking[] = playlists.map((pl) => ({
+			id: pl.id,
+			name: pl.name,
+			matchIntent: pl.match_intent ?? null,
+			genrePills: pl.genre_pills ?? null,
+		}));
+
+		// Use existing rerankerService or construct a new one; the RerankerService
+		// constructor only parses config and never touches the network, so it
+		// cannot throw. If the provider is later unavailable, rankSongSuggestionLists
+		// and rankPlaylistSuggestionLists degrade to fused_fallback internally.
+		const effectiveReranker = rerankerService ?? new RerankerService();
+
+		const rankResult = await rankMatchSuggestionLists({
+			storedPairs,
+			songs: songsForRanking,
+			playlists: playlistsForRanking,
+			rerankerService: effectiveReranker,
+			isSuperseded: satisfiesRequestedAt
+				? () => checkIfSuperseded(accountId, satisfiesRequestedAt)
+				: undefined,
+		});
+
+		// A superseded result publishes nothing — a newer job will publish instead.
+		if (rankResult.status === "superseded") {
+			return { status: "superseded" };
+		}
+
+		// Build per-pair ranking payload from both orientations.
+		for (const [orientation, lists] of rankResult.byOrientation) {
+			for (const list of lists) {
+				list.rankedPairs.forEach((pair, idx) => {
+					const rank = idx + 1;
+					const key = `${pair.songId}:${pair.playlistId}`;
+					const row: RankingRowPayload = {
+						orientation,
+						rank,
+						ordering_score: pair.orderingScore,
+						reranker_score: pair.rerankerScore,
+						source: pair.source,
+						document_mode: pair.documentMode,
+					};
+					const existing = rankingsByPair.get(key) ?? [];
+					existing.push(row);
+					rankingsByPair.set(key, existing);
+
+					if (orientation === "song") {
+						songOrientationRankByPair.set(key, {
+							rank,
+							orderingScore: pair.orderingScore,
+						});
+					}
+				});
+			}
+		}
 	}
 
-	const matchedSongIds = [...matchResult.value.matches.keys()];
+	const matchedSongIds = [...new Set(storedPairs.map((p) => p.songId))];
 	finishStage(progress, "matching", matchedSongIds.length, 0);
 	progress.matchedSongCount = matchedSongIds.length;
 	await persistRefreshProgress(jobId, progress);
@@ -564,31 +658,32 @@ export async function executeMatchSnapshotRefresh(
 		rank: number | null;
 		factors: Json;
 		normalized_factors: Json;
-	}> = [];
-
-	for (const [songId, results] of matchResult.value.matches) {
-		for (const result of results) {
-			resultEntries.push({
-				song_id: songId,
-				playlist_id: result.playlistId,
-				// score is post-rerank (if the reranker ran); fused_score is the
-				// pre-rerank retrieval score the reranker can't overwrite.
-				score: result.score,
-				fused_score: result.fusedScore,
-				rank: result.rank,
-				factors: {
-					embedding: result.factors.embedding,
-					audio: result.factors.audio,
-					genre: result.factors.genre,
-				},
-				normalized_factors: {
-					embedding: result.normalizedFactors.embedding,
-					audio: result.normalizedFactors.audio,
-					genre: result.normalizedFactors.genre,
-				},
-			});
-		}
-	}
+		rankings?: RankingRowPayload[];
+	}> = storedPairs.map((pair) => {
+		const key = `${pair.songId}:${pair.playlistId}`;
+		const songOrientation = songOrientationRankByPair.get(key);
+		return {
+			song_id: pair.songId,
+			playlist_id: pair.playlistId,
+			// song-orientation ordering_score mirrors the legacy score column (C12);
+			// falls back to fusedScore when no ranking row exists for this pair.
+			score: songOrientation?.orderingScore ?? pair.fusedScore,
+			fused_score: pair.fusedScore,
+			// song-orientation rank mirrors the legacy rank column; null when absent.
+			rank: songOrientation?.rank ?? null,
+			factors: {
+				embedding: pair.factors.embedding,
+				audio: pair.factors.audio,
+				genre: pair.factors.genre,
+			},
+			normalized_factors: {
+				embedding: pair.normalizedFactors.embedding,
+				audio: pair.normalizedFactors.audio,
+				genre: pair.normalizedFactors.genre,
+			},
+			rankings: rankingsByPair.get(key),
+		};
+	});
 
 	if (
 		satisfiesRequestedAt &&

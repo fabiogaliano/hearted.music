@@ -16,6 +16,24 @@ import type {
 } from "@/lib/domains/taste/song-matching/types";
 import type { MatchSnapshotRefreshResult } from "./types";
 
+/**
+ * One ranking row destined for match_result_ranking, nested inside a result
+ * item in the p_results payload sent to publish_match_snapshot (D1/D2).
+ *
+ * The index signature [key: string]: Json makes the type directly assignable
+ * to the Json type required by the publish_match_snapshot RPC parameter.
+ * Each explicit field's type is a subset of Json (string, number, null).
+ */
+export interface RankingRowPayload {
+	orientation: string;
+	rank: number;
+	ordering_score: number;
+	reranker_score: number | null;
+	source: string;
+	document_mode: string;
+	[key: string]: Json;
+}
+
 interface MatchResultEntry {
 	song_id: string;
 	playlist_id: string;
@@ -24,6 +42,8 @@ interface MatchResultEntry {
 	rank: number | null;
 	factors: Json;
 	normalized_factors: Json;
+	/** Oriented ranking rows for this pair; omitted for legacy callers (D1). */
+	rankings?: RankingRowPayload[];
 }
 
 function toResultsJson(entries: MatchResultEntry[]): Json {
@@ -35,6 +55,7 @@ function toResultsJson(entries: MatchResultEntry[]): Json {
 		rank: entry.rank,
 		factors: entry.factors,
 		normalized_factors: entry.normalized_factors,
+		...(entry.rankings !== undefined ? { rankings: entry.rankings } : {}),
 	}));
 }
 
