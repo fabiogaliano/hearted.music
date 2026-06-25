@@ -82,7 +82,9 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
-		expect(calledKeys).toContainEqual(matchReviewKeys.review(ACCOUNT_ID));
+		expect(calledKeys).toContainEqual(
+			matchReviewKeys.review(ACCOUNT_ID, "song"),
+		);
 	});
 
 	it("(c) never invalidates any key matching matchReviewKeys.item(...)", async () => {
@@ -135,7 +137,9 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
-		expect(calledKeys).toContainEqual(matchReviewKeys.review(ACCOUNT_ID));
+		expect(calledKeys).toContainEqual(
+			matchReviewKeys.review(ACCOUNT_ID, "song"),
+		);
 	});
 
 	it("(e) invalidates the queue summary and dashboard stats/previews together", async () => {
@@ -159,7 +163,7 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		);
 
 		expect(calledKeys).toContainEqual(
-			matchReviewSummaryKeys.summary(ACCOUNT_ID),
+			matchReviewSummaryKeys.summary(ACCOUNT_ID, "song"),
 		);
 		expect(calledKeys).toContainEqual(dashboardKeys.stats(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.matchPreviews(ACCOUNT_ID));

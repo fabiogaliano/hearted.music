@@ -57,7 +57,7 @@ export async function runMatchSnapshotRefreshEffects(
 	// Invalidate the queue summary/list so the card stack picks up
 	// newly appended items.
 	queryClient.invalidateQueries({
-		queryKey: matchReviewKeys.review(accountId),
+		queryKey: matchReviewKeys.review(accountId, "song"),
 	});
 
 	// Per-card item queries must NOT be invalidated here — refetching an
@@ -68,7 +68,7 @@ export async function runMatchSnapshotRefreshEffects(
 	// Phase 7. Both surfaces now read matchReviewSummaryKeys.summary so a
 	// single invalidation here keeps them consistent.
 	queryClient.invalidateQueries({
-		queryKey: matchReviewSummaryKeys.summary(accountId),
+		queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
 	});
 
 	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's

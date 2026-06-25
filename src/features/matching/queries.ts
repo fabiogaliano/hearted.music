@@ -1,4 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
+import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import {
 	getMatchReview,
 	getMatchReviewItem,
@@ -9,13 +10,20 @@ import {
 // set so per-card data stays stable while the queue list grows.
 export const matchReviewKeys = {
 	all: ["match-review"] as const,
-	review: (accountId: string) => ["match-review", "review", accountId] as const,
+	// Prefix for all review (queue list) keys — useful for broad invalidation
+	// when strictness or session state changes affect all orientations.
+	reviewsRoot: ["match-review", "review"] as const,
+	review: (accountId: string, orientation: MatchOrientation) =>
+		["match-review", "review", accountId, orientation] as const,
 	item: (itemId: string) => ["match-review", "item", itemId] as const,
 };
 
-export function matchReviewQueryOptions(accountId: string) {
+export function matchReviewQueryOptions(
+	accountId: string,
+	orientation: MatchOrientation,
+) {
 	return queryOptions({
-		queryKey: matchReviewKeys.review(accountId),
+		queryKey: matchReviewKeys.review(accountId, orientation),
 		queryFn: () => getMatchReview(),
 		// 60 s: short enough that snapshot-refresh invalidation refetches promptly,
 		// long enough that rapid card navigation doesn't hammer the server.
@@ -33,17 +41,25 @@ export function matchReviewItemQueryOptions(itemId: string) {
 	});
 }
 
-// Queue-aware summary key. Drives sidebar badge and dashboard CTA.
+// Queue-aware summary keys. Drive sidebar badge and dashboard CTA.
 // Invalidated on matchSnapshotRefresh completion (useActiveJobs) and after
 // queue mutations that change the pending count.
 export const matchReviewSummaryKeys = {
-	summary: (accountId: string) =>
-		["match-review", "summary", accountId] as const,
+	// Prefix for all summary keys — use for broad invalidation across orientations.
+	summariesRoot: ["match-review", "summary"] as const,
+	summary: (accountId: string, orientation: MatchOrientation) =>
+		["match-review", "summary", accountId, orientation] as const,
+	// Preference-driven summary: resolves orientation from stored user preference.
+	preferredSummary: (accountId: string) =>
+		["match-review", "summary", accountId, "preferred"] as const,
 };
 
-export function matchReviewSummaryQueryOptions(accountId: string) {
+export function matchReviewSummaryQueryOptions(
+	accountId: string,
+	orientation: MatchOrientation,
+) {
 	return queryOptions({
-		queryKey: matchReviewSummaryKeys.summary(accountId),
+		queryKey: matchReviewSummaryKeys.summary(accountId, orientation),
 		queryFn: () => getMatchReviewSummary(),
 		staleTime: 60_000,
 	});

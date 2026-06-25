@@ -58,7 +58,9 @@ export const Route = createFileRoute("/_authenticated/match")({
 		// card render without a spinner (resolved items are skipped — no card data).
 		const firstId = startResult.caughtUp ? undefined : startResult.itemIds[0];
 		const prefetches = [
-			queryClient.prefetchQuery(matchReviewQueryOptions(session.accountId)),
+			queryClient.prefetchQuery(
+				matchReviewQueryOptions(session.accountId, "song"),
+			),
 		];
 		if (firstId) {
 			prefetches.push(
@@ -98,7 +100,7 @@ function QueueMatchPage() {
 	const queryClient = useQueryClient();
 
 	const { data: queue } = useSuspenseQuery(
-		matchReviewQueryOptions(session.accountId),
+		matchReviewQueryOptions(session.accountId, "song"),
 	);
 
 	// Ordered unresolved item ids derived from queue state — never from null song.
@@ -289,10 +291,10 @@ function QueueMatchContent({
 	// completes all cards or navigates away mid-session.
 	const invalidateSessionBoundary = useCallback(() => {
 		queryClient.invalidateQueries({
-			queryKey: matchReviewSummaryKeys.summary(accountId),
+			queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
 		});
 		queryClient.invalidateQueries({
-			queryKey: matchReviewKeys.review(accountId),
+			queryKey: matchReviewKeys.review(accountId, "song"),
 		});
 		queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 	}, [queryClient, accountId]);
