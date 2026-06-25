@@ -20,6 +20,7 @@ import {
 	batchSizeForSequence,
 	makeInitialProgress,
 } from "@/lib/workflows/enrichment-pipeline/progress";
+import { resolveMatchRefreshAvailableAt } from "./match-refresh-debounce";
 import { bandToNumeric, resolveQueuePriority } from "./queue-priority";
 import type {
 	LibraryProcessingApplyCause,
@@ -256,11 +257,17 @@ export async function executeEffect(
 			change,
 		);
 
+		const availableAt = resolveMatchRefreshAvailableAt({
+			changeKind: change.kind,
+			now: new Date(),
+		});
+
 		const result = await ensureMatchSnapshotRefreshJob({
 			accountId: effect.accountId,
 			satisfiesRequestedAt: effect.satisfiesRequestedAt,
 			queuePriority,
 			needsTargetSongEnrichment,
+			availableAt,
 		});
 		if (Result.isError(result)) {
 			return Result.err(toEffectEnsureFailedError(effect.kind, result.error));
