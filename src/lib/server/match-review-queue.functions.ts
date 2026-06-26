@@ -853,7 +853,7 @@ export const markMatchReviewItemPresented = createServerFn({ method: "POST" })
 
 const AddFromQueueSchema = z.object({
 	itemId: z.uuid(),
-	playlistId: z.uuid(),
+	suggestionId: z.uuid(),
 });
 
 export interface AddFromQueueResult {
@@ -863,23 +863,28 @@ export interface AddFromQueueResult {
 		| "not-found"
 		| "already-resolved"
 		| "not-entitled"
-		| "foreign-playlist";
+		| "foreign-playlist"
+		| "not-visible"
+		| "invalid-target";
 }
 
 /**
- * Adds the song from a queue item to a playlist and writes a decision linked
- * to the item. Does NOT advance/resolve the card — the user may add to
- * multiple playlists before finishing.
+ * Adds a suggestion to a queue item and writes a decision linked to the item.
+ * Does NOT advance/resolve the card — the user may add multiple suggestions
+ * before finishing.
  *
- * Security: songId and source_snapshot_id come from the server-owned queue item
- * row, never from client input. playlistId is verified to belong to the account.
+ * Orientation-aware: for song-orientation items, suggestionId is a playlist id;
+ * for playlist-orientation items, suggestionId is a song id. The RPC derives
+ * the subject side from the locked queue item row (never from client input) and
+ * validates the suggestion against the captured visible pair rows written by
+ * presentMatchReviewItem (MSR-23 capture). Ranks come from the captured pair.
  */
 export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => AddFromQueueSchema.parse(data))
 	.handler(async ({ data, context }): Promise<AddFromQueueResult> => {
 		const { session } = context;
-		const { itemId, playlistId } = data;
+		const { itemId, suggestionId } = data;
 
 		const item = await fetchOwnedQueueItem(itemId, session.accountId);
 		if (!item) {
@@ -890,36 +895,16 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "already-resolved" };
 		}
 
-		// Song-mode only: the add-to-playlist action is a song decision. Playlist
-		// items use a different add path (not yet implemented in this story).
-		if (item.subject.orientation !== "song") {
-			return { success: false, reason: "not-found" };
-		}
-		const songId = item.subject.songId;
-
-		// Resolve the served rank from the snapshot the user was looking at —
-		// mirrors resolveServedContext in matching.functions but keyed off the
-		// server-read song_id and source_snapshot_id from the owned item.
-		const servedResult = await getServedRanksForSong(
-			item.sourceSnapshotId,
-			session.accountId,
-			songId,
-		);
-		const rankByPlaylist = new Map<string, number>();
-		if (Result.isOk(servedResult) && servedResult.value) {
-			for (const mr of servedResult.value) {
-				if (mr.rank !== null) rankByPlaylist.set(mr.playlist_id, mr.rank);
-			}
-		}
-
-		// The RPC locks the queue row, rejects resolved items, re-checks playlist
-		// ownership/entitlement, and writes the add decision in one transaction.
-		// That serializes add with finish/dismiss across tabs and retries.
+		// Determine the orientation-aware argument layout for the RPC. The RPC
+		// locks the item row and derives the subject side itself — we only supply
+		// the suggestion side. The RPC returns invalid_target when the wrong column
+		// is non-null for the item's orientation, so both arms are safe.
+		const isSongOrientation = item.subject.orientation === "song";
 		const result = await addQueueItemDecisionAtomically(
 			itemId,
 			session.accountId,
-			playlistId,
-			rankByPlaylist.get(playlistId) ?? null,
+			isSongOrientation ? null : suggestionId,
+			isSongOrientation ? suggestionId : null,
 		);
 		if (Result.isError(result)) return { success: false };
 
@@ -932,6 +917,12 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 		}
 		if (result.value === "not_entitled") {
 			return { success: false, reason: "not-entitled" };
+		}
+		if (result.value === "not_visible") {
+			return { success: false, reason: "not-visible" };
+		}
+		if (result.value === "invalid_target") {
+			return { success: false, reason: "invalid-target" };
 		}
 		return { success: false, reason: "foreign-playlist" };
 	});

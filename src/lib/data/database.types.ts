@@ -3083,8 +3083,8 @@ export type Database = {
 				Args: {
 					p_account_id: string;
 					p_item_id: string;
-					p_playlist_id: string;
-					p_served_rank?: number;
+					p_suggestion_playlist_id?: string;
+					p_suggestion_song_id?: string;
 				};
 				Returns: string;
 			};

@@ -778,7 +778,7 @@ describe("markMatchReviewItemPresented", () => {
  * Wires the match_review_queue_item ownership fetch. Returns null to simulate
  * a foreign/missing item, or the given item row for an owned item.
  */
-function mockItemOwnership(item: typeof BASE_ITEM | null) {
+function mockItemOwnership(item: Record<string, unknown> | null) {
 	mockFrom.mockImplementation((table: string) => {
 		if (table === "match_review_queue_item") {
 			return {
@@ -844,20 +844,24 @@ function mockItemOwnership(item: typeof BASE_ITEM | null) {
 // addSongToPlaylistFromQueueItem tests
 // ---------------------------------------------------------------------------
 
+const BASE_PLAYLIST_ITEM = {
+	...BASE_ITEM,
+	orientation: "playlist",
+	song_id: null,
+	playlist_id: "pl-review",
+};
+
 describe("addSongToPlaylistFromQueueItem", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockAddQueueItemDecisionAtomically.mockResolvedValue(Result.ok("added"));
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", rank: 2 }]),
-		);
 	});
 
 	it("rejects a foreign queue item (not-found)", async () => {
 		mockItemOwnership(null);
 
 		const result = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-foreign", playlistId: "pl-1" },
+			data: { itemId: "item-foreign", suggestionId: "pl-1" },
 		});
 
 		expect(result.success).toBe(false);
@@ -872,7 +876,7 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		);
 
 		const result = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-foreign" },
+			data: { itemId: "item-1", suggestionId: "pl-foreign" },
 		});
 
 		expect(result.success).toBe(false);
@@ -883,7 +887,7 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		mockItemOwnership({ ...BASE_ITEM, state: "resolved" });
 
 		const result = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-1" },
+			data: { itemId: "item-1", suggestionId: "pl-1" },
 		});
 
 		expect(result.success).toBe(false);
@@ -891,24 +895,37 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		expect(mockAddQueueItemDecisionAtomically).not.toHaveBeenCalled();
 	});
 
-	it("passes served rank to the atomic add RPC", async () => {
+	it("passes suggestion playlist id for song mode", async () => {
 		mockItemOwnership(BASE_ITEM);
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", rank: 3 }]),
-		);
 
 		const result = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-1" },
+			data: { itemId: "item-1", suggestionId: "pl-1" },
 		});
 
 		expect(result.success).toBe(true);
 		expect(mockAddQueueItemDecisionAtomically).toHaveBeenCalledWith(
 			"item-1",
 			"acct-1",
+			null,
 			"pl-1",
-			3,
 		);
 		expect(mockUpsertMatchDecision).not.toHaveBeenCalled();
+	});
+
+	it("passes suggestion_song_id for playlist orientation", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+
+		const result = await addSongToPlaylistFromQueueItem({
+			data: { itemId: "item-1", suggestionId: "song-2" },
+		});
+
+		expect(result.success).toBe(true);
+		expect(mockAddQueueItemDecisionAtomically).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			"song-2",
+			null,
+		);
 	});
 
 	it("maps atomic already-resolved rejection from a stale add", async () => {
@@ -918,27 +935,49 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		);
 
 		const result = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-1" },
+			data: { itemId: "item-1", suggestionId: "pl-1" },
 		});
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("already-resolved");
 	});
 
-	it("multi-add: two adds to different playlists both succeed without resolving the card", async () => {
+	it("returns not-visible when RPC returns not_visible", async () => {
 		mockItemOwnership(BASE_ITEM);
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([
-				{ playlist_id: "pl-1", rank: 1 },
-				{ playlist_id: "pl-2", rank: 2 },
-			]),
+		mockAddQueueItemDecisionAtomically.mockResolvedValue(
+			Result.ok("not_visible"),
 		);
 
+		const result = await addSongToPlaylistFromQueueItem({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("not-visible");
+	});
+
+	it("returns invalid-target when RPC returns invalid_target", async () => {
+		mockItemOwnership(BASE_ITEM);
+		mockAddQueueItemDecisionAtomically.mockResolvedValue(
+			Result.ok("invalid_target"),
+		);
+
+		const result = await addSongToPlaylistFromQueueItem({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("invalid-target");
+	});
+
+	it("multi-add: two adds to different playlists both succeed without resolving the card", async () => {
+		mockItemOwnership(BASE_ITEM);
+
 		const add1 = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-1" },
+			data: { itemId: "item-1", suggestionId: "pl-1" },
 		});
 		const add2 = await addSongToPlaylistFromQueueItem({
-			data: { itemId: "item-1", playlistId: "pl-2" },
+			data: { itemId: "item-1", suggestionId: "pl-2" },
 		});
 
 		expect(add1.success).toBe(true);
