@@ -10,7 +10,10 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
-import { deriveUndecidedSongsForQueue } from "../service";
+import {
+	deriveUndecidedSongsForQueue,
+	getOrderedUndecidedSubjects,
+} from "../service";
 import type { MatchReviewQueueItem } from "../types";
 
 // ============================================================================
@@ -218,6 +221,214 @@ describe("queue ordering (new first, max score desc, id asc)", () => {
 });
 
 // ============================================================================
+// getOrderedUndecidedSubjects — orientation-aware derivation (MSR-19)
+// ============================================================================
+
+describe("getOrderedUndecidedSubjects — song mode", () => {
+	const mr = (
+		song_id: string,
+		playlist_id: string,
+		score: number,
+		fused_score: number | null = null,
+	) => ({ song_id, playlist_id, score, fused_score });
+
+	it("returns song-orientation subjects with wasNewAtEnqueue from newness set", () => {
+		const results = [mr("song-new", "pl-A", 0.9), mr("song-old", "pl-B", 0.8)];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"song",
+			new Set(["song-new"]),
+		);
+		const newSubject = subjects.find(
+			(s) =>
+				s.subject.orientation === "song" && s.subject.songId === "song-new",
+		);
+		const oldSubject = subjects.find(
+			(s) =>
+				s.subject.orientation === "song" && s.subject.songId === "song-old",
+		);
+		expect(newSubject?.wasNewAtEnqueue).toBe(true);
+		expect(oldSubject?.wasNewAtEnqueue).toBe(false);
+	});
+
+	it("orders new songs before non-new regardless of score", () => {
+		const results = [
+			mr("song-high", "pl-A", 0.99), // not new
+			mr("song-new-low", "pl-B", 0.5), // new
+		];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.3,
+			"song",
+			new Set(["song-new-low"]),
+		);
+		expect(subjects[0]?.subject).toMatchObject({
+			orientation: "song",
+			songId: "song-new-low",
+		});
+	});
+
+	it("counts hidden songs below threshold as hiddenReviewItemCount", () => {
+		const results = [
+			mr("song-visible", "pl-A", 0.8),
+			mr("song-hidden", "pl-B", 0.3), // below 0.5 threshold
+		];
+		const { subjects, hiddenReviewItemCount } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"song",
+			new Set(),
+		);
+		expect(subjects).toHaveLength(1);
+		expect(subjects[0]?.subject).toMatchObject({
+			orientation: "song",
+			songId: "song-visible",
+		});
+		expect(hiddenReviewItemCount).toBe(1);
+	});
+
+	it("returns hiddenReviewItemCount=0 when all undecided songs pass threshold", () => {
+		const results = [mr("s1", "pl-A", 0.8), mr("s2", "pl-B", 0.7)];
+		const { hiddenReviewItemCount } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"song",
+			new Set(),
+		);
+		expect(hiddenReviewItemCount).toBe(0);
+	});
+});
+
+describe("getOrderedUndecidedSubjects — playlist mode", () => {
+	const mr = (
+		song_id: string,
+		playlist_id: string,
+		score: number,
+		fused_score: number | null = null,
+	) => ({ song_id, playlist_id, score, fused_score });
+
+	it("returns playlist-orientation subjects", () => {
+		const results = [mr("song-1", "pl-A", 0.8), mr("song-2", "pl-B", 0.7)];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		expect(subjects.every((s) => s.subject.orientation === "playlist")).toBe(
+			true,
+		);
+	});
+
+	it("sets wasNewAtEnqueue=false for all playlist subjects", () => {
+		// Playlists have no newness concept; the newSongIds parameter is ignored.
+		const results = [mr("song-1", "pl-A", 0.9)];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(["song-1"]), // newness set should have no effect
+		);
+		expect(subjects[0]?.wasNewAtEnqueue).toBe(false);
+	});
+
+	it("orders playlists by max score desc then playlist id asc (no newness tier)", () => {
+		const results = [
+			mr("song-1", "pl-low", 0.6),
+			mr("song-2", "pl-high", 0.95),
+			mr("song-3", "pl-mid", 0.8),
+		];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		const ids = subjects.map((s) =>
+			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
+		);
+		expect(ids).toEqual(["pl-high", "pl-mid", "pl-low"]);
+	});
+
+	it("breaks score ties by playlist id ascending", () => {
+		const results = [
+			mr("song-1", "pl-z", 0.8),
+			mr("song-2", "pl-a", 0.8),
+			mr("song-3", "pl-m", 0.8),
+		];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		const ids = subjects.map((s) =>
+			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
+		);
+		expect(ids).toEqual(["pl-a", "pl-m", "pl-z"]);
+	});
+
+	it("excludes playlists whose only songs are decided", () => {
+		const results = [
+			mr("song-1", "pl-decided", 0.8),
+			mr("song-2", "pl-open", 0.7),
+		];
+		const decidedPairs = new Set(["song-1:pl-decided"]);
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			decidedPairs,
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		const ids = subjects.map((s) =>
+			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
+		);
+		expect(ids).not.toContain("pl-decided");
+		expect(ids).toContain("pl-open");
+	});
+
+	it("counts hidden playlists below threshold as hiddenReviewItemCount", () => {
+		const results = [
+			mr("song-1", "pl-visible", 0.8),
+			mr("song-2", "pl-hidden", 0.3), // below 0.5
+		];
+		const { subjects, hiddenReviewItemCount } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		expect(subjects).toHaveLength(1);
+		expect(hiddenReviewItemCount).toBe(1);
+	});
+
+	it("takes max score across all songs for a playlist subject", () => {
+		// pl-A has two songs: 0.6 and 0.9 — max score should be 0.9
+		const results = [mr("song-1", "pl-A", 0.6), mr("song-2", "pl-A", 0.9)];
+		const { subjects } = getOrderedUndecidedSubjects(
+			results,
+			new Set(),
+			0.5,
+			"playlist",
+			new Set(),
+		);
+		expect(subjects).toHaveLength(1);
+		expect(subjects[0]?.maxScore).toBeCloseTo(0.9);
+	});
+});
+
+// ============================================================================
 // Orchestration tests — mock the queries layer directly
 //
 // vi.mock hoists to top of file; all query functions become vi.fn() and each
@@ -290,6 +501,10 @@ import {
 const ACCOUNT_ID = "account-test-001";
 const SESSION_ID = "session-test-001";
 const SNAPSHOT_ID = "snapshot-test-001";
+// Visibility hash for fakeSession() (orientation='song', strictnessMinScore=0.5,
+// readTimeFiltersHash='write-time-filters') — matches computeVisibilityConfigHash output.
+const SONG_VISIBILITY_HASH = "vc_song_0.5_write-time-filters";
+const SONG_APPLIED_KEY = `${SNAPSHOT_ID}:${SONG_VISIBILITY_HASH}`;
 
 function fakeSession() {
 	return {
@@ -556,12 +771,13 @@ describe("createOrResumeQueue", () => {
 			expect(result.value.kind).toBe("resumed");
 		}
 		// The append actually ran against the existing session: it read the
-		// snapshot's results and recorded the snapshot as applied.
+		// snapshot's results and recorded the snapshot as applied with the hash.
 		expect(getMatchResults).toHaveBeenCalledWith(SNAPSHOT_ID);
 		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
 			SESSION_ID,
 			SNAPSHOT_ID,
 			0,
+			SONG_VISIBILITY_HASH,
 		);
 		// No new session was created — this is a resume, not a create.
 		expect(queries.insertMatchReviewSession).not.toHaveBeenCalled();
@@ -585,9 +801,9 @@ describe("createOrResumeQueue", () => {
 			})),
 			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
-		// Snapshot already applied → idempotency guard short-circuits the append.
+		// Snapshot already applied with same hash → idempotency guard short-circuits.
 		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
-			Result.ok(new Set([SNAPSHOT_ID])),
+			Result.ok(new Set([SONG_APPLIED_KEY])),
 		);
 
 		const result = await createOrResumeQueue(ACCOUNT_ID);
@@ -666,12 +882,13 @@ describe("createOrResumeQueue", () => {
 			expect(result.value.kind).toBe("resumed");
 		}
 		// The append actually ran against the winner's session — it read the latest
-		// snapshot's results and recorded the snapshot as applied to the winner.
+		// snapshot's results and recorded the snapshot (with hash) as applied to the winner.
 		expect(getMatchResults).toHaveBeenCalledWith(SNAPSHOT_ID);
 		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
 			"session-winner-003",
 			SNAPSHOT_ID,
 			0,
+			SONG_VISIBILITY_HASH,
 		);
 	});
 
@@ -828,8 +1045,9 @@ describe("createOrResumeQueue pass rollover", () => {
 
 describe("appendSnapshotDelta", () => {
 	it("is a no-op when the snapshot was already applied", async () => {
+		// Composite key (snapshotId:hash) must match for idempotency to trigger.
 		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
-			Result.ok(new Set([SNAPSHOT_ID])),
+			Result.ok(new Set([SONG_APPLIED_KEY])),
 		);
 
 		const result = await appendSnapshotDelta(
@@ -863,12 +1081,13 @@ describe("appendSnapshotDelta", () => {
 			expect(result.value.appendedCount).toBe(0);
 			expect(result.value.alreadyApplied).toBe(false);
 		}
-		// An empty-but-successful derivation must still record the snapshot so a
-		// later re-sync of the same snapshot is a no-op.
+		// An empty-but-successful derivation must still record the (snapshot, hash)
+		// pair so a later re-sync with the same hash is a no-op.
 		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
 			SESSION_ID,
 			SNAPSHOT_ID,
 			0,
+			SONG_VISIBILITY_HASH,
 		);
 	});
 

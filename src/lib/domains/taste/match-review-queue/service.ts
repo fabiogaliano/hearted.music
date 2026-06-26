@@ -14,7 +14,10 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
+import {
+	getMatchResults,
+	type MatchResultRow,
+} from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
@@ -44,8 +47,10 @@ import type {
 	MatchReviewQueueItem,
 	MatchReviewSession,
 	MatchReviewSummary,
+	OrderedSubject,
 	QueueItemResolution,
 	QueueItemState,
+	QueueVisibilityConfigHashInput,
 } from "./types";
 
 interface UndecidedSong {
@@ -109,6 +114,146 @@ function sortSongsForQueue(songs: UndecidedSong[]): UndecidedSong[] {
 		if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
 		return a.songId.localeCompare(b.songId);
 	});
+}
+
+/**
+ * Stable placeholder for read-time hard-filter predicates. Fixed until
+ * read-time filter config migrates to its own hash component (MSR-19).
+ */
+const READ_TIME_FILTERS_HASH = "write-time-filters";
+
+/**
+ * Derives a deterministic string key from visibility inputs.
+ *
+ * orientation + strictness threshold + readTimeFiltersHash together determine
+ * which subjects are visible in the queue at enqueue time. Stored in
+ * match_review_session_snapshot so the same (snapshot, hash) is idempotent
+ * while a changed hash allows append-without-duplication (C9).
+ */
+export function computeVisibilityConfigHash(
+	input: QueueVisibilityConfigHashInput,
+): string {
+	return `vc_${input.orientation}_${input.minScore}_${input.readTimeFiltersHash}`;
+}
+
+interface UndecidedPlaylist {
+	playlistId: string;
+	maxScore: number;
+}
+
+/**
+ * Playlist-mode counterpart to deriveUndecidedSongsForQueue. Groups match
+ * result rows by playlist_id (the review subject in playlist mode) and keeps
+ * playlists that have at least one undecided song match above minScore.
+ */
+function deriveUndecidedPlaylistsForQueue(
+	matchResults: MatchResultRow[],
+	decidedPairs: Set<string>,
+	minScore: number,
+): UndecidedPlaylist[] {
+	const playlistMap = new Map<
+		string,
+		{ maxScore: number; hasUndecided: boolean }
+	>();
+
+	for (const mr of matchResults) {
+		const rowScore = strictnessScore(mr);
+		if (rowScore < minScore) continue;
+		const existing = playlistMap.get(mr.playlist_id) ?? {
+			maxScore: 0,
+			hasUndecided: false,
+		};
+		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
+		playlistMap.set(mr.playlist_id, {
+			maxScore: Math.max(existing.maxScore, rowScore),
+			hasUndecided: existing.hasUndecided || isUndecided,
+		});
+	}
+
+	return Array.from(playlistMap.entries())
+		.filter(([, v]) => v.hasUndecided)
+		.map(([playlistId, v]) => ({
+			playlistId,
+			maxScore: v.maxScore,
+		}));
+}
+
+/**
+ * Derives orientation-aware ordered undecided queue subjects from snapshot
+ * match data.
+ *
+ * Song mode (A2): newness desc → max strictness score desc → song id asc.
+ * Playlist mode (A2): max strictness score desc → playlist id asc; subjects
+ * always have wasNewAtEnqueue=false (playlists have no newness concept).
+ *
+ * Returns subjects plus hiddenReviewItemCount (A7): the count of undecided
+ * subjects whose only matches sit below minScore. Entitlement filtering is the
+ * caller's responsibility and not included in this count.
+ *
+ * Pure: no DB calls. Accepts the same MatchResultRow shape that getMatchResults
+ * returns so callers share one query result.
+ */
+export function getOrderedUndecidedSubjects(
+	matchResults: MatchResultRow[],
+	decidedPairs: Set<string>,
+	minScore: number,
+	orientation: MatchOrientation,
+	newSongIds: Set<string>,
+): { subjects: OrderedSubject[]; hiddenReviewItemCount: number } {
+	if (orientation === "song") {
+		// Derive with minScore=0 to count all undecided songs regardless of threshold.
+		const allUndecided = deriveUndecidedSongsForQueue(
+			matchResults,
+			decidedPairs,
+			0,
+			new Set(),
+		);
+		const visibleUndecided = deriveUndecidedSongsForQueue(
+			matchResults,
+			decidedPairs,
+			minScore,
+			newSongIds,
+		);
+		const hiddenReviewItemCount = allUndecided.length - visibleUndecided.length;
+		const sorted = sortSongsForQueue(visibleUndecided);
+		return {
+			subjects: sorted.map((s) => ({
+				subject: { orientation: "song" as const, songId: s.songId },
+				maxScore: s.maxScore,
+				wasNewAtEnqueue: s.isNew,
+			})),
+			hiddenReviewItemCount,
+		};
+	}
+
+	// Playlist mode: subjects are playlists; newness not applicable.
+	const allUndecided = deriveUndecidedPlaylistsForQueue(
+		matchResults,
+		decidedPairs,
+		0,
+	);
+	const visibleUndecided = deriveUndecidedPlaylistsForQueue(
+		matchResults,
+		decidedPairs,
+		minScore,
+	);
+	const hiddenReviewItemCount = allUndecided.length - visibleUndecided.length;
+
+	// max score desc, playlist id asc — no newness tier in playlist mode.
+	const sorted = visibleUndecided.toSorted((a, b) => {
+		if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
+		return a.playlistId.localeCompare(b.playlistId);
+	});
+
+	return {
+		subjects: sorted.map((p) => ({
+			subject: { orientation: "playlist" as const, playlistId: p.playlistId },
+			maxScore: p.maxScore,
+			// Playlist subjects never carry a newness flag (MSR-19 scope).
+			wasNewAtEnqueue: false,
+		})),
+		hiddenReviewItemCount,
+	};
 }
 
 /**
@@ -277,20 +422,22 @@ export async function createOrResumeQueue(
 }
 
 /**
- * Records a snapshot as applied to a session, treating a duplicate-key
- * ConstraintError as a benign idempotency no-op (a concurrent call already
- * recorded it). Any other DB error propagates so a failed snapshot recording
- * never masquerades as a successful caught-up state.
+ * Records a (snapshot, visibility hash) pair as applied to a session, treating
+ * a duplicate-key ConstraintError as a benign idempotency no-op (a concurrent
+ * call already recorded it). Any other DB error propagates so a failed
+ * snapshot recording never masquerades as a successful caught-up state.
  */
 async function recordSnapshotApplied(
 	sessionId: string,
 	snapshotId: string,
 	appendedItemCount: number,
+	visibilityConfigHash: string,
 ): Promise<Result<void, DbError>> {
 	const result = await insertSessionSnapshot(
 		sessionId,
 		snapshotId,
 		appendedItemCount,
+		visibilityConfigHash,
 	);
 	if (Result.isError(result) && result.error._tag !== "ConstraintError") {
 		return result;
@@ -344,33 +491,43 @@ async function appendLatestSnapshot(
 }
 
 /**
- * Appends eligible songs from a snapshot to an active session queue.
+ * Appends eligible subjects from a snapshot to an active session queue.
  *
  * The 9-step process from the plan:
  * 1. Load snapshot match results.
  * 2. Load account decisions for matched songs.
  * 3. Apply the session's stored strictness_min_score.
- * 4. Keep songs with at least one visible undecided match.
- * 5. Filter to currently entitled songs (via RPC).
- * 6. Exclude songs already in the active session queue.
- * 7. Sort: new songs first, max visible score desc, song id asc.
+ * 4. Keep subjects with at least one visible undecided match (orientation-aware).
+ * 5. Filter to currently entitled songs (via RPC) — song mode only for now.
+ * 6. Exclude subjects already in the active session queue.
+ * 7. Sort (orientation-aware via getOrderedUndecidedSubjects).
  * 8. Append at max(position)+1.
- * 9. Insert session_snapshot row for idempotency.
+ * 9. Insert session_snapshot row for idempotency, keyed by (snapshot, visibility hash).
  *
- * Idempotency: the composite PK on (session_id, snapshot_id) in
- * match_review_session_snapshot means calling this twice with the same
- * snapshot is a safe no-op — the second call sees `alreadyApplied: true`.
+ * Idempotency: the composite PK on (session_id, snapshot_id, visibility_config_hash)
+ * makes calling this twice with the same snapshot+hash a safe no-op. A new hash
+ * (e.g. after strictness change) allows the same snapshot to append additional
+ * subjects without duplicating already-enqueued ones (C9, MSR-19).
  */
 export async function appendSnapshotDelta(
 	session: MatchReviewSession,
 	snapshotId: string,
 	accountId: string,
 ): Promise<Result<AppendResult, DbError>> {
+	// Compute the visibility hash for this append — encodes which subjects are
+	// visible given the session's orientation, strictness, and filter config.
+	const visibilityHash = computeVisibilityConfigHash({
+		orientation: session.orientation,
+		minScore: session.strictnessMinScore,
+		readTimeFiltersHash: READ_TIME_FILTERS_HASH,
+	});
+	const appliedKey = `${snapshotId}:${visibilityHash}`;
+
 	// Step 9 guard — check idempotency before doing any expensive work.
 	const appliedResult = await fetchAppliedSnapshotIds(session.id);
 	if (Result.isError(appliedResult)) return appliedResult;
 
-	if (appliedResult.value.has(snapshotId)) {
+	if (appliedResult.value.has(appliedKey)) {
 		return Result.ok<AppendResult, DbError>({
 			appendedCount: 0,
 			alreadyApplied: true,
@@ -383,7 +540,12 @@ export async function appendSnapshotDelta(
 	const matchResults = matchResultsResult.value;
 
 	if (matchResults.length === 0) {
-		const recorded = await recordSnapshotApplied(session.id, snapshotId, 0);
+		const recorded = await recordSnapshotApplied(
+			session.id,
+			snapshotId,
+			0,
+			visibilityHash,
+		);
 		if (Result.isError(recorded)) return recorded;
 		return Result.ok<AppendResult, DbError>({
 			appendedCount: 0,
@@ -400,8 +562,9 @@ export async function appendSnapshotDelta(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 
-	// Step 3+4: apply session strictness, keep songs with visible undecided match.
-	// Step 7 ordering also needs newness, so fetch in parallel.
+	// Steps 3+4+7: orientation-aware subject derivation (uses strictness score,
+	// not legacy ordering score). Newness is fetched for song mode; in playlist
+	// mode the newSongSet is unused (playlist subjects have wasNewAtEnqueue=false).
 	const [newSongIdsResult, entitledResult, alreadyQueuedResult] =
 		await Promise.all([
 			getNewItemIds(accountId, "song"),
@@ -409,7 +572,7 @@ export async function appendSnapshotDelta(
 				"select_entitled_data_enriched_liked_song_ids",
 				{ p_account_id: accountId },
 			),
-			// Step 6: load songs already in this session queue.
+			// Step 6: load subjects already in this session queue (song mode only).
 			fetchQueuedSongIds(session.id),
 		]);
 
@@ -439,25 +602,36 @@ export async function appendSnapshotDelta(
 	);
 	const alreadyQueued = alreadyQueuedResult.value;
 
-	const candidates = deriveUndecidedSongsForQueue(
+	// Orientation-aware derivation: song mode preserves newness priority;
+	// playlist mode uses max score then id (wasNewAtEnqueue always false).
+	const { subjects } = getOrderedUndecidedSubjects(
 		matchResults,
 		decidedPairs,
 		session.strictnessMinScore,
+		session.orientation,
 		newSongSet,
-	)
-		// Step 5: filter to entitled songs.
-		.filter((s) => entitledSet.has(s.songId))
-		// Step 6: exclude songs already in queue.
-		.filter((s) => !alreadyQueued.has(s.songId));
+	);
 
-	// Step 7: deterministic sort.
-	const ordered = sortSongsForQueue(candidates);
+	// For song-mode sessions, filter subjects by entitlement and already-queued.
+	// Playlist-mode insertion via RPC is not yet implemented; song subjects are
+	// the only path wired through insertQueueItems today.
+	const candidateSubjects = subjects.filter((s) => {
+		if (s.subject.orientation !== "song") return false;
+		return (
+			entitledSet.has(s.subject.songId) && !alreadyQueued.has(s.subject.songId)
+		);
+	});
 
-	if (ordered.length === 0) {
+	if (candidateSubjects.length === 0) {
 		// Record the snapshot even when no items are added so re-sync is a no-op.
 		// A recording failure propagates — better to retry than to falsely mark the
 		// snapshot applied with zero items.
-		const recorded = await recordSnapshotApplied(session.id, snapshotId, 0);
+		const recorded = await recordSnapshotApplied(
+			session.id,
+			snapshotId,
+			0,
+			visibilityHash,
+		);
 		if (Result.isError(recorded)) return recorded;
 		return Result.ok<AppendResult, DbError>({
 			appendedCount: 0,
@@ -470,15 +644,22 @@ export async function appendSnapshotDelta(
 	if (Result.isError(maxPosResult)) return maxPosResult;
 	const startPosition = maxPosResult.value + 1;
 
-	const items = ordered.map((song, i) => ({
-		sessionId: session.id,
-		accountId,
-		songId: song.songId,
-		sourceSnapshotId: snapshotId,
-		position: startPosition + i,
-		sourceScore: song.maxScore,
-		wasNewAtEnqueue: song.isNew,
-	}));
+	// Build insertable items — all candidateSubjects are song-orientation here
+	// (playlist subjects are filtered out above); TypeScript narrows inside the map.
+	const items = candidateSubjects.flatMap((s, i) => {
+		if (s.subject.orientation !== "song") return [];
+		return [
+			{
+				sessionId: session.id,
+				accountId,
+				songId: s.subject.songId,
+				sourceSnapshotId: snapshotId,
+				position: startPosition + i,
+				sourceScore: s.maxScore,
+				wasNewAtEnqueue: s.wasNewAtEnqueue,
+			},
+		];
+	});
 
 	const insertResult = await insertQueueItems(items);
 	if (Result.isError(insertResult)) {
@@ -495,18 +676,19 @@ export async function appendSnapshotDelta(
 		return insertResult;
 	}
 
-	// Step 9: record that this snapshot has been applied. A duplicate-key
-	// ConstraintError means a concurrent call beat us — that's fine; the items
-	// from the winner are already in the queue. Any other error propagates.
+	// Step 9: record that this (snapshot, hash) pair has been applied. A
+	// duplicate-key ConstraintError means a concurrent call beat us — that's fine;
+	// the items from the winner are already in the queue. Any other error propagates.
 	const recorded = await recordSnapshotApplied(
 		session.id,
 		snapshotId,
-		ordered.length,
+		items.length,
+		visibilityHash,
 	);
 	if (Result.isError(recorded)) return recorded;
 
 	return Result.ok<AppendResult, DbError>({
-		appendedCount: ordered.length,
+		appendedCount: items.length,
 		alreadyApplied: false,
 	});
 }

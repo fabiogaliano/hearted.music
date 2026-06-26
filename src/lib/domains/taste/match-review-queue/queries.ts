@@ -638,8 +638,12 @@ export async function finishQueueItemAtomically(
 }
 
 /**
- * Returns the set of snapshot IDs already applied to this session.
- * The append path uses this to skip snapshots it has already processed.
+ * Returns the set of already-applied (snapshot_id, visibility_config_hash)
+ * composite keys for this session, encoded as "${snapshotId}:${hash}".
+ *
+ * The composite PK on (session_id, snapshot_id, visibility_config_hash) allows
+ * the same snapshot to be re-applied under a new visibility hash without a
+ * conflict — each (snapshot, hash) pair is its own idempotency unit (MSR-19 C9).
  */
 export async function fetchAppliedSnapshotIds(
 	sessionId: string,
@@ -648,23 +652,30 @@ export async function fetchAppliedSnapshotIds(
 	const result = await fromSupabaseMany(
 		supabase
 			.from("match_review_session_snapshot")
-			.select("snapshot_id")
+			.select("snapshot_id, visibility_config_hash")
 			.eq("session_id", sessionId),
 	);
 	if (Result.isError(result)) return result;
-	return Result.ok(new Set(result.value.map((r) => r.snapshot_id)));
+	return Result.ok(
+		new Set(
+			result.value.map((r) => `${r.snapshot_id}:${r.visibility_config_hash}`),
+		),
+	);
 }
 
 /**
- * Records that a snapshot has been applied to the session.
- * The composite primary key (session_id, snapshot_id) makes a duplicate insert
- * fail with a unique constraint violation — the service treats that as a safe
- * no-op (already idempotent).
+ * Records that a (snapshot, visibility hash) pair has been applied to the
+ * session. The composite PK (session_id, snapshot_id, visibility_config_hash)
+ * makes a duplicate insert fail with a unique constraint violation — the
+ * service treats that as a safe no-op. A new hash for the same snapshot allows
+ * an additional row, enabling append-without-duplication when visibility config
+ * changes (MSR-19 C9).
  */
 export async function insertSessionSnapshot(
 	sessionId: string,
 	snapshotId: string,
 	appendedItemCount: number,
+	visibilityConfigHash: string,
 ): Promise<Result<MatchReviewSessionSnapshotRow, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(
@@ -674,6 +685,7 @@ export async function insertSessionSnapshot(
 				session_id: sessionId,
 				snapshot_id: snapshotId,
 				appended_item_count: appendedItemCount,
+				visibility_config_hash: visibilityConfigHash,
 			})
 			.select()
 			.single(),
