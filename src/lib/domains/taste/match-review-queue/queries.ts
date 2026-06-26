@@ -593,6 +593,9 @@ const FINISH_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"skipped",
 	"not_found",
 	"already_resolved",
+	// Returned when match_review_item_visible_pair has no rows for the item —
+	// presentMatchReviewItem must capture pairs before finish can proceed (MSR-28).
+	"no_captured_pairs",
 ] as const;
 
 export type FinishQueueItemAtomicStatus =
@@ -607,6 +610,10 @@ function isFinishQueueItemAtomicStatus(
 /**
  * Resolves a queue item under the row lock. Because add also takes this lock
  * before writing, finish's add-count and resolution are serialized with add.
+ *
+ * Returns no_captured_pairs if presentMatchReviewItem has not yet run for the
+ * item; the TypeScript caller maps this to derive-failed so the item stays
+ * pending and finish can be retried after presentation (MSR-28).
  */
 export async function finishQueueItemAtomically(
 	itemId: string,

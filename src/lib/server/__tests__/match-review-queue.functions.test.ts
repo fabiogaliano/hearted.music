@@ -1133,6 +1133,20 @@ describe("finishMatchReviewItem", () => {
 		expect(result.reason).toBe("already-resolved");
 	});
 
+	it("returns derive-failed when finish RPC finds no captured pairs (MSR-28)", async () => {
+		// no_captured_pairs means presentMatchReviewItem has not yet run for this
+		// item. The item must not be resolved — the caller should retry after
+		// presentation so ranks are always sourced from captured pair rows.
+		mockFinishQueueItemAtomically.mockResolvedValue(
+			Result.ok("no_captured_pairs"),
+		);
+
+		const result = await finishMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("derive-failed");
+	});
+
 	it("returns completed/added when atomic finish counts linked add decisions", async () => {
 		mockFinishQueueItemAtomically.mockResolvedValue(
 			Result.ok("completed_added"),
