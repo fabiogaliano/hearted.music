@@ -27,10 +27,10 @@ import {
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
+	MatchingReviewItem,
+	MatchingSuggestion,
 	MatchViewMode,
-	Playlist,
-	ReviewedSong,
-	SongForMatching,
+	ReviewedItem,
 } from "@/features/matching/types";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
@@ -208,7 +208,10 @@ function QueueMatchPage() {
 
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+			{/* key={mode} ensures visit-local state (pastItems, addedTo, sessionStats)
+			    resets on mode switch within the same route mount boundary. */}
 			<QueueMatchContent
+				key={mode}
 				accountId={session.accountId}
 				mode={mode}
 				itemIds={unresolvedIds}
@@ -271,7 +274,7 @@ function QueueMatchContent({
 		songsWithAdditions: new Set<string>(),
 	}));
 
-	const [pastItems, setPastItems] = useState<ReviewedSong[]>([]);
+	const [pastItems, setPastItems] = useState<ReviewedItem[]>([]);
 
 	// Passive chip: fire when queue.total grows. Using total (append-only from the
 	// server) rather than itemIds.length means a head-drop + tail-append that nets
@@ -380,8 +383,8 @@ function QueueMatchContent({
 	// skips.
 	const completionStats: CompletionStats = useMemo(
 		() => ({
-			totalSongs: total,
-			songsMatched: sessionStats.songsWithAdditions.size,
+			totalItems: total,
+			itemsMatched: sessionStats.songsWithAdditions.size,
 			totalAdditions: sessionStats.addedCount,
 			dismissedCount: sessionStats.dismissedCount,
 			skippedCount: sessionStats.skippedCount,
@@ -405,14 +408,14 @@ function QueueMatchContent({
 	if (isComplete || !resolvedCurrentId) {
 		return (
 			<Matching
-				currentSong={null}
-				currentMatches={[]}
+				currentReviewItem={null}
+				currentSuggestions={[]}
 				totalSongs={total}
 				offset={effectiveItemIds.length}
 				addedTo={[]}
 				isComplete={true}
 				completionStats={completionStats}
-				recentSongs={pastItems}
+				recentItems={pastItems}
 				onAdd={() => {}}
 				onDismiss={() => {}}
 				onNext={() => {}}
@@ -465,7 +468,7 @@ interface QueueCardContentProps {
 	unresolvedIds: string[];
 	addedTo: string[];
 	navigationStatus: "idle" | "pending";
-	pastItems: ReviewedSong[];
+	pastItems: ReviewedItem[];
 	completionStats: CompletionStats;
 	onAddedTo: React.Dispatch<React.SetStateAction<string[]>>;
 	onSessionStats: React.Dispatch<
@@ -476,7 +479,7 @@ interface QueueCardContentProps {
 			songsWithAdditions: Set<string>;
 		}>
 	>;
-	onPastItems: React.Dispatch<React.SetStateAction<ReviewedSong[]>>;
+	onPastItems: React.Dispatch<React.SetStateAction<ReviewedItem[]>>;
 	onCurrentItemId: React.Dispatch<React.SetStateAction<string | null>>;
 	// Marks the current card resolved locally and advances to the next unresolved
 	// card. Use after a successful finish/dismiss/skip so a resolved card cannot be
@@ -552,41 +555,52 @@ function QueueCardContent({
 		onReleaseNavigation();
 	}, [itemId, onReleaseNavigation]);
 
-	// Map server shape → component shape.
-	const currentSong: SongForMatching | null =
+	// Map server shape → orientation-aware union types.
+	const currentReviewItem: MatchingReviewItem | null =
 		itemData.status === "ready"
 			? {
-					id: itemData.reviewItem.id,
-					spotifyId: itemData.reviewItem.spotifyId,
-					name: itemData.reviewItem.name,
-					artist: itemData.reviewItem.artist,
-					album: itemData.reviewItem.album ?? null,
-					albumArtUrl: itemData.reviewItem.albumArtUrl,
-					genres: itemData.reviewItem.genres,
-					audioFeatures: itemData.reviewItem.audioFeatures ?? null,
-					analysis: itemData.reviewItem.analysis ?? null,
+					mode: "song",
+					song: {
+						id: itemData.reviewItem.id,
+						spotifyId: itemData.reviewItem.spotifyId,
+						name: itemData.reviewItem.name,
+						artist: itemData.reviewItem.artist,
+						album: itemData.reviewItem.album ?? null,
+						albumArtUrl: itemData.reviewItem.albumArtUrl,
+						genres: itemData.reviewItem.genres,
+						audioFeatures: itemData.reviewItem.audioFeatures ?? null,
+						analysis: itemData.reviewItem.analysis ?? null,
+					},
 				}
 			: null;
 
-	const currentMatches: Playlist[] = useMemo(
+	const currentSuggestions: MatchingSuggestion[] = useMemo(
 		() =>
 			itemData.status === "ready"
 				? itemData.suggestions.map((m) => ({
-						id: m.playlist.id,
-						spotifyId: m.playlist.spotifyId,
-						name: m.playlist.name,
-						reason: m.playlist.description ?? "",
-						matchScore: m.score,
-						imageUrl: m.playlist.imageUrl,
-						songCount: m.playlist.trackCount,
+						mode: "song" as const,
+						playlist: {
+							id: m.playlist.id,
+							spotifyId: m.playlist.spotifyId,
+							name: m.playlist.name,
+							reason: m.playlist.description ?? "",
+							matchScore: m.score,
+							imageUrl: m.playlist.imageUrl,
+							songCount: m.playlist.trackCount,
+						},
 					}))
 				: [],
 		[itemData],
 	);
 
-	const { reconnectNeeded, setReconnectNeeded } = useSpotifyReconnectState(
-		currentSong?.id ?? "",
-	);
+	// Derived for guards that still need a flat SongForMatching reference.
+	const currentSong =
+		currentReviewItem?.mode === "song" ? currentReviewItem.song : null;
+
+	const songId =
+		currentReviewItem?.mode === "song" ? currentReviewItem.song.id : "";
+	const { reconnectNeeded, setReconnectNeeded } =
+		useSpotifyReconnectState(songId);
 
 	// Header progress: position within the whole session, NOT within the shrinking
 	// navigable list. Resolved cards drop out of unresolvedIds, so currentIndex is
@@ -697,6 +711,14 @@ function QueueCardContent({
 		if (!currentSong || !onLockNavigation()) return;
 		try {
 			setReconnectNeeded(false);
+
+			// Derive flat playlist list for the Spotify extension call.
+			const currentMatches = currentSuggestions
+				.filter(
+					(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
+						s.mode === "song",
+				)
+				.map((s) => s.playlist);
 
 			const playlist = currentMatches.find((p) => p.id === playlistId);
 
@@ -816,14 +838,14 @@ function QueueCardContent({
 	// bounds stay in the navigable domain via currentIndex below.
 	return (
 		<Matching
-			currentSong={currentSong}
-			currentMatches={currentMatches}
+			currentReviewItem={currentReviewItem}
+			currentSuggestions={currentSuggestions}
 			totalSongs={total}
 			offset={progressIndex}
 			addedTo={addedTo}
 			isComplete={false}
 			completionStats={completionStats}
-			recentSongs={pastItems}
+			recentItems={pastItems}
 			reconnectNeeded={reconnectNeeded}
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}

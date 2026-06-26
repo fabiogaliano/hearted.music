@@ -11,8 +11,8 @@ export default {
 };
 
 const defaultCompletionStats: CompletionStats = {
-	totalSongs: matchingSongs.length,
-	songsMatched: 0,
+	totalItems: matchingSongs.length,
+	itemsMatched: 0,
 	totalAdditions: 0,
 	dismissedCount: 0,
 	skippedCount: 0,
@@ -24,14 +24,17 @@ export const FirstSong: Story = () => {
 
 	return (
 		<Matching
-			currentSong={first.song}
-			currentMatches={first.playlists}
+			currentReviewItem={{ mode: "song" as const, song: first.song }}
+			currentSuggestions={first.playlists.map((p) => ({
+				mode: "song" as const,
+				playlist: p,
+			}))}
 			totalSongs={matchingSongs.length}
 			offset={0}
 			addedTo={[]}
 			isComplete={false}
 			completionStats={defaultCompletionStats}
-			recentSongs={[]}
+			recentItems={[]}
 			onAdd={() => {}}
 			onDismiss={() => {}}
 			onNext={() => {}}
@@ -51,14 +54,14 @@ export const InteractiveSession: Story = () => {
 	if (isComplete || !current) {
 		return (
 			<Matching
-				currentSong={null}
-				currentMatches={[]}
+				currentReviewItem={null}
+				currentSuggestions={[]}
 				totalSongs={matchingSongs.length}
 				offset={index}
 				addedTo={[]}
 				isComplete={true}
 				completionStats={stats}
-				recentSongs={matchingSongs.slice(0, index).map((m) => ({
+				recentItems={matchingSongs.slice(0, index).map((m) => ({
 					id: m.song.id,
 					albumArtUrl: m.song.albumArtUrl,
 					name: m.song.name,
@@ -74,14 +77,17 @@ export const InteractiveSession: Story = () => {
 
 	return (
 		<Matching
-			currentSong={current.song}
-			currentMatches={current.playlists}
+			currentReviewItem={{ mode: "song" as const, song: current.song }}
+			currentSuggestions={current.playlists.map((p) => ({
+				mode: "song" as const,
+				playlist: p,
+			}))}
 			totalSongs={matchingSongs.length}
 			offset={index}
 			addedTo={addedTo}
 			isComplete={false}
 			completionStats={stats}
-			recentSongs={matchingSongs.slice(0, index).map((m) => ({
+			recentItems={matchingSongs.slice(0, index).map((m) => ({
 				id: m.song.id,
 				albumArtUrl: m.song.albumArtUrl,
 				name: m.song.name,
@@ -91,7 +97,7 @@ export const InteractiveSession: Story = () => {
 				setAddedTo((prev) => [...prev, playlistId]);
 				setStats((s) => ({
 					...s,
-					songsMatched: s.songsMatched + 1,
+					itemsMatched: s.itemsMatched + 1,
 					totalAdditions: s.totalAdditions + 1,
 				}));
 			}}
@@ -149,8 +155,8 @@ export const FullExperience: Story = () => {
 	const [index, setIndex] = useState(0);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
 	const [stats, setStats] = useState<CompletionStats>({
-		totalSongs: matchExperience.songs.length,
-		songsMatched: 0,
+		totalItems: matchExperience.songs.length,
+		itemsMatched: 0,
 		totalAdditions: 0,
 		dismissedCount: 0,
 		skippedCount: 0,
@@ -169,24 +175,31 @@ export const FullExperience: Story = () => {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<Matching
-				currentSong={isComplete ? null : current}
-				currentMatches={
+				currentReviewItem={
+					isComplete || !current
+						? null
+						: { mode: "song" as const, song: current }
+				}
+				currentSuggestions={
 					isComplete || !current
 						? []
-						: (matchExperience.matchesBySong[current.id] ?? [])
+						: (matchExperience.matchesBySong[current.id] ?? []).map((p) => ({
+								mode: "song" as const,
+								playlist: p,
+							}))
 				}
 				totalSongs={matchExperience.songs.length}
 				offset={index}
 				addedTo={addedTo}
 				isComplete={isComplete}
 				completionStats={stats}
-				recentSongs={recentSongs}
+				recentItems={recentSongs}
 				onAdd={(playlistId) => {
 					if (addedTo.includes(playlistId)) return;
 					setAddedTo((prev) => [...prev, playlistId]);
 					setStats((s) => ({
 						...s,
-						songsMatched: s.songsMatched + (addedTo.length === 0 ? 1 : 0),
+						itemsMatched: s.itemsMatched + (addedTo.length === 0 ? 1 : 0),
 						totalAdditions: s.totalAdditions + 1,
 					}));
 				}}
@@ -216,14 +229,14 @@ FullExperience.meta = {
 
 export const EmptyState: Story = () => (
 	<Matching
-		currentSong={null}
-		currentMatches={[]}
+		currentReviewItem={null}
+		currentSuggestions={[]}
 		totalSongs={0}
 		offset={0}
 		addedTo={[]}
 		isComplete={false}
 		completionStats={defaultCompletionStats}
-		recentSongs={[]}
+		recentItems={[]}
 		onAdd={() => {}}
 		onDismiss={() => {}}
 		onNext={() => {}}

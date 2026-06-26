@@ -2,7 +2,9 @@ import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { MatchesSection } from "../components/MatchesSection";
+import { PlaylistReviewItemSection } from "../components/PlaylistReviewItemSection";
 import { SongSection } from "../components/SongSection";
+import { SongSuggestionsSection } from "../components/SongSuggestionsSection";
 import type { MatchingSessionProps } from "../types";
 
 // The card's resting transform. Doubles as the motion element's `initial` so it
@@ -18,29 +20,43 @@ const CARD_AT_REST = {
 
 const EASE_OUT_QUART = [0.165, 0.84, 0.44, 1] as const;
 
-export function MatchingSession({
-	currentSong,
-	playlists,
-	addedTo,
-	isDemo,
-	realAvailable,
-	reconnectNeeded,
-	navigationDisabled,
-	isLastSong,
-	animateReject,
-	onRefresh,
-	onAdd,
-	onDismiss,
-	onNext,
-	onPrevious,
-}: MatchingSessionProps) {
+export function MatchingSession(props: MatchingSessionProps) {
+	const {
+		addedTo,
+		isDemo,
+		realAvailable,
+		reconnectNeeded,
+		navigationDisabled,
+		isLastSong,
+		animateReject,
+		onRefresh,
+		onAdd,
+		onDismiss,
+		onNext,
+		onPrevious,
+	} = props;
+
+	// Song-specific values extracted before useMemo to avoid conditional hook calls.
+	const songId = props.mode === "song" ? props.currentSong.id : "";
+	const songName = props.mode === "song" ? props.currentSong.name : "";
+	const songAlbum =
+		props.mode === "song" ? (props.currentSong.album ?? "") : "";
+	const songArtist = props.mode === "song" ? props.currentSong.artist : "";
+	const songAlbumArtUrl =
+		props.mode === "song"
+			? (props.currentSong.albumArtUrl ?? undefined)
+			: undefined;
+	const songSpotifyId =
+		props.mode === "song" ? props.currentSong.spotifyId : undefined;
+	const playlists = props.mode === "song" ? props.playlists : [];
+
 	const song = useMemo(
 		() => ({
-			name: currentSong.name,
-			album: currentSong.album ?? "",
-			artist: currentSong.artist,
+			name: songName,
+			album: songAlbum,
+			artist: songArtist,
 		}),
-		[currentSong.name, currentSong.album, currentSong.artist],
+		[songName, songAlbum, songArtist],
 	);
 
 	const topGridRef = useRef<HTMLDivElement>(null);
@@ -135,31 +151,40 @@ export function MatchingSession({
 				className="origin-top transition-transform duration-300 ease-in-out"
 			>
 				<motion.div initial={CARD_AT_REST} animate={cardControls}>
-					<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
-						<SongSection
-							songKey={currentSong.id}
-							song={song}
-							albumArtUrl={currentSong.albumArtUrl ?? undefined}
-							spotifyId={currentSong.spotifyId}
-							suppressTransition={rejecting}
-						/>
-						<MatchesSection
-							songKey={currentSong.id}
-							playlists={playlists}
-							addedTo={addedTo}
-							isDemo={isDemo}
-							realAvailable={realAvailable}
-							reconnectNeeded={reconnectNeeded}
-							navigationDisabled={navigationDisabled}
-							isLastSong={isLastSong}
-							suppressTransition={rejecting}
-							onRefresh={onRefresh}
-							onAdd={onAdd}
-							onDismiss={animateReject ? handleReject : onDismiss}
-							onNext={onNext}
-							onPrevious={onPrevious}
-						/>
-					</div>
+					{props.mode === "song" ? (
+						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+							<SongSection
+								songKey={songId}
+								song={song}
+								albumArtUrl={songAlbumArtUrl}
+								spotifyId={songSpotifyId}
+								suppressTransition={rejecting}
+							/>
+							<MatchesSection
+								songKey={songId}
+								playlists={playlists}
+								addedTo={addedTo}
+								isDemo={isDemo}
+								realAvailable={realAvailable}
+								reconnectNeeded={reconnectNeeded}
+								navigationDisabled={navigationDisabled}
+								isLastSong={isLastSong}
+								suppressTransition={rejecting}
+								onRefresh={onRefresh}
+								onAdd={onAdd}
+								onDismiss={animateReject ? handleReject : onDismiss}
+								onNext={onNext}
+								onPrevious={onPrevious}
+							/>
+						</div>
+					) : (
+						// Playlist mode layout — PlaylistReviewItemSection (MSR-32) and
+						// SongSuggestionsSection (MSR-33) will replace these placeholders.
+						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+							<PlaylistReviewItemSection />
+							<SongSuggestionsSection />
+						</div>
+					)}
 				</motion.div>
 			</div>
 		</div>
