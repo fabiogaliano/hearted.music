@@ -178,10 +178,14 @@ export function MatchingSession(props: MatchingSessionProps) {
 							/>
 						</div>
 					) : (
-						// Playlist mode layout — PlaylistReviewItemSection (MSR-32) and
-						// SongSuggestionsSection (MSR-33) will replace these placeholders.
+						// SongSuggestionsSection (MSR-33) will replace the right placeholder.
 						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
-							<PlaylistReviewItemSection />
+							<PlaylistReviewItemSection
+								itemKey={props.reviewItem.id}
+								reviewItem={props.reviewItem}
+								canLoadTracks={!isDemo}
+								suppressTransition={rejecting}
+							/>
 							<SongSuggestionsSection />
 						</div>
 					)}

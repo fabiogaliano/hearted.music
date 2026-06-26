@@ -1,16 +1,19 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import type { Playlist, SongForMatching } from "@/features/matching/types";
+import type {
+	Playlist,
+	PlaylistForMatching,
+	SongForMatching,
+} from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";
 import { MatchingSession } from "../sections/MatchingSession";
 
 // MatchingSession uses ResizeObserver via useLayoutEffect to sync wrapper height.
-// vi.fn() cannot be used with `new`, so a class mock is required.
+// A class mock is required because vi.fn() cannot be used with `new`.
 class ResizeObserverMock {
 	observe = vi.fn();
 	unobserve = vi.fn();
 	disconnect = vi.fn();
-	constructor(_callback: ResizeObserverCallback) {}
 }
 
 beforeAll(() => {
@@ -40,6 +43,15 @@ const PLAYLISTS: Playlist[] = [
 		songCount: 10,
 	},
 ];
+
+const PLAYLIST_REVIEW_ITEM: PlaylistForMatching = {
+	id: "pl-review-1",
+	spotifyId: "sp-review-1",
+	name: "Review Playlist",
+	description: "A playlist to review",
+	imageUrl: null,
+	trackCount: 20,
+};
 
 function makeQueryClient() {
 	return new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -82,28 +94,49 @@ describe("MatchingSession", () => {
 
 	it("renders without crashing in playlist mode", () => {
 		render(
-			<MatchingSession
-				mode="playlist"
-				addedTo={[]}
-				onAdd={() => {}}
-				onDismiss={() => {}}
-				onNext={() => {}}
-			/>,
+			<QueryClientProvider client={makeQueryClient()}>
+				<MatchingSession
+					mode="playlist"
+					reviewItem={PLAYLIST_REVIEW_ITEM}
+					addedTo={[]}
+					onAdd={() => {}}
+					onDismiss={() => {}}
+					onNext={() => {}}
+				/>
+			</QueryClientProvider>,
 		);
 	});
 
-	it("does not render song or playlist sections in playlist mode", () => {
+	it("renders playlist review item name in playlist mode", () => {
 		render(
-			<MatchingSession
-				mode="playlist"
-				addedTo={[]}
-				onAdd={() => {}}
-				onDismiss={() => {}}
-				onNext={() => {}}
-			/>,
+			<QueryClientProvider client={makeQueryClient()}>
+				<MatchingSession
+					mode="playlist"
+					reviewItem={PLAYLIST_REVIEW_ITEM}
+					addedTo={[]}
+					onAdd={() => {}}
+					onDismiss={() => {}}
+					onNext={() => {}}
+				/>
+			</QueryClientProvider>,
 		);
-		// Placeholders render null — no song or playlist text expected
+		expect(screen.getByText("Review Playlist")).toBeDefined();
+	});
+
+	it("does not render song content in playlist mode", () => {
+		render(
+			<QueryClientProvider client={makeQueryClient()}>
+				<MatchingSession
+					mode="playlist"
+					reviewItem={PLAYLIST_REVIEW_ITEM}
+					addedTo={[]}
+					onAdd={() => {}}
+					onDismiss={() => {}}
+					onNext={() => {}}
+				/>
+			</QueryClientProvider>,
+		);
+		// Song section content must not appear in playlist mode
 		expect(screen.queryByText("Test Song")).toBeNull();
-		expect(screen.queryByText("Test Playlist")).toBeNull();
 	});
 });

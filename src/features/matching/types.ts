@@ -53,12 +53,11 @@ export interface PlaylistForMatching {
 	trackCount: number | null;
 }
 
-// E11 — Orientation-aware review item (MSR-32 adds playlist variant).
-// The discriminant `mode` matches MatchViewMode values so callers can check mode once.
-export type MatchingReviewItem = {
-	mode: "song";
-	song: SongForMatching;
-};
+// E11 — Orientation-aware review item. The discriminant `mode` matches
+// MatchViewMode values so callers can check mode once.
+export type MatchingReviewItem =
+	| { mode: "song"; song: SongForMatching }
+	| { mode: "playlist"; playlist: PlaylistForMatching };
 
 // E11 — Orientation-aware suggestion row (MSR-33 adds song-as-suggestion variant)
 export type MatchingSuggestion = {
@@ -78,6 +77,8 @@ export interface ReviewedItem {
 export interface PlaylistReviewItemSectionProps {
 	itemKey: string;
 	reviewItem: PlaylistForMatching;
+	/** False in the canned demo/walkthrough where playlist ids aren't real rows. */
+	canLoadTracks?: boolean;
 	suppressTransition?: boolean;
 }
 
@@ -118,10 +119,10 @@ type SongModeSession = MatchingSessionCommonProps & {
 	playlists: Playlist[];
 };
 
-// MSR-32 will add reviewItem: PlaylistForMatching
 // MSR-33 will add suggestions: SongForMatching[]
 type PlaylistModeSession = MatchingSessionCommonProps & {
 	mode: "playlist";
+	reviewItem: PlaylistForMatching;
 };
 
 export type MatchingSessionProps = SongModeSession | PlaylistModeSession;
