@@ -25,6 +25,7 @@ import type {
 /** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
 
+import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
@@ -816,6 +817,9 @@ export interface MatchReviewSummaryResult {
 		artist: string;
 	}>;
 	hasActiveQueue: boolean;
+	/** Which orientation this summary reflects — used by the sidebar/dashboard to
+	 *  build the correct Match link (/match vs /match?mode=playlist). */
+	orientation: MatchOrientation;
 }
 
 /**
@@ -854,7 +858,12 @@ export async function resolveMatchReviewSummary(
 		hasActiveQueue = false;
 		const snapshotResult = await getLatestMatchSnapshot(accountId);
 		if (Result.isError(snapshotResult) || !snapshotResult.value) {
-			return { pendingCount: 0, previewImages: [], hasActiveQueue: false };
+			return {
+				pendingCount: 0,
+				previewImages: [],
+				hasActiveQueue: false,
+				orientation,
+			};
 		}
 
 		const { songIds } = await getOrderedUndecidedSongIds(
@@ -866,7 +875,7 @@ export async function resolveMatchReviewSummary(
 	}
 
 	if (topIds.length === 0) {
-		return { pendingCount, previewImages: [], hasActiveQueue };
+		return { pendingCount, previewImages: [], hasActiveQueue, orientation };
 	}
 
 	const supabase = createAdminSupabaseClient();
@@ -876,7 +885,7 @@ export async function resolveMatchReviewSummary(
 		.in("id", topIds);
 
 	if (error || !data) {
-		return { pendingCount, previewImages: [], hasActiveQueue };
+		return { pendingCount, previewImages: [], hasActiveQueue, orientation };
 	}
 
 	const songMap = new Map(data.map((s) => [s.id, s]));
@@ -896,7 +905,7 @@ export async function resolveMatchReviewSummary(
 			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
 		);
 
-	return { pendingCount, previewImages, hasActiveQueue };
+	return { pendingCount, previewImages, hasActiveQueue, orientation };
 }
 
 const GetMatchReviewSummarySchema = z.object({
@@ -916,6 +925,31 @@ export const getMatchReviewSummary = createServerFn({ method: "GET" })
 			context.session.accountId,
 			data.orientation,
 		);
+	});
+
+/**
+ * Reads the account's stored match_view_mode preference and delegates to
+ * resolveMatchReviewSummary with that orientation. Falls back to 'song' when the
+ * preference row is missing or unreadable. Used by dashboard + sidebar so those
+ * surfaces always reflect the user's last-selected mode without needing the mode
+ * passed explicitly from the client.
+ */
+export async function resolvePreferredMatchReviewSummary(
+	accountId: string,
+): Promise<MatchReviewSummaryResult> {
+	const mode = await getPreferredMatchViewMode(accountId);
+	return resolveMatchReviewSummary(accountId, mode);
+}
+
+/**
+ * Server function version of resolvePreferredMatchReviewSummary.
+ * Backs preferredSummary query key — invalidated after a preference update.
+ */
+export const getPreferredMatchReviewSummary = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.handler(async ({ context }): Promise<MatchReviewSummaryResult> => {
+		return resolvePreferredMatchReviewSummary(context.session.accountId);
 	});
 
 export interface SyncActiveMatchReviewSessionsResult {

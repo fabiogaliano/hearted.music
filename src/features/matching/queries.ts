@@ -4,6 +4,7 @@ import {
 	getMatchReview,
 	getMatchReviewItem,
 	getMatchReviewSummary,
+	getPreferredMatchReviewSummary,
 } from "@/lib/server/match-review-queue.functions";
 
 // matchReviewKeys.item is intentionally NOT in the snapshot-refresh invalidation
@@ -61,6 +62,21 @@ export function matchReviewSummaryQueryOptions(
 	return queryOptions({
 		queryKey: matchReviewSummaryKeys.summary(accountId, orientation),
 		queryFn: () => getMatchReviewSummary({ data: { orientation } }),
+		staleTime: 60_000,
+	});
+}
+
+/**
+ * Query options for the preference-driven summary.
+ * The server function reads match_view_mode from user_preferences and delegates
+ * to the appropriate orientation summary — no orientation param needed here.
+ * Invalidate matchReviewSummaryKeys.preferredSummary(accountId) and
+ * dashboardKeys.pageData(accountId) after a successful preference update.
+ */
+export function preferredMatchReviewSummaryQueryOptions(accountId: string) {
+	return queryOptions({
+		queryKey: matchReviewSummaryKeys.preferredSummary(accountId),
+		queryFn: () => getPreferredMatchReviewSummary({ data: undefined }),
 		staleTime: 60_000,
 	});
 }

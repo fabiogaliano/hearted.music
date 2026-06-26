@@ -8,7 +8,7 @@ const {
 	mockGetAnalyzedCountForAccount,
 	mockGetLastCompletedSync,
 	mockGetPlaylistCount,
-	mockResolveMatchReviewSummary,
+	mockResolvePreferredMatchReviewSummary,
 } = vi.hoisted(() => {
 	return {
 		mockAuthContext: {
@@ -19,9 +19,9 @@ const {
 		mockGetAnalyzedCountForAccount: vi.fn(),
 		mockGetLastCompletedSync: vi.fn(),
 		mockGetPlaylistCount: vi.fn(),
-		// Phase 7: dashboard stats and previews now source their queue-aware
-		// count and preview images from resolveMatchReviewSummary.
-		mockResolveMatchReviewSummary: vi.fn(),
+		// MSR-21: dashboard stats and previews source their queue-aware count
+		// and preview images from resolvePreferredMatchReviewSummary.
+		mockResolvePreferredMatchReviewSummary: vi.fn(),
 	};
 });
 
@@ -71,11 +71,12 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistCount: (...args: unknown[]) => mockGetPlaylistCount(...args),
 }));
 
-// Phase 7: resolveMatchReviewSummary is the new source for CTA count + previews.
-// We mock at the module level so dashboard.functions.ts picks it up.
+// MSR-21: dashboard.functions.ts now calls resolvePreferredMatchReviewSummary
+// (reads stored match_view_mode preference) instead of resolveMatchReviewSummary
+// with a hard-coded 'song' orientation.
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
-	resolveMatchReviewSummary: (...args: unknown[]) =>
-		mockResolveMatchReviewSummary(...args),
+	resolvePreferredMatchReviewSummary: (...args: unknown[]) =>
+		mockResolvePreferredMatchReviewSummary(...args),
 	// Other exports from the module are not exercised by these tests.
 	getMatchReviewSummary: vi.fn(),
 	syncActiveMatchReviewSessions: vi.fn(),
@@ -94,7 +95,7 @@ describe("getDashboardStats (queue-aware)", () => {
 	});
 
 	it("returns analyzedPercent from the entitlement-aware analyzed count", async () => {
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 3,
 			previewImages: [],
 			hasActiveQueue: true,
@@ -112,7 +113,7 @@ describe("getDashboardStats (queue-aware)", () => {
 	});
 
 	it("sources pendingReviewCount from the queue summary, not the snapshot RPC", async () => {
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 7,
 			previewImages: [],
 			hasActiveQueue: true,
@@ -126,14 +127,14 @@ describe("getDashboardStats (queue-aware)", () => {
 
 		// The queue summary is the authoritative count; no snapshot RPC is called.
 		expect(stats.pendingReviewCount).toBe(7);
-		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith(
+		// MSR-21: preferred summary takes only accountId — orientation is read from preferences.
+		expect(mockResolvePreferredMatchReviewSummary).toHaveBeenCalledWith(
 			"acct-1",
-			"song",
 		);
 	});
 
 	it("returns pendingReviewCount 0 when caught up", async () => {
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 0,
 			previewImages: [],
 			hasActiveQueue: false,
@@ -149,7 +150,7 @@ describe("getDashboardStats (queue-aware)", () => {
 	});
 
 	it("returns 0 analyzedPercent when analyzed count errors (defaults to 0)", async () => {
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 0,
 			previewImages: [],
 			hasActiveQueue: false,
@@ -177,7 +178,7 @@ describe("getMatchPreviews (queue-aware)", () => {
 			{ id: 1, image: "img1.jpg", name: "Track 1", artist: "A1" },
 			{ id: 2, image: "img2.jpg", name: "Track 2", artist: "A2" },
 		];
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 5,
 			previewImages,
 			hasActiveQueue: true,
@@ -186,14 +187,14 @@ describe("getMatchPreviews (queue-aware)", () => {
 		const previews = await getMatchPreviews();
 
 		expect(previews).toEqual(previewImages);
-		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith(
+		// MSR-21: preferred summary takes only accountId.
+		expect(mockResolvePreferredMatchReviewSummary).toHaveBeenCalledWith(
 			"acct-1",
-			"song",
 		);
 	});
 
 	it("returns empty array when no previews available (caught up)", async () => {
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 0,
 			previewImages: [],
 			hasActiveQueue: false,
@@ -212,7 +213,7 @@ describe("getMatchPreviews (queue-aware)", () => {
 			{ id: 2, image: "queue-second.jpg", name: "Track 2", artist: "A2" },
 			{ id: 3, image: "queue-third.jpg", name: "Track 3", artist: "A3" },
 		];
-		mockResolveMatchReviewSummary.mockResolvedValue({
+		mockResolvePreferredMatchReviewSummary.mockResolvedValue({
 			pendingCount: 15,
 			previewImages: ordered,
 			hasActiveQueue: true,
