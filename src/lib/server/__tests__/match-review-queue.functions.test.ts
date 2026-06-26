@@ -994,18 +994,7 @@ describe("addSongToPlaylistFromQueueItem", () => {
 describe("dismissMatchReviewItem", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockUpsertMatchDecisions.mockResolvedValue(Result.ok([]));
-		mockMarkItemResolved.mockResolvedValue(
-			Result.ok({ ...BASE_ITEM, state: "completed", resolution: "dismissed" }),
-		);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} }]),
-		);
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", rank: 1 }]),
-		);
 	});
 
 	it("rejects a foreign queue item (not-found)", async () => {
@@ -1017,8 +1006,7 @@ describe("dismissMatchReviewItem", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("not-found");
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
+		expect(mockDismissQueueItemAtomically).not.toHaveBeenCalled();
 	});
 
 	it("rejects when queue item is already resolved (already-resolved)", async () => {
@@ -1028,134 +1016,48 @@ describe("dismissMatchReviewItem", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("already-resolved");
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
+		expect(mockDismissQueueItemAtomically).not.toHaveBeenCalled();
 	});
 
-	it("passes server-derived visible undecided matches to the atomic dismiss", async () => {
-		// Two match results; one already decided pair excluded.
-		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.ok([
-				{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} },
-				{ playlist_id: "pl-2", score: 0.7, rank: 2, factors: {} },
-			]),
-		);
-		// pl-2 was already decided so it must be excluded.
-		mockGetMatchDecisionsForSongs.mockResolvedValue(
-			Result.ok([{ song_id: "song-1", playlist_id: "pl-2" }]),
-		);
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([
-				{ playlist_id: "pl-1", rank: 1 },
-				{ playlist_id: "pl-2", rank: 2 },
-			]),
-		);
+	it("returns success for a song-orientation item when the RPC returns dismissed", async () => {
+		// Captured pairs are read by the RPC; the server function passes no decisions.
+		mockItemOwnership(BASE_ITEM);
 
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
+		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
-		await dismissMatchReviewItem({ data: { itemId: "item-1" } });
-
-		// Only pl-1 is visible and undecided — pl-2 was already decided.
+		expect(result.success).toBe(true);
 		expect(mockDismissQueueItemAtomically).toHaveBeenCalledWith(
 			"item-1",
 			"acct-1",
-			[
-				{
-					playlistId: "pl-1",
-					modelRank: 1,
-				},
-			],
 		);
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
 	});
 
-	it("respects stored session strictness when deriving visible matches", async () => {
-		// Strictness bar = 0.8; pl-2 at 0.6 must be excluded.
-		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.ok([
-				{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} },
-				{ playlist_id: "pl-2", score: 0.6, rank: 2, factors: {} },
-			]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", rank: 1 }]),
-		);
+	it("returns success for a playlist-orientation item when the RPC returns dismissed", async () => {
+		// Playlist items are now dismissed via the same RPC — orientation is resolved
+		// server-side from the item row, not from the caller.
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
 
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								// Stored strictness = 0.8
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0.8 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
+		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
-		await dismissMatchReviewItem({ data: { itemId: "item-1" } });
-
-		// Only pl-1 (0.9 >= 0.8) is dismissed; pl-2 (0.6 < 0.8) is invisible.
+		expect(result.success).toBe(true);
 		expect(mockDismissQueueItemAtomically).toHaveBeenCalledWith(
 			"item-1",
 			"acct-1",
-			[expect.objectContaining({ playlistId: "pl-1" })],
 		);
-		expect(mockDismissQueueItemAtomically).not.toHaveBeenCalledWith(
-			"item-1",
-			"acct-1",
-			expect.arrayContaining([expect.objectContaining({ playlistId: "pl-2" })]),
+	});
+
+	it("returns derive-failed when the RPC returns no_captured_pairs", async () => {
+		// no_captured_pairs means presentMatchReviewItem has not yet run.
+		// The item must NOT be resolved so the dismiss can be retried.
+		mockItemOwnership(BASE_ITEM);
+		mockDismissQueueItemAtomically.mockResolvedValue(
+			Result.ok("no_captured_pairs"),
 		);
+
+		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("derive-failed");
 	});
 
 	it("returns already-resolved when the atomic dismiss loses the resolve race", async () => {
@@ -1168,247 +1070,33 @@ describe("dismissMatchReviewItem", () => {
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("already-resolved");
-		expect(mockDismissQueueItemAtomically).toHaveBeenCalled();
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
 	});
 
-	it("returns success: false and does NOT resolve when derivation fails (derive-failed)", async () => {
-		// Simulate getMatchResultDetailsForSong returning an error.
-		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.err(new Error("db error")),
-		);
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
-
-		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
-
-		// Must return failure — not success — so the item stays pending and can be retried.
-		expect(result.success).toBe(false);
-		expect(result.reason).toBe("derive-failed");
-		// No decisions written and the item must NOT have been resolved.
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
-	});
-
-	it("returns derive-failed when the session strictness lookup errors", async () => {
-		// The session row carries the strictness that was on screen. If the lookup
-		// errors we cannot reproduce the visible set, so falling back to 0 would
-		// dismiss playlists the user never reviewed. Bail without writing/resolving.
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: null,
-									error: { message: "db error" },
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
+	it("returns not-found when the RPC returns not_found (raced item deletion)", async () => {
+		mockItemOwnership(BASE_ITEM);
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("not_found"));
 
 		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.success).toBe(false);
-		expect(result.reason).toBe("derive-failed");
-		// Must bail before deriving/writing decisions or resolving the item.
-		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
+		expect(result.reason).toBe("not-found");
 	});
 
-	it("returns derive-failed when no session row is found (null strictness)", async () => {
-		// A null session row (foreign/missing session) must not degrade to strictness
-		// 0 — same hazard as an error: dismissing matches the user never saw.
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: null, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
-
-		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
-
-		expect(result.success).toBe(false);
-		expect(result.reason).toBe("derive-failed");
-		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
-	});
-
-	it("returns success: false when the atomic dismiss write fails (decision-write-failed)", async () => {
-		// Visible undecided match exists, so dismissed decisions are derived and
-		// handed to the atomic RPC — but the transaction fails.
-		mockGetMatchResultDetailsForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} }]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetServedRanksForSong.mockResolvedValue(
-			Result.ok([{ playlist_id: "pl-1", rank: 1 }]),
-		);
+	it("returns decision-write-failed when the RPC returns a DB error", async () => {
+		mockItemOwnership(BASE_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(
-			Result.err(new Error("decision write failed")),
+			Result.err(new Error("rpc error")),
 		);
-
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
 
 		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
-		// The transaction failed → must report failure so the queue item stays pending
-		// and the dismiss can be retried.
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("decision-write-failed");
-		expect(mockDismissQueueItemAtomically).toHaveBeenCalled();
-		expect(mockUpsertMatchDecisions).not.toHaveBeenCalled();
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
 	});
 
-	it("marks item completed/dismissed", async () => {
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: BASE_ITEM, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
-
-		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
-
-		expect(result.success).toBe(true);
-		expect(mockDismissQueueItemAtomically).toHaveBeenCalledWith(
-			"item-1",
-			"acct-1",
-			[
-				{
-					playlistId: "pl-1",
-					modelRank: 1,
-				},
-			],
-		);
-		expect(mockMarkItemResolved).not.toHaveBeenCalled();
-	});
+	it.todo(
+		"added-pair exclusion: pairs with an existing add decision are excluded from dismissed decisions (integration, handled by RPC)",
+	);
 });
 
 // ---------------------------------------------------------------------------

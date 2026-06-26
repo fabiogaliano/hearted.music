@@ -247,26 +247,35 @@ describe("dismissQueueItemAtomically", () => {
 		vi.clearAllMocks();
 	});
 
-	it("calls the atomic dismiss RPC with server-derived decision rows", async () => {
+	it("calls the atomic dismiss RPC with only item id and account id (MSR-27: no caller-supplied decisions)", async () => {
 		const rpc = vi.fn().mockResolvedValue({ data: "dismissed", error: null });
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc,
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
-		const result = await dismissQueueItemAtomically("item-1", "acct-1", [
-			{ playlistId: "pl-1", modelRank: 1 },
-			{ playlistId: "pl-2", modelRank: null },
-		]);
+		const result = await dismissQueueItemAtomically("item-1", "acct-1");
 
 		expect(result).toBeOk();
 		expect(rpc).toHaveBeenCalledWith("dismiss_match_review_item_atomic", {
 			p_item_id: "item-1",
 			p_account_id: "acct-1",
-			p_decisions: [
-				{ playlist_id: "pl-1", model_rank: 1 },
-				{ playlist_id: "pl-2", model_rank: null },
-			],
 		});
+	});
+
+	it("returns ok(no_captured_pairs) when the RPC reports no captured pairs", async () => {
+		const rpc = vi
+			.fn()
+			.mockResolvedValue({ data: "no_captured_pairs", error: null });
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await dismissQueueItemAtomically("item-1", "acct-1");
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value).toBe("no_captured_pairs");
+		}
 	});
 
 	it("returns a database error when the RPC returns an unknown status", async () => {
@@ -275,10 +284,23 @@ describe("dismissQueueItemAtomically", () => {
 			rpc,
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
-		const result = await dismissQueueItemAtomically("item-1", "acct-1", []);
+		const result = await dismissQueueItemAtomically("item-1", "acct-1");
 
 		expect(result).toBeErr();
 	});
+
+	it.todo(
+		"song orientation: writes dismissed decisions for all captured visible pairs not already added (integration)",
+	);
+	it.todo(
+		"playlist orientation: writes dismissed decisions for all captured visible pairs not already added (integration)",
+	);
+	it.todo(
+		"excludes pairs that already have an added decision for the same queue_item_id (integration)",
+	);
+	it.todo(
+		"resolves queue item state=resolved resolution=dismissed (integration)",
+	);
 });
 
 describe("finishQueueItemAtomically", () => {

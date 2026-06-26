@@ -131,6 +131,34 @@ async function seed() {
       VALUES (${SNAPSHOT}, ${songId}, ${playlistId}, ${score}, ${rank})
     `;
 	}
+
+	// Captured visible pairs (MSR-27). The add RPC (MSR-26) and dismiss RPC (MSR-27)
+	// both read from match_review_item_visible_pair as the source of ranks, so these
+	// rows must exist before any add or dismiss call can succeed.
+	const capturedPairs: Array<[string, string, string, number, number]> = [
+		[ITEM_ADD, SONG_ADD, PLAYLIST_A, 1, 1],
+		[ITEM_DIS, SONG_DIS, PLAYLIST_A, 1, 1],
+		[ITEM_MIX, SONG_MIX, PLAYLIST_A, 1, 1],
+		[ITEM_MIX, SONG_MIX, PLAYLIST_B, 2, 2],
+		[ITEM_AGUARD, SONG_AGUARD, PLAYLIST_A, 1, 1],
+	];
+	for (const [
+		itemId,
+		songId,
+		playlistId,
+		modelRank,
+		visibleRank,
+	] of capturedPairs) {
+		await client`
+      INSERT INTO match_review_item_visible_pair(
+        queue_item_id, song_id, playlist_id, session_id, account_id,
+        snapshot_id, orientation, model_rank, visible_rank, fit_score
+      ) VALUES (
+        ${itemId}, ${songId}, ${playlistId}, ${SESSION}, ${ACCOUNT},
+        ${SNAPSHOT}, ${"song"}, ${modelRank}, ${visibleRank}, ${0.9}
+      )
+    `;
+	}
 }
 
 async function cleanup() {
@@ -138,6 +166,9 @@ async function cleanup() {
 	// Ordered explicit deletes; FKs would cascade but be deterministic.
 	await sql`DELETE FROM match_event WHERE account_id = ${ACCOUNT}`;
 	await sql`DELETE FROM match_decision WHERE account_id = ${ACCOUNT}`;
+	// match_review_item_visible_pair cascades on queue_item delete but is listed
+	// explicitly here to keep the delete order clear and avoid FK ordering issues.
+	await sql`DELETE FROM match_review_item_visible_pair WHERE account_id = ${ACCOUNT}`;
 	await sql`DELETE FROM match_result WHERE snapshot_id = ${SNAPSHOT}`;
 	await sql`DELETE FROM match_review_queue_item WHERE account_id = ${ACCOUNT}`;
 	await sql`DELETE FROM match_review_session WHERE account_id = ${ACCOUNT}`;
@@ -162,8 +193,10 @@ afterAll(async () => {
 
 describeLocal("match queue RPCs write to match_event", () => {
 	it("add writes both a match_decision and an 'added' match_event", async () => {
+		// MSR-26: add RPC now reads ranks from captured visible pairs; the caller
+		// passes NULL for p_suggestion_song_id (song items) and the target playlist.
 		const result =
-			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_ADD}, ${ACCOUNT}, ${PLAYLIST_A}, ${1}) AS r`;
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_ADD}, ${ACCOUNT}, NULL::uuid, ${PLAYLIST_A}) AS r`;
 		expect(result[0].r).toBe("added");
 
 		const decisions = await db()`
@@ -178,29 +211,28 @@ describeLocal("match queue RPCs write to match_event", () => {
     `;
 		expect(events).toHaveLength(1);
 		expect(events[0].event).toBe("added");
-		// model_rank is the model/snapshot rank passed in via p_served_rank.
+		// model_rank and visible_rank come from the captured visible pair row.
 		expect(events[0].model_rank).toBe(1);
-		// visible_rank is unwired until visible-pair capture (MSR-23) — stays NULL.
-		expect(events[0].visible_rank).toBeNull();
+		expect(events[0].visible_rank).toBe(1);
 		expect(events[0].queue_item_id).toBe(ITEM_ADD);
 		expect(events[0].session_id).toBe(SESSION);
 	});
 
 	it("dismiss does not overwrite or dismiss an already-added playlist", async () => {
-		// The user adds A, then the dismiss payload also lists A (e.g. a stale
-		// client). The ON CONFLICT DO NOTHING keeps the decision 'added', and the
-		// event-log NOT EXISTS guard must drop the dismissed event so A never holds
-		// both an 'added' and a 'dismissed' event.
+		// The user adds A via the add RPC, then dismiss runs for the same item.
+		// The NOT EXISTS guard in the dismiss RPC must skip A so it is never written
+		// as 'dismissed' — keeping the decision 'added' and the event log clean.
 		const added =
-			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_AGUARD}, ${ACCOUNT}, ${PLAYLIST_A}, ${1}) AS r`;
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_AGUARD}, ${ACCOUNT}, NULL::uuid, ${PLAYLIST_A}) AS r`;
 		expect(added[0].r).toBe("added");
 
-		const payload = db().json([{ playlist_id: PLAYLIST_A, model_rank: 1 }]);
+		// MSR-27: no p_decisions JSONB — the RPC reads from captured visible pairs.
 		const dismissed =
-			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_AGUARD}, ${ACCOUNT}, ${payload}) AS r`;
+			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_AGUARD}, ${ACCOUNT}) AS r`;
 		expect(dismissed[0].r).toBe("dismissed");
 
-		// Decision stays 'added' — the dismissed upsert was a no-op on conflict.
+		// Decision stays 'added' — the add won; the dismissed ON CONFLICT DO UPDATE
+		// is suppressed by the NOT EXISTS guard for pairs already added.
 		const decisions = await db()`
       SELECT decision FROM match_decision
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_AGUARD} AND playlist_id = ${PLAYLIST_A}
@@ -216,24 +248,30 @@ describeLocal("match queue RPCs write to match_event", () => {
 	});
 
 	it("dismiss writes a 'dismissed' decision and a 'dismissed' event", async () => {
-		// sql.json binds a real jsonb value — a stringified array under
-		// fetch_types:false reaches the function as text, which it rejects.
-		const payload = db().json([{ playlist_id: PLAYLIST_A, model_rank: 1 }]);
+		// MSR-27: no p_decisions JSONB — the RPC derives decisions from captured
+		// visible pairs in match_review_item_visible_pair (seeded in beforeAll).
 		const result =
-			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_DIS}, ${ACCOUNT}, ${payload}) AS r`;
+			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_DIS}, ${ACCOUNT}) AS r`;
 		expect(result[0].r).toBe("dismissed");
 
 		const decisions = await db()`
-      SELECT decision FROM match_decision
+      SELECT decision, model_rank, visible_rank, served_orientation FROM match_decision
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_DIS} AND playlist_id = ${PLAYLIST_A}
     `;
 		expect(decisions.map((d) => d.decision)).toEqual(["dismissed"]);
+		// Ranks come from the captured pair rows — never recomputed at dismiss time.
+		expect(decisions[0].model_rank).toBe(1);
+		expect(decisions[0].visible_rank).toBe(1);
+		expect(decisions[0].served_orientation).toBe("song");
 
 		const events = await db()`
-      SELECT event FROM match_event
+      SELECT event, model_rank, visible_rank, served_orientation FROM match_event
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_DIS} AND playlist_id = ${PLAYLIST_A}
     `;
 		expect(events.map((e) => e.event)).toEqual(["dismissed"]);
+		expect(events[0].model_rank).toBe(1);
+		expect(events[0].visible_rank).toBe(1);
+		expect(events[0].served_orientation).toBe("song");
 	});
 
 	it("finish logs a 'skipped' event but never a match_decision", async () => {
@@ -283,8 +321,9 @@ describeLocal("match queue RPCs write to match_event", () => {
 
 	it("an added playlist is not also logged as skipped when the card finishes", async () => {
 		// Card with two visible playlists; the user adds A, leaves B.
+		// MSR-26: add RPC now reads ranks from captured visible pairs.
 		const added =
-			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_MIX}, ${ACCOUNT}, ${PLAYLIST_A}, ${1}) AS r`;
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_MIX}, ${ACCOUNT}, NULL::uuid, ${PLAYLIST_A}) AS r`;
 		expect(added[0].r).toBe("added");
 
 		const finished =
