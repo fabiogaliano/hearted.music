@@ -470,6 +470,8 @@ const ADD_QUEUE_ITEM_DECISION_ATOMIC_STATUSES = [
 	"already_resolved",
 	"not_entitled",
 	"foreign_playlist",
+	"invalid_target",
+	"not_visible",
 ] as const;
 
 export type AddQueueItemDecisionAtomicStatus =
@@ -484,14 +486,20 @@ function isAddQueueItemDecisionAtomicStatus(
 }
 
 /**
- * Writes an added decision under the queue-row lock. If finish/dismiss already
- * resolved the item, the RPC returns already_resolved and writes no decision.
+ * Writes an added decision under the queue-row lock using the captured visible
+ * pair as the source of ranks. If finish/dismiss already resolved the item, the
+ * RPC returns already_resolved and writes no decision.
+ *
+ * Orientation-aware: pass suggestionPlaylistId for song-orientation items (subject
+ * is song, suggestion is playlist) and suggestionSongId for playlist-orientation
+ * items (subject is playlist, suggestion is song). Supplying the wrong side
+ * returns invalid_target; a pair not in the captured visible set returns not_visible.
  */
 export async function addQueueItemDecisionAtomically(
 	itemId: string,
 	accountId: string,
-	playlistId: string,
-	servedRank: number | null,
+	suggestionSongId: string | null,
+	suggestionPlaylistId: string | null,
 ): Promise<Result<AddQueueItemDecisionAtomicStatus, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(
@@ -499,8 +507,8 @@ export async function addQueueItemDecisionAtomically(
 		{
 			p_item_id: itemId,
 			p_account_id: accountId,
-			p_playlist_id: playlistId,
-			p_served_rank: servedRank ?? undefined,
+			p_suggestion_song_id: suggestionSongId ?? undefined,
+			p_suggestion_playlist_id: suggestionPlaylistId ?? undefined,
 		},
 	);
 

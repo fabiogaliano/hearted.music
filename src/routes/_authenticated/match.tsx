@@ -662,7 +662,7 @@ function QueueCardContent({
 			}
 
 			const addResult = await addSongToPlaylistFromQueueItem({
-				data: { itemId, playlistId },
+				data: { itemId, suggestionId: playlistId },
 			});
 
 			if (!addResult.success) return;

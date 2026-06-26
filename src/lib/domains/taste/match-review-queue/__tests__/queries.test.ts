@@ -158,7 +158,7 @@ describe("addQueueItemDecisionAtomically", () => {
 		vi.clearAllMocks();
 	});
 
-	it("calls the atomic add RPC with served-rank context", async () => {
+	it("calls the atomic add RPC with suggestion playlist id for song orientation", async () => {
 		const rpc = vi.fn().mockResolvedValue({ data: "added", error: null });
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc,
@@ -167,20 +167,20 @@ describe("addQueueItemDecisionAtomically", () => {
 		const result = await addQueueItemDecisionAtomically(
 			"item-1",
 			"acct-1",
+			null,
 			"pl-1",
-			2,
 		);
 
 		expect(result).toBeOk();
 		expect(rpc).toHaveBeenCalledWith("add_match_review_item_decision_atomic", {
 			p_item_id: "item-1",
 			p_account_id: "acct-1",
-			p_playlist_id: "pl-1",
-			p_served_rank: 2,
+			p_suggestion_song_id: undefined,
+			p_suggestion_playlist_id: "pl-1",
 		});
 	});
 
-	it("omits served rank when the playlist was not ranked in the snapshot", async () => {
+	it("passes suggestion_song_id for playlist orientation", async () => {
 		const rpc = vi.fn().mockResolvedValue({ data: "added", error: null });
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc,
@@ -189,14 +189,39 @@ describe("addQueueItemDecisionAtomically", () => {
 		const result = await addQueueItemDecisionAtomically(
 			"item-1",
 			"acct-1",
-			"pl-1",
+			"song-2",
+			null,
+		);
+
+		expect(result).toBeOk();
+		expect(rpc).toHaveBeenCalledWith("add_match_review_item_decision_atomic", {
+			p_item_id: "item-1",
+			p_account_id: "acct-1",
+			p_suggestion_song_id: "song-2",
+			p_suggestion_playlist_id: undefined,
+		});
+	});
+
+	it("omits both suggestion ids when both are null", async () => {
+		const rpc = vi.fn().mockResolvedValue({ data: "added", error: null });
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await addQueueItemDecisionAtomically(
+			"item-1",
+			"acct-1",
+			null,
 			null,
 		);
 
 		expect(result).toBeOk();
 		expect(rpc).toHaveBeenCalledWith(
 			"add_match_review_item_decision_atomic",
-			expect.objectContaining({ p_served_rank: undefined }),
+			expect.objectContaining({
+				p_suggestion_song_id: undefined,
+				p_suggestion_playlist_id: undefined,
+			}),
 		);
 	});
 
@@ -209,8 +234,8 @@ describe("addQueueItemDecisionAtomically", () => {
 		const result = await addQueueItemDecisionAtomically(
 			"item-1",
 			"acct-1",
+			null,
 			"pl-1",
-			1,
 		);
 
 		expect(result).toBeErr();
