@@ -164,3 +164,32 @@ export interface AppendResult {
 	/** True when the snapshot was already recorded; insertions were skipped */
 	alreadyApplied: boolean;
 }
+
+/**
+ * Inputs that determine which review items are visible to a user at enqueue
+ * time (C9). orientation + strictness + readTimeFiltersHash are hashed into
+ * visibilityConfigHash stored in match_review_session_snapshot. When any
+ * input changes a new hash allows the same snapshot to append additional
+ * subjects without duplicating the already-enqueued ones.
+ */
+export interface QueueVisibilityConfigHashInput {
+	orientation: MatchOrientation;
+	minScore: number;
+	/**
+	 * Stable placeholder for read-time hard-filter predicates. Fixed to
+	 * "write-time-filters" until read-time filter config migrates to its own
+	 * hash component (tracked in deviation log MSR-19).
+	 */
+	readTimeFiltersHash: string;
+}
+
+/**
+ * A single orientation-aware queue subject produced by getOrderedUndecidedSubjects.
+ * Orientation is encoded inside `subject` so callers never branch on a separate
+ * orientation field (B3, MSR-19 note: avoid leaking song-only names).
+ */
+export interface OrderedSubject {
+	subject: MatchReviewSubject;
+	maxScore: number;
+	wasNewAtEnqueue: boolean;
+}
