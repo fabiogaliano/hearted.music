@@ -6,6 +6,7 @@ import type {
 	MatchingProps,
 	MatchingSuggestion,
 	Playlist,
+	PlaylistForMatching,
 	SongForMatching,
 } from "./types";
 
@@ -42,6 +43,10 @@ export function Matching({
 	const currentSong: SongForMatching | null =
 		currentReviewItem?.mode === "song" ? currentReviewItem.song : null;
 
+	// Unwrap playlist-mode review item for MatchingSession.
+	const currentPlaylist: PlaylistForMatching | null =
+		currentReviewItem?.mode === "playlist" ? currentReviewItem.playlist : null;
+
 	const currentPlaylists: Playlist[] = currentSuggestions
 		.filter(
 			(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
@@ -49,10 +54,19 @@ export function Matching({
 		)
 		.map((s) => s.playlist);
 
-	// Backstop: a null song (e.g. a failed fetch) must never paint a blank screen.
-	// The frozen-list walk shouldn't reach here, but if it does, fall through to
-	// the completion view rather than rendering nothing.
+	// Backstop: a null review item (e.g. a failed fetch) must never paint a blank
+	// screen. The frozen-list walk shouldn't reach here, but if it does, fall
+	// through to the completion view rather than rendering nothing.
 	if (mode === "song" && !currentSong) {
+		return (
+			<CompletionScreen
+				stats={completionStats}
+				items={recentItems}
+				onExit={onExit}
+			/>
+		);
+	}
+	if (mode === "playlist" && !currentPlaylist) {
 		return (
 			<CompletionScreen
 				stats={completionStats}
@@ -96,9 +110,10 @@ export function Matching({
 					onNext={onNext}
 					onPrevious={offset > 0 ? onPrevious : undefined}
 				/>
-			) : mode === "playlist" ? (
+			) : mode === "playlist" && currentPlaylist ? (
 				<MatchingSession
 					mode="playlist"
+					reviewItem={currentPlaylist}
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
 					navigationDisabled={navigationDisabled}
