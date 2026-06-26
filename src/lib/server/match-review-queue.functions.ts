@@ -29,12 +29,7 @@ import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-q
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
 
 import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
-import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import {
-	getLatestMatchSnapshot,
-	getMatchResultDetailsForSong,
-	getServedRanksForSong,
-} from "@/lib/domains/taste/song-matching/queries";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getOrderedUndecidedSongIds } from "@/lib/server/matching.functions";
 import type { MatchingPlaylistMatch, MatchingSong } from "./matching.functions";
@@ -941,13 +936,13 @@ export interface DismissQueueResult {
 }
 
 /**
- * Dismisses a queue item: the server derives all VISIBLE undecided playlist
- * matches from the item's source snapshot and stored session strictness, then a
- * single DB transaction resolves the item and writes dismissed decisions for the
- * pairs that were still undecided when the transaction won the queue-row lock.
+ * Dismisses a queue item using captured visible pairs as the decision authority
+ * (MSR-27). The RPC reads match_review_item_visible_pair rows written by
+ * presentMatchReviewItem, so ranks are never recomputed at dismiss time and the
+ * dismissed set is always exactly what the user saw on screen.
  *
- * The visible-match derivation mirrors getMatchReviewItem — playlist ids come
- * entirely from server-owned data, never from client input.
+ * Pair ownership and orientation are resolved server-side inside the RPC — no
+ * playlist ids are accepted from the client.
  */
 export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
@@ -965,85 +960,9 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "already-resolved" };
 		}
 
-		// Song-mode only: the dismiss path derives undecided playlist pairs for a
-		// song subject. Playlist items use a different dismiss path (not yet
-		// implemented in this story).
-		if (item.subject.orientation !== "song") {
-			return { success: false, reason: "not-found" };
-		}
-		const songId = item.subject.songId;
-
-		// Load the session's stored strictness — must not re-read live preferences
-		// so that the bar matches what was visible on screen when the user dismissed.
-		const supabase = createAdminSupabaseClient();
-		const { data: sessionRow, error: sessionError } = await supabase
-			.from("match_review_session")
-			.select("strictness_min_score")
-			.eq("id", item.sessionId)
-			.eq("account_id", session.accountId)
-			.maybeSingle();
-
-		if (sessionError || !sessionRow) {
-			// The strictness that was on screen can't be verified. Falling back to 0
-			// would derive a wider set of "visible" matches than the user actually
-			// saw and write dismissed decisions for playlists they never reviewed.
-			// Bail without writing decisions or resolving so the dismiss can retry.
-			return { success: false, reason: "derive-failed" };
-		}
-
-		const strictnessMinScore = sessionRow.strictness_min_score;
-
-		// Derive visible undecided playlist matches — same computation as
-		// getMatchReviewItem so the dismissed set is exactly what was on screen.
-		const [songDetailsResult, decisionsResult] = await Promise.all([
-			getMatchResultDetailsForSong(item.sourceSnapshotId, songId),
-			getMatchDecisionsForSongs(session.accountId, [songId]),
-		]);
-
-		if (Result.isError(songDetailsResult) || Result.isError(decisionsResult)) {
-			// Derivation failed — do NOT resolve the item. Marking it completed here
-			// would permanently block retries (RESOLVED_STATES guard fires on the next
-			// call) while no decisions were ever written, creating a permanent
-			// inconsistency. Leave the item pending so the user can retry.
-			return { success: false, reason: "derive-failed" };
-		}
-
-		const decidedPairs = new Set(
-			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-		);
-
-		const visibleUndecided = songDetailsResult.value.filter(
-			(mr) =>
-				mr.score >= strictnessMinScore &&
-				!decidedPairs.has(`${songId}:${mr.playlist_id}`),
-		);
-
-		// Served ranks for those playlists, so dismissed decisions log the same
-		// served context (snapshot + rank) that add decisions record.
-		const servedResult =
-			visibleUndecided.length > 0
-				? await getServedRanksForSong(
-						item.sourceSnapshotId,
-						session.accountId,
-						songId,
-					)
-				: null;
-		const rankByPlaylist = new Map<string, number>();
-		if (servedResult && Result.isOk(servedResult) && servedResult.value) {
-			for (const mr of servedResult.value) {
-				if (mr.rank !== null) rankByPlaylist.set(mr.playlist_id, mr.rank);
-			}
-		}
-
-		const decisions = visibleUndecided.map((mr) => ({
-			playlistId: mr.playlist_id,
-			modelRank: rankByPlaylist.get(mr.playlist_id) ?? null,
-		}));
-
 		const dismissResult = await dismissQueueItemAtomically(
 			itemId,
 			session.accountId,
-			decisions,
 		);
 		if (Result.isError(dismissResult)) {
 			return { success: false, reason: "decision-write-failed" };
@@ -1055,8 +974,10 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 		if (dismissResult.value === "already_resolved") {
 			return { success: false, reason: "already-resolved" };
 		}
-		if (dismissResult.value === "invalid_input") {
-			return { success: false, reason: "decision-write-failed" };
+		// no_captured_pairs means presentMatchReviewItem has not yet run — the item
+		// should not be resolved so the dismiss can be retried after presentation.
+		if (dismissResult.value === "no_captured_pairs") {
+			return { success: false, reason: "derive-failed" };
 		}
 
 		return { success: true };

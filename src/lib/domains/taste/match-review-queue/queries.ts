@@ -8,7 +8,6 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
 import {
@@ -535,16 +534,13 @@ const DISMISS_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"dismissed",
 	"not_found",
 	"already_resolved",
-	"invalid_input",
+	// Returned when match_review_item_visible_pair has no rows for the item —
+	// presentMatchReviewItem must capture pairs before dismiss can proceed (MSR-27).
+	"no_captured_pairs",
 ] as const;
 
 export type DismissQueueItemAtomicStatus =
 	(typeof DISMISS_QUEUE_ITEM_ATOMIC_STATUSES)[number];
-
-export interface DismissQueueItemAtomicDecision {
-	playlistId: string;
-	modelRank: number | null;
-}
 
 function isDismissQueueItemAtomicStatus(
 	value: string | null,
@@ -554,25 +550,23 @@ function isDismissQueueItemAtomicStatus(
 
 /**
  * Resolves an item as dismissed and writes dismissed decisions in one DB
- * transaction. The RPC first locks and resolves the queue row; if another finish
- * or dismiss already won, it returns already_resolved and writes no decisions.
+ * transaction. Decisions are derived from captured visible pair rows in
+ * match_review_item_visible_pair — the caller no longer supplies decisions.
+ *
+ * Returns no_captured_pairs if presentMatchReviewItem has not yet run for the
+ * item; the TypeScript caller maps this to derive-failed so the item stays
+ * pending and the dismiss can be retried after presentation.
  */
 export async function dismissQueueItemAtomically(
 	itemId: string,
 	accountId: string,
-	decisions: DismissQueueItemAtomicDecision[],
 ): Promise<Result<DismissQueueItemAtomicStatus, DbError>> {
-	const decisionsJson: Json = decisions.map((decision) => ({
-		playlist_id: decision.playlistId,
-		model_rank: decision.modelRank,
-	}));
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(
 		"dismiss_match_review_item_atomic",
 		{
 			p_item_id: itemId,
 			p_account_id: accountId,
-			p_decisions: decisionsJson,
 		},
 	);
 

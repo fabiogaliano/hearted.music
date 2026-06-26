@@ -3401,7 +3401,7 @@ export type Database = {
 				};
 			};
 			dismiss_match_review_item_atomic: {
-				Args: { p_account_id: string; p_decisions?: Json; p_item_id: string };
+				Args: { p_account_id: string; p_item_id: string };
 				Returns: string;
 			};
 			enqueue_audio_feature_backfill_manual: {
