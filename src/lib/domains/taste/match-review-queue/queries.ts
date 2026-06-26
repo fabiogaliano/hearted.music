@@ -17,11 +17,14 @@ import {
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type {
+	MatchOrientation,
 	MatchReviewQueueItem,
+	MatchReviewQueueItemDto,
 	MatchReviewQueueItemRow,
 	MatchReviewSession,
 	MatchReviewSessionRow,
 	MatchReviewSessionSnapshotRow,
+	MatchReviewSubject,
 	QueueItemLifecycleState,
 	QueueItemResolution,
 	QueueItemState,
@@ -38,10 +41,46 @@ function toLifecycleState(s: string): QueueItemLifecycleState {
 	throw new Error(`Unexpected queue_item_lifecycle_state from DB: ${s}`);
 }
 
+/**
+ * Narrows a raw DB string to MatchOrientation. Throws if the DB emits a value
+ * outside the CHECK constraint — indicates an unapplied migration.
+ */
+function toOrientation(s: string): MatchOrientation {
+	if (s === "song" || s === "playlist") return s;
+	throw new Error(`Unexpected match_orientation from DB: ${s}`);
+}
+
+/**
+ * Maps the orientation + nullable subject columns from a DB row to the
+ * MatchReviewSubject discriminated union. Throws instead of returning an
+ * invalid/optional shape so callers never encounter missing-subject ambiguity
+ * in exported DTOs (MSR-18 acceptance criterion: invalid rows are errors).
+ */
+function toMatchReviewSubject(
+	row: MatchReviewQueueItemRow,
+): MatchReviewSubject {
+	const orientation = toOrientation(row.orientation);
+	if (orientation === "song") {
+		if (!row.song_id) {
+			throw new Error(
+				`Queue item ${row.id} has orientation 'song' but song_id is null`,
+			);
+		}
+		return { orientation: "song", songId: row.song_id };
+	}
+	if (!row.playlist_id) {
+		throw new Error(
+			`Queue item ${row.id} has orientation 'playlist' but playlist_id is null`,
+		);
+	}
+	return { orientation: "playlist", playlistId: row.playlist_id };
+}
+
 function mapSessionRow(row: MatchReviewSessionRow): MatchReviewSession {
 	return {
 		id: row.id,
 		accountId: row.account_id,
+		orientation: toOrientation(row.orientation),
 		status: row.status as SessionStatus,
 		strictnessPreset: row.strictness_preset,
 		strictnessMinScore: row.strictness_min_score,
@@ -74,17 +113,46 @@ function mapItemRow(row: MatchReviewQueueItemRow): MatchReviewQueueItem {
 }
 
 /**
- * Inserts a new match review session.
+ * Maps a DB row to the orientation-aware MatchReviewQueueItemDto using a
+ * MatchReviewSubject discriminated union. Throws for invalid/missing subject
+ * rows rather than exposing optional fields — callers always get a valid shape
+ * or a hard error (MSR-18 B3/E8).
+ */
+export function mapItemToDto(
+	row: MatchReviewQueueItemRow,
+): MatchReviewQueueItemDto {
+	return {
+		id: row.id,
+		sessionId: row.session_id,
+		accountId: row.account_id,
+		subject: toMatchReviewSubject(row),
+		sourceSnapshotId: row.source_snapshot_id,
+		position: row.position,
+		state: toLifecycleState(row.state),
+		resolution: row.resolution as QueueItemResolution | null,
+		sourceScore: row.source_fit_score,
+		wasNewAtEnqueue: row.was_new_at_enqueue,
+		presentedAt: row.presented_at,
+		resolvedAt: row.resolved_at,
+		createdAt: row.created_at,
+		updatedAt: row.updated_at,
+	};
+}
+
+/**
+ * Inserts a new match review session for the given orientation.
  *
- * The unique partial index `idx_match_review_session_one_active` (WHERE status =
- * 'active') means two concurrent inserts for the same account will produce a
- * unique constraint violation (code 23505). The service layer treats that as a
- * "already active" signal and falls back to fetching the existing session.
+ * The unique partial index `idx_match_review_session_one_active_per_orientation`
+ * (WHERE status = 'active') allows one active session per (account, orientation).
+ * Two concurrent inserts for the same account AND orientation produce a unique
+ * constraint violation (code 23505); the service layer falls back to fetching
+ * the existing session. Song-mode and playlist-mode sessions are independent.
  */
 export async function insertMatchReviewSession(
 	accountId: string,
 	strictnessPreset: string,
 	strictnessMinScore: number,
+	orientation: MatchOrientation,
 ): Promise<Result<MatchReviewSession, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseSingle(
@@ -95,6 +163,7 @@ export async function insertMatchReviewSession(
 				status: "active",
 				strictness_preset: strictnessPreset,
 				strictness_min_score: strictnessMinScore,
+				orientation,
 			})
 			.select()
 			.single(),
@@ -104,10 +173,17 @@ export async function insertMatchReviewSession(
 }
 
 /**
- * Fetches the active session for an account. Returns null when none exists.
+ * Fetches the active session for a given (account, orientation) pair.
+ * Returns null when no active session exists for that orientation.
+ *
+ * Each orientation has its own active session slot enforced by the partial
+ * unique index `idx_match_review_session_one_active_per_orientation`
+ * (WHERE status = 'active'), so song-mode and playlist-mode sessions are
+ * fetched and managed independently.
  */
 export async function fetchActiveSession(
 	accountId: string,
+	orientation: MatchOrientation,
 ): Promise<Result<MatchReviewSession | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseMaybe(
@@ -115,6 +191,7 @@ export async function fetchActiveSession(
 			.from("match_review_session")
 			.select("*")
 			.eq("account_id", accountId)
+			.eq("orientation", orientation)
 			.eq("status", "active")
 			.maybeSingle(),
 	);

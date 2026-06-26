@@ -103,6 +103,7 @@ export interface MatchReviewQueueItemDto {
 export interface MatchReviewSession {
 	id: string;
 	accountId: string;
+	orientation: MatchOrientation;
 	status: SessionStatus;
 	strictnessPreset: string;
 	strictnessMinScore: number;

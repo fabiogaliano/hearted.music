@@ -142,6 +142,28 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	fetchQueueItems: vi.fn(),
 	finishQueueItemAtomically: (...args: unknown[]) =>
 		mockFinishQueueItemAtomically(...args),
+	// mapItemToDto is a pure row→DTO mapper used inside fetchOwnedQueueItem.
+	// Inline implementation keeps the conversion in test context without needing
+	// vi.importActual, since the function has no DB dependencies.
+	mapItemToDto: (data: Record<string, unknown>) => ({
+		id: data.id,
+		sessionId: data.session_id,
+		accountId: data.account_id,
+		subject:
+			data.orientation === "song"
+				? { orientation: "song" as const, songId: data.song_id }
+				: { orientation: "playlist" as const, playlistId: data.playlist_id },
+		sourceSnapshotId: data.source_snapshot_id,
+		position: data.position,
+		state: data.state,
+		resolution: data.resolution,
+		sourceScore: data.source_fit_score,
+		wasNewAtEnqueue: data.was_new_at_enqueue,
+		presentedAt: data.presented_at,
+		resolvedAt: data.resolved_at,
+		createdAt: data.created_at,
+		updatedAt: data.updated_at,
+	}),
 }));
 
 // ---------------------------------------------------------------------------
@@ -149,18 +171,22 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 // ---------------------------------------------------------------------------
 
 // Matches the raw DB row shape that Supabase returns (snake_case).
-// fetchOwnedQueueItem reads these fields directly before mapping to camelCase.
+// fetchOwnedQueueItem reads these fields via mapItemToDto which requires
+// orientation and source_fit_score (the MSR-06 renamed column).
 const BASE_ITEM = {
 	id: "item-1",
 	session_id: "session-1",
 	account_id: "acct-1",
 	song_id: "song-1",
+	playlist_id: null,
+	orientation: "song",
 	source_snapshot_id: "snap-1",
 	position: 0,
 	state: "pending",
 	resolution: null,
-	source_score: 0.85,
+	source_fit_score: 0.85,
 	was_new_at_enqueue: false,
+	visible_pairs_captured_at: null,
 	presented_at: null,
 	resolved_at: null,
 	created_at: "2026-01-01T00:00:00Z",
@@ -596,7 +622,7 @@ describe("markMatchReviewItemPresented", () => {
 		// Ownership fetch returns an already-resolved item. The conditional update
 		// (markItemPresented → updateQueueItemPresented .in(state,…)) matches no
 		// eligible row and resolves to ok(null): a resolved card must never be
-		// flipped back to "presented".
+		// flipped back to "active". State value is 'resolved' (B9-C lifecycle split).
 		mockFrom.mockImplementation((table: string) => {
 			if (table === "match_review_queue_item") {
 				return {
@@ -604,7 +630,7 @@ describe("markMatchReviewItemPresented", () => {
 						eq: vi.fn().mockReturnValue({
 							eq: vi.fn().mockReturnValue({
 								maybeSingle: vi.fn().mockResolvedValue({
-									data: { ...BASE_ITEM, state: "completed" },
+									data: { ...BASE_ITEM, state: "resolved" },
 									error: null,
 								}),
 							}),
@@ -622,8 +648,8 @@ describe("markMatchReviewItemPresented", () => {
 		});
 
 		expect(result.success).toBe(false);
-		// Reports the item's actual current state, not "presented".
-		expect(result.state).toBe("completed");
+		// Reports the item's actual current state using the B9-C lifecycle values.
+		expect(result.state).toBe("resolved");
 	});
 });
 
@@ -1312,14 +1338,14 @@ describe("syncActiveMatchReviewSession", () => {
 		vi.clearAllMocks();
 	});
 
-	it("calls syncActiveQueue with the authed account id and returns the result", async () => {
+	it("calls syncActiveQueue with the authed account id and song orientation and returns the result", async () => {
 		mockSyncActiveQueue.mockResolvedValue(
 			Result.ok({ appendedCount: 3, alreadyApplied: false }),
 		);
 
 		const result = await syncActiveMatchReviewSession();
 
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1");
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
 		expect(result.appendedCount).toBe(3);
 		expect(result.alreadyApplied).toBe(false);
 	});

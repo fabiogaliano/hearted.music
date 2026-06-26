@@ -295,6 +295,7 @@ function fakeSession() {
 	return {
 		id: SESSION_ID,
 		accountId: ACCOUNT_ID,
+		orientation: "song" as const,
 		status: "active" as const,
 		strictnessPreset: "balanced",
 		strictnessMinScore: 0.5,
