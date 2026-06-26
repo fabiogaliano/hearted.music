@@ -24,6 +24,18 @@ type MatchSnapshot = Tables<"match_snapshot">;
 /** Match result row type */
 type MatchResult = Tables<"match_result">;
 
+/** Match result ranking row type */
+type MatchResultRanking = Tables<"match_result_ranking">;
+
+/**
+ * Orientation-specific ranking data for a pair. Used by the visible
+ * suggestion list derivation to sort suggestions by model rank.
+ */
+export type MatchRankingRow = Pick<
+	MatchResultRanking,
+	"song_id" | "playlist_id" | "rank" | "ordering_score"
+>;
+
 // ============================================================================
 // Match Context Operations
 // ============================================================================
@@ -195,4 +207,101 @@ export async function getServedRanksForSong(
 		return Result.err(snapshot.error);
 	}
 	return Result.ok(snapshot.value?.match_result ?? null);
+}
+
+// ============================================================================
+// Visible Suggestion List Queries
+// ============================================================================
+
+/**
+ * Match pairs for a single song — score + fused_score so callers can use
+ * strictnessScore() (MSR-22). Does NOT include the factors JSONB.
+ */
+export type MatchPairRow = Pick<
+	MatchResult,
+	"song_id" | "playlist_id" | "score" | "fused_score"
+>;
+
+/**
+ * Fetches all (song, playlist) pairs for a song subject in a snapshot.
+ * Ordered by score desc with playlist_id tiebreaker for determinism.
+ * This is the read path for song-orientation suggestion derivation.
+ */
+export function getMatchPairsForSong(
+	snapshotId: string,
+	songId: string,
+): Promise<Result<MatchPairRow[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_result")
+			.select("song_id, playlist_id, score, fused_score")
+			.eq("snapshot_id", snapshotId)
+			.eq("song_id", songId)
+			.order("score", { ascending: false })
+			.order("playlist_id", { ascending: true }),
+	);
+}
+
+/**
+ * Fetches all (song, playlist) pairs for a playlist subject in a snapshot.
+ * Ordered by score desc with song_id tiebreaker for determinism.
+ * This is the read path for playlist-orientation suggestion derivation.
+ */
+export function getMatchPairsForPlaylist(
+	snapshotId: string,
+	playlistId: string,
+): Promise<Result<MatchPairRow[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_result")
+			.select("song_id, playlist_id, score, fused_score")
+			.eq("snapshot_id", snapshotId)
+			.eq("playlist_id", playlistId)
+			.order("score", { ascending: false })
+			.order("song_id", { ascending: true }),
+	);
+}
+
+/**
+ * Fetches song-orientation ranking rows for a specific song in a snapshot.
+ * Each row's `rank` is the model rank assigned by the ranking pipeline
+ * (reranker or fused fallback) for the song's suggestion list.
+ */
+export function getMatchRankingsForSong(
+	snapshotId: string,
+	songId: string,
+): Promise<Result<MatchRankingRow[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_result_ranking")
+			.select("song_id, playlist_id, rank, ordering_score")
+			.eq("snapshot_id", snapshotId)
+			.eq("song_id", songId)
+			.eq("orientation", "song")
+			.order("rank", { ascending: true }),
+	);
+}
+
+/**
+ * Fetches playlist-orientation ranking rows for a specific playlist in a
+ * snapshot. Each row's `rank` is the model rank assigned by the ranking
+ * pipeline for the playlist's suggestion list.
+ */
+export function getMatchRankingsForPlaylist(
+	snapshotId: string,
+	playlistId: string,
+): Promise<Result<MatchRankingRow[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_result_ranking")
+			.select("song_id, playlist_id, rank, ordering_score")
+			.eq("snapshot_id", snapshotId)
+			.eq("playlist_id", playlistId)
+			.eq("orientation", "playlist")
+			.order("rank", { ascending: true }),
+	);
 }
