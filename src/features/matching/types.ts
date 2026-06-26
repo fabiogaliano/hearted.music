@@ -43,25 +43,59 @@ export interface Playlist {
 	songCount: number | null;
 }
 
-export interface CompletionStats {
-	totalSongs: number;
-	songsMatched: number;
-	totalAdditions: number;
-	dismissedCount: number;
-	skippedCount: number;
+// E11 — Playlist review subject shape (MSR-32 will fill full implementation)
+export interface PlaylistForMatching {
+	id: string;
+	spotifyId: string;
+	name: string;
+	description: string | null;
+	imageUrl: string | null;
+	trackCount: number | null;
 }
 
-/** A song the user reviewed this session — shown in the completion recap. */
-export interface ReviewedSong {
+// E11 — Orientation-aware review item (MSR-32 adds playlist variant).
+// The discriminant `mode` matches MatchViewMode values so callers can check mode once.
+export type MatchingReviewItem = {
+	mode: "song";
+	song: SongForMatching;
+};
+
+// E11 — Orientation-aware suggestion row (MSR-33 adds song-as-suggestion variant)
+export type MatchingSuggestion = {
+	mode: "song";
+	playlist: Playlist;
+};
+
+// E12 — Generalized from ReviewedSong (same fields, orientation-neutral name)
+export interface ReviewedItem {
 	id: string;
 	albumArtUrl?: string | null;
 	name: string;
 	artist: string;
 }
 
-export interface MatchingSessionProps {
-	currentSong: SongForMatching;
-	playlists: Playlist[];
+// F4 seam — MSR-32 implements PlaylistReviewItemSection with this contract
+export interface PlaylistReviewItemSectionProps {
+	itemKey: string;
+	reviewItem: PlaylistForMatching;
+	suppressTransition?: boolean;
+}
+
+// F4 seam — MSR-33 implements SongSuggestionsSection with this contract
+export interface SongSuggestionsSectionProps {
+	itemKey: string;
+	suggestions: SongForMatching[];
+	addedTo: string[];
+	navigationDisabled?: boolean;
+	isLastItem?: boolean;
+	suppressTransition?: boolean;
+	onAdd: (suggestionId: string) => void;
+	onDismiss: () => void | Promise<void>;
+	onNext: () => void;
+	onPrevious?: () => void;
+}
+
+type MatchingSessionCommonProps = {
 	addedTo: string[];
 	isDemo?: boolean;
 	realAvailable?: boolean;
@@ -72,15 +106,37 @@ export interface MatchingSessionProps {
 	 *  this off: there, reject ends the rehearsal rather than advancing a song. */
 	animateReject?: boolean;
 	onRefresh?: () => void;
-	onAdd: (playlistId: string) => void;
+	onAdd: (suggestionId: string) => void;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
+};
+
+type SongModeSession = MatchingSessionCommonProps & {
+	mode: "song";
+	currentSong: SongForMatching;
+	playlists: Playlist[];
+};
+
+// MSR-32 will add reviewItem: PlaylistForMatching
+// MSR-33 will add suggestions: SongForMatching[]
+type PlaylistModeSession = MatchingSessionCommonProps & {
+	mode: "playlist";
+};
+
+export type MatchingSessionProps = SongModeSession | PlaylistModeSession;
+
+export interface CompletionStats {
+	totalItems: number;
+	itemsMatched: number;
+	totalAdditions: number;
+	dismissedCount: number;
+	skippedCount: number;
 }
 
 export interface CompletionScreenProps {
 	stats: CompletionStats;
-	songs: ReviewedSong[];
+	items: ReviewedItem[];
 	onExit: () => void;
 }
 
@@ -99,14 +155,14 @@ export interface MatchingHeaderProps {
 }
 
 export interface MatchingProps {
-	currentSong: SongForMatching | null;
-	currentMatches: Playlist[];
+	currentReviewItem: MatchingReviewItem | null;
+	currentSuggestions: MatchingSuggestion[];
 	totalSongs: number;
 	offset: number;
 	addedTo: string[];
 	isComplete: boolean;
 	completionStats: CompletionStats;
-	recentSongs: ReviewedSong[];
+	recentItems: ReviewedItem[];
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
 	/** Current UI view mode threaded to MatchingHeader toggle. Defaults to 'song'. */

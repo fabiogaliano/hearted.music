@@ -9,7 +9,7 @@ const IMAGE_OUTLINE = "1px solid rgba(255, 255, 255, 0.1)";
 
 export const CompletionScreen = memo(function CompletionScreen({
 	stats,
-	songs,
+	items,
 	onExit,
 }: CompletionScreenProps) {
 	const additionsCopy =
@@ -78,7 +78,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 				</p>
 			</div>
 
-			{songs.length > 0 && (
+			{items.length > 0 && (
 				<div className="mt-20">
 					<p
 						className="theme-text-muted mb-5 text-xs tracking-widest uppercase"
@@ -87,14 +87,14 @@ export const CompletionScreen = memo(function CompletionScreen({
 						Reviewed this round
 					</p>
 					<div className="flex gap-2">
-						{songs.slice(0, 5).map((song) => (
+						{items.slice(0, 5).map((item) => (
 							<div
-								key={song.id}
+								key={item.id}
 								className="group relative size-20 transition-transform duration-[220ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:z-10 motion-safe:hover:-translate-y-1"
 							>
 								<img
-									src={song.albumArtUrl ?? undefined}
-									alt={`${song.name} — ${song.artist}`}
+									src={item.albumArtUrl ?? undefined}
+									alt={`${item.name} — ${item.artist}`}
 									loading="lazy"
 									className="h-full w-full object-cover"
 									style={{ outline: IMAGE_OUTLINE }}
@@ -107,13 +107,13 @@ export const CompletionScreen = memo(function CompletionScreen({
 										className="theme-text truncate text-xs font-medium"
 										style={{ fontFamily: fonts.body }}
 									>
-										{song.name}
+										{item.name}
 									</p>
 									<p
 										className="theme-text-muted truncate text-xs italic"
 										style={{ fontFamily: fonts.display }}
 									>
-										{song.artist}
+										{item.artist}
 									</p>
 								</div>
 							</div>

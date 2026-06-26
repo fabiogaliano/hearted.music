@@ -2,17 +2,22 @@ import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { CompletionScreen } from "./sections/CompletionScreen";
 import { MatchingHeader } from "./sections/MatchingHeader";
 import { MatchingSession } from "./sections/MatchingSession";
-import type { MatchingProps } from "./types";
+import type {
+	MatchingProps,
+	MatchingSuggestion,
+	Playlist,
+	SongForMatching,
+} from "./types";
 
 export function Matching({
-	currentSong,
-	currentMatches,
+	currentReviewItem,
+	currentSuggestions,
 	totalSongs,
 	offset,
 	addedTo,
 	isComplete,
 	completionStats,
-	recentSongs,
+	recentItems,
 	reconnectNeeded,
 	navigationDisabled,
 	mode = "song",
@@ -27,20 +32,31 @@ export function Matching({
 		return (
 			<CompletionScreen
 				stats={completionStats}
-				songs={recentSongs}
+				items={recentItems}
 				onExit={onExit}
 			/>
 		);
 	}
 
+	// Unwrap song-mode types for MatchingSession.
+	const currentSong: SongForMatching | null =
+		currentReviewItem?.mode === "song" ? currentReviewItem.song : null;
+
+	const currentPlaylists: Playlist[] = currentSuggestions
+		.filter(
+			(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
+				s.mode === "song",
+		)
+		.map((s) => s.playlist);
+
 	// Backstop: a null song (e.g. a failed fetch) must never paint a blank screen.
 	// The frozen-list walk shouldn't reach here, but if it does, fall through to
 	// the completion view rather than rendering nothing.
-	if (!currentSong) {
+	if (mode === "song" && !currentSong) {
 		return (
 			<CompletionScreen
 				stats={completionStats}
-				songs={recentSongs}
+				items={recentItems}
 				onExit={onExit}
 			/>
 		);
@@ -65,19 +81,35 @@ export function Matching({
 				onModeChange={onModeChange}
 			/>
 
-			<MatchingSession
-				currentSong={currentSong}
-				playlists={currentMatches}
-				addedTo={addedTo}
-				reconnectNeeded={reconnectNeeded}
-				navigationDisabled={navigationDisabled}
-				isLastSong={offset >= totalSongs - 1}
-				animateReject
-				onAdd={onAdd}
-				onDismiss={onDismiss}
-				onNext={onNext}
-				onPrevious={offset > 0 ? onPrevious : undefined}
-			/>
+			{mode === "song" && currentSong ? (
+				<MatchingSession
+					mode="song"
+					currentSong={currentSong}
+					playlists={currentPlaylists}
+					addedTo={addedTo}
+					reconnectNeeded={reconnectNeeded}
+					navigationDisabled={navigationDisabled}
+					isLastSong={offset >= totalSongs - 1}
+					animateReject
+					onAdd={onAdd}
+					onDismiss={onDismiss}
+					onNext={onNext}
+					onPrevious={offset > 0 ? onPrevious : undefined}
+				/>
+			) : mode === "playlist" ? (
+				<MatchingSession
+					mode="playlist"
+					addedTo={addedTo}
+					reconnectNeeded={reconnectNeeded}
+					navigationDisabled={navigationDisabled}
+					isLastSong={offset >= totalSongs - 1}
+					animateReject
+					onAdd={onAdd}
+					onDismiss={onDismiss}
+					onNext={onNext}
+					onPrevious={offset > 0 ? onPrevious : undefined}
+				/>
+			) : null}
 		</StaggeredContent>
 	);
 }

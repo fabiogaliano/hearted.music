@@ -88,6 +88,7 @@ export function WalkthroughMatchContent({
 					onModeChange={() => {}}
 				/>
 				<MatchingSession
+					mode="song"
 					currentSong={currentSong}
 					playlists={playlists}
 					addedTo={[]}
