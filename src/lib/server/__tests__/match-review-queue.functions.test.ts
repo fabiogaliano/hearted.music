@@ -11,7 +11,7 @@ import {
 	getMatchReviewItem,
 	markMatchReviewItemPresented,
 	startOrResumeMatchReview,
-	syncActiveMatchReviewSession,
+	syncActiveMatchReviewSessions,
 } from "../match-review-queue.functions";
 
 // ---------------------------------------------------------------------------
@@ -1330,60 +1330,67 @@ describe("finishMatchReviewItem", () => {
 });
 
 // ---------------------------------------------------------------------------
-// syncActiveMatchReviewSession tests
+// syncActiveMatchReviewSessions tests
 // ---------------------------------------------------------------------------
 
-describe("syncActiveMatchReviewSession", () => {
+describe("syncActiveMatchReviewSessions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
 
-	it("calls syncActiveQueue with the authed account id and song orientation and returns the result", async () => {
+	it("calls syncActiveQueue for both song and playlist orientations", async () => {
 		mockSyncActiveQueue.mockResolvedValue(
-			Result.ok({ appendedCount: 3, alreadyApplied: false }),
+			Result.ok({ appendedCount: 2, alreadyApplied: false }),
 		);
 
-		const result = await syncActiveMatchReviewSession();
+		await syncActiveMatchReviewSessions();
 
 		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
-		expect(result.appendedCount).toBe(3);
-		expect(result.alreadyApplied).toBe(false);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "playlist");
+		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
 	});
 
-	it("returns appendedCount: 0 when there is no active session (domain returns 0)", async () => {
+	it("returns per-orientation appendedCounts from syncActiveQueue results", async () => {
+		mockSyncActiveQueue
+			.mockResolvedValueOnce(
+				Result.ok({ appendedCount: 3, alreadyApplied: false }),
+			)
+			.mockResolvedValueOnce(
+				Result.ok({ appendedCount: 1, alreadyApplied: false }),
+			);
+
+		const result = await syncActiveMatchReviewSessions();
+
+		expect(result.results).toHaveLength(2);
+		expect(result.results[0]).toEqual({
+			orientation: "song",
+			appendedCount: 3,
+		});
+		expect(result.results[1]).toEqual({
+			orientation: "playlist",
+			appendedCount: 1,
+		});
+	});
+
+	it("returns appendedCount: 0 for orientations with no active session", async () => {
 		// The domain syncActiveQueue returns appendedCount: 0 when no active session exists.
 		mockSyncActiveQueue.mockResolvedValue(
 			Result.ok({ appendedCount: 0, alreadyApplied: false }),
 		);
 
-		const result = await syncActiveMatchReviewSession();
+		const result = await syncActiveMatchReviewSessions();
 
-		expect(result.appendedCount).toBe(0);
-		expect(result.alreadyApplied).toBe(false);
+		expect(result.results.every((r) => r.appendedCount === 0)).toBe(true);
 	});
 
-	it("returns appendedCount: 0 and alreadyApplied: false when the domain layer errors", async () => {
+	it("returns appendedCount: 0 for orientations where the domain layer errors", async () => {
 		// A DB error from syncActiveQueue must not propagate — the server fn degrades
-		// gracefully so the live-update path can still proceed to invalidations.
+		// gracefully per orientation so the live-update path can still proceed.
 		mockSyncActiveQueue.mockResolvedValue(Result.err(new Error("db failure")));
 
-		const result = await syncActiveMatchReviewSession();
+		const result = await syncActiveMatchReviewSessions();
 
-		expect(result.appendedCount).toBe(0);
-		expect(result.alreadyApplied).toBe(false);
-	});
-
-	it("returns alreadyApplied: true when the snapshot was already synced (idempotent no-op)", async () => {
-		// The composite PK on (session_id, snapshot_id) in match_review_session_snapshot
-		// makes a second sync of the same snapshot a safe no-op.
-		mockSyncActiveQueue.mockResolvedValue(
-			Result.ok({ appendedCount: 0, alreadyApplied: true }),
-		);
-
-		const result = await syncActiveMatchReviewSession();
-
-		expect(result.appendedCount).toBe(0);
-		expect(result.alreadyApplied).toBe(true);
+		expect(result.results.every((r) => r.appendedCount === 0)).toBe(true);
 	});
 });
 
@@ -1422,7 +1429,9 @@ describe("startOrResumeMatchReview", () => {
 			Result.ok({ kind: "no_snapshot" }),
 		);
 
-		const result = await startOrResumeMatchReview();
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
 
 		expect(result).toEqual({
 			sessionId: "",
@@ -1449,7 +1458,9 @@ describe("startOrResumeMatchReview", () => {
 			]),
 		);
 
-		const result = await startOrResumeMatchReview();
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
 
 		expect(result.sessionId).toBe("session-1");
 		expect(result.itemIds).toEqual(["item-1", "item-2"]);
@@ -1469,7 +1480,9 @@ describe("startOrResumeMatchReview", () => {
 			]),
 		);
 
-		const result = await startOrResumeMatchReview();
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
 
 		expect(result.caughtUp).toBe(true);
 		expect(result.total).toBe(2);
@@ -1480,9 +1493,9 @@ describe("startOrResumeMatchReview", () => {
 			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
 		);
 
-		await expect(startOrResumeMatchReview()).rejects.toThrow(
-			/prepare your match review queue/i,
-		);
+		await expect(
+			startOrResumeMatchReview({ data: { orientation: "song" } }),
+		).rejects.toThrow(/prepare your match review queue/i);
 	});
 
 	it("throws a user-safe error when loading the queue items fails", async () => {
@@ -1497,9 +1510,9 @@ describe("startOrResumeMatchReview", () => {
 			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
 		);
 
-		await expect(startOrResumeMatchReview()).rejects.toThrow(
-			/load your match review queue/i,
-		);
+		await expect(
+			startOrResumeMatchReview({ data: { orientation: "song" } }),
+		).rejects.toThrow(/load your match review queue/i);
 	});
 });
 
@@ -1515,7 +1528,7 @@ describe("getMatchReview", () => {
 	it("returns an empty caught-up payload when there is no active session", async () => {
 		mockFetchActiveSession.mockResolvedValue(Result.ok(null));
 
-		const result = await getMatchReview();
+		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result).toEqual({
 			sessionId: "",
@@ -1542,7 +1555,7 @@ describe("getMatchReview", () => {
 			hiddenSongCount: 3,
 		});
 
-		const result = await getMatchReview();
+		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.caughtUp).toBe(true);
 		expect(result?.hiddenSongCount).toBe(3);
@@ -1562,7 +1575,7 @@ describe("getMatchReview", () => {
 			]),
 		);
 
-		const result = await getMatchReview();
+		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.hiddenSongCount).toBe(0);
 		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
@@ -1578,7 +1591,7 @@ describe("getMatchReview", () => {
 			]),
 		);
 
-		const result = await getMatchReview();
+		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.sessionId).toBe("session-1");
 		expect(result?.items).toEqual([
@@ -1605,7 +1618,7 @@ describe("getMatchReview", () => {
 			]),
 		);
 
-		const result = await getMatchReview();
+		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.caughtUp).toBe(true);
 	});
@@ -1613,9 +1626,9 @@ describe("getMatchReview", () => {
 	it("throws a user-safe error when the active session lookup fails", async () => {
 		mockFetchActiveSession.mockResolvedValue(Result.err(new Error("db down")));
 
-		await expect(getMatchReview()).rejects.toThrow(
-			/load your match review queue/i,
-		);
+		await expect(
+			getMatchReview({ data: { orientation: "song" } }),
+		).rejects.toThrow(/load your match review queue/i);
 	});
 
 	it("throws a user-safe error when loading the queue items fails", async () => {
@@ -1626,8 +1639,8 @@ describe("getMatchReview", () => {
 			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
 		);
 
-		await expect(getMatchReview()).rejects.toThrow(
-			/load your match review queue/i,
-		);
+		await expect(
+			getMatchReview({ data: { orientation: "song" } }),
+		).rejects.toThrow(/load your match review queue/i);
 	});
 });

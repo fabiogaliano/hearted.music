@@ -166,7 +166,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			error: null,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.pendingCount).toBe(5);
 		expect(result.hasActiveQueue).toBe(true);
@@ -211,7 +211,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			error: null,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(mockIn).toHaveBeenCalledWith("id", ["s1", "s2", "s3"]);
 		expect(result.previewImages).toHaveLength(3);
@@ -226,7 +226,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			}),
 		);
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.pendingCount).toBe(0);
 		expect(result.previewImages).toHaveLength(0);
@@ -243,7 +243,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 		);
 		mockIn.mockResolvedValue({ data: null, error: new Error("db error") });
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.pendingCount).toBe(3);
 		expect(result.previewImages).toHaveLength(0);
@@ -279,7 +279,7 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			error: null,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.hasActiveQueue).toBe(false);
 		// pendingCount comes from songIds.length in fallback path.
@@ -303,7 +303,7 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.pendingCount).toBe(0);
 		expect(result.previewImages).toHaveLength(0);
@@ -320,7 +320,7 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			hiddenSongCount: 0,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		expect(result.pendingCount).toBe(0);
 		expect(result.previewImages).toHaveLength(0);
@@ -345,7 +345,7 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			error: null,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		// pendingCount is total undecided, not capped.
 		expect(result.pendingCount).toBe(5);
@@ -370,7 +370,7 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			error: null,
 		});
 
-		const result = await resolveMatchReviewSummary("acct-1");
+		const result = await resolveMatchReviewSummary("acct-1", "song");
 
 		// Error from getQueueSummary → treated as no active queue → snapshot fallback.
 		expect(result.hasActiveQueue).toBe(false);
@@ -411,7 +411,9 @@ describe("getMatchReviewSummary — server fn", () => {
 			error: null,
 		});
 
-		const result = await getMatchReviewSummary();
+		const result = await getMatchReviewSummary({
+			data: { orientation: "song" },
+		});
 
 		expect(result.pendingCount).toBe(7);
 		expect(result.hasActiveQueue).toBe(true);
@@ -425,7 +427,9 @@ describe("getMatchReviewSummary — server fn", () => {
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 
-		const result = await getMatchReviewSummary();
+		const result = await getMatchReviewSummary({
+			data: { orientation: "song" },
+		});
 
 		expect(result.pendingCount).toBe(0);
 		expect(result.previewImages).toHaveLength(0);

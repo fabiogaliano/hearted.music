@@ -78,7 +78,7 @@ vi.mock("@/lib/server/match-review-queue.functions", () => ({
 		mockResolveMatchReviewSummary(...args),
 	// Other exports from the module are not exercised by these tests.
 	getMatchReviewSummary: vi.fn(),
-	syncActiveMatchReviewSession: vi.fn(),
+	syncActiveMatchReviewSessions: vi.fn(),
 	startOrResumeMatchReview: vi.fn(),
 	getMatchReview: vi.fn(),
 	getMatchReviewItem: vi.fn(),
@@ -126,7 +126,10 @@ describe("getDashboardStats (queue-aware)", () => {
 
 		// The queue summary is the authoritative count; no snapshot RPC is called.
 		expect(stats.pendingReviewCount).toBe(7);
-		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith("acct-1");
+		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith(
+			"acct-1",
+			"song",
+		);
 	});
 
 	it("returns pendingReviewCount 0 when caught up", async () => {
@@ -183,7 +186,10 @@ describe("getMatchPreviews (queue-aware)", () => {
 		const previews = await getMatchPreviews();
 
 		expect(previews).toEqual(previewImages);
-		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith("acct-1");
+		expect(mockResolveMatchReviewSummary).toHaveBeenCalledWith(
+			"acct-1",
+			"song",
+		);
 	});
 
 	it("returns empty array when no previews available (caught up)", async () => {

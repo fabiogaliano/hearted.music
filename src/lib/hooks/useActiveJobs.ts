@@ -12,7 +12,7 @@ import {
 	matchReviewSummaryKeys,
 } from "@/features/matching/queries";
 import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
-import { syncActiveMatchReviewSession } from "@/lib/server/match-review-queue.functions";
+import { syncActiveMatchReviewSessions } from "@/lib/server/match-review-queue.functions";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
@@ -44,31 +44,29 @@ export async function runMatchSnapshotRefreshEffects(
 	queryClient: QueryClient,
 	accountId: string,
 ): Promise<void> {
-	// Sync must complete before the queue query refetches so the new tail
-	// is already in the DB when matchReviewKeys.review invalidation fires.
-	// Failure is swallowed: a missed sync just means no new items this
-	// round; the user won't lose existing cards.
+	// Sync must complete before queue queries refetch so new tail items are
+	// already in the DB when reviewsRoot invalidation fires. Failure is
+	// swallowed: a missed sync just means no new items this round; the user
+	// won't lose existing cards.
 	try {
-		await syncActiveMatchReviewSession();
+		await syncActiveMatchReviewSessions();
 	} catch {
 		// Best-effort — proceed to invalidations regardless.
 	}
 
-	// Invalidate the queue summary/list so the card stack picks up
-	// newly appended items.
-	queryClient.invalidateQueries({
-		queryKey: matchReviewKeys.review(accountId, "song"),
-	});
-
+	// Invalidate all orientation review queries (reviewsRoot prefix) so every
+	// active card stack picks up newly appended items regardless of orientation.
 	// Per-card item queries must NOT be invalidated here — refetching an
 	// individual card mid-review would interrupt the user's current card.
 	// matchReviewKeys.item is intentionally absent from this block.
-
-	// Queue-aware summary: drives sidebar badge + dashboard CTA count after
-	// Phase 7. Both surfaces now read matchReviewSummaryKeys.summary so a
-	// single invalidation here keeps them consistent.
 	queryClient.invalidateQueries({
-		queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
+		queryKey: matchReviewKeys.reviewsRoot,
+	});
+
+	// Queue-aware summary: drives sidebar badge + dashboard CTA count. Using
+	// summariesRoot invalidates all orientation summary queries in one call.
+	queryClient.invalidateQueries({
+		queryKey: matchReviewSummaryKeys.summariesRoot,
 	});
 
 	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's

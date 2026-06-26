@@ -49,7 +49,11 @@ export const Route = createFileRoute("/_authenticated/match")({
 
 		// Bootstrap the queue (idempotent — resumes if one already exists). This
 		// must run before the prefetches to ensure a session row exists.
-		const startResult = await startOrResumeMatchReview();
+		// Song orientation is the only active pass until MSR-21 wires the
+		// route mode toggle to the orientation parameter.
+		const startResult = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
 
 		// The queue summary and the first card are independent reads (one keys off
 		// the account, the other off the item id), so fire them together — sequencing

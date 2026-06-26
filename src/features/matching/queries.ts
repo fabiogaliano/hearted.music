@@ -24,7 +24,7 @@ export function matchReviewQueryOptions(
 ) {
 	return queryOptions({
 		queryKey: matchReviewKeys.review(accountId, orientation),
-		queryFn: () => getMatchReview(),
+		queryFn: () => getMatchReview({ data: { orientation } }),
 		// 60 s: short enough that snapshot-refresh invalidation refetches promptly,
 		// long enough that rapid card navigation doesn't hammer the server.
 		staleTime: 60_000,
@@ -60,7 +60,7 @@ export function matchReviewSummaryQueryOptions(
 ) {
 	return queryOptions({
 		queryKey: matchReviewSummaryKeys.summary(accountId, orientation),
-		queryFn: () => getMatchReviewSummary(),
+		queryFn: () => getMatchReviewSummary({ data: { orientation } }),
 		staleTime: 60_000,
 	});
 }

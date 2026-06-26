@@ -9,11 +9,11 @@ import { playlistKeys } from "@/features/playlists/queries";
 import { runMatchSnapshotRefreshEffects } from "../useActiveJobs";
 
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
-	syncActiveMatchReviewSession: vi.fn(),
+	syncActiveMatchReviewSessions: vi.fn(),
 }));
 
 // Import the mock after vi.mock so the reference is the hoisted spy.
-import { syncActiveMatchReviewSession } from "@/lib/server/match-review-queue.functions";
+import { syncActiveMatchReviewSessions } from "@/lib/server/match-review-queue.functions";
 
 const ACCOUNT_ID = "test-account-123";
 
@@ -37,14 +37,14 @@ afterEach(() => {
 });
 
 describe("runMatchSnapshotRefreshEffects", () => {
-	it("(a) awaits syncActiveMatchReviewSession BEFORE any invalidation runs", async () => {
+	it("(a) awaits syncActiveMatchReviewSessions BEFORE any invalidation runs", async () => {
 		// Use a deferred promise so we can observe that no invalidation fires
 		// while the sync is still pending.
 		let resolveSync!: () => void;
 		const syncPromise = new Promise<void>((res) => {
 			resolveSync = res;
 		});
-		vi.mocked(syncActiveMatchReviewSession).mockReturnValue(
+		vi.mocked(syncActiveMatchReviewSessions).mockReturnValue(
 			syncPromise as never,
 		);
 
@@ -66,8 +66,8 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		expect(qc.invalidateQueries).toHaveBeenCalled();
 	});
 
-	it("(b) invalidates matchReviewKeys.review(accountId) after sync resolves", async () => {
-		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+	it("(b) invalidates matchReviewKeys.reviewsRoot after sync resolves", async () => {
+		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
 			undefined as never,
 		);
 		const qc = makeFakeQueryClient();
@@ -82,13 +82,13 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
-		expect(calledKeys).toContainEqual(
-			matchReviewKeys.review(ACCOUNT_ID, "song"),
-		);
+		// reviewsRoot invalidates all orientation review queries at once so
+		// song and playlist queues both update without an accountId needed here.
+		expect(calledKeys).toContainEqual(matchReviewKeys.reviewsRoot);
 	});
 
 	it("(c) never invalidates any key matching matchReviewKeys.item(...)", async () => {
-		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
 			undefined as never,
 		);
 		const qc = makeFakeQueryClient();
@@ -118,8 +118,8 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		expect(hasItemKey).toBe(false);
 	});
 
-	it("(d) runs all invalidations even when syncActiveMatchReviewSession rejects", async () => {
-		vi.mocked(syncActiveMatchReviewSession).mockRejectedValue(
+	it("(d) runs all invalidations even when syncActiveMatchReviewSessions rejects", async () => {
+		vi.mocked(syncActiveMatchReviewSessions).mockRejectedValue(
 			new Error("network failure"),
 		);
 		const qc = makeFakeQueryClient();
@@ -137,16 +137,15 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
-		expect(calledKeys).toContainEqual(
-			matchReviewKeys.review(ACCOUNT_ID, "song"),
-		);
+		expect(calledKeys).toContainEqual(matchReviewKeys.reviewsRoot);
 	});
 
-	it("(e) invalidates the queue summary and dashboard stats/previews together", async () => {
-		// The summary key backs the sidebar badge + dashboard CTA count; stats backs
-		// the dashboard reviewCount. All must be invalidated after sync so no consumer
-		// shows a stale count while another surface has already refreshed.
-		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+	it("(e) invalidates summariesRoot and dashboard stats/previews together", async () => {
+		// summariesRoot invalidates all orientation summary queries so sidebar badge
+		// and dashboard CTA count stay consistent; stats backs the dashboard
+		// reviewCount. All must be invalidated after sync so no consumer shows a
+		// stale count while another surface has already refreshed.
+		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
 			undefined as never,
 		);
 		const qc = makeFakeQueryClient();
@@ -162,9 +161,7 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
 
-		expect(calledKeys).toContainEqual(
-			matchReviewSummaryKeys.summary(ACCOUNT_ID, "song"),
-		);
+		expect(calledKeys).toContainEqual(matchReviewSummaryKeys.summariesRoot);
 		expect(calledKeys).toContainEqual(dashboardKeys.stats(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.matchPreviews(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.pageData(ACCOUNT_ID));
@@ -173,7 +170,7 @@ describe("runMatchSnapshotRefreshEffects", () => {
 	it("(f) does not invalidate playlist data (outside the plan's Phase 6 set)", async () => {
 		// playlistKeys.all was a carry-over from enrichment invalidation; a match
 		// snapshot refresh does not change playlist rows, so refetching them is waste.
-		vi.mocked(syncActiveMatchReviewSession).mockResolvedValue(
+		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
 			undefined as never,
 		);
 		const qc = makeFakeQueryClient();
