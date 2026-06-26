@@ -150,3 +150,24 @@ export function getMatchDecisionsForSongs(
 			.order("decided_at", { ascending: false }),
 	);
 }
+
+/**
+ * Gets match decisions for a specific playlist belonging to an account.
+ * Used by the playlist-orientation visible suggestion list derivation to
+ * exclude already-decided (song, playlist) pairs from the suggestion set.
+ * Returns empty array if none found.
+ */
+export function getMatchDecisionsForPlaylist(
+	accountId: string,
+	playlistId: string,
+): Promise<Result<MatchDecision[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMany(
+		supabase
+			.from("match_decision")
+			.select("*")
+			.eq("account_id", accountId)
+			.eq("playlist_id", playlistId)
+			.order("decided_at", { ascending: false }),
+	);
+}
