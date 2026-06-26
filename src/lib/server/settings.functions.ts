@@ -10,6 +10,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import {
 	getOrCreatePreferences,
+	setPreferredMatchViewMode,
 	updateMatchStrictness,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
@@ -83,6 +84,30 @@ export const updateMatchStrictnessPreference = createServerFn({
 
 		if (Result.isError(result)) {
 			throw new Error("Failed to save match strictness preference");
+		}
+
+		return { success: true };
+	});
+
+const setMatchViewModeInput = z.object({
+	mode: z.enum(["song", "playlist"]),
+});
+
+/**
+ * Persists the user's preferred match view mode after a toggle navigation.
+ * Fire-and-forget from the route — preference write failure never blocks navigation.
+ */
+export const setMatchViewModePreference = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator(setMatchViewModeInput)
+	.handler(async ({ data, context }): Promise<{ success: true }> => {
+		const result = await setPreferredMatchViewMode(
+			context.session.accountId,
+			data.mode,
+		);
+
+		if (Result.isError(result)) {
+			throw new Error("Failed to save match view mode preference");
 		}
 
 		return { success: true };
