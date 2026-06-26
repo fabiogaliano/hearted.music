@@ -98,6 +98,7 @@ describe("MatchingSession", () => {
 				<MatchingSession
 					mode="playlist"
 					reviewItem={PLAYLIST_REVIEW_ITEM}
+					suggestions={[]}
 					addedTo={[]}
 					onAdd={() => {}}
 					onDismiss={() => {}}
@@ -113,6 +114,7 @@ describe("MatchingSession", () => {
 				<MatchingSession
 					mode="playlist"
 					reviewItem={PLAYLIST_REVIEW_ITEM}
+					suggestions={[]}
 					addedTo={[]}
 					onAdd={() => {}}
 					onDismiss={() => {}}
@@ -129,6 +131,7 @@ describe("MatchingSession", () => {
 				<MatchingSession
 					mode="playlist"
 					reviewItem={PLAYLIST_REVIEW_ITEM}
+					suggestions={[]}
 					addedTo={[]}
 					onAdd={() => {}}
 					onDismiss={() => {}}

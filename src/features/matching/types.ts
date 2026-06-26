@@ -59,11 +59,11 @@ export type MatchingReviewItem =
 	| { mode: "song"; song: SongForMatching }
 	| { mode: "playlist"; playlist: PlaylistForMatching };
 
-// E11 — Orientation-aware suggestion row (MSR-33 adds song-as-suggestion variant)
-export type MatchingSuggestion = {
-	mode: "song";
-	playlist: Playlist;
-};
+// E11 — Orientation-aware suggestion row. Song mode → playlist candidate.
+// Playlist mode → song candidate with fitScore (strictnessScore, A5/E7).
+export type MatchingSuggestion =
+	| { mode: "song"; playlist: Playlist }
+	| { mode: "playlist"; song: SongForMatching; fitScore: number };
 
 // E12 — Generalized from ReviewedSong (same fields, orientation-neutral name)
 export interface ReviewedItem {
@@ -82,10 +82,17 @@ export interface PlaylistReviewItemSectionProps {
 	suppressTransition?: boolean;
 }
 
+// Song candidate row in playlist-mode: song data + fitScore for match percent display.
+// fitScore = strictnessScore(row) — never the reranker/ordering score (A5, E7).
+export interface SongSuggestionRow {
+	song: SongForMatching;
+	fitScore: number;
+}
+
 // F4 seam — MSR-33 implements SongSuggestionsSection with this contract
 export interface SongSuggestionsSectionProps {
 	itemKey: string;
-	suggestions: SongForMatching[];
+	suggestions: SongSuggestionRow[];
 	addedTo: string[];
 	navigationDisabled?: boolean;
 	isLastItem?: boolean;
@@ -119,10 +126,10 @@ type SongModeSession = MatchingSessionCommonProps & {
 	playlists: Playlist[];
 };
 
-// MSR-33 will add suggestions: SongForMatching[]
 type PlaylistModeSession = MatchingSessionCommonProps & {
 	mode: "playlist";
 	reviewItem: PlaylistForMatching;
+	suggestions: SongSuggestionRow[];
 };
 
 export type MatchingSessionProps = SongModeSession | PlaylistModeSession;

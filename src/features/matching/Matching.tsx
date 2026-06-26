@@ -8,6 +8,7 @@ import type {
 	Playlist,
 	PlaylistForMatching,
 	SongForMatching,
+	SongSuggestionRow,
 } from "./types";
 
 export function Matching({
@@ -53,6 +54,13 @@ export function Matching({
 				s.mode === "song",
 		)
 		.map((s) => s.playlist);
+
+	const currentSongSuggestions: SongSuggestionRow[] = currentSuggestions
+		.filter(
+			(s): s is Extract<MatchingSuggestion, { mode: "playlist" }> =>
+				s.mode === "playlist",
+		)
+		.map((s) => ({ song: s.song, fitScore: s.fitScore }));
 
 	// Backstop: a null review item (e.g. a failed fetch) must never paint a blank
 	// screen. The frozen-list walk shouldn't reach here, but if it does, fall
@@ -114,6 +122,7 @@ export function Matching({
 				<MatchingSession
 					mode="playlist"
 					reviewItem={currentPlaylist}
+					suggestions={currentSongSuggestions}
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
 					navigationDisabled={navigationDisabled}
