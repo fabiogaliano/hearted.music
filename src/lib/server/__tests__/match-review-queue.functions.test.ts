@@ -10,6 +10,7 @@ import {
 	getMatchReview,
 	getMatchReviewItem,
 	markMatchReviewItemPresented,
+	presentMatchReviewItem,
 	startOrResumeMatchReview,
 	syncActiveMatchReviewSessions,
 } from "../match-review-queue.functions";
@@ -37,6 +38,9 @@ const {
 	mockSyncActiveQueue,
 	mockGetLatestMatchSnapshot,
 	mockGetOrderedUndecidedSongIds,
+	mockComputeVisibleSuggestionList,
+	mockCaptureVisiblePairsAtomic,
+	mockClearSongNewness,
 } = vi.hoisted(() => {
 	// Shared from mock — overridden per-test via mockFrom.mockImplementation
 	const mockFrom = vi.fn();
@@ -62,6 +66,9 @@ const {
 		mockSyncActiveQueue: vi.fn(),
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetOrderedUndecidedSongIds: vi.fn(),
+		mockComputeVisibleSuggestionList: vi.fn(),
+		mockCaptureVisiblePairsAtomic: vi.fn(),
+		mockClearSongNewness: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
@@ -125,6 +132,19 @@ vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 		mockUpsertMatchDecisions(...args),
 }));
 
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/visible-suggestion-list",
+	() => ({
+		computeVisibleSuggestionList: (...args: unknown[]) =>
+			mockComputeVisibleSuggestionList(...args),
+	}),
+);
+
+vi.mock("@/lib/domains/taste/match-review-queue/capture-visible-pairs", () => ({
+	captureVisiblePairsAtomic: (...args: unknown[]) =>
+		mockCaptureVisiblePairsAtomic(...args),
+}));
+
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	createOrResumeQueue: vi.fn(),
 	getQueueSummary: vi.fn(),
@@ -136,6 +156,7 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	addQueueItemDecisionAtomically: (...args: unknown[]) =>
 		mockAddQueueItemDecisionAtomically(...args),
+	clearSongNewness: (...args: unknown[]) => mockClearSongNewness(...args),
 	dismissQueueItemAtomically: (...args: unknown[]) =>
 		mockDismissQueueItemAtomically(...args),
 	fetchActiveSession: (...args: unknown[]) => mockFetchActiveSession(...args),
@@ -354,7 +375,7 @@ describe("getMatchReviewItem", () => {
 			data: { itemId: "item-foreign" },
 		});
 
-		expect(result.status).toBe("error");
+		expect(result.status).toBe("retryable-error");
 		// Must NOT reveal whether the item id exists.
 		expect((result as { message: string }).message).not.toContain("foreign");
 		// Nothing beyond the ownership query should have been attempted.
@@ -416,7 +437,7 @@ describe("getMatchReviewItem", () => {
 		expect(mockRpc).not.toHaveBeenCalled();
 	});
 
-	it("returns unavailable 'no-visible-matches' when stored strictness hides all matches", async () => {
+	it("returns unavailable 'no-visible-suggestions' when stored strictness hides all matches", async () => {
 		// Stored strictness is 0.9 but the only match scores 0.5 → hidden.
 		setupFullItemFetch({
 			sessionRow: { strictness_min_score: 0.9 },
@@ -427,11 +448,11 @@ describe("getMatchReviewItem", () => {
 
 		expect(result.status).toBe("unavailable");
 		if (result.status === "unavailable") {
-			expect(result.reason).toBe("no-visible-matches");
+			expect(result.reason).toBe("no-visible-suggestions");
 		}
 	});
 
-	it("returns unavailable 'no-visible-matches' when all pairs are already decided", async () => {
+	it("returns unavailable 'no-visible-suggestions' when all pairs are already decided", async () => {
 		// All pairs for the song+playlist have been decided.
 		setupFullItemFetch({
 			detailRows: [{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} }],
@@ -442,7 +463,7 @@ describe("getMatchReviewItem", () => {
 
 		expect(result.status).toBe("unavailable");
 		if (result.status === "unavailable") {
-			expect(result.reason).toBe("no-visible-matches");
+			expect(result.reason).toBe("no-visible-suggestions");
 		}
 	});
 
@@ -454,12 +475,12 @@ describe("getMatchReviewItem", () => {
 		expect(result.status).toBe("ready");
 		if (result.status === "ready") {
 			expect(result.itemId).toBe("item-1");
-			expect(result.song.id).toBe("song-1");
-			expect(result.song.name).toBe("Test Song");
-			expect(result.song.artist).toBe("Test Artist");
-			expect(result.matches).toHaveLength(1);
-			expect(result.matches[0].playlist.id).toBe("pl-1");
-			expect(result.matches[0].score).toBe(0.9);
+			expect(result.reviewItem.id).toBe("song-1");
+			expect(result.reviewItem.name).toBe("Test Song");
+			expect(result.reviewItem.artist).toBe("Test Artist");
+			expect(result.suggestions).toHaveLength(1);
+			expect(result.suggestions[0].playlist.id).toBe("pl-1");
+			expect(result.suggestions[0].score).toBe(0.9);
 		}
 	});
 
@@ -487,8 +508,8 @@ describe("getMatchReviewItem", () => {
 		expect(result.status).toBe("ready");
 		if (result.status === "ready") {
 			// pl-2 is below 0.7 → excluded; only pl-1 survives.
-			expect(result.matches).toHaveLength(1);
-			expect(result.matches[0].playlist.id).toBe("pl-1");
+			expect(result.suggestions).toHaveLength(1);
+			expect(result.suggestions[0].playlist.id).toBe("pl-1");
 		}
 	});
 
@@ -1642,5 +1663,336 @@ describe("getMatchReview", () => {
 		await expect(
 			getMatchReview({ data: { orientation: "song" } }),
 		).rejects.toThrow(/load your match review queue/i);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// presentMatchReviewItem tests
+// ---------------------------------------------------------------------------
+
+describe("presentMatchReviewItem", () => {
+	// Standard visible suggestion list returned by computeVisibleSuggestionList mock
+	const MOCK_LIST = {
+		orientation: "song" as const,
+		subject: { orientation: "song" as const, songId: "song-1" },
+		suggestions: [
+			{
+				songId: "song-1",
+				playlistId: "pl-1",
+				fitScore: 0.9,
+				modelRank: 1,
+				visibleRank: 1,
+			},
+		],
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// Default happy-path mocks
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_LIST,
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "captured" });
+		mockClearSongNewness.mockResolvedValue(undefined);
+	});
+
+	function setupPresentItemFetch(
+		opts: {
+			item?: typeof BASE_ITEM | null;
+			sessionRow?: { strictness_min_score: number } | null;
+			songRow?: typeof BASE_SONG_ROW | null;
+			playlistRows?: Array<{
+				id: string;
+				name: string;
+				match_intent: string | null;
+				song_count: number | null;
+				image_url: string | null;
+				spotify_id: string;
+			}>;
+		} = {},
+	) {
+		const {
+			item = BASE_ITEM,
+			sessionRow = { strictness_min_score: 0 },
+			songRow = BASE_SONG_ROW,
+			playlistRows = [
+				{
+					id: "pl-1",
+					name: "Playlist 1",
+					match_intent: "intent",
+					song_count: 10,
+					image_url: "pl.jpg",
+					spotify_id: "sp-pl-1",
+				},
+			],
+		} = opts;
+
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "match_review_queue_item") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi
+									.fn()
+									.mockResolvedValue({ data: item, error: null }),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "match_review_session") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi
+									.fn()
+									.mockResolvedValue({ data: sessionRow, error: null }),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							single: vi.fn().mockResolvedValue({
+								data: songRow,
+								error: songRow ? null : { message: "not found" },
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "song_audio_feature") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							maybeSingle: vi.fn().mockResolvedValue({
+								data: { tempo: 120, energy: 0.8, valence: 0.6 },
+								error: null,
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "song_analysis") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							order: vi.fn().mockReturnValue({
+								limit: vi.fn().mockReturnValue({
+									maybeSingle: vi.fn().mockResolvedValue({
+										data: { analysis: { headline: "A song" } },
+										error: null,
+									}),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						in: vi.fn().mockResolvedValue({ data: playlistRows, error: null }),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+	}
+
+	it("returns unavailable for a foreign or missing queue item", async () => {
+		setupPresentItemFetch({ item: null });
+
+		const result = await presentMatchReviewItem({
+			data: { itemId: "item-foreign" },
+		});
+
+		expect(result.status).toBe("unavailable");
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
+		expect(mockCaptureVisiblePairsAtomic).not.toHaveBeenCalled();
+	});
+
+	it("returns unavailable snapshot-not-owned when session row is missing", async () => {
+		setupPresentItemFetch({ sessionRow: null });
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("snapshot-not-owned");
+		}
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
+	});
+
+	it("returns unavailable not-entitled when computeVisibleSuggestionList says song-not-entitled", async () => {
+		setupPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "not-entitled",
+			reason: "song-not-entitled",
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+			expect(result.message).toContain("song");
+		}
+		expect(mockCaptureVisiblePairsAtomic).not.toHaveBeenCalled();
+	});
+
+	it("returns retryable-error when computeVisibleSuggestionList returns db-error", async () => {
+		setupPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "db-error",
+			error: new Error("db"),
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
+		expect(mockCaptureVisiblePairsAtomic).not.toHaveBeenCalled();
+	});
+
+	it("returns unavailable no-visible-suggestions for empty capture", async () => {
+		setupPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: { ...MOCK_LIST, suggestions: [] },
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "empty" });
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("no-visible-suggestions");
+		}
+	});
+
+	it("returns unavailable already-resolved when capture RPC returns already_resolved", async () => {
+		setupPresentItemFetch();
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_resolved",
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("already-resolved");
+		}
+	});
+
+	it("returns retryable-error when capture RPC returns invalid_input", async () => {
+		setupPresentItemFetch();
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "invalid_input",
+			reason: "bad input",
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
+	});
+
+	it("returns ready with mode, reviewItem and suggestions for a healthy first capture", async () => {
+		setupPresentItemFetch();
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready") {
+			expect(result.mode).toBe("song");
+			expect(result.itemId).toBe("item-1");
+			expect(result.reviewItem.id).toBe("song-1");
+			expect(result.reviewItem.name).toBe("Test Song");
+			expect(result.suggestions).toHaveLength(1);
+			expect(result.suggestions[0].playlist.id).toBe("pl-1");
+			expect(result.suggestions[0].score).toBe(0.9);
+		}
+	});
+
+	it("clears song newness on song-mode capture", async () => {
+		setupPresentItemFetch();
+
+		await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockClearSongNewness).toHaveBeenCalledWith(
+			"acct-1",
+			"song-1",
+			expect.any(String),
+		);
+	});
+
+	it("does not clear newness when capture returns a non-ready result", async () => {
+		setupPresentItemFetch();
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_resolved",
+		});
+
+		await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockClearSongNewness).not.toHaveBeenCalled();
+	});
+
+	it("returns ready from already_captured path without re-deriving the suggestion list", async () => {
+		setupPresentItemFetch();
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: [
+				{
+					songId: "song-1",
+					playlistId: "pl-1",
+					modelRank: 1,
+					visibleRank: 1,
+					fitScore: 0.88,
+				},
+			],
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready") {
+			// Score comes from the captured pair's fitScore, not re-derived.
+			expect(result.suggestions[0].score).toBe(0.88);
+		}
+		// computeVisibleSuggestionList was still called to get orientation/subject,
+		// but the pair data itself comes from the captured rows.
+		expect(mockCaptureVisiblePairsAtomic).toHaveBeenCalledTimes(1);
+	});
+
+	it("returns unavailable no-visible-suggestions when already_captured returns empty pairs", async () => {
+		setupPresentItemFetch();
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: [],
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("no-visible-suggestions");
+		}
+	});
+
+	it("passes itemId and accountId (not client-supplied) to captureVisiblePairsAtomic", async () => {
+		setupPresentItemFetch();
+
+		await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockCaptureVisiblePairsAtomic).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			expect.any(Array),
+		);
 	});
 });

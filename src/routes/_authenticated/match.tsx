@@ -492,22 +492,22 @@ function QueueCardContent({
 	const currentSong: SongForMatching | null =
 		itemData.status === "ready"
 			? {
-					id: itemData.song.id,
-					spotifyId: itemData.song.spotifyId,
-					name: itemData.song.name,
-					artist: itemData.song.artist,
-					album: itemData.song.album ?? null,
-					albumArtUrl: itemData.song.albumArtUrl,
-					genres: itemData.song.genres,
-					audioFeatures: itemData.song.audioFeatures ?? null,
-					analysis: itemData.song.analysis ?? null,
+					id: itemData.reviewItem.id,
+					spotifyId: itemData.reviewItem.spotifyId,
+					name: itemData.reviewItem.name,
+					artist: itemData.reviewItem.artist,
+					album: itemData.reviewItem.album ?? null,
+					albumArtUrl: itemData.reviewItem.albumArtUrl,
+					genres: itemData.reviewItem.genres,
+					audioFeatures: itemData.reviewItem.audioFeatures ?? null,
+					analysis: itemData.reviewItem.analysis ?? null,
 				}
 			: null;
 
 	const currentMatches: Playlist[] = useMemo(
 		() =>
 			itemData.status === "ready"
-				? itemData.matches.map((m) => ({
+				? itemData.suggestions.map((m) => ({
 						id: m.playlist.id,
 						spotifyId: m.playlist.spotifyId,
 						name: m.playlist.name,
@@ -534,7 +534,10 @@ function QueueCardContent({
 	// Unavailable/error card: non-scary inline state. Primary action is Next Song
 	// which calls finishMatchReviewItem (marks the item skipped). No new server
 	// functions needed — skipping an unavailable item is semantically correct.
-	if (itemData.status === "unavailable" || itemData.status === "error") {
+	if (
+		itemData.status === "unavailable" ||
+		itemData.status === "retryable-error"
+	) {
 		const message =
 			itemData.status === "unavailable"
 				? itemData.message
