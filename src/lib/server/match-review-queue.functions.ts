@@ -2,8 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
 import {
 	addQueueItemDecisionAtomically,
+	clearSongNewness,
 	dismissQueueItemAtomically,
 	fetchActiveSession,
 	fetchQueueItems,
@@ -21,6 +23,7 @@ import type {
 	MatchReviewQueueItem,
 	MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
+import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 
 /** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
@@ -44,8 +47,10 @@ export type MatchReviewItemRead =
 	| {
 			status: "ready";
 			itemId: string;
-			song: MatchingSong;
-			matches: MatchingPlaylistMatch[];
+			/** Orientation of the card shown to the user (E10). */
+			mode: "song" | "playlist";
+			reviewItem: MatchingSong;
+			suggestions: MatchingPlaylistMatch[];
 	  }
 	| {
 			status: "unavailable";
@@ -54,11 +59,12 @@ export type MatchReviewItemRead =
 				| "not-entitled"
 				| "missing-song"
 				| "snapshot-not-owned"
-				| "no-visible-matches";
+				| "no-visible-suggestions"
+				| "already-resolved";
 			message: string;
 	  }
 	| {
-			status: "error";
+			status: "retryable-error";
 			itemId: string;
 			message: string;
 	  };
@@ -291,7 +297,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			const item = await fetchOwnedQueueItem(itemId, session.accountId);
 			if (!item) {
 				return {
-					status: "error",
+					status: "retryable-error",
 					itemId,
 					message: "Item not found.",
 				};
@@ -385,7 +391,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				Result.isError(decisionsResult)
 			) {
 				return {
-					status: "error",
+					status: "retryable-error",
 					itemId,
 					message: "Could not load match data for this song.",
 				};
@@ -425,7 +431,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				return {
 					status: "unavailable",
 					itemId,
-					reason: "no-visible-matches",
+					reason: "no-visible-suggestions",
 					message:
 						"No playlist matches are visible under your current settings.",
 				};
@@ -439,7 +445,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 
 			if (playlistError || !playlistRows) {
 				return {
-					status: "error",
+					status: "retryable-error",
 					itemId,
 					message: "Could not load playlist data.",
 				};
@@ -471,15 +477,307 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			return {
 				status: "ready",
 				itemId,
-				song: builtSong,
-				matches,
+				mode: "song" as const,
+				reviewItem: builtSong,
+				suggestions: matches,
 			};
 		} catch {
 			// Unexpected DB or runtime failures must not leak internals.
 			return {
-				status: "error",
+				status: "retryable-error",
 				itemId,
 				message: "An unexpected error occurred.",
+			};
+		}
+	});
+
+const PresentMatchReviewItemSchema = z.object({
+	itemId: z.uuid(),
+});
+
+/**
+ * Authoritative card presentation: derives the visible suggestion list (MSR-22),
+ * atomically captures it (MSR-23), then returns render-ready song and playlist
+ * data keyed off captured rows.
+ *
+ * Side effects: sets queue item active, writes visible pair rows, clears song
+ * newness on song-mode presentation (idempotent, best-effort).
+ *
+ * First-write-wins capture: retries return the stored pair rows without
+ * recomputing the visible set. This is the ONLY authoritative presentation
+ * path — getMatchReviewItem is side-effect-free prefetch only (D9, D10).
+ */
+export const presentMatchReviewItem = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => PresentMatchReviewItemSchema.parse(data))
+	.handler(async ({ data, context }): Promise<MatchReviewItemRead> => {
+		const { session } = context;
+		const { itemId } = data;
+
+		try {
+			// Ownership check: load item by id AND account_id in one query. Foreign
+			// or missing items return unavailable without leaking id existence.
+			const item = await fetchOwnedQueueItem(itemId, session.accountId);
+			if (!item) {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "not-entitled",
+					message: "Item not found.",
+				};
+			}
+
+			// Load session's stored strictness — must not re-read live preferences so
+			// the bar matches what was visible when the queue was built.
+			const supabase = createAdminSupabaseClient();
+			const { data: sessionRow, error: sessionError } = await supabase
+				.from("match_review_session")
+				.select("strictness_min_score")
+				.eq("id", item.sessionId)
+				.eq("account_id", session.accountId)
+				.maybeSingle();
+
+			if (sessionError || !sessionRow) {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "snapshot-not-owned",
+					message: "This item's session could not be verified.",
+				};
+			}
+
+			const strictnessMinScore = sessionRow.strictness_min_score;
+
+			// Derive the visible suggestion list (MSR-22 authority). This is the
+			// only derivation path — capture and downstream paths must not re-derive.
+			const listResult = await computeVisibleSuggestionList(
+				item,
+				strictnessMinScore,
+			);
+
+			if (listResult.kind === "not-entitled") {
+				const message =
+					listResult.reason === "song-not-entitled"
+						? "This song is no longer available to match." // H6
+						: "This playlist is no longer available to match."; // H6
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "not-entitled",
+					message,
+				};
+			}
+
+			if (listResult.kind === "db-error") {
+				return {
+					status: "retryable-error",
+					itemId,
+					message: "Couldn't load this match card. Try again.", // H7
+				};
+			}
+
+			const { list } = listResult;
+
+			// Atomically capture the visible pairs (MSR-23 first-write-wins RPC).
+			// Retries return the original captured rows so visible ranks are stable.
+			const captureResult = await captureVisiblePairsAtomic(
+				itemId,
+				session.accountId,
+				list.suggestions,
+			);
+
+			// Determine the active suggestion set from the capture result. On retry
+			// the already_captured pairs are authoritative — the fresh derivation
+			// above is discarded in favour of the stored rows.
+			type SuggestionEntry = {
+				songId: string;
+				playlistId: string;
+				fitScore: number;
+				visibleRank: number;
+			};
+			let activeSuggestions: SuggestionEntry[];
+
+			if (captureResult.status === "captured") {
+				activeSuggestions = list.suggestions.map((s) => ({
+					songId: s.songId,
+					playlistId: s.playlistId,
+					fitScore: s.fitScore,
+					visibleRank: s.visibleRank,
+				}));
+			} else if (captureResult.status === "already_captured") {
+				activeSuggestions = captureResult.pairs.map((p) => ({
+					songId: p.songId,
+					playlistId: p.playlistId,
+					fitScore: p.fitScore,
+					visibleRank: p.visibleRank,
+				}));
+			} else if (captureResult.status === "empty") {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "no-visible-suggestions",
+					message:
+						"No playlist matches are visible under your current settings.",
+				};
+			} else if (captureResult.status === "not_found") {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "not-entitled",
+					message: "Item not found.",
+				};
+			} else if (captureResult.status === "already_resolved") {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "already-resolved",
+					message: "This item has already been resolved.",
+				};
+			} else {
+				// invalid_input or db-error — retryable per H7.
+				return {
+					status: "retryable-error",
+					itemId,
+					message: "Couldn't load this match card. Try again.",
+				};
+			}
+
+			// An already_captured retry with zero stored pairs mirrors the empty
+			// outcome — surface as no-visible-suggestions rather than ready with [].
+			if (activeSuggestions.length === 0) {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "no-visible-suggestions",
+					message:
+						"No playlist matches are visible under your current settings.",
+				};
+			}
+
+			// Build render-ready data keyed off the active suggestion set.
+			if (list.orientation === "song" && list.subject.orientation === "song") {
+				const songId = list.subject.songId;
+
+				// Clear song newness on song-mode presentation — idempotent upsert.
+				// Best-effort: a failure must not fail the presentation.
+				const now = new Date().toISOString();
+				await clearSongNewness(session.accountId, songId, now);
+
+				const playlistIds = activeSuggestions.map((s) => s.playlistId);
+
+				const [songRow, audioRow, analysisRow, playlistResult] =
+					await Promise.all([
+						supabase.from("song").select("*").eq("id", songId).single(),
+						supabase
+							.from("song_audio_feature")
+							.select("tempo, energy, valence")
+							.eq("song_id", songId)
+							.maybeSingle(),
+						supabase
+							.from("song_analysis")
+							.select("analysis")
+							.eq("song_id", songId)
+							.order("created_at", { ascending: false })
+							.limit(1)
+							.maybeSingle(),
+						supabase
+							.from("playlist")
+							.select(
+								"id, name, match_intent, song_count, image_url, spotify_id",
+							)
+							.in("id", playlistIds),
+					]);
+
+				if (songRow.error || !songRow.data) {
+					return {
+						status: "unavailable",
+						itemId,
+						reason: "missing-song",
+						message: "This song could not be found.",
+					};
+				}
+
+				if (playlistResult.error) {
+					return {
+						status: "retryable-error",
+						itemId,
+						message: "Couldn't load this match card. Try again.",
+					};
+				}
+
+				const song = songRow.data;
+				const audio = audioRow.data;
+				const analysis = analysisRow.data?.analysis as
+					| MatchingSong["analysis"]
+					| undefined;
+
+				const reviewItem: MatchingSong = {
+					id: song.id,
+					spotifyId: song.spotify_id,
+					name: song.name,
+					artist: song.artists[0] ?? "Unknown Artist",
+					album: song.album_name,
+					albumArtUrl: song.image_url,
+					genres: song.genres,
+					audioFeatures: audio
+						? {
+								tempo: audio.tempo,
+								energy: audio.energy,
+								valence: audio.valence,
+							}
+						: null,
+					analysis: analysis ?? null,
+				};
+
+				const playlistMap = new Map(
+					(playlistResult.data ?? []).map((p) => [p.id, p]),
+				);
+
+				// activeSuggestions arrives ordered by visibleRank from the capture RPC.
+				const suggestions: MatchingPlaylistMatch[] = [];
+				for (const s of activeSuggestions
+					.slice()
+					.sort((a, b) => a.visibleRank - b.visibleRank)) {
+					const playlist = playlistMap.get(s.playlistId);
+					if (!playlist) continue;
+					suggestions.push({
+						playlist: {
+							id: playlist.id,
+							name: playlist.name,
+							description: playlist.match_intent,
+							trackCount: playlist.song_count,
+							imageUrl: playlist.image_url,
+							spotifyId: playlist.spotify_id,
+						},
+						score: s.fitScore,
+						rank: s.visibleRank,
+						// Captured pair rows do not store match_result.factors — that
+						// diagnostic field is not needed for card render (MSR-24 deviation).
+						factors: null,
+					});
+				}
+
+				return {
+					status: "ready",
+					itemId,
+					mode: "song",
+					reviewItem,
+					suggestions,
+				};
+			}
+
+			// Playlist mode is not implemented in this story.
+			return {
+				status: "retryable-error",
+				itemId,
+				message: "Couldn't load this match card. Try again.",
+			};
+		} catch {
+			// Unexpected DB or runtime failures must not leak internals.
+			return {
+				status: "retryable-error",
+				itemId,
+				message: "Couldn't load this match card. Try again.",
 			};
 		}
 	});
