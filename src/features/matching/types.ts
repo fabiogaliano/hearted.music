@@ -87,6 +87,15 @@ export interface CompletionScreenProps {
 export interface MatchingHeaderProps {
 	currentIndex: number;
 	totalSongs: number;
+	/** Current UI view mode — drives which toggle button has aria-pressed="true". */
+	mode: MatchViewMode;
+	/** Disables both toggle buttons during pending navigation or actions. */
+	disabled?: boolean;
+	/**
+	 * Called when the user activates a mode button that differs from current mode.
+	 * Activating the current mode is a no-op and never calls this.
+	 */
+	onModeChange: (mode: MatchViewMode) => void;
 }
 
 export interface MatchingProps {
@@ -100,6 +109,10 @@ export interface MatchingProps {
 	recentSongs: ReviewedSong[];
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
+	/** Current UI view mode threaded to MatchingHeader toggle. Defaults to 'song'. */
+	mode?: MatchViewMode;
+	/** Callback for toggle navigation. No-op default keeps completion/story renders safe. */
+	onModeChange?: (mode: MatchViewMode) => void;
 	onAdd: (playlistId: string) => void;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;

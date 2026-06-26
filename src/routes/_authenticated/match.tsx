@@ -45,6 +45,7 @@ import {
 	markMatchReviewItemPresented,
 	startOrResumeMatchReview,
 } from "@/lib/server/match-review-queue.functions";
+import { setMatchViewModePreference } from "@/lib/server/settings.functions";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/_authenticated/match")({
@@ -164,6 +165,20 @@ function QueueMatchPage() {
 
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
+	// Navigate to the canonical URL for the selected mode and persist preference.
+	// setMatchViewModePreference is fire-and-forget — a write failure never blocks
+	// the navigation that already committed, keeping the toggle responsive.
+	const handleModeChange = useCallback(
+		(newMode: MatchViewMode) => {
+			void navigate({
+				to: "/match",
+				search: newMode === "playlist" ? { mode: "playlist" } : {},
+			});
+			void setMatchViewModePreference({ data: { mode: newMode } });
+		},
+		[navigate],
+	);
+
 	// No queue at all means no snapshot context yet.
 	if (!hasQueue) {
 		return (
@@ -199,6 +214,7 @@ function QueueMatchPage() {
 				itemIds={unresolvedIds}
 				total={total}
 				onExit={handleExit}
+				onModeChange={handleModeChange}
 				queryClient={queryClient}
 			/>
 		</div>
@@ -212,6 +228,8 @@ interface QueueMatchContentProps {
 	itemIds: string[];
 	total: number;
 	onExit: () => void;
+	/** Navigates to the canonical URL for the new mode and persists the preference. */
+	onModeChange: (mode: MatchViewMode) => void;
 	queryClient: ReturnType<typeof useQueryClient>;
 }
 
@@ -221,6 +239,7 @@ function QueueMatchContent({
 	itemIds,
 	total,
 	onExit,
+	onModeChange,
 	queryClient,
 }: QueueMatchContentProps) {
 	const analytics = useAnalytics();
@@ -413,6 +432,7 @@ function QueueMatchContent({
 			itemId={resolvedCurrentId}
 			currentIndex={currentIndex}
 			total={total}
+			mode={mode}
 			unresolvedIds={effectiveItemIds}
 			addedTo={addedTo}
 			navigationStatus={navigationStatus}
@@ -425,6 +445,7 @@ function QueueMatchContent({
 			onResolveCurrentItem={handleResolveCurrentItem}
 			onLockNavigation={lockNavigation}
 			onReleaseNavigation={releaseNavigation}
+			onModeChange={onModeChange}
 			onExit={onExit}
 			analytics={analytics}
 			queryClient={queryClient}
@@ -439,6 +460,8 @@ interface QueueCardContentProps {
 	// denominator, distinct from currentIndex/unresolvedIds which live in the
 	// shrinking navigable domain.
 	total: number;
+	/** URL-backed orientation for this session — forwarded to the header toggle. */
+	mode: MatchViewMode;
 	unresolvedIds: string[];
 	addedTo: string[];
 	navigationStatus: "idle" | "pending";
@@ -461,6 +484,8 @@ interface QueueCardContentProps {
 	onResolveCurrentItem: (resolvedId: string) => void;
 	onLockNavigation: () => boolean;
 	onReleaseNavigation: () => void;
+	/** Navigates to the canonical URL for the new mode and persists the preference. */
+	onModeChange: (mode: MatchViewMode) => void;
 	onExit: () => void;
 	analytics: ReturnType<typeof useAnalytics>;
 	queryClient: ReturnType<typeof useQueryClient>;
@@ -470,6 +495,7 @@ function QueueCardContent({
 	itemId,
 	currentIndex,
 	total,
+	mode,
 	unresolvedIds,
 	addedTo,
 	navigationStatus,
@@ -482,6 +508,7 @@ function QueueCardContent({
 	onResolveCurrentItem,
 	onLockNavigation,
 	onReleaseNavigation,
+	onModeChange,
 	onExit,
 	analytics,
 	queryClient,
@@ -799,6 +826,8 @@ function QueueCardContent({
 			recentSongs={pastItems}
 			reconnectNeeded={reconnectNeeded}
 			navigationDisabled={navigationStatus === "pending"}
+			mode={mode}
+			onModeChange={onModeChange}
 			onAdd={handleAdd}
 			onDismiss={handleDismiss}
 			onNext={handleNext}

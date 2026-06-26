@@ -80,7 +80,13 @@ export function WalkthroughMatchContent({
 				staggerDelay={0.05}
 				initialDelay={0.04}
 			>
-				<MatchingHeader currentIndex={0} totalSongs={1} />
+				<MatchingHeader
+					currentIndex={0}
+					totalSongs={1}
+					mode="song"
+					disabled
+					onModeChange={() => {}}
+				/>
 				<MatchingSession
 					currentSong={currentSong}
 					playlists={playlists}

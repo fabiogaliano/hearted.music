@@ -15,6 +15,8 @@ export function Matching({
 	recentSongs,
 	reconnectNeeded,
 	navigationDisabled,
+	mode = "song",
+	onModeChange = () => {},
 	onAdd,
 	onDismiss,
 	onNext,
@@ -55,7 +57,13 @@ export function Matching({
 			staggerDelay={0.05}
 			initialDelay={0.04}
 		>
-			<MatchingHeader currentIndex={offset} totalSongs={totalSongs} />
+			<MatchingHeader
+				currentIndex={offset}
+				totalSongs={totalSongs}
+				mode={mode}
+				disabled={navigationDisabled}
+				onModeChange={onModeChange}
+			/>
 
 			<MatchingSession
 				currentSong={currentSong}
