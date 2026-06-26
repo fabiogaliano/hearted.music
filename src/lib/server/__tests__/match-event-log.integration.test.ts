@@ -132,12 +132,14 @@ async function seed() {
     `;
 	}
 
-	// Captured visible pairs (MSR-27). The add RPC (MSR-26) and dismiss RPC (MSR-27)
-	// both read from match_review_item_visible_pair as the source of ranks, so these
-	// rows must exist before any add or dismiss call can succeed.
+	// Captured visible pairs (MSR-27/28). The add RPC (MSR-26), dismiss RPC (MSR-27),
+	// and finish RPC (MSR-28) all read from match_review_item_visible_pair as the
+	// source of ranks, so these rows must exist before any RPC call can succeed.
+	// ITEM_SKIP is included because MSR-28 added a no_captured_pairs guard to finish.
 	const capturedPairs: Array<[string, string, string, number, number]> = [
 		[ITEM_ADD, SONG_ADD, PLAYLIST_A, 1, 1],
 		[ITEM_DIS, SONG_DIS, PLAYLIST_A, 1, 1],
+		[ITEM_SKIP, SONG_SKIP, PLAYLIST_A, 1, 1],
 		[ITEM_MIX, SONG_MIX, PLAYLIST_A, 1, 1],
 		[ITEM_MIX, SONG_MIX, PLAYLIST_B, 2, 2],
 		[ITEM_AGUARD, SONG_AGUARD, PLAYLIST_A, 1, 1],
@@ -286,10 +288,10 @@ describeLocal("match queue RPCs write to match_event", () => {
     `;
 		expect(events).toHaveLength(1);
 		expect(events[0].event).toBe("skipped");
-		// model_rank carries the model/snapshot rank so skips can be debiased by
-		// position; visible_rank is unwired until visible-pair capture (MSR-23).
+		// Ranks come from the captured pair rows (MSR-28) — never recomputed at
+		// finish time so the logged position matches exactly what the user saw.
 		expect(events[0].model_rank).toBe(1);
-		expect(events[0].visible_rank).toBeNull();
+		expect(events[0].visible_rank).toBe(1);
 
 		// match_decision must hold nothing for a skip — its CHECK only allows
 		// added/dismissed, and the exclusion set is built from it.

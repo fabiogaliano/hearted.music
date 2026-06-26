@@ -990,18 +990,24 @@ const FinishQueueSchema = z.object({
 export interface FinishQueueResult {
 	success: boolean;
 	resolution?: "added" | "skipped";
-	reason?: "not-found" | "already-resolved" | "decision-count-failed";
+	reason?:
+		| "not-found"
+		| "already-resolved"
+		| "derive-failed"
+		| "decision-count-failed";
 }
 
 /**
- * Finishes a queue card (the "Next Song" action).
+ * Finishes a queue card (the "Next Song" / "Finish matching" action).
  *
  * Delegates to an atomic RPC that locks the queue item, counts add decisions
- * linked to this queue_item_id, then resolves the item. Add takes the same lock
- * before writing, so finish cannot miss an in-flight add.
+ * linked to this queue_item_id, writes skip events for non-added captured
+ * pairs, then resolves the item. Add takes the same lock before writing, so
+ * finish cannot miss an in-flight add.
  *
- * - ≥1 add found → completed/added
- * - 0 adds found → skipped/skipped (no negative decisions written)
+ * - ≥1 add found → resolved/added; skip events written for non-added pairs
+ * - 0 adds found → resolved/skipped; skip events written for all captured pairs
+ * - no captured pairs → derive-failed (presentMatchReviewItem must run first)
  */
 export const finishMatchReviewItem = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
@@ -1023,6 +1029,11 @@ export const finishMatchReviewItem = createServerFn({ method: "POST" })
 		}
 		if (result.value === "already_resolved") {
 			return { success: false, reason: "already-resolved" };
+		}
+		// no_captured_pairs means presentMatchReviewItem has not yet run — the item
+		// should not be resolved so finish can be retried after presentation.
+		if (result.value === "no_captured_pairs") {
+			return { success: false, reason: "derive-failed" };
 		}
 		if (result.value === "completed_added") {
 			return { success: true, resolution: "added" };
