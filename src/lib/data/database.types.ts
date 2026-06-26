@@ -3112,6 +3112,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			capture_match_review_item_visible_pairs_atomic: {
+				Args: { p_account_id: string; p_item_id: string; p_pairs: Json };
+				Returns: Json;
+			};
 			claim_billing_bridge_event: {
 				Args: {
 					p_event_kind: string;
