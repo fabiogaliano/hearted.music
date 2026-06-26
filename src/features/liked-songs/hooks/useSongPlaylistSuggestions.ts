@@ -80,7 +80,8 @@ export function useSongPlaylistSuggestions(
 		matches: data.matches.map((m) => ({
 			playlistId: m.playlistId,
 			name: m.playlistName,
-			score: m.score,
+			// fitScore is strictnessScore — the canonical match percent (A5, E7).
+			score: m.fitScore,
 		})),
 		addedTo,
 		reconnectNeeded,
