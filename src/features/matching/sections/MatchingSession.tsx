@@ -36,7 +36,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 		onPrevious,
 	} = props;
 
-	// Song-specific values extracted before useMemo to avoid conditional hook calls.
+	// Mode-specific values extracted before useMemo to avoid conditional hook calls.
 	const songId = props.mode === "song" ? props.currentSong.id : "";
 	const songName = props.mode === "song" ? props.currentSong.name : "";
 	const songAlbum =
@@ -49,6 +49,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 	const songSpotifyId =
 		props.mode === "song" ? props.currentSong.spotifyId : undefined;
 	const playlists = props.mode === "song" ? props.playlists : [];
+	const songSuggestions = props.mode === "playlist" ? props.suggestions : [];
 
 	const song = useMemo(
 		() => ({
@@ -178,7 +179,6 @@ export function MatchingSession(props: MatchingSessionProps) {
 							/>
 						</div>
 					) : (
-						// SongSuggestionsSection (MSR-33) will replace the right placeholder.
 						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
 							<PlaylistReviewItemSection
 								itemKey={props.reviewItem.id}
@@ -186,7 +186,18 @@ export function MatchingSession(props: MatchingSessionProps) {
 								canLoadTracks={!isDemo}
 								suppressTransition={rejecting}
 							/>
-							<SongSuggestionsSection />
+							<SongSuggestionsSection
+								itemKey={props.reviewItem.id}
+								suggestions={songSuggestions}
+								addedTo={addedTo}
+								navigationDisabled={navigationDisabled}
+								isLastItem={isLastSong}
+								suppressTransition={rejecting}
+								onAdd={onAdd}
+								onDismiss={animateReject ? handleReject : onDismiss}
+								onNext={onNext}
+								onPrevious={onPrevious}
+							/>
 						</div>
 					)}
 				</motion.div>
