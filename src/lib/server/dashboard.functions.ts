@@ -120,7 +120,7 @@ export const getDashboardPageData = createServerFn({ method: "GET" })
 		// resolveMatchReviewSummary runs in parallel with recent activity so the
 		// one summary call feeds BOTH pendingReviewCount and previewImages.
 		const [summary, recentActivity] = await Promise.all([
-			resolveMatchReviewSummary(session.accountId),
+			resolveMatchReviewSummary(session.accountId, "song"),
 			fetchRecentActivity(session.accountId),
 		]);
 
@@ -140,7 +140,10 @@ export const getDashboardPageData = createServerFn({ method: "GET" })
 export const getDashboardStats = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<DashboardStats> => {
-		const summary = await resolveMatchReviewSummary(context.session.accountId);
+		const summary = await resolveMatchReviewSummary(
+			context.session.accountId,
+			"song",
+		);
 		return fetchDashboardStats(context.session.accountId, summary.pendingCount);
 	});
 
@@ -153,6 +156,9 @@ export const getRecentActivity = createServerFn({ method: "GET" })
 export const getMatchPreviews = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<MatchPreview[]> => {
-		const summary = await resolveMatchReviewSummary(context.session.accountId);
+		const summary = await resolveMatchReviewSummary(
+			context.session.accountId,
+			"song",
+		);
 		return summary.previewImages;
 	});

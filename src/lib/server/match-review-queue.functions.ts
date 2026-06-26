@@ -17,10 +17,14 @@ import {
 	syncActiveQueue,
 } from "@/lib/domains/taste/match-review-queue/service";
 import type {
-	AppendResult,
+	MatchOrientation,
 	MatchReviewQueueItem,
 	MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
+
+/** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
+export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
+
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
@@ -126,6 +130,10 @@ function deriveCaughtUp(items: MatchReviewQueueItem[]): boolean {
 	return items.every((item) => item.state === "resolved");
 }
 
+const StartMatchReviewSchema = z.object({
+	orientation: MatchOrientationSchema,
+});
+
 /**
  * Creates or resumes the active queue for the authed account and returns the
  * session id + ordered item ids the route loader needs to bootstrap the card
@@ -133,11 +141,15 @@ function deriveCaughtUp(items: MatchReviewQueueItem[]): boolean {
  */
 export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<MatchReviewStartResult> => {
+	.inputValidator((data) => StartMatchReviewSchema.parse(data))
+	.handler(async ({ data, context }): Promise<MatchReviewStartResult> => {
 		const { session } = context;
+		const { orientation } = data;
 
-		const queueResult = await createOrResumeQueue(session.accountId, "song");
+		const queueResult = await createOrResumeQueue(
+			session.accountId,
+			orientation,
+		);
 		if (Result.isError(queueResult)) {
 			throw new Error(
 				"Could not prepare your match review queue. Please try again.",
@@ -172,6 +184,10 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		};
 	});
 
+const GetMatchReviewSchema = z.object({
+	orientation: MatchOrientationSchema,
+});
+
 /**
  * Returns the active session + ordered queue items with enough metadata for
  * the card stack. Caught-up state is derived from item states — never from
@@ -179,11 +195,15 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
  */
 export const getMatchReview = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<MatchReviewResult | null> => {
+	.inputValidator((data) => GetMatchReviewSchema.parse(data))
+	.handler(async ({ data, context }): Promise<MatchReviewResult | null> => {
 		const { session } = context;
+		const { orientation } = data;
 
-		const sessionResult = await fetchActiveSession(session.accountId, "song");
+		const sessionResult = await fetchActiveSession(
+			session.accountId,
+			orientation,
+		);
 		if (Result.isError(sessionResult)) {
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
@@ -799,7 +819,7 @@ export interface MatchReviewSummaryResult {
 }
 
 /**
- * Resolves the queue-aware match review summary.
+ * Resolves the queue-aware match review summary for a specific orientation.
  *
  * Active-queue path: asks the domain for the pending count and top-3 song ids,
  * then maps ids → image_url rows.
@@ -814,8 +834,9 @@ export interface MatchReviewSummaryResult {
  */
 export async function resolveMatchReviewSummary(
 	accountId: string,
+	orientation: MatchOrientation,
 ): Promise<MatchReviewSummaryResult> {
-	const summaryResult = await getQueueSummary(accountId, "song");
+	const summaryResult = await getQueueSummary(accountId, orientation);
 
 	let topIds: string[];
 	let pendingCount: number;
@@ -878,6 +899,10 @@ export async function resolveMatchReviewSummary(
 	return { pendingCount, previewImages, hasActiveQueue };
 }
 
+const GetMatchReviewSummarySchema = z.object({
+	orientation: MatchOrientationSchema,
+});
+
 /**
  * Returns the queue-aware match review summary.
  * Backs the sidebar badge and is available for targeted refetch.
@@ -885,30 +910,52 @@ export async function resolveMatchReviewSummary(
  */
 export const getMatchReviewSummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<MatchReviewSummaryResult> => {
-		return resolveMatchReviewSummary(context.session.accountId);
+	.inputValidator((data) => GetMatchReviewSummarySchema.parse(data))
+	.handler(async ({ data, context }): Promise<MatchReviewSummaryResult> => {
+		return resolveMatchReviewSummary(
+			context.session.accountId,
+			data.orientation,
+		);
 	});
+
+export interface SyncActiveMatchReviewSessionsResult {
+	results: Array<{ orientation: MatchOrientation; appendedCount: number }>;
+}
+
+// All orientations that can have active sessions. Both are synced in each
+// background-refresh cycle so no newly-appended items are missed by the queue.
+const ALL_ORIENTATIONS: readonly MatchOrientation[] = ["song", "playlist"];
 
 /**
- * Appends the latest snapshot's eligible songs to the active review queue.
- * Called after a background match snapshot refresh completes so the queue
- * receives new matches without requiring a page reload.
+ * Appends the latest snapshot's eligible subjects to all active review queues.
+ * Replaces the singular syncActiveMatchReviewSession: syncs every orientation
+ * in one call so a single server round-trip handles both song and playlist
+ * sessions after a background match snapshot refresh completes.
  *
  * Idempotent: the domain layer guards against re-applying the same snapshot
- * via the (session_id, snapshot_id) PK on match_review_session_snapshot.
- * Returns { appendedCount: 0 } when no active queue exists for the account.
+ * via the (session_id, snapshot_id, visibility_config_hash) composite key.
+ * Returns appendedCount: 0 for any orientation without an active session.
  */
-export const syncActiveMatchReviewSession = createServerFn({ method: "POST" })
+export const syncActiveMatchReviewSessions = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<AppendResult> => {
-		const { session } = context;
+	.handler(
+		async ({ context }): Promise<SyncActiveMatchReviewSessionsResult> => {
+			const { session } = context;
 
-		const result = await syncActiveQueue(session.accountId, "song");
-		if (Result.isError(result)) {
-			return { appendedCount: 0, alreadyApplied: false };
-		}
+			const results: Array<{
+				orientation: MatchOrientation;
+				appendedCount: number;
+			}> = [];
 
-		return result.value;
-	});
+			for (const orientation of ALL_ORIENTATIONS) {
+				const result = await syncActiveQueue(session.accountId, orientation);
+				results.push({
+					orientation,
+					appendedCount: Result.isOk(result) ? result.value.appendedCount : 0,
+				});
+			}
+
+			return { results };
+		},
+	);
