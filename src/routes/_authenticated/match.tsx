@@ -1,10 +1,15 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { Matching } from "@/features/matching/Matching";
+import {
+	hasNonCanonicalMatchMode,
+	modeFromSearch,
+	validateMatchSearch,
+} from "@/features/matching/match-search";
 import {
 	matchReviewItemQueryOptions,
 	matchReviewKeys,
@@ -22,6 +27,7 @@ import {
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
+	MatchViewMode,
 	Playlist,
 	ReviewedSong,
 	SongForMatching,
@@ -42,18 +48,32 @@ import {
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/_authenticated/match")({
+	// `mode=song` is non-canonical (A3) — `/match` is the canonical song-mode URL.
+	// Any non-`playlist` mode value in the URL is replaced with the bare `/match`
+	// before the loader runs, preventing push-loop behavior via replace: true.
+	validateSearch: validateMatchSearch,
+	beforeLoad: ({ location }) => {
+		const rawParams = Object.fromEntries(
+			new URLSearchParams(location.searchStr),
+		);
+		if (hasNonCanonicalMatchMode(rawParams)) {
+			throw redirect({ to: "/match", replace: true });
+		}
+	},
+	// Expose the URL mode to the loader so bootstrap query keys are
+	// orientation-scoped and the first-card prefetch targets the right session.
+	loaderDeps: ({ search }) => ({ mode: modeFromSearch(search) }),
 	// /_authenticated already resolved the session via resolveSession.
 	// Walkthrough modes skip queue bootstrap — the DU guarantees song presence.
-	loader: async ({ context }) => {
+	loader: async ({ context, deps }) => {
 		if (sessionMode(context.onboardingSession) === "walkthrough") return;
 		const { session, queryClient } = context;
+		const { mode } = deps;
 
 		// Bootstrap the queue (idempotent — resumes if one already exists). This
 		// must run before the prefetches to ensure a session row exists.
-		// Song orientation is the only active pass until MSR-21 wires the
-		// route mode toggle to the orientation parameter.
 		const startResult = await startOrResumeMatchReview({
-			data: { orientation: "song" },
+			data: { orientation: mode },
 		});
 
 		// The queue summary and the first card are independent reads (one keys off
@@ -64,7 +84,7 @@ export const Route = createFileRoute("/_authenticated/match")({
 		const firstId = startResult.caughtUp ? undefined : startResult.itemIds[0];
 		const prefetches = [
 			queryClient.prefetchQuery(
-				matchReviewQueryOptions(session.accountId, "song"),
+				matchReviewQueryOptions(session.accountId, mode),
 			),
 		];
 		if (firstId) {
@@ -109,9 +129,12 @@ function QueueMatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	// Read mode from validated URL search — never falls back to preference here
+	// because the loader already bootstrapped the correct orientation session.
+	const mode = modeFromSearch(Route.useSearch());
 
 	const { data: queue } = useSuspenseQuery(
-		matchReviewQueryOptions(session.accountId, "song"),
+		matchReviewQueryOptions(session.accountId, mode),
 	);
 
 	// Ordered unresolved item ids derived from queue state — never from null song.
@@ -172,6 +195,7 @@ function QueueMatchPage() {
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 			<QueueMatchContent
 				accountId={session.accountId}
+				mode={mode}
 				itemIds={unresolvedIds}
 				total={total}
 				onExit={handleExit}
@@ -183,6 +207,8 @@ function QueueMatchPage() {
 
 interface QueueMatchContentProps {
 	accountId: string;
+	/** URL-backed orientation for this session — drives invalidation key scoping. */
+	mode: MatchViewMode;
 	itemIds: string[];
 	total: number;
 	onExit: () => void;
@@ -191,6 +217,7 @@ interface QueueMatchContentProps {
 
 function QueueMatchContent({
 	accountId,
+	mode,
 	itemIds,
 	total,
 	onExit,
@@ -299,16 +326,17 @@ function QueueMatchContent({
 	const isComplete = resolvedCurrentId === null;
 
 	// Refresh sidebar badge + queue summary on session exit, whether the user
-	// completes all cards or navigates away mid-session.
+	// completes all cards or navigates away mid-session. Scoped to the current
+	// orientation so playlist-mode invalidation doesn't evict song-mode cache.
 	const invalidateSessionBoundary = useCallback(() => {
 		queryClient.invalidateQueries({
-			queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
+			queryKey: matchReviewSummaryKeys.summary(accountId, mode),
 		});
 		queryClient.invalidateQueries({
-			queryKey: matchReviewKeys.review(accountId, "song"),
+			queryKey: matchReviewKeys.review(accountId, mode),
 		});
 		queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
-	}, [queryClient, accountId]);
+	}, [queryClient, accountId, mode]);
 
 	const completionCapturedRef = useRef(false);
 	useEffect(() => {
