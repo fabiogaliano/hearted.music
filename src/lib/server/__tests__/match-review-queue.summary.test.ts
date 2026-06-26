@@ -416,7 +416,7 @@ describe("getMatchReviewSummary — server fn", () => {
 		expect(result.pendingCount).toBe(7);
 		expect(result.hasActiveQueue).toBe(true);
 		expect(result.previewImages).toHaveLength(1);
-		expect(mockGetQueueSummary).toHaveBeenCalledWith("acct-1");
+		expect(mockGetQueueSummary).toHaveBeenCalledWith("acct-1", "song");
 	});
 
 	it("returns pendingCount 0 when caught up (no active queue, no snapshot)", async () => {

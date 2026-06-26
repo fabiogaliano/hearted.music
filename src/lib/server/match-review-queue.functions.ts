@@ -8,6 +8,7 @@ import {
 	fetchActiveSession,
 	fetchQueueItems,
 	finishQueueItemAtomically,
+	mapItemToDto,
 } from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	createOrResumeQueue,
@@ -18,6 +19,7 @@ import {
 import type {
 	AppendResult,
 	MatchReviewQueueItem,
+	MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
@@ -96,11 +98,16 @@ export interface MatchReviewItemPresentedResult {
  * Loads the queue item only when it exists AND belongs to the account.
  * Returns null for a missing or foreign item — callers must not leak any data
  * about items they don't own.
+ *
+ * Uses mapItemToDto so the returned DTO carries a MatchReviewSubject
+ * discriminated union instead of the legacy nullable song_id field. Invalid
+ * subject rows (wrong orientation vs column) throw rather than returning null,
+ * so ownership-verified callers always get a typed shape or a hard error.
  */
 async function fetchOwnedQueueItem(
 	itemId: string,
 	accountId: string,
-): Promise<MatchReviewQueueItem | null> {
+): Promise<MatchReviewQueueItemDto | null> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("match_review_queue_item")
@@ -111,22 +118,7 @@ async function fetchOwnedQueueItem(
 
 	if (error || !data) return null;
 
-	return {
-		id: data.id,
-		sessionId: data.session_id,
-		accountId: data.account_id,
-		songId: data.song_id as string,
-		sourceSnapshotId: data.source_snapshot_id,
-		position: data.position,
-		state: data.state as MatchReviewQueueItem["state"],
-		resolution: data.resolution as MatchReviewQueueItem["resolution"],
-		sourceScore: data.source_fit_score,
-		wasNewAtEnqueue: data.was_new_at_enqueue,
-		presentedAt: data.presented_at,
-		resolvedAt: data.resolved_at,
-		createdAt: data.created_at,
-		updatedAt: data.updated_at,
-	};
+	return mapItemToDto(data);
 }
 
 /** Derived from unresolved item count — never from null song data. */
@@ -145,7 +137,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 	.handler(async ({ context }): Promise<MatchReviewStartResult> => {
 		const { session } = context;
 
-		const queueResult = await createOrResumeQueue(session.accountId);
+		const queueResult = await createOrResumeQueue(session.accountId, "song");
 		if (Result.isError(queueResult)) {
 			throw new Error(
 				"Could not prepare your match review queue. Please try again.",
@@ -191,7 +183,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<MatchReviewResult | null> => {
 		const { session } = context;
 
-		const sessionResult = await fetchActiveSession(session.accountId);
+		const sessionResult = await fetchActiveSession(session.accountId, "song");
 		if (Result.isError(sessionResult)) {
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
@@ -284,6 +276,19 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				};
 			}
 
+			// Narrow to song orientation — this server function is song-mode-only.
+			// Playlist-mode items return 'missing-song' so the card falls into the
+			// unavailable state without leaking orientation details to the UI.
+			if (item.subject.orientation !== "song") {
+				return {
+					status: "unavailable",
+					itemId,
+					reason: "missing-song",
+					message: "This item is not a song review card.",
+				};
+			}
+			const songId = item.subject.songId;
+
 			// Load the session to get the stored strictness score.
 			const supabase = createAdminSupabaseClient();
 			const { data: sessionRow, error: sessionError } = await supabase
@@ -308,7 +313,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			// the queue was built.
 			const entitledCheck = await supabase.rpc("is_account_song_entitled", {
 				p_account_id: session.accountId,
-				p_song_id: item.songId,
+				p_song_id: songId,
 			});
 			if (entitledCheck.error || !entitledCheck.data) {
 				return {
@@ -320,7 +325,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			}
 
 			// Load song, analysis, audio, and match details in parallel — all keyed
-			// off the owned item's song_id and source_snapshot_id.
+			// off the server-read songId and sourceSnapshotId from the owned item.
 			const [
 				songRow,
 				analysisRow,
@@ -328,21 +333,21 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				songDetailsResult,
 				decisionsResult,
 			] = await Promise.all([
-				supabase.from("song").select("*").eq("id", item.songId).single(),
+				supabase.from("song").select("*").eq("id", songId).single(),
 				supabase
 					.from("song_analysis")
 					.select("analysis")
-					.eq("song_id", item.songId)
+					.eq("song_id", songId)
 					.order("created_at", { ascending: false })
 					.limit(1)
 					.maybeSingle(),
 				supabase
 					.from("song_audio_feature")
 					.select("tempo, energy, valence")
-					.eq("song_id", item.songId)
+					.eq("song_id", songId)
 					.maybeSingle(),
-				getMatchResultDetailsForSong(item.sourceSnapshotId, item.songId),
-				getMatchDecisionsForSongs(session.accountId, [item.songId]),
+				getMatchResultDetailsForSong(item.sourceSnapshotId, songId),
+				getMatchDecisionsForSongs(session.accountId, [songId]),
 			]);
 
 			if (songRow.error || !songRow.data) {
@@ -384,7 +389,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			};
 
 			// Apply the SESSION'S stored strictness (not a live re-read) and exclude
-			// already-decided pairs, keyed off the queue item.
+			// already-decided pairs, keyed off the server-read songId.
 			const decidedPairs = new Set(
 				decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 			);
@@ -392,7 +397,7 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			const visibleMatchResults = songDetailsResult.value.filter(
 				(mr) =>
 					mr.score >= strictnessMinScore &&
-					!decidedPairs.has(`${item.songId}:${mr.playlist_id}`),
+					!decidedPairs.has(`${songId}:${mr.playlist_id}`),
 			);
 
 			if (visibleMatchResults.length === 0) {
@@ -481,11 +486,14 @@ export const markMatchReviewItemPresented = createServerFn({ method: "POST" })
 				return { success: false, itemId, state: "unknown" };
 			}
 
-			const result = await markItemPresented(
-				itemId,
-				session.accountId,
-				item.songId,
-			);
+			// Song-mode only for now; playlist items are not yet presented via this path.
+			const songId =
+				item.subject.orientation === "song" ? item.subject.songId : null;
+			if (!songId) {
+				return { success: false, itemId, state: item.state };
+			}
+
+			const result = await markItemPresented(itemId, session.accountId, songId);
 			if (Result.isError(result)) {
 				return { success: false, itemId, state: item.state };
 			}
@@ -547,13 +555,20 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "already-resolved" };
 		}
 
+		// Song-mode only: the add-to-playlist action is a song decision. Playlist
+		// items use a different add path (not yet implemented in this story).
+		if (item.subject.orientation !== "song") {
+			return { success: false, reason: "not-found" };
+		}
+		const songId = item.subject.songId;
+
 		// Resolve the served rank from the snapshot the user was looking at —
 		// mirrors resolveServedContext in matching.functions but keyed off the
-		// owned item's source_snapshot_id rather than a client-supplied value.
+		// server-read song_id and source_snapshot_id from the owned item.
 		const servedResult = await getServedRanksForSong(
 			item.sourceSnapshotId,
 			session.accountId,
-			item.songId,
+			songId,
 		);
 		const rankByPlaylist = new Map<string, number>();
 		if (Result.isOk(servedResult) && servedResult.value) {
@@ -624,6 +639,14 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 			return { success: false, reason: "already-resolved" };
 		}
 
+		// Song-mode only: the dismiss path derives undecided playlist pairs for a
+		// song subject. Playlist items use a different dismiss path (not yet
+		// implemented in this story).
+		if (item.subject.orientation !== "song") {
+			return { success: false, reason: "not-found" };
+		}
+		const songId = item.subject.songId;
+
 		// Load the session's stored strictness — must not re-read live preferences
 		// so that the bar matches what was visible on screen when the user dismissed.
 		const supabase = createAdminSupabaseClient();
@@ -647,8 +670,8 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 		// Derive visible undecided playlist matches — same computation as
 		// getMatchReviewItem so the dismissed set is exactly what was on screen.
 		const [songDetailsResult, decisionsResult] = await Promise.all([
-			getMatchResultDetailsForSong(item.sourceSnapshotId, item.songId),
-			getMatchDecisionsForSongs(session.accountId, [item.songId]),
+			getMatchResultDetailsForSong(item.sourceSnapshotId, songId),
+			getMatchDecisionsForSongs(session.accountId, [songId]),
 		]);
 
 		if (Result.isError(songDetailsResult) || Result.isError(decisionsResult)) {
@@ -666,7 +689,7 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 		const visibleUndecided = songDetailsResult.value.filter(
 			(mr) =>
 				mr.score >= strictnessMinScore &&
-				!decidedPairs.has(`${item.songId}:${mr.playlist_id}`),
+				!decidedPairs.has(`${songId}:${mr.playlist_id}`),
 		);
 
 		// Served ranks for those playlists, so dismissed decisions log the same
@@ -676,7 +699,7 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 				? await getServedRanksForSong(
 						item.sourceSnapshotId,
 						session.accountId,
-						item.songId,
+						songId,
 					)
 				: null;
 		const rankByPlaylist = new Map<string, number>();
@@ -792,7 +815,7 @@ export interface MatchReviewSummaryResult {
 export async function resolveMatchReviewSummary(
 	accountId: string,
 ): Promise<MatchReviewSummaryResult> {
-	const summaryResult = await getQueueSummary(accountId);
+	const summaryResult = await getQueueSummary(accountId, "song");
 
 	let topIds: string[];
 	let pendingCount: number;
@@ -882,7 +905,7 @@ export const syncActiveMatchReviewSession = createServerFn({ method: "POST" })
 	.handler(async ({ context }): Promise<AppendResult> => {
 		const { session } = context;
 
-		const result = await syncActiveQueue(session.accountId);
+		const result = await syncActiveQueue(session.accountId, "song");
 		if (Result.isError(result)) {
 			return { appendedCount: 0, alreadyApplied: false };
 		}

@@ -40,6 +40,7 @@ import {
 import type {
 	ActiveQueueResult,
 	AppendResult,
+	MatchOrientation,
 	MatchReviewQueueItem,
 	MatchReviewSession,
 	MatchReviewSummary,
@@ -161,6 +162,7 @@ async function fetchLatestSnapshotId(
 
 async function createQueueFromLatestSnapshot(
 	accountId: string,
+	orientation: MatchOrientation,
 ): Promise<Result<ActiveQueueResult, DbError>> {
 	const snapshotIdResult = await fetchLatestSnapshotId(accountId);
 	if (Result.isError(snapshotIdResult)) return snapshotIdResult;
@@ -181,18 +183,19 @@ async function createQueueFromLatestSnapshot(
 		accountId,
 		preset,
 		minScore,
+		orientation,
 	);
 
 	if (Result.isError(sessionResult)) {
-		// Unique index violation: another request won the race. Fall back to the
-		// session the winner created — but append the latest snapshot into it before
-		// returning. The winner may not have populated its queue yet; returning the
-		// bare session here would let this caller render an empty/caught-up queue for
-		// a pass that actually has matches. appendLatestSnapshot is idempotent, so if
-		// the winner already appended this is a no-op; its errors propagate so we
-		// never report a falsely-empty success.
+		// Unique index violation: another request won the race for this orientation.
+		// Fall back to the session the winner created for the same orientation — but
+		// append the latest snapshot into it before returning. The winner may not have
+		// populated its queue yet; returning the bare session here would let this
+		// caller render an empty/caught-up queue for a pass that actually has matches.
+		// appendLatestSnapshot is idempotent, so if the winner already appended this
+		// is a no-op; its errors propagate so we never report a falsely-empty success.
 		if (sessionResult.error._tag === "ConstraintError") {
-			const active = await fetchActiveSession(accountId);
+			const active = await fetchActiveSession(accountId, orientation);
 			if (Result.isError(active)) return active;
 			if (active.value) {
 				const syncResult = await appendLatestSnapshot(active.value, accountId);
@@ -226,20 +229,28 @@ async function createQueueFromLatestSnapshot(
 }
 
 /**
- * Ensures an active queue exists for the account. If one already exists it is
- * returned as-is. Otherwise a new session is created, the latest snapshot is
- * appended, and the result describes what happened.
+ * Ensures an active queue exists for the given (account, orientation) pair. If
+ * one already exists it is returned as-is. Otherwise a new session is created,
+ * the latest snapshot is appended, and the result describes what happened.
  *
- * "One active per account" is enforced by the unique partial index
- * `idx_match_review_session_one_active` (WHERE status = 'active'). A race
- * between two concurrent creates produces a ConstraintError on the insert;
- * this function catches that and falls back to fetchActiveSession so the
- * caller always gets a valid session regardless of which path won.
+ * "One active per orientation" is enforced by the unique partial index
+ * `idx_match_review_session_one_active_per_orientation` (WHERE status = 'active').
+ * Song-mode and playlist-mode passes are fully independent: a user may have one
+ * active song session and one active playlist session simultaneously.
+ *
+ * A race between two concurrent creates for the same orientation produces a
+ * ConstraintError on the insert; this function catches that and falls back to
+ * fetchActiveSession so the caller always gets a valid session regardless of
+ * which path won.
+ *
+ * Defaults to 'song' for backward compat with callers that pre-date MSR-18;
+ * new callers should pass orientation explicitly.
  */
 export async function createOrResumeQueue(
 	accountId: string,
+	orientation: MatchOrientation = "song",
 ): Promise<Result<ActiveQueueResult, DbError>> {
-	const existing = await fetchActiveSession(accountId);
+	const existing = await fetchActiveSession(accountId, orientation);
 	if (Result.isError(existing)) return existing;
 
 	if (existing.value) {
@@ -248,7 +259,7 @@ export async function createOrResumeQueue(
 			accountId,
 			appendLatestSnapshot,
 			hasSessionBeenSeeded,
-			createQueueFromLatestSnapshot,
+			(acctId) => createQueueFromLatestSnapshot(acctId, orientation),
 		);
 		if (Result.isError(advanceResult)) return advanceResult;
 
@@ -262,7 +273,7 @@ export async function createOrResumeQueue(
 		});
 	}
 
-	return createQueueFromLatestSnapshot(accountId);
+	return createQueueFromLatestSnapshot(accountId, orientation);
 }
 
 /**
@@ -501,14 +512,18 @@ export async function appendSnapshotDelta(
 }
 
 /**
- * Appends any new snapshot's delta to the active queue, if one exists.
- * Used by the live-update path after background match refresh completes.
- * Returns { appendedCount: 0 } when there is no active queue.
+ * Appends any new snapshot's delta to the active queue for a given orientation,
+ * if one exists. Used by the live-update path after background match refresh.
+ * Returns { appendedCount: 0 } when no active queue exists for that orientation.
+ *
+ * Defaults to 'song' for backward compat with callers that pre-date MSR-18;
+ * new callers should pass orientation explicitly.
  */
 export async function syncActiveQueue(
 	accountId: string,
+	orientation: MatchOrientation = "song",
 ): Promise<Result<AppendResult, DbError>> {
-	const sessionResult = await fetchActiveSession(accountId);
+	const sessionResult = await fetchActiveSession(accountId, orientation);
 	if (Result.isError(sessionResult)) return sessionResult;
 	if (!sessionResult.value) {
 		return Result.ok<AppendResult, DbError>({
@@ -522,7 +537,7 @@ export async function syncActiveQueue(
 		accountId,
 		appendLatestSnapshot,
 		hasSessionBeenSeeded,
-		createQueueFromLatestSnapshot,
+		(acctId) => createQueueFromLatestSnapshot(acctId, orientation),
 	);
 	if (Result.isError(advanceResult)) return advanceResult;
 
@@ -548,16 +563,20 @@ export async function syncActiveQueue(
 }
 
 /**
- * Returns queue summary for the account. Drives dashboard CTA, sidebar badge,
- * and the match page empty/caught-up state.
+ * Returns queue summary for the given (account, orientation) pair. Drives
+ * dashboard CTA, sidebar badge, and the match page empty/caught-up state.
  *
- * Falls back to empty/no-queue when no active session exists — the match page
- * creates one on entry via createOrResumeQueue.
+ * Falls back to empty/no-queue when no active session exists for the
+ * orientation — the match page creates one on entry via createOrResumeQueue.
+ *
+ * Defaults to 'song' for backward compat with callers that pre-date MSR-18;
+ * new callers should pass orientation explicitly.
  */
 export async function getQueueSummary(
 	accountId: string,
+	orientation: MatchOrientation = "song",
 ): Promise<Result<MatchReviewSummary, DbError>> {
-	const sessionResult = await fetchActiveSession(accountId);
+	const sessionResult = await fetchActiveSession(accountId, orientation);
 	if (Result.isError(sessionResult)) return sessionResult;
 
 	if (!sessionResult.value) {
