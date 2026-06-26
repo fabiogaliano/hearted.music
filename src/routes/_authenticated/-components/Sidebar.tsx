@@ -6,6 +6,7 @@
 import { ArrowUpRightIcon, XIcon } from "@phosphor-icons/react";
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import type { MatchViewMode } from "@/features/matching/types";
 import { fonts } from "@/lib/theme/fonts";
 import { NavItem } from "./NavItem";
 
@@ -14,6 +15,8 @@ const displayFontStyle = { fontFamily: fonts.display } as const;
 
 interface SidebarProps {
 	unsortedCount: number;
+	/** Preferred orientation from the server — drives the Match link destination. */
+	matchViewMode?: MatchViewMode;
 	handle: string | null;
 	userPlan: string;
 	userBalance?: number | null;
@@ -29,21 +32,9 @@ interface SidebarProps {
 	onClose?: () => void;
 }
 
-interface NavItemConfig {
-	to: string;
-	label: string;
-	hasBadge?: boolean;
-}
-
-const NAV_ITEMS: NavItemConfig[] = [
-	{ to: "/dashboard", label: "Home" },
-	{ to: "/match", label: "Match Songs", hasBadge: true },
-	{ to: "/liked-songs", label: "Liked Songs" },
-	{ to: "/playlists", label: "Playlists" },
-];
-
 export function Sidebar({
 	unsortedCount,
+	matchViewMode = "song",
 	handle,
 	userPlan,
 	userBalance,
@@ -61,6 +52,9 @@ export function Sidebar({
 		}
 		return matchRoute({ to, fuzzy: true }) !== false;
 	};
+
+	const isMatchActive = isRouteActive("/match");
+	const hasBadge = unsortedCount > 0;
 
 	const isSettingsActive = isRouteActive("/settings");
 	const balanceLabel =
@@ -96,16 +90,62 @@ export function Sidebar({
 
 			<nav aria-label="Primary" className="mt-10 flex-1">
 				<ul className="space-y-1">
-					{NAV_ITEMS.map((item) => (
-						<li key={item.to}>
-							<NavItem
-								to={item.to}
-								label={item.label}
-								badge={item.hasBadge ? unsortedCount : undefined}
-								isActive={isRouteActive(item.to)}
-							/>
-						</li>
-					))}
+					<li>
+						<NavItem
+							to="/dashboard"
+							label="Home"
+							isActive={isRouteActive("/dashboard")}
+						/>
+					</li>
+					{/* Match link rendered directly — NavItem's generic `to: string`
+					    cannot carry typed route search params, so we replicate its DOM
+					    structure here to pass search={{ mode: "playlist" }} type-safely. */}
+					<li>
+						<Link
+							to="/match"
+							search={matchViewMode === "playlist" ? { mode: "playlist" } : {}}
+							data-active={isMatchActive || undefined}
+							aria-current={isMatchActive ? "page" : undefined}
+							className="group flex w-full items-center justify-between py-2 text-left"
+						>
+							<span
+								className={`text-xs tracking-widest uppercase transition-colors duration-150 ease motion-reduce:transition-none ${
+									isMatchActive
+										? "theme-text font-medium"
+										: "theme-text-muted font-normal group-hover:text-(--t-text) group-focus-visible:text-(--t-text)"
+								}`}
+								style={bodyFontStyle}
+							>
+								Match Songs
+							</span>
+							{hasBadge && (
+								<span
+									className={`text-xs tabular-nums transition-colors duration-150 ease motion-reduce:transition-none ${
+										isMatchActive
+											? "theme-text"
+											: "theme-text-muted group-hover:text-(--t-text) group-focus-visible:text-(--t-text)"
+									}`}
+									style={bodyFontStyle}
+								>
+									{unsortedCount}
+								</span>
+							)}
+						</Link>
+					</li>
+					<li>
+						<NavItem
+							to="/liked-songs"
+							label="Liked Songs"
+							isActive={isRouteActive("/liked-songs")}
+						/>
+					</li>
+					<li>
+						<NavItem
+							to="/playlists"
+							label="Playlists"
+							isActive={isRouteActive("/playlists")}
+						/>
+					</li>
 				</ul>
 			</nav>
 

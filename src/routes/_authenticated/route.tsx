@@ -34,7 +34,7 @@ import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWel
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
 import { billingKeys } from "@/features/billing/query-keys";
 import { UserJotWidget } from "@/features/feedback/UserJotWidget";
-import { matchReviewSummaryQueryOptions } from "@/features/matching/queries";
+import { preferredMatchReviewSummaryQueryOptions } from "@/features/matching/queries";
 import {
 	isPathAllowed,
 	resolveSession,
@@ -197,14 +197,15 @@ function AuthenticatedLayout() {
 	// real Stripe redirects, not display.
 	usePostPurchaseReturn(session.accountId, billingState);
 
-	// Queue-aware summary: same source as the dashboard CTA count so sidebar
-	// badge and CTA are always consistent. Replaces the old snapshot-derived
-	// matchingSession.totalSongs path that was removed in Phase 7.
+	// Preferred summary: reads user's stored match_view_mode preference and
+	// returns the summary + orientation used, so the sidebar badge and Match link
+	// both reflect the last-selected mode rather than always defaulting to song.
 	const { data: matchReviewSummary } = useQuery({
-		...matchReviewSummaryQueryOptions(session.accountId, "song"),
+		...preferredMatchReviewSummaryQueryOptions(session.accountId),
 		enabled: isComplete,
 	});
 	const pendingSuggestions = matchReviewSummary?.pendingCount ?? 0;
+	const matchViewMode = matchReviewSummary?.orientation ?? "song";
 
 	const devPanel = DevWorkflowPanel ? (
 		<Suspense fallback={null}>
@@ -253,6 +254,7 @@ function AuthenticatedLayout() {
 						account={account}
 						billingState={billingState}
 						pendingSuggestions={pendingSuggestions}
+						matchViewMode={matchViewMode}
 						devPanel={devPanel}
 						showSidebar={isComplete}
 						banner={banner}
@@ -303,6 +305,7 @@ function AuthenticatedShell({
 	account,
 	billingState,
 	pendingSuggestions,
+	matchViewMode,
 	devPanel,
 	showSidebar,
 	banner,
@@ -311,6 +314,7 @@ function AuthenticatedShell({
 	account: Awaited<ReturnType<typeof requireAuthSession>>["account"] | null;
 	billingState: BillingState;
 	pendingSuggestions: number;
+	matchViewMode: "song" | "playlist";
 	devPanel: React.ReactNode;
 	showSidebar: boolean;
 	banner: React.ReactNode;
@@ -375,6 +379,7 @@ function AuthenticatedShell({
 					<>
 						<Sidebar
 							unsortedCount={pendingSuggestions}
+							matchViewMode={matchViewMode}
 							handle={account?.handle ?? null}
 							userPlan={getPlanLabel(billingState)}
 							userBalance={getDisplayBalance(billingState)}

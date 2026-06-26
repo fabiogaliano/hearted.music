@@ -26,6 +26,15 @@ import {
 	type MatchStrictness,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
+
+/**
+ * UI-layer orientation stored in the user's match-view preference (C10, B2).
+ * Mirrored from features/matching/types without a cross-layer import so this
+ * lib module stays within the lib dependency boundary.
+ */
+type MatchViewMode = "song" | "playlist";
+const DEFAULT_MATCH_VIEW_MODE: MatchViewMode = "song";
+
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
@@ -314,6 +323,52 @@ export function saveConsentPreference(
 					consent_status: status,
 					consent_updated_at: new Date().toISOString(),
 					consent_version: version,
+				},
+				{ onConflict: "account_id" },
+			)
+			.select()
+			.single(),
+	);
+}
+
+/**
+ * Returns the stored match view mode for an account.
+ * Falls back to the default ('song') when the row is missing or the read fails,
+ * so the sidebar link and dashboard summaries are never blocked by a prefs read
+ * error. Pattern mirrors resolveMinMatchScore.
+ */
+export async function getPreferredMatchViewMode(
+	accountId: string,
+): Promise<MatchViewMode> {
+	const result = await getOrCreatePreferences(accountId);
+	if (Result.isError(result)) {
+		return DEFAULT_MATCH_VIEW_MODE;
+	}
+
+	const stored = result.value.match_view_mode;
+	if (stored === "song" || stored === "playlist") {
+		return stored;
+	}
+	return DEFAULT_MATCH_VIEW_MODE;
+}
+
+/**
+ * Persists the user's preferred match view mode.
+ * Upserts so a missing prefs row is created with the column set.
+ * Mirrors updateMatchStrictness.
+ */
+export function setPreferredMatchViewMode(
+	accountId: string,
+	mode: MatchViewMode,
+): Promise<Result<UserPreferences, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseSingle(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					match_view_mode: mode,
 				},
 				{ onConflict: "account_id" },
 			)

@@ -13,7 +13,9 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	getMatchReviewSummary,
+	getPreferredMatchReviewSummary,
 	resolveMatchReviewSummary,
+	resolvePreferredMatchReviewSummary,
 } from "../match-review-queue.functions";
 
 // ---------------------------------------------------------------------------
@@ -25,6 +27,7 @@ const {
 	mockGetQueueSummary,
 	mockGetLatestMatchSnapshot,
 	mockGetOrderedUndecidedSongIds,
+	mockGetPreferredMatchViewMode,
 	mockRpc,
 	mockFrom,
 	mockSelect,
@@ -42,6 +45,7 @@ const {
 		mockGetQueueSummary: vi.fn(),
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetOrderedUndecidedSongIds: vi.fn(),
+		mockGetPreferredMatchViewMode: vi.fn(),
 		mockRpc: vi.fn(),
 		mockFrom,
 		mockSelect,
@@ -119,6 +123,13 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 vi.mock("@/lib/server/matching.functions", () => ({
 	getOrderedUndecidedSongIds: (...args: unknown[]) =>
 		mockGetOrderedUndecidedSongIds(...args),
+}));
+
+vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
+	getPreferredMatchViewMode: (...args: unknown[]) =>
+		mockGetPreferredMatchViewMode(...args),
+	getOrCreatePreferences: vi.fn(),
+	setPreferredMatchViewMode: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -433,5 +444,85 @@ describe("getMatchReviewSummary — server fn", () => {
 
 		expect(result.pendingCount).toBe(0);
 		expect(result.previewImages).toHaveLength(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolvePreferredMatchReviewSummary
+// ---------------------------------------------------------------------------
+
+describe("resolvePreferredMatchReviewSummary", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockIn.mockReset();
+		mockSelect.mockReturnValue({ in: mockIn });
+		mockFrom.mockReturnValue({ select: mockSelect });
+	});
+
+	it("delegates to song orientation when preference is 'song'", async () => {
+		mockGetPreferredMatchViewMode.mockResolvedValue("song");
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: true,
+				pendingCount: 4,
+				previewSongIds: ["s1"],
+			}),
+		);
+		mockIn.mockResolvedValue({
+			data: [{ id: "s1", image_url: "a.jpg", name: "T1", artists: ["A1"] }],
+			error: null,
+		});
+
+		const result = await resolvePreferredMatchReviewSummary("acct-1");
+
+		expect(result.orientation).toBe("song");
+		expect(result.pendingCount).toBe(4);
+		expect(mockGetQueueSummary).toHaveBeenCalledWith("acct-1", "song");
+	});
+
+	it("delegates to playlist orientation when preference is 'playlist'", async () => {
+		mockGetPreferredMatchViewMode.mockResolvedValue("playlist");
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: true,
+				pendingCount: 2,
+				previewSongIds: [],
+			}),
+		);
+
+		const result = await resolvePreferredMatchReviewSummary("acct-1");
+
+		expect(result.orientation).toBe("playlist");
+		expect(result.pendingCount).toBe(2);
+		expect(mockGetQueueSummary).toHaveBeenCalledWith("acct-1", "playlist");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getPreferredMatchReviewSummary server fn
+// ---------------------------------------------------------------------------
+
+describe("getPreferredMatchReviewSummary — server fn", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockIn.mockReset();
+		mockSelect.mockReturnValue({ in: mockIn });
+		mockFrom.mockReturnValue({ select: mockSelect });
+	});
+
+	it("returns summary with orientation from stored preference", async () => {
+		mockGetPreferredMatchViewMode.mockResolvedValue("playlist");
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: true,
+				pendingCount: 3,
+				previewSongIds: [],
+			}),
+		);
+
+		const result = await getPreferredMatchReviewSummary({ data: undefined });
+
+		expect(result.orientation).toBe("playlist");
+		expect(result.pendingCount).toBe(3);
 	});
 });
