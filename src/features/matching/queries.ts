@@ -5,6 +5,7 @@ import {
 	getMatchReviewItem,
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
+	presentMatchReviewItem,
 } from "@/lib/server/match-review-queue.functions";
 
 // matchReviewKeys.item is intentionally NOT in the snapshot-refresh invalidation
@@ -38,6 +39,27 @@ export function matchReviewItemQueryOptions(itemId: string) {
 		queryFn: () => getMatchReviewItem({ data: { itemId } }),
 		// Per-card data is immutable once loaded (song/matches don't change mid-session).
 		// High staleTime prevents re-fetches when the queue query refreshes.
+		staleTime: 30 * 60_000,
+	});
+}
+
+/**
+ * Authoritative card query: calls presentMatchReviewItem (POST), which captures
+ * the visible pair set and returns render-ready data keyed off captured rows.
+ *
+ * Separate from matchReviewItemQueryOptions so the side-effectful capture path
+ * is never confused with the side-effect-free prefetch warming path (D9, D10).
+ * First-write-wins capture makes refetches safe — the same rows come back on retry.
+ *
+ * Do NOT use this key for next-card prefetch — capture should only fire when
+ * the user is actually being shown the card, not speculatively.
+ */
+export function presentMatchReviewItemQueryOptions(itemId: string) {
+	return queryOptions({
+		queryKey: [...matchReviewKeys.item(itemId), "present"] as const,
+		queryFn: () => presentMatchReviewItem({ data: { itemId } }),
+		// Capture is first-write-wins idempotent, so refetches always return the
+		// same captured rows. High staleTime matches the non-authoritative path.
 		staleTime: 30 * 60_000,
 	});
 }

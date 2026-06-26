@@ -7,13 +7,19 @@ import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
+	deriveVisibleSuggestions,
+	type MatchPairInput,
+	type RankingInput,
+} from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
+import {
 	getMatchDecisionsForSongs,
 	upsertMatchDecision,
 } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
+	getMatchPairsForSong,
+	getMatchRankingsForSong,
 	getMatchResults,
-	getMatchResultsForSong,
 	getServedRanksForSong,
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
@@ -276,7 +282,8 @@ export interface SongSuggestion {
 	playlistId: string;
 	playlistSpotifyId: string;
 	playlistName: string;
-	score: number;
+	/** strictnessScore (fitScore) for this pair — shown as match percent (A5, E7). */
+	fitScore: number;
 }
 
 export interface SongSuggestionsResult {
@@ -308,30 +315,56 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			return null;
 		}
 
-		const [matchResultsResult, decisionsResult, minScore] = await Promise.all([
-			getMatchResultsForSong(matchSnapshot.id, data.songId),
-			getMatchDecisionsForSongs(session.accountId, [data.songId]),
-			resolveMinMatchScore(session.accountId),
-		]);
+		// Fetch pairs, rankings, decisions, and strictness bar in parallel —
+		// rankings carry model rank so suggestions are ordered by the ranking
+		// pipeline rather than legacy raw score (MSR-25, A5, E7, C12).
+		const [pairsResult, rankingsResult, decisionsResult, minScore] =
+			await Promise.all([
+				getMatchPairsForSong(matchSnapshot.id, data.songId),
+				getMatchRankingsForSong(matchSnapshot.id, data.songId),
+				getMatchDecisionsForSongs(session.accountId, [data.songId]),
+				resolveMinMatchScore(session.accountId),
+			]);
 
-		if (Result.isError(matchResultsResult) || Result.isError(decisionsResult))
+		if (
+			Result.isError(pairsResult) ||
+			Result.isError(rankingsResult) ||
+			Result.isError(decisionsResult)
+		)
 			return { snapshotId: matchSnapshot.id, matches: [] };
 
-		const decidedPairs = new Set(
+		const decidedPairKeys = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 		);
 
-		const undecidedResults = matchResultsResult.value.filter(
-			(mr) =>
-				mr.score >= minScore &&
-				!decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`),
+		const pairs: MatchPairInput[] = pairsResult.value.map((r) => ({
+			songId: r.song_id,
+			playlistId: r.playlist_id,
+			score: r.score,
+			fusedScore: r.fused_score,
+		}));
+
+		const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
+			songId: r.song_id,
+			playlistId: r.playlist_id,
+			rank: r.rank,
+			orderingScore: r.ordering_score,
+		}));
+
+		const subject = { orientation: "song" as const, songId: data.songId };
+		const visibleSuggestions = deriveVisibleSuggestions(
+			subject,
+			pairs,
+			rankings,
+			decidedPairKeys,
+			minScore,
 		);
 
-		if (undecidedResults.length === 0) {
+		if (visibleSuggestions.length === 0) {
 			return { snapshotId: matchSnapshot.id, matches: [] };
 		}
 
-		const playlistIds = undecidedResults.map((mr) => mr.playlist_id);
+		const playlistIds = visibleSuggestions.map((s) => s.playlistId);
 		const { data: playlistRows } = await supabase
 			.from("playlist")
 			.select("id, name, spotify_id")
@@ -339,19 +372,20 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 
 		const playlistMap = new Map((playlistRows ?? []).map((p) => [p.id, p]));
 
-		const matches: SongSuggestion[] = undecidedResults
-			.map((mr) => {
-				const playlist = playlistMap.get(mr.playlist_id);
+		// Preserve the rank order from deriveVisibleSuggestions (modelRank / visibleRank
+		// already sorted). fitScore is strictnessScore — the match percent shown to the user.
+		const matches: SongSuggestion[] = visibleSuggestions
+			.map((s) => {
+				const playlist = playlistMap.get(s.playlistId);
 				if (!playlist) return null;
 				return {
-					playlistId: mr.playlist_id,
+					playlistId: s.playlistId,
 					playlistSpotifyId: playlist.spotify_id,
 					playlistName: playlist.name,
-					score: mr.score,
+					fitScore: s.fitScore,
 				};
 			})
-			.filter((m): m is SongSuggestion => m !== null)
-			.toSorted((a, b) => b.score - a.score);
+			.filter((m): m is SongSuggestion => m !== null);
 
 		return { snapshotId: matchSnapshot.id, matches };
 	});

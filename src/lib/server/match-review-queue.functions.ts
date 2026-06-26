@@ -274,11 +274,18 @@ const GetMatchReviewItemSchema = z.object({
 });
 
 /**
- * Core read path for a single queue card.
+ * Side-effect-free prefetch read for a single queue card.
+ *
+ * Derives the visible suggestion list using song-orientation ranking
+ * (match_result_ranking) and returns render-ready song + playlist data ordered
+ * by model rank — the same ordering the authoritative capture path produces.
+ *
+ * Does NOT capture pairs or set item state. Use this only for non-authoritative
+ * cache warming of next-in-queue cards (D10). QueueCardContent renders from
+ * presentMatchReviewItem, which is the authoritative capture path (D9).
  *
  * Security: song_id and source_snapshot_id are read from the OWNED queue item
- * row — never from client input. A foreign or missing item returns 'error'
- * without leaking any data about what exists.
+ * row — never from client input.
  *
  * Strictness: the SESSION's stored strictness_min_score is used, not a live
  * re-read, so the bar cannot shift on cards the user is already reviewing.
@@ -336,60 +343,29 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 
 			const strictnessMinScore = sessionRow.strictness_min_score;
 
-			// Entitlement check at read time — the song may have been revoked since
-			// the queue was built.
-			const entitledCheck = await supabase.rpc("is_account_song_entitled", {
-				p_account_id: session.accountId,
-				p_song_id: songId,
-			});
-			if (entitledCheck.error || !entitledCheck.data) {
+			// Derive the visible suggestion list using song-orientation ranking
+			// (match_result_ranking). No capture — this is the side-effect-free path.
+			// computeVisibleSuggestionList handles entitlement, pair fetch, ranking
+			// fetch, and decision exclusion in one call.
+			const listResult = await computeVisibleSuggestionList(
+				item,
+				strictnessMinScore,
+			);
+
+			if (listResult.kind === "not-entitled") {
+				const message =
+					listResult.reason === "song-not-entitled"
+						? "This song is no longer available to match."
+						: "This playlist is no longer available to match.";
 				return {
 					status: "unavailable",
 					itemId,
 					reason: "not-entitled",
-					message: "This song is no longer available to match.",
+					message,
 				};
 			}
 
-			// Load song, analysis, audio, and match details in parallel — all keyed
-			// off the server-read songId and sourceSnapshotId from the owned item.
-			const [
-				songRow,
-				analysisRow,
-				audioRow,
-				songDetailsResult,
-				decisionsResult,
-			] = await Promise.all([
-				supabase.from("song").select("*").eq("id", songId).single(),
-				supabase
-					.from("song_analysis")
-					.select("analysis")
-					.eq("song_id", songId)
-					.order("created_at", { ascending: false })
-					.limit(1)
-					.maybeSingle(),
-				supabase
-					.from("song_audio_feature")
-					.select("tempo, energy, valence")
-					.eq("song_id", songId)
-					.maybeSingle(),
-				getMatchResultDetailsForSong(item.sourceSnapshotId, songId),
-				getMatchDecisionsForSongs(session.accountId, [songId]),
-			]);
-
-			if (songRow.error || !songRow.data) {
-				return {
-					status: "unavailable",
-					itemId,
-					reason: "missing-song",
-					message: "This song could not be found.",
-				};
-			}
-
-			if (
-				Result.isError(songDetailsResult) ||
-				Result.isError(decisionsResult)
-			) {
+			if (listResult.kind === "db-error") {
 				return {
 					status: "retryable-error",
 					itemId,
@@ -397,37 +373,9 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				};
 			}
 
-			const song = songRow.data;
-			const audio = audioRow.data;
-			const analysis = analysisRow.data?.analysis as MatchingSong["analysis"];
+			const { list } = listResult;
 
-			const builtSong: MatchingSong = {
-				id: song.id,
-				spotifyId: song.spotify_id,
-				name: song.name,
-				artist: song.artists[0] ?? "Unknown Artist",
-				album: song.album_name,
-				albumArtUrl: song.image_url,
-				genres: song.genres,
-				audioFeatures: audio
-					? { tempo: audio.tempo, energy: audio.energy, valence: audio.valence }
-					: null,
-				analysis: analysis ?? null,
-			};
-
-			// Apply the SESSION'S stored strictness (not a live re-read) and exclude
-			// already-decided pairs, keyed off the server-read songId.
-			const decidedPairs = new Set(
-				decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-			);
-
-			const visibleMatchResults = songDetailsResult.value.filter(
-				(mr) =>
-					mr.score >= strictnessMinScore &&
-					!decidedPairs.has(`${songId}:${mr.playlist_id}`),
-			);
-
-			if (visibleMatchResults.length === 0) {
+			if (list.suggestions.length === 0) {
 				return {
 					status: "unavailable",
 					itemId,
@@ -437,27 +385,85 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				};
 			}
 
-			const playlistIds = visibleMatchResults.map((mr) => mr.playlist_id);
-			const { data: playlistRows, error: playlistError } = await supabase
-				.from("playlist")
-				.select("id, name, match_intent, song_count, image_url, spotify_id")
-				.in("id", playlistIds);
+			// Build render-ready data for song orientation.
+			if (list.orientation === "song" && list.subject.orientation === "song") {
+				const playlistIds = list.suggestions.map((s) => s.playlistId);
 
-			if (playlistError || !playlistRows) {
-				return {
-					status: "retryable-error",
-					itemId,
-					message: "Could not load playlist data.",
-				};
-			}
+				const [songRow, audioRow, analysisRow, playlistResult] =
+					await Promise.all([
+						supabase.from("song").select("*").eq("id", songId).single(),
+						supabase
+							.from("song_audio_feature")
+							.select("tempo, energy, valence")
+							.eq("song_id", songId)
+							.maybeSingle(),
+						supabase
+							.from("song_analysis")
+							.select("analysis")
+							.eq("song_id", songId)
+							.order("created_at", { ascending: false })
+							.limit(1)
+							.maybeSingle(),
+						supabase
+							.from("playlist")
+							.select(
+								"id, name, match_intent, song_count, image_url, spotify_id",
+							)
+							.in("id", playlistIds),
+					]);
 
-			const playlistMap = new Map(playlistRows.map((p) => [p.id, p]));
-
-			const matches: MatchingPlaylistMatch[] = visibleMatchResults
-				.map((mr) => {
-					const playlist = playlistMap.get(mr.playlist_id);
-					if (!playlist) return null;
+				if (songRow.error || !songRow.data) {
 					return {
+						status: "unavailable",
+						itemId,
+						reason: "missing-song",
+						message: "This song could not be found.",
+					};
+				}
+
+				if (playlistResult.error) {
+					return {
+						status: "retryable-error",
+						itemId,
+						message: "Could not load playlist data.",
+					};
+				}
+
+				const song = songRow.data;
+				const audio = audioRow.data;
+				const analysis = analysisRow.data?.analysis as
+					| MatchingSong["analysis"]
+					| undefined;
+
+				const builtSong: MatchingSong = {
+					id: song.id,
+					spotifyId: song.spotify_id,
+					name: song.name,
+					artist: song.artists[0] ?? "Unknown Artist",
+					album: song.album_name,
+					albumArtUrl: song.image_url,
+					genres: song.genres,
+					audioFeatures: audio
+						? {
+								tempo: audio.tempo,
+								energy: audio.energy,
+								valence: audio.valence,
+							}
+						: null,
+					analysis: analysis ?? null,
+				};
+
+				const playlistMap = new Map(
+					(playlistResult.data ?? []).map((p) => [p.id, p]),
+				);
+
+				// Suggestions arrive ordered by song-orientation model rank (ranked
+				// pairs first by rank ASC, unranked pairs after by fitScore DESC).
+				const suggestions: MatchingPlaylistMatch[] = [];
+				for (const s of list.suggestions) {
+					const playlist = playlistMap.get(s.playlistId);
+					if (!playlist) continue;
+					suggestions.push({
 						playlist: {
 							id: playlist.id,
 							name: playlist.name,
@@ -466,20 +472,30 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 							imageUrl: playlist.image_url,
 							spotifyId: playlist.spotify_id,
 						},
-						score: mr.score,
-						rank: mr.rank,
-						factors: mr.factors,
-					};
-				})
-				.filter((m): m is MatchingPlaylistMatch => m !== null)
-				.toSorted((a, b) => b.score - a.score);
+						// Use fitScore (strictnessScore) as the match percent — never the
+						// ordering/reranker score (A5, E7, I1).
+						score: s.fitScore,
+						rank: s.visibleRank,
+						// factors are not needed for card render and not stored in ranking
+						// rows; aligns with presentMatchReviewItem (MSR-24 deviation).
+						factors: null,
+					});
+				}
 
+				return {
+					status: "ready",
+					itemId,
+					mode: "song" as const,
+					reviewItem: builtSong,
+					suggestions,
+				};
+			}
+
+			// Playlist mode is not implemented in this server function.
 			return {
-				status: "ready",
+				status: "retryable-error",
 				itemId,
-				mode: "song" as const,
-				reviewItem: builtSong,
-				suggestions: matches,
+				message: "Couldn't load this match card. Try again.",
 			};
 		} catch {
 			// Unexpected DB or runtime failures must not leak internals.

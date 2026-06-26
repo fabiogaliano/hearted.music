@@ -10,6 +10,7 @@ import {
 	matchReviewKeys,
 	matchReviewQueryOptions,
 	matchReviewSummaryKeys,
+	presentMatchReviewItemQueryOptions,
 } from "@/features/matching/queries";
 import {
 	countAppendedFromTotal,
@@ -67,8 +68,14 @@ export const Route = createFileRoute("/_authenticated/match")({
 			),
 		];
 		if (firstId) {
+			// Non-authoritative warming — fetches without capture side effects.
 			prefetches.push(
 				queryClient.prefetchQuery(matchReviewItemQueryOptions(firstId)),
+			);
+			// Authoritative first-card presentation: captures pairs and clears newness
+			// so QueueCardContent renders instantly from cache without a spinner.
+			prefetches.push(
+				queryClient.prefetchQuery(presentMatchReviewItemQueryOptions(firstId)),
 			);
 		}
 		await Promise.all(prefetches);
@@ -451,8 +458,10 @@ function QueueCardContent({
 	analytics,
 	queryClient,
 }: QueueCardContentProps) {
+	// Authoritative card render: reads from captured pair rows (MSR-25).
+	// matchReviewItemQueryOptions is kept for next-card warming only (D9, D10).
 	const { data: itemData } = useSuspenseQuery(
-		matchReviewItemQueryOptions(itemId),
+		presentMatchReviewItemQueryOptions(itemId),
 	);
 
 	// Durable presented tracking: fire once per item when it becomes current and

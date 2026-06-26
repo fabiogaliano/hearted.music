@@ -224,29 +224,43 @@ const BASE_SONG_ROW = {
 	genres: ["pop"],
 };
 
+// Standard visible suggestion list for getMatchReviewItem happy-path tests.
+// computeVisibleSuggestionList is mocked, so this drives the ordering/filtering
+// output that the server function maps to its MatchReviewItemRead result.
+const DEFAULT_VISIBLE_LIST = {
+	orientation: "song" as const,
+	subject: { orientation: "song" as const, songId: "song-1" },
+	suggestions: [
+		{
+			songId: "song-1",
+			playlistId: "pl-1",
+			fitScore: 0.9,
+			modelRank: 1,
+			visibleRank: 1,
+		},
+	],
+};
+
 /**
- * Wires up the chain of mockFrom calls that getMatchReviewItem performs.
- * Each call is identified by the table name; callers override only what they
- * need to change.
+ * Sets up mockFrom for the getMatchReviewItem ownership + session reads and the
+ * subsequent song/audio/analysis/playlist DB fetches. mockComputeVisibleSuggestionList
+ * is wired separately per test so callers can control the derivation result.
+ *
+ * Replaces the old setupFullItemFetch: getMatchReviewItem now delegates
+ * entitlement, pair fetch, ranking fetch, and decision exclusion to
+ * computeVisibleSuggestionList rather than performing them inline.
  */
-function setupFullItemFetch(
+function setupGetItemFetch(
 	opts: {
 		item?: typeof BASE_ITEM | null;
 		sessionRow?: { strictness_min_score: number } | null;
-		entitled?: boolean | null;
 		songRow?: typeof BASE_SONG_ROW | null;
-		detailRows?: Array<{
-			playlist_id: string;
-			score: number;
-			rank: number | null;
-			factors: unknown;
-		}>;
-		decisions?: Array<{ song_id: string; playlist_id: string }>;
 		playlistRows?: Array<{
 			id: string;
 			name: string;
 			match_intent: string | null;
 			song_count: number | null;
+			image_url: string | null;
 			spotify_id: string;
 		}>;
 	} = {},
@@ -254,22 +268,19 @@ function setupFullItemFetch(
 	const {
 		item = BASE_ITEM,
 		sessionRow = { strictness_min_score: 0 },
-		entitled = true,
 		songRow = BASE_SONG_ROW,
-		detailRows = [{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} }],
-		decisions = [],
 		playlistRows = [
 			{
 				id: "pl-1",
 				name: "Playlist 1",
 				match_intent: "intent",
 				song_count: 10,
+				image_url: "pl.jpg",
 				spotify_id: "sp-pl-1",
 			},
 		],
 	} = opts;
 
-	// Ownership fetch (match_review_queue_item)
 	mockFrom.mockImplementation((table: string) => {
 		if (table === "match_review_queue_item") {
 			return {
@@ -346,16 +357,6 @@ function setupFullItemFetch(
 		}
 		return { select: vi.fn() };
 	});
-
-	// RPC for entitlement
-	mockRpc.mockResolvedValue({
-		data: entitled,
-		error: entitled === null ? { message: "rpc error" } : null,
-	});
-
-	// Match details + decisions
-	mockGetMatchResultDetailsForSong.mockResolvedValue(Result.ok(detailRows));
-	mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok(decisions));
 }
 
 // ---------------------------------------------------------------------------
@@ -365,11 +366,17 @@ function setupFullItemFetch(
 describe("getMatchReviewItem", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Default: computeVisibleSuggestionList returns the standard happy-path list.
+		// Individual tests override this to exercise error branches.
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: DEFAULT_VISIBLE_LIST,
+		});
 	});
 
 	it("returns error for a foreign queue item (ownership check)", async () => {
 		// The item row is null: the account_id filter excluded it.
-		setupFullItemFetch({ item: null });
+		setupGetItemFetch({ item: null });
 
 		const result = await getMatchReviewItem({
 			data: { itemId: "item-foreign" },
@@ -378,41 +385,60 @@ describe("getMatchReviewItem", () => {
 		expect(result.status).toBe("retryable-error");
 		// Must NOT reveal whether the item id exists.
 		expect((result as { message: string }).message).not.toContain("foreign");
-		// Nothing beyond the ownership query should have been attempted.
-		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
-		expect(mockRpc).not.toHaveBeenCalled();
+		// computeVisibleSuggestionList must not be reached after ownership failure.
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
 	});
 
-	it("returns unavailable 'not-entitled' for revoked entitlement", async () => {
-		setupFullItemFetch({ entitled: false });
-
-		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
-
-		expect(result.status).toBe("unavailable");
-		if (result.status === "unavailable") {
-			expect(result.reason).toBe("not-entitled");
-		}
-		expect(mockRpc).toHaveBeenCalledWith("is_account_song_entitled", {
-			p_account_id: "acct-1",
-			p_song_id: "song-1",
+	it("returns unavailable 'not-entitled' when computeVisibleSuggestionList reports song-not-entitled", async () => {
+		// Entitlement and pair derivation are delegated to computeVisibleSuggestionList.
+		// A song-not-entitled result maps to the 'not-entitled' card state.
+		setupGetItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "not-entitled",
+			reason: "song-not-entitled",
 		});
-		// Should not have fetched song data after entitlement failure.
-		expect(mockGetMatchResultDetailsForSong).not.toHaveBeenCalled();
-	});
-
-	it("returns unavailable 'not-entitled' when entitlement RPC errors", async () => {
-		setupFullItemFetch({ entitled: null });
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("unavailable");
 		if (result.status === "unavailable") {
 			expect(result.reason).toBe("not-entitled");
+			expect(result.message).toContain("song");
 		}
+	});
+
+	it("returns unavailable 'not-entitled' when computeVisibleSuggestionList reports playlist-not-owned", async () => {
+		setupGetItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "not-entitled",
+			reason: "playlist-not-owned",
+		});
+
+		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+			expect(result.message).toContain("playlist");
+		}
+	});
+
+	it("returns retryable-error when computeVisibleSuggestionList returns db-error", async () => {
+		setupGetItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "db-error",
+			error: new Error("query timeout"),
+		});
+
+		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
 	});
 
 	it("returns unavailable 'missing-song' when song row does not exist", async () => {
-		setupFullItemFetch({ songRow: null });
+		// computeVisibleSuggestionList succeeds (the song was still entitled at
+		// derivation time) but the subsequent song DB fetch finds no row.
+		setupGetItemFetch({ songRow: null });
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -425,7 +451,8 @@ describe("getMatchReviewItem", () => {
 	it("returns unavailable 'snapshot-not-owned' when the session row does not belong to the account", async () => {
 		// sessionRow null: the account_id filter on the session query excludes it,
 		// meaning the item's session_id references a session owned by a different account.
-		setupFullItemFetch({ sessionRow: null });
+		// Session check happens before computeVisibleSuggestionList so the helper is never called.
+		setupGetItemFetch({ sessionRow: null });
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -433,30 +460,17 @@ describe("getMatchReviewItem", () => {
 		if (result.status === "unavailable") {
 			expect(result.reason).toBe("snapshot-not-owned");
 		}
-		// Must not proceed to entitlement or song fetches after session verification fails.
-		expect(mockRpc).not.toHaveBeenCalled();
+		// Must not proceed to computeVisibleSuggestionList after session verification fails.
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
 	});
 
-	it("returns unavailable 'no-visible-suggestions' when stored strictness hides all matches", async () => {
-		// Stored strictness is 0.9 but the only match scores 0.5 → hidden.
-		setupFullItemFetch({
-			sessionRow: { strictness_min_score: 0.9 },
-			detailRows: [{ playlist_id: "pl-1", score: 0.5, rank: 1, factors: {} }],
-		});
-
-		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
-
-		expect(result.status).toBe("unavailable");
-		if (result.status === "unavailable") {
-			expect(result.reason).toBe("no-visible-suggestions");
-		}
-	});
-
-	it("returns unavailable 'no-visible-suggestions' when all pairs are already decided", async () => {
-		// All pairs for the song+playlist have been decided.
-		setupFullItemFetch({
-			detailRows: [{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} }],
-			decisions: [{ song_id: "song-1", playlist_id: "pl-1" }],
+	it("returns unavailable 'no-visible-suggestions' when derivation returns an empty list", async () => {
+		// Empty suggestion list from computeVisibleSuggestionList means either
+		// strictness filtered all pairs or all pairs are already decided.
+		setupGetItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: { ...DEFAULT_VISIBLE_LIST, suggestions: [] },
 		});
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
@@ -468,7 +482,7 @@ describe("getMatchReviewItem", () => {
 	});
 
 	it("returns ready with song and matches for a healthy item", async () => {
-		setupFullItemFetch();
+		setupGetItemFetch();
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -480,49 +494,131 @@ describe("getMatchReviewItem", () => {
 			expect(result.reviewItem.artist).toBe("Test Artist");
 			expect(result.suggestions).toHaveLength(1);
 			expect(result.suggestions[0].playlist.id).toBe("pl-1");
+			// score = fitScore from the visible suggestion, not legacy score (A5, E7).
 			expect(result.suggestions[0].score).toBe(0.9);
 		}
 	});
 
-	it("uses the session's stored strictness (not live re-read) to filter matches", async () => {
-		// Two matches: score 0.9 above the stored bar (0.7), score 0.5 below it.
-		setupFullItemFetch({
-			sessionRow: { strictness_min_score: 0.7 },
-			detailRows: [
-				{ playlist_id: "pl-1", score: 0.9, rank: 1, factors: {} },
-				{ playlist_id: "pl-2", score: 0.5, rank: 2, factors: {} },
-			],
+	it("passes stored session strictness to computeVisibleSuggestionList (not live re-read)", async () => {
+		// The strictness is read from the session row and forwarded to
+		// computeVisibleSuggestionList, not re-read from live preferences.
+		setupGetItemFetch({ sessionRow: { strictness_min_score: 0.7 } });
+
+		await getMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockComputeVisibleSuggestionList).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "item-1", sourceSnapshotId: "snap-1" }),
+			0.7,
+		);
+	});
+
+	it("passes the owned item DTO to computeVisibleSuggestionList, not client-supplied ids", async () => {
+		// Security: song_id and source_snapshot_id come from the server-owned queue
+		// item row. computeVisibleSuggestionList receives the full DTO so it can
+		// use item.subject.songId and item.sourceSnapshotId internally.
+		setupGetItemFetch();
+
+		await getMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockComputeVisibleSuggestionList).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sourceSnapshotId: "snap-1",
+				subject: { orientation: "song", songId: "song-1" },
+			}),
+			expect.any(Number),
+		);
+	});
+
+	it("preserves model-rank order from computeVisibleSuggestionList in the result (MSR-25)", async () => {
+		// Suggestions arrive ordered by song-orientation model rank. The server
+		// function must preserve this ordering rather than re-sorting by score.
+		setupGetItemFetch({
 			playlistRows: [
 				{
-					id: "pl-1",
-					name: "Playlist 1",
+					id: "pl-ranked-first",
+					name: "Ranked First",
 					match_intent: null,
-					song_count: 10,
-					spotify_id: "sp-pl-1",
+					song_count: 5,
+					image_url: null,
+					spotify_id: "sp-r1",
+				},
+				{
+					id: "pl-ranked-second",
+					name: "Ranked Second",
+					match_intent: null,
+					song_count: 5,
+					image_url: null,
+					spotify_id: "sp-r2",
 				},
 			],
+		});
+		// The model gives pl-ranked-first rank 1 and pl-ranked-second rank 2,
+		// even though pl-ranked-second has a higher fitScore (legacy ordering
+		// would have put it first).
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: {
+				orientation: "song" as const,
+				subject: { orientation: "song" as const, songId: "song-1" },
+				suggestions: [
+					{
+						songId: "song-1",
+						playlistId: "pl-ranked-first",
+						fitScore: 0.7,
+						modelRank: 1,
+						visibleRank: 1,
+					},
+					{
+						songId: "song-1",
+						playlistId: "pl-ranked-second",
+						fitScore: 0.9,
+						modelRank: 2,
+						visibleRank: 2,
+					},
+				],
+			},
 		});
 
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
 		if (result.status === "ready") {
-			// pl-2 is below 0.7 → excluded; only pl-1 survives.
-			expect(result.suggestions).toHaveLength(1);
-			expect(result.suggestions[0].playlist.id).toBe("pl-1");
+			// Model rank order is preserved: rank-1 first even though its fitScore is lower.
+			expect(result.suggestions[0].playlist.id).toBe("pl-ranked-first");
+			expect(result.suggestions[1].playlist.id).toBe("pl-ranked-second");
+			// fitScore is used as the match percent (A5, E7), not the ordering score.
+			expect(result.suggestions[0].score).toBe(0.7);
+			expect(result.suggestions[1].score).toBe(0.9);
 		}
 	});
 
-	it("reads song_id and source_snapshot_id from the owned item, not from client input", async () => {
-		setupFullItemFetch();
+	it("uses fitScore (strictnessScore) as the match percent, not legacy ordering score (MSR-25)", async () => {
+		// When fused_score is available, fitScore = fused_score (not match_result.score).
+		// The server function must forward fitScore from computeVisibleSuggestionList
+		// rather than re-reading the legacy score column.
+		setupGetItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: {
+				...DEFAULT_VISIBLE_LIST,
+				suggestions: [
+					{
+						songId: "song-1",
+						playlistId: "pl-1",
+						fitScore: 0.82, // fused_score-based quality signal
+						modelRank: 1,
+						visibleRank: 1,
+					},
+				],
+			},
+		});
 
-		await getMatchReviewItem({ data: { itemId: "item-1" } });
+		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
-		// The details fetch uses the server-read songId and sourceSnapshotId.
-		expect(mockGetMatchResultDetailsForSong).toHaveBeenCalledWith(
-			"snap-1", // item.sourceSnapshotId
-			"song-1", // item.songId
-		);
+		expect(result.status).toBe("ready");
+		if (result.status === "ready") {
+			expect(result.suggestions[0].score).toBe(0.82);
+		}
 	});
 });
 

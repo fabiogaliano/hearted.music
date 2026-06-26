@@ -11,6 +11,8 @@ const {
 	mockGetLatestMatchSnapshot,
 	mockGetMatchResults,
 	mockGetMatchResultsForSong,
+	mockGetMatchPairsForSong,
+	mockGetMatchRankingsForSong,
 	mockGetServedRanksForSong,
 	mockGetMatchDecisionsForSongs,
 	mockGetNewItemIds,
@@ -32,6 +34,8 @@ const {
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetMatchResults: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
+		mockGetMatchPairsForSong: vi.fn(),
+		mockGetMatchRankingsForSong: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
 		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetNewItemIds: vi.fn(),
@@ -85,6 +89,10 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
 	getMatchResultsForSong: (...args: unknown[]) =>
 		mockGetMatchResultsForSong(...args),
+	getMatchPairsForSong: (...args: unknown[]) =>
+		mockGetMatchPairsForSong(...args),
+	getMatchRankingsForSong: (...args: unknown[]) =>
+		mockGetMatchRankingsForSong(...args),
 	getServedRanksForSong: (...args: unknown[]) =>
 		mockGetServedRanksForSong(...args),
 }));
@@ -109,16 +117,41 @@ describe("getSongSuggestions (billing-aware)", () => {
 		vi.clearAllMocks();
 	});
 
-	it("returns matches for an entitled song", async () => {
+	it("returns matches ordered by song-orientation model rank, not raw score", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-
-		// Song is entitled
 		mockRpc.mockResolvedValue({ data: true, error: null });
 
-		mockGetMatchResultsForSong.mockResolvedValue(
+		// pl-1 has the higher raw score but lower model rank — the ranking wins.
+		mockGetMatchPairsForSong.mockResolvedValue(
 			Result.ok([
-				{ song_id: "song-1", playlist_id: "pl-1", score: 85 },
-				{ song_id: "song-1", playlist_id: "pl-2", score: 75 },
+				{
+					song_id: "song-1",
+					playlist_id: "pl-1",
+					score: 0.85,
+					fused_score: 0.8,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-2",
+					score: 0.75,
+					fused_score: 0.9,
+				},
+			]),
+		);
+		mockGetMatchRankingsForSong.mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-2",
+					rank: 1,
+					ordering_score: 0.9,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-1",
+					rank: 2,
+					ordering_score: 0.8,
+				},
 			]),
 		);
 		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
@@ -126,20 +159,23 @@ describe("getSongSuggestions (billing-aware)", () => {
 		mockSelect.mockReturnValue({
 			in: vi.fn().mockResolvedValue({
 				data: [
-					{ id: "pl-1", name: "Playlist 1" },
-					{ id: "pl-2", name: "Playlist 2" },
+					{ id: "pl-1", name: "Playlist 1", spotify_id: "sp-pl-1" },
+					{ id: "pl-2", name: "Playlist 2", spotify_id: "sp-pl-2" },
 				],
 				error: null,
 			}),
 		});
 
-		const result = await getSongSuggestions({
-			data: { songId: "song-1" },
-		});
+		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
 		expect(result).not.toBeNull();
 		expect(result?.matches).toHaveLength(2);
-		expect(result?.matches[0].playlistName).toBe("Playlist 1");
+		// pl-2 is rank 1 despite lower raw score — model rank wins.
+		expect(result?.matches[0].playlistName).toBe("Playlist 2");
+		// fitScore (strictnessScore = fused_score) is used, never legacy raw score.
+		expect(result?.matches[0].fitScore).toBeCloseTo(0.9);
+		expect(result?.matches[1].playlistName).toBe("Playlist 1");
+		expect(result?.matches[1].fitScore).toBeCloseTo(0.8);
 		expect(mockRpc).toHaveBeenCalledWith("is_account_song_entitled", {
 			p_account_id: "acct-1",
 			p_song_id: "song-1",
@@ -172,6 +208,54 @@ describe("getSongSuggestions (billing-aware)", () => {
 		});
 
 		expect(result).toBeNull();
+	});
+
+	it("excludes pairs below minScore and filters decided pairs", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		// pl-3 has fitScore below the 0.5 minScore bar — must be filtered out.
+		// pl-4 is already decided — must be excluded.
+		mockGetMatchPairsForSong.mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-3",
+					score: 0.3,
+					fused_score: 0.3,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-4",
+					score: 0.9,
+					fused_score: 0.9,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-5",
+					score: 0.8,
+					fused_score: 0.7,
+				},
+			]),
+		);
+		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(
+			Result.ok([{ song_id: "song-1", playlist_id: "pl-4" }]),
+		);
+		mockResolveMinMatchScore.mockResolvedValue(0.5);
+
+		mockSelect.mockReturnValue({
+			in: vi.fn().mockResolvedValue({
+				data: [{ id: "pl-5", name: "Playlist 5", spotify_id: "sp-pl-5" }],
+				error: null,
+			}),
+		});
+
+		const result = await getSongSuggestions({ data: { songId: "song-1" } });
+
+		expect(result?.matches).toHaveLength(1);
+		expect(result?.matches[0].playlistName).toBe("Playlist 5");
+		// fitScore = fused_score = 0.7, not the raw score 0.8.
+		expect(result?.matches[0].fitScore).toBeCloseTo(0.7);
 	});
 });
 
