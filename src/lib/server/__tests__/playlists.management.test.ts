@@ -568,10 +568,13 @@ describe("flushPlaylistManagementSession", () => {
 		});
 
 		expect(result.flushed).toBe(true);
-		// Filter-only: sync session, do NOT enqueue a snapshot refresh.
+		// Filter-only: sync all active sessions, do NOT enqueue a snapshot refresh.
+		// Both orientations are synced so newly visible subjects are appended to
+		// whichever session is active (MSR-37).
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(1);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1");
+		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "playlist");
 	});
 
 	it("still calls applyLibraryProcessingChange for mixed scoring + filter change", async () => {
