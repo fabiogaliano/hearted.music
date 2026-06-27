@@ -266,6 +266,16 @@ export interface QueueItemInsert {
 	wasNewAtEnqueue: boolean;
 }
 
+export interface PlaylistQueueItemInsert {
+	sessionId: string;
+	accountId: string;
+	playlistId: string;
+	sourceSnapshotId: string;
+	position: number;
+	sourceScore: number;
+	wasNewAtEnqueue: boolean;
+}
+
 /**
  * Batch-inserts song-orientation queue items via an RPC that targets the
  * partial unique index `idx_match_review_queue_item_session_song_subject`
@@ -320,11 +330,69 @@ export async function insertQueueItems(
 }
 
 /**
+ * Batch-inserts playlist-orientation queue items via an RPC that targets the
+ * partial unique index `idx_match_review_queue_item_session_playlist_subject`
+ * (WHERE orientation = 'playlist'). The playlist counterpart to
+ * insertQueueItems: rows carry orientation='playlist', playlist_id set, and
+ * song_id NULL (the exactly-one-subject CHECK). Duplicate (session_id,
+ * playlist_id) rows are silently skipped (ON CONFLICT DO NOTHING) so concurrent
+ * same-snapshot appends stay idempotent without a ConstraintError.
+ */
+export async function insertQueuePlaylistItems(
+	items: PlaylistQueueItemInsert[],
+): Promise<Result<void, DbError>> {
+	if (items.length === 0) {
+		return Promise.resolve(Result.ok<void, DbError>(undefined));
+	}
+
+	const sessionId = items[0].sessionId;
+	const accountId = items[0].accountId;
+	const supabase = createAdminSupabaseClient();
+	const { error } = await supabase.rpc("insert_queue_playlist_items", {
+		p_session_id: sessionId,
+		p_account_id: accountId,
+		p_items: items.map((item) => ({
+			playlist_id: item.playlistId,
+			source_snapshot_id: item.sourceSnapshotId,
+			position: item.position,
+			source_fit_score: item.sourceScore,
+			was_new_at_enqueue: item.wasNewAtEnqueue,
+		})),
+	});
+
+	if (error) {
+		if (error.code === "23505") {
+			return Result.err(
+				new ConstraintError("unique", error.details ?? error.message),
+			);
+		}
+		if (error.code === "23503") {
+			return Result.err(
+				new ConstraintError("foreign_key", error.details ?? error.message),
+			);
+		}
+		if (error.code === "23514") {
+			return Result.err(
+				new ConstraintError("check", error.details ?? error.message),
+			);
+		}
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(undefined);
+}
+
+/**
  * Returns all queue items for a session, ordered by position ascending.
+ *
+ * Maps via mapItemToDto so each item carries a MatchReviewSubject discriminated
+ * union — playlist-mode rows (song_id NULL) stay orientation-safe instead of
+ * being forced through the song-only legacy shape.
  */
 export async function fetchQueueItems(
 	sessionId: string,
-): Promise<Result<MatchReviewQueueItem[], DbError>> {
+): Promise<Result<MatchReviewQueueItemDto[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const result = await fromSupabaseMany(
 		supabase
@@ -334,7 +402,7 @@ export async function fetchQueueItems(
 			.order("position", { ascending: true }),
 	);
 	if (Result.isError(result)) return result;
-	return Result.ok(result.value.map(mapItemRow));
+	return Result.ok(result.value.map(mapItemToDto));
 }
 
 /**
@@ -359,6 +427,52 @@ export async function fetchQueuedSongIds(
 				.filter((id): id is string => id !== null),
 		),
 	);
+}
+
+/**
+ * Returns the playlist_ids already present in the session so the playlist-mode
+ * append path can exclude them. Playlist counterpart to fetchQueuedSongIds.
+ */
+export async function fetchQueuedPlaylistIds(
+	sessionId: string,
+): Promise<Result<Set<string>, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany(
+		supabase
+			.from("match_review_queue_item")
+			.select("playlist_id")
+			.eq("session_id", sessionId),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(
+		new Set(
+			result.value
+				.map((r) => r.playlist_id)
+				.filter((id): id is string => id !== null),
+		),
+	);
+}
+
+/**
+ * Returns the subset of the given playlist IDs that still belong to the account,
+ * in one query. Used by the playlist-mode append path to drop subjects whose
+ * review playlist was deleted or transferred before enqueuing them (Finding 1).
+ */
+export async function fetchOwnedPlaylistIds(
+	accountId: string,
+	playlistIds: readonly string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (playlistIds.length === 0) return Result.ok(new Set());
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany(
+		supabase
+			.from("playlist")
+			.select("id")
+			.eq("account_id", accountId)
+			.in("id", [...playlistIds]),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(new Set(result.value.map((r) => r.id)));
 }
 
 /**
@@ -748,6 +862,33 @@ export async function fetchPendingSongIds(
 	return Result.ok(
 		result.value
 			.map((r) => r.song_id)
+			.filter((id): id is string => id !== null),
+	);
+}
+
+/**
+ * Playlist counterpart to fetchPendingSongIds: returns the playlist IDs of the
+ * first N pending items in a playlist-orientation session, in queue order.
+ * Drives the orientation-aware dashboard/sidebar preview fan (Finding 4).
+ */
+export async function fetchPendingPlaylistIds(
+	sessionId: string,
+	limit: number,
+): Promise<Result<string[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMany(
+		supabase
+			.from("match_review_queue_item")
+			.select("playlist_id")
+			.eq("session_id", sessionId)
+			.in("state", ["pending", "active"])
+			.order("position", { ascending: true })
+			.limit(limit),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(
+		result.value
+			.map((r) => r.playlist_id)
 			.filter((id): id is string => id !== null),
 	);
 }

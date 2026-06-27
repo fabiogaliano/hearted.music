@@ -34,11 +34,15 @@ import {
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
 	fetchMaxPosition,
+	fetchOwnedPlaylistIds,
+	fetchPendingPlaylistIds,
 	fetchPendingSongIds,
+	fetchQueuedPlaylistIds,
 	fetchQueuedSongIds,
 	fetchTargetPlaylistFilters,
 	insertMatchReviewSession,
 	insertQueueItems,
+	insertQueuePlaylistItems,
 	insertSessionSnapshot,
 	updateQueueItemPresented,
 	updateQueueItemResolved,
@@ -519,7 +523,8 @@ async function appendLatestSnapshot(
  * 2. Load account decisions for matched songs.
  * 3. Apply the session's stored strictness_min_score.
  * 4. Keep subjects with at least one visible undecided match (orientation-aware).
- * 5. Filter to currently entitled songs (via RPC) — song mode only for now.
+ * 5. Filter to entitled subjects: song mode by entitled review song; playlist
+ *    mode by suggestion-side entitlement plus review-playlist ownership.
  * 6. Exclude subjects already in the active session queue.
  * 7. Sort (orientation-aware via getOrderedUndecidedSubjects).
  * 8. Append at max(position)+1.
@@ -601,8 +606,11 @@ export async function appendSnapshotDelta(
 				"select_entitled_data_enriched_liked_song_ids",
 				{ p_account_id: accountId },
 			),
-			// Step 6: load subjects already in this session queue (song mode only).
-			fetchQueuedSongIds(session.id),
+			// Step 6: load subjects already in this session queue. The already-queued
+			// set is keyed by the orientation's subject column (song_id vs playlist_id).
+			session.orientation === "song"
+				? fetchQueuedSongIds(session.id)
+				: fetchQueuedPlaylistIds(session.id),
 		]);
 
 	if (Result.isError(newSongIdsResult)) return newSongIdsResult;
@@ -622,12 +630,9 @@ export async function appendSnapshotDelta(
 	}
 
 	const newSongSet = new Set(newSongIdsResult.value);
-	// Step 5: entitled songs — RPC returns { song_id }[].
+	// Step 5: entitled songs — RPC's generated type already returns { song_id }[].
 	const entitledSet = new Set<string>(
-		(entitledResult.data
-			? (entitledResult.data as { song_id: string }[])
-			: []
-		).map((r) => r.song_id),
+		(entitledResult.data ?? []).map((r) => r.song_id),
 	);
 	const alreadyQueued = alreadyQueuedResult.value;
 
@@ -641,85 +646,137 @@ export async function appendSnapshotDelta(
 		newSongSet,
 	);
 
-	// For song-mode sessions, filter subjects by entitlement and already-queued.
-	// Playlist-mode insertion via RPC is not yet implemented; song subjects are
-	// the only path wired through insertQueueItems today.
-	const candidateSubjects = subjects.filter((s) => {
-		if (s.subject.orientation !== "song") return false;
-		return (
-			entitledSet.has(s.subject.songId) && !alreadyQueued.has(s.subject.songId)
-		);
-	});
-
-	if (candidateSubjects.length === 0) {
-		// Record the snapshot even when no items are added so re-sync is a no-op.
-		// A recording failure propagates — better to retry than to falsely mark the
-		// snapshot applied with zero items.
+	// Step 9 record-applied tail, shared across orientations: recording even a
+	// zero-item append makes re-sync a no-op. A recording failure propagates —
+	// better to retry than to falsely mark the snapshot applied.
+	const recordAppliedAndReturn = async (
+		count: number,
+	): Promise<Result<AppendResult, DbError>> => {
 		const recorded = await recordSnapshotApplied(
 			session.id,
 			snapshotId,
-			0,
+			count,
 			visibilityHash,
 		);
 		if (Result.isError(recorded)) return recorded;
 		return Result.ok<AppendResult, DbError>({
-			appendedCount: 0,
+			appendedCount: count,
 			alreadyApplied: false,
 		});
+	};
+
+	// A concurrent append that slipped through the TOCTOU window can collide on
+	// the (session_id, position) unique index, which the per-subject upsert does
+	// not cover. Treat that single case as a safe no-op — the winner already
+	// populated these positions; any other DB error propagates.
+	const treatPositionRaceAsNoop = (
+		error: DbError,
+	): Result<AppendResult, DbError> =>
+		error._tag === "ConstraintError"
+			? Result.ok<AppendResult, DbError>({
+					appendedCount: 0,
+					alreadyApplied: true,
+				})
+			: Result.err(error);
+
+	if (session.orientation === "song") {
+		// Step 5/6: keep entitled song subjects not already in the queue.
+		const candidates = subjects.flatMap((s) =>
+			s.subject.orientation === "song" &&
+			entitledSet.has(s.subject.songId) &&
+			!alreadyQueued.has(s.subject.songId)
+				? [
+						{
+							songId: s.subject.songId,
+							maxScore: s.maxScore,
+							wasNew: s.wasNewAtEnqueue,
+						},
+					]
+				: [],
+		);
+
+		if (candidates.length === 0) return recordAppliedAndReturn(0);
+
+		// Step 8: append at max(position)+1.
+		const maxPosResult = await fetchMaxPosition(session.id);
+		if (Result.isError(maxPosResult)) return maxPosResult;
+		const startPosition = maxPosResult.value + 1;
+
+		const items = candidates.map((c, i) => ({
+			sessionId: session.id,
+			accountId,
+			songId: c.songId,
+			sourceSnapshotId: snapshotId,
+			position: startPosition + i,
+			sourceScore: c.maxScore,
+			wasNewAtEnqueue: c.wasNew,
+		}));
+
+		const insertResult = await insertQueueItems(items);
+		if (Result.isError(insertResult))
+			return treatPositionRaceAsNoop(insertResult.error);
+
+		return recordAppliedAndReturn(items.length);
 	}
+
+	// Playlist mode (Finding 1): a subject is eligible only when its review
+	// playlist still belongs to the account AND it still has at least one
+	// entitled, undecided, visible song match — otherwise the card would render
+	// with no actionable suggestion. Derivation already enforces undecided +
+	// minScore; this adds the suggestion-side entitlement constraint.
+	const entitledVisiblePlaylistIds = new Set<string>();
+	for (const mr of matchResults) {
+		if (!entitledSet.has(mr.song_id)) continue;
+		if (strictnessScore(mr) < session.strictnessMinScore) continue;
+		if (decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`)) continue;
+		entitledVisiblePlaylistIds.add(mr.playlist_id);
+	}
+
+	// Preserve derivation order (max score desc, id asc) while applying the
+	// entitlement + already-queued filters.
+	const orderedCandidates = subjects.flatMap((s) =>
+		s.subject.orientation === "playlist" &&
+		entitledVisiblePlaylistIds.has(s.subject.playlistId) &&
+		!alreadyQueued.has(s.subject.playlistId)
+			? [{ playlistId: s.subject.playlistId, maxScore: s.maxScore }]
+			: [],
+	);
+
+	// Ownership filter in a single query — drop playlists deleted or transferred
+	// away since the snapshot was produced.
+	const ownedResult = await fetchOwnedPlaylistIds(
+		accountId,
+		orderedCandidates.map((c) => c.playlistId),
+	);
+	if (Result.isError(ownedResult)) return ownedResult;
+	const owned = ownedResult.value;
+	const candidatePlaylists = orderedCandidates.filter((c) =>
+		owned.has(c.playlistId),
+	);
+
+	if (candidatePlaylists.length === 0) return recordAppliedAndReturn(0);
 
 	// Step 8: append at max(position)+1.
 	const maxPosResult = await fetchMaxPosition(session.id);
 	if (Result.isError(maxPosResult)) return maxPosResult;
 	const startPosition = maxPosResult.value + 1;
 
-	// Build insertable items — all candidateSubjects are song-orientation here
-	// (playlist subjects are filtered out above); TypeScript narrows inside the map.
-	const items = candidateSubjects.flatMap((s, i) => {
-		if (s.subject.orientation !== "song") return [];
-		return [
-			{
-				sessionId: session.id,
-				accountId,
-				songId: s.subject.songId,
-				sourceSnapshotId: snapshotId,
-				position: startPosition + i,
-				sourceScore: s.maxScore,
-				wasNewAtEnqueue: s.wasNewAtEnqueue,
-			},
-		];
-	});
+	const items = candidatePlaylists.map((c, i) => ({
+		sessionId: session.id,
+		accountId,
+		playlistId: c.playlistId,
+		sourceSnapshotId: snapshotId,
+		position: startPosition + i,
+		sourceScore: c.maxScore,
+		// Playlist subjects never carry a newness flag (MSR-19 scope).
+		wasNewAtEnqueue: false,
+	}));
 
-	const insertResult = await insertQueueItems(items);
-	if (Result.isError(insertResult)) {
-		// The (session_id, position) unique index is not covered by the song-level
-		// upsert in insertQueueItems. A concurrent append that slipped through the
-		// TOCTOU window can still collide on position. Treat it as a safe no-op:
-		// the concurrent winner already populated these positions.
-		if (insertResult.error._tag === "ConstraintError") {
-			return Result.ok<AppendResult, DbError>({
-				appendedCount: 0,
-				alreadyApplied: true,
-			});
-		}
-		return insertResult;
-	}
+	const insertResult = await insertQueuePlaylistItems(items);
+	if (Result.isError(insertResult))
+		return treatPositionRaceAsNoop(insertResult.error);
 
-	// Step 9: record that this (snapshot, hash) pair has been applied. A
-	// duplicate-key ConstraintError means a concurrent call beat us — that's fine;
-	// the items from the winner are already in the queue. Any other error propagates.
-	const recorded = await recordSnapshotApplied(
-		session.id,
-		snapshotId,
-		items.length,
-		visibilityHash,
-	);
-	if (Result.isError(recorded)) return recorded;
-
-	return Result.ok<AppendResult, DbError>({
-		appendedCount: items.length,
-		alreadyApplied: false,
-	});
+	return recordAppliedAndReturn(items.length);
 }
 
 /**
@@ -794,14 +851,19 @@ export async function getQueueSummary(
 		return Result.ok<MatchReviewSummary, DbError>({
 			hasActiveQueue: false,
 			pendingCount: 0,
-			previewSongIds: [],
+			previewSubjectIds: [],
 		});
 	}
 
 	const session = sessionResult.value;
+	// Preview IDs are the orientation's subject: song IDs in song mode, playlist
+	// IDs in playlist mode. Playlist-mode rows have song_id NULL, so the song
+	// query would always return [] — the orientation-aware fetch is required.
 	const [countResult, previewResult] = await Promise.all([
 		countUnresolvedItems(session.id),
-		fetchPendingSongIds(session.id, 3),
+		session.orientation === "song"
+			? fetchPendingSongIds(session.id, 3)
+			: fetchPendingPlaylistIds(session.id, 3),
 	]);
 
 	if (Result.isError(countResult)) return countResult;
@@ -810,8 +872,84 @@ export async function getQueueSummary(
 	return Result.ok<MatchReviewSummary, DbError>({
 		hasActiveQueue: true,
 		pendingCount: countResult.value,
-		previewSongIds: previewResult.value,
+		previewSubjectIds: previewResult.value,
 	});
+}
+
+/**
+ * Playlist counterpart to getOrderedUndecidedSongIds (matching.functions): the
+ * no-active-queue summary fallback for playlist orientation (Finding 4). Derives
+ * the ordered playlist subjects from a snapshot the same way the queue-append
+ * path does — entitled + undecided + visible song match, review-playlist still
+ * owned — so the dashboard/sidebar preview matches what the queue would enqueue.
+ *
+ * Returns Result so a transient DB failure surfaces as an error rather than a
+ * falsely-empty preview.
+ */
+export async function getOrderedUndecidedPlaylistIds(
+	snapshotId: string,
+	accountId: string,
+): Promise<Result<string[], DbError>> {
+	const minScore = await resolveMinMatchScore(accountId);
+
+	const [matchResultsResult, entitledResult] = await Promise.all([
+		getMatchResults(snapshotId),
+		createAdminSupabaseClient().rpc(
+			"select_entitled_data_enriched_liked_song_ids",
+			{ p_account_id: accountId },
+		),
+	]);
+	if (Result.isError(matchResultsResult)) return matchResultsResult;
+	if (entitledResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: entitledResult.error.code,
+				message: entitledResult.error.message,
+			}),
+		);
+	}
+	const matchResults = matchResultsResult.value;
+	if (matchResults.length === 0) return Result.ok<string[], DbError>([]);
+
+	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
+	const decisionsResult = await getMatchDecisionsForSongs(accountId, songIds);
+	if (Result.isError(decisionsResult)) return decisionsResult;
+	const decidedPairs = new Set(
+		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
+	);
+
+	const entitledSet = new Set<string>(
+		(entitledResult.data ?? []).map((r) => r.song_id),
+	);
+
+	const entitledVisiblePlaylistIds = new Set<string>();
+	for (const mr of matchResults) {
+		if (!entitledSet.has(mr.song_id)) continue;
+		if (strictnessScore(mr) < minScore) continue;
+		if (decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`)) continue;
+		entitledVisiblePlaylistIds.add(mr.playlist_id);
+	}
+
+	const { subjects } = getOrderedUndecidedSubjects(
+		matchResults,
+		decidedPairs,
+		minScore,
+		"playlist",
+		new Set(),
+	);
+
+	const orderedIds = subjects.flatMap((s) =>
+		s.subject.orientation === "playlist" &&
+		entitledVisiblePlaylistIds.has(s.subject.playlistId)
+			? [s.subject.playlistId]
+			: [],
+	);
+
+	const ownedResult = await fetchOwnedPlaylistIds(accountId, orderedIds);
+	if (Result.isError(ownedResult)) return ownedResult;
+	const owned = ownedResult.value;
+
+	return Result.ok<string[], DbError>(orderedIds.filter((id) => owned.has(id)));
 }
 
 /**

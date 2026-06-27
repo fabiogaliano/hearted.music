@@ -120,7 +120,12 @@ export type ActiveQueueResult =
 export interface MatchReviewSummary {
 	hasActiveQueue: boolean;
 	pendingCount: number;
-	previewSongIds: string[];
+	/**
+	 * IDs of the first pending subjects in queue order, used for preview images.
+	 * Song IDs in song orientation, playlist IDs in playlist orientation —
+	 * orientation-neutral so the field never leaks a `songId?`/`playlistId?` split.
+	 */
+	previewSubjectIds: string[];
 }
 
 /**

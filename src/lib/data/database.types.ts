@@ -3679,6 +3679,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			insert_queue_playlist_items: {
+				Args: { p_account_id: string; p_items: Json; p_session_id: string };
+				Returns: undefined;
+			};
 			insert_queue_song_items: {
 				Args: { p_account_id: string; p_items: Json; p_session_id: string };
 				Returns: undefined;

@@ -1271,13 +1271,13 @@ describe("syncActiveMatchReviewSessions", () => {
 // Queue entry points — startOrResumeMatchReview + getMatchReview
 // ---------------------------------------------------------------------------
 
-// Domain (camelCase) queue item shape returned by fetchQueueItems.
+// Orientation-aware DTO queue item shape returned by fetchQueueItems.
 function fakeDomainItem(overrides: Record<string, unknown> = {}) {
 	return {
 		id: "item-1",
 		sessionId: "session-1",
 		accountId: "acct-1",
-		songId: "song-1",
+		subject: { orientation: "song" as const, songId: "song-1" },
 		sourceSnapshotId: "snap-1",
 		position: 0,
 		state: "pending" as const,
@@ -1472,7 +1472,7 @@ describe("getMatchReview", () => {
 				id: "item-1",
 				position: 0,
 				state: "pending",
-				songId: "song-1",
+				subject: { orientation: "song", songId: "song-1" },
 				sourceSnapshotId: "snap-1",
 			},
 		]);

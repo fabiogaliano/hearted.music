@@ -14,14 +14,15 @@ import {
 } from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	createOrResumeQueue,
+	getOrderedUndecidedPlaylistIds,
 	getQueueSummary,
 	markItemPresented,
 	syncActiveQueue,
 } from "@/lib/domains/taste/match-review-queue/service";
 import type {
 	MatchOrientation,
-	MatchReviewQueueItem,
 	MatchReviewQueueItemDto,
+	MatchReviewSubject,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 
@@ -91,7 +92,7 @@ export interface MatchReviewResult {
 		id: string;
 		position: number;
 		state: string;
-		songId: string;
+		subject: MatchReviewSubject;
 		sourceSnapshotId: string;
 	}>;
 	total: number;
@@ -141,7 +142,7 @@ async function fetchOwnedQueueItem(
 }
 
 /** Derived from unresolved item count — never from null song data. */
-function deriveCaughtUp(items: MatchReviewQueueItem[]): boolean {
+function deriveCaughtUp(items: MatchReviewQueueItemDto[]): boolean {
 	return items.every((item) => item.state === "resolved");
 }
 
@@ -268,7 +269,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 				id: item.id,
 				position: item.position,
 				state: item.state,
-				songId: item.songId,
+				subject: item.subject,
 				sourceSnapshotId: item.sourceSnapshotId,
 			})),
 			total: items.length,
@@ -1165,12 +1166,13 @@ export interface MatchReviewSummaryResult {
 /**
  * Resolves the queue-aware match review summary for a specific orientation.
  *
- * Active-queue path: asks the domain for the pending count and top-3 song ids,
- * then maps ids → image_url rows.
+ * Active-queue path: asks the domain for the pending count and top-3 subject ids
+ * (songs in song mode, playlists in playlist mode), then maps them → preview rows.
  *
  * Snapshot-fallback path (no active queue): derives count and preview ids from
- * the latest snapshot using getOrderedUndecidedSongIds — the same ordering
- * authority as the /match walk — without creating a queue. Queue creation
+ * the latest snapshot using the orientation's ordering authority
+ * (getOrderedUndecidedSongIds / getOrderedUndecidedPlaylistIds) — the same
+ * derivation the /match walk uses — without creating a queue. Queue creation
  * happens only on /match entry via startOrResumeMatchReview.
  *
  * Exported so dashboard.functions.ts can call it once and share the result
@@ -1182,6 +1184,13 @@ export async function resolveMatchReviewSummary(
 ): Promise<MatchReviewSummaryResult> {
 	const summaryResult = await getQueueSummary(accountId, orientation);
 
+	const empty: MatchReviewSummaryResult = {
+		pendingCount: 0,
+		previewImages: [],
+		hasActiveQueue: false,
+		orientation,
+	};
+
 	let topIds: string[];
 	let pendingCount: number;
 	let hasActiveQueue: boolean;
@@ -1190,46 +1199,65 @@ export async function resolveMatchReviewSummary(
 		const summary = summaryResult.value;
 		pendingCount = summary.pendingCount;
 		hasActiveQueue = true;
-		topIds = summary.previewSongIds.slice(0, 3);
+		topIds = summary.previewSubjectIds.slice(0, 3);
 	} else {
 		// No active queue — fall back to the latest-snapshot ordering authority so
 		// the dashboard previews stay identical to the pre-queue behaviour. We do
 		// NOT create a queue here; that is deferred to /match entry.
 		hasActiveQueue = false;
 		const snapshotResult = await getLatestMatchSnapshot(accountId);
-		if (Result.isError(snapshotResult) || !snapshotResult.value) {
-			return {
-				pendingCount: 0,
-				previewImages: [],
-				hasActiveQueue: false,
-				orientation,
-			};
-		}
+		if (Result.isError(snapshotResult) || !snapshotResult.value) return empty;
 
-		const { songIds } = await getOrderedUndecidedSongIds(
-			snapshotResult.value.id,
-			accountId,
-		);
-		pendingCount = songIds.length;
-		topIds = songIds.slice(0, 3);
+		if (orientation === "playlist") {
+			const playlistIdsResult = await getOrderedUndecidedPlaylistIds(
+				snapshotResult.value.id,
+				accountId,
+			);
+			// A transient failure surfaces as an empty summary rather than crashing
+			// the dashboard; the next refetch recovers.
+			if (Result.isError(playlistIdsResult)) return empty;
+			pendingCount = playlistIdsResult.value.length;
+			topIds = playlistIdsResult.value.slice(0, 3);
+		} else {
+			const { songIds } = await getOrderedUndecidedSongIds(
+				snapshotResult.value.id,
+				accountId,
+			);
+			pendingCount = songIds.length;
+			topIds = songIds.slice(0, 3);
+		}
 	}
 
 	if (topIds.length === 0) {
 		return { pendingCount, previewImages: [], hasActiveQueue, orientation };
 	}
 
+	const previewImages =
+		orientation === "playlist"
+			? await resolvePlaylistPreviews(topIds)
+			: await resolveSongPreviews(topIds);
+
+	return { pendingCount, previewImages, hasActiveQueue, orientation };
+}
+
+/**
+ * Maps song subject IDs to preview entries (image + name + artist), preserving
+ * the input order. Songs without an image are dropped so the fan never shows a
+ * broken tile.
+ */
+async function resolveSongPreviews(
+	topIds: string[],
+): Promise<MatchReviewSummaryResult["previewImages"]> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("song")
 		.select("id, image_url, name, artists")
 		.in("id", topIds);
 
-	if (error || !data) {
-		return { pendingCount, previewImages: [], hasActiveQueue, orientation };
-	}
+	if (error || !data) return [];
 
 	const songMap = new Map(data.map((s) => [s.id, s]));
-	const previewImages = topIds
+	return topIds
 		.map((id, i) => {
 			const song = songMap.get(id);
 			return song?.image_url
@@ -1244,8 +1272,40 @@ export async function resolveMatchReviewSummary(
 		.filter(
 			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
 		);
+}
 
-	return { pendingCount, previewImages, hasActiveQueue, orientation };
+/**
+ * Playlist counterpart to resolveSongPreviews: maps playlist subject IDs to
+ * preview entries. Playlists have no artist, so that field is empty (the dashboard
+ * preview tile renders name + image only). Playlists without an image are dropped.
+ */
+async function resolvePlaylistPreviews(
+	topIds: string[],
+): Promise<MatchReviewSummaryResult["previewImages"]> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist")
+		.select("id, image_url, name")
+		.in("id", topIds);
+
+	if (error || !data) return [];
+
+	const playlistMap = new Map(data.map((p) => [p.id, p]));
+	return topIds
+		.map((id, i) => {
+			const playlist = playlistMap.get(id);
+			return playlist?.image_url
+				? {
+						id: i + 1,
+						image: playlist.image_url,
+						name: playlist.name,
+						artist: "",
+					}
+				: null;
+		})
+		.filter(
+			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
+		);
 }
 
 const GetMatchReviewSummarySchema = z.object({

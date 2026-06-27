@@ -496,11 +496,15 @@ vi.mock("../queries", () => ({
 	completeSession: vi.fn(),
 	fetchAppliedSnapshotIds: vi.fn(),
 	fetchQueuedSongIds: vi.fn(),
+	fetchQueuedPlaylistIds: vi.fn(),
+	fetchOwnedPlaylistIds: vi.fn(),
 	fetchMaxPosition: vi.fn(),
 	insertQueueItems: vi.fn(),
+	insertQueuePlaylistItems: vi.fn(),
 	insertSessionSnapshot: vi.fn(),
 	countUnresolvedItems: vi.fn(),
 	fetchPendingSongIds: vi.fn(),
+	fetchPendingPlaylistIds: vi.fn(),
 	updateQueueItemPresented: vi.fn(),
 	updateQueueItemResolved: vi.fn(),
 	clearSongNewness: vi.fn(),
@@ -634,13 +638,23 @@ beforeEach(() => {
 	vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
 		Result.ok(new Set<string>()),
 	);
+	vi.mocked(queries.fetchQueuedPlaylistIds).mockResolvedValue(
+		Result.ok(new Set<string>()),
+	);
+	vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+		Result.ok(new Set<string>()),
+	);
 	vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
 	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
+	vi.mocked(queries.insertQueuePlaylistItems).mockResolvedValue(
+		Result.ok(undefined),
+	);
 	vi.mocked(queries.insertSessionSnapshot).mockResolvedValue(
 		Result.ok(fakeSnapshotRow()),
 	);
 	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
 	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
+	vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(Result.ok([]));
 	vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
 		Result.ok(fakeQueueItem()),
 	);
@@ -1583,6 +1597,234 @@ describe("appendSnapshotDelta", () => {
 });
 
 // ============================================================================
+// appendSnapshotDelta — playlist orientation (Finding 1)
+// ============================================================================
+
+const PLAYLIST_VISIBILITY_HASH = computeVisibilityConfigHash({
+	orientation: "playlist",
+	minScore: 0.5,
+	readTimeFiltersHash: computeReadTimeFiltersHash(new Map()),
+});
+
+function fakePlaylistSession() {
+	return { ...fakeSession(), orientation: "playlist" as const };
+}
+
+describe("appendSnapshotDelta — playlist orientation", () => {
+	it("inserts playlist queue items for owned playlists with entitled visible song matches", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-2",
+					playlist_id: "pl-B",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+		// Both songs entitled (entitlement RPC returns the song set).
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-1" }, { song_id: "song-2" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		// Both review playlists are still owned by the account.
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A", "pl-B"])),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.appendedCount).toBe(2);
+		// Song-mode insert path is never used for a playlist session.
+		expect(queries.insertQueueItems).not.toHaveBeenCalled();
+		const inserted = vi.mocked(queries.insertQueuePlaylistItems).mock
+			.calls[0]?.[0];
+		expect(inserted?.map((i) => i.playlistId).toSorted()).toEqual([
+			"pl-A",
+			"pl-B",
+		]);
+		// Playlist rows carry the playlist subject and no newness flag.
+		expect(inserted?.every((i) => i.wasNewAtEnqueue === false)).toBe(true);
+		expect(inserted?.[0]?.position).toBe(0);
+	});
+
+	it("excludes playlists whose only visible song matches are not entitled", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		// Entitlement RPC returns empty — song-1 is not entitled, so pl-A has no
+		// actionable visible song and must not be enqueued.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A"])),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.appendedCount).toBe(0);
+		expect(queries.insertQueuePlaylistItems).not.toHaveBeenCalled();
+		// The snapshot is still recorded so re-sync is a no-op.
+		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
+			SESSION_ID,
+			SNAPSHOT_ID,
+			0,
+			PLAYLIST_VISIBILITY_HASH,
+		);
+	});
+
+	it("excludes playlists no longer owned by the account", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-2",
+					playlist_id: "pl-B",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-1" }, { song_id: "song-2" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		// pl-B was transferred/deleted — only pl-A remains owned.
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A"])),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		const inserted = vi.mocked(queries.insertQueuePlaylistItems).mock
+			.calls[0]?.[0];
+		expect(inserted?.map((i) => i.playlistId)).toEqual(["pl-A"]);
+	});
+
+	it("excludes playlists already in the active queue", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-2",
+					playlist_id: "pl-B",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-1" }, { song_id: "song-2" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A", "pl-B"])),
+		);
+		// pl-A is already enqueued — only pl-B is new.
+		vi.mocked(queries.fetchQueuedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A"])),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(4));
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		const inserted = vi.mocked(queries.insertQueuePlaylistItems).mock
+			.calls[0]?.[0];
+		expect(inserted).toHaveLength(1);
+		expect(inserted?.[0]?.playlistId).toBe("pl-B");
+		expect(inserted?.[0]?.position).toBe(5);
+	});
+
+	it("is idempotent — a re-sync of the same snapshot/hash appends nothing", async () => {
+		const appliedKey = `${SNAPSHOT_ID}:${PLAYLIST_VISIBILITY_HASH}`;
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set([appliedKey])),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.appendedCount).toBe(0);
+			expect(result.value.alreadyApplied).toBe(true);
+		}
+		expect(queries.insertQueuePlaylistItems).not.toHaveBeenCalled();
+	});
+});
+
+// ============================================================================
 // getQueueSummary
 // ============================================================================
 
@@ -1596,8 +1838,50 @@ describe("getQueueSummary", () => {
 		if (Result.isOk(result)) {
 			expect(result.value.hasActiveQueue).toBe(false);
 			expect(result.value.pendingCount).toBe(0);
-			expect(result.value.previewSongIds).toEqual([]);
+			expect(result.value.previewSubjectIds).toEqual([]);
 		}
+	});
+
+	it("song mode uses pending song ids as preview subjects", async () => {
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(5));
+		vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(
+			Result.ok(["song-a", "song-b"]),
+		);
+
+		const result = await getQueueSummary(ACCOUNT_ID, "song");
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.hasActiveQueue).toBe(true);
+			expect(result.value.pendingCount).toBe(5);
+			expect(result.value.previewSubjectIds).toEqual(["song-a", "song-b"]);
+		}
+		// Playlist preview path is never used for a song session.
+		expect(queries.fetchPendingPlaylistIds).not.toHaveBeenCalled();
+	});
+
+	it("playlist mode uses pending playlist ids as preview subjects", async () => {
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), orientation: "playlist" as const }),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(3));
+		vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(
+			Result.ok(["pl-a", "pl-b"]),
+		);
+
+		const result = await getQueueSummary(ACCOUNT_ID, "playlist");
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.hasActiveQueue).toBe(true);
+			expect(result.value.pendingCount).toBe(3);
+			expect(result.value.previewSubjectIds).toEqual(["pl-a", "pl-b"]);
+		}
+		// Song preview path is never used for a playlist session.
+		expect(queries.fetchPendingSongIds).not.toHaveBeenCalled();
 	});
 });
 

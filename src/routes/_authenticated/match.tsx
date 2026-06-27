@@ -166,17 +166,32 @@ function QueueMatchPage() {
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
 	// Navigate to the canonical URL for the selected mode and persist preference.
-	// setMatchViewModePreference is fire-and-forget — a write failure never blocks
-	// the navigation that already committed, keeping the toggle responsive.
+	// Navigation commits immediately so the toggle stays responsive; the
+	// preference write never blocks it. On a successful write we invalidate the
+	// preference-driven summary + dashboard keys so the sidebar badge and Match
+	// link reflect the new mode without waiting for staleTime. A write failure is
+	// swallowed — navigation already committed and must not be undone.
 	const handleModeChange = useCallback(
 		(newMode: MatchViewMode) => {
 			void navigate({
 				to: "/match",
 				search: newMode === "playlist" ? { mode: "playlist" } : {},
 			});
-			void setMatchViewModePreference({ data: { mode: newMode } });
+			void setMatchViewModePreference({ data: { mode: newMode } })
+				.then(() => {
+					queryClient.invalidateQueries({
+						queryKey: matchReviewSummaryKeys.preferredSummary(
+							session.accountId,
+						),
+					});
+					queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+				})
+				.catch(() => {
+					// Best-effort: the preference write failed but navigation already
+					// committed, so there is nothing to roll back.
+				});
 		},
-		[navigate],
+		[navigate, queryClient, session.accountId],
 	);
 
 	// No queue at all means no snapshot context yet.
