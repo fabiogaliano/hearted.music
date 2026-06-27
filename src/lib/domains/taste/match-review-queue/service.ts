@@ -883,13 +883,21 @@ export async function getQueueSummary(
  * path does — entitled + undecided + visible song match, review-playlist still
  * owned — so the dashboard/sidebar preview matches what the queue would enqueue.
  *
+ * Also returns hiddenReviewItemCount: playlists with at least one entitled,
+ * undecided song match whose only such matches sit below the strictness bar.
+ * Computed entitlement-aware (mirroring getOrderedUndecidedSongIds) so the
+ * playlist-mode empty state can offer the "loosen strictness" nudge with a count
+ * that means playlists, not songs (A7, H9).
+ *
  * Returns Result so a transient DB failure surfaces as an error rather than a
  * falsely-empty preview.
  */
 export async function getOrderedUndecidedPlaylistIds(
 	snapshotId: string,
 	accountId: string,
-): Promise<Result<string[], DbError>> {
+): Promise<
+	Result<{ playlistIds: string[]; hiddenReviewItemCount: number }, DbError>
+> {
 	const minScore = await resolveMinMatchScore(accountId);
 
 	const [matchResultsResult, entitledResult] = await Promise.all([
@@ -909,7 +917,8 @@ export async function getOrderedUndecidedPlaylistIds(
 		);
 	}
 	const matchResults = matchResultsResult.value;
-	if (matchResults.length === 0) return Result.ok<string[], DbError>([]);
+	if (matchResults.length === 0)
+		return Result.ok({ playlistIds: [], hiddenReviewItemCount: 0 });
 
 	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
 	const decisionsResult = await getMatchDecisionsForSongs(accountId, songIds);
@@ -922,13 +931,20 @@ export async function getOrderedUndecidedPlaylistIds(
 		(entitledResult.data ?? []).map((r) => r.song_id),
 	);
 
+	// One pass over entitled, undecided pairs: a playlist is "all-undecided" if it
+	// has any such pair, and "visible" if at least one clears the bar. Diffing the
+	// two sets yields exactly the playlists hidden purely by strictness.
+	const entitledAllPlaylistIds = new Set<string>();
 	const entitledVisiblePlaylistIds = new Set<string>();
 	for (const mr of matchResults) {
 		if (!entitledSet.has(mr.song_id)) continue;
-		if (strictnessScore(mr) < minScore) continue;
 		if (decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`)) continue;
+		entitledAllPlaylistIds.add(mr.playlist_id);
+		if (strictnessScore(mr) < minScore) continue;
 		entitledVisiblePlaylistIds.add(mr.playlist_id);
 	}
+	const hiddenReviewItemCount =
+		entitledAllPlaylistIds.size - entitledVisiblePlaylistIds.size;
 
 	const { subjects } = getOrderedUndecidedSubjects(
 		matchResults,
@@ -949,7 +965,10 @@ export async function getOrderedUndecidedPlaylistIds(
 	if (Result.isError(ownedResult)) return ownedResult;
 	const owned = ownedResult.value;
 
-	return Result.ok<string[], DbError>(orderedIds.filter((id) => owned.has(id)));
+	return Result.ok({
+		playlistIds: orderedIds.filter((id) => owned.has(id)),
+		hiddenReviewItemCount,
+	});
 }
 
 /**

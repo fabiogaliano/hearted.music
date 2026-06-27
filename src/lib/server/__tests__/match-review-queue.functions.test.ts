@@ -1408,12 +1408,12 @@ describe("getMatchReview", () => {
 			items: [],
 			total: 0,
 			caughtUp: true,
-			hiddenSongCount: 0,
+			hiddenReviewItemCount: 0,
 		});
 		expect(fetchQueueItems).not.toHaveBeenCalled();
 	});
 
-	it("forwards hiddenSongCount from the latest snapshot when caught-up", async () => {
+	it("forwards hiddenReviewItemCount from the latest snapshot when caught-up", async () => {
 		mockFetchActiveSession.mockResolvedValue(
 			Result.ok({ id: "session-1", accountId: "acct-1" }),
 		);
@@ -1431,14 +1431,14 @@ describe("getMatchReview", () => {
 		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.caughtUp).toBe(true);
-		expect(result?.hiddenSongCount).toBe(3);
+		expect(result?.hiddenReviewItemCount).toBe(3);
 		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
 			"snap-1",
 			"acct-1",
 		);
 	});
 
-	it("does not compute hiddenSongCount while unresolved items remain", async () => {
+	it("does not compute hiddenReviewItemCount while unresolved items remain", async () => {
 		mockFetchActiveSession.mockResolvedValue(
 			Result.ok({ id: "session-1", accountId: "acct-1" }),
 		);
@@ -1450,7 +1450,7 @@ describe("getMatchReview", () => {
 
 		const result = await getMatchReview({ data: { orientation: "song" } });
 
-		expect(result?.hiddenSongCount).toBe(0);
+		expect(result?.hiddenReviewItemCount).toBe(0);
 		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
 	});
 

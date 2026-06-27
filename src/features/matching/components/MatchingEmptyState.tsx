@@ -93,7 +93,10 @@ export function MatchingEmptyState({
 		reason === "filtered"
 			? {
 					overline: "quiet in here",
-					headline: ["Some songs are waiting", "below your bar."] as const,
+					headline: [
+						`Some ${mode === "playlist" ? "playlists" : "songs"} are waiting`,
+						"below your bar.",
+					] as const,
 					body: filteredBody(hiddenCount, mode),
 					link: {
 						to: "/settings",
