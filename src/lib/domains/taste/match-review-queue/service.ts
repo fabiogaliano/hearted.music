@@ -11,8 +11,10 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { stableStringify } from "@/lib/domains/enrichment/embeddings/hashing";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getMatchResults,
@@ -34,6 +36,7 @@ import {
 	fetchMaxPosition,
 	fetchPendingSongIds,
 	fetchQueuedSongIds,
+	fetchTargetPlaylistFilters,
 	insertMatchReviewSession,
 	insertQueueItems,
 	insertSessionSnapshot,
@@ -117,12 +120,6 @@ function sortSongsForQueue(songs: UndecidedSong[]): UndecidedSong[] {
 }
 
 /**
- * Stable placeholder for read-time hard-filter predicates. Fixed until
- * read-time filter config migrates to its own hash component (MSR-19).
- */
-const READ_TIME_FILTERS_HASH = "write-time-filters";
-
-/**
  * Derives a deterministic string key from visibility inputs.
  *
  * orientation + strictness threshold + readTimeFiltersHash together determine
@@ -134,6 +131,30 @@ export function computeVisibilityConfigHash(
 	input: QueueVisibilityConfigHashInput,
 ): string {
 	return `vc_${input.orientation}_${input.minScore}_${input.readTimeFiltersHash}`;
+}
+
+/**
+ * Derives a compact deterministic hash from the account's target playlist
+ * read-time filter configs. Sorted by playlist ID so insertion order never
+ * affects the hash. Used as the readTimeFiltersHash component of
+ * QueueVisibilityConfigHashInput (C9, MSR-36).
+ *
+ * A djb2-style polynomial hash over the stable JSON representation is
+ * sufficient for idempotency keying — no collision resistance is required
+ * (same rationale as MSR-19's simple-string approach for visibility hash).
+ */
+export function computeReadTimeFiltersHash(
+	filtersByPlaylistId: Map<string, PlaylistMatchFiltersV1 | null>,
+): string {
+	const sorted = [...filtersByPlaylistId.entries()].sort(([a], [b]) =>
+		a.localeCompare(b),
+	);
+	const content = stableStringify(Object.fromEntries(sorted));
+	let h = 0;
+	for (let i = 0; i < content.length; i++) {
+		h = (Math.imul(31, h) + content.charCodeAt(i)) | 0;
+	}
+	return `rtf_${(h >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 interface UndecidedPlaylist {
@@ -514,12 +535,20 @@ export async function appendSnapshotDelta(
 	snapshotId: string,
 	accountId: string,
 ): Promise<Result<AppendResult, DbError>> {
+	// Fetch current read-time filter config to compute the visibility hash.
+	// This is a lightweight query (only id + match_filters from target playlists).
+	const targetFiltersResult = await fetchTargetPlaylistFilters(accountId);
+	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
+	const readTimeFiltersHash = computeReadTimeFiltersHash(
+		targetFiltersResult.value,
+	);
+
 	// Compute the visibility hash for this append — encodes which subjects are
 	// visible given the session's orientation, strictness, and filter config.
 	const visibilityHash = computeVisibilityConfigHash({
 		orientation: session.orientation,
 		minScore: session.strictnessMinScore,
-		readTimeFiltersHash: READ_TIME_FILTERS_HASH,
+		readTimeFiltersHash,
 	});
 	const appliedKey = `${snapshotId}:${visibilityHash}`;
 

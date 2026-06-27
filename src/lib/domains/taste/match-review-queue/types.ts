@@ -176,9 +176,10 @@ export interface QueueVisibilityConfigHashInput {
 	orientation: MatchOrientation;
 	minScore: number;
 	/**
-	 * Stable placeholder for read-time hard-filter predicates. Fixed to
-	 * "write-time-filters" until read-time filter config migrates to its own
-	 * hash component (tracked in deviation log MSR-19).
+	 * Compact hash of the account's target playlist read-time filter configs,
+	 * derived via computeReadTimeFiltersHash (MSR-36). Changes when any target
+	 * playlist's filter configuration changes, allowing the same snapshot to
+	 * reveal newly-visible subjects under the new hash.
 	 */
 	readTimeFiltersHash: string;
 }
