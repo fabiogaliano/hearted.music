@@ -19,6 +19,12 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import {
+	passesAllMatchFilters,
+	type SongFilterMetadata,
+} from "@/lib/domains/taste/match-filters/predicates";
+import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
@@ -95,6 +101,13 @@ export interface MatchPairInput {
 	playlistId: string;
 	score: number;
 	fusedScore: number | null;
+	/** Song metadata for read-time filter evaluation. When present alongside
+	 *  playlistFilters, passesAllMatchFilters is applied. Missing metadata
+	 *  fails any active filter — there is no "unknown" pass-through (MSR-36). */
+	songMeta?: SongFilterMetadata | null;
+	/** Parsed filters from the playlist's match_filters column. Applied
+	 *  against songMeta when both are present (MSR-36). */
+	playlistFilters?: PlaylistMatchFiltersV1 | null;
 }
 
 /** Ranking data from match_result_ranking, camelCased for the pure function. */
@@ -129,6 +142,7 @@ export function deriveVisibleSuggestions(
 	rankings: readonly RankingInput[],
 	decidedPairKeys: ReadonlySet<string>,
 	minScore: number,
+	nowMs?: number,
 ): VisibleSuggestion[] {
 	// Build a lookup from "songId:playlistId" → ranking so the join is O(n).
 	const rankingMap = new Map<string, { rank: number; orderingScore: number }>();
@@ -139,10 +153,24 @@ export function deriveVisibleSuggestions(
 		});
 	}
 
+	const resolvedNowMs = nowMs ?? Date.now();
 	const eligible = pairs.filter((p) => {
 		const fs = strictnessScore({ score: p.score, fused_score: p.fusedScore });
 		if (fs < minScore) return false;
-		return !decidedPairKeys.has(`${p.songId}:${p.playlistId}`);
+		if (decidedPairKeys.has(`${p.songId}:${p.playlistId}`)) return false;
+		// Apply hard filters when both playlist config and song metadata are
+		// present — AND across filter types, OR within language codes, missing
+		// metadata fails any active filter (MSR-36, story constraint).
+		if (
+			p.playlistFilters !== undefined &&
+			p.playlistFilters !== null &&
+			p.songMeta !== undefined &&
+			p.songMeta !== null
+		) {
+			if (!passesAllMatchFilters(p.playlistFilters, p.songMeta, resolvedNowMs))
+				return false;
+		}
+		return true;
 	});
 
 	type RankedEntry = {
@@ -263,6 +291,153 @@ async function checkPlaylistOwned(
 }
 
 /**
+ * Fetches language, vocal gender, release year, and liked-at metadata for
+ * a single song. Used by the song-orientation visible-list path to supply
+ * songMeta to deriveVisibleSuggestions (MSR-36).
+ *
+ * liked_at is resolved from liked_song (active rows only; unliked_at IS NULL).
+ * Returns a default-null metadata object when the song row is absent so
+ * any active filter fails deterministically rather than passing silently.
+ */
+async function fetchSongFilterMeta(
+	accountId: string,
+	songId: string,
+): Promise<Result<SongFilterMetadata, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const [songResult, likedResult] = await Promise.all([
+		supabase
+			.from("song")
+			.select("language, language_secondary, release_year, vocal_gender")
+			.eq("id", songId)
+			.maybeSingle(),
+		supabase
+			.from("liked_song")
+			.select("liked_at")
+			.eq("song_id", songId)
+			.eq("account_id", accountId)
+			.is("unliked_at", null)
+			.maybeSingle(),
+	]);
+	if (songResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: songResult.error.code,
+				message: songResult.error.message,
+			}),
+		);
+	}
+	if (likedResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: likedResult.error.code,
+				message: likedResult.error.message,
+			}),
+		);
+	}
+	return Result.ok({
+		language: songResult.data?.language ?? null,
+		languageSecondary: songResult.data?.language_secondary ?? null,
+		releaseYear: songResult.data?.release_year ?? null,
+		vocalGender: songResult.data?.vocal_gender ?? null,
+		likedAt: likedResult.data
+			? new Date(likedResult.data.liked_at).getTime()
+			: null,
+	});
+}
+
+/**
+ * Fetches language, vocal gender, release year, and liked-at metadata for
+ * multiple songs in a single round-trip pair. Used by the playlist-orientation
+ * visible-list path (MSR-36).
+ *
+ * Songs not found in the song table are omitted from the returned map; callers
+ * treat absent entries as all-null metadata, which causes any active filter to fail.
+ */
+async function fetchSongsFilterMeta(
+	accountId: string,
+	songIds: readonly string[],
+): Promise<Result<Map<string, SongFilterMetadata>, DbError>> {
+	if (songIds.length === 0) return Result.ok(new Map());
+	const ids = [...songIds];
+	const supabase = createAdminSupabaseClient();
+	const [songsResult, likedResult] = await Promise.all([
+		supabase
+			.from("song")
+			.select("id, language, language_secondary, release_year, vocal_gender")
+			.in("id", ids),
+		supabase
+			.from("liked_song")
+			.select("song_id, liked_at")
+			.in("song_id", ids)
+			.eq("account_id", accountId)
+			.is("unliked_at", null),
+	]);
+	if (songsResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: songsResult.error.code,
+				message: songsResult.error.message,
+			}),
+		);
+	}
+	if (likedResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: likedResult.error.code,
+				message: likedResult.error.message,
+			}),
+		);
+	}
+	const likedMap = new Map<string, number>();
+	for (const row of likedResult.data ?? []) {
+		likedMap.set(row.song_id, new Date(row.liked_at).getTime());
+	}
+	const metaMap = new Map<string, SongFilterMetadata>();
+	for (const row of songsResult.data ?? []) {
+		metaMap.set(row.id, {
+			language: row.language,
+			languageSecondary: row.language_secondary,
+			releaseYear: row.release_year,
+			vocalGender: row.vocal_gender,
+			likedAt: likedMap.get(row.id) ?? null,
+		});
+	}
+	return Result.ok(metaMap);
+}
+
+/**
+ * Fetches match_filters for a set of playlists. Used in song-orientation to
+ * supply per-suggestion-playlist filter config to deriveVisibleSuggestions.
+ * Playlists with no match_filters row or null column map to null (no filter).
+ */
+async function fetchPlaylistsMatchFilters(
+	playlistIds: readonly string[],
+): Promise<Result<Map<string, PlaylistMatchFiltersV1 | null>, DbError>> {
+	if (playlistIds.length === 0) return Result.ok(new Map());
+	const ids = [...playlistIds];
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist")
+		.select("id, match_filters")
+		.in("id", ids);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	const map = new Map<string, PlaylistMatchFiltersV1 | null>();
+	for (const row of data ?? []) {
+		if (row.match_filters === null) {
+			map.set(row.id, null);
+		} else {
+			const { value } = parseStoredMatchFilters(row.match_filters);
+			map.set(row.id, value);
+		}
+	}
+	return Result.ok(map);
+}
+
+/**
  * Derives the visible suggestion list for a queue item.
  *
  * The item must already have passed the ownership check (loaded via
@@ -295,13 +470,14 @@ export async function computeVisibleSuggestionList(
 		if (!entitled.value)
 			return { kind: "not-entitled", reason: "song-not-entitled" };
 
-		// Fetch pairs and rankings in parallel — both are keyed off the server-read
-		// songId and sourceSnapshotId from the owned queue item.
-		const [pairsResult, rankingsResult, decisionsResult] = await Promise.all([
-			getMatchPairsForSong(sourceSnapshotId, subject.songId),
-			getMatchRankingsForSong(sourceSnapshotId, subject.songId),
-			getMatchDecisionsForSongs(accountId, [subject.songId]),
-		]);
+		const nowMs = Date.now();
+		const [pairsResult, rankingsResult, decisionsResult, songMetaResult] =
+			await Promise.all([
+				getMatchPairsForSong(sourceSnapshotId, subject.songId),
+				getMatchRankingsForSong(sourceSnapshotId, subject.songId),
+				getMatchDecisionsForSongs(accountId, [subject.songId]),
+				fetchSongFilterMeta(accountId, subject.songId),
+			]);
 
 		if (Result.isError(pairsResult))
 			return { kind: "db-error", error: pairsResult.error };
@@ -309,16 +485,29 @@ export async function computeVisibleSuggestionList(
 			return { kind: "db-error", error: rankingsResult.error };
 		if (Result.isError(decisionsResult))
 			return { kind: "db-error", error: decisionsResult.error };
+		if (Result.isError(songMetaResult))
+			return { kind: "db-error", error: songMetaResult.error };
+
+		const playlistIds = [
+			...new Set(pairsResult.value.map((r) => r.playlist_id)),
+		];
+		const playlistFiltersResult = await fetchPlaylistsMatchFilters(playlistIds);
+		if (Result.isError(playlistFiltersResult))
+			return { kind: "db-error", error: playlistFiltersResult.error };
 
 		const decidedPairKeys = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 		);
+
+		const songMeta = songMetaResult.value;
 
 		const pairs: MatchPairInput[] = pairsResult.value.map((r) => ({
 			songId: r.song_id,
 			playlistId: r.playlist_id,
 			score: r.score,
 			fusedScore: r.fused_score,
+			songMeta,
+			playlistFilters: playlistFiltersResult.value.get(r.playlist_id) ?? null,
 		}));
 
 		const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
@@ -334,6 +523,7 @@ export async function computeVisibleSuggestionList(
 			rankings,
 			decidedPairKeys,
 			strictnessMinScore,
+			nowMs,
 		);
 
 		return {
@@ -343,16 +533,19 @@ export async function computeVisibleSuggestionList(
 	}
 
 	// Playlist orientation: subject is a playlist, suggestions are songs.
+	const nowMs = Date.now();
 	const owned = await checkPlaylistOwned(accountId, subject.playlistId);
 	if (Result.isError(owned)) return { kind: "db-error", error: owned.error };
 	if (!owned.value)
 		return { kind: "not-entitled", reason: "playlist-not-owned" };
 
-	const [pairsResult, rankingsResult, decisionsResult] = await Promise.all([
-		getMatchPairsForPlaylist(sourceSnapshotId, subject.playlistId),
-		getMatchRankingsForPlaylist(sourceSnapshotId, subject.playlistId),
-		getMatchDecisionsForPlaylist(accountId, subject.playlistId),
-	]);
+	const [pairsResult, rankingsResult, decisionsResult, playlistFiltersResult] =
+		await Promise.all([
+			getMatchPairsForPlaylist(sourceSnapshotId, subject.playlistId),
+			getMatchRankingsForPlaylist(sourceSnapshotId, subject.playlistId),
+			getMatchDecisionsForPlaylist(accountId, subject.playlistId),
+			fetchPlaylistsMatchFilters([subject.playlistId]),
+		]);
 
 	if (Result.isError(pairsResult))
 		return { kind: "db-error", error: pairsResult.error };
@@ -360,6 +553,16 @@ export async function computeVisibleSuggestionList(
 		return { kind: "db-error", error: rankingsResult.error };
 	if (Result.isError(decisionsResult))
 		return { kind: "db-error", error: decisionsResult.error };
+	if (Result.isError(playlistFiltersResult))
+		return { kind: "db-error", error: playlistFiltersResult.error };
+
+	const songIds = [...new Set(pairsResult.value.map((r) => r.song_id))];
+	const songsMetaResult = await fetchSongsFilterMeta(accountId, songIds);
+	if (Result.isError(songsMetaResult))
+		return { kind: "db-error", error: songsMetaResult.error };
+
+	const reviewPlaylistFilters =
+		playlistFiltersResult.value.get(subject.playlistId) ?? null;
 
 	const decidedPairKeys = new Set(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -370,6 +573,14 @@ export async function computeVisibleSuggestionList(
 		playlistId: r.playlist_id,
 		score: r.score,
 		fusedScore: r.fused_score,
+		songMeta: songsMetaResult.value.get(r.song_id) ?? {
+			language: null,
+			languageSecondary: null,
+			releaseYear: null,
+			vocalGender: null,
+			likedAt: null,
+		},
+		playlistFilters: reviewPlaylistFilters,
 	}));
 
 	const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
@@ -385,6 +596,7 @@ export async function computeVisibleSuggestionList(
 		rankings,
 		decidedPairKeys,
 		strictnessMinScore,
+		nowMs,
 	);
 
 	return {

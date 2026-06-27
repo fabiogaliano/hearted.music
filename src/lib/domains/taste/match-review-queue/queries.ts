@@ -8,6 +8,8 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
 import {
@@ -748,4 +750,36 @@ export async function fetchPendingSongIds(
 			.map((r) => r.song_id)
 			.filter((id): id is string => id !== null),
 	);
+}
+
+/**
+ * Fetches match_filters for all target playlists owned by the account.
+ * Used by appendSnapshotDelta to compute the read-time filter hash component
+ * of the visibility config hash (MSR-36). Returns a Map from playlist ID to
+ * parsed filter config; null means the playlist has no filter set.
+ */
+export async function fetchTargetPlaylistFilters(
+	accountId: string,
+): Promise<Result<Map<string, PlaylistMatchFiltersV1 | null>, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist")
+		.select("id, match_filters")
+		.eq("account_id", accountId)
+		.eq("is_target", true);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	const map = new Map<string, PlaylistMatchFiltersV1 | null>();
+	for (const row of data ?? []) {
+		if (row.match_filters === null) {
+			map.set(row.id, null);
+		} else {
+			const { value } = parseStoredMatchFilters(row.match_filters);
+			map.set(row.id, value);
+		}
+	}
+	return Result.ok(map);
 }

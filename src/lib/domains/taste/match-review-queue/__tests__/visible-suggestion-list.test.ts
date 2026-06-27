@@ -21,6 +21,8 @@ vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type {
 	MatchReviewQueueItemDto,
 	MatchReviewSubject,
@@ -576,13 +578,97 @@ function makePlaylistItem(): MatchReviewQueueItemDto {
 	});
 }
 
+/**
+ * Builds a chain where `.maybeSingle()` is the terminal — all other methods
+ * return the chain itself. Used for queries like
+ * `supabase.from("X").select(...).eq(...).maybeSingle()`.
+ */
+function makeMaybeChain(
+	result: { data: unknown; error: null } = { data: null, error: null },
+) {
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn(),
+		in: vi.fn(),
+		is: vi.fn(),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue(result),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.eq.mockReturnValue(chain);
+	chain.in.mockReturnValue(chain);
+	chain.is.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
+/**
+ * Builds a chain where `.in()` is the terminal (returns a resolved Promise).
+ * Used for queries like `supabase.from("X").select(...).in("id", ids)`.
+ */
+function makeInTerminalChain(
+	result: { data: unknown; error: null } = { data: [], error: null },
+) {
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn(),
+		in: vi.fn().mockResolvedValue(result),
+		is: vi.fn(),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue(result),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.eq.mockReturnValue(chain);
+	chain.is.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
+/**
+ * Builds a chain where `.is()` is the terminal (returns a resolved Promise).
+ * Used for queries like `supabase.from("liked_song").select(...).in(...).eq(...).is(...)`.
+ */
+function makeIsTerminalChain(
+	result: { data: unknown; error: null } = { data: [], error: null },
+) {
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn(),
+		in: vi.fn(),
+		is: vi.fn().mockResolvedValue(result),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue(result),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.eq.mockReturnValue(chain);
+	chain.in.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
 describe("computeVisibleSuggestionList — async driver", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Default: everything returns empty/null data. Individual tests override.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi
+				.fn()
+				.mockReturnValue(makeMaybeChain({ data: null, error: null })),
+			rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 	});
 
 	it("returns not-entitled/song-not-entitled when song entitlement RPC returns false", async () => {
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi
+				.fn()
+				.mockReturnValue(makeMaybeChain({ data: null, error: null })),
 			rpc: vi.fn().mockResolvedValue({ data: false, error: null }),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
@@ -595,11 +681,10 @@ describe("computeVisibleSuggestionList — async driver", () => {
 	});
 
 	it("returns not-entitled/playlist-not-owned when playlist row is missing", async () => {
-		const maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-		const eq2 = vi.fn().mockReturnValue({ maybeSingle });
-		const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
-		const select = vi.fn().mockReturnValue({ eq: eq1 });
-		const from = vi.fn().mockReturnValue({ select });
+		// Ownership check returns null (not found); new DB calls are never reached.
+		const from = vi
+			.fn()
+			.mockReturnValue(makeMaybeChain({ data: null, error: null }));
 
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from,
@@ -614,8 +699,13 @@ describe("computeVisibleSuggestionList — async driver", () => {
 	});
 
 	it("returns db-error when a query fails after entitlement passes", async () => {
+		// Song entitlement passes via rpc; fetchSongFilterMeta runs in parallel with
+		// pairs but returns null data (no error). pairsResult fails → db-error.
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				.mockReturnValue(makeMaybeChain({ data: null, error: null })),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		const dbError = new DatabaseError({ code: "PGRST301", message: "timeout" });
@@ -636,8 +726,15 @@ describe("computeVisibleSuggestionList — async driver", () => {
 	});
 
 	it("returns ok with dense visibleRank and correct orientation for song subject", async () => {
+		// Song entitlement via rpc; from is used by fetchSongFilterMeta (×2:
+		// song + liked_song via maybySingle) then fetchPlaylistsMatchFilters (.in terminal).
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValue(makeInTerminalChain({ data: [], error: null })),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		vi.mocked(getMatchPairsForSong).mockResolvedValue(
@@ -690,13 +787,19 @@ describe("computeVisibleSuggestionList — async driver", () => {
 	});
 
 	it("returns ok with dense visibleRank and correct orientation for playlist subject", async () => {
-		const maybeSingle = vi
+		// Call order for from:
+		// 1. checkPlaylistOwned: from("playlist").select.eq.eq.maybySingle → {data: {id}}
+		// 2. fetchPlaylistsMatchFilters: from("playlist").select.in → {data: []}
+		// 3. fetchSongsFilterMeta song: from("song").select.in → {data: []}
+		// 4. fetchSongsFilterMeta liked: from("liked_song").select.in.eq.is → {data: []}
+		const from = vi
 			.fn()
-			.mockResolvedValue({ data: { id: "pl-d1" }, error: null });
-		const eq2 = vi.fn().mockReturnValue({ maybeSingle });
-		const eq1 = vi.fn().mockReturnValue({ eq: eq2 });
-		const select = vi.fn().mockReturnValue({ eq: eq1 });
-		const from = vi.fn().mockReturnValue({ select });
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValue(makeIsTerminalChain({ data: [], error: null }));
 
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from,
@@ -736,5 +839,329 @@ describe("computeVisibleSuggestionList — async driver", () => {
 			expect(result.list.suggestions[0].visibleRank).toBe(1);
 			expect(result.list.suggestions[1].visibleRank).toBe(2);
 		}
+	});
+
+	it("playlist orientation: song absent from DB metadata is hidden when an active filter is set", async () => {
+		// The song row is absent from the song table (fetchSongsFilterMeta returns
+		// an empty map). The driver substitutes an all-null SongFilterMetadata struct
+		// so passesAllMatchFilters runs and fails the language filter — matching the
+		// write-time behavior where absent metadata fails active filters.
+		const from = vi
+			.fn()
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			// fetchPlaylistsMatchFilters: playlist has a language filter
+			.mockReturnValueOnce(
+				makeInTerminalChain({
+					data: [
+						{
+							id: "pl-d1",
+							match_filters: { version: 1, languages: { codes: ["en"] } },
+						},
+					],
+					error: null,
+				}),
+			)
+			// fetchSongsFilterMeta song query: song absent → empty result
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			// fetchSongsFilterMeta liked_song query
+			.mockReturnValue(makeIsTerminalChain({ data: [], error: null }));
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-absent",
+					playlist_id: "pl-d1",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			// Absent song gets all-null metadata → language filter fails → hidden
+			expect(result.list.suggestions).toHaveLength(0);
+		}
+	});
+});
+
+// ============================================================================
+// deriveVisibleSuggestions — read-time filter predicates (MSR-36)
+// ============================================================================
+
+describe("deriveVisibleSuggestions — read-time filter predicates", () => {
+	const songSubject: MatchReviewSubject = {
+		orientation: "song",
+		songId: "song-1",
+	};
+
+	function makePairWithMeta(
+		playlistId: string,
+		meta: SongFilterMetadata,
+		filters: PlaylistMatchFiltersV1,
+	): MatchPairInput {
+		return {
+			songId: "song-1",
+			playlistId,
+			score: 0.8,
+			fusedScore: null,
+			songMeta: meta,
+			playlistFilters: filters,
+		};
+	}
+
+	const NOW_MS = new Date("2024-06-01T00:00:00Z").getTime();
+	const DEFAULT_META: SongFilterMetadata = {
+		language: "en",
+		languageSecondary: null,
+		releaseYear: 2020,
+		vocalGender: "female",
+		likedAt: new Date("2023-01-15T00:00:00Z").getTime(),
+	};
+
+	it("passes pairs whose song meets all active filters", () => {
+		const pair = makePairWithMeta("pl-1", DEFAULT_META, {
+			version: 1,
+			languages: { codes: ["en"] },
+			vocalGender: "female",
+		});
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("AND across types: fails if any filter fails", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, vocalGender: "male" },
+			{ version: 1, languages: { codes: ["en"] }, vocalGender: "female" },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("OR within languages: passes if secondary language matches", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, language: "fr", languageSecondary: "en" },
+			{ version: 1, languages: { codes: ["en"] } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("OR within languages: fails if neither primary nor secondary matches", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, language: "fr", languageSecondary: "de" },
+			{ version: 1, languages: { codes: ["en"] } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("missing language metadata fails language filter", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, language: null, languageSecondary: null },
+			{ version: 1, languages: { codes: ["en"] } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("missing vocalGender metadata fails vocalGender filter", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, vocalGender: null },
+			{ version: 1, vocalGender: "female" },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("missing releaseYear metadata fails releaseYear filter", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, releaseYear: null },
+			{ version: 1, releaseYear: { kind: "after", start: 2000 } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("liked-at before boundary: fails when likedAt is after endDate", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, likedAt: new Date("2023-01-15T00:00:00Z").getTime() },
+			{ version: 1, likedAt: { kind: "before", endDate: "2022-12-31" } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("liked-at before boundary: passes when likedAt is before endDate", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, likedAt: new Date("2023-01-15T00:00:00Z").getTime() },
+			{ version: 1, likedAt: { kind: "before", endDate: "2024-01-01" } },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("no filter applied when songMeta is absent (pure-function contract: caller controls what to pass)", () => {
+		// deriveVisibleSuggestions skips the predicate when songMeta is not
+		// supplied at all (undefined). The DRIVER (computeVisibleSuggestionList)
+		// is responsible for never letting this happen for absent DB rows — it
+		// substitutes the all-null struct so the predicate runs and fails.
+		const pair: MatchPairInput = {
+			songId: "song-1",
+			playlistId: "pl-1",
+			score: 0.8,
+			fusedScore: null,
+			playlistFilters: { version: 1, languages: { codes: ["en"] } },
+		};
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("no filter applied when playlistFilters is absent", () => {
+		const pair: MatchPairInput = {
+			songId: "song-1",
+			playlistId: "pl-1",
+			score: 0.8,
+			fusedScore: null,
+			songMeta: DEFAULT_META,
+		};
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("no filter applied when playlistFilters is null", () => {
+		const pair: MatchPairInput = {
+			songId: "song-1",
+			playlistId: "pl-1",
+			score: 0.8,
+			fusedScore: null,
+			songMeta: DEFAULT_META,
+			playlistFilters: null,
+		};
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
+	});
+
+	it("playlist with no active filters passes regardless of metadata", () => {
+		const pair = makePairWithMeta(
+			"pl-1",
+			{ ...DEFAULT_META, language: null },
+			{ version: 1 },
+		);
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(1);
 	});
 });

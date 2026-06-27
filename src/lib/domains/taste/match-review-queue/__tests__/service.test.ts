@@ -429,6 +429,56 @@ describe("getOrderedUndecidedSubjects — playlist mode", () => {
 });
 
 // ============================================================================
+// computeReadTimeFiltersHash — pure hash derivation (MSR-36)
+// ============================================================================
+
+describe("computeReadTimeFiltersHash", () => {
+	it("returns stable value for empty filter map", () => {
+		const h1 = computeReadTimeFiltersHash(new Map());
+		const h2 = computeReadTimeFiltersHash(new Map());
+		expect(h1).toBe(h2);
+	});
+
+	it("starts with rtf_ prefix", () => {
+		expect(computeReadTimeFiltersHash(new Map())).toMatch(/^rtf_/);
+	});
+
+	it("changes when a filter is added", () => {
+		const noFilters = computeReadTimeFiltersHash(new Map());
+		const withFilter = computeReadTimeFiltersHash(
+			new Map<string, PlaylistMatchFiltersV1 | null>([
+				["pl-1", { version: 1, languages: { codes: ["en"] } }],
+			]),
+		);
+		expect(noFilters).not.toBe(withFilter);
+	});
+
+	it("is stable when filters are unchanged", () => {
+		const m1 = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-a", { version: 1, languages: { codes: ["en"] } }],
+			["pl-b", null],
+		]);
+		const m2 = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-a", { version: 1, languages: { codes: ["en"] } }],
+			["pl-b", null],
+		]);
+		expect(computeReadTimeFiltersHash(m1)).toBe(computeReadTimeFiltersHash(m2));
+	});
+
+	it("is independent of Map insertion order", () => {
+		const m1 = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-a", { version: 1 }],
+			["pl-b", { version: 1, vocalGender: "female" }],
+		]);
+		const m2 = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-b", { version: 1, vocalGender: "female" }],
+			["pl-a", { version: 1 }],
+		]);
+		expect(computeReadTimeFiltersHash(m1)).toBe(computeReadTimeFiltersHash(m2));
+	});
+});
+
+// ============================================================================
 // Orchestration tests — mock the queries layer directly
 //
 // vi.mock hoists to top of file; all query functions become vi.fn() and each
@@ -451,6 +501,7 @@ vi.mock("../queries", () => ({
 	updateQueueItemPresented: vi.fn(),
 	updateQueueItemResolved: vi.fn(),
 	clearSongNewness: vi.fn(),
+	fetchTargetPlaylistFilters: vi.fn(),
 }));
 
 vi.mock("@/lib/data/client", () => ({
@@ -485,12 +536,15 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
 import * as queries from "../queries";
 // Import after mocks are set up
 import {
 	appendSnapshotDelta,
+	computeReadTimeFiltersHash,
+	computeVisibilityConfigHash,
 	createOrResumeQueue,
 	getQueueSummary,
 	markItemPresented,
@@ -502,8 +556,12 @@ const ACCOUNT_ID = "account-test-001";
 const SESSION_ID = "session-test-001";
 const SNAPSHOT_ID = "snapshot-test-001";
 // Visibility hash for fakeSession() (orientation='song', strictnessMinScore=0.5,
-// readTimeFiltersHash='write-time-filters') — matches computeVisibilityConfigHash output.
-const SONG_VISIBILITY_HASH = "vc_song_0.5_write-time-filters";
+// empty filter map) — derived dynamically so it stays in sync with the hash impl.
+const SONG_VISIBILITY_HASH = computeVisibilityConfigHash({
+	orientation: "song",
+	minScore: 0.5,
+	readTimeFiltersHash: computeReadTimeFiltersHash(new Map()),
+});
 const SONG_APPLIED_KEY = `${SNAPSHOT_ID}:${SONG_VISIBILITY_HASH}`;
 
 function fakeSession() {
@@ -587,6 +645,9 @@ beforeEach(() => {
 		Result.ok(fakeQueueItem()),
 	);
 	vi.mocked(queries.clearSongNewness).mockResolvedValue(undefined);
+	vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+		Result.ok(new Map()),
+	);
 
 	// Default Supabase client: no active session, no snapshot
 	vi.mocked(createAdminSupabaseClient).mockReturnValue({
