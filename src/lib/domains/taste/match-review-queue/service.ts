@@ -883,11 +883,12 @@ export async function getQueueSummary(
  * path does — entitled + undecided + visible song match, review-playlist still
  * owned — so the dashboard/sidebar preview matches what the queue would enqueue.
  *
- * Also returns hiddenReviewItemCount: playlists with at least one entitled,
- * undecided song match whose only such matches sit below the strictness bar.
- * Computed entitlement-aware (mirroring getOrderedUndecidedSongIds) so the
- * playlist-mode empty state can offer the "loosen strictness" nudge with a count
- * that means playlists, not songs (A7, H9).
+ * Also returns hiddenReviewItemCount: still-owned playlists with at least one
+ * entitled, undecided song match whose only such matches sit below the
+ * strictness bar. Computed entitlement- and ownership-aware (mirroring
+ * getOrderedUndecidedSongIds and the visible playlistIds) so the playlist-mode
+ * empty state can offer the "loosen strictness" nudge with a count that means
+ * owned playlists, not songs (A7, H9).
  *
  * Returns Result so a transient DB failure surfaces as an error rather than a
  * falsely-empty preview.
@@ -943,8 +944,9 @@ export async function getOrderedUndecidedPlaylistIds(
 		if (strictnessScore(mr) < minScore) continue;
 		entitledVisiblePlaylistIds.add(mr.playlist_id);
 	}
-	const hiddenReviewItemCount =
-		entitledAllPlaylistIds.size - entitledVisiblePlaylistIds.size;
+	const hiddenPlaylistIds = [...entitledAllPlaylistIds].filter(
+		(id) => !entitledVisiblePlaylistIds.has(id),
+	);
 
 	const { subjects } = getOrderedUndecidedSubjects(
 		matchResults,
@@ -961,13 +963,19 @@ export async function getOrderedUndecidedPlaylistIds(
 			: [],
 	);
 
-	const ownedResult = await fetchOwnedPlaylistIds(accountId, orderedIds);
+	// Ownership-check the visible and hidden sets together in one query so the
+	// hidden count, like playlistIds, excludes playlists the account no longer
+	// owns — a stale snapshot can still reference a deleted/transferred playlist.
+	const ownedResult = await fetchOwnedPlaylistIds(accountId, [
+		...new Set([...orderedIds, ...hiddenPlaylistIds]),
+	]);
 	if (Result.isError(ownedResult)) return ownedResult;
 	const owned = ownedResult.value;
 
 	return Result.ok({
 		playlistIds: orderedIds.filter((id) => owned.has(id)),
-		hiddenReviewItemCount,
+		hiddenReviewItemCount: hiddenPlaylistIds.filter((id) => owned.has(id))
+			.length,
 	});
 }
 

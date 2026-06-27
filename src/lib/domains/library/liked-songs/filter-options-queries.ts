@@ -12,8 +12,8 @@ import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 
-// Matches filter-metadata-loader: cap concurrent in-flight batches so a large
-// library doesn't open dozens of simultaneous PostgREST connections.
+// Cap concurrent in-flight batches so a large library doesn't open dozens of
+// simultaneous PostgREST connections.
 const BATCH_CONCURRENCY = 4;
 
 /**

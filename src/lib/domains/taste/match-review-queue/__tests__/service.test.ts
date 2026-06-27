@@ -553,6 +553,7 @@ import {
 	computeReadTimeFiltersHash,
 	computeVisibilityConfigHash,
 	createOrResumeQueue,
+	getOrderedUndecidedPlaylistIds,
 	getQueueSummary,
 	markItemPresented,
 	markItemResolved,
@@ -2085,5 +2086,97 @@ describe("computeVisibilityConfigHash — filter change produces new hash", () =
 		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
 			computeVisibilityConfigHash(playlistMode),
 		);
+	});
+});
+
+describe("getOrderedUndecidedPlaylistIds", () => {
+	// Two entitled, undecided playlists: pl-visible clears the 0.5 bar, pl-hidden
+	// sits below it. pl-hidden therefore drives the hidden count, pl-visible the
+	// returned playlistIds.
+	function seedTwoPlaylists() {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-visible",
+					playlist_id: "pl-visible",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-hidden",
+					playlist_id: "pl-hidden",
+					score: 0.3,
+					fused_score: null,
+				},
+			]),
+		);
+		// Both songs entitled, so both playlists are actionable candidates.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-visible" }, { song_id: "song-hidden" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+	}
+
+	it("counts a hidden playlist that is still owned", async () => {
+		seedTwoPlaylists();
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-visible", "pl-hidden"])),
+		);
+
+		const result = await getOrderedUndecidedPlaylistIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.playlistIds).toEqual(["pl-visible"]);
+			expect(result.value.hiddenReviewItemCount).toBe(1);
+		}
+	});
+
+	it("excludes a no-longer-owned playlist from the hidden count", async () => {
+		seedTwoPlaylists();
+		// pl-hidden was deleted/transferred — a stale snapshot still references it,
+		// but it must not inflate the hidden count.
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-visible"])),
+		);
+
+		const result = await getOrderedUndecidedPlaylistIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.playlistIds).toEqual(["pl-visible"]);
+			expect(result.value.hiddenReviewItemCount).toBe(0);
+		}
+		// Visible and hidden IDs are ownership-checked together in a single query.
+		expect(queries.fetchOwnedPlaylistIds).toHaveBeenCalledTimes(1);
+		const checkedIds = vi.mocked(queries.fetchOwnedPlaylistIds).mock
+			.calls[0]?.[1];
+		expect([...(checkedIds ?? [])].toSorted()).toEqual([
+			"pl-hidden",
+			"pl-visible",
+		]);
+	});
+
+	it("surfaces a DB error from the ownership check rather than a falsely-empty preview", async () => {
+		seedTwoPlaylists();
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		const result = await getOrderedUndecidedPlaylistIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeErr();
 	});
 });
