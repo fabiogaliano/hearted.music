@@ -560,46 +560,76 @@ function QueueCardContent({
 	}, [itemId, onReleaseNavigation]);
 
 	// Map server shape → orientation-aware union types.
-	const currentReviewItem: MatchingReviewItem | null =
-		itemData.status === "ready"
-			? {
-					mode: "song",
-					song: {
-						id: itemData.reviewItem.id,
-						spotifyId: itemData.reviewItem.spotifyId,
-						name: itemData.reviewItem.name,
-						artist: itemData.reviewItem.artist,
-						album: itemData.reviewItem.album ?? null,
-						albumArtUrl: itemData.reviewItem.albumArtUrl,
-						genres: itemData.reviewItem.genres,
-						audioFeatures: itemData.reviewItem.audioFeatures ?? null,
-						analysis: itemData.reviewItem.analysis ?? null,
+	const currentReviewItem: MatchingReviewItem | null = (() => {
+		if (itemData.status !== "ready") return null;
+		if (itemData.mode === "song") {
+			return {
+				mode: "song" as const,
+				song: {
+					id: itemData.reviewItem.id,
+					spotifyId: itemData.reviewItem.spotifyId,
+					name: itemData.reviewItem.name,
+					artist: itemData.reviewItem.artist,
+					album: itemData.reviewItem.album ?? null,
+					albumArtUrl: itemData.reviewItem.albumArtUrl,
+					genres: itemData.reviewItem.genres,
+					audioFeatures: itemData.reviewItem.audioFeatures ?? null,
+					analysis: itemData.reviewItem.analysis ?? null,
+				},
+			};
+		}
+		return {
+			mode: "playlist" as const,
+			playlist: {
+				id: itemData.reviewItem.id,
+				spotifyId: itemData.reviewItem.spotifyId,
+				name: itemData.reviewItem.name,
+				description: itemData.reviewItem.description,
+				imageUrl: itemData.reviewItem.imageUrl,
+				trackCount: itemData.reviewItem.trackCount,
+			},
+		};
+	})();
+
+	const currentSuggestions: MatchingSuggestion[] =
+		useMemo((): MatchingSuggestion[] => {
+			if (itemData.status !== "ready") return [];
+			if (itemData.mode === "song") {
+				return itemData.suggestions.map((m) => ({
+					mode: "song" as const,
+					playlist: {
+						id: m.playlist.id,
+						spotifyId: m.playlist.spotifyId,
+						name: m.playlist.name,
+						reason: m.playlist.description ?? "",
+						matchScore: m.score,
+						imageUrl: m.playlist.imageUrl,
+						songCount: m.playlist.trackCount,
 					},
-				}
-			: null;
+				}));
+			}
+			return itemData.suggestions.map((s) => ({
+				mode: "playlist" as const,
+				song: {
+					id: s.song.id,
+					spotifyId: s.song.spotifyId,
+					name: s.song.name,
+					artist: s.song.artist,
+					album: s.song.album ?? null,
+					albumArtUrl: s.song.albumArtUrl,
+					genres: s.song.genres,
+					audioFeatures: s.song.audioFeatures ?? null,
+					analysis: s.song.analysis ?? null,
+				},
+				fitScore: s.fitScore,
+			}));
+		}, [itemData]);
 
-	const currentSuggestions: MatchingSuggestion[] = useMemo(
-		() =>
-			itemData.status === "ready"
-				? itemData.suggestions.map((m) => ({
-						mode: "song" as const,
-						playlist: {
-							id: m.playlist.id,
-							spotifyId: m.playlist.spotifyId,
-							name: m.playlist.name,
-							reason: m.playlist.description ?? "",
-							matchScore: m.score,
-							imageUrl: m.playlist.imageUrl,
-							songCount: m.playlist.trackCount,
-						},
-					}))
-				: [],
-		[itemData],
-	);
-
-	// Derived for guards that still need a flat SongForMatching reference.
+	// Narrow helpers — each is null when the other orientation is active.
 	const currentSong =
 		currentReviewItem?.mode === "song" ? currentReviewItem.song : null;
+	const currentPlaylist =
+		currentReviewItem?.mode === "playlist" ? currentReviewItem.playlist : null;
 
 	const songId =
 		currentReviewItem?.mode === "song" ? currentReviewItem.song.id : "";
@@ -745,87 +775,147 @@ function QueueCardContent({
 	}
 
 	const recordCurrentItem = () => {
-		if (!currentSong) return;
+		if (!currentReviewItem) return;
+		const item =
+			currentReviewItem.mode === "song"
+				? {
+						id: currentReviewItem.song.id,
+						albumArtUrl: currentReviewItem.song.albumArtUrl,
+						name: currentReviewItem.song.name,
+						artist: currentReviewItem.song.artist,
+					}
+				: {
+						id: currentReviewItem.playlist.id,
+						albumArtUrl: currentReviewItem.playlist.imageUrl,
+						name: currentReviewItem.playlist.name,
+						artist: "",
+					};
 		onPastItems((prev) => {
-			if (prev.some((s) => s.id === currentSong.id)) return prev;
-			return [
-				...prev,
-				{
-					id: currentSong.id,
-					albumArtUrl: currentSong.albumArtUrl,
-					name: currentSong.name,
-					artist: currentSong.artist,
-				},
-			];
+			if (prev.some((s) => s.id === item.id)) return prev;
+			return [...prev, item];
 		});
 	};
 
-	const handleAdd = async (playlistId: string) => {
-		// Add does NOT advance the card — user may add to multiple playlists.
+	const handleAdd = async (suggestionId: string) => {
+		// Add does NOT advance the card — user may add to multiple suggestions.
 		// It still locks navigation while the add decision is in flight so Finish or
 		// Dismiss cannot resolve the item before the add row exists.
-		if (!currentSong || !onLockNavigation()) return;
+		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
 			setReconnectNeeded(false);
 
-			// Derive flat playlist list for the Spotify extension call.
-			const currentMatches = currentSuggestions
-				.filter(
-					(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
-						s.mode === "song",
-				)
-				.map((s) => s.playlist);
+			if (currentReviewItem.mode === "song") {
+				// Song mode: suggestionId is a playlist id; add the review song to that playlist.
+				const currentMatches = currentSuggestions
+					.filter(
+						(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
+							s.mode === "song",
+					)
+					.map((s) => s.playlist);
 
-			const playlist = currentMatches.find((p) => p.id === playlistId);
+				const playlist = currentMatches.find((p) => p.id === suggestionId);
 
-			// Optimistic Spotify extension call — mirrors the old addSongToPlaylist path.
-			// The queue item id carries the server-side context so snapshotId is never
-			// supplied by the client.
-			if (playlist?.spotifyId && currentSong.spotifyId) {
-				const result = await addToPlaylist(
-					`spotify:playlist:${playlist.spotifyId}`,
-					[`spotify:track:${currentSong.spotifyId}`],
-				);
-				const outcome = outcomeFromCommandResponse(result);
-				if (outcome.status === "reconnect-required") {
-					setReconnectNeeded(true);
-					return;
+				if (playlist?.spotifyId && currentSong?.spotifyId) {
+					const result = await addToPlaylist(
+						`spotify:playlist:${playlist.spotifyId}`,
+						[`spotify:track:${currentSong.spotifyId}`],
+					);
+					const outcome = outcomeFromCommandResponse(result);
+					if (outcome.status === "reconnect-required") {
+						setReconnectNeeded(true);
+						return;
+					}
+					if (outcome.status === "error") return;
 				}
-				if (outcome.status === "error") return;
+
+				const addResult = await addSongToPlaylistFromQueueItem({
+					data: { itemId, suggestionId },
+				});
+
+				if (!addResult.success) return;
+
+				analytics.capture("song_added_to_playlist", {
+					song_id: currentSong?.id,
+					playlist_id: suggestionId,
+					playlist_name: playlist?.name,
+					orientation: "song",
+				});
+
+				onAddedTo((prev) => [...prev, suggestionId]);
+				onSessionStats((prev) => {
+					const next = new Set(prev.songsWithAdditions);
+					if (currentSong?.id) next.add(currentSong.id);
+					return {
+						...prev,
+						addedCount: prev.addedCount + 1,
+						songsWithAdditions: next,
+					};
+				});
+			} else {
+				// Playlist mode: suggestionId is a song id; add that song to the review playlist.
+				const songSuggestions = currentSuggestions
+					.filter(
+						(s): s is Extract<MatchingSuggestion, { mode: "playlist" }> =>
+							s.mode === "playlist",
+					)
+					.map((s) => s.song);
+
+				const suggestionSong = songSuggestions.find(
+					(s) => s.id === suggestionId,
+				);
+
+				if (currentPlaylist?.spotifyId && suggestionSong?.spotifyId) {
+					const result = await addToPlaylist(
+						`spotify:playlist:${currentPlaylist.spotifyId}`,
+						[`spotify:track:${suggestionSong.spotifyId}`],
+					);
+					const outcome = outcomeFromCommandResponse(result);
+					if (outcome.status === "reconnect-required") {
+						setReconnectNeeded(true);
+						return;
+					}
+					if (outcome.status === "error") return;
+				}
+
+				const addResult = await addSongToPlaylistFromQueueItem({
+					data: { itemId, suggestionId },
+				});
+
+				if (!addResult.success) return;
+
+				analytics.capture("song_added_to_playlist", {
+					song_id: suggestionId,
+					playlist_id: currentPlaylist?.id,
+					playlist_name: currentPlaylist?.name,
+					orientation: "playlist",
+				});
+
+				onAddedTo((prev) => [...prev, suggestionId]);
+				onSessionStats((prev) => {
+					const next = new Set(prev.songsWithAdditions);
+					// Track the review playlist as the matched review item (E12 generalization).
+					if (currentPlaylist?.id) next.add(currentPlaylist.id);
+					return {
+						...prev,
+						addedCount: prev.addedCount + 1,
+						songsWithAdditions: next,
+					};
+				});
 			}
-
-			const addResult = await addSongToPlaylistFromQueueItem({
-				data: { itemId, suggestionId: playlistId },
-			});
-
-			if (!addResult.success) return;
-
-			analytics.capture("song_added_to_playlist", {
-				song_id: currentSong.id,
-				playlist_id: playlistId,
-				playlist_name: playlist?.name,
-			});
-
-			onAddedTo((prev) => [...prev, playlistId]);
-			onSessionStats((prev) => {
-				const next = new Set(prev.songsWithAdditions);
-				next.add(currentSong.id);
-				return {
-					...prev,
-					addedCount: prev.addedCount + 1,
-					songsWithAdditions: next,
-				};
-			});
 		} finally {
 			onReleaseNavigation();
 		}
 	};
 
 	const handleDismiss = async () => {
-		if (!currentSong || !onLockNavigation()) return;
+		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
 			recordCurrentItem();
-			analytics.capture("song_dismissed", { song_id: currentSong.id });
+			if (currentReviewItem.mode === "song") {
+				analytics.capture("song_dismissed", {
+					song_id: currentReviewItem.song.id,
+				});
+			}
 
 			const result = await dismissMatchReviewItem({ data: { itemId } });
 
@@ -850,7 +940,7 @@ function QueueCardContent({
 	};
 
 	const handleNext = async () => {
-		if (!currentSong || !onLockNavigation()) return;
+		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
 			recordCurrentItem();
 			const result = await finishMatchReviewItem({ data: { itemId } });
