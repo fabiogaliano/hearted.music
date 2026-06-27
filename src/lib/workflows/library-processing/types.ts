@@ -66,7 +66,10 @@ export type LibraryProcessingChange =
 			kind: "playlist_management_session_flushed";
 			accountId: string;
 			targetMembershipChanged: boolean;
-			targetMetadataChanged: boolean;
+			/** intent text or genre pills changed — triggers snapshot recompute */
+			scoringConfigChanged: boolean;
+			/** read-time filter predicates changed — syncs sessions, no recompute */
+			readTimeFilterChanged: boolean;
 	  }
 	| { kind: "enrichment_work_available"; accountId: string }
 	| { kind: "songs_unlocked"; accountId: string; songIds: string[] }

@@ -34,6 +34,7 @@ import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
+import { syncActiveQueue } from "@/lib/domains/taste/match-review-queue/service";
 import {
 	canonicalizeGenre,
 	isGenre,
@@ -407,14 +408,14 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 
 		// Pills change the profile hash (genre_pills is an explicit hash input in
 		// 1.4) and alter the genre distribution + fusion weights, so the next match
-		// snapshot must recompute. We emit the same signal as a metadata change so
-		// the reconciler advances matchSnapshotRefresh unconditionally — the
-		// onboarding dialog has no session-flush path, so we cannot rely on flush.
+		// snapshot must recompute. Genre pills are a scoring signal, not a read-time
+		// filter, so we emit scoringConfigChanged — not readTimeFilterChanged.
 		const applyResult = await applyLibraryProcessingChange(
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: session.accountId,
 				targetMembershipChanged: false,
-				targetMetadataChanged: true,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
 			}),
 		);
 		if (Result.isError(applyResult)) {
@@ -477,16 +478,15 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 		}
 
 		// match_intent feeds the playlist profile (intent text → embedding,
-		// computeIntentWeight), so the next match snapshot must recompute. We emit
-		// the same signal as a metadata change so the reconciler advances
-		// matchSnapshotRefresh unconditionally — both edit surfaces (onboarding
-		// dialog, library detail view) lack a session-flush path, so we cannot rely
-		// on flush.
+		// computeIntentWeight), so the next match snapshot must recompute. Intent
+		// text is a scoring signal — not a read-time filter — so we emit
+		// scoringConfigChanged to ensure the reconciler advances matchSnapshotRefresh.
 		const applyResult = await applyLibraryProcessingChange(
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: session.accountId,
 				targetMembershipChanged: false,
-				targetMetadataChanged: true,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
 			}),
 		);
 		if (Result.isError(applyResult)) {
@@ -582,25 +582,53 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 				);
 			}
 
-			// match_intent, genre_pills, and match_filters all feed the playlist
-			// profile and matching snapshot, so invalidate unconditionally after a
-			// successful write — same signal as the individual save functions.
-			const applyResult = await applyLibraryProcessingChange(
-				PlaylistManagementChanges.sessionFlushed({
-					accountId: session.accountId,
-					targetMembershipChanged: false,
-					targetMetadataChanged: true,
-				}),
-			);
-			if (Result.isError(applyResult)) {
-				// Non-fatal: all three fields are written; invalidation failure is
-				// logged but does not roll back or mask the save. The snapshot will
-				// recompute on the next organic trigger.
-				console.error(
-					"[playlists] match config saved but snapshot invalidation failed:",
-					applyResult.error,
+			// Determine what actually changed so we can route to the correct
+			// invalidation path. Scoring signals (intent, genre pills) require a full
+			// snapshot recompute; read-time filter predicates (match_filters) only
+			// need active sessions to be re-synced against the existing snapshot.
+			const existingPlaylist = playlistResult.value;
+			const scoringConfigChanged =
+				matchIntent !== (existingPlaylist.match_intent ?? null) ||
+				JSON.stringify(genrePills) !==
+					JSON.stringify(existingPlaylist.genre_pills ?? []);
+			const readTimeFilterChanged =
+				JSON.stringify(matchFilters) !==
+				JSON.stringify(existingPlaylist.match_filters);
+
+			if (scoringConfigChanged) {
+				// Scoring or mixed change — full snapshot recompute path.
+				const applyResult = await applyLibraryProcessingChange(
+					PlaylistManagementChanges.sessionFlushed({
+						accountId: session.accountId,
+						targetMembershipChanged: false,
+						scoringConfigChanged: true,
+						readTimeFilterChanged,
+					}),
 				);
+				if (Result.isError(applyResult)) {
+					// Non-fatal: fields are written; invalidation failure is logged but
+					// does not roll back or mask the save. The snapshot will recompute
+					// on the next organic trigger.
+					console.error(
+						"[playlists] match config saved but snapshot invalidation failed:",
+						applyResult.error,
+					);
+				}
+			} else if (readTimeFilterChanged) {
+				// Filter-only change — sync the active session without a full recompute.
+				// This is lighter than a snapshot refresh: the ranked pairs stay the
+				// same; only the visible-list predicate applied at queue-read time changes.
+				const syncResult = await syncActiveQueue(session.accountId);
+				if (Result.isError(syncResult)) {
+					// Non-fatal: filters are written; sync failure is logged but does
+					// not roll back the save. Sessions will re-sync on the next read.
+					console.error(
+						"[playlists] match filters saved but session sync failed:",
+						syncResult.error,
+					);
+				}
 			}
+			// If neither changed (idempotent save) no invalidation is needed.
 
 			return { matchIntent, genrePills, matchFilters };
 		},
@@ -671,7 +699,8 @@ export const getAccountTopGenres = createServerFn({ method: "GET" })
 
 const FlushSessionSchema = z.object({
 	targetMembershipChanged: z.boolean(),
-	targetMetadataChanged: z.boolean(),
+	scoringConfigChanged: z.boolean(),
+	readTimeFilterChanged: z.boolean(),
 });
 
 export const flushPlaylistManagementSession = createServerFn({
@@ -682,22 +711,42 @@ export const flushPlaylistManagementSession = createServerFn({
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 
-		if (!data.targetMembershipChanged && !data.targetMetadataChanged) {
+		const nothingChanged =
+			!data.targetMembershipChanged &&
+			!data.scoringConfigChanged &&
+			!data.readTimeFilterChanged;
+		if (nothingChanged) {
 			return { flushed: false };
 		}
 
-		const applyResult = await applyLibraryProcessingChange(
-			PlaylistManagementChanges.sessionFlushed({
-				accountId: session.accountId,
-				targetMembershipChanged: data.targetMembershipChanged,
-				targetMetadataChanged: data.targetMetadataChanged,
-			}),
-		);
-		if (Result.isError(applyResult)) {
-			console.error(
-				"[playlists] library-processing apply failed:",
-				applyResult.error,
+		const needsRefresh =
+			data.targetMembershipChanged || data.scoringConfigChanged;
+
+		if (needsRefresh) {
+			// Membership or scoring change — full snapshot recompute path.
+			const applyResult = await applyLibraryProcessingChange(
+				PlaylistManagementChanges.sessionFlushed({
+					accountId: session.accountId,
+					targetMembershipChanged: data.targetMembershipChanged,
+					scoringConfigChanged: data.scoringConfigChanged,
+					readTimeFilterChanged: data.readTimeFilterChanged,
+				}),
 			);
+			if (Result.isError(applyResult)) {
+				console.error(
+					"[playlists] library-processing apply failed:",
+					applyResult.error,
+				);
+			}
+		} else {
+			// Filter-only flush — sync the active session without enqueueing a refresh.
+			const syncResult = await syncActiveQueue(session.accountId);
+			if (Result.isError(syncResult)) {
+				console.error(
+					"[playlists] filter-only flush session sync failed:",
+					syncResult.error,
+				);
+			}
 		}
 
 		return { flushed: true };

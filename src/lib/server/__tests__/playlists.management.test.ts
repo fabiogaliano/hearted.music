@@ -23,6 +23,7 @@ const {
 	mockSetPlaylistTarget,
 	mockApplyLibraryProcessingChange,
 	mockUpdatePlaylistGenrePills,
+	mockSyncActiveQueue,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -36,6 +37,7 @@ const {
 	mockSetPlaylistTarget: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockUpdatePlaylistGenrePills: vi.fn(),
+	mockSyncActiveQueue: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -83,6 +85,10 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		mockApplyLibraryProcessingChange(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
+	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -505,11 +511,18 @@ describe("flushPlaylistManagementSession", () => {
 		mockApplyLibraryProcessingChange.mockResolvedValue(
 			Result.ok(makeApplyOutcome()),
 		);
+		mockSyncActiveQueue.mockResolvedValue(
+			Result.ok({ appendedCount: 0, alreadyApplied: false }),
+		);
 	});
 
-	it("calls applyLibraryProcessingChange when targets changed", async () => {
+	it("calls applyLibraryProcessingChange when membership changed", async () => {
 		const result = await flushPlaylistManagementSession({
-			data: { targetMembershipChanged: true, targetMetadataChanged: false },
+			data: {
+				targetMembershipChanged: true,
+				scoringConfigChanged: false,
+				readTimeFilterChanged: false,
+			},
 		});
 
 		expect(result.flushed).toBe(true);
@@ -517,21 +530,77 @@ describe("flushPlaylistManagementSession", () => {
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: "acct-1",
 				targetMembershipChanged: true,
-				targetMetadataChanged: false,
+				scoringConfigChanged: false,
+				readTimeFilterChanged: false,
 			}),
 		);
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+	});
+
+	it("calls applyLibraryProcessingChange when scoring config changed", async () => {
+		const result = await flushPlaylistManagementSession({
+			data: {
+				targetMembershipChanged: false,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
+			},
+		});
+
+		expect(result.flushed).toBe(true);
+		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+			PlaylistManagementChanges.sessionFlushed({
+				accountId: "acct-1",
+				targetMembershipChanged: false,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
+			}),
+		);
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+	});
+
+	it("syncs active session for filter-only flush without calling applyLibraryProcessingChange", async () => {
+		const result = await flushPlaylistManagementSession({
+			data: {
+				targetMembershipChanged: false,
+				scoringConfigChanged: false,
+				readTimeFilterChanged: true,
+			},
+		});
+
+		expect(result.flushed).toBe(true);
+		// Filter-only: sync session, do NOT enqueue a snapshot refresh.
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(1);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1");
+	});
+
+	it("still calls applyLibraryProcessingChange for mixed scoring + filter change", async () => {
+		const result = await flushPlaylistManagementSession({
+			data: {
+				targetMembershipChanged: false,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: true,
+			},
+		});
+
+		expect(result.flushed).toBe(true);
+		// Mixed: scoring change dominates — refresh path, no separate sync needed.
+		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledTimes(1);
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
 	});
 
 	it("skips processing when nothing changed", async () => {
 		const result = await flushPlaylistManagementSession({
 			data: {
 				targetMembershipChanged: false,
-				targetMetadataChanged: false,
+				scoringConfigChanged: false,
+				readTimeFilterChanged: false,
 			},
 		});
 
 		expect(result.flushed).toBe(false);
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
 	});
 });
 
@@ -624,7 +693,7 @@ describe("savePlaylistGenrePills", () => {
 		).rejects.toThrow("Failed to save genre pills");
 	});
 
-	it("fires a metadata-changed session-flushed change to advance matchSnapshotRefresh", async () => {
+	it("fires a scoring-changed session-flushed change to advance matchSnapshotRefresh", async () => {
 		await savePlaylistGenrePills({
 			data: { playlistId: "uuid-1", genres: ["rock"] },
 		});
@@ -633,7 +702,8 @@ describe("savePlaylistGenrePills", () => {
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: "acct-1",
 				targetMembershipChanged: false,
-				targetMetadataChanged: true,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
 			}),
 		);
 	});
