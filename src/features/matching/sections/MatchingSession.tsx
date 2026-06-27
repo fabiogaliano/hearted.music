@@ -27,7 +27,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 		realAvailable,
 		reconnectNeeded,
 		navigationDisabled,
-		isLastSong,
+		isLastItem,
 		animateReject,
 		onRefresh,
 		onAdd,
@@ -169,7 +169,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								realAvailable={realAvailable}
 								reconnectNeeded={reconnectNeeded}
 								navigationDisabled={navigationDisabled}
-								isLastSong={isLastSong}
+								isLastSong={isLastItem}
 								suppressTransition={rejecting}
 								onRefresh={onRefresh}
 								onAdd={onAdd}
@@ -191,7 +191,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								suggestions={songSuggestions}
 								addedTo={addedTo}
 								navigationDisabled={navigationDisabled}
-								isLastItem={isLastSong}
+								isLastItem={isLastItem}
 								suppressTransition={rejecting}
 								onAdd={onAdd}
 								onDismiss={animateReject ? handleReject : onDismiss}
