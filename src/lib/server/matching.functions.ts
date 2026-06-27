@@ -68,6 +68,25 @@ export interface MatchingPlaylistMatch {
 	factors: Json;
 }
 
+/** Playlist subject shape for playlist-orientation review cards. */
+export interface MatchingPlaylistForReview {
+	id: string;
+	spotifyId: string;
+	name: string;
+	description: string | null;
+	imageUrl: string | null;
+	trackCount: number | null;
+}
+
+/**
+ * Song candidate row in playlist-mode: song data + fitScore for match percent display.
+ * fitScore = strictnessScore(row) — never the reranker/ordering score (A5, E7).
+ */
+export interface MatchingSongSuggestion {
+	song: MatchingSong;
+	fitScore: number;
+}
+
 // ============================================================================
 // Internal helpers
 // ============================================================================

@@ -487,7 +487,7 @@ describe("getMatchReviewItem", () => {
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		if (result.status === "ready") {
+		if (result.status === "ready" && result.mode === "song") {
 			expect(result.itemId).toBe("item-1");
 			expect(result.reviewItem.id).toBe("song-1");
 			expect(result.reviewItem.name).toBe("Test Song");
@@ -582,7 +582,7 @@ describe("getMatchReviewItem", () => {
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		if (result.status === "ready") {
+		if (result.status === "ready" && result.mode === "song") {
 			// Model rank order is preserved: rank-1 first even though its fitScore is lower.
 			expect(result.suggestions[0].playlist.id).toBe("pl-ranked-first");
 			expect(result.suggestions[1].playlist.id).toBe("pl-ranked-second");
@@ -616,9 +616,24 @@ describe("getMatchReviewItem", () => {
 		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		if (result.status === "ready") {
+		if (result.status === "ready" && result.mode === "song") {
 			expect(result.suggestions[0].score).toBe(0.82);
 		}
+	});
+
+	it("returns unavailable for playlist-orientation items (warming limitation — MSR-39)", async () => {
+		// getMatchReviewItem is song-mode-only for the non-authoritative warming path.
+		// Playlist items return unavailable so the warming prefetch does not crash the
+		// card stack; the authoritative presentMatchReviewItem handles playlist mode.
+		// mockItemOwnership is used rather than setupGetItemFetch because the orientation
+		// guard fires before the session row read, so we only need the ownership fetch.
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+
+		const result = await getMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		// computeVisibleSuggestionList must not be called — guard fires first.
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
 	});
 });
 
@@ -1745,7 +1760,7 @@ describe("presentMatchReviewItem", () => {
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		if (result.status === "ready") {
+		if (result.status === "ready" && result.mode === "song") {
 			expect(result.mode).toBe("song");
 			expect(result.itemId).toBe("item-1");
 			expect(result.reviewItem.id).toBe("song-1");
@@ -1797,7 +1812,7 @@ describe("presentMatchReviewItem", () => {
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		if (result.status === "ready") {
+		if (result.status === "ready" && result.mode === "song") {
 			// Score comes from the captured pair's fitScore, not re-derived.
 			expect(result.suggestions[0].score).toBe(0.88);
 		}
@@ -1831,5 +1846,226 @@ describe("presentMatchReviewItem", () => {
 			"acct-1",
 			expect.any(Array),
 		);
+	});
+
+	// ---------------------------------------------------------------------------
+	// Playlist-orientation arm (MSR-39)
+	// ---------------------------------------------------------------------------
+
+	// Playlist-orientation visible list: subject is a playlist, suggestions are songs.
+	const MOCK_PLAYLIST_LIST = {
+		orientation: "playlist" as const,
+		subject: { orientation: "playlist" as const, playlistId: "pl-review" },
+		suggestions: [
+			{
+				songId: "song-2",
+				playlistId: "pl-review",
+				fitScore: 0.75,
+				modelRank: 1,
+				visibleRank: 1,
+			},
+		],
+	};
+
+	/**
+	 * Wires mockFrom for playlist-orientation presentMatchReviewItem DB fetches:
+	 *  - ownership (queue item) + session reads use the same chain as setupPresentItemFetch
+	 *  - playlist table: single row via .eq().single() (the review subject)
+	 *  - song table: array via .in() (the song candidates)
+	 * No song_audio_feature or song_analysis mocks needed — playlist mode does not fetch them.
+	 */
+	function setupPlaylistPresentItemFetch(
+		opts: {
+			item?: typeof BASE_PLAYLIST_ITEM | null;
+			sessionRow?: { strictness_min_score: number } | null;
+			playlistRow?: {
+				id: string;
+				name: string;
+				match_intent: string | null;
+				song_count: number | null;
+				image_url: string | null;
+				spotify_id: string;
+			} | null;
+			songRows?: Array<{
+				id: string;
+				name: string;
+				artists: string[];
+				album_name: string | null;
+				image_url: string | null;
+				spotify_id: string;
+				genres: string[];
+			}>;
+			songRowsError?: boolean;
+		} = {},
+	) {
+		const {
+			item = BASE_PLAYLIST_ITEM,
+			sessionRow = { strictness_min_score: 0 },
+			playlistRow = {
+				id: "pl-review",
+				name: "Review Playlist",
+				match_intent: "test intent",
+				song_count: 20,
+				image_url: "pl.jpg",
+				spotify_id: "sp-pl-review",
+			},
+			songRows = [
+				{
+					id: "song-2",
+					name: "Suggested Song",
+					artists: ["Suggested Artist"],
+					album_name: "Suggested Album",
+					image_url: "sg.jpg",
+					spotify_id: "sp-song-2",
+					genres: ["rock"],
+				},
+			],
+			songRowsError = false,
+		} = opts;
+
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "match_review_queue_item") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi
+									.fn()
+									.mockResolvedValue({ data: item, error: null }),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "match_review_session") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi
+									.fn()
+									.mockResolvedValue({ data: sessionRow, error: null }),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							single: vi.fn().mockResolvedValue({
+								data: playlistRow,
+								error: playlistRow ? null : { message: "not found" },
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						in: vi.fn().mockResolvedValue({
+							data: songRowsError ? null : songRows,
+							error: songRowsError ? { message: "db error" } : null,
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+	}
+
+	it("returns ready with playlist reviewItem and song suggestions for a playlist-orientation capture", async () => {
+		setupPlaylistPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.itemId).toBe("item-1");
+			expect(result.reviewItem.id).toBe("pl-review");
+			expect(result.reviewItem.name).toBe("Review Playlist");
+			expect(result.reviewItem.spotifyId).toBe("sp-pl-review");
+			expect(result.suggestions).toHaveLength(1);
+			expect(result.suggestions[0].song.id).toBe("song-2");
+			expect(result.suggestions[0].song.name).toBe("Suggested Song");
+			// fitScore = strictnessScore from captured pair — never reranker/ordering (A5, E7).
+			expect(result.suggestions[0].fitScore).toBe(0.75);
+		}
+	});
+
+	it("does not clear song newness on playlist-mode capture", async () => {
+		// clearSongNewness is song-mode-only; calling it on a playlist card would
+		// reference a null song_id from the item row.
+		setupPlaylistPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+
+		await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockClearSongNewness).not.toHaveBeenCalled();
+	});
+
+	it("returns unavailable missing-song when the review playlist row is not found", async () => {
+		setupPlaylistPresentItemFetch({ playlistRow: null });
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("missing-song");
+		}
+	});
+
+	it("returns retryable-error when the suggestion song rows fetch fails on playlist mode", async () => {
+		setupPlaylistPresentItemFetch({ songRowsError: true });
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
+	});
+
+	it("uses fitScore from captured pairs in playlist mode (already_captured path)", async () => {
+		setupPlaylistPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+		// already_captured returns different fitScore than the fresh derivation.
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: [
+				{
+					songId: "song-2",
+					playlistId: "pl-review",
+					modelRank: 1,
+					visibleRank: 1,
+					fitScore: 0.63,
+				},
+			],
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "playlist") {
+			// fitScore comes from the captured pair row, not the fresh derivation.
+			expect(result.suggestions[0].fitScore).toBe(0.63);
+		}
 	});
 });

@@ -32,7 +32,12 @@ import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/prefer
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getOrderedUndecidedSongIds } from "@/lib/server/matching.functions";
-import type { MatchingPlaylistMatch, MatchingSong } from "./matching.functions";
+import type {
+	MatchingPlaylistForReview,
+	MatchingPlaylistMatch,
+	MatchingSong,
+	MatchingSongSuggestion,
+} from "./matching.functions";
 
 const NoInputSchema = z.undefined();
 
@@ -42,10 +47,18 @@ export type MatchReviewItemRead =
 	| {
 			status: "ready";
 			itemId: string;
-			/** Orientation of the card shown to the user (E10). */
-			mode: "song" | "playlist";
+			// Song orientation: review subject is a song; suggestions are playlists.
+			mode: "song";
 			reviewItem: MatchingSong;
 			suggestions: MatchingPlaylistMatch[];
+	  }
+	| {
+			status: "ready";
+			itemId: string;
+			// Playlist orientation: review subject is a playlist; suggestions are songs.
+			mode: "playlist";
+			reviewItem: MatchingPlaylistForReview;
+			suggestions: MatchingSongSuggestion[];
 	  }
 	| {
 			status: "unavailable";
@@ -777,7 +790,97 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				};
 			}
 
-			// Playlist mode is not implemented in this story.
+			// Playlist arm: review subject is a playlist; suggestions are songs.
+			if (
+				list.orientation === "playlist" &&
+				list.subject.orientation === "playlist"
+			) {
+				const playlistId = list.subject.playlistId;
+
+				const [playlistRowResult, songRowsResult] = await Promise.all([
+					supabase
+						.from("playlist")
+						.select("id, name, match_intent, song_count, image_url, spotify_id")
+						.eq("id", playlistId)
+						.single(),
+					supabase
+						.from("song")
+						.select(
+							"id, name, artists, album_name, image_url, spotify_id, genres",
+						)
+						.in(
+							"id",
+							activeSuggestions.map((s) => s.songId),
+						),
+				]);
+
+				if (playlistRowResult.error || !playlistRowResult.data) {
+					return {
+						status: "unavailable",
+						itemId,
+						reason: "missing-song",
+						message: "This playlist could not be found.",
+					};
+				}
+
+				if (songRowsResult.error) {
+					return {
+						status: "retryable-error",
+						itemId,
+						message: "Couldn't load this match card. Try again.",
+					};
+				}
+
+				const pl = playlistRowResult.data;
+				const reviewItem: MatchingPlaylistForReview = {
+					id: pl.id,
+					spotifyId: pl.spotify_id,
+					name: pl.name,
+					description: pl.match_intent,
+					imageUrl: pl.image_url,
+					trackCount: pl.song_count,
+				};
+
+				const songMap = new Map(
+					(songRowsResult.data ?? []).map((s) => [s.id, s]),
+				);
+
+				// activeSuggestions arrives ordered by visibleRank from the capture RPC.
+				const suggestions: MatchingSongSuggestion[] = [];
+				for (const s of activeSuggestions
+					.slice()
+					.sort((a, b) => a.visibleRank - b.visibleRank)) {
+					const songRow = songMap.get(s.songId);
+					if (!songRow) continue;
+					suggestions.push({
+						song: {
+							id: songRow.id,
+							spotifyId: songRow.spotify_id,
+							name: songRow.name,
+							artist: songRow.artists[0] ?? "Unknown Artist",
+							album: songRow.album_name,
+							albumArtUrl: songRow.image_url,
+							genres: songRow.genres,
+							// Audio features and analysis are not surfaced in the playlist-mode
+							// card render; fetching them would add two joins with no UI benefit.
+							audioFeatures: null,
+							analysis: null,
+						},
+						// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
+						fitScore: s.fitScore,
+					});
+				}
+
+				return {
+					status: "ready",
+					itemId,
+					mode: "playlist",
+					reviewItem,
+					suggestions,
+				};
+			}
+
+			// Should not be reachable; guards above cover all orientations.
 			return {
 				status: "retryable-error",
 				itemId,
