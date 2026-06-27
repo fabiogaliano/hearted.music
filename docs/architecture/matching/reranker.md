@@ -68,3 +68,34 @@ Pattern: the reranker's influence only appears at blend ≥ 0.7; 0.7 directional
 1. **Live DeepInfra smoke test** (needs a key, ~15 min): confirm a real `200` + `scores`, and specifically that DeepInfra accepts the `instruction` field — it is now **always sent** (canonical default). If DeepInfra rejects it, rerank degrades to original order, but no longer silently: the degradation is logged per call (`[reranker] provider rerank failed …`) and shows up as `0/M playlists` in the summary line. `scripts/matching-lab/verify-reranker.ts` is the ready-made probe.
 2. ~~**Add a "reranker ran" log/metric.**~~ **Done 2026-06-11:** `rerankMatches` logs `[rerank] reranked N docs across M/T playlists (K skipped/degraded)` on every call, and `RerankerService` warns on each graceful-degradation path. The DeepInfra request/response shape is also pinned by unit tests (`deepinfra/__tests__/rerank.test.ts`) so a regression to the legacy body shape fails CI instead of dying silently.
 3. **Blend/document tuning is deferred** to the re-run (above). Shipping the contract + document fix at the current blend 0.3 is the conservative turn-on (reranker contributes 30%).
+
+## Ranking vs provider reranking (MSR-13/14/15 terminology)
+
+Two distinct concepts share similar names:
+
+**Provider reranking** (this document's subject) is the cross-encoder call to DeepInfra (or the local ONNX model). It produces a `reranker_score` per (song, playlist) pair. The blend `0.7 * fused + 0.3 * reranker` becomes `ordering_score`.
+
+**Ranking** is the persisted oriented order stored in `match_result_ranking`. Each row has an `ordering_score` (blend when reranker ran, fused fallback when it did not), a `source` (`'rerank'` or `'fused_fallback'`), and a `rank` (1-based position within the orientation's ordered list).
+
+### Critical invariant (A5/E7)
+
+`strictnessScore(row) = fused_score ?? score`
+
+This is the ONLY value used for:
+- Strictness read-time filtering (queue visibility gate)
+- Match percent displayed to the user (`fitScore` in UI types)
+- Queue ordering (`sourceScore` / `maxScore` in derivation)
+
+`reranker_score`, `ordering_score`, and `match_result_ranking.rank` are NEVER used as a strictness or display source. They control the order in which suggestions are presented, not the score shown to users or the gate for visibility.
+
+### Document modes
+
+When building rerank documents:
+- A song with analysis prose → `document_mode: 'analysis'`; analysis text truncated to ~1600 chars (`ANALYSIS_TAIL_MAX_CHARS`)
+- A playlist or song without analysis → `document_mode: 'metadata'`; metadata one-liner only
+
+The `document_mode` is stored per `match_result_ranking` row so snapshot hash changes invalidate stale rows when the mode changes.
+
+### Reranker instruction per orientation
+
+`RERANK_INSTRUCTION_BY_ORIENTATION` maps each `MatchOrientation` to its cross-encoder task instruction. The song-orientation instruction asks the model to judge which playlist is a good home for a given song; the playlist-orientation instruction is the converse. Changing either instruction changes the `rankingConfigHash`, which invalidates existing snapshots.

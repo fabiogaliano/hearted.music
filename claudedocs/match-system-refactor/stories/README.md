@@ -80,8 +80,11 @@ MSR-09 + MSR-20 -> MSR-35 Change facts/filter-only sync
 MSR-19 + MSR-22 + MSR-35 -> MSR-36 Read-time filter hash/predicates
 MSR-36 -> MSR-37 Filter metadata retryable append
 
+Plan-gap closure (orchestrator-added):
+MSR-34 [PLAN-GAP] -> MSR-39 Functional playlist ready-path
+
 Final hardening:
-MSR-11 + MSR-34 + MSR-37 -> MSR-38 Docs/regression hardening
+MSR-11 + MSR-34 + MSR-37 + MSR-39 -> MSR-38 Docs/regression hardening
 ```
 
 ## Stories
@@ -125,7 +128,8 @@ MSR-11 + MSR-34 + MSR-37 -> MSR-38 Docs/regression hardening
 | [MSR-35](./MSR-35-playlist-management-filter-change-facts.md) | Playlist-management change facts and filter-only sync invalidation | Phase 8 | MSR-09, MSR-20 | MSR-36, MSR-37 |
 | [MSR-36](./MSR-36-read-time-filter-hash-predicates.md) | Read-time filter hash and visible-list predicates | Phase 8 | MSR-19, MSR-22, MSR-35 | MSR-37 |
 | [MSR-37](./MSR-37-filter-metadata-retryable-append.md) | Filter metadata retryable errors and newly visible subject append | Phase 8 | MSR-36 | MSR-38 |
-| [MSR-38](./MSR-38-architecture-docs-regression-hardening.md) | Architecture docs, stories, and regression hardening | Phase 9 | MSR-11, MSR-34, MSR-37 | Release readiness |
+| MSR-39 (orchestrator-added) | Functional playlist ready-path — playlist arm in `presentMatchReviewItem`, discriminated `MatchReviewItemRead.ready`, playlist handlers in `QueueCardContent` | Phase 7.5 | MSR-34 [PLAN-GAP] | MSR-38 |
+| [MSR-38](./MSR-38-architecture-docs-regression-hardening.md) | Architecture docs, stories, and regression hardening | Phase 9 | MSR-11, MSR-34, MSR-37, MSR-39 | Release readiness |
 
 ## Shared-contract gate
 
@@ -137,7 +141,7 @@ Do not begin downstream queue, ranking, route/UI, mutation, or read-time filter 
 2. **Schema:** MSR-05 through MSR-08, preferably short serial PRs because `database.types.ts` is generated and conflict-prone.
 3. **Parallel lanes after schema:** refresh MSR-09 through MSR-11; ranking MSR-12 through MSR-17; preference/queue MSR-18 through MSR-21 after ranking publication; UI components can prototype behind typed fixtures after MSR-31 seams exist.
 4. **Authority and actions:** MSR-22 through MSR-28.
-5. **Launch UI:** MSR-29 through MSR-34.
+5. **Launch UI:** MSR-29 through MSR-34, plus orchestrator-added MSR-39 (functional playlist ready-path, plan-gap closure).
 6. **Read-time filters:** MSR-35 through MSR-37.
 7. **Final hardening:** MSR-38.
 

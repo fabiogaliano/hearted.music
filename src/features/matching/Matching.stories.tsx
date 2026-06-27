@@ -4,7 +4,12 @@ import { useState } from "react";
 import { playlistKeys } from "@/features/playlists/queries";
 import { matchExperience, matchingSongs } from "@/stories/fixtures";
 import { Matching } from "./Matching";
-import type { CompletionStats } from "./types";
+import type {
+	CompletionStats,
+	PlaylistForMatching,
+	SongForMatching,
+	SongSuggestionRow,
+} from "./types";
 
 export default {
 	title: "Match/Page",
@@ -243,3 +248,144 @@ export const EmptyState: Story = () => (
 		onExit={() => {}}
 	/>
 );
+
+// F6 — named SongMode story: shows a single song-orientation review card with
+// its playlist suggestions. Used to verify song-mode UI in visual review.
+const SONG_MODE_SONG: SongForMatching = {
+	id: "story-song-1",
+	spotifyId: "sp-story-1",
+	name: "Midnight City",
+	artist: "M83",
+	album: "Hurry Up, We're Dreaming",
+	albumArtUrl: null,
+	genres: ["dream pop", "shoegaze"],
+	audioFeatures: { tempo: 105, energy: 0.82, valence: 0.74 },
+	analysis: null,
+};
+
+export const SongMode: Story = () => {
+	const first = matchingSongs[0];
+	const song = first?.song ?? SONG_MODE_SONG;
+	const playlists = first?.playlists ?? [];
+
+	return (
+		<Matching
+			mode="song"
+			currentReviewItem={{ mode: "song", song }}
+			currentSuggestions={playlists.map((p) => ({
+				mode: "song" as const,
+				playlist: p,
+			}))}
+			totalSongs={matchingSongs.length || 1}
+			offset={0}
+			addedTo={[]}
+			isComplete={false}
+			completionStats={{
+				totalItems: matchingSongs.length || 1,
+				itemsMatched: 0,
+				totalAdditions: 0,
+				dismissedCount: 0,
+				skippedCount: 0,
+			}}
+			recentItems={[]}
+			onAdd={() => {}}
+			onDismiss={() => {}}
+			onNext={() => {}}
+			onExit={() => {}}
+		/>
+	);
+};
+SongMode.meta = {
+	description:
+		"Song-mode review card: a song is the review subject; playlists are suggestions. fitScore comes from strictnessScore (fused_score ?? score), never reranker/ordering score.",
+};
+
+// F6 — named PlaylistMode story: shows a single playlist-orientation review
+// card with song suggestions. Inline fixture because match-experience.json
+// contains song-mode data only; playlist-mode card shapes were added in MSR-39.
+const PLAYLIST_REVIEW_ITEM: PlaylistForMatching = {
+	id: "story-pl-1",
+	spotifyId: "sp-story-pl-1",
+	name: "Late Night Drives",
+	description: "Synth-heavy tracks for empty motorways at 2am.",
+	imageUrl: null,
+	trackCount: 34,
+};
+
+const PLAYLIST_MODE_SONGS: SongSuggestionRow[] = [
+	{
+		song: {
+			id: "story-song-a",
+			spotifyId: "sp-a",
+			name: "Midnight City",
+			artist: "M83",
+			album: "Hurry Up, We're Dreaming",
+			albumArtUrl: null,
+			genres: ["dream pop", "shoegaze"],
+			audioFeatures: null,
+			analysis: null,
+		},
+		// fitScore = strictnessScore from captured pair — never reranker/ordering score (A5/E7)
+		fitScore: 0.87,
+	},
+	{
+		song: {
+			id: "story-song-b",
+			spotifyId: "sp-b",
+			name: "Crystalised",
+			artist: "The xx",
+			album: "xx",
+			albumArtUrl: null,
+			genres: ["indie pop", "dream pop"],
+			audioFeatures: null,
+			analysis: null,
+		},
+		fitScore: 0.79,
+	},
+	{
+		song: {
+			id: "story-song-c",
+			spotifyId: "sp-c",
+			name: "Digital Love",
+			artist: "Daft Punk",
+			album: "Discovery",
+			albumArtUrl: null,
+			genres: ["electronic", "french house"],
+			audioFeatures: null,
+			analysis: null,
+		},
+		fitScore: 0.71,
+	},
+];
+
+export const PlaylistMode: Story = () => (
+	<Matching
+		mode="playlist"
+		currentReviewItem={{ mode: "playlist", playlist: PLAYLIST_REVIEW_ITEM }}
+		currentSuggestions={PLAYLIST_MODE_SONGS.map((row) => ({
+			mode: "playlist" as const,
+			song: row.song,
+			fitScore: row.fitScore,
+		}))}
+		totalSongs={3}
+		offset={0}
+		addedTo={[]}
+		isComplete={false}
+		completionStats={{
+			totalItems: 3,
+			itemsMatched: 0,
+			totalAdditions: 0,
+			dismissedCount: 0,
+			skippedCount: 0,
+		}}
+		recentItems={[]}
+		onAdd={() => {}}
+		onDismiss={() => {}}
+		onNext={() => {}}
+		onExit={() => {}}
+	/>
+);
+PlaylistMode.meta = {
+	description:
+		"Playlist-mode review card: a playlist is the review subject; songs are suggestions with fitScore. The authoritative server path is presentMatchReviewItem — getMatchReviewItem returns unavailable for playlist items (known warming limitation, MSR-39).",
+};
