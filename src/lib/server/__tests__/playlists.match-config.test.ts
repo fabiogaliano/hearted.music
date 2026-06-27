@@ -386,9 +386,12 @@ describe("savePlaylistMatchConfig", () => {
 		});
 
 		// Filter-only: no applyLibraryProcessingChange, session sync instead.
+		// Both orientations are synced so newly visible subjects are appended to
+		// whichever session is active (MSR-37).
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(1);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1");
+		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "playlist");
 	});
 
 	it("takes scoring path when intent changed even if filters are the same", async () => {

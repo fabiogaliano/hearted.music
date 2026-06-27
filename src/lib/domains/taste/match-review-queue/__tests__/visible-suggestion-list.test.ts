@@ -1165,3 +1165,224 @@ describe("deriveVisibleSuggestions — read-time filter predicates", () => {
 		expect(result).toHaveLength(1);
 	});
 });
+
+/**
+ * Returns a chain where the maybySingle terminal resolves with a DB error.
+ * Used to simulate fetchSongFilterMeta failures without altering other queries.
+ */
+function makeMaybySingleErrorChain(code: string, message: string) {
+	const error = { code, message };
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn(),
+		in: vi.fn(),
+		is: vi.fn(),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue({ data: null, error }),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.eq.mockReturnValue(chain);
+	chain.in.mockReturnValue(chain);
+	chain.is.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
+/**
+ * Returns a chain where the .in() terminal resolves with a DB error.
+ * Used to simulate fetchPlaylistsMatchFilters and fetchSongsFilterMeta failures.
+ */
+function makeInTerminalErrorChain(code: string, message: string) {
+	const error = { code, message };
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn(),
+		in: vi.fn().mockResolvedValue({ data: null, error }),
+		is: vi.fn(),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.eq.mockReturnValue(chain);
+	chain.is.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
+describe("computeVisibleSuggestionList — filter-metadata retryable errors (MSR-37)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("song orientation: song metadata DB failure → db-error (not ok/empty)", async () => {
+		// Entitlement passes but the song metadata query for read-time filters fails.
+		// This must surface as db-error so the caller returns retryable-error instead
+		// of silently hiding all suggestions by treating them as missing metadata.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				// fetchSongFilterMeta: song query → DB error
+				.mockReturnValueOnce(
+					makeMaybySingleErrorChain("PGRST301", "connection timeout"),
+				)
+				// fetchSongFilterMeta: liked_song query — also fails (both in Promise.all)
+				.mockReturnValue(
+					makeMaybySingleErrorChain("PGRST301", "connection timeout"),
+				),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-a",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makeSongItem(), 0.0);
+
+		// Must be db-error, not ok with empty suggestions — the distinction ensures
+		// the caller shows Retry rather than an empty/unavailable card state.
+		expect(result.kind).toBe("db-error");
+	});
+
+	it("song orientation: playlist filter config DB failure → db-error", async () => {
+		// Song metadata fetch succeeds; the playlist match_filters query fails.
+		// The result must still be db-error so callers can retry rather than
+		// incorrectly applying no filter (pass-through) or hiding all suggestions.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				// fetchSongFilterMeta: song row → success (no language, etc.)
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				// fetchSongFilterMeta: liked_song row → success
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				// fetchPlaylistsMatchFilters: .in() terminal → DB error
+				.mockReturnValue(
+					makeInTerminalErrorChain("PGRST301", "connection timeout"),
+				),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-a",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makeSongItem(), 0.0);
+
+		expect(result.kind).toBe("db-error");
+	});
+
+	it("playlist orientation: song metadata DB failure → db-error", async () => {
+		// Playlist ownership passes; the song metadata batch fetch fails.
+		// A db-error here prevents wrongly hiding newly-liked songs whose metadata
+		// is temporarily unavailable from transient DB errors.
+		const from = vi
+			.fn()
+			// checkPlaylistOwned: from("playlist").maybySingle → owned
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			// fetchPlaylistsMatchFilters: from("playlist").in() → no filters
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			// fetchSongsFilterMeta: from("song").in() → DB error
+			.mockReturnValueOnce(
+				makeInTerminalErrorChain("PGRST301", "connection timeout"),
+			)
+			// fetchSongsFilterMeta: from("liked_song")... — won't be reached on error
+			.mockReturnValue(makeIsTerminalChain({ data: [], error: null }));
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-d1",
+					score: 0.85,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("db-error");
+	});
+
+	it("playlist orientation: playlist filter config DB failure → db-error", async () => {
+		// Playlist ownership passes; the playlist match_filters fetch fails before
+		// song metadata is even loaded. Must be db-error so that callers never
+		// silently apply no-filter semantics on a transient failure.
+		const from = vi
+			.fn()
+			// checkPlaylistOwned: from("playlist").maybySingle → owned
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			// fetchPlaylistsMatchFilters: from("playlist").in() → DB error
+			.mockReturnValue(
+				makeInTerminalErrorChain("PGRST301", "connection timeout"),
+			);
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-d1",
+					score: 0.85,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("db-error");
+	});
+});

@@ -14,7 +14,10 @@ import {
 	deriveUndecidedSongsForQueue,
 	getOrderedUndecidedSubjects,
 } from "../service";
-import type { MatchReviewQueueItem } from "../types";
+import type {
+	MatchReviewQueueItem,
+	QueueVisibilityConfigHashInput,
+} from "../types";
 
 // ============================================================================
 // Pure derivation tests — no mocks needed
@@ -1473,6 +1476,110 @@ describe("appendSnapshotDelta", () => {
 			expect(result.value.alreadyApplied).toBe(false);
 		}
 	});
+
+	it("appends newly-visible subjects when read-time filters are loosened (different hash bypasses idempotency guard)", async () => {
+		// Pre-condition: this snapshot was already applied under STRICT filters that
+		// excluded "song-newly-visible". The strict composite key is in appliedIds.
+		// After loosening, the new composite key (same snapshot + loosened hash) is
+		// absent → idempotency guard does NOT short-circuit → newly-visible subject
+		// is appended; already-queued subject is excluded by fetchQueuedSongIds.
+		// This test fails if: (a) idempotency guard ignores the hash component,
+		// (b) hash is insensitive to filter changes, or (c) fetchQueuedSongIds
+		// exclusion is removed (would produce appendedCount=2 instead of 1).
+		const strictFilters = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-A", { version: 1, languages: { codes: ["en"] } }],
+		]);
+		const loosenedFilters = new Map<string, PlaylistMatchFiltersV1 | null>([
+			["pl-A", null],
+		]);
+
+		const session = fakeSession(); // orientation='song', minScore=0.5
+
+		const strictReadTimeHash = computeReadTimeFiltersHash(strictFilters);
+		const loosenedReadTimeHash = computeReadTimeFiltersHash(loosenedFilters);
+
+		const strictVisHash = computeVisibilityConfigHash({
+			orientation: session.orientation,
+			minScore: session.strictnessMinScore,
+			readTimeFiltersHash: strictReadTimeHash,
+		});
+		const loosenedVisHash = computeVisibilityConfigHash({
+			orientation: session.orientation,
+			minScore: session.strictnessMinScore,
+			readTimeFiltersHash: loosenedReadTimeHash,
+		});
+
+		// The two hashes must differ — otherwise this test proves nothing.
+		expect(strictVisHash).not.toBe(loosenedVisHash);
+
+		// The session already recorded the strict hash as applied.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set([`${SNAPSHOT_ID}:${strictVisHash}`])),
+		);
+
+		// Filters have since been loosened.
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(loosenedFilters),
+		);
+
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-already-queued",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-newly-visible",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+
+		// Both songs are entitled.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [
+					{ song_id: "song-already-queued" },
+					{ song_id: "song-newly-visible" },
+				],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		// "song-already-queued" was inserted during the strict pass and must not be duplicated.
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set(["song-already-queued"])),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(0));
+		vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
+
+		const result = await appendSnapshotDelta(session, SNAPSHOT_ID, ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.appendedCount).toBe(1);
+			expect(result.value.alreadyApplied).toBe(false);
+		}
+
+		// Only "song-newly-visible" is inserted; the already-queued song is excluded.
+		const inserted = vi.mocked(queries.insertQueueItems).mock.calls[0]?.[0];
+		expect(inserted).toHaveLength(1);
+		expect(inserted?.[0]?.songId).toBe("song-newly-visible");
+		expect(inserted?.[0]?.position).toBe(1); // appended at max(0)+1
+
+		// The loosened hash (not the strict hash) is recorded as the new applied key.
+		expect(queries.insertSessionSnapshot).toHaveBeenCalledWith(
+			SESSION_ID,
+			SNAPSHOT_ID,
+			1,
+			loosenedVisHash,
+		);
+	});
 });
 
 // ============================================================================
@@ -1648,5 +1755,51 @@ describe("markItemResolved", () => {
 		if (Result.isOk(result)) {
 			expect(result.value).toBeNull();
 		}
+	});
+});
+
+describe("computeVisibilityConfigHash — filter change produces new hash", () => {
+	const baseInput: QueueVisibilityConfigHashInput = {
+		orientation: "song",
+		minScore: 0.5,
+		readTimeFiltersHash: "rtf_00000001",
+	};
+
+	it("same inputs produce the same hash (idempotency)", () => {
+		expect(computeVisibilityConfigHash(baseInput)).toBe(
+			computeVisibilityConfigHash({ ...baseInput }),
+		);
+	});
+
+	it("changed readTimeFiltersHash produces a different visibility hash (loosened filters = new hash)", () => {
+		const loosened: QueueVisibilityConfigHashInput = {
+			...baseInput,
+			readTimeFiltersHash: "rtf_00000002",
+		};
+		// A new hash allows appendSnapshotDelta to append newly visible subjects
+		// that were hidden by the previous, stricter filter config (MSR-37).
+		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
+			computeVisibilityConfigHash(loosened),
+		);
+	});
+
+	it("changed minScore produces a different visibility hash", () => {
+		const lowerThreshold: QueueVisibilityConfigHashInput = {
+			...baseInput,
+			minScore: 0.3,
+		};
+		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
+			computeVisibilityConfigHash(lowerThreshold),
+		);
+	});
+
+	it("changed orientation produces a different visibility hash", () => {
+		const playlistMode: QueueVisibilityConfigHashInput = {
+			...baseInput,
+			orientation: "playlist",
+		};
+		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
+			computeVisibilityConfigHash(playlistMode),
+		);
 	});
 });

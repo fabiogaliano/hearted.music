@@ -615,17 +615,23 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					);
 				}
 			} else if (readTimeFilterChanged) {
-				// Filter-only change — sync the active session without a full recompute.
-				// This is lighter than a snapshot refresh: the ranked pairs stay the
-				// same; only the visible-list predicate applied at queue-read time changes.
-				const syncResult = await syncActiveQueue(session.accountId);
-				if (Result.isError(syncResult)) {
-					// Non-fatal: filters are written; sync failure is logged but does
-					// not roll back the save. Sessions will re-sync on the next read.
-					console.error(
-						"[playlists] match filters saved but session sync failed:",
-						syncResult.error,
+				// Filter-only change — sync all active sessions without a full recompute.
+				// Both orientations: filter predicates apply to song-mode and playlist-mode
+				// queues alike; a changed visibility hash allows newly visible subjects to
+				// be appended from the already-applied snapshot (MSR-37).
+				for (const orientation of ["song", "playlist"] as const) {
+					const syncResult = await syncActiveQueue(
+						session.accountId,
+						orientation,
 					);
+					if (Result.isError(syncResult)) {
+						// Non-fatal: filters are written; sync failure is logged but does
+						// not roll back the save. Sessions will re-sync on the next read.
+						console.error(
+							"[playlists] match filters saved but session sync failed:",
+							syncResult.error,
+						);
+					}
 				}
 			}
 			// If neither changed (idempotent save) no invalidation is needed.
@@ -739,13 +745,20 @@ export const flushPlaylistManagementSession = createServerFn({
 				);
 			}
 		} else {
-			// Filter-only flush — sync the active session without enqueueing a refresh.
-			const syncResult = await syncActiveQueue(session.accountId);
-			if (Result.isError(syncResult)) {
-				console.error(
-					"[playlists] filter-only flush session sync failed:",
-					syncResult.error,
+			// Filter-only flush — sync all active sessions without enqueueing a refresh.
+			// Both orientations share the same filter predicates; syncing both ensures
+			// newly visible subjects are appended to whichever session is active (MSR-37).
+			for (const orientation of ["song", "playlist"] as const) {
+				const syncResult = await syncActiveQueue(
+					session.accountId,
+					orientation,
 				);
+				if (Result.isError(syncResult)) {
+					console.error(
+						"[playlists] filter-only flush session sync failed:",
+						syncResult.error,
+					);
+				}
 			}
 		}
 
