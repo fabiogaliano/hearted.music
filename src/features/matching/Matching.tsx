@@ -111,7 +111,7 @@ export function Matching({
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
 					navigationDisabled={navigationDisabled}
-					isLastSong={offset >= totalSongs - 1}
+					isLastItem={offset >= totalSongs - 1}
 					animateReject
 					onAdd={onAdd}
 					onDismiss={onDismiss}
@@ -126,7 +126,7 @@ export function Matching({
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
 					navigationDisabled={navigationDisabled}
-					isLastSong={offset >= totalSongs - 1}
+					isLastItem={offset >= totalSongs - 1}
 					animateReject
 					onAdd={onAdd}
 					onDismiss={onDismiss}

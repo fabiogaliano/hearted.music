@@ -3,9 +3,11 @@ import { Link } from "@tanstack/react-router";
 
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
+import type { MatchViewMode } from "../types";
 
 // "no-matches" maps to the case where a queue exists but every item was filtered
 // out by the user's strictness setting. "caught-up" is when all items are resolved.
+// Reason values per H8 (match-system-terminology-decisions.md).
 type Reason =
 	| "no-context"
 	| "caught-up"
@@ -16,9 +18,11 @@ type Reason =
 
 interface Props {
 	reason: Reason;
-	// Only meaningful for reason="no-matches"/"filtered": entitled, undecided songs
+	// Only meaningful for reason="filtered": entitled, undecided review items
 	// whose only matches sit below the user's strictness bar.
 	hiddenCount?: number;
+	/** Orientation of the active session — drives H9 noun in filtered copy. */
+	mode?: MatchViewMode;
 }
 
 const staticCopy = {
@@ -67,21 +71,30 @@ const staticCopy = {
 	},
 } as const;
 
-function filteredBody(hiddenCount: number): string {
+// H9: noun switches by orientation — songs in song mode, playlists in playlist mode.
+function filteredBody(
+	hiddenCount: number,
+	mode: MatchViewMode = "song",
+): string {
+	const noun = mode === "playlist" ? "playlist" : "song";
 	const subject =
 		hiddenCount === 1
-			? "1 song has matches"
-			: `${hiddenCount} songs have matches`;
+			? `1 ${noun} has matches`
+			: `${hiddenCount} ${noun}s have matches`;
 	return `${subject} just under your strictness setting. Loosen it up if you're curious.`;
 }
 
-export function MatchingEmptyState({ reason, hiddenCount = 0 }: Props) {
+export function MatchingEmptyState({
+	reason,
+	hiddenCount = 0,
+	mode = "song",
+}: Props) {
 	const copy =
 		reason === "filtered"
 			? {
 					overline: "quiet in here",
 					headline: ["Some songs are waiting", "below your bar."] as const,
-					body: filteredBody(hiddenCount),
+					body: filteredBody(hiddenCount, mode),
 					link: {
 						to: "/settings",
 						hash: "settings-section-matching",

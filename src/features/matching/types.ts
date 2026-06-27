@@ -109,7 +109,10 @@ type MatchingSessionCommonProps = {
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
-	isLastSong?: boolean;
+	/** True when this is the last unresolved item in the session — drives
+	 *  "Finish matching" vs "Skip Song/Playlist" in the controls. Renamed from
+	 *  isLastSong for orientation-neutral consistency (MSR-34). */
+	isLastItem?: boolean;
 	/** Play the Tinder-style fly-off when the user rejects. The walkthrough leaves
 	 *  this off: there, reject ends the rehearsal rather than advancing a song. */
 	animateReject?: boolean;

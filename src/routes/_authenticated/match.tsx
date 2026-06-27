@@ -183,7 +183,7 @@ function QueueMatchPage() {
 	if (!hasQueue) {
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason="no-context" />
+				<MatchingEmptyState reason="no-context" mode={mode} />
 			</div>
 		);
 	}
@@ -201,7 +201,11 @@ function QueueMatchPage() {
 			hiddenSongCount > 0 ? "filtered" : total === 0 ? "none-yet" : "caught-up";
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason={reason} hiddenCount={hiddenSongCount} />
+				<MatchingEmptyState
+					reason={reason}
+					hiddenCount={hiddenSongCount}
+					mode={mode}
+				/>
 			</div>
 		);
 	}
@@ -609,17 +613,15 @@ function QueueCardContent({
 	// total − remaining advances the numerator instead.
 	const progressIndex = deriveProgressIndex(total, unresolvedIds.length);
 
-	// Unavailable/error card: non-scary inline state. Primary action is Next Song
-	// which calls finishMatchReviewItem (marks the item skipped). No new server
-	// functions needed — skipping an unavailable item is semantically correct.
-	if (
-		itemData.status === "unavailable" ||
-		itemData.status === "retryable-error"
-	) {
-		const message =
-			itemData.status === "unavailable"
-				? itemData.message
-				: "Something went wrong loading this song.";
+	// Unavailable card: the item cannot be shown (entitlement, missing data, etc.).
+	// H6 copy uses review-item noun by mode. Primary action skips via finishMatchReviewItem
+	// (marks the item resolved/skipped) — semantically correct for an unshowable card.
+	if (itemData.status === "unavailable") {
+		const unavailableMessage =
+			mode === "playlist"
+				? "This playlist is no longer available to match."
+				: "This song is no longer available to match.";
+		const skipLabel = mode === "playlist" ? "Skip Playlist" : "Skip Song";
 
 		const handleSkipUnavailable = async () => {
 			if (!onLockNavigation()) return;
@@ -627,7 +629,7 @@ function QueueCardContent({
 				const result = await finishMatchReviewItem({ data: { itemId } });
 
 				if (!result.success) {
-					// Server rejected the finish (e.g. decision-count-failed) — do NOT
+					// Server rejected the finish (e.g. no_captured_pairs) — do NOT
 					// advance. Releasing the lock lets the user retry rather than skipping
 					// past a card the server still considers unresolved.
 					onReleaseNavigation();
@@ -666,13 +668,15 @@ function QueueCardContent({
 				<div
 					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
 					role="status"
-					aria-label="Song unavailable"
+					aria-label={
+						mode === "playlist" ? "Playlist unavailable" : "Song unavailable"
+					}
 				>
 					<p
 						className="theme-text-muted text-sm"
 						style={{ fontFamily: fonts.body }}
 					>
-						{message}
+						{unavailableMessage}
 					</p>
 					<button
 						type="button"
@@ -681,7 +685,59 @@ function QueueCardContent({
 						style={{ fontFamily: fonts.body }}
 						disabled={navigationStatus === "pending"}
 					>
-						Skip Song →
+						{skipLabel} →
+					</button>
+				</div>
+			</div>
+		);
+	}
+
+	// Retryable-error card: a transient fetch failure. H7 copy is generic (not
+	// mode-specific — the error is about loading the card, not the review item).
+	// "Try again" refetches the authoritative present query without resolving the
+	// item — retryable errors must never silently skip the card.
+	if (itemData.status === "retryable-error") {
+		const handleRetry = () => {
+			queryClient.invalidateQueries({
+				queryKey: presentMatchReviewItemQueryOptions(itemId).queryKey,
+			});
+		};
+
+		return (
+			<div>
+				<div className="mb-12">
+					<p
+						className="theme-text-muted text-xs tracking-widest uppercase"
+						style={{ fontFamily: fonts.body }}
+					>
+						Matching
+					</p>
+					<h2
+						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
+						style={{ fontFamily: fonts.display }}
+					>
+						<span>{progressIndex + 1}</span>
+						<span className="theme-text-muted opacity-60"> / {total}</span>
+					</h2>
+				</div>
+				<div
+					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
+					role="status"
+					aria-label="Card load error"
+				>
+					<p
+						className="theme-text-muted text-sm"
+						style={{ fontFamily: fonts.body }}
+					>
+						Couldn't load this match card. Try again.
+					</p>
+					<button
+						type="button"
+						onClick={handleRetry}
+						className="theme-primary text-sm font-medium tracking-wide"
+						style={{ fontFamily: fonts.body }}
+					>
+						Try again
 					</button>
 				</div>
 			</div>
