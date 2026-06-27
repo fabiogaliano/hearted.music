@@ -298,7 +298,8 @@ async function invalidateChangedTargetAccounts(
 			PlaylistManagementChanges.sessionFlushed({
 				accountId,
 				targetMembershipChanged: false,
-				targetMetadataChanged: true,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: false,
 			}),
 		);
 		if (Result.isError(result)) {

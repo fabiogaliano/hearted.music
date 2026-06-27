@@ -156,8 +156,18 @@ export function reconcileLibraryProcessing(
 			break;
 		}
 
+		case "match_snapshot_superseded": {
+			// Clear the active job without advancing settledAt — the newer request
+			// that superseded this job still needs to be processed.
+			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh, change.jobId);
+			break;
+		}
+
 		case "playlist_management_session_flushed": {
-			if (change.targetMembershipChanged || change.targetMetadataChanged) {
+			// Only membership and scoring changes require a full snapshot recompute.
+			// Read-time filter changes (predicates evaluated at queue-read time) do not
+			// invalidate the snapshot — those are handled by syncing active sessions.
+			if (change.targetMembershipChanged || change.scoringConfigChanged) {
 				matchSnapshotRefresh = advanceRequestedAt(
 					matchSnapshotRefresh,
 					requestMarker,
@@ -200,13 +210,6 @@ export function reconcileLibraryProcessing(
 				matchSnapshotRefresh,
 				requestMarker,
 			);
-			break;
-		}
-
-		case "match_snapshot_superseded": {
-			// Clear the active job without advancing settledAt — the newer request
-			// that superseded this job still needs to be processed.
-			matchSnapshotRefresh = clearActiveJob(matchSnapshotRefresh, change.jobId);
 			break;
 		}
 

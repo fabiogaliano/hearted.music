@@ -11,6 +11,7 @@ const {
 	mockGetPlaylistById,
 	mockUpdatePlaylistMatchConfig,
 	mockApplyLibraryProcessingChange,
+	mockSyncActiveQueue,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -19,6 +20,7 @@ const {
 	mockGetPlaylistById: vi.fn(),
 	mockUpdatePlaylistMatchConfig: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
+	mockSyncActiveQueue: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -67,6 +69,10 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		mockApplyLibraryProcessingChange(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
+	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
 }));
 
 // parseSaveMatchFilters uses isLanguageCatalogCode; we do NOT mock schemas.ts
@@ -130,6 +136,9 @@ describe("savePlaylistMatchConfig", () => {
 		mockUpdatePlaylistMatchConfig.mockResolvedValue(Result.ok(makePlaylist()));
 		mockApplyLibraryProcessingChange.mockResolvedValue(
 			Result.ok(makeApplyOutcome()),
+		);
+		mockSyncActiveQueue.mockResolvedValue(
+			Result.ok({ appendedCount: 0, alreadyApplied: false }),
 		);
 	});
 
@@ -336,18 +345,93 @@ describe("savePlaylistMatchConfig", () => {
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 	});
 
-	// ── Metadata invalidation ──────────────────────────────────────────────────
+	// ── Change-fact classification ────────────────────────────────────────────
 
-	it("emits metadata-changed invalidation after a successful write", async () => {
+	it("emits scoringConfigChanged when intent or genre pills differ from stored values", async () => {
+		// BASE_INPUT has matchIntent="chill evening vibes" and genrePills=["rock"].
+		// makePlaylist() defaults have match_intent=null and genre_pills=[].
+		// Both differ → scoringConfigChanged must be true.
 		await savePlaylistMatchConfig({ data: BASE_INPUT });
 
 		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
 			PlaylistManagementChanges.sessionFlushed({
 				accountId: "acct-1",
 				targetMembershipChanged: false,
-				targetMetadataChanged: true,
+				scoringConfigChanged: true,
+				readTimeFilterChanged: expect.any(Boolean),
 			}),
 		);
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+	});
+
+	it("takes filter-only path when only match_filters changed", async () => {
+		// Existing playlist has the same intent and genre pills as BASE_INPUT
+		// but a different filter — only readTimeFilterChanged should fire.
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(
+				makePlaylist({
+					account_id: "acct-1",
+					match_intent: "chill evening vibes",
+					genre_pills: ["rock"],
+					match_filters: { version: 1 },
+				}),
+			),
+		);
+
+		await savePlaylistMatchConfig({
+			data: {
+				...BASE_INPUT,
+				matchFilters: { version: 1 as const, vocalGender: "female" as const },
+			},
+		});
+
+		// Filter-only: no applyLibraryProcessingChange, session sync instead.
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(1);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1");
+	});
+
+	it("takes scoring path when intent changed even if filters are the same", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(
+				makePlaylist({
+					account_id: "acct-1",
+					match_intent: "old intent",
+					genre_pills: ["rock"],
+					match_filters: { version: 1 },
+				}),
+			),
+		);
+
+		await savePlaylistMatchConfig({
+			data: {
+				...BASE_INPUT,
+				matchIntent: "new intent",
+				matchFilters: { version: 1 as const },
+			},
+		});
+
+		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledTimes(1);
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+	});
+
+	it("skips all invalidation when nothing actually changed (idempotent save)", async () => {
+		// Existing playlist already has the same values as the input.
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(
+				makePlaylist({
+					account_id: "acct-1",
+					match_intent: "chill evening vibes",
+					genre_pills: ["rock"],
+					match_filters: { version: 1 },
+				}),
+			),
+		);
+
+		await savePlaylistMatchConfig({ data: BASE_INPUT });
+
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
 	});
 
 	// ── Non-fatal invalidation failure ─────────────────────────────────────────
