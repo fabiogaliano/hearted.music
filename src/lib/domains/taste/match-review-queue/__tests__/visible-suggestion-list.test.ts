@@ -727,14 +727,22 @@ describe("computeVisibleSuggestionList — async driver", () => {
 
 	it("returns ok with dense visibleRank and correct orientation for song subject", async () => {
 		// Song entitlement via rpc; from is used by fetchSongFilterMeta (×2:
-		// song + liked_song via maybySingle) then fetchPlaylistsMatchFilters (.in terminal).
+		// song + liked_song via maybySingle), then fetchPlaylistsMatchFilters (.in
+		// terminal), then fetchOwnedPlaylistIds (.in terminal). Ownership returns
+		// both suggestion playlists so neither is filtered out.
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
 			from: vi
 				.fn()
 				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
 				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
-				.mockReturnValue(makeInTerminalChain({ data: [], error: null })),
+				.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+				.mockReturnValue(
+					makeInTerminalChain({
+						data: [{ id: "pl-a" }, { id: "pl-b" }],
+						error: null,
+					}),
+				),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		vi.mocked(getMatchPairsForSong).mockResolvedValue(
@@ -803,6 +811,11 @@ describe("computeVisibleSuggestionList — async driver", () => {
 
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from,
+			// Suggestion-song entitlement (fetchEntitledSongIds): both songs entitled.
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-x" }, { song_id: "song-y" }],
+				error: null,
+			}),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
@@ -870,6 +883,12 @@ describe("computeVisibleSuggestionList — async driver", () => {
 
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from,
+			// song-absent is entitled, so it reaches the language filter (the point of
+			// this test) rather than being dropped by the entitlement guard first.
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-absent" }],
+				error: null,
+			}),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
@@ -896,6 +915,190 @@ describe("computeVisibleSuggestionList — async driver", () => {
 			// Absent song gets all-null metadata → language filter fails → hidden
 			expect(result.list.suggestions).toHaveLength(0);
 		}
+	});
+
+	it("song mode: excludes a foreign/deleted suggestion playlist before capture (Finding 3)", async () => {
+		// pl-a is owned; pl-b is not (deleted/transferred). Only pl-a survives, and
+		// the surviving suggestion keeps a dense visibleRank.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+				.mockReturnValue(
+					makeInTerminalChain({ data: [{ id: "pl-a" }], error: null }),
+				),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-a",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-b",
+					score: 0.7,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makeSongItem(), 0.0);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			expect(result.list.suggestions).toHaveLength(1);
+			expect(result.list.suggestions[0].playlistId).toBe("pl-a");
+			expect(result.list.suggestions[0].visibleRank).toBe(1);
+		}
+	});
+
+	it("playlist mode: excludes a non-entitled suggestion song before capture (Finding 3)", async () => {
+		// song-x is entitled, song-y is not. Only song-x survives with a dense rank.
+		const from = vi
+			.fn()
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValue(makeIsTerminalChain({ data: [], error: null }));
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-x" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-d1",
+					score: 0.85,
+					fused_score: null,
+				},
+				{
+					song_id: "song-y",
+					playlist_id: "pl-d1",
+					score: 0.65,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			expect(result.list.suggestions).toHaveLength(1);
+			expect(result.list.suggestions[0].songId).toBe("song-x");
+			expect(result.list.suggestions[0].visibleRank).toBe(1);
+		}
+	});
+
+	it("song mode: a suggestion-playlist ownership query failure yields db-error (Finding 3)", async () => {
+		// The ownership query fails — surface as db-error so the card is retryable
+		// rather than rendering an empty/unavailable suggestion set.
+		const ownershipError = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			in: vi.fn().mockResolvedValue({
+				data: null,
+				error: { code: "PGRST500", message: "ownership query failed" },
+			}),
+		};
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+				.mockReturnValue(ownershipError),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-a",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makeSongItem(), 0.0);
+
+		expect(result.kind).toBe("db-error");
+	});
+
+	it("playlist mode: a suggestion-song entitlement failure yields db-error (Finding 3)", async () => {
+		const from = vi
+			.fn()
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValue(makeIsTerminalChain({ data: [], error: null }));
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+			// Entitlement RPC fails — surface as db-error (retryable).
+			rpc: vi.fn().mockResolvedValue({
+				data: null,
+				error: { code: "PGRST500", message: "entitlement rpc failed" },
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-d1",
+					score: 0.85,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("db-error");
 	});
 });
 
@@ -1321,6 +1524,9 @@ describe("computeVisibleSuggestionList — filter-metadata retryable errors (MSR
 
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({
 			from,
+			// fetchEntitledSongIds runs in parallel with fetchSongsFilterMeta; the
+			// metadata failure is what must surface as db-error, so entitlement is fine.
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(

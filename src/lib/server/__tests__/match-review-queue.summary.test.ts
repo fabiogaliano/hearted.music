@@ -27,6 +27,7 @@ const {
 	mockGetQueueSummary,
 	mockGetLatestMatchSnapshot,
 	mockGetOrderedUndecidedSongIds,
+	mockGetOrderedUndecidedPlaylistIds,
 	mockGetPreferredMatchViewMode,
 	mockRpc,
 	mockFrom,
@@ -45,6 +46,7 @@ const {
 		mockGetQueueSummary: vi.fn(),
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetOrderedUndecidedSongIds: vi.fn(),
+		mockGetOrderedUndecidedPlaylistIds: vi.fn(),
 		mockGetPreferredMatchViewMode: vi.fn(),
 		mockRpc: vi.fn(),
 		mockFrom,
@@ -94,6 +96,8 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	createOrResumeQueue: vi.fn(),
 	getQueueSummary: (...args: unknown[]) => mockGetQueueSummary(...args),
+	getOrderedUndecidedPlaylistIds: (...args: unknown[]) =>
+		mockGetOrderedUndecidedPlaylistIds(...args),
 	markItemPresented: vi.fn(),
 	markItemResolved: vi.fn(),
 	syncActiveQueue: vi.fn(),
@@ -150,7 +154,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 5,
-				previewSongIds: ["song-1", "song-2", "song-3"],
+				previewSubjectIds: ["song-1", "song-2", "song-3"],
 			}),
 		);
 		mockIn.mockResolvedValue({
@@ -204,13 +208,13 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
 	});
 
-	it("caps previews at top 3 from the queue's previewSongIds", async () => {
+	it("caps previews at top 3 from the queue's previewSubjectIds", async () => {
 		mockGetQueueSummary.mockResolvedValue(
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 10,
 				// The queue service already slices; resolver also caps at 3.
-				previewSongIds: ["s1", "s2", "s3", "s4"],
+				previewSubjectIds: ["s1", "s2", "s3", "s4"],
 			}),
 		);
 		mockIn.mockResolvedValue({
@@ -233,7 +237,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 0,
-				previewSongIds: [],
+				previewSubjectIds: [],
 			}),
 		);
 
@@ -249,7 +253,7 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 3,
-				previewSongIds: ["song-a", "song-b"],
+				previewSubjectIds: ["song-a", "song-b"],
 			}),
 		);
 		mockIn.mockResolvedValue({ data: null, error: new Error("db error") });
@@ -258,6 +262,111 @@ describe("resolveMatchReviewSummary — active-queue path", () => {
 
 		expect(result.pendingCount).toBe(3);
 		expect(result.previewImages).toHaveLength(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveMatchReviewSummary — playlist orientation (Finding 4)
+// ---------------------------------------------------------------------------
+
+describe("resolveMatchReviewSummary — playlist orientation", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockIn.mockReset();
+		mockSelect.mockReturnValue({ in: mockIn });
+		mockFrom.mockReturnValue({ select: mockSelect });
+	});
+
+	it("active queue: previews come from the playlist table with empty artist", async () => {
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: true,
+				pendingCount: 4,
+				previewSubjectIds: ["pl-1", "pl-2"],
+			}),
+		);
+		mockIn.mockResolvedValue({
+			data: [
+				{ id: "pl-1", image_url: "p1.jpg", name: "Playlist One" },
+				{ id: "pl-2", image_url: "p2.jpg", name: "Playlist Two" },
+			],
+			error: null,
+		});
+
+		const result = await resolveMatchReviewSummary("acct-1", "playlist");
+
+		expect(result.orientation).toBe("playlist");
+		expect(result.pendingCount).toBe(4);
+		expect(mockFrom).toHaveBeenCalledWith("playlist");
+		expect(result.previewImages).toHaveLength(2);
+		expect(result.previewImages[0]).toEqual({
+			id: 1,
+			image: "p1.jpg",
+			name: "Playlist One",
+			artist: "",
+		});
+		// Snapshot-fallback path must NOT be called when queue is active.
+		expect(mockGetOrderedUndecidedPlaylistIds).not.toHaveBeenCalled();
+	});
+
+	it("snapshot fallback: derives playlist subjects and maps playlist previews", async () => {
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
+		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetOrderedUndecidedPlaylistIds.mockResolvedValue(
+			Result.ok(["pl-1", "pl-2"]),
+		);
+		mockIn.mockResolvedValue({
+			data: [
+				{ id: "pl-1", image_url: "p1.jpg", name: "Playlist One" },
+				{ id: "pl-2", image_url: "p2.jpg", name: "Playlist Two" },
+			],
+			error: null,
+		});
+
+		const result = await resolveMatchReviewSummary("acct-1", "playlist");
+
+		expect(result.orientation).toBe("playlist");
+		expect(result.pendingCount).toBe(2);
+		expect(result.hasActiveQueue).toBe(false);
+		expect(mockGetOrderedUndecidedPlaylistIds).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
+		);
+		// Song fallback authority is never used for playlist orientation.
+		expect(mockGetOrderedUndecidedSongIds).not.toHaveBeenCalled();
+		expect(result.previewImages).toHaveLength(2);
+		expect(result.previewImages[1]).toEqual({
+			id: 2,
+			image: "p2.jpg",
+			name: "Playlist Two",
+			artist: "",
+		});
+	});
+
+	it("snapshot fallback: a derivation error yields an empty summary", async () => {
+		mockGetQueueSummary.mockResolvedValue(
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
+		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetOrderedUndecidedPlaylistIds.mockResolvedValue(
+			Result.err(new Error("boom")),
+		);
+
+		const result = await resolveMatchReviewSummary("acct-1", "playlist");
+
+		expect(result.pendingCount).toBe(0);
+		expect(result.previewImages).toHaveLength(0);
+		expect(result.orientation).toBe("playlist");
 	});
 });
 
@@ -275,7 +384,11 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 
 	it("falls back to snapshot-derived count and previews when no active queue", async () => {
 		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({ hasActiveQueue: false, pendingCount: 0, previewSongIds: [] }),
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetOrderedUndecidedSongIds.mockResolvedValue({
@@ -310,7 +423,11 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 
 	it("returns pendingCount 0 when no snapshot exists", async () => {
 		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({ hasActiveQueue: false, pendingCount: 0, previewSongIds: [] }),
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 
@@ -323,7 +440,11 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 
 	it("returns pendingCount 0 when snapshot has no undecided songs", async () => {
 		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({ hasActiveQueue: false, pendingCount: 0, previewSongIds: [] }),
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetOrderedUndecidedSongIds.mockResolvedValue({
@@ -340,7 +461,11 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 
 	it("caps fallback previews at 3 songs", async () => {
 		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({ hasActiveQueue: false, pendingCount: 0, previewSongIds: [] }),
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetOrderedUndecidedSongIds.mockResolvedValue({
@@ -407,7 +532,7 @@ describe("getMatchReviewSummary — server fn", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 7,
-				previewSongIds: ["song-1"],
+				previewSubjectIds: ["song-1"],
 			}),
 		);
 		mockIn.mockResolvedValue({
@@ -434,7 +559,11 @@ describe("getMatchReviewSummary — server fn", () => {
 
 	it("returns pendingCount 0 when caught up (no active queue, no snapshot)", async () => {
 		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({ hasActiveQueue: false, pendingCount: 0, previewSongIds: [] }),
+			Result.ok({
+				hasActiveQueue: false,
+				pendingCount: 0,
+				previewSubjectIds: [],
+			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 
@@ -465,7 +594,7 @@ describe("resolvePreferredMatchReviewSummary", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 4,
-				previewSongIds: ["s1"],
+				previewSubjectIds: ["s1"],
 			}),
 		);
 		mockIn.mockResolvedValue({
@@ -486,7 +615,7 @@ describe("resolvePreferredMatchReviewSummary", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 2,
-				previewSongIds: [],
+				previewSubjectIds: [],
 			}),
 		);
 
@@ -516,7 +645,7 @@ describe("getPreferredMatchReviewSummary — server fn", () => {
 			Result.ok({
 				hasActiveQueue: true,
 				pendingCount: 3,
-				previewSongIds: [],
+				previewSubjectIds: [],
 			}),
 		);
 

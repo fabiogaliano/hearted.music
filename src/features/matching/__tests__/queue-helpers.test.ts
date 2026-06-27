@@ -31,7 +31,7 @@ function makeItem(
 		id,
 		position,
 		state,
-		songId: `song-${id}`,
+		subject: { orientation: "song" as const, songId: `song-${id}` },
 		sourceSnapshotId: "snap-1",
 	};
 }

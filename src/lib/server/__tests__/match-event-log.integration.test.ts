@@ -54,6 +54,18 @@ const SONG_MIX = "00000000-0000-4000-8000-0000000ce504";
 const ITEM_MIX = "00000000-0000-4000-8000-0000000ce404";
 const SONG_AGUARD = "00000000-0000-4000-8000-0000000ce505";
 const ITEM_AGUARD = "00000000-0000-4000-8000-0000000ce405";
+// Captured-empty + uncaptured + XOR scenarios (review-fix Findings 2 & 5). These
+// items are seeded separately from ALL_ITEMS because they need bespoke capture
+// states (captured-empty, never-captured) rather than the default captured-with-
+// pairs state ALL_ITEMS uses.
+const SONG_EMPTY_FIN = "00000000-0000-4000-8000-0000000ce506";
+const ITEM_EMPTY_FIN = "00000000-0000-4000-8000-0000000ce406";
+const SONG_EMPTY_DIS = "00000000-0000-4000-8000-0000000ce507";
+const ITEM_EMPTY_DIS = "00000000-0000-4000-8000-0000000ce407";
+const SONG_UNCAP = "00000000-0000-4000-8000-0000000ce508";
+const ITEM_UNCAP = "00000000-0000-4000-8000-0000000ce408";
+const SONG_XOR = "00000000-0000-4000-8000-0000000ce509";
+const ITEM_XOR = "00000000-0000-4000-8000-0000000ce409";
 
 const STRICTNESS = 0.5;
 const ALL_SONGS = [
@@ -62,6 +74,10 @@ const ALL_SONGS = [
 	SONG_SKIP,
 	SONG_MIX,
 	SONG_AGUARD,
+	SONG_EMPTY_FIN,
+	SONG_EMPTY_DIS,
+	SONG_UNCAP,
+	SONG_XOR,
 ] as const;
 const ALL_ITEMS = [
 	[ITEM_ADD, SONG_ADD],
@@ -108,12 +124,55 @@ async function seed() {
 
 	let position = 0;
 	for (const [itemId, songId] of ALL_ITEMS) {
+		// These items carry captured visible pairs, so visible_pairs_captured_at is
+		// set — matching the production invariant that capture stamps the timestamp
+		// and inserts pair rows atomically. The finish/dismiss guard keys on this
+		// timestamp (review-fix Finding 2), so it must be present here.
 		await client`
-      INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state)
-      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"active"})
+      INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state, visible_pairs_captured_at)
+      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"active"}, now())
     `;
 		position += 1;
 	}
+
+	// Captured-empty items: visible_pairs_captured_at is set but NO pair rows
+	// exist (the "no visible suggestions" card). Positions are offset well past the
+	// ALL_ITEMS range to avoid (session_id, position) collisions.
+	for (const [itemId, songId] of [
+		[ITEM_EMPTY_FIN, SONG_EMPTY_FIN],
+		[ITEM_EMPTY_DIS, SONG_EMPTY_DIS],
+	] as const) {
+		await client`
+      INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state, visible_pairs_captured_at)
+      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"active"}, now())
+    `;
+		position += 1;
+	}
+
+	// Uncaptured item: visible_pairs_captured_at IS NULL (presentMatchReviewItem
+	// never ran). finish/dismiss must return no_captured_pairs and not resolve it.
+	await client`
+    INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state)
+    VALUES (${ITEM_UNCAP}, ${SESSION}, ${ACCOUNT}, ${SONG_UNCAP}, ${SNAPSHOT}, ${position}, ${"active"})
+  `;
+	position += 1;
+
+	// XOR item: a normal captured song item used to exercise the add-RPC target
+	// validation. It has one captured pair so a correct single-arg add succeeds.
+	await client`
+    INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state, visible_pairs_captured_at)
+    VALUES (${ITEM_XOR}, ${SESSION}, ${ACCOUNT}, ${SONG_XOR}, ${SNAPSHOT}, ${position}, ${"active"}, now())
+  `;
+	position += 1;
+	await client`
+    INSERT INTO match_review_item_visible_pair(
+      queue_item_id, song_id, playlist_id, session_id, account_id,
+      snapshot_id, orientation, model_rank, visible_rank, fit_score
+    ) VALUES (
+      ${ITEM_XOR}, ${SONG_XOR}, ${PLAYLIST_A}, ${SESSION}, ${ACCOUNT},
+      ${SNAPSHOT}, ${"song"}, ${1}, ${1}, ${0.9}
+    )
+  `;
 
 	// Visible matches (score >= strictness). rank is the model/snapshot rank the
 	// RPCs persist as model_rank.
@@ -348,6 +407,100 @@ describeLocal("match queue RPCs write to match_event", () => {
 		).toHaveLength(0);
 		// B was visible and untouched — logged as skipped.
 		expect(byPlaylist.get(PLAYLIST_B)).toBe("skipped");
+	});
+});
+
+describeLocal(
+	"captured-empty and uncaptured finish/dismiss (Finding 2)",
+	() => {
+		it("finish on a captured-empty item resolves as skipped with no events", async () => {
+			const result =
+				await db()`SELECT finish_match_review_item_atomic(${ITEM_EMPTY_FIN}, ${ACCOUNT}) AS r`;
+			expect(result[0].r).toBe("skipped");
+
+			const item = await db()`
+      SELECT state, resolution FROM match_review_queue_item WHERE id = ${ITEM_EMPTY_FIN}
+    `;
+			expect(item[0].state).toBe("resolved");
+			expect(item[0].resolution).toBe("skipped");
+
+			// Captured-empty means zero pairs, so no skip events are written.
+			const events = await db()`
+      SELECT 1 FROM match_event WHERE queue_item_id = ${ITEM_EMPTY_FIN}
+    `;
+			expect(events).toHaveLength(0);
+		});
+
+		it("dismiss on a captured-empty item resolves as dismissed with no decisions/events", async () => {
+			const result =
+				await db()`SELECT dismiss_match_review_item_atomic(${ITEM_EMPTY_DIS}, ${ACCOUNT}) AS r`;
+			expect(result[0].r).toBe("dismissed");
+
+			const item = await db()`
+      SELECT state, resolution FROM match_review_queue_item WHERE id = ${ITEM_EMPTY_DIS}
+    `;
+			expect(item[0].state).toBe("resolved");
+			expect(item[0].resolution).toBe("dismissed");
+
+			const decisions = await db()`
+      SELECT 1 FROM match_decision WHERE queue_item_id = ${ITEM_EMPTY_DIS}
+    `;
+			expect(decisions).toHaveLength(0);
+			const events = await db()`
+      SELECT 1 FROM match_event WHERE queue_item_id = ${ITEM_EMPTY_DIS}
+    `;
+			expect(events).toHaveLength(0);
+		});
+
+		it("finish and dismiss on a never-captured item return no_captured_pairs and leave it unresolved", async () => {
+			const finished =
+				await db()`SELECT finish_match_review_item_atomic(${ITEM_UNCAP}, ${ACCOUNT}) AS r`;
+			expect(finished[0].r).toBe("no_captured_pairs");
+
+			const dismissed =
+				await db()`SELECT dismiss_match_review_item_atomic(${ITEM_UNCAP}, ${ACCOUNT}) AS r`;
+			expect(dismissed[0].r).toBe("no_captured_pairs");
+
+			// The item must stay actionable so it can be retried after presentation.
+			const item = await db()`
+      SELECT state, resolution FROM match_review_queue_item WHERE id = ${ITEM_UNCAP}
+    `;
+			expect(item[0].state).toBe("active");
+			expect(item[0].resolution).toBeNull();
+		});
+	},
+);
+
+describeLocal("add decision XOR target validation (Finding 5)", () => {
+	it("rejects supplying both suggestion ids", async () => {
+		const result =
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_XOR}, ${ACCOUNT}, ${SONG_XOR}, ${PLAYLIST_A}) AS r`;
+		expect(result[0].r).toBe("invalid_target");
+
+		// No decision should have been written for the ambiguous call.
+		const decisions = await db()`
+      SELECT 1 FROM match_decision WHERE queue_item_id = ${ITEM_XOR}
+    `;
+		expect(decisions).toHaveLength(0);
+	});
+
+	it("rejects supplying neither suggestion id", async () => {
+		const result =
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_XOR}, ${ACCOUNT}, NULL::uuid, NULL::uuid) AS r`;
+		expect(result[0].r).toBe("invalid_target");
+	});
+
+	it("accepts the correct single suggestion id for a song item", async () => {
+		// Sanity: the same item still adds successfully when exactly the playlist
+		// suggestion is supplied — proving the XOR guard does not over-reject.
+		const result =
+			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_XOR}, ${ACCOUNT}, NULL::uuid, ${PLAYLIST_A}) AS r`;
+		expect(result[0].r).toBe("added");
+
+		const decisions = await db()`
+      SELECT decision FROM match_decision WHERE queue_item_id = ${ITEM_XOR}
+    `;
+		expect(decisions.map((d) => d.decision)).toEqual(["added"]);
 	});
 });
 

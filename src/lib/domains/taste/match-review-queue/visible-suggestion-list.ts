@@ -438,6 +438,57 @@ async function fetchPlaylistsMatchFilters(
 }
 
 /**
+ * Returns the subset of the given playlist IDs that still belong to the account,
+ * in a single query. Used by the song-orientation path to drop suggestion
+ * playlists that were deleted or transferred before visible ranks are assigned,
+ * so a foreign/stale playlist is never shown and then rejected at add time.
+ */
+async function fetchOwnedPlaylistIds(
+	accountId: string,
+	playlistIds: readonly string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (playlistIds.length === 0) return Result.ok(new Set());
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist")
+		.select("id")
+		.eq("account_id", accountId)
+		.in("id", [...playlistIds]);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(new Set((data ?? []).map((r) => r.id)));
+}
+
+/**
+ * Returns the subset of the given song IDs that are still entitled to the
+ * account. Used by the playlist-orientation path to drop suggestion songs whose
+ * entitlement was revoked before visible ranks are assigned. Uses the same bulk
+ * entitlement RPC the queue-append path uses, so the two agree by sharing one
+ * source rather than by convention, and avoids an N+1 of per-song checks.
+ */
+async function fetchEntitledSongIds(
+	accountId: string,
+	songIds: readonly string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (songIds.length === 0) return Result.ok(new Set());
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"select_entitled_data_enriched_liked_song_ids",
+		{ p_account_id: accountId },
+	);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	const entitled = new Set((data ?? []).map((r) => r.song_id));
+	return Result.ok(new Set(songIds.filter((id) => entitled.has(id))));
+}
+
+/**
  * Derives the visible suggestion list for a queue item.
  *
  * The item must already have passed the ownership check (loaded via
@@ -491,9 +542,19 @@ export async function computeVisibleSuggestionList(
 		const playlistIds = [
 			...new Set(pairsResult.value.map((r) => r.playlist_id)),
 		];
-		const playlistFiltersResult = await fetchPlaylistsMatchFilters(playlistIds);
+		// Fetch suggestion-playlist filters and account ownership together. Foreign/
+		// deleted suggestion playlists are excluded here, before visible ranks are
+		// assigned, so they are never shown only to be rejected at add time.
+		const [playlistFiltersResult, ownedPlaylistsResult] = await Promise.all([
+			fetchPlaylistsMatchFilters(playlistIds),
+			fetchOwnedPlaylistIds(accountId, playlistIds),
+		]);
 		if (Result.isError(playlistFiltersResult))
 			return { kind: "db-error", error: playlistFiltersResult.error };
+		if (Result.isError(ownedPlaylistsResult))
+			return { kind: "db-error", error: ownedPlaylistsResult.error };
+
+		const ownedPlaylists = ownedPlaylistsResult.value;
 
 		const decidedPairKeys = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -501,14 +562,16 @@ export async function computeVisibleSuggestionList(
 
 		const songMeta = songMetaResult.value;
 
-		const pairs: MatchPairInput[] = pairsResult.value.map((r) => ({
-			songId: r.song_id,
-			playlistId: r.playlist_id,
-			score: r.score,
-			fusedScore: r.fused_score,
-			songMeta,
-			playlistFilters: playlistFiltersResult.value.get(r.playlist_id) ?? null,
-		}));
+		const pairs: MatchPairInput[] = pairsResult.value
+			.filter((r) => ownedPlaylists.has(r.playlist_id))
+			.map((r) => ({
+				songId: r.song_id,
+				playlistId: r.playlist_id,
+				score: r.score,
+				fusedScore: r.fused_score,
+				songMeta,
+				playlistFilters: playlistFiltersResult.value.get(r.playlist_id) ?? null,
+			}));
 
 		const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
 			songId: r.song_id,
@@ -557,9 +620,19 @@ export async function computeVisibleSuggestionList(
 		return { kind: "db-error", error: playlistFiltersResult.error };
 
 	const songIds = [...new Set(pairsResult.value.map((r) => r.song_id))];
-	const songsMetaResult = await fetchSongsFilterMeta(accountId, songIds);
+	// Fetch suggestion-song filter metadata and account entitlement together.
+	// Non-entitled suggestion songs are excluded here, before visible ranks are
+	// assigned, so a revoked song is never shown only to be rejected at add time.
+	const [songsMetaResult, entitledSongsResult] = await Promise.all([
+		fetchSongsFilterMeta(accountId, songIds),
+		fetchEntitledSongIds(accountId, songIds),
+	]);
 	if (Result.isError(songsMetaResult))
 		return { kind: "db-error", error: songsMetaResult.error };
+	if (Result.isError(entitledSongsResult))
+		return { kind: "db-error", error: entitledSongsResult.error };
+
+	const entitledSongs = entitledSongsResult.value;
 
 	const reviewPlaylistFilters =
 		playlistFiltersResult.value.get(subject.playlistId) ?? null;
@@ -568,20 +641,22 @@ export async function computeVisibleSuggestionList(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 
-	const pairs: MatchPairInput[] = pairsResult.value.map((r) => ({
-		songId: r.song_id,
-		playlistId: r.playlist_id,
-		score: r.score,
-		fusedScore: r.fused_score,
-		songMeta: songsMetaResult.value.get(r.song_id) ?? {
-			language: null,
-			languageSecondary: null,
-			releaseYear: null,
-			vocalGender: null,
-			likedAt: null,
-		},
-		playlistFilters: reviewPlaylistFilters,
-	}));
+	const pairs: MatchPairInput[] = pairsResult.value
+		.filter((r) => entitledSongs.has(r.song_id))
+		.map((r) => ({
+			songId: r.song_id,
+			playlistId: r.playlist_id,
+			score: r.score,
+			fusedScore: r.fused_score,
+			songMeta: songsMetaResult.value.get(r.song_id) ?? {
+				language: null,
+				languageSecondary: null,
+				releaseYear: null,
+				vocalGender: null,
+				likedAt: null,
+			},
+			playlistFilters: reviewPlaylistFilters,
+		}));
 
 	const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
 		songId: r.song_id,
