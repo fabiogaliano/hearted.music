@@ -5,6 +5,10 @@ import {
 } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	matchReviewKeys,
+	matchReviewSummaryKeys,
+} from "@/features/matching/queries";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
@@ -62,8 +66,7 @@ export function PlaylistsCoverFlowScreen({
 	const { data: topGenresData } = useQuery(
 		accountTopGenresQueryOptions(accountId),
 	);
-	const { optimisticTargets, toggleTarget, markMetadataChanged } =
-		usePlaylistSession(accountId);
+	const { optimisticTargets, toggleTarget } = usePlaylistSession(accountId);
 
 	const playlists = useMemo(() => data?.playlists ?? [], [data]);
 
@@ -190,11 +193,21 @@ export function PlaylistsCoverFlowScreen({
 				matchFilters,
 			},
 		});
-		// Fire-and-forget side effects after a confirmed write — invalidation failure
-		// is already logged server-side and is non-fatal from the UI's perspective.
-		markMetadataChanged();
+		// savePlaylistMatchConfig owns the refresh-vs-sync decision server-side
+		// (scoring change → snapshot recompute; filter-only → active-queue sync;
+		// idempotent → nothing), so the UI must NOT mark the session scoring-changed
+		// — doing so would enqueue a spurious refresh for filter-only/no-op saves.
+		// We only invalidate caches: the playlist list, plus the orientation-scoped
+		// match-review review + summary queries so a filter-only save surfaces newly
+		// visible/hidden subjects without waiting on staleTime (MSR-35/37). Captured
+		// card (item) keys are intentionally left untouched so an in-progress card
+		// never mutates after a filter change.
 		queryClient.invalidateQueries({
 			queryKey: playlistKeys.management(accountId),
+		});
+		queryClient.invalidateQueries({ queryKey: matchReviewKeys.reviewsRoot });
+		queryClient.invalidateQueries({
+			queryKey: matchReviewSummaryKeys.summariesRoot,
 		});
 		return result;
 	};

@@ -150,9 +150,10 @@ function QueueMatchPage() {
 	// unresolved list, never from null song data.
 	const caughtUp = deriveCaughtUp(queue, unresolvedIds);
 	const hasQueue = !!queue?.sessionId;
-	// Songs whose only matches sit below the strictness bar — drives the
-	// "loosen strictness" empty state over the "nothing surfaced" one.
-	const hiddenSongCount = queue?.hiddenSongCount ?? 0;
+	// Review subjects whose only matches sit below the strictness bar — drives the
+	// "loosen strictness" empty state over the "nothing surfaced" one. Orientation-
+	// aware: songs in song mode, playlists in playlist mode.
+	const hiddenReviewItemCount = queue?.hiddenReviewItemCount ?? 0;
 
 	// Latch: once this visit has had unresolved items to work, keep rendering the
 	// session UI for the rest of the visit. Completing the last card invalidates the
@@ -213,12 +214,16 @@ function QueueMatchPage() {
 	// CompletionScreen, which the latch keeps mounted.
 	if (caughtUp && !sessionStartedRef.current) {
 		const reason =
-			hiddenSongCount > 0 ? "filtered" : total === 0 ? "none-yet" : "caught-up";
+			hiddenReviewItemCount > 0
+				? "filtered"
+				: total === 0
+					? "none-yet"
+					: "caught-up";
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState
 					reason={reason}
-					hiddenCount={hiddenSongCount}
+					hiddenCount={hiddenReviewItemCount}
 					mode={mode}
 				/>
 			</div>

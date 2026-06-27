@@ -38,7 +38,6 @@ import {
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
 import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
-import { loadMatchFilterExclusions } from "./match-filter-exclusions";
 import { loadTargetPlaylistProfiles } from "./profiles";
 import { isMatchRefreshJobSuperseded } from "./superseded";
 import type {
@@ -416,20 +415,17 @@ export async function executeMatchSnapshotRefresh(
 		};
 	});
 
-	// Run both loads concurrently — they are independent DB calls.
-	// If the base load fails we continue with an empty base and mark the summary
-	// degraded so filter exclusions still apply and hard-filter enforcement is not
-	// silently bypassed on a transient base-load error.
+	// Base exclusions only: pairs the user already decided on plus songs already
+	// in a target playlist. Safe metadata hard filters (language, vocal gender,
+	// release year, liked-at) are deliberately NOT applied here — they are
+	// read-time predicates in visible-suggestion-list.ts (Phase 9 / MSR-36/37), so
+	// loosening a filter reveals pairs from the already-stored snapshot without a
+	// recompute. Applying them at write time would drop those pairs before storage
+	// and make loosening impossible, so the snapshot keeps the broad candidate set.
 	let baseExclusionSet: Set<string> = new Set();
-	let baseExclusionsFailed = false;
-	const [baseResult, filterResult] = await Promise.all([
-		loadExclusionSet(accountId).catch((err: unknown) => err),
-		loadMatchFilterExclusions({
-			accountId,
-			playlists,
-			candidateSongIds: songIds,
-		}),
-	]);
+	const baseResult = await loadExclusionSet(accountId).catch(
+		(err: unknown) => err,
+	);
 
 	if (baseResult instanceof Error || !(baseResult instanceof Set)) {
 		log.warn("match:exclusion-set-failed", {
@@ -437,40 +433,14 @@ export async function executeMatchSnapshotRefresh(
 			error:
 				baseResult instanceof Error ? baseResult.message : String(baseResult),
 		});
-		baseExclusionsFailed = true;
 	} else {
 		baseExclusionSet = baseResult;
 	}
 
-	const { exclusions: filterExclusions, summary: filterSummary } = filterResult;
-
-	log.info("match:filter-exclusions", {
-		actor: who,
-		activeFilterPlaylists: filterSummary.activeFilterPlaylistCount,
-		excludedPairs: filterSummary.excludedPairCount,
-		candidatePairs: filterSummary.candidatePairCount,
-		failedChecks: filterSummary.failedChecksByType,
-		// Log a fresh object so the logged value is always accurate even if
-		// filterSummary.degraded were frozen.
-		degraded: {
-			...filterSummary.degraded,
-			baseExclusions: baseExclusionsFailed,
-		},
-	});
-
-	// filterSummary.degraded.baseExclusions is the orchestrator's responsibility;
-	// loadMatchFilterExclusions always leaves it false (decisions §8).
-	filterSummary.degraded.baseExclusions = baseExclusionsFailed;
-
-	const effectiveExclusionSet = new Set([
-		...baseExclusionSet,
-		...filterExclusions,
-	]);
-
 	// Computed once and reused at both matchBatch and writeMatchSnapshot so the
-	// two call sites are guaranteed the identical effective set.
+	// two call sites are guaranteed the identical set.
 	const exclusionSetArg =
-		effectiveExclusionSet.size > 0 ? effectiveExclusionSet : undefined;
+		baseExclusionSet.size > 0 ? baseExclusionSet : undefined;
 
 	if (
 		satisfiesRequestedAt &&

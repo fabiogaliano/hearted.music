@@ -95,6 +95,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			<SuggestionsControls
 				disabled={navigationDisabled ?? false}
 				isLastItem={isLastItem ?? false}
+				suggestionCount={suggestions.length}
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
 				onNext={onNext}
@@ -348,6 +349,8 @@ function AnimatedSuggestionsPanel({
 interface SuggestionsControlsProps {
 	disabled: boolean;
 	isLastItem: boolean;
+	/** Drives the Reject button's singular/plural label (H3). */
+	suggestionCount: number;
 	onDismiss: () => void | Promise<void>;
 	onPrevious?: () => void;
 	onNext: () => void;
@@ -356,6 +359,7 @@ interface SuggestionsControlsProps {
 function SuggestionsControls({
 	disabled,
 	isLastItem,
+	suggestionCount,
 	onDismiss,
 	onPrevious,
 	onNext,
@@ -371,7 +375,7 @@ function SuggestionsControls({
 			>
 				<span className="inline-flex min-h-11 items-center gap-1.5">
 					<XIcon size={14} weight="regular" />
-					Dismiss
+					{suggestionCount === 1 ? "Reject Match" : "Reject Matches"}
 				</span>
 			</Button>
 

@@ -28,25 +28,6 @@ export type PlaylistMatchFiltersV1 = {
 	vocalGender?: "female" | "male";
 };
 
-export type MatchFilterType =
-	| "languages"
-	| "releaseYear"
-	| "likedAt"
-	| "vocalGender";
-
-export type MatchFiltersExclusionSummary = {
-	activeFilterPlaylistCount: number;
-	candidatePairCount: number;
-	excludedPairCount: number;
-	failedChecksByType: Record<MatchFilterType, number>;
-	excludedPairsByPlaylist: Record<string, number>;
-	invalidStoredFiltersByPlaylist: Record<string, number>;
-	degraded: {
-		baseExclusions: boolean;
-		filterMetadata: boolean;
-	};
-};
-
 export type PlaylistMatchFilterOptions = {
 	languages: Array<{
 		code: string;

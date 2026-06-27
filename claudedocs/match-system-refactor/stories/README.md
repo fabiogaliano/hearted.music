@@ -128,7 +128,7 @@ MSR-11 + MSR-34 + MSR-37 + MSR-39 -> MSR-38 Docs/regression hardening
 | [MSR-35](./MSR-35-playlist-management-filter-change-facts.md) | Playlist-management change facts and filter-only sync invalidation | Phase 8 | MSR-09, MSR-20 | MSR-36, MSR-37 |
 | [MSR-36](./MSR-36-read-time-filter-hash-predicates.md) | Read-time filter hash and visible-list predicates | Phase 8 | MSR-19, MSR-22, MSR-35 | MSR-37 |
 | [MSR-37](./MSR-37-filter-metadata-retryable-append.md) | Filter metadata retryable errors and newly visible subject append | Phase 8 | MSR-36 | MSR-38 |
-| MSR-39 (orchestrator-added) | Functional playlist ready-path — playlist arm in `presentMatchReviewItem`, discriminated `MatchReviewItemRead.ready`, playlist handlers in `QueueCardContent` | Phase 7.5 | MSR-34 [PLAN-GAP] | MSR-38 |
+| [MSR-39](./MSR-39-functional-playlist-ready-path.md) (orchestrator-added) | Functional playlist ready-path — playlist arm in `presentMatchReviewItem`, discriminated `MatchReviewItemRead.ready`, playlist handlers in `QueueCardContent` | Phase 7.5 | MSR-34 [PLAN-GAP] | MSR-38 |
 | [MSR-38](./MSR-38-architecture-docs-regression-hardening.md) | Architecture docs, stories, and regression hardening | Phase 9 | MSR-11, MSR-34, MSR-37, MSR-39 | Release readiness |
 
 ## Shared-contract gate

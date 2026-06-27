@@ -128,26 +128,6 @@ vi.mock("@/lib/workflows/enrichment-pipeline/stages/matching", () => ({
 	loadExclusionSet: vi.fn().mockResolvedValue(new Set()),
 }));
 
-vi.mock("../match-filter-exclusions", () => ({
-	loadMatchFilterExclusions: vi.fn().mockResolvedValue({
-		exclusions: new Set(),
-		summary: {
-			activeFilterPlaylistCount: 0,
-			candidatePairCount: 0,
-			excludedPairCount: 0,
-			failedChecksByType: {
-				languages: 0,
-				releaseYear: 0,
-				likedAt: 0,
-				vocalGender: 0,
-			},
-			excludedPairsByPlaylist: {},
-			invalidStoredFiltersByPlaylist: {},
-			degraded: { baseExclusions: false, filterMetadata: false },
-		},
-	}),
-}));
-
 vi.mock("@/lib/workflows/playlist-sync/lightweight-enrichment", () => ({
 	runLightweightEnrichment: vi.fn().mockResolvedValue(undefined),
 }));

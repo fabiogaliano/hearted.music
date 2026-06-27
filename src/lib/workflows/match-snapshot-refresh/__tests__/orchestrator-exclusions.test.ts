@@ -1,9 +1,13 @@
 /**
- * Integration tests for CMHF-12 — effective exclusion set orchestration.
+ * Integration tests for the match refresh orchestrator's exclusion handling.
  *
- * Verifies that filter exclusions are unioned with base exclusions before
- * being passed to matchBatch and writeMatchSnapshot, and that degraded
- * paths (base load failure, filter metadata failure) behave correctly.
+ * Safe metadata hard filters (language, vocal gender, release year, liked-at)
+ * are read-time predicates (visible-suggestion-list.ts, Phase 9 / MSR-36/37) and
+ * are NOT applied at snapshot/write time. The orchestrator therefore only folds
+ * the BASE exclusion set (already-decided pairs + songs already in a target
+ * playlist) into the set passed to matchBatch and writeMatchSnapshot. These tests
+ * verify that base exclusions flow to both call sites as one shared set and that
+ * a base-load failure degrades gracefully without aborting the refresh.
  *
  * All external collaborators are mocked at the module level so these tests
  * remain fully in-process with no DB or embedding calls.
@@ -11,7 +15,6 @@
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { MatchFiltersExclusionSummary } from "@/lib/domains/taste/match-filters/types";
 
 // ---------------------------------------------------------------------------
 // Mocks — established before any dynamic imports so vi.mock hoisting works.
@@ -89,13 +92,6 @@ vi.mock("@/lib/workflows/enrichment-pipeline/stages/matching", () => ({
 	loadExclusionSet: (...args: unknown[]) => mockLoadExclusionSet(...args),
 }));
 
-// Filter exclusions (CMHF-11)
-const mockLoadMatchFilterExclusions = vi.fn();
-vi.mock("../match-filter-exclusions", () => ({
-	loadMatchFilterExclusions: (...args: unknown[]) =>
-		mockLoadMatchFilterExclusions(...args),
-}));
-
 // matchBatch — capture the exclusion set it receives
 const mockMatchBatch = vi.fn();
 vi.mock("@/lib/domains/taste/song-matching/service", () => ({
@@ -148,7 +144,11 @@ function makePlan() {
 	return { needsTargetSongEnrichment: false };
 }
 
-/** Minimal playlist row with no filters active. */
+/**
+ * Minimal playlist row. An active hard filter (e.g. languages) must NOT change
+ * the write-time exclusion set, so fixtures can carry one to prove filters are
+ * ignored at write time.
+ */
 function makePlaylist(id: string, matchFilters: unknown = { version: 1 }) {
 	return { id, name: `Playlist ${id}`, match_filters: matchFilters };
 }
@@ -172,24 +172,6 @@ function makeSongRow(id: string) {
 		name: `Song ${id}`,
 		artists: ["Artist"],
 		genres: ["pop"],
-	};
-}
-
-/** A non-degraded summary with zero exclusions. */
-function emptyFilterSummary(): MatchFiltersExclusionSummary {
-	return {
-		activeFilterPlaylistCount: 0,
-		candidatePairCount: 0,
-		excludedPairCount: 0,
-		failedChecksByType: {
-			languages: 0,
-			releaseYear: 0,
-			likedAt: 0,
-			vocalGender: 0,
-		},
-		excludedPairsByPlaylist: {},
-		invalidStoredFiltersByPlaylist: {},
-		degraded: { baseExclusions: false, filterMetadata: false },
 	};
 }
 
@@ -221,15 +203,11 @@ function setupHappyPath({
 	playlists = [makePlaylist("pl-1")],
 	profiles = [makeProfile("pl-1")],
 	baseExclusionSet = new Set<string>(),
-	filterExclusions = new Set<string>(),
-	filterSummary = emptyFilterSummary(),
 }: {
 	baseSongIds?: string[];
 	playlists?: ReturnType<typeof makePlaylist>[];
 	profiles?: ReturnType<typeof makeProfile>[];
 	baseExclusionSet?: Set<string>;
-	filterExclusions?: Set<string>;
-	filterSummary?: MatchFiltersExclusionSummary;
 } = {}) {
 	mockLoadTargetPlaylistProfiles.mockResolvedValue({ playlists, profiles });
 	mockGetEntitledSongIds.mockResolvedValue(baseSongIds);
@@ -239,10 +217,6 @@ function setupHappyPath({
 	mockGetBatch.mockResolvedValue(Result.ok(new Map()));
 	mockGetEmbeddings.mockResolvedValue(Result.ok(new Map()));
 	mockLoadExclusionSet.mockResolvedValue(baseExclusionSet);
-	mockLoadMatchFilterExclusions.mockResolvedValue({
-		exclusions: filterExclusions,
-		summary: filterSummary,
-	});
 	mockMatchBatch.mockResolvedValue(emptyMatchResult());
 	mockWriteMatchSnapshot.mockResolvedValue(snapshotResult());
 }
@@ -251,17 +225,13 @@ function setupHappyPath({
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", () => {
+describe("executeMatchSnapshotRefresh — base exclusion set", () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it("passes union of base + filter exclusions to matchBatch", async () => {
-		const baseSet = new Set(["song-1:pl-1"]);
-		const filterSet = new Set(["song-2:pl-1"]);
-
+	it("passes base exclusions to matchBatch", async () => {
 		setupHappyPath({
 			baseSongIds: ["song-1", "song-2"],
-			baseExclusionSet: baseSet,
-			filterExclusions: filterSet,
+			baseExclusionSet: new Set(["song-1:pl-1"]),
 		});
 
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
@@ -273,17 +243,12 @@ describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", ()
 			{ exclusionSet: Set<string> } | undefined,
 		];
 		expect(opts?.exclusionSet.has("song-1:pl-1")).toBe(true);
-		expect(opts?.exclusionSet.has("song-2:pl-1")).toBe(true);
 	});
 
-	it("passes the same effective set to writeMatchSnapshot", async () => {
-		const baseSet = new Set(["song-1:pl-1"]);
-		const filterSet = new Set(["song-2:pl-1"]);
-
+	it("passes the same base set to writeMatchSnapshot", async () => {
 		setupHappyPath({
-			baseSongIds: ["song-1", "song-2"],
-			baseExclusionSet: baseSet,
-			filterExclusions: filterSet,
+			baseSongIds: ["song-1"],
+			baseExclusionSet: new Set(["song-1:pl-1"]),
 		});
 
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
@@ -292,134 +257,64 @@ describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", ()
 			{ exclusionSet?: Set<string> },
 		];
 		expect(writeOpts.exclusionSet?.has("song-1:pl-1")).toBe(true);
-		expect(writeOpts.exclusionSet?.has("song-2:pl-1")).toBe(true);
 	});
 
-	it("filter-only change alters the exclusion set passed to writeMatchSnapshot (hash participation)", async () => {
-		// First call: no filter exclusions.
-		const summaryA = emptyFilterSummary();
+	it("does not apply metadata hard filters at write time — an active filter does not alter the exclusion set", async () => {
+		// A playlist with an active language filter must not exclude any pair at
+		// write time; filters are read-time only, so the stored set is base-only.
 		setupHappyPath({
 			baseSongIds: ["song-1"],
+			playlists: [
+				makePlaylist("pl-1", { version: 1, languages: { codes: ["pt"] } }),
+			],
+			profiles: [makeProfile("pl-1")],
 			baseExclusionSet: new Set(),
-			filterExclusions: new Set(),
-			filterSummary: summaryA,
 		});
-		await executeMatchSnapshotRefresh("acc-1", makePlan());
-
-		const [optsA] = mockWriteMatchSnapshot.mock.calls[0] as [
-			{ exclusionSet?: Set<string> },
-		];
-
-		vi.clearAllMocks();
-
-		// Second call: same base, but now a filter excludes song-1:pl-1.
-		const summaryB: MatchFiltersExclusionSummary = {
-			...emptyFilterSummary(),
-			activeFilterPlaylistCount: 1,
-			candidatePairCount: 1,
-			excludedPairCount: 1,
-		};
-		setupHappyPath({
-			baseSongIds: ["song-1"],
-			baseExclusionSet: new Set(),
-			filterExclusions: new Set(["song-1:pl-1"]),
-			filterSummary: summaryB,
-		});
-		await executeMatchSnapshotRefresh("acc-1", makePlan());
-
-		const [optsB] = mockWriteMatchSnapshot.mock.calls[0] as [
-			{ exclusionSet?: Set<string> },
-		];
-
-		// A: no exclusionSet (empty effective set → undefined).
-		// B: exclusionSet includes the filter key.
-		expect(optsA.exclusionSet).toBeUndefined();
-		expect(optsB.exclusionSet?.has("song-1:pl-1")).toBe(true);
-	});
-
-	it("base-load failure → empty base, filter exclusions still applied, degraded.baseExclusions=true", async () => {
-		const filterSet = new Set(["song-1:pl-1"]);
-		const summary = emptyFilterSummary();
-
-		setupHappyPath({
-			baseSongIds: ["song-1"],
-			filterExclusions: filterSet,
-			filterSummary: summary,
-		});
-		// Make base load throw.
-		mockLoadExclusionSet.mockRejectedValue(new Error("DB timeout"));
 
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
 
-		// Filter exclusions still reach matchBatch.
+		// Empty base + no write-time filters → no exclusionSet arg at all.
 		const [, , , matchOpts] = mockMatchBatch.mock.calls[0] as [
 			unknown,
 			unknown,
 			unknown,
 			{ exclusionSet: Set<string> } | undefined,
 		];
-		expect(matchOpts?.exclusionSet.has("song-1:pl-1")).toBe(true);
+		expect(matchOpts).toBeUndefined();
 
-		// writeMatchSnapshot also receives the filter-only effective set.
 		const [writeOpts] = mockWriteMatchSnapshot.mock.calls[0] as [
 			{ exclusionSet?: Set<string> },
 		];
-		expect(writeOpts.exclusionSet?.has("song-1:pl-1")).toBe(true);
-
-		// The summary passed to loadMatchFilterExclusions had degraded.baseExclusions
-		// mutated to true by the orchestrator. Verify by checking what was logged
-		// (indirectly through the mock return — the mock returns the same object that
-		// gets mutated, so we can inspect it after the call).
-		expect(summary.degraded.baseExclusions).toBe(true);
+		expect(writeOpts.exclusionSet).toBeUndefined();
 	});
 
-	it("base-load failure is not fatal — refresh completes successfully", async () => {
+	it("base-load failure → empty exclusions, refresh still completes", async () => {
 		setupHappyPath({ baseSongIds: ["song-1"] });
-		mockLoadExclusionSet.mockRejectedValue(new Error("transient failure"));
+		mockLoadExclusionSet.mockRejectedValue(new Error("DB timeout"));
 
 		const outcome = await executeMatchSnapshotRefresh("acc-1", makePlan());
+
 		expect(outcome.status).toBe("published");
 		if (outcome.status === "published") {
 			expect(outcome.result.published).toBe(true);
 		}
-	});
 
-	it("filter metadata failure → empty filter exclusions, base exclusions still applied", async () => {
-		const baseSet = new Set(["song-1:pl-1"]);
-		const degradedSummary: MatchFiltersExclusionSummary = {
-			...emptyFilterSummary(),
-			degraded: { baseExclusions: false, filterMetadata: true },
-		};
-
-		setupHappyPath({
-			baseSongIds: ["song-1"],
-			baseExclusionSet: baseSet,
-			filterExclusions: new Set(),
-			filterSummary: degradedSummary,
-		});
-
-		await executeMatchSnapshotRefresh("acc-1", makePlan());
-
-		// Base exclusion still in the effective set.
+		// No exclusionSet arg when the only source (base) failed to load.
 		const [, , , matchOpts] = mockMatchBatch.mock.calls[0] as [
 			unknown,
 			unknown,
 			unknown,
 			{ exclusionSet: Set<string> } | undefined,
 		];
-		expect(matchOpts?.exclusionSet.has("song-1:pl-1")).toBe(true);
+		expect(matchOpts).toBeUndefined();
 	});
 
-	it("matchBatch and writeMatchSnapshot receive the EXACT SAME effective exclusion set reference", async () => {
-		// Both call sites must consume the identical computed set so a future refactor
-		// cannot silently diverge them (NIT-5 / MAJOR-2).
-		const baseSet = new Set(["song-1:pl-1"]);
-		const filterSet = new Set(["song-2:pl-1"]);
-
+	it("matchBatch and writeMatchSnapshot receive the EXACT SAME exclusion set reference", async () => {
+		// Both call sites must consume the identical computed set so a future
+		// refactor cannot silently diverge them.
 		setupHappyPath({
 			baseSongIds: ["song-1", "song-2"],
-			baseExclusionSet: baseSet,
-			filterExclusions: filterSet,
+			baseExclusionSet: new Set(["song-1:pl-1", "song-2:pl-1"]),
 		});
 
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
@@ -434,19 +329,16 @@ describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", ()
 			{ exclusionSet?: Set<string> },
 		];
 
-		// Both must be the same object reference — not just deep-equal — proving
-		// a single computed value is reused at both call sites.
+		// Same object reference — not just deep-equal.
 		expect(matchOpts?.exclusionSet).toBe(writeOpts.exclusionSet);
-		// And the contents are what we expect.
 		expect(matchOpts?.exclusionSet.has("song-1:pl-1")).toBe(true);
 		expect(matchOpts?.exclusionSet.has("song-2:pl-1")).toBe(true);
 	});
 
-	it("empty base and empty filter → no exclusionSet arg passed to matchBatch or writeMatchSnapshot", async () => {
+	it("empty base → no exclusionSet arg passed to matchBatch or writeMatchSnapshot", async () => {
 		setupHappyPath({
 			baseSongIds: ["song-1"],
 			baseExclusionSet: new Set(),
-			filterExclusions: new Set(),
 		});
 
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
@@ -464,30 +356,9 @@ describe("executeMatchSnapshotRefresh — effective exclusion set (CMHF-12)", ()
 		];
 		expect(writeOpts.exclusionSet).toBeUndefined();
 	});
-
-	it("loadMatchFilterExclusions receives the target playlists loaded earlier", async () => {
-		const playlists = [
-			makePlaylist("pl-1", { version: 1, languages: { codes: ["pt"] } }),
-			makePlaylist("pl-2"),
-		];
-		const profiles = [makeProfile("pl-1"), makeProfile("pl-2")];
-
-		setupHappyPath({ baseSongIds: ["song-1"], playlists, profiles });
-
-		await executeMatchSnapshotRefresh("acc-1", makePlan());
-
-		const filterInput = mockLoadMatchFilterExclusions.mock.calls[0][0] as {
-			accountId: string;
-			playlists: unknown[];
-			candidateSongIds: string[];
-		};
-		expect(filterInput.accountId).toBe("acc-1");
-		expect(filterInput.playlists).toHaveLength(2);
-		expect(filterInput.candidateSongIds).toEqual(["song-1"]);
-	});
 });
 
-describe("executeMatchSnapshotRefresh — soft profile path unchanged (CMHF-12)", () => {
+describe("executeMatchSnapshotRefresh — soft profile path unchanged", () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	it("still invokes matchBatch with matchingSongs and profiles", async () => {
@@ -514,6 +385,5 @@ describe("executeMatchSnapshotRefresh — soft profile path unchanged (CMHF-12)"
 		await executeMatchSnapshotRefresh("acc-1", makePlan());
 
 		expect(mockMatchBatch).not.toHaveBeenCalled();
-		expect(mockLoadMatchFilterExclusions).not.toHaveBeenCalled();
 	});
 });

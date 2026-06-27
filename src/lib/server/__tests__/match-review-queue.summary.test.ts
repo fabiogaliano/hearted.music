@@ -319,7 +319,7 @@ describe("resolveMatchReviewSummary — playlist orientation", () => {
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockGetOrderedUndecidedPlaylistIds.mockResolvedValue(
-			Result.ok(["pl-1", "pl-2"]),
+			Result.ok({ playlistIds: ["pl-1", "pl-2"], hiddenReviewItemCount: 0 }),
 		);
 		mockIn.mockResolvedValue({
 			data: [

@@ -23,6 +23,7 @@ import {
 	getServedRanksForSong,
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
+import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 // ============================================================================
@@ -170,11 +171,15 @@ async function getMatchSnapshotData(
 /**
  * Pure derivation: song IDs with at least one undecided match, plus ordering info.
  *
- * `minScore` is the read-time strictness bar: match_result rows below it are
- * skipped *before* both maxScore and hasUndecided accumulate, so a pair under
- * the bar contributes neither ordering weight nor "this song still has
- * suggestions". A song whose only undecided pairs are below the bar therefore
- * drops out of the result entirely. Pass 0 to consider every stored match.
+ * `minScore` is the read-time strictness bar: match_result rows whose
+ * strictnessScore (fused_score ?? score) is below it are skipped *before* both
+ * maxScore and hasUndecided accumulate, so a pair under the bar contributes
+ * neither ordering weight nor "this song still has suggestions". A song whose
+ * only undecided pairs are below the bar therefore drops out of the result
+ * entirely. Pass 0 to consider every stored match.
+ *
+ * Strictness and ordering both key off strictnessScore — the fused retrieval
+ * quality — never the reranker/legacy ordering value in `score` (E7).
  */
 export function deriveUndecidedSongs(
 	matchResults: MatchResultRow[],
@@ -190,14 +195,15 @@ export function deriveUndecidedSongs(
 		{ maxScore: number; hasUndecided: boolean }
 	>();
 	for (const mr of matchResults) {
-		if (mr.score < minScore) continue;
+		const rowScore = strictnessScore(mr);
+		if (rowScore < minScore) continue;
 		const existing = songMap.get(mr.song_id) ?? {
 			maxScore: 0,
 			hasUndecided: false,
 		};
 		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
 		songMap.set(mr.song_id, {
-			maxScore: Math.max(existing.maxScore, mr.score),
+			maxScore: Math.max(existing.maxScore, rowScore),
 			hasUndecided: existing.hasUndecided || isUndecided,
 		});
 	}

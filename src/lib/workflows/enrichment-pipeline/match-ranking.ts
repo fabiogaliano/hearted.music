@@ -84,13 +84,20 @@ export const MATCH_RANKING_SCHEMA_VERSION = "oriented-suggestion-lists-v1";
  *
  * Song orientation:     query = song document (metadata/analysis),  candidates = playlist documents.
  * Playlist orientation: query = playlist document,                   candidates = song documents.
+ *
+ * The instruction frames the judgement around the candidate document being
+ * scored against the query subject, so each orientation must name the roles in
+ * the same direction it actually calls rerank(query, candidates):
+ *  - song:     the song is the query, each playlist is judged as a home for it.
+ *  - playlist: the playlist is the query, each song is judged for belonging —
+ *              this is DEFAULT_RERANK_INSTRUCTION and matches the legacy
+ *              reranking.ts call (query = playlist, candidates = songs).
  */
 export const RERANK_INSTRUCTION_BY_ORIENTATION: Readonly<
 	Record<MatchOrientation, string>
 > = {
-	song: DEFAULT_RERANK_INSTRUCTION,
-	playlist:
-		"Given a song's mood and themes, judge if this playlist is a good home for it.",
+	song: "Given a song's mood and themes, judge if this playlist is a good home for it.",
+	playlist: DEFAULT_RERANK_INSTRUCTION,
 } as const;
 
 /**

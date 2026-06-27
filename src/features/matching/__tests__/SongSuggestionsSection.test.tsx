@@ -107,7 +107,7 @@ describe("SongSuggestionsSection", () => {
 				onPrevious={vi.fn()}
 			/>,
 		);
-		const dismissBtn = screen.getByRole("button", { name: /Dismiss/i });
+		const dismissBtn = screen.getByRole("button", { name: /Reject Matches/i });
 		const prevBtn = screen.getByRole("button", { name: /Previous/i });
 		const nextBtn = screen.getByRole("button", { name: /Skip Playlist/i });
 		expect((dismissBtn as HTMLButtonElement).disabled).toBe(true);
@@ -115,13 +115,22 @@ describe("SongSuggestionsSection", () => {
 		expect((nextBtn as HTMLButtonElement).disabled).toBe(true);
 	});
 
-	it("renders Dismiss button that calls onDismiss", async () => {
+	it("renders Reject button that calls onDismiss", async () => {
 		const onDismiss = vi.fn();
 		const { user } = render(
 			<SongSuggestionsSection {...DEFAULT_PROPS} onDismiss={onDismiss} />,
 		);
-		await user.click(screen.getByRole("button", { name: /Dismiss/i }));
+		await user.click(screen.getByRole("button", { name: /Reject Matches/i }));
 		expect(onDismiss).toHaveBeenCalledOnce();
+	});
+
+	it("uses singular 'Reject Match' copy when a single suggestion is visible (H3)", () => {
+		render(
+			<SongSuggestionsSection {...DEFAULT_PROPS} suggestions={[makeRow()]} />,
+		);
+		expect(
+			screen.getByRole("button", { name: /Reject Match$/i }),
+		).toBeDefined();
 	});
 
 	it("renders Skip Playlist button that calls onNext", async () => {
