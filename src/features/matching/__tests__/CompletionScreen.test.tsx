@@ -79,6 +79,50 @@ describe("CompletionScreen", () => {
 		expect(onExit).toHaveBeenCalledOnce();
 	});
 
+	it("renders a placeholder instead of a broken image when artwork is null", () => {
+		const { container } = render(
+			<CompletionScreen
+				stats={BASE_STATS}
+				items={[
+					{
+						id: "s1",
+						albumArtUrl: null,
+						name: "No Art Song",
+						artist: "Artist A",
+					},
+				]}
+				onExit={vi.fn()}
+			/>,
+		);
+		// A null-artwork item renders no <img> tag (which would show a broken icon)
+		// and instead surfaces an aria-labelled placeholder…
+		expect(container.querySelector("img")).toBeNull();
+		expect(
+			screen.getByRole("img", { name: "No Art Song — Artist A" }),
+		).toBeDefined();
+		// …while the item name is still shown via the recap caption.
+		expect(screen.getByText("No Art Song")).toBeDefined();
+	});
+
+	it("renders the album art image when artwork is present", () => {
+		const { container } = render(
+			<CompletionScreen
+				stats={BASE_STATS}
+				items={[
+					{
+						id: "s1",
+						albumArtUrl: "https://img.example/cover.jpg",
+						name: "Has Art",
+						artist: "Artist A",
+					},
+				]}
+				onExit={vi.fn()}
+			/>,
+		);
+		const img = container.querySelector("img");
+		expect(img?.getAttribute("src")).toBe("https://img.example/cover.jpg");
+	});
+
 	it("does not render dismissed stat when dismissedCount is 0", () => {
 		render(
 			<CompletionScreen

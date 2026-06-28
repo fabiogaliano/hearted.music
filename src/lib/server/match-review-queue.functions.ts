@@ -1161,7 +1161,7 @@ export const finishMatchReviewItem = createServerFn({ method: "POST" })
 // Queue summary (Phase 7 — dashboard CTA, sidebar badge, empty-state)
 // ============================================================================
 
-export interface MatchReviewSummaryResult {
+export interface ServerMatchReviewSummaryResult {
 	pendingCount: number;
 	previewImages: Array<{
 		id: number;
@@ -1193,10 +1193,10 @@ export interface MatchReviewSummaryResult {
 export async function resolveMatchReviewSummary(
 	accountId: string,
 	orientation: MatchOrientation,
-): Promise<MatchReviewSummaryResult> {
+): Promise<ServerMatchReviewSummaryResult> {
 	const summaryResult = await getQueueSummary(accountId, orientation);
 
-	const empty: MatchReviewSummaryResult = {
+	const empty: ServerMatchReviewSummaryResult = {
 		pendingCount: 0,
 		previewImages: [],
 		hasActiveQueue: false,
@@ -1259,7 +1259,7 @@ export async function resolveMatchReviewSummary(
  */
 async function resolveSongPreviews(
 	topIds: string[],
-): Promise<MatchReviewSummaryResult["previewImages"]> {
+): Promise<ServerMatchReviewSummaryResult["previewImages"]> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("song")
@@ -1282,7 +1282,8 @@ async function resolveSongPreviews(
 				: null;
 		})
 		.filter(
-			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
+			(p): p is ServerMatchReviewSummaryResult["previewImages"][number] =>
+				p !== null,
 		);
 }
 
@@ -1293,7 +1294,7 @@ async function resolveSongPreviews(
  */
 async function resolvePlaylistPreviews(
 	topIds: string[],
-): Promise<MatchReviewSummaryResult["previewImages"]> {
+): Promise<ServerMatchReviewSummaryResult["previewImages"]> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
 		.from("playlist")
@@ -1316,7 +1317,8 @@ async function resolvePlaylistPreviews(
 				: null;
 		})
 		.filter(
-			(p): p is MatchReviewSummaryResult["previewImages"][number] => p !== null,
+			(p): p is ServerMatchReviewSummaryResult["previewImages"][number] =>
+				p !== null,
 		);
 }
 
@@ -1332,12 +1334,14 @@ const GetMatchReviewSummarySchema = z.object({
 export const getMatchReviewSummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => GetMatchReviewSummarySchema.parse(data))
-	.handler(async ({ data, context }): Promise<MatchReviewSummaryResult> => {
-		return resolveMatchReviewSummary(
-			context.session.accountId,
-			data.orientation,
-		);
-	});
+	.handler(
+		async ({ data, context }): Promise<ServerMatchReviewSummaryResult> => {
+			return resolveMatchReviewSummary(
+				context.session.accountId,
+				data.orientation,
+			);
+		},
+	);
 
 /**
  * Reads the account's stored match_view_mode preference and delegates to
@@ -1348,7 +1352,7 @@ export const getMatchReviewSummary = createServerFn({ method: "GET" })
  */
 export async function resolvePreferredMatchReviewSummary(
 	accountId: string,
-): Promise<MatchReviewSummaryResult> {
+): Promise<ServerMatchReviewSummaryResult> {
 	const mode = await getPreferredMatchViewMode(accountId);
 	return resolveMatchReviewSummary(accountId, mode);
 }
@@ -1360,7 +1364,7 @@ export async function resolvePreferredMatchReviewSummary(
 export const getPreferredMatchReviewSummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.inputValidator((data: undefined) => NoInputSchema.parse(data))
-	.handler(async ({ context }): Promise<MatchReviewSummaryResult> => {
+	.handler(async ({ context }): Promise<ServerMatchReviewSummaryResult> => {
 		return resolvePreferredMatchReviewSummary(context.session.accountId);
 	});
 

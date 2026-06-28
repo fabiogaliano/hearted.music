@@ -21,7 +21,7 @@ export interface MatchSearch {
  * on the raw params first.
  */
 export function validateMatchSearch(raw: Record<string, unknown>): MatchSearch {
-	if (raw["mode"] === "playlist") {
+	if (raw.mode === "playlist") {
 		return { mode: "playlist" };
 	}
 	return {};
@@ -43,7 +43,7 @@ export function modeFromSearch(search: MatchSearch): MatchViewMode {
 export function hasNonCanonicalMatchMode(
 	raw: Record<string, unknown>,
 ): boolean {
-	const mode = raw["mode"];
+	const mode = raw.mode;
 	if (mode === undefined) return false;
 	return mode !== "playlist";
 }

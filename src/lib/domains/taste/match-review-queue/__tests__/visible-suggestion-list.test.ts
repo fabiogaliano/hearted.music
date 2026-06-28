@@ -1289,17 +1289,58 @@ describe("deriveVisibleSuggestions — read-time filter predicates", () => {
 		expect(result).toHaveLength(1);
 	});
 
-	it("no filter applied when songMeta is absent (pure-function contract: caller controls what to pass)", () => {
-		// deriveVisibleSuggestions skips the predicate when songMeta is not
-		// supplied at all (undefined). The DRIVER (computeVisibleSuggestionList)
-		// is responsible for never letting this happen for absent DB rows — it
-		// substitutes the all-null struct so the predicate runs and fails.
+	it("active filter + songMeta undefined excludes the pair (missing metadata fails filters)", () => {
+		// An absent songMeta is treated as all-null metadata inside the pure
+		// function, so an active language filter fails — no "unknown" pass-through.
 		const pair: MatchPairInput = {
 			songId: "song-1",
 			playlistId: "pl-1",
 			score: 0.8,
 			fusedScore: null,
 			playlistFilters: { version: 1, languages: { codes: ["en"] } },
+		};
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("active filter + songMeta null excludes the pair (missing metadata fails filters)", () => {
+		const pair: MatchPairInput = {
+			songId: "song-1",
+			playlistId: "pl-1",
+			score: 0.8,
+			fusedScore: null,
+			songMeta: null,
+			playlistFilters: { version: 1, languages: { codes: ["en"] } },
+		};
+		const result = deriveVisibleSuggestions(
+			songSubject,
+			[pair],
+			[],
+			new Set(),
+			0.0,
+			NOW_MS,
+		);
+		expect(result).toHaveLength(0);
+	});
+
+	it("filter object with no active constraints passes even when songMeta is null", () => {
+		// Distinguishes "active filter" from "filter object present": with no
+		// constraints there is nothing to fail, so missing metadata still passes —
+		// preserving the "no filter applied" path.
+		const pair: MatchPairInput = {
+			songId: "song-1",
+			playlistId: "pl-1",
+			score: 0.8,
+			fusedScore: null,
+			songMeta: null,
+			playlistFilters: { version: 1 },
 		};
 		const result = deriveVisibleSuggestions(
 			songSubject,

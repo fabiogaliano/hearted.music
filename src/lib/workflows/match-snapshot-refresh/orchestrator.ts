@@ -265,13 +265,14 @@ export async function executeMatchSnapshotRefresh(
 		// LLM unavailable — cold-start expansion disabled.
 	}
 
-	let rerankerService: RerankerService | undefined;
-	try {
-		// Default config carries the canonical rerank instruction.
-		rerankerService = new RerankerService();
-	} catch {
-		// Reranker unavailable.
-	}
+	// Construct the reranker once (default config carries the canonical rerank
+	// instruction) so both orientations share one instance. The no-arg constructor
+	// only validates static default config via Zod and never touches the network
+	// (getMlProvider runs lazily inside rerank()), so it does not throw — no guard
+	// is needed. When the provider is unavailable at call time, rerank() degrades
+	// to the original order and the ranking helpers still emit fused_fallback
+	// ranking rows for both orientations.
+	const rerankerService = new RerankerService();
 
 	const profilingService = createPlaylistProfilingService(
 		embeddingService,
@@ -563,17 +564,13 @@ export async function executeMatchSnapshotRefresh(
 			genrePills: pl.genre_pills ?? null,
 		}));
 
-		// Use existing rerankerService or construct a new one; the RerankerService
-		// constructor only parses config and never touches the network, so it
-		// cannot throw. If the provider is later unavailable, rankSongSuggestionLists
-		// and rankPlaylistSuggestionLists degrade to fused_fallback internally.
-		const effectiveReranker = rerankerService ?? new RerankerService();
-
 		const rankResult = await rankMatchSuggestionLists({
 			storedPairs,
 			songs: songsForRanking,
 			playlists: playlistsForRanking,
-			rerankerService: effectiveReranker,
+			// If the provider is unavailable at call time, rankSongSuggestionLists
+			// and rankPlaylistSuggestionLists degrade to fused_fallback internally.
+			rerankerService,
 			isSuperseded: satisfiesRequestedAt
 				? () => checkIfSuperseded(accountId, satisfiesRequestedAt)
 				: undefined,

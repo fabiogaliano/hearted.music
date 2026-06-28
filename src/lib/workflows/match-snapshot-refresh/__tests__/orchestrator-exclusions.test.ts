@@ -76,11 +76,21 @@ vi.mock("@/lib/integrations/llm/service", () => ({
 	},
 }));
 
-// Reranker service — optional
+// Reranker service — the orchestrator constructs one up-front. The real no-arg
+// constructor only validates static config and never throws; these tests produce
+// no stored pairs, so rerank() is never reached. The method is stubbed to the
+// provider-unavailable degradation (original order) to stay faithful regardless.
 vi.mock("@/lib/integrations/reranker/service", () => ({
 	RerankerService: class {
-		constructor() {
-			throw new Error("Reranker unavailable");
+		rerank(_query: string, candidates: unknown[]) {
+			return Promise.resolve(
+				Result.ok({
+					reranked: false,
+					candidates,
+					rerankedCount: 0,
+					stats: { originalTopScore: 0, rerankTopScore: 0, scoreShift: 0 },
+				}),
+			);
 		}
 	},
 	DEFAULT_RERANKER_CONFIG: {},
@@ -123,7 +133,7 @@ vi.mock("@/lib/observability/account-label", () => ({
 	resolveAccountLabel: vi.fn().mockResolvedValue("test-user"),
 }));
 
-// Re-ranking (not exercised in these tests — reranker is always unavailable)
+// Re-ranking (not exercised in these tests — no stored pairs are produced)
 vi.mock("@/lib/workflows/enrichment-pipeline/reranking", () => ({
 	rerankMatches: vi.fn().mockResolvedValue(undefined),
 }));
