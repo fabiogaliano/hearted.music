@@ -1683,6 +1683,14 @@ describe("presentMatchReviewItem", () => {
 			expect(result.reason).toBe("snapshot-not-owned");
 		}
 		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
+		// Same stuck-card guard as the entitlement-loss path: the owned item still
+		// renders a skippable unavailable card, so it must stamp an empty capture
+		// for finishMatchReviewItem to resolve it instead of rejecting NULL capture.
+		expect(mockCaptureVisiblePairsAtomic).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			[],
+		);
 	});
 
 	it("returns unavailable not-entitled when computeVisibleSuggestionList says song-not-entitled", async () => {
@@ -1699,7 +1707,56 @@ describe("presentMatchReviewItem", () => {
 			expect(result.reason).toBe("not-entitled");
 			expect(result.message).toContain("song");
 		}
-		expect(mockCaptureVisiblePairsAtomic).not.toHaveBeenCalled();
+		// Regression: an entitlement-loss card MUST stamp an empty visible-pairs
+		// capture so it can be skipped. finishMatchReviewItem guards on
+		// visible_pairs_captured_at (not row count) and rejects a NULL capture as
+		// no_captured_pairs; without this empty capture the unavailable card's Skip
+		// would loop forever and the item would stay stuck in the active queue.
+		expect(mockCaptureVisiblePairsAtomic).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			[],
+		);
+	});
+
+	it("stamps an empty capture so an entitlement-loss card is skippable (playlist message)", async () => {
+		setupPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "not-entitled",
+			reason: "playlist-not-entitled",
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+			expect(result.message).toContain("playlist");
+		}
+		expect(mockCaptureVisiblePairsAtomic).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			[],
+		);
+	});
+
+	it("surfaces retryable-error when the entitlement-loss stamping capture fails", async () => {
+		// If the empty stamping capture itself errors we must not hand back an
+		// unavailable card that can never be skipped (captured_at still NULL) —
+		// surface retryable so the user can retry rather than get stuck.
+		setupPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "not-entitled",
+			reason: "song-not-entitled",
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "db-error",
+			error: new Error("capture failed"),
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
 	});
 
 	it("returns retryable-error when computeVisibleSuggestionList returns db-error", async () => {
