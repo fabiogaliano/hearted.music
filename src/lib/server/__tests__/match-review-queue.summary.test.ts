@@ -96,6 +96,8 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	createOrResumeQueue: vi.fn(),
 	getQueueSummary: (...args: unknown[]) => mockGetQueueSummary(...args),
+	getOrderedUndecidedSongIds: (...args: unknown[]) =>
+		mockGetOrderedUndecidedSongIds(...args),
 	getOrderedUndecidedPlaylistIds: (...args: unknown[]) =>
 		mockGetOrderedUndecidedPlaylistIds(...args),
 	markItemPresented: vi.fn(),
@@ -122,11 +124,6 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	fetchActiveSession: vi.fn(),
 	fetchQueueItems: vi.fn(),
 	finishQueueItemAtomically: vi.fn(),
-}));
-
-vi.mock("@/lib/server/matching.functions", () => ({
-	getOrderedUndecidedSongIds: (...args: unknown[]) =>
-		mockGetOrderedUndecidedSongIds(...args),
 }));
 
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
@@ -391,10 +388,9 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: ["song-x", "song-y"],
-			hiddenSongCount: 0,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({ songIds: ["song-x", "song-y"], hiddenReviewItemCount: 0 }),
+		);
 		mockIn.mockResolvedValue({
 			data: [
 				{ id: "song-x", image_url: "x.jpg", name: "Track X", artists: ["AX"] },
@@ -447,10 +443,9 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: [],
-			hiddenSongCount: 0,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({ songIds: [], hiddenReviewItemCount: 0 }),
+		);
 
 		const result = await resolveMatchReviewSummary("acct-1", "song");
 
@@ -468,10 +463,12 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			}),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: ["s1", "s2", "s3", "s4", "s5"],
-			hiddenSongCount: 0,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({
+				songIds: ["s1", "s2", "s3", "s4", "s5"],
+				hiddenReviewItemCount: 0,
+			}),
+		);
 		mockIn.mockResolvedValue({
 			data: [
 				{ id: "s1", image_url: "a.jpg", name: "T1", artists: ["A1"] },
@@ -495,10 +492,9 @@ describe("resolveMatchReviewSummary — snapshot-fallback path", () => {
 			Result.err({ _tag: "DatabaseError", message: "connection failed" }),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: ["song-z"],
-			hiddenSongCount: 0,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({ songIds: ["song-z"], hiddenReviewItemCount: 0 }),
+		);
 		mockIn.mockResolvedValue({
 			data: [
 				{ id: "song-z", image_url: "z.jpg", name: "Track Z", artists: ["AZ"] },

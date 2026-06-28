@@ -119,11 +119,6 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 		mockGetLatestMatchSnapshot(...args),
 }));
 
-vi.mock("@/lib/server/matching.functions", () => ({
-	getOrderedUndecidedSongIds: (...args: unknown[]) =>
-		mockGetOrderedUndecidedSongIds(...args),
-}));
-
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 	getMatchDecisionsForSongs: (...args: unknown[]) =>
 		mockGetMatchDecisionsForSongs(...args),
@@ -148,6 +143,8 @@ vi.mock("@/lib/domains/taste/match-review-queue/capture-visible-pairs", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	createOrResumeQueue: vi.fn(),
 	getQueueSummary: vi.fn(),
+	getOrderedUndecidedSongIds: (...args: unknown[]) =>
+		mockGetOrderedUndecidedSongIds(...args),
 	markItemPresented: (...args: unknown[]) => mockMarkItemPresented(...args),
 	markItemResolved: (...args: unknown[]) => mockMarkItemResolved(...args),
 	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
@@ -1415,7 +1412,11 @@ describe("getMatchReview", () => {
 
 	it("forwards hiddenReviewItemCount from the latest snapshot when caught-up", async () => {
 		mockFetchActiveSession.mockResolvedValue(
-			Result.ok({ id: "session-1", accountId: "acct-1" }),
+			Result.ok({
+				id: "session-1",
+				accountId: "acct-1",
+				strictnessMinScore: 0.7,
+			}),
 		);
 		vi.mocked(fetchQueueItems).mockResolvedValue(
 			Result.ok([
@@ -1423,18 +1424,20 @@ describe("getMatchReview", () => {
 			]),
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
-		mockGetOrderedUndecidedSongIds.mockResolvedValue({
-			songIds: [],
-			hiddenSongCount: 3,
-		});
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({ songIds: [], hiddenReviewItemCount: 3 }),
+		);
 
 		const result = await getMatchReview({ data: { orientation: "song" } });
 
 		expect(result?.caughtUp).toBe(true);
 		expect(result?.hiddenReviewItemCount).toBe(3);
+		// The session's frozen strictness bar is passed so the caught-up count is
+		// computed against the same policy the queue used, not the live preference.
 		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
 			"snap-1",
 			"acct-1",
+			0.7,
 		);
 	});
 

@@ -10,476 +10,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
-import {
-	deriveUndecidedSongsForQueue,
-	getOrderedUndecidedSubjects,
-} from "../service";
-import type {
-	MatchReviewQueueItem,
-	QueueVisibilityConfigHashInput,
-} from "../types";
-
-// ============================================================================
-// Pure derivation tests — no mocks needed
-// ============================================================================
-
-describe("deriveUndecidedSongsForQueue", () => {
-	const mr = (
-		song_id: string,
-		playlist_id: string,
-		score: number,
-		fused_score: number | null = null,
-	) => ({
-		song_id,
-		playlist_id,
-		score,
-		fused_score,
-	});
-
-	it("returns empty when no match results", () => {
-		const result = deriveUndecidedSongsForQueue([], new Set(), 0.5, new Set());
-		expect(result).toEqual([]);
-	});
-
-	it("includes songs with at least one undecided match above the threshold", () => {
-		const results = [mr("song-1", "pl-A", 0.7), mr("song-2", "pl-B", 0.6)];
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			new Set(),
-			0.5,
-			new Set(),
-		);
-		expect(derived.map((s) => s.songId)).toContain("song-1");
-		expect(derived.map((s) => s.songId)).toContain("song-2");
-	});
-
-	it("excludes songs whose only matches are below the strictness threshold", () => {
-		const results = [
-			mr("song-below", "pl-A", 0.3), // below 0.5 bar
-			mr("song-above", "pl-B", 0.6),
-		];
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			new Set(),
-			0.5,
-			new Set(),
-		);
-		expect(derived.map((s) => s.songId)).not.toContain("song-below");
-		expect(derived.map((s) => s.songId)).toContain("song-above");
-	});
-
-	it("excludes songs where all above-threshold matches are already decided", () => {
-		const results = [mr("song-1", "pl-A", 0.7), mr("song-1", "pl-B", 0.6)];
-		// Both pairs decided
-		const decided = new Set(["song-1:pl-A", "song-1:pl-B"]);
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			decided,
-			0.5,
-			new Set(),
-		);
-		expect(derived).toHaveLength(0);
-	});
-
-	it("keeps a song when at least one of its playlist pairs is undecided", () => {
-		const results = [
-			mr("song-1", "pl-A", 0.7), // decided
-			mr("song-1", "pl-B", 0.6), // undecided
-		];
-		const decided = new Set(["song-1:pl-A"]);
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			decided,
-			0.5,
-			new Set(),
-		);
-		expect(derived).toHaveLength(1);
-		expect(derived[0].songId).toBe("song-1");
-	});
-
-	it("records the max visible score as sourceScore", () => {
-		const results = [mr("song-1", "pl-A", 0.9), mr("song-1", "pl-B", 0.6)];
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			new Set(),
-			0.5,
-			new Set(),
-		);
-		expect(derived[0].maxScore).toBeCloseTo(0.9);
-	});
-
-	it("marks isNew=true only for songs in the newness set", () => {
-		const results = [mr("song-new", "pl-A", 0.8), mr("song-old", "pl-B", 0.7)];
-		const newSet = new Set(["song-new"]);
-		const derived = deriveUndecidedSongsForQueue(
-			results,
-			new Set(),
-			0.5,
-			newSet,
-		);
-		const newSong = derived.find((s) => s.songId === "song-new");
-		const oldSong = derived.find((s) => s.songId === "song-old");
-		expect(newSong?.isNew).toBe(true);
-		expect(oldSong?.isNew).toBe(false);
-	});
-});
-
-// ============================================================================
-// Ordering policy — tested against the pure sort
-// ============================================================================
-
-// Import the unexported sort helper by going through the derived output
-// ordering. We test the full pipeline (derive + sort) via the service
-// function exported for queue seeding.
-
-describe("queue ordering (new first, max score desc, id asc)", () => {
-	const mr = (
-		song_id: string,
-		playlist_id: string,
-		score: number,
-		fused_score: number | null = null,
-	) => ({
-		song_id,
-		playlist_id,
-		score,
-		fused_score,
-	});
-
-	function deriveOrdered(
-		matchResults: ReturnType<typeof mr>[],
-		newIds: string[] = [],
-	) {
-		const newSet = new Set(newIds);
-		// Call derive to get the unsorted candidates, then test order by sorting
-		// ourselves the same way the service does in sortSongsForQueue.
-		const candidates = deriveUndecidedSongsForQueue(
-			matchResults,
-			new Set(),
-			0,
-			newSet,
-		);
-		return candidates.toSorted((a, b) => {
-			const aNew = a.isNew ? 1 : 0;
-			const bNew = b.isNew ? 1 : 0;
-			if (aNew !== bNew) return bNew - aNew;
-			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-			return a.songId.localeCompare(b.songId);
-		});
-	}
-
-	it("new songs sort before non-new songs regardless of score", () => {
-		const results = [
-			mr("song-high-score", "pl-A", 0.99), // not new
-			mr("song-new-low", "pl-B", 0.5), // new
-		];
-		const ordered = deriveOrdered(results, ["song-new-low"]);
-		expect(ordered[0].songId).toBe("song-new-low");
-	});
-
-	it("within the same newness bucket, sorts by max score descending", () => {
-		const results = [
-			mr("song-low", "pl-A", 0.6),
-			mr("song-high", "pl-B", 0.9),
-			mr("song-mid", "pl-C", 0.75),
-		];
-		const ordered = deriveOrdered(results);
-		expect(ordered.map((s) => s.songId)).toEqual([
-			"song-high",
-			"song-mid",
-			"song-low",
-		]);
-	});
-
-	it("breaks score ties by song id ascending", () => {
-		const results = [
-			mr("z-song", "pl-A", 0.8),
-			mr("a-song", "pl-B", 0.8),
-			mr("m-song", "pl-C", 0.8),
-		];
-		const ordered = deriveOrdered(results);
-		expect(ordered.map((s) => s.songId)).toEqual([
-			"a-song",
-			"m-song",
-			"z-song",
-		]);
-	});
-
-	it("produces a deterministic 3-key sort: [new desc, score desc, id asc]", () => {
-		const results = [
-			mr("z-new", "pl-1", 0.5), // new, low score
-			mr("a-old", "pl-2", 0.99), // not new, high score
-			mr("b-new", "pl-3", 0.9), // new, high score
-			mr("c-old", "pl-4", 0.7), // not new
-		];
-		const ordered = deriveOrdered(results, ["z-new", "b-new"]);
-		// New first sorted by score desc then id asc: b-new(0.9), z-new(0.5)
-		// Then non-new sorted by score desc: a-old(0.99), c-old(0.7)
-		expect(ordered.map((s) => s.songId)).toEqual([
-			"b-new",
-			"z-new",
-			"a-old",
-			"c-old",
-		]);
-	});
-});
-
-// ============================================================================
-// getOrderedUndecidedSubjects — orientation-aware derivation (MSR-19)
-// ============================================================================
-
-describe("getOrderedUndecidedSubjects — song mode", () => {
-	const mr = (
-		song_id: string,
-		playlist_id: string,
-		score: number,
-		fused_score: number | null = null,
-	) => ({ song_id, playlist_id, score, fused_score });
-
-	it("returns song-orientation subjects with wasNewAtEnqueue from newness set", () => {
-		const results = [mr("song-new", "pl-A", 0.9), mr("song-old", "pl-B", 0.8)];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"song",
-			new Set(["song-new"]),
-		);
-		const newSubject = subjects.find(
-			(s) =>
-				s.subject.orientation === "song" && s.subject.songId === "song-new",
-		);
-		const oldSubject = subjects.find(
-			(s) =>
-				s.subject.orientation === "song" && s.subject.songId === "song-old",
-		);
-		expect(newSubject?.wasNewAtEnqueue).toBe(true);
-		expect(oldSubject?.wasNewAtEnqueue).toBe(false);
-	});
-
-	it("orders new songs before non-new regardless of score", () => {
-		const results = [
-			mr("song-high", "pl-A", 0.99), // not new
-			mr("song-new-low", "pl-B", 0.5), // new
-		];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.3,
-			"song",
-			new Set(["song-new-low"]),
-		);
-		expect(subjects[0]?.subject).toMatchObject({
-			orientation: "song",
-			songId: "song-new-low",
-		});
-	});
-
-	it("counts hidden songs below threshold as hiddenReviewItemCount", () => {
-		const results = [
-			mr("song-visible", "pl-A", 0.8),
-			mr("song-hidden", "pl-B", 0.3), // below 0.5 threshold
-		];
-		const { subjects, hiddenReviewItemCount } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"song",
-			new Set(),
-		);
-		expect(subjects).toHaveLength(1);
-		expect(subjects[0]?.subject).toMatchObject({
-			orientation: "song",
-			songId: "song-visible",
-		});
-		expect(hiddenReviewItemCount).toBe(1);
-	});
-
-	it("returns hiddenReviewItemCount=0 when all undecided songs pass threshold", () => {
-		const results = [mr("s1", "pl-A", 0.8), mr("s2", "pl-B", 0.7)];
-		const { hiddenReviewItemCount } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"song",
-			new Set(),
-		);
-		expect(hiddenReviewItemCount).toBe(0);
-	});
-});
-
-describe("getOrderedUndecidedSubjects — playlist mode", () => {
-	const mr = (
-		song_id: string,
-		playlist_id: string,
-		score: number,
-		fused_score: number | null = null,
-	) => ({ song_id, playlist_id, score, fused_score });
-
-	it("returns playlist-orientation subjects", () => {
-		const results = [mr("song-1", "pl-A", 0.8), mr("song-2", "pl-B", 0.7)];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		expect(subjects.every((s) => s.subject.orientation === "playlist")).toBe(
-			true,
-		);
-	});
-
-	it("sets wasNewAtEnqueue=false for all playlist subjects", () => {
-		// Playlists have no newness concept; the newSongIds parameter is ignored.
-		const results = [mr("song-1", "pl-A", 0.9)];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(["song-1"]), // newness set should have no effect
-		);
-		expect(subjects[0]?.wasNewAtEnqueue).toBe(false);
-	});
-
-	it("orders playlists by max score desc then playlist id asc (no newness tier)", () => {
-		const results = [
-			mr("song-1", "pl-low", 0.6),
-			mr("song-2", "pl-high", 0.95),
-			mr("song-3", "pl-mid", 0.8),
-		];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		const ids = subjects.map((s) =>
-			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
-		);
-		expect(ids).toEqual(["pl-high", "pl-mid", "pl-low"]);
-	});
-
-	it("breaks score ties by playlist id ascending", () => {
-		const results = [
-			mr("song-1", "pl-z", 0.8),
-			mr("song-2", "pl-a", 0.8),
-			mr("song-3", "pl-m", 0.8),
-		];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		const ids = subjects.map((s) =>
-			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
-		);
-		expect(ids).toEqual(["pl-a", "pl-m", "pl-z"]);
-	});
-
-	it("excludes playlists whose only songs are decided", () => {
-		const results = [
-			mr("song-1", "pl-decided", 0.8),
-			mr("song-2", "pl-open", 0.7),
-		];
-		const decidedPairs = new Set(["song-1:pl-decided"]);
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			decidedPairs,
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		const ids = subjects.map((s) =>
-			s.subject.orientation === "playlist" ? s.subject.playlistId : "",
-		);
-		expect(ids).not.toContain("pl-decided");
-		expect(ids).toContain("pl-open");
-	});
-
-	it("counts hidden playlists below threshold as hiddenReviewItemCount", () => {
-		const results = [
-			mr("song-1", "pl-visible", 0.8),
-			mr("song-2", "pl-hidden", 0.3), // below 0.5
-		];
-		const { subjects, hiddenReviewItemCount } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		expect(subjects).toHaveLength(1);
-		expect(hiddenReviewItemCount).toBe(1);
-	});
-
-	it("takes max score across all songs for a playlist subject", () => {
-		// pl-A has two songs: 0.6 and 0.9 — max score should be 0.9
-		const results = [mr("song-1", "pl-A", 0.6), mr("song-2", "pl-A", 0.9)];
-		const { subjects } = getOrderedUndecidedSubjects(
-			results,
-			new Set(),
-			0.5,
-			"playlist",
-			new Set(),
-		);
-		expect(subjects).toHaveLength(1);
-		expect(subjects[0]?.maxScore).toBeCloseTo(0.9);
-	});
-});
-
-// ============================================================================
-// computeReadTimeFiltersHash — pure hash derivation (MSR-36)
-// ============================================================================
-
-describe("computeReadTimeFiltersHash", () => {
-	it("returns stable value for empty filter map", () => {
-		const h1 = computeReadTimeFiltersHash(new Map());
-		const h2 = computeReadTimeFiltersHash(new Map());
-		expect(h1).toBe(h2);
-	});
-
-	it("starts with rtf_ prefix", () => {
-		expect(computeReadTimeFiltersHash(new Map())).toMatch(/^rtf_/);
-	});
-
-	it("changes when a filter is added", () => {
-		const noFilters = computeReadTimeFiltersHash(new Map());
-		const withFilter = computeReadTimeFiltersHash(
-			new Map<string, PlaylistMatchFiltersV1 | null>([
-				["pl-1", { version: 1, languages: { codes: ["en"] } }],
-			]),
-		);
-		expect(noFilters).not.toBe(withFilter);
-	});
-
-	it("is stable when filters are unchanged", () => {
-		const m1 = new Map<string, PlaylistMatchFiltersV1 | null>([
-			["pl-a", { version: 1, languages: { codes: ["en"] } }],
-			["pl-b", null],
-		]);
-		const m2 = new Map<string, PlaylistMatchFiltersV1 | null>([
-			["pl-a", { version: 1, languages: { codes: ["en"] } }],
-			["pl-b", null],
-		]);
-		expect(computeReadTimeFiltersHash(m1)).toBe(computeReadTimeFiltersHash(m2));
-	});
-
-	it("is independent of Map insertion order", () => {
-		const m1 = new Map<string, PlaylistMatchFiltersV1 | null>([
-			["pl-a", { version: 1 }],
-			["pl-b", { version: 1, vocalGender: "female" }],
-		]);
-		const m2 = new Map<string, PlaylistMatchFiltersV1 | null>([
-			["pl-b", { version: 1, vocalGender: "female" }],
-			["pl-a", { version: 1 }],
-		]);
-		expect(computeReadTimeFiltersHash(m1)).toBe(computeReadTimeFiltersHash(m2));
-	});
-});
+import type { MatchReviewQueueItem } from "../types";
 
 // ============================================================================
 // Orchestration tests — mock the queries layer directly
@@ -509,6 +40,10 @@ vi.mock("../queries", () => ({
 	updateQueueItemResolved: vi.fn(),
 	clearSongNewness: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
+}));
+
+vi.mock("../filter-metadata-queries", () => ({
+	fetchSongsFilterMeta: vi.fn(),
 }));
 
 vi.mock("@/lib/data/client", () => ({
@@ -543,22 +78,27 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
+import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
+import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import * as queries from "../queries";
 // Import after mocks are set up
 import {
 	appendSnapshotDelta,
-	computeReadTimeFiltersHash,
-	computeVisibilityConfigHash,
 	createOrResumeQueue,
 	getOrderedUndecidedPlaylistIds,
+	getOrderedUndecidedSongIds,
 	getQueueSummary,
 	markItemPresented,
 	markItemResolved,
 	syncActiveQueue,
 } from "../service";
+import {
+	computeReadTimeFiltersHash,
+	computeVisibilityConfigHash,
+} from "../visibility-policy";
 
 const ACCOUNT_ID = "account-test-001";
 const SESSION_ID = "session-test-001";
@@ -642,8 +182,12 @@ beforeEach(() => {
 	vi.mocked(queries.fetchQueuedPlaylistIds).mockResolvedValue(
 		Result.ok(new Set<string>()),
 	);
-	vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
-		Result.ok(new Set<string>()),
+	// Default: every requested playlist is owned. The append/summary paths now
+	// apply playlist-ownership eligibility in both orientations, so tests that
+	// don't exercise ownership staleness get "all owned" and behave as before;
+	// ownership-specific tests override this with an explicit subset.
+	vi.mocked(queries.fetchOwnedPlaylistIds).mockImplementation(
+		async (_acct, ids) => Result.ok(new Set(ids)),
 	);
 	vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
 	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
@@ -666,6 +210,7 @@ beforeEach(() => {
 	vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
 		Result.ok(new Map()),
 	);
+	vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
 
 	// Default Supabase client: no active session, no snapshot
 	vi.mocked(createAdminSupabaseClient).mockReturnValue({
@@ -1598,6 +1143,263 @@ describe("appendSnapshotDelta", () => {
 });
 
 // ============================================================================
+// appendSnapshotDelta — visibility policy filters (M1: filters at queue-build)
+// ============================================================================
+
+describe("appendSnapshotDelta — policy filters", () => {
+	const meta = (language: string | null): SongFilterMetadata => ({
+		language,
+		languageSecondary: null,
+		releaseYear: null,
+		vocalGender: null,
+		likedAt: null,
+	});
+
+	const enFilter = (): Map<string, PlaylistMatchFiltersV1 | null> =>
+		new Map([["pl-A", { version: 1, languages: { codes: ["en"] } }]]);
+
+	function entitledClient(songIds: string[]) {
+		return {
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: songIds.map((song_id) => ({ song_id })),
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
+	}
+
+	it("song mode: does not queue a song whose only strictness-passing pair is hidden by playlist filters", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(enFilter()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-fr",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		// French song fails pl-A's English filter, so its only pair is hidden.
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(new Map([["song-fr", meta("fr")]])),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-fr"]),
+		);
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakeSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.appendedCount).toBe(0);
+		expect(queries.insertQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("song mode: queues a song with one filter-hidden pair and one visible pair, using the visible pair's score", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		// pl-A filters to English; pl-B has no filter.
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(
+				new Map<string, PlaylistMatchFiltersV1 | null>([
+					["pl-A", { version: 1, languages: { codes: ["en"] } }],
+					["pl-B", null],
+				]),
+			),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				// Higher-scoring pair is filter-hidden; the visible pair scores lower.
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.95,
+					fused_score: null,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-B",
+					score: 0.7,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(new Map([["song-1", meta("fr")]])),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-1"]),
+		);
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+
+		const result = await appendSnapshotDelta(
+			fakeSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		const inserted = vi.mocked(queries.insertQueueItems).mock.calls[0]?.[0];
+		expect(inserted).toHaveLength(1);
+		expect(inserted?.[0]?.songId).toBe("song-1");
+		// The source score is the visible pl-B pair (0.7), not the hidden pl-A (0.95).
+		expect(inserted?.[0]?.sourceScore).toBeCloseTo(0.7);
+	});
+
+	it("song mode: does not queue a song whose only policy-passing pair points to a non-owned playlist", async () => {
+		// Finding 2: the card drops suggestion playlists the account no longer owns,
+		// so a song whose every visible pair targets a non-owned playlist would render
+		// an empty card. Queue derivation must apply the same ownership constraint.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-gone",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-1"]),
+		);
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		// pl-gone was deleted/transferred since the snapshot — not owned anymore.
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakeSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.appendedCount).toBe(0);
+		expect(queries.insertQueueItems).not.toHaveBeenCalled();
+	});
+
+	it("playlist mode: does not queue a playlist whose only entitled suggestion songs are filter-hidden", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(enFilter()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-fr",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(new Map([["song-fr", meta("fr")]])),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-fr"]),
+		);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A"])),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.appendedCount).toBe(0);
+		expect(queries.insertQueuePlaylistItems).not.toHaveBeenCalled();
+	});
+
+	it("playlist mode: entitledVisiblePlaylistIds respects filters (a filter-hidden song does not make a playlist visible)", async () => {
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		// Both playlists filter to English; pl-A's song is English, pl-B's is French.
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(
+				new Map<string, PlaylistMatchFiltersV1 | null>([
+					["pl-A", { version: 1, languages: { codes: ["en"] } }],
+					["pl-B", { version: 1, languages: { codes: ["en"] } }],
+				]),
+			),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-en",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-fr",
+					playlist_id: "pl-B",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(
+				new Map([
+					["song-en", meta("en")],
+					["song-fr", meta("fr")],
+				]),
+			),
+		);
+		// Both songs are entitled — only the filter distinguishes them.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-en", "song-fr"]),
+		);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-A", "pl-B"])),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+
+		const result = await appendSnapshotDelta(
+			fakePlaylistSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		const inserted = vi.mocked(queries.insertQueuePlaylistItems).mock
+			.calls[0]?.[0];
+		// pl-B's only entitled song is filter-hidden, so only pl-A is queued.
+		expect(inserted?.map((i) => i.playlistId)).toEqual(["pl-A"]);
+	});
+});
+
+// ============================================================================
 // appendSnapshotDelta — playlist orientation (Finding 1)
 // ============================================================================
 
@@ -2043,49 +1845,174 @@ describe("markItemResolved", () => {
 	});
 });
 
-describe("computeVisibilityConfigHash — filter change produces new hash", () => {
-	const baseInput: QueueVisibilityConfigHashInput = {
-		orientation: "song",
-		minScore: 0.5,
-		readTimeFiltersHash: "rtf_00000001",
-	};
-
-	it("same inputs produce the same hash (idempotency)", () => {
-		expect(computeVisibilityConfigHash(baseInput)).toBe(
-			computeVisibilityConfigHash({ ...baseInput }),
-		);
+describe("getOrderedUndecidedSongIds", () => {
+	const songMeta = (language: string | null): SongFilterMetadata => ({
+		language,
+		languageSecondary: null,
+		releaseYear: null,
+		vocalGender: null,
+		likedAt: null,
 	});
 
-	it("changed readTimeFiltersHash produces a different visibility hash (loosened filters = new hash)", () => {
-		const loosened: QueueVisibilityConfigHashInput = {
-			...baseInput,
-			readTimeFiltersHash: "rtf_00000002",
-		};
-		// A new hash allows appendSnapshotDelta to append newly visible subjects
-		// that were hidden by the previous, stricter filter config (MSR-37).
-		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
-			computeVisibilityConfigHash(loosened),
+	function entitledClient(songIds: string[]) {
+		return {
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: songIds.map((song_id) => ({ song_id })),
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
+	}
+
+	it("orders entitled, visible song subjects and returns them", async () => {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-b",
+					playlist_id: "pl-A",
+					score: 0.7,
+					fused_score: null,
+				},
+				{
+					song_id: "song-a",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
 		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-a", "song-b"]),
+		);
+
+		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			// Higher score first (no newness), then the lower-scored song.
+			expect(result.value.songIds).toEqual(["song-a", "song-b"]);
+			expect(result.value.hiddenReviewItemCount).toBe(0);
+		}
 	});
 
-	it("changed minScore produces a different visibility hash", () => {
-		const lowerThreshold: QueueVisibilityConfigHashInput = {
-			...baseInput,
-			minScore: 0.3,
-		};
-		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
-			computeVisibilityConfigHash(lowerThreshold),
+	it("excludes a filter-hidden song and counts it as hidden (Finding 1)", async () => {
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(
+				new Map<string, PlaylistMatchFiltersV1 | null>([
+					["pl-A", { version: 1, languages: { codes: ["en"] } }],
+				]),
+			),
 		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-fr",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(new Map([["song-fr", songMeta("fr")]])),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-fr"]),
+		);
+
+		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			// The strictness-only authority would have advertised song-fr; the
+			// policy-aware one hides it and surfaces it behind the hidden count.
+			expect(result.value.songIds).toEqual([]);
+			expect(result.value.hiddenReviewItemCount).toBe(1);
+		}
 	});
 
-	it("changed orientation produces a different visibility hash", () => {
-		const playlistMode: QueueVisibilityConfigHashInput = {
-			...baseInput,
-			orientation: "playlist",
-		};
-		expect(computeVisibilityConfigHash(baseInput)).not.toBe(
-			computeVisibilityConfigHash(playlistMode),
+	it("excludes a song whose only pair points to a non-owned playlist", async () => {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-gone",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
 		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-1"]),
+		);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+
+		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.songIds).toEqual([]);
+			expect(result.value.hiddenReviewItemCount).toBe(0);
+		}
+	});
+
+	it("surfaces a DB error from the ownership check rather than a falsely-empty preview", async () => {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-1"]),
+		);
+		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
+
+		expect(result).toBeErr();
+	});
+
+	it("freezes the strictness bar to minScoreOverride instead of the live preference", async () => {
+		// Live preference is 0.5 (beforeEach). The song scores 0.7 — visible under
+		// live strictness — but a frozen 0.8 bar (an active session created stricter)
+		// hides it, mirroring the queue/card policy rather than the loosened live bar.
+		vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.7,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			entitledClient(["song-1"]),
+		);
+
+		const result = await getOrderedUndecidedSongIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+			0.8,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.songIds).toEqual([]);
+			expect(result.value.hiddenReviewItemCount).toBe(1);
+		}
+		// The override short-circuits the live resolve entirely.
+		expect(resolveMinMatchScore).not.toHaveBeenCalled();
 	});
 });
 
@@ -2178,5 +2105,73 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 		);
 
 		expect(result).toBeErr();
+	});
+
+	it("freezes the strictness bar to minScoreOverride instead of the live preference", async () => {
+		seedTwoPlaylists();
+		vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
+
+		// Live 0.5 would keep pl-visible (0.9) shown and pl-hidden (0.3) hidden. A
+		// frozen 0.95 bar — the active session's stored strictness — hides both, so
+		// the active caught-up count must reflect two hidden playlists, not one.
+		const result = await getOrderedUndecidedPlaylistIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+			0.95,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.playlistIds).toEqual([]);
+			expect(result.value.hiddenReviewItemCount).toBe(2);
+		}
+		expect(resolveMinMatchScore).not.toHaveBeenCalled();
+	});
+
+	it("does not let a non-entitled pair's score reorder playlists", async () => {
+		// pl-A's only high score (0.99) comes from a non-entitled song; its only
+		// entitled pair scores 0.60. pl-B has an entitled pair at 0.90. The queue,
+		// which orders off eligible pairs, ranks pl-B before pl-A — the preview must
+		// match, never letting pl-A's locked 0.99 pull it to the front.
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "locked",
+					playlist_id: "pl-A",
+					score: 0.99,
+					fused_score: null,
+				},
+				{
+					song_id: "entitled-a",
+					playlist_id: "pl-A",
+					score: 0.6,
+					fused_score: null,
+				},
+				{
+					song_id: "entitled-b",
+					playlist_id: "pl-B",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		// "locked" is intentionally absent from the entitled set.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "entitled-a" }, { song_id: "entitled-b" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await getOrderedUndecidedPlaylistIds(
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.playlistIds).toEqual(["pl-B", "pl-A"]);
+		}
 	});
 });

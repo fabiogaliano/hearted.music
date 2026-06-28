@@ -15,6 +15,7 @@ import {
 import {
 	createOrResumeQueue,
 	getOrderedUndecidedPlaylistIds,
+	getOrderedUndecidedSongIds,
 	getQueueSummary,
 	markItemPresented,
 	syncActiveQueue,
@@ -32,7 +33,6 @@ export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
 import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { getOrderedUndecidedSongIds } from "@/lib/server/matching.functions";
 import type {
 	MatchingPlaylistForReview,
 	MatchingPlaylistMatch,
@@ -249,18 +249,25 @@ export const getMatchReview = createServerFn({ method: "GET" })
 		const items = itemsResult.value;
 		const caughtUp = deriveCaughtUp(items);
 
-		// Only the caught-up empty state needs the hidden-by-strictness count, so
+		// Only the caught-up empty state needs the hidden-by-visibility count, so
 		// computing it here keeps the active-review hot path free of the extra
-		// snapshot read. The strictness diff is orientation-specific: song mode
-		// counts hidden songs, playlist mode counts hidden playlists.
+		// snapshot read. The count is orientation-specific: song mode counts hidden
+		// songs, playlist mode counts hidden playlists — each being eligible subjects
+		// kept out of view by the visibility policy (strictness bar plus filters).
 		let hiddenReviewItemCount = 0;
 		if (caughtUp) {
 			const snapshotResult = await getLatestMatchSnapshot(session.accountId);
 			if (Result.isOk(snapshotResult) && snapshotResult.value) {
+				// Freeze the hidden count to the session's stored strictness bar, not the
+				// live preference: an active session's queue and cards use
+				// activeSession.strictnessMinScore, so the caught-up empty state must
+				// count against the same bar or it could disagree after a mid-review
+				// strictness change.
 				if (orientation === "playlist") {
 					const ordered = await getOrderedUndecidedPlaylistIds(
 						snapshotResult.value.id,
 						session.accountId,
+						activeSession.strictnessMinScore,
 					);
 					if (Result.isOk(ordered)) {
 						hiddenReviewItemCount = ordered.value.hiddenReviewItemCount;
@@ -269,8 +276,11 @@ export const getMatchReview = createServerFn({ method: "GET" })
 					const ordered = await getOrderedUndecidedSongIds(
 						snapshotResult.value.id,
 						session.accountId,
+						activeSession.strictnessMinScore,
 					);
-					hiddenReviewItemCount = ordered.hiddenSongCount;
+					if (Result.isOk(ordered)) {
+						hiddenReviewItemCount = ordered.value.hiddenReviewItemCount;
+					}
 				}
 			}
 		}
@@ -1231,12 +1241,15 @@ export async function resolveMatchReviewSummary(
 			pendingCount = playlistIdsResult.value.playlistIds.length;
 			topIds = playlistIdsResult.value.playlistIds.slice(0, 3);
 		} else {
-			const { songIds } = await getOrderedUndecidedSongIds(
+			const songIdsResult = await getOrderedUndecidedSongIds(
 				snapshotResult.value.id,
 				accountId,
 			);
-			pendingCount = songIds.length;
-			topIds = songIds.slice(0, 3);
+			// A transient failure surfaces as an empty summary rather than crashing
+			// the dashboard; the next refetch recovers.
+			if (Result.isError(songIdsResult)) return empty;
+			pendingCount = songIdsResult.value.songIds.length;
+			topIds = songIdsResult.value.songIds.slice(0, 3);
 		}
 	}
 
