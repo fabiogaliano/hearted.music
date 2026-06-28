@@ -4,17 +4,17 @@
  * Owns: queue creation, resume, idempotent snapshot append, summary, and
  * item lifecycle transitions (presented / resolved).
  *
- * Reuses the existing derivation helpers from matching.functions.ts so that
- * queue ordering always matches the live match session ordering — the two code
- * paths agree by sharing one implementation, not by convention.
+ * Queue derivation delegates to the shared visibility-policy layer
+ * (review-subject-selector + visibility-policy), the same logic card
+ * presentation uses, so a subject is queue-eligible exactly when at least one of
+ * its pairs would be visible on the card.
  */
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { stableStringify } from "@/lib/domains/enrichment/embeddings/hashing";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getMatchResults,
@@ -23,10 +23,10 @@ import {
 import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
-	strictnessScore,
 } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { fetchSongsFilterMeta } from "./filter-metadata-queries";
 import { advanceActiveSession } from "./pass-advance";
 import {
 	clearSongNewness,
@@ -47,6 +47,7 @@ import {
 	updateQueueItemPresented,
 	updateQueueItemResolved,
 } from "./queries";
+import { getOrderedUndecidedSubjects } from "./review-subject-selector";
 import type {
 	ActiveQueueResult,
 	AppendResult,
@@ -57,229 +58,11 @@ import type {
 	OrderedSubject,
 	QueueItemResolution,
 	QueueItemState,
-	QueueVisibilityConfigHashInput,
 } from "./types";
-
-interface UndecidedSong {
-	songId: string;
-	maxScore: number;
-	isNew: boolean;
-}
-
-/**
- * Derives songs with at least one visible undecided match from raw data.
- * Extracted so tests can drive it without a DB.
- */
-export function deriveUndecidedSongsForQueue(
-	matchResults: Array<{
-		song_id: string;
-		playlist_id: string;
-		score: number;
-		fused_score: number | null;
-	}>,
-	decidedPairs: Set<string>,
-	minScore: number,
-	newSongIds: Set<string>,
-): UndecidedSong[] {
-	const songMap = new Map<
-		string,
-		{ maxScore: number; hasUndecided: boolean }
-	>();
-
-	for (const mr of matchResults) {
-		const rowScore = strictnessScore(mr);
-		if (rowScore < minScore) continue;
-		const existing = songMap.get(mr.song_id) ?? {
-			maxScore: 0,
-			hasUndecided: false,
-		};
-		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
-		songMap.set(mr.song_id, {
-			maxScore: Math.max(existing.maxScore, rowScore),
-			hasUndecided: existing.hasUndecided || isUndecided,
-		});
-	}
-
-	return Array.from(songMap.entries())
-		.filter(([, v]) => v.hasUndecided)
-		.map(([songId, v]) => ({
-			songId,
-			maxScore: v.maxScore,
-			isNew: newSongIds.has(songId),
-		}));
-}
-
-/**
- * Deterministic ordering: new songs first, max visible score desc, song id asc.
- * Mirrors the sort in getOrderedUndecidedSongIds so dashboard and queue agree.
- */
-function sortSongsForQueue(songs: UndecidedSong[]): UndecidedSong[] {
-	return songs.toSorted((a, b) => {
-		const aNew = a.isNew ? 1 : 0;
-		const bNew = b.isNew ? 1 : 0;
-		if (aNew !== bNew) return bNew - aNew;
-		if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-		return a.songId.localeCompare(b.songId);
-	});
-}
-
-/**
- * Derives a deterministic string key from visibility inputs.
- *
- * orientation + strictness threshold + readTimeFiltersHash together determine
- * which subjects are visible in the queue at enqueue time. Stored in
- * match_review_session_snapshot so the same (snapshot, hash) is idempotent
- * while a changed hash allows append-without-duplication (C9).
- */
-export function computeVisibilityConfigHash(
-	input: QueueVisibilityConfigHashInput,
-): string {
-	return `vc_${input.orientation}_${input.minScore}_${input.readTimeFiltersHash}`;
-}
-
-/**
- * Derives a compact deterministic hash from the account's target playlist
- * read-time filter configs. Sorted by playlist ID so insertion order never
- * affects the hash. Used as the readTimeFiltersHash component of
- * QueueVisibilityConfigHashInput (C9, MSR-36).
- *
- * A djb2-style polynomial hash over the stable JSON representation is
- * sufficient for idempotency keying — no collision resistance is required
- * (same rationale as MSR-19's simple-string approach for visibility hash).
- */
-export function computeReadTimeFiltersHash(
-	filtersByPlaylistId: Map<string, PlaylistMatchFiltersV1 | null>,
-): string {
-	const sorted = [...filtersByPlaylistId.entries()].sort(([a], [b]) =>
-		a.localeCompare(b),
-	);
-	const content = stableStringify(Object.fromEntries(sorted));
-	let h = 0;
-	for (let i = 0; i < content.length; i++) {
-		h = (Math.imul(31, h) + content.charCodeAt(i)) | 0;
-	}
-	return `rtf_${(h >>> 0).toString(16).padStart(8, "0")}`;
-}
-
-interface UndecidedPlaylist {
-	playlistId: string;
-	maxScore: number;
-}
-
-/**
- * Playlist-mode counterpart to deriveUndecidedSongsForQueue. Groups match
- * result rows by playlist_id (the review subject in playlist mode) and keeps
- * playlists that have at least one undecided song match above minScore.
- */
-function deriveUndecidedPlaylistsForQueue(
-	matchResults: MatchResultRow[],
-	decidedPairs: Set<string>,
-	minScore: number,
-): UndecidedPlaylist[] {
-	const playlistMap = new Map<
-		string,
-		{ maxScore: number; hasUndecided: boolean }
-	>();
-
-	for (const mr of matchResults) {
-		const rowScore = strictnessScore(mr);
-		if (rowScore < minScore) continue;
-		const existing = playlistMap.get(mr.playlist_id) ?? {
-			maxScore: 0,
-			hasUndecided: false,
-		};
-		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
-		playlistMap.set(mr.playlist_id, {
-			maxScore: Math.max(existing.maxScore, rowScore),
-			hasUndecided: existing.hasUndecided || isUndecided,
-		});
-	}
-
-	return Array.from(playlistMap.entries())
-		.filter(([, v]) => v.hasUndecided)
-		.map(([playlistId, v]) => ({
-			playlistId,
-			maxScore: v.maxScore,
-		}));
-}
-
-/**
- * Derives orientation-aware ordered undecided queue subjects from snapshot
- * match data.
- *
- * Song mode (A2): newness desc → max strictness score desc → song id asc.
- * Playlist mode (A2): max strictness score desc → playlist id asc; subjects
- * always have wasNewAtEnqueue=false (playlists have no newness concept).
- *
- * Returns subjects plus hiddenReviewItemCount (A7): the count of undecided
- * subjects whose only matches sit below minScore. Entitlement filtering is the
- * caller's responsibility and not included in this count.
- *
- * Pure: no DB calls. Accepts the same MatchResultRow shape that getMatchResults
- * returns so callers share one query result.
- */
-export function getOrderedUndecidedSubjects(
-	matchResults: MatchResultRow[],
-	decidedPairs: Set<string>,
-	minScore: number,
-	orientation: MatchOrientation,
-	newSongIds: Set<string>,
-): { subjects: OrderedSubject[]; hiddenReviewItemCount: number } {
-	if (orientation === "song") {
-		// Derive with minScore=0 to count all undecided songs regardless of threshold.
-		const allUndecided = deriveUndecidedSongsForQueue(
-			matchResults,
-			decidedPairs,
-			0,
-			new Set(),
-		);
-		const visibleUndecided = deriveUndecidedSongsForQueue(
-			matchResults,
-			decidedPairs,
-			minScore,
-			newSongIds,
-		);
-		const hiddenReviewItemCount = allUndecided.length - visibleUndecided.length;
-		const sorted = sortSongsForQueue(visibleUndecided);
-		return {
-			subjects: sorted.map((s) => ({
-				subject: { orientation: "song" as const, songId: s.songId },
-				maxScore: s.maxScore,
-				wasNewAtEnqueue: s.isNew,
-			})),
-			hiddenReviewItemCount,
-		};
-	}
-
-	// Playlist mode: subjects are playlists; newness not applicable.
-	const allUndecided = deriveUndecidedPlaylistsForQueue(
-		matchResults,
-		decidedPairs,
-		0,
-	);
-	const visibleUndecided = deriveUndecidedPlaylistsForQueue(
-		matchResults,
-		decidedPairs,
-		minScore,
-	);
-	const hiddenReviewItemCount = allUndecided.length - visibleUndecided.length;
-
-	// max score desc, playlist id asc — no newness tier in playlist mode.
-	const sorted = visibleUndecided.toSorted((a, b) => {
-		if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-		return a.playlistId.localeCompare(b.playlistId);
-	});
-
-	return {
-		subjects: sorted.map((p) => ({
-			subject: { orientation: "playlist" as const, playlistId: p.playlistId },
-			maxScore: p.maxScore,
-			// Playlist subjects never carry a newness flag (MSR-19 scope).
-			wasNewAtEnqueue: false,
-		})),
-		hiddenReviewItemCount,
-	};
-}
+import {
+	computeVisibilityPolicyHash,
+	type VisibilityPolicy,
+} from "./visibility-policy";
 
 /**
  * True once a session has either queued an item or recorded a snapshot as
@@ -516,6 +299,38 @@ async function appendLatestSnapshot(
 }
 
 /**
+ * Restricts snapshot match results to *eligible* pairs — song still entitled to
+ * the account AND playlist still owned by it — before deriving ordered subjects
+ * under the visibility policy.
+ *
+ * Eligibility is symmetric across orientation: a pair can only ever render on a
+ * card when its song is entitled (the suggestion in playlist mode, the subject in
+ * song mode) and its playlist is owned (the subject in playlist mode, the
+ * suggestion in song mode). Pre-filtering here means the selector's ordering,
+ * sourceScore, and hidden count all reflect exactly the pairs a card could show —
+ * closing the gap where a non-entitled song or non-owned playlist drove ordering
+ * or marked a subject queue-eligible that card visibility would later drop
+ * (Findings 1 & 2).
+ */
+function deriveEligibleSubjects(input: {
+	matchResults: MatchResultRow[];
+	decidedPairs: ReadonlySet<string>;
+	policy: VisibilityPolicy;
+	entitledSongIds: ReadonlySet<string>;
+	ownedPlaylistIds: ReadonlySet<string>;
+	newSongIds: ReadonlySet<string>;
+	songMetaBySongId: ReadonlyMap<string, SongFilterMetadata>;
+	nowMs: number;
+}): { subjects: OrderedSubject[]; hiddenReviewItemCount: number } {
+	const eligible = input.matchResults.filter(
+		(mr) =>
+			input.entitledSongIds.has(mr.song_id) &&
+			input.ownedPlaylistIds.has(mr.playlist_id),
+	);
+	return getOrderedUndecidedSubjects({ ...input, matchResults: eligible });
+}
+
+/**
  * Appends eligible subjects from a snapshot to an active session queue.
  *
  * The 9-step process from the plan:
@@ -540,21 +355,28 @@ export async function appendSnapshotDelta(
 	snapshotId: string,
 	accountId: string,
 ): Promise<Result<AppendResult, DbError>> {
-	// Fetch current read-time filter config to compute the visibility hash.
+	// Fetch current read-time filter config to build the visibility policy.
 	// This is a lightweight query (only id + match_filters from target playlists).
 	const targetFiltersResult = await fetchTargetPlaylistFilters(accountId);
 	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
-	const readTimeFiltersHash = computeReadTimeFiltersHash(
-		targetFiltersResult.value,
-	);
 
-	// Compute the visibility hash for this append — encodes which subjects are
-	// visible given the session's orientation, strictness, and filter config.
-	const visibilityHash = computeVisibilityConfigHash({
+	// One policy drives both the hash and the subject derivation below: review
+	// direction, the session's frozen strictness bar, and the target playlist
+	// filters. Strictness is still session-frozen (read from the session row);
+	// the policy isolates it so it can become live later without touching this path.
+	const policy: VisibilityPolicy = {
 		orientation: session.orientation,
 		minScore: session.strictnessMinScore,
-		readTimeFiltersHash,
-	});
+		filtersByPlaylistId: targetFiltersResult.value,
+	};
+
+	// One nowMs drives both the hash and the filter evaluation below, so a
+	// liked-at "today" filter folds the same resolved UTC date into the
+	// idempotency key that the visible set is computed against (Finding 3).
+	const nowMs = Date.now();
+
+	// The visibility hash encodes which subjects are visible under this policy.
+	const visibilityHash = computeVisibilityPolicyHash(policy, nowMs);
 	const appliedKey = `${snapshotId}:${visibilityHash}`;
 
 	// Step 9 guard — check idempotency before doing any expensive work.
@@ -589,6 +411,7 @@ export async function appendSnapshotDelta(
 
 	// Step 2: load decisions for matched songs.
 	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
+	const playlistIds = [...new Set(matchResults.map((mr) => mr.playlist_id))];
 	const decisionsResult = await getMatchDecisionsForSongs(accountId, songIds);
 	if (Result.isError(decisionsResult)) return decisionsResult;
 
@@ -596,25 +419,39 @@ export async function appendSnapshotDelta(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 
-	// Steps 3+4+7: orientation-aware subject derivation (uses strictness score,
-	// not legacy ordering score). Newness is fetched for song mode; in playlist
-	// mode the newSongSet is unused (playlist subjects have wasNewAtEnqueue=false).
-	const [newSongIdsResult, entitledResult, alreadyQueuedResult] =
-		await Promise.all([
-			getNewItemIds(accountId, "song"),
-			createAdminSupabaseClient().rpc(
-				"select_entitled_data_enriched_liked_song_ids",
-				{ p_account_id: accountId },
-			),
-			// Step 6: load subjects already in this session queue. The already-queued
-			// set is keyed by the orientation's subject column (song_id vs playlist_id).
-			session.orientation === "song"
-				? fetchQueuedSongIds(session.id)
-				: fetchQueuedPlaylistIds(session.id),
-		]);
+	// Steps 3+4+5+7: load everything the eligibility-aware derivation needs.
+	// Newness is fetched for song mode; in playlist mode the newSongSet is unused
+	// (playlist subjects have wasNewAtEnqueue=false). Song filter metadata feeds
+	// the policy's filter step. Entitled songs + owned playlists are the two
+	// eligibility inputs: a pair only counts toward ordering/eligibility when its
+	// song is entitled AND its playlist is owned, in both orientations — the same
+	// constraints card visibility applies, so a subject is queue-eligible exactly
+	// when a card could render it (Findings 1 & 2, M1).
+	const [
+		newSongIdsResult,
+		entitledResult,
+		alreadyQueuedResult,
+		songMetaResult,
+		ownedPlaylistsResult,
+	] = await Promise.all([
+		getNewItemIds(accountId, "song"),
+		createAdminSupabaseClient().rpc(
+			"select_entitled_data_enriched_liked_song_ids",
+			{ p_account_id: accountId },
+		),
+		// Step 6: load subjects already in this session queue. The already-queued
+		// set is keyed by the orientation's subject column (song_id vs playlist_id).
+		session.orientation === "song"
+			? fetchQueuedSongIds(session.id)
+			: fetchQueuedPlaylistIds(session.id),
+		fetchSongsFilterMeta(accountId, songIds),
+		fetchOwnedPlaylistIds(accountId, playlistIds),
+	]);
 
 	if (Result.isError(newSongIdsResult)) return newSongIdsResult;
 	if (Result.isError(alreadyQueuedResult)) return alreadyQueuedResult;
+	if (Result.isError(songMetaResult)) return songMetaResult;
+	if (Result.isError(ownedPlaylistsResult)) return ownedPlaylistsResult;
 
 	// An entitlement RPC failure must NOT be read as "nothing is entitled". Doing
 	// so would derive an empty delta and then record the snapshot as applied,
@@ -635,16 +472,23 @@ export async function appendSnapshotDelta(
 		(entitledResult.data ?? []).map((r) => r.song_id),
 	);
 	const alreadyQueued = alreadyQueuedResult.value;
+	const songMetaBySongId = songMetaResult.value;
+	const ownedPlaylistIds = ownedPlaylistsResult.value;
 
-	// Orientation-aware derivation: song mode preserves newness priority;
-	// playlist mode uses max score then id (wasNewAtEnqueue always false).
-	const { subjects } = getOrderedUndecidedSubjects(
+	// Eligibility-aware derivation under the policy: only pairs whose song is
+	// entitled and whose playlist is owned drive ordering, sourceScore, and
+	// eligibility. Song mode preserves newness priority; playlist mode uses max
+	// score then id (wasNewAtEnqueue always false).
+	const { subjects } = deriveEligibleSubjects({
 		matchResults,
 		decidedPairs,
-		session.strictnessMinScore,
-		session.orientation,
-		newSongSet,
-	);
+		policy,
+		entitledSongIds: entitledSet,
+		ownedPlaylistIds,
+		newSongIds: newSongSet,
+		songMetaBySongId,
+		nowMs,
+	});
 
 	// Step 9 record-applied tail, shared across orientations: recording even a
 	// zero-item append makes re-sync a no-op. A recording failure propagates —
@@ -680,11 +524,11 @@ export async function appendSnapshotDelta(
 			: Result.err(error);
 
 	if (session.orientation === "song") {
-		// Step 5/6: keep entitled song subjects not already in the queue.
+		// Step 6: subjects are already eligible (entitled song + owned suggestion
+		// playlist, applied in deriveEligibleSubjects); just drop those already in
+		// the queue.
 		const candidates = subjects.flatMap((s) =>
-			s.subject.orientation === "song" &&
-			entitledSet.has(s.subject.songId) &&
-			!alreadyQueued.has(s.subject.songId)
+			s.subject.orientation === "song" && !alreadyQueued.has(s.subject.songId)
 				? [
 						{
 							songId: s.subject.songId,
@@ -719,39 +563,16 @@ export async function appendSnapshotDelta(
 		return recordAppliedAndReturn(items.length);
 	}
 
-	// Playlist mode (Finding 1): a subject is eligible only when its review
-	// playlist still belongs to the account AND it still has at least one
-	// entitled, undecided, visible song match — otherwise the card would render
-	// with no actionable suggestion. Derivation already enforces undecided +
-	// minScore; this adds the suggestion-side entitlement constraint.
-	const entitledVisiblePlaylistIds = new Set<string>();
-	for (const mr of matchResults) {
-		if (!entitledSet.has(mr.song_id)) continue;
-		if (strictnessScore(mr) < session.strictnessMinScore) continue;
-		if (decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`)) continue;
-		entitledVisiblePlaylistIds.add(mr.playlist_id);
-	}
-
-	// Preserve derivation order (max score desc, id asc) while applying the
-	// entitlement + already-queued filters.
-	const orderedCandidates = subjects.flatMap((s) =>
+	// Playlist mode: subjects are already eligible — review playlist owned AND at
+	// least one entitled suggestion song visible under the policy (applied in
+	// deriveEligibleSubjects, which also drives ordering off those eligible pairs
+	// so a non-entitled song can't inflate a playlist's position). Drop those
+	// already in the queue; derivation order (max score desc, id asc) is preserved.
+	const candidatePlaylists = subjects.flatMap((s) =>
 		s.subject.orientation === "playlist" &&
-		entitledVisiblePlaylistIds.has(s.subject.playlistId) &&
 		!alreadyQueued.has(s.subject.playlistId)
 			? [{ playlistId: s.subject.playlistId, maxScore: s.maxScore }]
 			: [],
-	);
-
-	// Ownership filter in a single query — drop playlists deleted or transferred
-	// away since the snapshot was produced.
-	const ownedResult = await fetchOwnedPlaylistIds(
-		accountId,
-		orderedCandidates.map((c) => c.playlistId),
-	);
-	if (Result.isError(ownedResult)) return ownedResult;
-	const owned = ownedResult.value;
-	const candidatePlaylists = orderedCandidates.filter((c) =>
-		owned.has(c.playlistId),
 	);
 
 	if (candidatePlaylists.length === 0) return recordAppliedAndReturn(0);
@@ -877,18 +698,133 @@ export async function getQueueSummary(
 }
 
 /**
- * Playlist counterpart to getOrderedUndecidedSongIds (matching.functions): the
+ * Song-orientation ordering authority for the no-active-queue summary fallback.
+ *
+ * Replaces the strictness-only derivation that previously lived in
+ * matching.functions: that path ignored read-time playlist filters and playlist
+ * ownership, so the song-mode dashboard preview and caught-up hidden count could
+ * advertise songs the queue would never enqueue and the card would never render
+ * (Finding 1). This derives song subjects the same way appendSnapshotDelta's song
+ * path does — entitled song + owned suggestion playlist + visible undecided pair
+ * under the live strictness bar and target filters — so the preview matches the
+ * queue.
+ *
+ * hiddenReviewItemCount is the eligible-but-policy-hidden count: songs with at
+ * least one entitled, owned-playlist, undecided pair whose only such pairs sit
+ * below the strictness bar or fail the filters — the count the song-mode empty
+ * state shows behind the "loosen strictness" nudge.
+ *
+ * minScoreOverride freezes the strictness bar to a caller-supplied value instead
+ * of resolving the live preference. The active caught-up path passes the
+ * session's stored strictnessMinScore so the hidden count is computed against the
+ * exact bar the queue and cards use; the no-active dashboard fallback omits it to
+ * preview against the user's current (live) strictness.
+ *
+ * Returns Result so a transient DB failure surfaces as an error rather than a
+ * falsely-empty preview.
+ */
+export async function getOrderedUndecidedSongIds(
+	snapshotId: string,
+	accountId: string,
+	minScoreOverride?: number,
+): Promise<
+	Result<{ songIds: string[]; hiddenReviewItemCount: number }, DbError>
+> {
+	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
+
+	const [
+		matchResultsResult,
+		newSongIdsResult,
+		entitledResult,
+		targetFiltersResult,
+	] = await Promise.all([
+		getMatchResults(snapshotId),
+		getNewItemIds(accountId, "song"),
+		createAdminSupabaseClient().rpc(
+			"select_entitled_data_enriched_liked_song_ids",
+			{ p_account_id: accountId },
+		),
+		fetchTargetPlaylistFilters(accountId),
+	]);
+	if (Result.isError(matchResultsResult)) return matchResultsResult;
+	if (Result.isError(newSongIdsResult)) return newSongIdsResult;
+	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
+	if (entitledResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: entitledResult.error.code,
+				message: entitledResult.error.message,
+			}),
+		);
+	}
+	const matchResults = matchResultsResult.value;
+	if (matchResults.length === 0)
+		return Result.ok({ songIds: [], hiddenReviewItemCount: 0 });
+
+	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
+	const playlistIds = [...new Set(matchResults.map((mr) => mr.playlist_id))];
+	const [decisionsResult, songMetaResult, ownedResult] = await Promise.all([
+		getMatchDecisionsForSongs(accountId, songIds),
+		fetchSongsFilterMeta(accountId, songIds),
+		fetchOwnedPlaylistIds(accountId, playlistIds),
+	]);
+	if (Result.isError(decisionsResult)) return decisionsResult;
+	if (Result.isError(songMetaResult)) return songMetaResult;
+	if (Result.isError(ownedResult)) return ownedResult;
+
+	const decidedPairs = new Set(
+		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
+	);
+	const entitledSet = new Set<string>(
+		(entitledResult.data ?? []).map((r) => r.song_id),
+	);
+	const policy: VisibilityPolicy = {
+		orientation: "song",
+		minScore,
+		filtersByPlaylistId: targetFiltersResult.value,
+	};
+
+	const { subjects, hiddenReviewItemCount } = deriveEligibleSubjects({
+		matchResults,
+		decidedPairs,
+		policy,
+		entitledSongIds: entitledSet,
+		ownedPlaylistIds: ownedResult.value,
+		newSongIds: new Set(newSongIdsResult.value),
+		songMetaBySongId: songMetaResult.value,
+		nowMs: Date.now(),
+	});
+
+	const orderedIds = subjects.flatMap((s) =>
+		s.subject.orientation === "song" ? [s.subject.songId] : [],
+	);
+
+	return Result.ok({ songIds: orderedIds, hiddenReviewItemCount });
+}
+
+/**
+ * Playlist counterpart to getOrderedUndecidedSongIds: the
  * no-active-queue summary fallback for playlist orientation (Finding 4). Derives
  * the ordered playlist subjects from a snapshot the same way the queue-append
- * path does — entitled + undecided + visible song match, review-playlist still
- * owned — so the dashboard/sidebar preview matches what the queue would enqueue.
+ * path does — entitled suggestion song + owned review playlist + undecided +
+ * visible pair under the policy — so the dashboard/sidebar preview matches what
+ * the queue would enqueue. Routing through deriveEligibleSubjects means ordering
+ * is driven only by eligible pairs: a high-scoring non-entitled (or non-owned)
+ * pair can no longer inflate a playlist's position above one the queue ranks
+ * higher.
  *
  * Also returns hiddenReviewItemCount: still-owned playlists with at least one
  * entitled, undecided song match whose only such matches sit below the
- * strictness bar. Computed entitlement- and ownership-aware (mirroring
- * getOrderedUndecidedSongIds and the visible playlistIds) so the playlist-mode
- * empty state can offer the "loosen strictness" nudge with a count that means
- * owned playlists, not songs (A7, H9).
+ * strictness bar or fail the filters. Computed entitlement- and ownership-aware
+ * (the prefilter restricts both ordering and the hidden count to entitled+owned
+ * pairs) so the playlist-mode empty state can offer the "loosen strictness"
+ * nudge with a count that means owned playlists, not songs (A7, H9).
+ *
+ * minScoreOverride freezes the strictness bar to a caller-supplied value instead
+ * of resolving the live preference — the active caught-up path passes the
+ * session's stored strictnessMinScore so the hidden count matches the queue/card
+ * policy, while the no-active dashboard fallback omits it to preview against live
+ * strictness (see getOrderedUndecidedSongIds).
  *
  * Returns Result so a transient DB failure surfaces as an error rather than a
  * falsely-empty preview.
@@ -896,19 +832,23 @@ export async function getQueueSummary(
 export async function getOrderedUndecidedPlaylistIds(
 	snapshotId: string,
 	accountId: string,
+	minScoreOverride?: number,
 ): Promise<
 	Result<{ playlistIds: string[]; hiddenReviewItemCount: number }, DbError>
 > {
-	const minScore = await resolveMinMatchScore(accountId);
+	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
 
-	const [matchResultsResult, entitledResult] = await Promise.all([
-		getMatchResults(snapshotId),
-		createAdminSupabaseClient().rpc(
-			"select_entitled_data_enriched_liked_song_ids",
-			{ p_account_id: accountId },
-		),
-	]);
+	const [matchResultsResult, entitledResult, targetFiltersResult] =
+		await Promise.all([
+			getMatchResults(snapshotId),
+			createAdminSupabaseClient().rpc(
+				"select_entitled_data_enriched_liked_song_ids",
+				{ p_account_id: accountId },
+			),
+			fetchTargetPlaylistFilters(accountId),
+		]);
 	if (Result.isError(matchResultsResult)) return matchResultsResult;
+	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
 	if (entitledResult.error) {
 		return Result.err(
 			new DatabaseError({
@@ -922,8 +862,19 @@ export async function getOrderedUndecidedPlaylistIds(
 		return Result.ok({ playlistIds: [], hiddenReviewItemCount: 0 });
 
 	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
-	const decisionsResult = await getMatchDecisionsForSongs(accountId, songIds);
+	const playlistIds = [...new Set(matchResults.map((mr) => mr.playlist_id))];
+	// Ownership is fetched alongside the per-song queries — before the selector —
+	// so the eligibility prefilter can drop non-owned pairs, the same as the song
+	// fallback and the queue-append path. A stale snapshot can still reference a
+	// deleted/transferred playlist, which must drive neither ordering nor counts.
+	const [decisionsResult, songMetaResult, ownedResult] = await Promise.all([
+		getMatchDecisionsForSongs(accountId, songIds),
+		fetchSongsFilterMeta(accountId, songIds),
+		fetchOwnedPlaylistIds(accountId, playlistIds),
+	]);
 	if (Result.isError(decisionsResult)) return decisionsResult;
+	if (Result.isError(songMetaResult)) return songMetaResult;
+	if (Result.isError(ownedResult)) return ownedResult;
 	const decidedPairs = new Set(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
@@ -932,51 +883,35 @@ export async function getOrderedUndecidedPlaylistIds(
 		(entitledResult.data ?? []).map((r) => r.song_id),
 	);
 
-	// One pass over entitled, undecided pairs: a playlist is "all-undecided" if it
-	// has any such pair, and "visible" if at least one clears the bar. Diffing the
-	// two sets yields exactly the playlists hidden purely by strictness.
-	const entitledAllPlaylistIds = new Set<string>();
-	const entitledVisiblePlaylistIds = new Set<string>();
-	for (const mr of matchResults) {
-		if (!entitledSet.has(mr.song_id)) continue;
-		if (decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`)) continue;
-		entitledAllPlaylistIds.add(mr.playlist_id);
-		if (strictnessScore(mr) < minScore) continue;
-		entitledVisiblePlaylistIds.add(mr.playlist_id);
-	}
-	const hiddenPlaylistIds = [...entitledAllPlaylistIds].filter(
-		(id) => !entitledVisiblePlaylistIds.has(id),
-	);
+	// Same visibility policy the queue-append path builds, so this preview matches
+	// what the queue would enqueue: orientation, the live strictness bar, and the
+	// account's target playlist filters.
+	const policy: VisibilityPolicy = {
+		orientation: "playlist",
+		minScore,
+		filtersByPlaylistId: targetFiltersResult.value,
+	};
 
-	const { subjects } = getOrderedUndecidedSubjects(
+	// Eligibility-aware derivation: only entitled-song + owned-playlist pairs drive
+	// ordering, sourceScore, and the hidden count — closing the gap where a
+	// non-entitled pair's score could reorder a playlist preview relative to the
+	// queue (which prefilters the same way in appendSnapshotDelta).
+	const { subjects, hiddenReviewItemCount } = deriveEligibleSubjects({
 		matchResults,
 		decidedPairs,
-		minScore,
-		"playlist",
-		new Set(),
-	);
+		policy,
+		entitledSongIds: entitledSet,
+		ownedPlaylistIds: ownedResult.value,
+		newSongIds: new Set(),
+		songMetaBySongId: songMetaResult.value,
+		nowMs: Date.now(),
+	});
 
 	const orderedIds = subjects.flatMap((s) =>
-		s.subject.orientation === "playlist" &&
-		entitledVisiblePlaylistIds.has(s.subject.playlistId)
-			? [s.subject.playlistId]
-			: [],
+		s.subject.orientation === "playlist" ? [s.subject.playlistId] : [],
 	);
 
-	// Ownership-check the visible and hidden sets together in one query so the
-	// hidden count, like playlistIds, excludes playlists the account no longer
-	// owns — a stale snapshot can still reference a deleted/transferred playlist.
-	const ownedResult = await fetchOwnedPlaylistIds(accountId, [
-		...new Set([...orderedIds, ...hiddenPlaylistIds]),
-	]);
-	if (Result.isError(ownedResult)) return ownedResult;
-	const owned = ownedResult.value;
-
-	return Result.ok({
-		playlistIds: orderedIds.filter((id) => owned.has(id)),
-		hiddenReviewItemCount: hiddenPlaylistIds.filter((id) => owned.has(id))
-			.length,
-	});
+	return Result.ok({ playlistIds: orderedIds, hiddenReviewItemCount });
 }
 
 /**

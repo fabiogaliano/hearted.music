@@ -1,10 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-	addSongToPlaylist,
-	getOrderedUndecidedSongIds,
-	getSongSuggestions,
-} from "../matching.functions";
+import { addSongToPlaylist, getSongSuggestions } from "../matching.functions";
 
 const {
 	mockAuthContext,
@@ -256,77 +252,6 @@ describe("getSongSuggestions (billing-aware)", () => {
 		expect(result?.matches[0].playlistName).toBe("Playlist 5");
 		// fitScore = fused_score = 0.7, not the raw score 0.8.
 		expect(result?.matches[0].fitScore).toBeCloseTo(0.7);
-	});
-});
-
-describe("getOrderedUndecidedSongIds", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("orders by isNew desc, then maxScore desc, then songId asc — and filters to entitled", async () => {
-		mockGetMatchResults.mockResolvedValue(
-			Result.ok([
-				{ song_id: "song-z", playlist_id: "pl-1", score: 90 },
-				{ song_id: "song-a", playlist_id: "pl-1", score: 90 },
-				{ song_id: "song-m", playlist_id: "pl-1", score: 90 },
-				{ song_id: "song-low", playlist_id: "pl-1", score: 10 },
-				{ song_id: "song-locked", playlist_id: "pl-1", score: 99 },
-			]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		// song-m is "new" → sorts ahead of equally-scored song-a/song-z.
-		mockGetNewItemIds.mockResolvedValue(Result.ok(["song-m"]));
-		mockRpc.mockResolvedValue({
-			data: [
-				{ song_id: "song-z" },
-				{ song_id: "song-a" },
-				{ song_id: "song-m" },
-				{ song_id: "song-low" },
-			],
-			error: null,
-		});
-
-		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
-
-		// song-locked excluded (not entitled); song-m first (new); then the two
-		// score-90 songs by songId asc (song-a < song-z); then song-low (score 10).
-		expect(songIds).toEqual(["song-m", "song-a", "song-z", "song-low"]);
-	});
-
-	it("returns empty when the newness lookup fails", async () => {
-		mockGetMatchResults.mockResolvedValue(
-			Result.ok([{ song_id: "song-a", playlist_id: "pl-1", score: 50 }]),
-		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-		mockGetNewItemIds.mockResolvedValue(Result.err(new Error("boom")));
-		mockRpc.mockResolvedValue({ data: [{ song_id: "song-a" }], error: null });
-
-		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
-
-		expect(songIds).toEqual([]);
-	});
-
-	it("excludes songs whose every pair is already decided", async () => {
-		mockGetMatchResults.mockResolvedValue(
-			Result.ok([
-				{ song_id: "song-a", playlist_id: "pl-1", score: 50 },
-				{ song_id: "song-b", playlist_id: "pl-1", score: 90 },
-			]),
-		);
-		// song-a's only pair is decided → drops out; song-b stays.
-		mockGetMatchDecisionsForSongs.mockResolvedValue(
-			Result.ok([{ song_id: "song-a", playlist_id: "pl-1" }]),
-		);
-		mockGetNewItemIds.mockResolvedValue(Result.ok([]));
-		mockRpc.mockResolvedValue({
-			data: [{ song_id: "song-a" }, { song_id: "song-b" }],
-			error: null,
-		});
-
-		const { songIds } = await getOrderedUndecidedSongIds("snap-1", "acct-1");
-
-		expect(songIds).toEqual(["song-b"]);
 	});
 });
 

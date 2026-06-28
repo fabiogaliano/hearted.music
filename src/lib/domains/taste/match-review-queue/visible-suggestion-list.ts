@@ -19,11 +19,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import {
-	passesAllMatchFilters,
-	type SongFilterMetadata,
-} from "@/lib/domains/taste/match-filters/predicates";
-import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type {
 	MatchOrientation,
@@ -43,6 +39,15 @@ import {
 import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import {
+	fetchPlaylistsMatchFilters,
+	fetchSongFilterMeta,
+	fetchSongsFilterMeta,
+} from "./filter-metadata-queries";
+import {
+	NULL_SONG_FILTER_METADATA,
+	passesPlaylistFilters,
+} from "./visibility-policy";
 
 /**
  * A single (song, playlist) pair as shown to the user (B4, B5, A5, C12).
@@ -120,20 +125,6 @@ export interface RankingInput {
 }
 
 /**
- * All-null song metadata. Substituted whenever a song's filter metadata is
- * absent so that any active playlist filter fails deterministically rather
- * than passing through — the "missing metadata fails active filters" contract
- * (MSR-36). A playlist filter object with no active constraints still passes.
- */
-const NULL_SONG_FILTER_META: SongFilterMetadata = {
-	language: null,
-	languageSecondary: null,
-	releaseYear: null,
-	vocalGender: null,
-	likedAt: null,
-};
-
-/**
  * Derives the ordered visible suggestion list from raw pair and ranking data.
  *
  * Steps:
@@ -173,16 +164,11 @@ export function deriveVisibleSuggestions(
 		const fs = strictnessScore({ score: p.score, fused_score: p.fusedScore });
 		if (fs < minScore) return false;
 		if (decidedPairKeys.has(`${p.songId}:${p.playlistId}`)) return false;
-		// Apply hard filters whenever the playlist carries filter config — AND
-		// across filter types, OR within language codes. Missing song metadata
-		// is treated as an all-null struct so any active filter fails rather than
-		// passing through; a filter object with no active constraints still passes
-		// (MSR-36, story constraint).
-		if (p.playlistFilters !== undefined && p.playlistFilters !== null) {
-			const meta = p.songMeta ?? NULL_SONG_FILTER_META;
-			if (!passesAllMatchFilters(p.playlistFilters, meta, resolvedNowMs))
-				return false;
-		}
+		// Same shared filter step the queue derivation uses: a playlist with no
+		// filter config passes; missing song metadata is treated as all-null so any
+		// active filter fails rather than passing through (MSR-36, story constraint).
+		if (!passesPlaylistFilters(p.playlistFilters, p.songMeta, resolvedNowMs))
+			return false;
 		return true;
 	});
 
@@ -301,153 +287,6 @@ async function checkPlaylistOwned(
 		);
 	}
 	return Result.ok(data !== null);
-}
-
-/**
- * Fetches language, vocal gender, release year, and liked-at metadata for
- * a single song. Used by the song-orientation visible-list path to supply
- * songMeta to deriveVisibleSuggestions (MSR-36).
- *
- * liked_at is resolved from liked_song (active rows only; unliked_at IS NULL).
- * Returns a default-null metadata object when the song row is absent so
- * any active filter fails deterministically rather than passing silently.
- */
-async function fetchSongFilterMeta(
-	accountId: string,
-	songId: string,
-): Promise<Result<SongFilterMetadata, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const [songResult, likedResult] = await Promise.all([
-		supabase
-			.from("song")
-			.select("language, language_secondary, release_year, vocal_gender")
-			.eq("id", songId)
-			.maybeSingle(),
-		supabase
-			.from("liked_song")
-			.select("liked_at")
-			.eq("song_id", songId)
-			.eq("account_id", accountId)
-			.is("unliked_at", null)
-			.maybeSingle(),
-	]);
-	if (songResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: songResult.error.code,
-				message: songResult.error.message,
-			}),
-		);
-	}
-	if (likedResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: likedResult.error.code,
-				message: likedResult.error.message,
-			}),
-		);
-	}
-	return Result.ok({
-		language: songResult.data?.language ?? null,
-		languageSecondary: songResult.data?.language_secondary ?? null,
-		releaseYear: songResult.data?.release_year ?? null,
-		vocalGender: songResult.data?.vocal_gender ?? null,
-		likedAt: likedResult.data
-			? new Date(likedResult.data.liked_at).getTime()
-			: null,
-	});
-}
-
-/**
- * Fetches language, vocal gender, release year, and liked-at metadata for
- * multiple songs in a single round-trip pair. Used by the playlist-orientation
- * visible-list path (MSR-36).
- *
- * Songs not found in the song table are omitted from the returned map; callers
- * treat absent entries as all-null metadata, which causes any active filter to fail.
- */
-async function fetchSongsFilterMeta(
-	accountId: string,
-	songIds: readonly string[],
-): Promise<Result<Map<string, SongFilterMetadata>, DbError>> {
-	if (songIds.length === 0) return Result.ok(new Map());
-	const ids = [...songIds];
-	const supabase = createAdminSupabaseClient();
-	const [songsResult, likedResult] = await Promise.all([
-		supabase
-			.from("song")
-			.select("id, language, language_secondary, release_year, vocal_gender")
-			.in("id", ids),
-		supabase
-			.from("liked_song")
-			.select("song_id, liked_at")
-			.in("song_id", ids)
-			.eq("account_id", accountId)
-			.is("unliked_at", null),
-	]);
-	if (songsResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: songsResult.error.code,
-				message: songsResult.error.message,
-			}),
-		);
-	}
-	if (likedResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: likedResult.error.code,
-				message: likedResult.error.message,
-			}),
-		);
-	}
-	const likedMap = new Map<string, number>();
-	for (const row of likedResult.data ?? []) {
-		likedMap.set(row.song_id, new Date(row.liked_at).getTime());
-	}
-	const metaMap = new Map<string, SongFilterMetadata>();
-	for (const row of songsResult.data ?? []) {
-		metaMap.set(row.id, {
-			language: row.language,
-			languageSecondary: row.language_secondary,
-			releaseYear: row.release_year,
-			vocalGender: row.vocal_gender,
-			likedAt: likedMap.get(row.id) ?? null,
-		});
-	}
-	return Result.ok(metaMap);
-}
-
-/**
- * Fetches match_filters for a set of playlists. Used in song-orientation to
- * supply per-suggestion-playlist filter config to deriveVisibleSuggestions.
- * Playlists with no match_filters row or null column map to null (no filter).
- */
-async function fetchPlaylistsMatchFilters(
-	playlistIds: readonly string[],
-): Promise<Result<Map<string, PlaylistMatchFiltersV1 | null>, DbError>> {
-	if (playlistIds.length === 0) return Result.ok(new Map());
-	const ids = [...playlistIds];
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("playlist")
-		.select("id, match_filters")
-		.in("id", ids);
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	const map = new Map<string, PlaylistMatchFiltersV1 | null>();
-	for (const row of data ?? []) {
-		if (row.match_filters === null) {
-			map.set(row.id, null);
-		} else {
-			const { value } = parseStoredMatchFilters(row.match_filters);
-			map.set(row.id, value);
-		}
-	}
-	return Result.ok(map);
 }
 
 /**
@@ -661,7 +500,8 @@ export async function computeVisibleSuggestionList(
 			playlistId: r.playlist_id,
 			score: r.score,
 			fusedScore: r.fused_score,
-			songMeta: songsMetaResult.value.get(r.song_id) ?? NULL_SONG_FILTER_META,
+			songMeta:
+				songsMetaResult.value.get(r.song_id) ?? NULL_SONG_FILTER_METADATA,
 			playlistFilters: reviewPlaylistFilters,
 		}));
 

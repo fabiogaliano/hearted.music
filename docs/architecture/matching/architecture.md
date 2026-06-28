@@ -312,22 +312,22 @@ can't shift under a card you're already reviewing.
 
 ```mermaid
 flowchart TD
-    A[fetchTargetPlaylistFilters] --> B[computeReadTimeFiltersHash]
-    B --> C[computeVisibilityConfigHash<br/>vc_orientation_minScore_rtfHash]
+    A[fetchTargetPlaylistFilters] --> B[build VisibilityPolicy<br/>orientation + minScore + filters]
+    B --> C[computeVisibilityPolicyHash<br/>vc_orientation_minScore_rtfHash]
     C --> D{already applied?<br/>match_review_session_snapshot}
     D -->|yes| E[appendedCount: 0,<br/>alreadyApplied: true]
     D -->|no| F[getMatchResults snapshotId]
     F --> G[getMatchDecisionsForSongs<br/>build decidedPairs set]
-    G --> H[entitlement + already-queued fetches]
-    H --> I[getOrderedUndecidedSubjects<br/>strictness gate + sort]
+    G --> H[entitlement + already-queued +<br/>fetchSongsFilterMeta fetches]
+    H --> I[getOrderedUndecidedSubjects<br/>policy gate strictness+filters + sort]
     I --> J[insert_queue_song_items<br/>OR insert_queue_playlist_items]
     J --> K[recordSnapshotApplied]
 ```
 
 Walking through what each step protects against:
 
-1. **Visibility hash.** `computeVisibilityConfigHash({orientation, minScore, readTimeFiltersHash})`
-   produces a key like `vc_song_0.5_rtf_1a2b3c`. It captures the three things that decide
+1. **Visibility hash.** `computeVisibilityPolicyHash(policy)` produces a key like
+   `vc_song_0.5_rtf_1a2b3c`. It captures the three things the `VisibilityPolicy` says decide
    *which subjects are visible*: direction, quality bar, and the hash of every target
    playlist's filter config (`computeReadTimeFiltersHash`).
 2. **Idempotency.** `match_review_session_snapshot` has a composite primary key
@@ -335,10 +335,14 @@ Walking through what each step protects against:
    applied, the append is a no-op. This is what lets the same snapshot be re-applied safely,
    and lets a *changed* setting (e.g. you loosened a filter, so a new hash) append the
    newly-visible subjects **without duplicating** the ones already queued.
-3. **Strictness gate.** `getOrderedUndecidedSubjects` keeps only subjects that have at least
-   one *undecided* suggestion scoring at or above `strictnessMinScore`. It also computes
-   `hiddenReviewItemCount` — subjects that have matches but all below the bar (the "loosen
-   strictness to see more" count).
+3. **Visibility policy.** `getOrderedUndecidedSubjects` keeps only subjects that have at least
+   one *undecided* suggestion that is **visible under the current `VisibilityPolicy`** — i.e. it
+   clears `strictnessMinScore` *and* passes the target playlist's read-time filters
+   (`passesAllMatchFilters`) against the suggestion song's metadata. The same shared pair
+   predicate (`passesVisibilityPolicyForPair`) is used here and at card presentation, so a
+   subject is queue-eligible exactly when at least one of its pairs would be visible on the card.
+   It also computes `hiddenReviewItemCount` — undecided subjects with no pair visible under the
+   current visibility settings (the "loosen strictness / filters to see more" count).
 4. **Entitlement / ownership.** Songs are filtered through
    `select_entitled_data_enriched_liked_song_ids`; playlists through `fetchOwnedPlaylistIds`.
 5. **Insert.** `insert_queue_song_items` (song mode) or `insert_queue_playlist_items`
@@ -349,11 +353,14 @@ Each resulting `match_review_queue_item` carries its `source_snapshot_id`, `posi
 lifecycle `state` (`pending` → `active` → `resolved`), and eventual `resolution` (`added` /
 `dismissed` / `skipped` / `unavailable`).
 
-> **Design note (see the independent review's finding M1):** the **strictness** gate runs
-> here at queue-build time, but the **filters** (`passesAllMatchFilters`) do *not* — they only
-> run later, when a card is presented (Stage 5). So a card can enter the queue and then show
-> "no matches under your current settings" if a filter hides everything. That asymmetry is a
-> known, graceful-degradation product question, not a crash.
+> **Visibility policy.** Strictness and playlist filters are both visibility inputs. Queue
+> derivation and card presentation use the same policy semantics: a subject is queue-eligible
+> only when at least one undecided pair is visible under the current policy. The session still
+> stores `strictness_min_score` today, so strictness remains fixed for the current session; the
+> policy abstraction exists so that strictness can become live between cards later without
+> rewriting queue/card visibility logic. Once a card is presented, its visible pairs are
+> captured and decisions always use the captured rows. (This closes the earlier M1 asymmetry,
+> where filters ran only at present time and a card could enter the queue with nothing to show.)
 
 ---
 
@@ -394,7 +401,8 @@ flowchart TD
 Two details worth knowing:
 
 - **Filters fail closed.** If a song's metadata is missing, it's treated as all-null, so any
-  active filter rejects it — there is no "unknown ⇒ pass" loophole (`NULL_SONG_FILTER_META`).
+  active filter rejects it — there is no "unknown ⇒ pass" loophole (`NULL_SONG_FILTER_METADATA`,
+  via the shared `passesPlaylistFilters` helper that both queue and card paths call).
 - **Ranked + unranked.** Pairs with a `match_result_ranking` row sort by their stored
   `modelRank`; pairs without one get a synthetic rank appended after the ranked block, so the
   list is always contiguous and deterministic. This is also why a `fused_fallback` ordering
@@ -519,10 +527,14 @@ exactly one of `song_id` / `playlist_id` — illegal half-filled states are unre
 - The **captured visible pairs** freeze *one card's contents* so your decisions are
   deterministic even if the snapshot changes or two tabs race.
 
-**Strictness vs filters.** Both narrow what you see, but they're applied at different points.
-Strictness (`strictnessMinScore`) is applied at *both* queue-build time and present time.
-Filters (`passesAllMatchFilters`) are applied only at present time. That asymmetry is finding
-M1 in the independent review — a deliberate-looking-but-unconfirmed product decision, not a bug.
+**Visibility policy (strictness + filters).** Both narrow what you see, and both are now part
+of one `VisibilityPolicy` (`orientation` + `minScore` + `filtersByPlaylistId`). Strictness
+(`strictnessMinScore`) and filters (`passesAllMatchFilters`) are applied together at *both*
+queue-build time and present time, through one shared pair predicate
+(`passesVisibilityPolicyForPair`). So a subject only enters the queue if at least one undecided
+pair is visible under the policy — the earlier M1 asymmetry (filters at present time only) is
+gone. `minScore` is still read from the frozen session row today; the policy isolates it so it
+can become live between cards later without touching queue/card visibility logic.
 
 **Idempotency everywhere on the write paths.** `appendSnapshotDelta` keys on
 `(session, snapshot, visibility hash)`; the insert RPCs use `ON CONFLICT DO NOTHING`; capture
@@ -567,7 +579,10 @@ handles unranked pairs with synthetic ranks, so nothing downstream breaks.
 - `src/lib/domains/taste/match-filters/types.ts` — `PlaylistMatchFiltersV1`
 
 **Review queue (domain)**
-- `src/lib/domains/taste/match-review-queue/service.ts` — `createOrResumeQueue`, `appendSnapshotDelta`, `getOrderedUndecidedSubjects`, `computeReadTimeFiltersHash`, `computeVisibilityConfigHash`
+- `src/lib/domains/taste/match-review-queue/service.ts` — `createOrResumeQueue`, `appendSnapshotDelta`
+- `src/lib/domains/taste/match-review-queue/visibility-policy.ts` — `VisibilityPolicy`, `passesVisibilityPolicyForPair`, `passesPlaylistFilters`, `computeVisibilityPolicyHash`, `computeReadTimeFiltersHash`, `NULL_SONG_FILTER_METADATA`
+- `src/lib/domains/taste/match-review-queue/review-subject-selector.ts` — `getOrderedUndecidedSubjects` (pure, policy-driven)
+- `src/lib/domains/taste/match-review-queue/filter-metadata-queries.ts` — `fetchSongFilterMeta`, `fetchSongsFilterMeta`, `fetchPlaylistsMatchFilters`
 - `src/lib/domains/taste/match-review-queue/visible-suggestion-list.ts` — `computeVisibleSuggestionList`, `deriveVisibleSuggestions`
 - `src/lib/domains/taste/match-review-queue/capture-visible-pairs.ts` — `captureVisiblePairsAtomic`
 - `src/lib/domains/taste/match-review-queue/queries.ts` — DB access + decision RPC callers

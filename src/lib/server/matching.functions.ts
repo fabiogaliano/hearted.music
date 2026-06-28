@@ -5,7 +5,6 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
-import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import {
 	deriveVisibleSuggestions,
 	type MatchPairInput,
@@ -227,76 +226,6 @@ export async function getUndecidedSongs(
 		snapshotData.decisions,
 		minScore,
 	);
-}
-
-/**
- * Single ordering authority for a match queue: the ordered, entitled,
- * undecided song ids for a snapshot. Owns undecided derivation, the entitlement
- * filter, newness, and the 3-key sort (isNew desc, maxScore desc, songId asc).
- *
- * Used by the dashboard's match previews (top-3) and the queue domain's
- * snapshot-append logic to compute the canonical ordering of new items.
- */
-export async function getOrderedUndecidedSongIds(
-	snapshotId: string,
-	accountId: string,
-): Promise<{ songIds: string[]; hiddenSongCount: number }> {
-	const supabase = createAdminSupabaseClient();
-
-	const [snapshotData, newSongIds, entitledResult, minScore] =
-		await Promise.all([
-			getMatchSnapshotData(snapshotId, accountId),
-			getNewItemIds(accountId, "song"),
-			supabase.rpc("select_entitled_data_enriched_liked_song_ids", {
-				p_account_id: accountId,
-			}),
-			resolveMinMatchScore(accountId),
-		]);
-
-	if (Result.isError(newSongIds)) return { songIds: [], hiddenSongCount: 0 };
-
-	const entitledSet = new Set(
-		(!entitledResult.error && entitledResult.data
-			? entitledResult.data
-			: []
-		).map((r: { song_id: string }) => r.song_id),
-	);
-
-	// Derive twice from the one in-memory snapshot: unfiltered (minScore 0, every
-	// stored match) and filtered (the user's bar). Diffing their entitled counts
-	// yields exactly the songs hidden purely by strictness — the data never
-	// leaves memory, so the second pass is free.
-	const allUndecided = snapshotData
-		? deriveUndecidedSongs(snapshotData.matchResults, snapshotData.decisions, 0)
-		: [];
-	const visibleUndecided = snapshotData
-		? deriveUndecidedSongs(
-				snapshotData.matchResults,
-				snapshotData.decisions,
-				minScore,
-			)
-		: [];
-
-	const entitledAllCount = allUndecided.filter((s) =>
-		entitledSet.has(s.songId),
-	).length;
-	const entitledVisible = visibleUndecided.filter((s) =>
-		entitledSet.has(s.songId),
-	);
-	const hiddenSongCount = entitledAllCount - entitledVisible.length;
-
-	const newSet = new Set(newSongIds.value);
-	const songIds = entitledVisible
-		.toSorted((a, b) => {
-			const aNew = newSet.has(a.songId) ? 1 : 0;
-			const bNew = newSet.has(b.songId) ? 1 : 0;
-			if (aNew !== bNew) return bNew - aNew;
-			if (b.maxScore !== a.maxScore) return b.maxScore - a.maxScore;
-			return a.songId.localeCompare(b.songId);
-		})
-		.map((s) => s.songId);
-
-	return { songIds, hiddenSongCount };
 }
 
 // ============================================================================
