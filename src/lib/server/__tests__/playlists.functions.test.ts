@@ -18,6 +18,7 @@ const {
 	mockUpdatePlaylistMetadata,
 	mockUpdatePlaylistMatchConfig,
 	mockApplyLibraryProcessingChange,
+	mockSyncActiveQueue,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -30,6 +31,7 @@ const {
 	mockUpdatePlaylistMetadata: vi.fn(),
 	mockUpdatePlaylistMatchConfig: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
+	mockSyncActiveQueue: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -78,6 +80,10 @@ vi.mock("@/lib/domains/library/songs/queries", () => ({
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		mockApplyLibraryProcessingChange(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
+	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -269,6 +275,9 @@ describe("savePlaylistMatchConfig", () => {
 		mockGetPlaylistById.mockResolvedValue(Result.ok(makePlaylist()));
 		mockUpdatePlaylistMatchConfig.mockResolvedValue(Result.ok(makePlaylist()));
 		mockApplyLibraryProcessingChange.mockResolvedValue(Result.ok(null));
+		mockSyncActiveQueue.mockResolvedValue(
+			Result.ok({ appendedCount: 0, alreadyApplied: false }),
+		);
 	});
 
 	it("normalizes duplicate language codes before persisting and returning", async () => {
