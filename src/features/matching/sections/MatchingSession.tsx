@@ -169,7 +169,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								realAvailable={realAvailable}
 								reconnectNeeded={reconnectNeeded}
 								navigationDisabled={navigationDisabled}
-								isLastSong={isLastItem}
+								isLastItem={isLastItem}
 								suppressTransition={rejecting}
 								onRefresh={onRefresh}
 								onAdd={onAdd}

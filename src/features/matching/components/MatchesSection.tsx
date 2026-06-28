@@ -29,7 +29,7 @@ interface MatchesSectionProps {
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
 	navigationDisabled?: boolean;
-	isLastSong?: boolean;
+	isLastItem?: boolean;
 	/** Swap songs instantly (no slide) while the card-level reject animation runs. */
 	suppressTransition?: boolean;
 	onRefresh?: () => void;
@@ -47,7 +47,7 @@ export const MatchesSection = memo(function MatchesSection({
 	realAvailable,
 	reconnectNeeded,
 	navigationDisabled,
-	isLastSong,
+	isLastItem,
 	suppressTransition,
 	onRefresh,
 	onAdd,
@@ -152,7 +152,7 @@ export const MatchesSection = memo(function MatchesSection({
 
 			<MatchesControls
 				disabled={navigationDisabled ?? false}
-				isLastSong={isLastSong ?? false}
+				isLastItem={isLastItem ?? false}
 				matchCount={playlists.length}
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
@@ -270,7 +270,7 @@ function AnimatedMatchesPanel({
 
 interface MatchesControlsProps {
 	disabled: boolean;
-	isLastSong: boolean;
+	isLastItem: boolean;
 	/** Drives the Reject button's singular/plural label. */
 	matchCount: number;
 	onDismiss: () => void;
@@ -283,7 +283,7 @@ interface MatchesControlsProps {
 // rapid Next clicks.
 function MatchesControls({
 	disabled,
-	isLastSong,
+	isLastItem,
 	matchCount,
 	onDismiss,
 	onPrevious,
@@ -326,7 +326,7 @@ function MatchesControls({
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-base font-medium tracking-wide">
-						{isLastSong ? "Finish matching" : "Skip Song"}
+						{isLastItem ? "Finish matching" : "Skip Song"}
 					</span>
 					<ArrowRightIcon
 						size={16}

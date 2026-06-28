@@ -101,9 +101,10 @@ export interface MatchPairInput {
 	playlistId: string;
 	score: number;
 	fusedScore: number | null;
-	/** Song metadata for read-time filter evaluation. When present alongside
-	 *  playlistFilters, passesAllMatchFilters is applied. Missing metadata
-	 *  fails any active filter — there is no "unknown" pass-through (MSR-36). */
+	/** Song metadata for read-time filter evaluation. Applied via
+	 *  passesAllMatchFilters whenever playlistFilters carries config. A
+	 *  null/undefined value is treated as all-null metadata, so any active
+	 *  filter fails — there is no "unknown" pass-through (MSR-36). */
 	songMeta?: SongFilterMetadata | null;
 	/** Parsed filters from the playlist's match_filters column. Applied
 	 *  against songMeta when both are present (MSR-36). */
@@ -117,6 +118,20 @@ export interface RankingInput {
 	rank: number;
 	orderingScore: number;
 }
+
+/**
+ * All-null song metadata. Substituted whenever a song's filter metadata is
+ * absent so that any active playlist filter fails deterministically rather
+ * than passing through — the "missing metadata fails active filters" contract
+ * (MSR-36). A playlist filter object with no active constraints still passes.
+ */
+const NULL_SONG_FILTER_META: SongFilterMetadata = {
+	language: null,
+	languageSecondary: null,
+	releaseYear: null,
+	vocalGender: null,
+	likedAt: null,
+};
 
 /**
  * Derives the ordered visible suggestion list from raw pair and ranking data.
@@ -158,16 +173,14 @@ export function deriveVisibleSuggestions(
 		const fs = strictnessScore({ score: p.score, fused_score: p.fusedScore });
 		if (fs < minScore) return false;
 		if (decidedPairKeys.has(`${p.songId}:${p.playlistId}`)) return false;
-		// Apply hard filters when both playlist config and song metadata are
-		// present — AND across filter types, OR within language codes, missing
-		// metadata fails any active filter (MSR-36, story constraint).
-		if (
-			p.playlistFilters !== undefined &&
-			p.playlistFilters !== null &&
-			p.songMeta !== undefined &&
-			p.songMeta !== null
-		) {
-			if (!passesAllMatchFilters(p.playlistFilters, p.songMeta, resolvedNowMs))
+		// Apply hard filters whenever the playlist carries filter config — AND
+		// across filter types, OR within language codes. Missing song metadata
+		// is treated as an all-null struct so any active filter fails rather than
+		// passing through; a filter object with no active constraints still passes
+		// (MSR-36, story constraint).
+		if (p.playlistFilters !== undefined && p.playlistFilters !== null) {
+			const meta = p.songMeta ?? NULL_SONG_FILTER_META;
+			if (!passesAllMatchFilters(p.playlistFilters, meta, resolvedNowMs))
 				return false;
 		}
 		return true;
@@ -648,13 +661,7 @@ export async function computeVisibleSuggestionList(
 			playlistId: r.playlist_id,
 			score: r.score,
 			fusedScore: r.fused_score,
-			songMeta: songsMetaResult.value.get(r.song_id) ?? {
-				language: null,
-				languageSecondary: null,
-				releaseYear: null,
-				vocalGender: null,
-				likedAt: null,
-			},
+			songMeta: songsMetaResult.value.get(r.song_id) ?? NULL_SONG_FILTER_META,
 			playlistFilters: reviewPlaylistFilters,
 		}));
 

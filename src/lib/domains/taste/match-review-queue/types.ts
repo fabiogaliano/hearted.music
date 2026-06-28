@@ -153,8 +153,8 @@ export interface MatchReviewSummaryPreview {
 
 /**
  * Full orientation-aware summary result returned by server functions (E9).
- * Supersedes the server-local MatchReviewSummaryResult once MSR-XX migrates
- * callers.
+ * Supersedes the server-local ServerMatchReviewSummaryResult once MSR-XX
+ * migrates callers.
  */
 export interface MatchReviewSummaryResult {
 	orientation: MatchOrientation;

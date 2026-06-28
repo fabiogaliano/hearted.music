@@ -1,5 +1,6 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { memo } from "react";
+import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Button } from "@/components/ui/Button";
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
@@ -92,13 +93,26 @@ export const CompletionScreen = memo(function CompletionScreen({
 								key={item.id}
 								className="group relative size-20 transition-transform duration-[220ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:z-10 motion-safe:hover:-translate-y-1"
 							>
-								<img
-									src={item.albumArtUrl ?? undefined}
-									alt={`${item.name} — ${item.artist}`}
-									loading="lazy"
-									className="h-full w-full object-cover"
-									style={{ outline: IMAGE_OUTLINE }}
-								/>
+								{item.albumArtUrl ? (
+									<img
+										src={item.albumArtUrl}
+										alt={`${item.name} — ${item.artist}`}
+										loading="lazy"
+										className="h-full w-full object-cover"
+										style={{ outline: IMAGE_OUTLINE }}
+									/>
+								) : (
+									// No album art: a styled ♫ placeholder instead of a broken-image
+									// icon. role/aria-label keep the item announced like the img alt.
+									<div
+										role="img"
+										aria-label={`${item.name} — ${item.artist}`}
+										className="h-full w-full"
+										style={{ outline: IMAGE_OUTLINE }}
+									>
+										<AlbumPlaceholder />
+									</div>
+								)}
 								{/* Hover caption: title + artist. The opacity reveal is ungated
 								so reduced-motion users still get it instantly; only the
 								scale/rise easing is motion-safe. */}
