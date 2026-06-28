@@ -543,6 +543,39 @@ const PresentMatchReviewItemSchema = z.object({
 });
 
 /**
+ * Returns an `unavailable` card for an *owned* queue item whose subject can't be
+ * shown (lost entitlement, unverifiable session), stamping an empty visible-pairs
+ * capture FIRST so the card is skippable.
+ *
+ * The unavailable card's Skip action calls finishMatchReviewItem, and the
+ * finish/dismiss RPCs guard on visible_pairs_captured_at (NOT the pair row
+ * count): a NULL capture is rejected as no_captured_pairs, which leaves the card
+ * stuck in the active queue with no way to resolve it. An empty capture stamps
+ * the timestamp and activates the item with zero pairs — the same captured-empty
+ * state behind a no-visible-suggestions card — so finish resolves it as a clean
+ * skip writing no decision/event rows.
+ *
+ * If the stamping capture itself fails with a db-error we surface retryable
+ * rather than an unskippable card, so the user can retry instead of getting stuck.
+ */
+async function presentUnavailableOwnedItem(
+	itemId: string,
+	accountId: string,
+	reason: "not-entitled" | "snapshot-not-owned",
+	message: string,
+): Promise<MatchReviewItemRead> {
+	const capture = await captureVisiblePairsAtomic(itemId, accountId, []);
+	if (capture.status === "db-error") {
+		return {
+			status: "retryable-error",
+			itemId,
+			message: "Couldn't load this match card. Try again.", // H7
+		};
+	}
+	return { status: "unavailable", itemId, reason, message };
+}
+
+/**
  * Authoritative card presentation: derives the visible suggestion list (MSR-22),
  * atomically captures it (MSR-23), then returns render-ready song and playlist
  * data keyed off captured rows.
@@ -585,12 +618,12 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				.maybeSingle();
 
 			if (sessionError || !sessionRow) {
-				return {
-					status: "unavailable",
+				return presentUnavailableOwnedItem(
 					itemId,
-					reason: "snapshot-not-owned",
-					message: "This item's session could not be verified.",
-				};
+					session.accountId,
+					"snapshot-not-owned",
+					"This item's session could not be verified.",
+				);
 			}
 
 			const strictnessMinScore = sessionRow.strictness_min_score;
@@ -607,12 +640,12 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					listResult.reason === "song-not-entitled"
 						? "This song is no longer available to match." // H6
 						: "This playlist is no longer available to match."; // H6
-				return {
-					status: "unavailable",
+				return presentUnavailableOwnedItem(
 					itemId,
-					reason: "not-entitled",
+					session.accountId,
+					"not-entitled",
 					message,
-				};
+				);
 			}
 
 			if (listResult.kind === "db-error") {
