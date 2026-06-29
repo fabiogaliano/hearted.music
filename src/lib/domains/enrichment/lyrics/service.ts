@@ -36,6 +36,12 @@ import {
 	LrclibFetchError,
 	type LrclibProvider,
 } from "./providers/lrclib";
+import {
+	createNeteaseProvider,
+	type NeteaseError,
+	NeteaseFetchError,
+	type NeteaseProvider,
+} from "./providers/netease";
 import { upsertFetchOutcome } from "./queries";
 import type {
 	ResponseHitsResult,
@@ -110,6 +116,24 @@ const LRCLIB_RETRY_OPTIONS = {
 	isRetryable: isLrclibRetryable,
 } as const;
 
+// NetEase is the last-resort fallback, so retries stay lean. Retry transient
+// transport failures (network/5xx/429) but not app-level codes such as -460
+// ("Cheating", an abroad/IP block) — those won't clear within the retry window
+// (a future change could route the retry through the worker's SOCKS proxy).
+function isNeteaseRetryable(error: NeteaseError): boolean {
+	if (!(error instanceof NeteaseFetchError)) return false;
+	if (error.apiCode !== undefined) return false;
+	const status = error.statusCode;
+	return status === undefined || status >= 500 || status === 429;
+}
+
+const NETEASE_RETRY_OPTIONS = {
+	maxRetries: 2,
+	baseDelayMs: 500,
+	maxDelayMs: 4_000,
+	isRetryable: isNeteaseRetryable,
+} as const;
+
 /** Parameters for a provider-ordered lyrics fetch. */
 export interface FetchOutcomeParams {
 	songId: string;
@@ -131,8 +155,13 @@ export class LyricsService {
 	private readonly authHeaders: Record<string, string>;
 	private readonly limiter = sharedLimiter;
 	private readonly lrclib: LrclibProvider;
+	private readonly netease: NeteaseProvider;
 
-	constructor(config: LyricsServiceConfig, lrclib?: LrclibProvider) {
+	constructor(
+		config: LyricsServiceConfig,
+		lrclib?: LrclibProvider,
+		netease?: NeteaseProvider,
+	) {
 		if (!config.accessToken) {
 			throw new GeniusConfigError("Access token is required");
 		}
@@ -141,6 +170,7 @@ export class LyricsService {
 			Authorization: `Bearer ${config.accessToken}`,
 		};
 		this.lrclib = lrclib ?? createLrclibProvider();
+		this.netease = netease ?? createNeteaseProvider();
 	}
 
 	// fetch resolves non-2xx responses instead of rejecting, so the !ok throw
@@ -258,7 +288,13 @@ export class LyricsService {
 			LRCLIB_RETRY_OPTIONS,
 		);
 		if (Result.isError(lrclibResult)) {
-			// Transient LRCLIB failure — unconfirmed, retry-eligible.
+			// LRCLIB failed transiently, so its verdict is unknown. Fall back to
+			// NetEase. Only a positive NetEase verdict (lyrics/instrumental) is
+			// adopted; a NetEase miss or its own failure is NOT authoritative here,
+			// so we surface the original LRCLIB error and let the song be retried
+			// once LRCLIB recovers — without writing an unconfirmed not_found row.
+			const fallback = await this.resolveViaNetease(params, durationMs);
+			if (fallback !== null) return Result.ok(fallback);
 			return Result.err(lrclibResult.error);
 		}
 
@@ -276,7 +312,90 @@ export class LyricsService {
 		}
 
 		// LRCLIB returned lyrics — enrich with Genius annotations (best-effort).
-		const placement = await this.attachAnnotations(params, lrclibOutcome.text);
+		return Result.ok(
+			await this.finalizeLyrics(
+				params,
+				lrclibOutcome.text,
+				"lrclib",
+				lrclibOutcome.confidence,
+			),
+		);
+	}
+
+	/**
+	 * Last-resort NetEase fallback, invoked only after LRCLIB fails transiently.
+	 * Returns a resolved outcome for a positive verdict (lyrics/instrumental), or
+	 * null when NetEase finds nothing or itself fails — null tells the caller to
+	 * surface the original LRCLIB error so the song is retried later, rather than
+	 * persisting an unauthoritative not_found. NetEase errors are swallowed here
+	 * (logged): the fallback is best-effort and must never mask the LRCLIB error.
+	 */
+	private async resolveViaNetease(
+		params: FetchOutcomeParams,
+		durationMs: number,
+	): Promise<{
+		outcome: LyricsOutcome;
+		sections: TransformedLyricsBySection[] | undefined;
+	} | null> {
+		const result = await withRetry(
+			() =>
+				this.limiter.run(() =>
+					this.netease.fetchLyrics({
+						trackName: params.song,
+						artistName: params.artist,
+						durationMs,
+					}),
+				),
+			NETEASE_RETRY_OPTIONS,
+		);
+		if (Result.isError(result)) {
+			console.warn(
+				`[LyricsService] NetEase fallback failed for ${params.artist} - ${params.song}: ${result.error.message}`,
+			);
+			return null;
+		}
+
+		const outcome = result.value;
+		if (outcome.kind === "instrumental") {
+			console.info(
+				`[LyricsService] NetEase fallback → instrumental for ${params.artist} - ${params.song}`,
+			);
+			return {
+				outcome: { kind: "instrumental", source: "netease" },
+				sections: undefined,
+			};
+		}
+		if (outcome.kind === "not_found") {
+			return null;
+		}
+
+		console.info(
+			`[LyricsService] NetEase fallback → lyrics for ${params.artist} - ${params.song}`,
+		);
+		return this.finalizeLyrics(
+			params,
+			outcome.text,
+			"netease",
+			outcome.confidence,
+		);
+	}
+
+	/**
+	 * Shared lyrics finalization for LRCLIB and NetEase: enrich with Genius
+	 * annotations (best-effort), apply the optional distiller, and format the
+	 * compact stored text. Returns the outcome plus the annotated sections so the
+	 * caller persists the full document.
+	 */
+	private async finalizeLyrics(
+		params: FetchOutcomeParams,
+		lyricText: string,
+		source: "lrclib" | "netease",
+		confidence: number,
+	): Promise<{
+		outcome: LyricsOutcome;
+		sections: TransformedLyricsBySection[];
+	}> {
+		const placement = await this.attachAnnotations(params, lyricText);
 
 		const distillations = params.distiller
 			? await params.distiller(placement.sections)
@@ -287,15 +406,10 @@ export class LyricsService {
 			distillations ? { distillations } : undefined,
 		);
 
-		return Result.ok({
-			outcome: {
-				kind: "lyrics",
-				text,
-				source: "lrclib",
-				confidence: lrclibOutcome.confidence,
-			},
+		return {
+			outcome: { kind: "lyrics", text, source, confidence },
 			sections: placement.sections,
-		});
+		};
 	}
 
 	/**
@@ -449,6 +563,7 @@ export class LyricsService {
  */
 export function createLyricsService(
 	lrclib?: LrclibProvider,
+	netease?: NeteaseProvider,
 ): Result<LyricsService, GeniusConfigError> {
 	const accessToken = env.GENIUS_CLIENT_TOKEN;
 	if (!accessToken) {
@@ -459,6 +574,10 @@ export function createLyricsService(
 		);
 	}
 	return Result.ok(
-		new LyricsService({ accessToken }, lrclib ?? createLrclibProvider()),
+		new LyricsService(
+			{ accessToken },
+			lrclib ?? createLrclibProvider(),
+			netease ?? createNeteaseProvider(),
+		),
 	);
 }

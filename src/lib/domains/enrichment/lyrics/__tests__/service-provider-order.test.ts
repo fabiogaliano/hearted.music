@@ -38,6 +38,35 @@ const LRCLIB_INSTRUMENTAL_TRACK = {
 	syncedLyrics: null,
 };
 
+// NetEase fallback fixtures (consulted only when LRCLIB fails transiently).
+const NETEASE_SEARCH_HIT = {
+	code: 200,
+	result: {
+		songs: [
+			{
+				id: 42,
+				name: "Get Lucky",
+				artists: [{ name: "Daft Punk" }],
+				album: { name: "Random Access Memories" },
+				duration: 248_000,
+			},
+		],
+	},
+};
+
+const NETEASE_LYRIC = {
+	code: 200,
+	lrc: {
+		lyric:
+			"[00:00.00]Like the legend of the phoenix\n[00:02.00]All ends with beginnings",
+	},
+};
+
+const NETEASE_INSTRUMENTAL = {
+	code: 200,
+	lrc: { lyric: "[00:00.00]纯音乐，请欣赏" },
+};
+
 const GENIUS_SEARCH_HIT = {
 	response: {
 		hits: [
@@ -100,6 +129,8 @@ function makeService(): LyricsService {
 function routeFetch(handlers: {
 	lrclibGet?: () => Response;
 	lrclibSearch?: () => Response;
+	neteaseSearch?: () => Response;
+	neteaseLyric?: () => Response;
 	geniusSearch?: () => Response;
 	geniusReferents?: (page: number) => Response;
 }) {
@@ -110,6 +141,19 @@ function routeFetch(handlers: {
 		}
 		if (url.includes("lrclib.net/api/search")) {
 			return handlers.lrclibSearch?.() ?? json([]);
+		}
+		// NetEase defaults to a miss so the fallback is a no-op unless a test opts in.
+		if (url.includes("music.163.com/api/search/get")) {
+			return (
+				handlers.neteaseSearch?.() ??
+				json({ code: 200, result: { songCount: 0 } })
+			);
+		}
+		if (url.includes("music.163.com/api/song/lyric")) {
+			return (
+				handlers.neteaseLyric?.() ??
+				json({ code: 200, uncollected: true, lrc: { lyric: "" } })
+			);
 		}
 		if (url.includes("api.genius.com/search")) {
 			return handlers.geniusSearch?.() ?? json({ response: { hits: [] } });
@@ -265,8 +309,12 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 	});
 
 	it("surfaces a transient LRCLIB error as a retry-eligible failure (no row written)", async () => {
-		// A 500 is retryable, so this exhausts the bounded retries and asserts the
-		// end state: error surfaced, no row written.
+		// A 500 is retryable, so this exhausts the bounded LRCLIB retries
+		// (~several seconds of real backoff) before the NetEase fallback also
+		// misses and the LRCLIB error is surfaced with no row written. Fake
+		// timers can't be used: the shared rate-limiter reads Date.now() for
+		// pacing, and advancing a fake clock poisons lastStartTime for every
+		// later test. So this runs on real timers with a generous timeout.
 		fetchMock.mockImplementation(
 			routeFetch({ lrclibGet: () => new Response("err", { status: 500 }) }),
 		);
@@ -281,12 +329,14 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 		});
 
 		expect(Result.isError(result)).toBe(true);
-	});
+	}, 20_000);
 
 	it("retries a transient 5xx from Genius search and still places the annotation", async () => {
 		// Annotation enrichment is best-effort and swallows failures, so a retry
 		// regression would degrade silently (annotations quietly stop appearing).
 		// This guards the live withRetry/isGeniusRetryable path on the search call.
+		// Real timers (one Genius retry, ~1s): fake timers would poison the shared
+		// rate-limiter's clock for later tests (see the LRCLIB-error test above).
 		let geniusSearchCalls = 0;
 		fetchMock.mockImplementation(
 			routeFetch({
@@ -318,5 +368,109 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 		// The 503 was retried (≥2 search calls) and the annotation still landed.
 		expect(geniusSearchCalls).toBeGreaterThanOrEqual(2);
 		expect(result.value.text).toContain("mythical bird's rebirth");
+	});
+
+	// A 400 is a non-retryable LRCLIB error: it reaches the fallback branch
+	// immediately (no slow retry loop), standing in for any transient LRCLIB
+	// failure so these tests stay fast.
+	function lrclibError(): Response {
+		return new Response("bad", { status: 400 });
+	}
+
+	it("falls back to NetEase lyrics when LRCLIB fails transiently", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibError(),
+				neteaseSearch: () => json(NETEASE_SEARCH_HIT),
+				neteaseLyric: () => json(NETEASE_LYRIC),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n1",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result) || result.value.kind !== "lyrics") return;
+		expect(result.value.source).toBe("netease");
+		expect(result.value.confidence).toBe(0.7);
+		expect(result.value.text).toContain("Like the legend of the phoenix");
+	});
+
+	it("adopts a NetEase instrumental verdict when LRCLIB fails transiently", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibError(),
+				neteaseSearch: () => json(NETEASE_SEARCH_HIT),
+				neteaseLyric: () => json(NETEASE_INSTRUMENTAL),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n2",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+		expect(result.value).toEqual({ kind: "instrumental", source: "netease" });
+	});
+
+	it("surfaces the LRCLIB error (no row) when NetEase also has no record", async () => {
+		// LRCLIB errors and NetEase returns a miss → the outcome is unconfirmed, so
+		// the error is surfaced for retry rather than written as an authoritative
+		// not_found.
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibError(),
+				neteaseSearch: () => json({ code: 200, result: { songCount: 0 } }),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n3",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isError(result)).toBe(true);
+	});
+
+	it("never consults NetEase when LRCLIB returns an authoritative not_found", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibNotFound(),
+				lrclibSearch: () => json([]),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n4",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+		expect(result.value).toEqual({ kind: "not_found" });
+		const calledNetease = fetchMock.mock.calls.some(([u]) =>
+			String(u).includes("music.163.com"),
+		);
+		expect(calledNetease).toBe(false);
 	});
 });

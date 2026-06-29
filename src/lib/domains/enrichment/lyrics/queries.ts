@@ -14,7 +14,7 @@
  *   content_hash  = "no-content"  (stable; no document to hash)
  *   schema_version = 0            (reserved; 1 means a real lyrics document)
  *   source (unique key) = outcome source, or "not_found" for the not_found case
- *   fetch_source  = lrclib | genius | genius_page | null (not_found has no source)
+ *   fetch_source  = lrclib | genius | genius_page | netease | null (not_found has no source)
  */
 
 import { Result } from "better-result";
@@ -335,9 +335,9 @@ export async function upsertFetchOutcome(
 /**
  * Source key for an instrumental verdict reached by content analysis (genre /
  * instrumentalness), not by a provider fetch. Distinct (song_id, source) slot so
- * it can't collide with the worker's lrclib/genius/not_found rows or the operator's
- * 'manual' rows. fetch_source stays NULL — it isn't a provider, and the
- * song_lyrics fetch_source CHECK forbids any value but NULL/lrclib/genius/genius_page.
+ * it can't collide with the worker's lrclib/genius/netease/not_found rows or the
+ * operator's 'manual' rows. fetch_source stays NULL — it isn't a provider, and the
+ * song_lyrics fetch_source CHECK forbids any value but NULL/lrclib/genius/genius_page/netease.
  */
 const ANALYSIS_SOURCE = "analysis";
 

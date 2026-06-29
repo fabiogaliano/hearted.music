@@ -40,12 +40,12 @@ export const LyricsOutcomeSchema = z.discriminatedUnion("kind", [
 	z.object({
 		kind: z.literal("lyrics"),
 		text: z.string(),
-		source: z.enum(["lrclib", "genius"]),
+		source: z.enum(["lrclib", "genius", "netease"]),
 		confidence: z.number(),
 	}),
 	z.object({
 		kind: z.literal("instrumental"),
-		source: z.enum(["lrclib", "genius_page"]),
+		source: z.enum(["lrclib", "genius_page", "netease"]),
 	}),
 	z.object({
 		kind: z.literal("not_found"),
