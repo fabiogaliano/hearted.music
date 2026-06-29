@@ -137,9 +137,8 @@ export async function loadTargetPlaylistProfiles(
 					},
 				};
 			} catch (error) {
-				// One playlist failing (load/enrich/compute) must not abort the whole
-				// snapshot — drop just this playlist and let the refresh proceed with
-				// the rest, instead of losing every other playlist's update.
+				// One playlist's failure must not abort the whole snapshot — drop it
+				// and let the refresh proceed with the rest.
 				log.warn("match:playlist-profile-failed", {
 					playlistId: playlist.id,
 					error: error instanceof Error ? error.message : String(error),
@@ -154,9 +153,8 @@ export async function loadTargetPlaylistProfiles(
 			r !== null,
 	);
 
-	// Every playlist failing points at a systemic problem (e.g. a DB outage), not
-	// a per-playlist quirk — abort so the job retries, rather than publishing an
-	// empty snapshot that would wipe the user's existing suggestions.
+	// All failing signals a systemic problem, not a per-playlist quirk — abort and
+	// retry rather than publish an empty snapshot that wipes existing suggestions.
 	if (computed.length === 0) {
 		throw new Error(
 			`[target-refresh] All ${playlists.length} target playlist profiles failed to compute`,

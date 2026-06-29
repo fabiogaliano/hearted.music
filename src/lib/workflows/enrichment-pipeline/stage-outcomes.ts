@@ -269,10 +269,8 @@ interface FinalizeParams {
 	accountId: string;
 }
 
-// Caps the per-song resolve/record fan-out: a 50-song batch otherwise dispatches
-// 50 DB round-trips in one tick (each backoff-coded failure also does a prior-
-// count read first), spiking pool usage. 12 keeps the pool healthy with no real
-// latency cost at batch sizes this small.
+// Cap the per-song resolve/record fan-out so a full batch doesn't fire all its
+// DB round-trips at once and spike the pool.
 const FINALIZE_CONCURRENCY = 12;
 
 export async function finalizeStageOutcome(

@@ -52,12 +52,10 @@ export async function recordStageFailure(
 			stage: params.stage,
 			failureCode: params.failureCode,
 		});
-		// The prior count drives both the backoff window and the escalation-to-
-		// terminal ladder for blocked codes. Silently defaulting to 0 on a query
-		// failure would wrong both — most harmfully, a blocked song could never reach
-		// BLOCKED_ESCALATION_THRESHOLD and would loop in short-retry purgatory
-		// forever. Surface the error so the chunk records a StageAccountingError and
-		// retries with a real count instead of persisting a bad policy decision.
+		// The count drives the backoff window and the blocked-code escalation
+		// ladder. Defaulting to 0 on failure would trap blocked songs below the
+		// escalation threshold forever — surface the error and retry with a real
+		// count instead.
 		if (Result.isError(countResult)) {
 			return Result.err(countResult.error);
 		}

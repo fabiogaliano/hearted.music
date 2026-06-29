@@ -17,15 +17,9 @@ import type { EnrichmentContext, ReadyResult } from "../types";
 const STAGE = "song_embedding" as const;
 
 /**
- * Classifies an embedding failure into a policy code.
- *
- * Default is PROVIDER_TRANSIENT (retried with bounded backoff): provider 5xx,
- * rate limits, request timeouts, model-bundle hiccups, and storage errors are
- * all recoverable, and the prior default of PERMANENT terminalized songs on the
- * first transient blip — they were then permanently excluded from the work plan
- * and never re-embedded. Only two causes are genuinely permanent: a missing
- * analysis row (VALIDATION — the upstream stage owns it) and a dimension
- * mismatch (PERMANENT — a model/config defect that retrying cannot fix).
+ * Default to PROVIDER_TRANSIENT so a 5xx/rate-limit/timeout/store blip retries
+ * instead of terminalizing the song forever (the prior PERMANENT default did).
+ * Only missing-analysis and dimension-mismatch are genuinely unrecoverable.
  */
 function classifyEmbeddingFailure(error: string): FailureCode {
 	if (error.includes("Missing analysis")) return FAILURE_CODES.VALIDATION;

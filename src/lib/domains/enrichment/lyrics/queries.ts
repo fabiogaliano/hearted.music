@@ -484,11 +484,9 @@ export async function getLatestLyricsSnapshots(
 			row.document !== null
 		) {
 			const parsedDocument = parseDocument(row.document);
-			// A single corrupt document (e.g. a double-encoded `manual` row) must not
-			// fail the whole batch: returning here would block analysis for every
-			// other song sharing this lookup. Treat an unparseable document as "no
-			// usable lyrics snapshot" for this song and continue — analysis then
-			// falls through its normal lyrics-unavailable path instead of erroring.
+			// A single corrupt document must not fail the whole batch — skip it and
+			// treat this song as having no lyrics snapshot, rather than erroring
+			// every song in the lookup.
 			if (Result.isError(parsedDocument)) {
 				continue;
 			}

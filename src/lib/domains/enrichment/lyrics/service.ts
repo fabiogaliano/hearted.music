@@ -204,8 +204,7 @@ export class LyricsService {
 		// LRCLIB is the sole lyric source. Without album + duration we cannot query
 		// it, and with the Genius scrape gone there is no fallback → not_found.
 		if (params.albumName === undefined || params.durationMs === undefined) {
-			// Log so this is distinguishable from a genuine LRCLIB miss: here we never
-			// queried the provider, the inputs were simply absent.
+			// Distinguish "inputs absent, never queried" from a genuine LRCLIB miss.
 			const missing = [
 				params.albumName === undefined ? "album" : null,
 				params.durationMs === undefined ? "duration" : null,
@@ -372,10 +371,8 @@ export class LyricsService {
 	): Promise<Result<ResponseReferents[], GeniusError>> {
 		const perPage = 50;
 
-		// Page 1 first: most songs have <50 annotations, so a short first page means
-		// pages 2-4 are guaranteed empty — fetching them would burn 3 Genius calls and
-		// 3 shared rate-limiter slots per song for nothing. Only fan out when page 1
-		// comes back full (more annotations may exist).
+		// Page 1 first: most songs have <50 annotations, so a short page means 2-4
+		// are empty. Only fan out when page 1 is full, saving 3 calls/limiter slots.
 		const firstPage = await this.fetchReferentsPage(songId, 1, perPage);
 		if (firstPage.length < perPage) {
 			return Result.ok(firstPage);
