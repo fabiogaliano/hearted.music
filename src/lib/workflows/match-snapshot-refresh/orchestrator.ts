@@ -386,6 +386,15 @@ export async function executeMatchSnapshotRefresh(
 	}
 
 	const audioFeaturesResult = await getBatch(songIds);
+	if (Result.isError(audioFeaturesResult)) {
+		// Don't silently degrade every song to audio-feature-absent matching —
+		// surface the DB failure so a systemic outage is visible in the logs.
+		log.warn("match:audio-features-degraded", {
+			actor: who,
+			songs: songIds.length,
+			error: audioFeaturesResult.error.message,
+		});
+	}
 	const audioFeaturesMap = Result.isOk(audioFeaturesResult)
 		? audioFeaturesResult.value
 		: new Map();
@@ -454,10 +463,22 @@ export async function executeMatchSnapshotRefresh(
 	const songEmbeddings = new Map<string, number[]>();
 	if (Result.isOk(embeddingsResult)) {
 		for (const [songId, embeddingRow] of embeddingsResult.value) {
-			const parsedEmbedding =
-				typeof embeddingRow.embedding === "string"
-					? JSON.parse(embeddingRow.embedding)
-					: embeddingRow.embedding;
+			let parsedEmbedding: unknown;
+			try {
+				parsedEmbedding =
+					typeof embeddingRow.embedding === "string"
+						? JSON.parse(embeddingRow.embedding)
+						: embeddingRow.embedding;
+			} catch (error) {
+				// A single corrupt/partially-written embedding string must not throw
+				// and crash the whole refresh — skip the row, keep the rest usable.
+				log.warn("match:embedding-parse-failed", {
+					actor: who,
+					songId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				continue;
+			}
 			if (
 				Array.isArray(parsedEmbedding) &&
 				parsedEmbedding.every((value) => typeof value === "number")
