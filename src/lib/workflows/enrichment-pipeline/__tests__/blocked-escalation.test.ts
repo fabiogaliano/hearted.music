@@ -34,6 +34,7 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => mockCreateAdminSupabaseClient(),
 }));
 
+import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	applyFailurePolicy,
 	BACKOFF_CODES,
@@ -166,6 +167,31 @@ describe("recordStageFailure — blocked escalation integration", () => {
 			expect(Result.isOk(result)).toBe(true);
 			const recorded = mockRecordJobItemFailure.mock.calls[0][0];
 			expect(recorded.isTerminal).toBe(false);
+			expect(mockGrantCompensation).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("count-query failure — surfaced, not silently defaulted to 0", () => {
+		it("propagates the error and records nothing for a backoff code", async () => {
+			mockCountUnresolved.mockResolvedValue(
+				Result.err(
+					new DatabaseError({
+						code: "count_failed",
+						message: "count query failed",
+					}),
+				),
+			);
+
+			const result = await recordStageFailure({
+				...BASE_PARAMS,
+				failureCode: FAILURE_CODES.ANALYSIS_BLOCKED_LYRICS_UNAVAILABLE,
+			});
+
+			// A count of 0 would never reach the escalation threshold, trapping the
+			// song in indefinite short-retry purgatory. Surface the error instead of
+			// persisting a policy decision built on a guessed count.
+			expect(Result.isError(result)).toBe(true);
+			expect(mockRecordJobItemFailure).not.toHaveBeenCalled();
 			expect(mockGrantCompensation).not.toHaveBeenCalled();
 		});
 	});

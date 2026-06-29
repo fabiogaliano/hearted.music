@@ -241,7 +241,7 @@ describe("runSongEmbedding → StageOutcome", () => {
 		]);
 	});
 
-	it("maps batch-wide embedBatch error to per-song PERMANENT failures", async () => {
+	it("maps batch-wide embedBatch error to per-song PROVIDER_TRANSIENT failures", async () => {
 		mockGetAnalysis.mockResolvedValue(
 			Result.ok(
 				new Map([
@@ -260,14 +260,17 @@ describe("runSongEmbedding → StageOutcome", () => {
 		if (outcome.kind !== "attempted") throw new Error("unreachable");
 		expect(outcome.succeededSongIds).toEqual([]);
 		expect(outcome.failures).toHaveLength(2);
+		// An unreachable provider is transient infra, not a permanent defect — the
+		// songs must retry with backoff rather than be terminalized and dropped
+		// from the work plan forever.
 		expect(outcome.failures[0]).toEqual({
 			songId: "s1",
-			failureCode: FAILURE_CODES.PERMANENT,
+			failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
 			message: "Embedding failed: ML provider unreachable",
 		});
 		expect(outcome.failures[1]).toEqual({
 			songId: "s2",
-			failureCode: FAILURE_CODES.PERMANENT,
+			failureCode: FAILURE_CODES.PROVIDER_TRANSIENT,
 			message: "Embedding failed: ML provider unreachable",
 		});
 	});

@@ -52,7 +52,16 @@ export async function recordStageFailure(
 			stage: params.stage,
 			failureCode: params.failureCode,
 		});
-		priorUnresolvedCount = Result.isOk(countResult) ? countResult.value : 0;
+		// The prior count drives both the backoff window and the escalation-to-
+		// terminal ladder for blocked codes. Silently defaulting to 0 on a query
+		// failure would wrong both — most harmfully, a blocked song could never reach
+		// BLOCKED_ESCALATION_THRESHOLD and would loop in short-retry purgatory
+		// forever. Surface the error so the chunk records a StageAccountingError and
+		// retries with a real count instead of persisting a bad policy decision.
+		if (Result.isError(countResult)) {
+			return Result.err(countResult.error);
+		}
+		priorUnresolvedCount = countResult.value;
 	}
 
 	const policy = applyFailurePolicy({

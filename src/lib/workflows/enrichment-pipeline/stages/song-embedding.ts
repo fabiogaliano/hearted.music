@@ -7,10 +7,31 @@ import type { SongEmbedding } from "@/lib/domains/enrichment/embeddings/queries"
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
-import type { StageFailure, StageOutcome } from "../stage-outcomes";
+import type {
+	FailureCode,
+	StageFailure,
+	StageOutcome,
+} from "../stage-outcomes";
 import type { EnrichmentContext, ReadyResult } from "../types";
 
 const STAGE = "song_embedding" as const;
+
+/**
+ * Classifies an embedding failure into a policy code.
+ *
+ * Default is PROVIDER_TRANSIENT (retried with bounded backoff): provider 5xx,
+ * rate limits, request timeouts, model-bundle hiccups, and storage errors are
+ * all recoverable, and the prior default of PERMANENT terminalized songs on the
+ * first transient blip — they were then permanently excluded from the work plan
+ * and never re-embedded. Only two causes are genuinely permanent: a missing
+ * analysis row (VALIDATION — the upstream stage owns it) and a dimension
+ * mismatch (PERMANENT — a model/config defect that retrying cannot fix).
+ */
+function classifyEmbeddingFailure(error: string): FailureCode {
+	if (error.includes("Missing analysis")) return FAILURE_CODES.VALIDATION;
+	if (error.includes("Dimension mismatch")) return FAILURE_CODES.PERMANENT;
+	return FAILURE_CODES.PROVIDER_TRANSIENT;
+}
 
 /**
  * An embedding is stale when it predates the song's latest analysis — a
@@ -104,9 +125,7 @@ export async function runSongEmbedding(
 
 		const failures: StageFailure[] = failed.map((item) => ({
 			songId: item.songId,
-			failureCode: item.error.includes("Missing analysis")
-				? FAILURE_CODES.VALIDATION
-				: FAILURE_CODES.PERMANENT,
+			failureCode: classifyEmbeddingFailure(item.error),
 			message: `Embedding failed: ${item.error}`,
 		}));
 
@@ -133,7 +152,7 @@ export async function runSongEmbedding(
 		succeededSongIds: [],
 		failures: songIds.map((songId) => ({
 			songId,
-			failureCode: FAILURE_CODES.PERMANENT,
+			failureCode: classifyEmbeddingFailure(errorMessage),
 			message: `Embedding failed: ${errorMessage}`,
 		})),
 	};

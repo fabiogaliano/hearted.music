@@ -2,6 +2,7 @@ import { Result, TaggedError } from "better-result";
 import { resolveJobStageFailures } from "@/lib/platform/jobs/item-failures";
 import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
+import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import type { FAILURE_CODES } from "./failure-policy";
 import { recordStageFailure } from "./record-failure";
 import type { EnrichmentStageName } from "./types";
@@ -268,6 +269,12 @@ interface FinalizeParams {
 	accountId: string;
 }
 
+// Caps the per-song resolve/record fan-out: a 50-song batch otherwise dispatches
+// 50 DB round-trips in one tick (each backoff-coded failure also does a prior-
+// count read first), spiking pool usage. 12 keeps the pool healthy with no real
+// latency cost at batch sizes this small.
+const FINALIZE_CONCURRENCY = 12;
+
 export async function finalizeStageOutcome(
 	params: FinalizeParams,
 ): Promise<Result<StageSummary, StageAccountingError>> {
@@ -290,14 +297,15 @@ export async function finalizeStageOutcome(
 	}
 
 	if (outcome.succeededSongIds.length > 0) {
-		const resolveResults = await Promise.all(
-			outcome.succeededSongIds.map((songId) =>
+		const resolveResults = await mapWithConcurrency(
+			outcome.succeededSongIds,
+			FINALIZE_CONCURRENCY,
+			(songId) =>
 				resolveJobStageFailures({
 					accountId,
 					itemId: songId,
 					stage: outcome.stage,
 				}),
-			),
 		);
 
 		const firstError = resolveResults.find(Result.isError);
@@ -314,8 +322,10 @@ export async function finalizeStageOutcome(
 	}
 
 	if (outcome.failures.length > 0) {
-		const recordResults = await Promise.all(
-			outcome.failures.map((f) =>
+		const recordResults = await mapWithConcurrency(
+			outcome.failures,
+			FINALIZE_CONCURRENCY,
+			(f) =>
 				recordStageFailure({
 					jobId,
 					accountId,
@@ -325,7 +335,6 @@ export async function finalizeStageOutcome(
 					errorMessage: f.message,
 					retryAfterMs: f.retryAfterMs,
 				}),
-			),
 		);
 
 		const firstError = recordResults.find(Result.isError);
