@@ -204,6 +204,17 @@ export class LyricsService {
 		// LRCLIB is the sole lyric source. Without album + duration we cannot query
 		// it, and with the Genius scrape gone there is no fallback → not_found.
 		if (params.albumName === undefined || params.durationMs === undefined) {
+			// Log so this is distinguishable from a genuine LRCLIB miss: here we never
+			// queried the provider, the inputs were simply absent.
+			const missing = [
+				params.albumName === undefined ? "album" : null,
+				params.durationMs === undefined ? "duration" : null,
+			]
+				.filter(Boolean)
+				.join("+");
+			console.info(
+				`[LyricsService] not_found (missing ${missing}; LRCLIB not queried) for ${params.artist} - ${params.song}`,
+			);
 			return Result.ok({
 				outcome: { kind: "not_found" },
 				sections: undefined,
@@ -361,24 +372,31 @@ export class LyricsService {
 	): Promise<Result<ResponseReferents[], GeniusError>> {
 		const perPage = 50;
 
-		// Fire all 4 pages in parallel - most songs have <200 annotations
-		// Using allSettled so one failed page doesn't break the whole fetch
-		const results = await Promise.allSettled([
-			this.fetchReferentsPage(songId, 1, perPage),
+		// Page 1 first: most songs have <50 annotations, so a short first page means
+		// pages 2-4 are guaranteed empty — fetching them would burn 3 Genius calls and
+		// 3 shared rate-limiter slots per song for nothing. Only fan out when page 1
+		// comes back full (more annotations may exist).
+		const firstPage = await this.fetchReferentsPage(songId, 1, perPage);
+		if (firstPage.length < perPage) {
+			return Result.ok(firstPage);
+		}
+
+		// allSettled so one failed page doesn't break the rest; still capped at 4
+		// pages (200 annotations) as before.
+		const rest = await Promise.allSettled([
 			this.fetchReferentsPage(songId, 2, perPage),
 			this.fetchReferentsPage(songId, 3, perPage),
 			this.fetchReferentsPage(songId, 4, perPage),
 		]);
 
-		// Extract successful results only
-		const referents = results
+		const more = rest
 			.filter(
 				(r): r is PromiseFulfilledResult<ResponseReferents[]> =>
 					r.status === "fulfilled",
 			)
 			.flatMap((r) => r.value);
 
-		return Result.ok(referents);
+		return Result.ok([...firstPage, ...more]);
 	}
 
 	private async fetchReferentsPage(

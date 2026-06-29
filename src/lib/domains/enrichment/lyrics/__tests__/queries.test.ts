@@ -49,6 +49,15 @@ describe("parseDocument", () => {
 		} as Json);
 		expect(Result.isError(result)).toBe(true);
 	});
+
+	// A `manual`-source row was found in prod storing its document double-encoded:
+	// a JSON string instead of a JSON object. parseDocument must reject it (not
+	// throw), so the snapshot reader can skip the one bad row instead of failing
+	// the whole batch's lyrics lookup.
+	it("rejects a double-encoded (stringified) document", () => {
+		const result = parseDocument(JSON.stringify(docWithNullRole) as Json);
+		expect(Result.isError(result)).toBe(true);
+	});
 });
 
 // Type-level tests for fetch-outcome persistence (Decision 5).
