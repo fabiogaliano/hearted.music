@@ -21,12 +21,19 @@ export interface PipelineBatch {
  */
 export async function getEntitledDataEnrichedSongIds(
 	accountId: string,
+	songIds?: string[],
 ): Promise<string[]> {
 	const supabase = createAdminSupabaseClient();
 
+	// songIds scopes the entitlement check to a specific batch server-side so the
+	// RPC returns at most that batch instead of the account's full entitled set.
+	// Omitted (full set) by the match-snapshot and waitlist candidate-loading
+	// callers; passed by the per-batch new-candidate probe in the orchestrator.
 	const { data, error } = await supabase.rpc(
 		"select_entitled_data_enriched_liked_song_ids",
-		{ p_account_id: accountId },
+		songIds
+			? { p_account_id: accountId, p_song_ids: songIds }
+			: { p_account_id: accountId },
 	);
 
 	if (error) {
