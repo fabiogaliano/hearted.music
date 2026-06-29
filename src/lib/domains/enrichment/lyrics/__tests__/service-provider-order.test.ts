@@ -135,6 +135,7 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		vi.useRealTimers();
 	});
 
 	it("returns LRCLIB lyrics enriched with a matched Genius annotation", async () => {
@@ -264,6 +265,8 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 	});
 
 	it("surfaces a transient LRCLIB error as a retry-eligible failure (no row written)", async () => {
+		// A 500 is retryable, so this exhausts the bounded retries and asserts the
+		// end state: error surfaced, no row written.
 		fetchMock.mockImplementation(
 			routeFetch({ lrclibGet: () => new Response("err", { status: 500 }) }),
 		);

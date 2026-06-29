@@ -33,6 +33,7 @@ import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 import {
 	createLrclibProvider,
 	type LrclibError,
+	LrclibFetchError,
 	type LrclibProvider,
 } from "./providers/lrclib";
 import { upsertFetchOutcome } from "./queries";
@@ -90,6 +91,23 @@ const GENIUS_RETRY_OPTIONS = {
 	baseDelayMs: 500,
 	maxDelayMs: 15_000,
 	isRetryable: isGeniusRetryable,
+} as const;
+
+// /api/get does a live external lookup for tracks not in LRCLIB's DB (per
+// lrclib.net/docs): slow first fetch, prone to timeout under load. Retry absorbs
+// it, and the slow call caches the entry so the retry usually hits it. Transient
+// fetch failures only — parse errors and 4xx (incl. provider-mapped not_found) don't.
+function isLrclibRetryable(error: LrclibError): boolean {
+	if (!(error instanceof LrclibFetchError)) return false;
+	const status = error.statusCode;
+	return status === undefined || status >= 500 || status === 429;
+}
+
+const LRCLIB_RETRY_OPTIONS = {
+	maxRetries: 3,
+	baseDelayMs: 1_000,
+	maxDelayMs: 8_000,
+	isRetryable: isLrclibRetryable,
 } as const;
 
 /** Parameters for a provider-ordered lyrics fetch. */
@@ -224,18 +242,20 @@ export class LyricsService {
 		// non-undefined narrowing across the function boundary otherwise.
 		const { albumName, durationMs } = params;
 
-		// Route through the shared limiter so a batch's unbounded prefetch
-		// Promise.all can't burst dozens of simultaneous requests at LRCLIB (a
-		// free community API that throttles bursts → transient fetch failures that
-		// strand songs as retry candidates). Same budget the Genius calls use; the
-		// two run sequentially here, never nested, so no slot deadlock.
-		const lrclibResult = await this.limiter.run(() =>
-			this.lrclib.fetchLyrics({
-				trackName: params.song,
-				artistName: params.artist,
-				albumName,
-				durationMs,
-			}),
+		// Shared limiter caps concurrent /api/get calls so a batch's prefetch can't
+		// burst dozens of slow external lookups at once. Shared with Genius but never
+		// nested (sequential here), so no deadlock. withRetry backs off outside the slot.
+		const lrclibResult = await withRetry(
+			() =>
+				this.limiter.run(() =>
+					this.lrclib.fetchLyrics({
+						trackName: params.song,
+						artistName: params.artist,
+						albumName,
+						durationMs,
+					}),
+				),
+			LRCLIB_RETRY_OPTIONS,
 		);
 		if (Result.isError(lrclibResult)) {
 			// Transient LRCLIB failure — unconfirmed, retry-eligible.
