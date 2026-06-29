@@ -38,3 +38,8 @@ scripts/spotify-hash-sync/.release-year-write.sql
 # Regenerable lyrics-eval report output (run via scripts/lyrics-eval/run-snapshots.ts)
 claudedocs/lyrics-eval-live.json
 claudedocs/lyrics-eval-snapshots.json
+
+# self-host migration target creds
+scripts/db/migrate/.target.env
+scripts/db/migrate/.cutover.env
+scripts/db/migrate/.runbook.local.md
