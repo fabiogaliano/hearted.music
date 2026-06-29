@@ -128,9 +128,7 @@ async function loadEntitledReadyInBatch(
 		return new Set();
 	}
 
-	const entitledReady = await getEntitledDataEnrichedSongIds(accountId, [
-		...batchIds,
-	]);
+	const entitledReady = await getEntitledDataEnrichedSongIds(accountId);
 	return new Set(entitledReady.filter((songId) => batchIds.has(songId)));
 }
 
