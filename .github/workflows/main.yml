@@ -217,23 +217,19 @@ jobs:
 
       - name: Validate prod migration config
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
-          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "Missing production-db secret SUPABASE_ACCESS_TOKEN"; exit 1; }
-          test -n "$SUPABASE_PROJECT_REF" || { echo "Missing production-db variable SUPABASE_PROJECT_REF"; exit 1; }
-          test -n "$SUPABASE_DB_PASSWORD" || { echo "Missing production-db secret SUPABASE_DB_PASSWORD"; exit 1; }
+          test -n "$PROD_DATABASE_URL" || { echo "Missing production-db secret PROD_DATABASE_URL"; exit 1; }
+          # Guard against the old hosted target: migrations must go to self-host.
+          echo "$PROD_DATABASE_URL" | grep -q 'supabase.hearted.music' || {
+            echo "PROD_DATABASE_URL does not point at the self-host pooler (supabase.hearted.music)"; exit 1;
+          }
 
       - name: Apply prod migrations
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
-          supabase login --token "$SUPABASE_ACCESS_TOKEN"
-          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD" --yes
-          supabase db push --linked --password "$SUPABASE_DB_PASSWORD" --yes
+          supabase db push --db-url "$PROD_DATABASE_URL" --yes
 
   deploy-app:
     needs: [detect, verify, db-security, migrate-prod]
