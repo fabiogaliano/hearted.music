@@ -3,12 +3,15 @@
  *
  * Flow (Genius HTML scrape removed — it was behind a Cloudflare JS challenge and
  * never once succeeded in production):
- *   1. LRCLIB is the sole source of lyric text. Its instrumental verdict is
- *      authoritative; its not_found is definitive. Requires album + duration.
- *   2. When LRCLIB returns lyrics, Genius is consulted via its API *only* for
- *      crowd-sourced annotations: search for the song (gated by the search
- *      confidence floor), fetch referents, and place each referent's `fragment`
- *      onto the LRCLIB lines by fuzzy match (see annotation-placement.ts).
+ *   1. LRCLIB is the primary source of lyric text (requires album + duration).
+ *      Its instrumental verdict is authoritative. NetEase is a fallback that
+ *      covers two LRCLIB gaps: a transient error (LRCLIB's verdict unknown →
+ *      adopt NetEase lyrics or instrumental) and a not_found (adopt NetEase
+ *      lyrics ONLY — a not_found is never flipped to instrumental by NetEase).
+ *   2. When LRCLIB (or NetEase) returns lyrics, Genius is consulted via its API
+ *      *only* for crowd-sourced annotations: search for the song (gated by the
+ *      search confidence floor), fetch referents, and place each referent's
+ *      `fragment` onto the lyric lines by fuzzy match (see annotation-placement.ts).
  *
  * Annotation enrichment is best-effort: a missed Genius search, a referents
  * failure, or nothing aligning all fall back to storing the plain LRCLIB lyrics.
@@ -289,12 +292,41 @@ export class LyricsService {
 		);
 		if (Result.isError(lrclibResult)) {
 			// LRCLIB failed transiently, so its verdict is unknown. Fall back to
-			// NetEase. Only a positive NetEase verdict (lyrics/instrumental) is
-			// adopted; a NetEase miss or its own failure is NOT authoritative here,
-			// so we surface the original LRCLIB error and let the song be retried
-			// once LRCLIB recovers — without writing an unconfirmed not_found row.
-			const fallback = await this.resolveViaNetease(params, durationMs);
-			if (fallback !== null) return Result.ok(fallback);
+			// NetEase and adopt any positive verdict (lyrics OR instrumental — with
+			// no LRCLIB verdict, NetEase's is the best signal we have). A NetEase
+			// miss or its own failure is NOT authoritative here, so we surface the
+			// original LRCLIB error and let the song be retried once LRCLIB
+			// recovers — without writing an unconfirmed not_found row.
+			const netease = await this.fetchNetease(params, durationMs);
+			if (Result.isOk(netease)) {
+				const outcome = netease.value;
+				if (outcome.kind === "lyrics") {
+					console.info(
+						`[LyricsService] NetEase (LRCLIB error) → lyrics for ${params.artist} - ${params.song}`,
+					);
+					return Result.ok(
+						await this.finalizeLyrics(
+							params,
+							outcome.text,
+							"netease",
+							outcome.confidence,
+						),
+					);
+				}
+				if (outcome.kind === "instrumental") {
+					console.info(
+						`[LyricsService] NetEase (LRCLIB error) → instrumental for ${params.artist} - ${params.song}`,
+					);
+					return Result.ok({
+						outcome: { kind: "instrumental", source: "netease" },
+						sections: undefined,
+					});
+				}
+			} else {
+				console.warn(
+					`[LyricsService] NetEase fallback failed for ${params.artist} - ${params.song}: ${netease.error.message}`,
+				);
+			}
 			return Result.err(lrclibResult.error);
 		}
 
@@ -308,6 +340,30 @@ export class LyricsService {
 			});
 		}
 		if (lrclibOutcome.kind === "not_found") {
+			// LRCLIB has no lyrics record. Try NetEase for extra coverage — but only
+			// UPGRADE to lyrics. We never convert a not_found into instrumental on
+			// NetEase's say-so: its pure-music sentinel is unreliable for tracks
+			// LRCLIB simply lacks, and LRCLIB's not_found (not "instrumental") is the
+			// truth we keep. NetEase instrumental / miss / error all stay not_found.
+			const netease = await this.fetchNetease(params, durationMs);
+			if (Result.isOk(netease) && netease.value.kind === "lyrics") {
+				console.info(
+					`[LyricsService] NetEase recovered lyrics for LRCLIB not_found: ${params.artist} - ${params.song}`,
+				);
+				return Result.ok(
+					await this.finalizeLyrics(
+						params,
+						netease.value.text,
+						"netease",
+						netease.value.confidence,
+					),
+				);
+			}
+			if (Result.isError(netease)) {
+				console.warn(
+					`[LyricsService] NetEase not_found-recovery failed for ${params.artist} - ${params.song}: ${netease.error.message}`,
+				);
+			}
 			return Result.ok({ outcome: { kind: "not_found" }, sections: undefined });
 		}
 
@@ -323,21 +379,17 @@ export class LyricsService {
 	}
 
 	/**
-	 * Last-resort NetEase fallback, invoked only after LRCLIB fails transiently.
-	 * Returns a resolved outcome for a positive verdict (lyrics/instrumental), or
-	 * null when NetEase finds nothing or itself fails — null tells the caller to
-	 * surface the original LRCLIB error so the song is retried later, rather than
-	 * persisting an unauthoritative not_found. NetEase errors are swallowed here
-	 * (logged): the fallback is best-effort and must never mask the LRCLIB error.
+	 * Runs the NetEase provider through the shared limiter + bounded retries and
+	 * returns its raw LyricsOutcome (lyrics / instrumental / not_found) or a
+	 * NeteaseError. Callers decide which verdicts to adopt: the LRCLIB-error path
+	 * takes lyrics or instrumental (LRCLIB gave no verdict); the not_found path
+	 * takes lyrics only (LRCLIB's not_found, not "instrumental", is authoritative).
 	 */
-	private async resolveViaNetease(
+	private async fetchNetease(
 		params: FetchOutcomeParams,
 		durationMs: number,
-	): Promise<{
-		outcome: LyricsOutcome;
-		sections: TransformedLyricsBySection[] | undefined;
-	} | null> {
-		const result = await withRetry(
+	): Promise<Result<LyricsOutcome, NeteaseError>> {
+		return withRetry(
 			() =>
 				this.limiter.run(() =>
 					this.netease.fetchLyrics({
@@ -347,36 +399,6 @@ export class LyricsService {
 					}),
 				),
 			NETEASE_RETRY_OPTIONS,
-		);
-		if (Result.isError(result)) {
-			console.warn(
-				`[LyricsService] NetEase fallback failed for ${params.artist} - ${params.song}: ${result.error.message}`,
-			);
-			return null;
-		}
-
-		const outcome = result.value;
-		if (outcome.kind === "instrumental") {
-			console.info(
-				`[LyricsService] NetEase fallback → instrumental for ${params.artist} - ${params.song}`,
-			);
-			return {
-				outcome: { kind: "instrumental", source: "netease" },
-				sections: undefined,
-			};
-		}
-		if (outcome.kind === "not_found") {
-			return null;
-		}
-
-		console.info(
-			`[LyricsService] NetEase fallback → lyrics for ${params.artist} - ${params.song}`,
-		);
-		return this.finalizeLyrics(
-			params,
-			outcome.text,
-			"netease",
-			outcome.confidence,
 		);
 	}
 

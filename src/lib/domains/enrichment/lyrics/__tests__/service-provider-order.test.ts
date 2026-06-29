@@ -448,11 +448,13 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 		expect(Result.isError(result)).toBe(true);
 	});
 
-	it("never consults NetEase when LRCLIB returns an authoritative not_found", async () => {
+	it("recovers lyrics via NetEase when LRCLIB returns not_found", async () => {
 		fetchMock.mockImplementation(
 			routeFetch({
 				lrclibGet: () => lrclibNotFound(),
 				lrclibSearch: () => json([]),
+				neteaseSearch: () => json(NETEASE_SEARCH_HIT),
+				neteaseLyric: () => json(NETEASE_LYRIC),
 			}),
 		);
 
@@ -466,8 +468,78 @@ describe("LyricsService — LRCLIB source + Genius annotations", () => {
 		});
 
 		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result) || result.value.kind !== "lyrics") return;
+		expect(result.value.source).toBe("netease");
+		expect(result.value.text).toContain("Like the legend of the phoenix");
+	});
+
+	it("keeps not_found (never instrumental) when NetEase reports the track as instrumental", async () => {
+		// Guard: LRCLIB's not_found is authoritative over NetEase's pure-music
+		// sentinel. A track LRCLIB simply lacks must not be flipped to instrumental
+		// on NetEase's unreliable say-so — it stays not_found.
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibNotFound(),
+				lrclibSearch: () => json([]),
+				neteaseSearch: () => json(NETEASE_SEARCH_HIT),
+				neteaseLyric: () => json(NETEASE_INSTRUMENTAL),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n5",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 		expect(result.value).toEqual({ kind: "not_found" });
+	});
+
+	it("stays not_found when both LRCLIB and NetEase miss", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({
+				lrclibGet: () => lrclibNotFound(),
+				lrclibSearch: () => json([]),
+				neteaseSearch: () => json({ code: 200, result: { songCount: 0 } }),
+			}),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n6",
+			artist: "Daft Punk",
+			song: "Get Lucky",
+			albumName: "Random Access Memories",
+			durationMs: 248_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+		expect(result.value).toEqual({ kind: "not_found" });
+	});
+
+	it("never consults NetEase when LRCLIB returns an authoritative instrumental", async () => {
+		fetchMock.mockImplementation(
+			routeFetch({ lrclibGet: () => json(LRCLIB_INSTRUMENTAL_TRACK) }),
+		);
+
+		const service = makeService();
+		const result = await service.fetchAndStoreOutcome({
+			songId: "n7",
+			artist: "Daft Punk",
+			song: "Veridis Quo",
+			albumName: "Discovery",
+			durationMs: 588_000,
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (!Result.isOk(result)) return;
+		expect(result.value).toEqual({ kind: "instrumental", source: "lrclib" });
 		const calledNetease = fetchMock.mock.calls.some(([u]) =>
 			String(u).includes("music.163.com"),
 		);
