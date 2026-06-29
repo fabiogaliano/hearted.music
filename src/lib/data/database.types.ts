@@ -3943,7 +3943,7 @@ export type Database = {
 				}[];
 			};
 			select_entitled_data_enriched_liked_song_ids: {
-				Args: { p_account_id: string };
+				Args: { p_account_id: string; p_song_ids?: string[] };
 				Returns: {
 					song_id: string;
 				}[];
