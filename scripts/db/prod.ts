@@ -12,11 +12,18 @@
  * Decision rule: reach for `rest` first (no secret, can't run a stray DROP);
  * drop to `sql` only when REST can't express it.
  *
- * ─── Credentials (already on disk — nothing to set up) ───────────────────────
+ * ─── Credentials ─────────────────────────────────────────────────────────────
+ * PROD is now the SELF-HOST Supabase (https://supabase.hearted.music), not the
+ * old hosted project. See scripts/db/migrate/README.md for the cutover.
  *   rest mode  → SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY from .env.cloud
- *   sql  mode  → SUPABASE_DB_PASSWORD from .env; host/user/port from
- *                supabase/.temp/pooler-url. Override with PROD_DATABASE_URL in
- *                .env.cloud.local (gitignored) if you ever need a different DSN.
+ *                (already the self-host values — nothing to set up).
+ *   sql  mode  → PROD_DATABASE_URL from .env.cloud.local (gitignored) = the
+ *                self-host supavisor pooler DSN (user `postgres.dev_tenant`,
+ *                `?sslmode=require`). Get the value from
+ *                `bun scripts/db/migrate/print-cutover-env.ts` (its DATABASE_URL).
+ *                Falls back to the LEGACY hosted pooler (supabase/.temp/pooler-url
+ *                + SUPABASE_DB_PASSWORD from .env) only if PROD_DATABASE_URL is
+ *                unset — that path will break once hosted is decommissioned.
  * Full runbook: the `supabase-prod` skill (.claude/skills/supabase-prod/SKILL.md).
  *
  * ─── Usage ───────────────────────────────────────────────────────────────────
@@ -250,8 +257,9 @@ function resolveSqlUrl(explicit?: string): string {
 	const pw = env.SUPABASE_DB_PASSWORD ?? process.env.SUPABASE_DB_PASSWORD;
 	if (pw) return buildFromPoolerUrl(pw);
 	return fail(
-		"No prod DB password found. Expected SUPABASE_DB_PASSWORD in .env\n" +
-			"(or PROD_DATABASE_URL in .env.cloud.local).",
+		"No prod DB connection found. Set PROD_DATABASE_URL in .env.cloud.local to\n" +
+			"the self-host pooler DSN (from `bun scripts/db/migrate/print-cutover-env.ts`),\n" +
+			"or SUPABASE_DB_PASSWORD in .env for the legacy hosted pooler.",
 	);
 }
 

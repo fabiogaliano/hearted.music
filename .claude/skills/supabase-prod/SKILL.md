@@ -1,25 +1,44 @@
 ---
 name: supabase-prod
-description: Run reads and writes against the PRODUCTION Supabase database using `bun run prod:rest` (PostgREST + service-role) and `bun run prod:sql` (direct Postgres). The prod counterpart to supabase-local. Use whenever the task involves querying, inspecting, counting, updating, or deleting production data — e.g. "how many users in prod", "look up a prod account", "delete a user from prod", "run this SQL against prod", "check a row in production". Covers which mode to pick, the safety model, and FK-cascade behavior for deletes. Triggers on: prod/production database, prod data, query prod, prod users/accounts, delete from prod, run SQL on prod, prod:sql, prod:rest.
+description: Run reads and writes against the PRODUCTION Supabase database (now SELF-HOSTED on the Coolify VPS at supabase.hearted.music) using `bun run prod:rest` (PostgREST + service-role) and `bun run prod:sql` (direct Postgres). The prod counterpart to supabase-local. Use whenever the task involves querying, inspecting, counting, updating, or deleting production data — e.g. "how many users in prod", "look up a prod account", "delete a user from prod", "run this SQL against prod", "check a row in production". Covers which mode to pick, the safety model, and FK-cascade behavior for deletes. Triggers on: prod/production database, prod data, query prod, prod users/accounts, delete from prod, run SQL on prod, prod:sql, prod:rest.
 ---
 
 # Prod DB ops
 
 One tool — `scripts/db/prod.ts`, exposed as two bun scripts — for talking to the
-**production** Supabase project. Credentials are already on disk; there is
-nothing to set up.
+**production** database, which is now the **self-hosted** Supabase
+(`https://supabase.hearted.music`) on the Coolify VPS, not the old hosted project
+(see `scripts/db/migrate/README.md` for the cutover). REST creds are already on
+disk; SQL mode needs `PROD_DATABASE_URL` set once — see Setup below.
 
 ```bash
 bun run prod:rest <get|count|insert|update|delete|rpc> <table|fn> [flags]
 bun run prod:sql  '<query>'  |  -f <file>  [--write] [--json] [--yes]
 ```
 
+## Setup (one-time, SQL mode only)
+
+REST mode works out of the box (it reads the self-host `SUPABASE_URL` /
+`SUPABASE_SERVICE_ROLE_KEY` from `.env.cloud`). SQL mode needs the self-host
+pooler DSN in `.env.cloud.local` (gitignored):
+
+```bash
+# the value is the DATABASE_URL line printed by:
+bun scripts/db/migrate/print-cutover-env.ts
+# add it to .env.cloud.local as:
+PROD_DATABASE_URL=postgresql://postgres.dev_tenant:<pw>@supabase.hearted.music:5432/postgres?sslmode=require
+```
+
+Note the pooler username is `postgres.dev_tenant` (supavisor's `<role>.<tenant>`
+form) and `?sslmode=require` is required. Without `PROD_DATABASE_URL`, SQL mode
+falls back to the **legacy hosted** pooler — which breaks once hosted is deleted.
+
 ## Which mode
 
 | Mode | Transport | Use for | Credential | Safety |
 | --- | --- | --- | --- | --- |
 | `prod:rest` | PostgREST HTTP + service-role key | Whole-row CRUD on a single table, RPC calls | `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (`.env.cloud`) | Can't run DDL/`DROP`; writes need confirmation; refuses unfiltered update/delete |
-| `prod:sql` | Direct Postgres (postgres.js) | Joins, `group by`, aggregates, DDL, transactions, `COPY` | `SUPABASE_DB_PASSWORD` (`.env`) | Read-only by default; `--write` + confirmation to mutate |
+| `prod:sql` | Direct Postgres (postgres.js) | Joins, `group by`, aggregates, DDL, transactions, `COPY` | `PROD_DATABASE_URL` (`.env.cloud.local`) — self-host pooler | Read-only by default; `--write` + confirmation to mutate |
 
 **Rule of thumb:** reach for `prod:rest` first — no DB password, and it
 physically can't run a stray `DROP`. Drop to `prod:sql` only when REST can't
@@ -103,6 +122,14 @@ Resolve the ids first with `prod:rest get account --eq email=<email>` (gives
 - REST creds come from `.env.cloud`, not the local `.env` (bun auto-loads `.env`
   with a `127.0.0.1` URL); the tool reads the cloud file first and aborts if it
   resolves a localhost URL.
+- **The typed-ref string differs by mode** (it's derived from the connection):
+  REST shows `ref=supabase` (from the `supabase.hearted.music` host), SQL shows
+  `ref=dev_tenant` (the pooler tenant). The write prompt prints the exact `ref=`
+  to type — just type what it shows.
+- **GUI alternative:** Supabase Studio is live at `https://supabase.hearted.music`
+  (HTTP basic-auth; user `SERVICE_USER_ADMIN` / pass `SERVICE_PASSWORD_ADMIN` via
+  `coolify service env get fcuhypd724cwmn4dhx74qqja <key> -s`). Same elevated
+  access — it also bypasses RLS.
 - This project typechecks with `tsgo` (`bun run typecheck`). The editor's plain
   tsserver may false-flag `process`/`Bun` in this script — ignore it; tsgo is
   authoritative.
