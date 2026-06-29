@@ -220,12 +220,23 @@ export class LyricsService {
 			});
 		}
 
-		const lrclibResult = await this.lrclib.fetchLyrics({
-			trackName: params.song,
-			artistName: params.artist,
-			albumName: params.albumName,
-			durationMs: params.durationMs,
-		});
+		// Capture the guard-narrowed inputs before the closure: TS drops the
+		// non-undefined narrowing across the function boundary otherwise.
+		const { albumName, durationMs } = params;
+
+		// Route through the shared limiter so a batch's unbounded prefetch
+		// Promise.all can't burst dozens of simultaneous requests at LRCLIB (a
+		// free community API that throttles bursts → transient fetch failures that
+		// strand songs as retry candidates). Same budget the Genius calls use; the
+		// two run sequentially here, never nested, so no slot deadlock.
+		const lrclibResult = await this.limiter.run(() =>
+			this.lrclib.fetchLyrics({
+				trackName: params.song,
+				artistName: params.artist,
+				albumName,
+				durationMs,
+			}),
+		);
 		if (Result.isError(lrclibResult)) {
 			// Transient LRCLIB failure — unconfirmed, retry-eligible.
 			return Result.err(lrclibResult.error);
