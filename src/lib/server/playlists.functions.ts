@@ -308,6 +308,20 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 					Result.isError(readyResult) || readyResult.value;
 
 				if (!firstVisibleReady) {
+					// Emit before the apply so the timestamp reflects when setup
+					// actually happened (target playlist DB commit), not when the
+					// queued job fires. This timestamp anchors the north-star metric
+					// first_visible_match_ready_at - matching_setup_completed_at.
+					captureProductEventBestEffort({
+						distinctId: session.accountId,
+						event: "matching_setup_completed",
+						accountId: session.accountId,
+						operation: "capture_matching_setup_completed",
+						properties: {
+							account_id: session.accountId,
+						},
+					});
+
 					const applyResult = await applyLibraryProcessingChange(
 						FirstMatchSetupChanges.setupCompleted(session.accountId),
 					);

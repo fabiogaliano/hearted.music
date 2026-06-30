@@ -4,6 +4,7 @@ import { log } from "@/lib/observability/logger";
 import {
 	type EnrichmentChunkProgress,
 	EnrichmentChunkProgressSchema,
+	type EnrichmentSelectionMode,
 } from "@/lib/platform/jobs/progress/enrichment";
 import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
@@ -23,6 +24,7 @@ export interface EnrichmentExecuteResult {
 	hasMoreSongs: boolean;
 	newCandidatesAvailable: boolean;
 	newCandidateSongIds: string[];
+	selectionMode: EnrichmentSelectionMode;
 	readyCount: number;
 	doneCount: number;
 	succeededCount: number;
@@ -87,6 +89,7 @@ export async function executeEnrichmentJob(
 		hasMoreSongs: result.hasMoreSongs,
 		newCandidatesAvailable: result.newCandidatesAvailable,
 		newCandidateSongIds: result.newCandidateSongIds,
+		selectionMode: progress.selectionMode ?? "normal",
 		readyCount: result.readyCount,
 		doneCount: result.doneCount,
 		succeededCount: result.succeededCount,
@@ -157,6 +160,8 @@ export async function executeMatchSnapshotRefreshJob(
 				matched_song_count: result.matchedSongCount,
 				candidate_count: result.candidateCount,
 				playlist_count: result.playlistCount,
+				// snapshot_id is null on a no-op (same hash, no new row written)
+				snapshot_id: result.snapshotId,
 			},
 		});
 	} catch (error) {

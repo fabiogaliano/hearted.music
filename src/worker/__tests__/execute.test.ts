@@ -91,6 +91,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 				matched_song_count: 42,
 				candidate_count: 100,
 				playlist_count: 3,
+				snapshot_id: "snap-1",
 			},
 		});
 	});

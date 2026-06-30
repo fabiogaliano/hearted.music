@@ -75,6 +75,10 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getMatchResults: vi.fn(async () => Result.ok<never[], never>([])),
 }));
 
+vi.mock("@/lib/observability/capture-product-event", () => ({
+	captureProductEventBestEffort: vi.fn(),
+}));
+
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
@@ -82,6 +86,7 @@ import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predi
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
+import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import * as queries from "../queries";
 // Import after mocks are set up
@@ -1139,6 +1144,98 @@ describe("appendSnapshotDelta", () => {
 			SNAPSHOT_ID,
 			1,
 			loosenedVisHash,
+		);
+	});
+});
+
+// ============================================================================
+// appendSnapshotDelta — analytics events (Phase 9)
+// ============================================================================
+
+describe("appendSnapshotDelta — analytics events", () => {
+	it("emits review_queue_appended and first_visible_match_ready on a non-zero append", async () => {
+		// One entitled song above threshold, not yet queued — guarantees appendedCount=1.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-evt",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn().mockReturnThis(),
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-evt" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
+
+		const result = await appendSnapshotDelta(
+			fakeSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.appendedCount).toBe(1);
+		}
+
+		const capture = vi.mocked(captureProductEventBestEffort);
+		expect(capture).toHaveBeenCalledWith(
+			expect.objectContaining({
+				event: "review_queue_appended",
+				properties: expect.objectContaining({
+					orientation: "song",
+					appended_count: 1,
+				}),
+			}),
+		);
+		expect(capture).toHaveBeenCalledWith(
+			expect.objectContaining({
+				event: "first_visible_match_ready",
+				properties: expect.objectContaining({
+					account_id: ACCOUNT_ID,
+					orientation: "song",
+					appended_count: 1,
+				}),
+			}),
+		);
+	});
+
+	it("does not emit analytics events when appendedCount is zero", async () => {
+		// Default getMatchResults returns [] — no items can be appended.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set<string>()),
+		);
+
+		const result = await appendSnapshotDelta(
+			fakeSession(),
+			SNAPSHOT_ID,
+			ACCOUNT_ID,
+		);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.appendedCount).toBe(0);
+		}
+
+		const capture = vi.mocked(captureProductEventBestEffort);
+		expect(capture).not.toHaveBeenCalledWith(
+			expect.objectContaining({ event: "review_queue_appended" }),
+		);
+		expect(capture).not.toHaveBeenCalledWith(
+			expect.objectContaining({ event: "first_visible_match_ready" }),
 		);
 	});
 });

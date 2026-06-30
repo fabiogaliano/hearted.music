@@ -24,6 +24,7 @@ import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
+import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
@@ -503,6 +504,38 @@ export async function appendSnapshotDelta(
 			visibilityHash,
 		);
 		if (Result.isError(recorded)) return recorded;
+
+		if (count > 0) {
+			// Event 5: review queue now has new visible subjects. Best-effort; the
+			// insert and idempotency record above are already committed.
+			captureProductEventBestEffort({
+				distinctId: accountId,
+				event: "review_queue_appended",
+				accountId,
+				operation: "capture_review_queue_appended",
+				properties: {
+					orientation: session.orientation,
+					appended_count: count,
+				},
+			});
+
+			// Event 6: the first visible review card now exists. Fired every time a
+			// non-zero append succeeds; PostHog deduplication (first occurrence per
+			// account) provides the north-star timestamp
+			// first_visible_match_ready_at - matching_setup_completed_at.
+			captureProductEventBestEffort({
+				distinctId: accountId,
+				event: "first_visible_match_ready",
+				accountId,
+				operation: "capture_first_visible_match_ready",
+				properties: {
+					account_id: accountId,
+					orientation: session.orientation,
+					appended_count: count,
+				},
+			});
+		}
+
 		return Result.ok<AppendResult, DbError>({
 			appendedCount: count,
 			alreadyApplied: false,

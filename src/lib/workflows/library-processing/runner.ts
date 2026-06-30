@@ -21,6 +21,7 @@ import {
 	type MatchSnapshotRefreshExecuteResult,
 } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
+import { captureWorkerEvent } from "@/worker/posthog-capture";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
@@ -141,6 +142,46 @@ async function runEnrichmentJob(
 			workflow: "enrichment",
 			changeKind: change.kind,
 		});
+
+		if (result.newCandidatesAvailable) {
+			// Event 3: new candidate songs are ready for snapshot matching.
+			try {
+				captureWorkerEvent({
+					distinctId: result.accountId,
+					event: "enrichment_candidate_batch_ready",
+					properties: {
+						new_candidate_count: result.newCandidateSongIds.length,
+						batch_sequence: result.batchSequence,
+						selection_mode: result.selectionMode,
+					},
+				});
+			} catch {
+				// Non-fatal — candidate data is already processed; analytics failure
+				// must not affect the outcome returned to the runner.
+			}
+
+			// Event 2: a match-snapshot refresh job was queued as a result of these
+			// new candidates (settlement drives the scheduler). Priority and
+			// available_at aren't accessible here (computed inside executeEffect),
+			// so first_visible_match_ready_before_queue is inferred from selectionMode
+			// instead — bootstrap mode means the visible match wasn't ready yet.
+			if (settlement === "settled") {
+				try {
+					captureWorkerEvent({
+						distinctId: result.accountId,
+						event: "first_match_refresh_queued",
+						properties: {
+							batch_sequence: result.batchSequence,
+							selection_mode: result.selectionMode,
+							first_visible_match_ready_before_queue:
+								result.selectionMode !== "first_match_bootstrap",
+						},
+					});
+				} catch {
+					// Non-fatal — the refresh is already queued.
+				}
+			}
+		}
 
 		return { status: "completed", workflow: "enrichment", result, settlement };
 	} catch (error) {

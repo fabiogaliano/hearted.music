@@ -26,6 +26,10 @@ vi.mock("@sentry/bun", () => ({
 	captureException: vi.fn(),
 }));
 
+vi.mock("@/worker/posthog-capture", () => ({
+	captureWorkerEvent: vi.fn(),
+}));
+
 const applyLibraryProcessingChangeMock = vi.fn();
 
 vi.mock("../service", () => ({
@@ -42,6 +46,7 @@ import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "@/worker/execute";
+import { captureWorkerEvent } from "@/worker/posthog-capture";
 import { runClaimedJob } from "../runner";
 import type { LibraryProcessingApplyError } from "../types";
 
@@ -91,6 +96,7 @@ const ENRICHMENT_EXEC_RESULT = {
 	hasMoreSongs: false,
 	newCandidatesAvailable: true,
 	newCandidateSongIds: ["song-a", "song-b"],
+	selectionMode: "normal" as const,
 	readyCount: 5,
 	doneCount: 20,
 	succeededCount: 18,
@@ -456,6 +462,7 @@ describe("runClaimedJob", () => {
 			hasMoreSongs: true,
 			newCandidatesAvailable: false,
 			newCandidateSongIds: [] as string[],
+			selectionMode: "normal" as const,
 			readyCount: 1,
 			doneCount: 0,
 			succeededCount: 0,
@@ -469,6 +476,7 @@ describe("runClaimedJob", () => {
 			hasMoreSongs: true,
 			newCandidatesAvailable: false,
 			newCandidateSongIds: [] as string[],
+			selectionMode: "normal" as const,
 			readyCount: 3,
 			doneCount: 2,
 			succeededCount: 1,
@@ -610,5 +618,91 @@ describe("runClaimedJob", () => {
 				newCandidateSongIds: ENRICHMENT_EXEC_RESULT.newCandidateSongIds,
 			}),
 		);
+	});
+
+	describe("Phase 9 observability events", () => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
+			applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
+			vi.mocked(markJobCompleted).mockResolvedValue(
+				Result.ok(makeJob({ status: "completed" })),
+			);
+		});
+
+		it("captures enrichment_candidate_batch_ready when newCandidatesAvailable", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			expect(vi.mocked(captureWorkerEvent)).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: "enrichment_candidate_batch_ready",
+					distinctId: "acct-1",
+					properties: expect.objectContaining({
+						new_candidate_count:
+							ENRICHMENT_EXEC_RESULT.newCandidateSongIds.length,
+						batch_sequence: ENRICHMENT_EXEC_RESULT.batchSequence,
+						selection_mode: "normal",
+					}),
+				}),
+			);
+		});
+
+		it("captures first_match_refresh_queued with bootstrap flag derived from selectionMode", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue({
+				...ENRICHMENT_EXEC_RESULT,
+				selectionMode: "first_match_bootstrap",
+			});
+
+			await runClaimedJob(makeJob(), "@test");
+
+			expect(vi.mocked(captureWorkerEvent)).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: "first_match_refresh_queued",
+					properties: expect.objectContaining({
+						// bootstrap mode → first_visible_match_ready_before_queue is false
+						first_visible_match_ready_before_queue: false,
+						selection_mode: "first_match_bootstrap",
+					}),
+				}),
+			);
+		});
+
+		it("does not capture Phase 9 enrichment events when newCandidatesAvailable is false", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue({
+				...ENRICHMENT_EXEC_RESULT,
+				newCandidatesAvailable: false,
+				newCandidateSongIds: [],
+			});
+
+			await runClaimedJob(makeJob(), "@test");
+
+			const calls = vi.mocked(captureWorkerEvent).mock.calls;
+			const eventNames = calls.map((c) => c[0].event);
+			expect(eventNames).not.toContain("enrichment_candidate_batch_ready");
+			expect(eventNames).not.toContain("first_match_refresh_queued");
+		});
+
+		it("does not capture first_match_refresh_queued when settlement fails", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+			// Use a non-retryable error (cause is plain Error, not DatabaseError) so
+			// withRetry does not loop and the test terminates promptly.
+			applyLibraryProcessingChangeMock.mockResolvedValue(
+				Result.err({
+					kind: "persist_state" as const,
+					cause: new Error("non-retryable failure"),
+				}),
+			);
+
+			await runClaimedJob(makeJob(), "@test");
+
+			const calls = vi.mocked(captureWorkerEvent).mock.calls;
+			const eventNames = calls.map((c) => c[0].event);
+			// enrichment_candidate_batch_ready fires before settlement
+			expect(eventNames).toContain("enrichment_candidate_batch_ready");
+			// first_match_refresh_queued requires "settled" status — must be absent
+			expect(eventNames).not.toContain("first_match_refresh_queued");
+		});
 	});
 });

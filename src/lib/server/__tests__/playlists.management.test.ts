@@ -25,6 +25,7 @@ const {
 	mockUpdatePlaylistGenrePills,
 	mockSyncActiveQueue,
 	mockHasFirstVisibleReviewSubject,
+	mockCaptureWithWaitUntil,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -40,6 +41,7 @@ const {
 	mockUpdatePlaylistGenrePills: vi.fn(),
 	mockSyncActiveQueue: vi.fn(),
 	mockHasFirstVisibleReviewSubject: vi.fn(),
+	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -93,6 +95,11 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
 	hasFirstVisibleReviewSubject: (...args: unknown[]) =>
 		mockHasFirstVisibleReviewSubject(...args),
+}));
+
+vi.mock("@/utils/posthog-server", () => ({
+	captureWithWaitUntil: (...args: unknown[]) =>
+		mockCaptureWithWaitUntil(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -594,6 +601,39 @@ describe("setPlaylistTargetMutation", () => {
 			});
 
 			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		});
+
+		it("captures matching_setup_completed event when first target and no visible card", async () => {
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([makePlaylist({ is_target: true })]),
+			);
+			// No visible card → event must fire
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(false));
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+				expect.objectContaining({
+					event: "matching_setup_completed",
+					distinctId: "acct-1",
+				}),
+			);
+		});
+
+		it("does not capture matching_setup_completed when visible card already exists", async () => {
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([makePlaylist({ is_target: true })]),
+			);
+			// Already ready → event must NOT fire
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
 		});
 	});
 });
