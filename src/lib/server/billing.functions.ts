@@ -41,7 +41,9 @@ export const getBillingState = createServerFn({ method: "GET" })
 				operation: "get_billing_state",
 				accountId: context.session.accountId,
 			});
-			throw new Error("Failed to load billing state");
+			throw new Error("Failed to load billing state", {
+				cause: result.error,
+			});
 		}
 
 		return result.value;

@@ -12,10 +12,22 @@
 
 import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
-import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+
+/**
+ * Reports an operational failure in the best-effort billing tail (a swallowed DB
+ * error that the caller still treats as success). Injected by the caller so this
+ * module stays runtime-agnostic: the Cloudflare web/operator paths wire a
+ * `captureServerError` reporter, while the Bun worker wires an `@sentry/bun` one.
+ * Hard-coding `@sentry/cloudflare` here would drag that SDK into the worker,
+ * which calls `maybeGrantLikedSongAccessAfterSync` from the extension-sync job.
+ */
+export type BillingOperationalErrorReporter = (
+	error: unknown,
+	context: { stage: string; origin?: string },
+) => void;
 
 export type GrantOrigin = "waitlist_auto" | "operator_manual";
 
@@ -92,6 +104,7 @@ function parseGrantPayload(value: unknown): GrantLikedSongAccessResult | null {
 export async function grantLikedSongAccessForAccount(
 	supabase: AdminSupabaseClient,
 	args: GrantLikedSongAccessArgs,
+	options: { onOperationalError?: BillingOperationalErrorReporter } = {},
 ): Promise<Result<GrantLikedSongAccessResult, DbError>> {
 	const { data, error } = await supabase.rpc("grant_liked_song_access", {
 		p_account_id: args.accountId,
@@ -131,11 +144,8 @@ export async function grantLikedSongAccessForAccount(
 				applyResult.error,
 			);
 			// Grant committed in DB but enrichment trigger silently didn't fire.
-			captureServerError(applyResult.error, {
-				area: "billing",
-				operation: "grant_liked_song_access",
-				accountId: args.accountId,
-				extra: { stage: "apply_library_processing_change" },
+			options.onOperationalError?.(applyResult.error, {
+				stage: "apply_library_processing_change",
 			});
 		}
 	}
@@ -155,6 +165,7 @@ export async function grantLikedSongAccessForAccount(
 export async function maybeGrantLikedSongAccessAfterSync(
 	supabase: AdminSupabaseClient,
 	accountId: string,
+	options: { onOperationalError?: BillingOperationalErrorReporter } = {},
 ): Promise<void> {
 	const { data: existingGrant, error: readError } = await supabase
 		.from("account_liked_song_access_grant")
@@ -168,12 +179,7 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			readError.message,
 		);
 		// Cannot determine grant status; sync-time best-effort path is now blind.
-		captureServerError(readError, {
-			area: "billing",
-			operation: "maybe_grant_liked_song_access_after_sync",
-			accountId,
-			extra: { stage: "read_existing_grant" },
-		});
+		options.onOperationalError?.(readError, { stage: "read_existing_grant" });
 		return;
 	}
 
@@ -191,21 +197,20 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			return;
 		}
 
-		const result = await grantLikedSongAccessForAccount(supabase, {
-			accountId,
-			origin,
-		});
+		const result = await grantLikedSongAccessForAccount(
+			supabase,
+			{ accountId, origin },
+			options,
+		);
 		if (Result.isError(result)) {
 			console.error(
 				"[liked-song-access-grant] Failed to apply pending grant:",
 				result.error,
 			);
 			// Pre-existing operator grant failed to apply; account loses the benefit silently.
-			captureServerError(result.error, {
-				area: "billing",
-				operation: "maybe_grant_liked_song_access_after_sync",
-				accountId,
-				extra: { stage: "apply_pending_grant", origin },
+			options.onOperationalError?.(result.error, {
+				stage: "apply_pending_grant",
+				origin,
 			});
 		}
 		return;
@@ -222,32 +227,27 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			eligibilityError.message,
 		);
 		// Eligibility RPC failed; eligible accounts silently miss waitlist auto-grant.
-		captureServerError(eligibilityError, {
-			area: "billing",
-			operation: "maybe_grant_liked_song_access_after_sync",
-			accountId,
-			extra: { stage: "waitlist_eligibility_check" },
+		options.onOperationalError?.(eligibilityError, {
+			stage: "waitlist_eligibility_check",
 		});
 		return;
 	}
 
 	if (eligible !== true) return;
 
-	const result = await grantLikedSongAccessForAccount(supabase, {
-		accountId,
-		origin: "waitlist_auto",
-	});
+	const result = await grantLikedSongAccessForAccount(
+		supabase,
+		{ accountId, origin: "waitlist_auto" },
+		options,
+	);
 	if (Result.isError(result)) {
 		console.error(
 			"[liked-song-access-grant] Failed to apply waitlist grant:",
 			result.error,
 		);
 		// Eligible account passed the RPC check but grant application failed.
-		captureServerError(result.error, {
-			area: "billing",
-			operation: "maybe_grant_liked_song_access_after_sync",
-			accountId,
-			extra: { stage: "apply_waitlist_grant" },
+		options.onOperationalError?.(result.error, {
+			stage: "apply_waitlist_grant",
 		});
 	}
 }

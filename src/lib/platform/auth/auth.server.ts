@@ -14,6 +14,7 @@ import {
 	getAccountByBetterAuthUserId,
 	touchAccountLastSeen,
 } from "@/lib/domains/library/accounts/queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
 import type { AuthContext } from "@/lib/platform/auth/auth-types";
@@ -67,6 +68,14 @@ async function loadAuthSession(): Promise<AuthContext | null> {
 	} catch (error) {
 		const message = errorMessage(error);
 		console.warn("Failed to get auth session:", message);
+		// An auth/DB outage here makes an authed user look anonymous; with the
+		// server's enableLogs:false the console.warn never reaches Sentry, so a
+		// widespread outage would be invisible. Capture, but keep returning null so
+		// the optional-auth contract is unchanged.
+		captureServerError(error, {
+			area: "auth",
+			operation: "load_auth_session",
+		});
 		return null;
 	}
 }
@@ -92,6 +101,14 @@ function recordLastSeen(accountId: string, lastSeenAt: string | null): void {
 
 	const heartbeat = touchAccountLastSeen(accountId).catch((error) => {
 		console.warn("Failed to record last_seen_at:", errorMessage(error));
+		// A missed heartbeat is non-fatal, but a persistent failure would silently
+		// rot last_seen_at across all accounts; surface it (console is not enough
+		// with enableLogs:false).
+		captureServerError(error, {
+			area: "auth",
+			operation: "touch_account_last_seen",
+			accountId,
+		});
 	});
 
 	void runAfterResponse(heartbeat);

@@ -6,9 +6,16 @@ import type {
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { executeMatchSnapshotRefreshJob } from "../execute";
 
-const { mockExecute, mockCaptureWorkerEvent } = vi.hoisted(() => ({
-	mockExecute: vi.fn(),
-	mockCaptureWorkerEvent: vi.fn(),
+const { mockExecute, mockCaptureWorkerEvent, mockSentryCapture } = vi.hoisted(
+	() => ({
+		mockExecute: vi.fn(),
+		mockCaptureWorkerEvent: vi.fn(),
+		mockSentryCapture: vi.fn(),
+	}),
+);
+
+vi.mock("@sentry/bun", () => ({
+	captureException: (...args: unknown[]) => mockSentryCapture(...args),
 }));
 
 vi.mock("@/lib/workflows/match-snapshot-refresh/orchestrator", () => ({
@@ -85,6 +92,35 @@ describe("executeMatchSnapshotRefreshJob", () => {
 				candidate_count: 100,
 				playlist_count: 3,
 			},
+		});
+	});
+
+	it("swallows a captureWorkerEvent failure and still returns published", async () => {
+		mockExecute.mockResolvedValue({
+			status: "published",
+			result: makeResult(),
+		} satisfies MatchSnapshotRefreshOutcome);
+		const captureError = new Error("posthog host misconfigured");
+		mockCaptureWorkerEvent.mockImplementation(() => {
+			throw captureError;
+		});
+
+		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+
+		// The snapshot is already published — analytics failure must not change the
+		// job outcome.
+		expect(result.status).toBe("published");
+		expect(mockSentryCapture).toHaveBeenCalledTimes(1);
+		const [capturedError, captureContext] =
+			mockSentryCapture.mock.calls[0] ?? [];
+		expect(capturedError).toBe(captureError);
+		expect(captureContext).toMatchObject({
+			tags: {
+				area: "analytics",
+				operation: "capture_match_snapshot_published",
+				runtime: "worker",
+			},
+			extra: { accountId: "acct-1", jobId: "job-1" },
 		});
 	});
 

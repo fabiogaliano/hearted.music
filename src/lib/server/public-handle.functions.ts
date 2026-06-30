@@ -40,7 +40,7 @@ export const getPublicHandleIdentity = createServerFn({ method: "GET" })
 				operation: "get_public_handle_identity",
 				extra: { handle: data.handle },
 			});
-			throw new Error("Failed to load profile");
+			throw new Error("Failed to load profile", { cause: result.error });
 		}
 
 		return result.value;

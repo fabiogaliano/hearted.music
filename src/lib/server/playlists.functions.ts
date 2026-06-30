@@ -40,12 +40,12 @@ import {
 	isGenre,
 	sanitizeGenrePills,
 } from "@/lib/integrations/lastfm/whitelist";
+import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 const SPOTIFY_PLAYLIST_URI_RE = /^spotify:playlist:([a-zA-Z0-9]+)$/;
 
@@ -139,7 +139,9 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 				playlistId: data.playlistId,
 				error: playlistResult.error,
 			});
-			throw new Error("Failed to load playlist");
+			throw new Error("Failed to load playlist", {
+				cause: playlistResult.error,
+			});
 		}
 		if (playlistResult.value === null) {
 			throw new Error("Playlist not found");
@@ -174,7 +176,9 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 					playlistId: data.playlistId,
 					error: songsResult.error,
 				});
-				throw new Error("Failed to load playlist tracks");
+				throw new Error("Failed to load playlist tracks", {
+					cause: songsResult.error,
+				});
 			}
 
 			const { items: playlistSongs, nextCursor } = songsResult.value;
@@ -197,7 +201,9 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 					playlistId: data.playlistId,
 					error: songsDataResult.error,
 				});
-				throw new Error("Failed to load track details");
+				throw new Error("Failed to load track details", {
+					cause: songsDataResult.error,
+				});
 			}
 
 			const songMap = new Map(songsDataResult.value.map((s) => [s.id, s]));
@@ -612,10 +618,13 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 		}
 
 		// Funnel step 1 (intent → snapshot → review). intent text is private, so
-		// only its presence and length travel, never the content.
-		await captureWithWaitUntil({
+		// only its presence and length travel, never the content. Best-effort: the
+		// intent is already saved, so an analytics failure must not fail the save.
+		captureProductEventBestEffort({
 			distinctId: session.accountId,
 			event: "match_intent_set",
+			accountId: session.accountId,
+			operation: "capture_match_intent_set",
 			properties: {
 				playlist_id: data.playlistId,
 				has_intent: matchIntent !== null,
@@ -672,7 +681,9 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					playlistId: data.playlistId,
 					error: playlistResult.error,
 				});
-				throw new Error("Failed to load playlist");
+				throw new Error("Failed to load playlist", {
+					cause: playlistResult.error,
+				});
 			}
 			if (playlistResult.value === null) {
 				throw new Error("Playlist not found");
@@ -955,7 +966,7 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 				extra: { stage: "eligibility" },
 			});
 			console.error("[filter-options] eligibility fetch failed:", err);
-			throw new Error("Failed to load filter options");
+			throw new Error("Failed to load filter options", { cause: err });
 		}
 
 		const [languageResult, releaseYearResult, likedAtResult] =
@@ -977,7 +988,9 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 				"[filter-options] language aggregation failed:",
 				languageResult.error,
 			);
-			throw new Error("Failed to load filter options");
+			throw new Error("Failed to load filter options", {
+				cause: languageResult.error,
+			});
 		}
 		if (Result.isError(releaseYearResult)) {
 			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
@@ -991,7 +1004,9 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 				"[filter-options] release-year aggregation failed:",
 				releaseYearResult.error,
 			);
-			throw new Error("Failed to load filter options");
+			throw new Error("Failed to load filter options", {
+				cause: releaseYearResult.error,
+			});
 		}
 		if (Result.isError(likedAtResult)) {
 			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
@@ -1005,7 +1020,9 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 				"[filter-options] liked-at aggregation failed:",
 				likedAtResult.error,
 			);
-			throw new Error("Failed to load filter options");
+			throw new Error("Failed to load filter options", {
+				cause: likedAtResult.error,
+			});
 		}
 
 		// Build language counts — primary + secondary, once per code per song.

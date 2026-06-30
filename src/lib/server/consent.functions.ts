@@ -76,7 +76,9 @@ export const persistConsentDecision = createServerFn({ method: "POST" })
 				operation: "persist_consent_decision",
 				accountId: context.session.accountId,
 			});
-			throw new Error("Failed to persist consent decision");
+			throw new Error("Failed to persist consent decision", {
+				cause: result.error,
+			});
 		}
 
 		return { success: true };

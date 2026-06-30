@@ -184,6 +184,7 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 				});
 				throw new Error(
 					`Liked-songs deep-link bootstrap failed: ${result.error.message}`,
+					{ cause: result.error },
 				);
 			}
 

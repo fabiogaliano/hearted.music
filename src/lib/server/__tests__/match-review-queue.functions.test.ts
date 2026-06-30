@@ -749,15 +749,22 @@ describe("markMatchReviewItemPresented", () => {
 			return { select: vi.fn() };
 		});
 
-		mockMarkItemPresented.mockResolvedValue(
-			Result.err(new Error("db failure")),
-		);
+		const markError = new Error("db failure");
+		mockMarkItemPresented.mockResolvedValue(Result.err(markError));
 
 		const result = await markMatchReviewItemPresented({
 			data: { itemId: "item-1" },
 		});
 
 		expect(result.success).toBe(false);
+		// The operational DB failure is captured before swallowing — this is not
+		// the no-eligible-row race (that is the ok(null) branch below).
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(markError);
+		expect(ctx).toMatchObject({
+			tags: { area: "match_review_queue", operation: "mark_item_presented" },
+		});
 	});
 
 	it("returns success: false without resurrecting a resolved item (no eligible row)", async () => {
@@ -918,6 +925,27 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("already-resolved");
 		expect(mockAddQueueItemDecisionAtomically).not.toHaveBeenCalled();
+	});
+
+	it("captures the DB error before returning the opaque add failure", async () => {
+		mockItemOwnership(BASE_ITEM);
+		const rpcError = new Error("atomic add failed");
+		mockAddQueueItemDecisionAtomically.mockResolvedValue(Result.err(rpcError));
+
+		const result = await addSongToPlaylistFromQueueItem({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(false);
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(rpcError);
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "add_queue_item_decision",
+			},
+		});
 	});
 
 	it("passes suggestion playlist id for song mode", async () => {
@@ -1109,14 +1137,20 @@ describe("dismissMatchReviewItem", () => {
 
 	it("returns decision-write-failed when the RPC returns a DB error", async () => {
 		mockItemOwnership(BASE_ITEM);
-		mockDismissQueueItemAtomically.mockResolvedValue(
-			Result.err(new Error("rpc error")),
-		);
+		const rpcError = new Error("rpc error");
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.err(rpcError));
 
 		const result = await dismissMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("decision-write-failed");
+		// The DB failure is captured before the opaque reason is returned.
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(rpcError);
+		expect(ctx).toMatchObject({
+			tags: { area: "match_review_queue", operation: "dismiss_queue_item" },
+		});
 	});
 
 	it.todo(
@@ -1200,15 +1234,23 @@ describe("finishMatchReviewItem", () => {
 	});
 
 	it("returns decision-count-failed when atomic finish errors", async () => {
-		mockFinishQueueItemAtomically.mockResolvedValue(
-			Result.err(new Error("query timeout")),
-		);
+		const finishError = new Error("query timeout");
+		mockFinishQueueItemAtomically.mockResolvedValue(Result.err(finishError));
 
 		const result = await finishMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.success).toBe(false);
 		expect(result.reason).toBe("decision-count-failed");
 		expect(mockMarkItemResolved).not.toHaveBeenCalled();
+		// finish never loads the item, so capture carries the itemId instead of
+		// orientation — but the DB error must still reach Sentry.
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(finishError);
+		expect(ctx).toMatchObject({
+			tags: { area: "match_review_queue", operation: "finish_queue_item" },
+			extra: { itemId: "item-1" },
+		});
 	});
 });
 
@@ -1333,6 +1375,35 @@ describe("startOrResumeMatchReview", () => {
 				state: "no_snapshot",
 				result_count: 0,
 			},
+		});
+	});
+
+	it("swallows a capture failure, still returns the payload, and reports it", async () => {
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({ kind: "no_snapshot" }),
+		);
+		const captureError = new Error("posthog unavailable");
+		mockCaptureWithWaitUntil.mockRejectedValue(captureError);
+
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
+
+		// The queue was prepared — a best-effort analytics failure must not turn the
+		// /match open into a thrown error.
+		expect(result).toEqual({
+			sessionId: "",
+			itemIds: [],
+			total: 0,
+			caughtUp: true,
+		});
+		await vi.waitFor(() =>
+			expect(mockCaptureException).toHaveBeenCalledTimes(1),
+		);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(captureError);
+		expect(ctx).toMatchObject({
+			tags: { area: "analytics", operation: "capture_match_review_opened" },
 		});
 	});
 

@@ -54,8 +54,8 @@ function reportQueueError(
 
 import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
+import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
 import type {
 	MatchingPlaylistForReview,
 	MatchingPlaylistMatch,
@@ -151,6 +151,7 @@ export interface MatchReviewItemPresentedResult {
 async function fetchOwnedQueueItem(
 	itemId: string,
 	accountId: string,
+	operation: string,
 ): Promise<MatchReviewQueueItemDto | null> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase
@@ -160,7 +161,21 @@ async function fetchOwnedQueueItem(
 		.eq("account_id", accountId)
 		.maybeSingle();
 
-	if (error || !data) return null;
+	if (error) {
+		// `.maybeSingle()` returns a null error for a real no-row/foreign-item miss,
+		// so a truthy error is an operational read failure on the ownership check —
+		// capture it before collapsing into the same null callers treat as not-found.
+		// Orientation is unknown here (it lives on the row this read failed to load),
+		// so this uses captureServerError directly rather than reportQueueError.
+		captureServerError(error, {
+			area: "match_review_queue",
+			operation,
+			accountId,
+			extra: { itemId },
+		});
+		return null;
+	}
+	if (!data) return null;
 
 	return mapItemToDto(data);
 }
@@ -197,6 +212,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 			});
 			throw new Error(
 				"Could not prepare your match review queue. Please try again.",
+				{ cause: queueResult.error },
 			);
 		}
 
@@ -208,10 +224,12 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		if (!activeSession) {
 			// Funnel step 3 (intent → snapshot → review). "no_snapshot" is the
 			// drop-off Gabriel hit: intent set, /match opened, but matching hasn't
-			// published results yet.
-			await captureWithWaitUntil({
+			// published results yet. Best-effort: the queue prep already succeeded.
+			captureProductEventBestEffort({
 				distinctId: session.accountId,
 				event: "match_review_opened",
+				accountId: session.accountId,
+				operation: "capture_match_review_opened",
 				properties: { orientation, state: "no_snapshot", result_count: 0 },
 			});
 			return { sessionId: "", itemIds: [], total: 0, caughtUp: true };
@@ -225,6 +243,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
+				{ cause: itemsResult.error },
 			);
 		}
 
@@ -232,9 +251,13 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		const caughtUp = deriveCaughtUp(items);
 		const itemIds = items.map((i) => i.id);
 
-		await captureWithWaitUntil({
+		// Best-effort: the queue is loaded; an analytics failure must not turn this
+		// into a failed /match open.
+		captureProductEventBestEffort({
 			distinctId: session.accountId,
 			event: "match_review_opened",
+			accountId: session.accountId,
+			operation: "capture_match_review_opened",
 			properties: {
 				orientation,
 				state: caughtUp ? "caught_up" : "reviewing",
@@ -277,6 +300,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
+				{ cause: sessionResult.error },
 			);
 		}
 
@@ -300,6 +324,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
+				{ cause: itemsResult.error },
 			);
 		}
 
@@ -389,7 +414,11 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			// Ownership check: load item by id AND account_id in one query. If it
 			// doesn't exist or belongs to another account we return an error shape
 			// without any indication of whether the item id exists at all.
-			const item = await fetchOwnedQueueItem(itemId, session.accountId);
+			const item = await fetchOwnedQueueItem(
+				itemId,
+				session.accountId,
+				"get_match_review_item",
+			);
 			if (!item) {
 				return {
 					status: "retryable-error",
@@ -421,6 +450,15 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				.maybeSingle();
 
 			if (sessionError || !sessionRow) {
+				// `.maybeSingle()` returns a null error for a no-rows/ownership miss, so a
+				// truthy sessionError is always operational — capture it before folding it
+				// into the same snapshot-not-owned UI state as a genuine ownership miss.
+				if (sessionError) {
+					reportQueueError(sessionError, "get_match_review_item", {
+						accountId: session.accountId,
+						orientation: "song",
+					});
+				}
 				return {
 					status: "unavailable",
 					itemId,
@@ -454,6 +492,13 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 			}
 
 			if (listResult.kind === "db-error") {
+				// Operational DB failure deriving the suggestion list. The outer catch
+				// only sees throws; this is a returned Result, so capture it here. The
+				// function has already narrowed to song orientation above.
+				reportQueueError(listResult.error, "get_match_review_item", {
+					accountId: session.accountId,
+					orientation: "song",
+				});
 				return {
 					status: "retryable-error",
 					itemId,
@@ -501,6 +546,15 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 					]);
 
 				if (songRow.error || !songRow.data) {
+					// `.single()` returns PGRST116 for a genuinely missing song — that is
+					// the not-found outcome this branch is for, not an incident. Any other
+					// code is an operational read failure and must reach Sentry.
+					if (songRow.error && songRow.error.code !== "PGRST116") {
+						reportQueueError(songRow.error, "get_match_review_item", {
+							accountId: session.accountId,
+							orientation: "song",
+						});
+					}
 					return {
 						status: "unavailable",
 						itemId,
@@ -509,7 +563,29 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 					};
 				}
 
+				// Audio/analysis are decorative optional reads (`.maybeSingle()`), so a
+				// failure must not change the card outcome — but it should still be visible
+				// rather than silently dropped into a degraded card.
+				if (audioRow.error) {
+					reportQueueError(audioRow.error, "get_match_review_item", {
+						accountId: session.accountId,
+						orientation: "song",
+					});
+				}
+				if (analysisRow.error) {
+					reportQueueError(analysisRow.error, "get_match_review_item", {
+						accountId: session.accountId,
+						orientation: "song",
+					});
+				}
+
 				if (playlistResult.error) {
+					// Operational DB failure loading the suggestion playlists (an
+					// `.in(...)` read, not a not-found). Capture before returning retryable.
+					reportQueueError(playlistResult.error, "get_match_review_item", {
+						accountId: session.accountId,
+						orientation: "song",
+					});
 					return {
 						status: "retryable-error",
 						itemId,
@@ -626,11 +702,19 @@ const PresentMatchReviewItemSchema = z.object({
 async function presentUnavailableOwnedItem(
 	itemId: string,
 	accountId: string,
+	orientation: MatchOrientation,
 	reason: "not-entitled" | "snapshot-not-owned",
 	message: string,
 ): Promise<MatchReviewItemRead> {
 	const capture = await captureVisiblePairsAtomic(itemId, accountId, []);
 	if (capture.status === "db-error") {
+		// The empty-capture stamp itself hit an operational DB failure — capture it
+		// before returning retryable, or a card that can't be made skippable looks
+		// the same as a transient blip with no server-side trace.
+		reportQueueError(capture.error, "present_unavailable_owned_item", {
+			accountId,
+			orientation,
+		});
 		return {
 			status: "retryable-error",
 			itemId,
@@ -662,7 +746,11 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 		try {
 			// Ownership check: load item by id AND account_id in one query. Foreign
 			// or missing items return unavailable without leaking id existence.
-			const item = await fetchOwnedQueueItem(itemId, session.accountId);
+			const item = await fetchOwnedQueueItem(
+				itemId,
+				session.accountId,
+				"present_match_review_item",
+			);
 			if (!item) {
 				return {
 					status: "unavailable",
@@ -683,9 +771,19 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				.maybeSingle();
 
 			if (sessionError || !sessionRow) {
+				// `.maybeSingle()` yields a null error for a no-rows/ownership miss, so a
+				// truthy sessionError is operational — capture before folding it into the
+				// snapshot-not-owned card.
+				if (sessionError) {
+					reportQueueError(sessionError, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
+				}
 				return presentUnavailableOwnedItem(
 					itemId,
 					session.accountId,
+					item.subject.orientation,
 					"snapshot-not-owned",
 					"This item's session could not be verified.",
 				);
@@ -708,12 +806,19 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				return presentUnavailableOwnedItem(
 					itemId,
 					session.accountId,
+					item.subject.orientation,
 					"not-entitled",
 					message,
 				);
 			}
 
 			if (listResult.kind === "db-error") {
+				// Operational DB failure deriving the suggestion list. Returned Result,
+				// so it bypasses the outer catch — capture it here.
+				reportQueueError(listResult.error, "present_match_review_item", {
+					accountId: session.accountId,
+					orientation: item.subject.orientation,
+				});
 				return {
 					status: "retryable-error",
 					itemId,
@@ -779,7 +884,15 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					message: "This item has already been resolved.",
 				};
 			} else {
-				// invalid_input or db-error — retryable per H7.
+				// invalid_input or db-error — retryable per H7. A db-error is an
+				// operational capture failure (invalid_input is a contract bug); both are
+				// worth a server-side trace before the opaque retryable card.
+				if (captureResult.status === "db-error") {
+					reportQueueError(captureResult.error, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
+				}
 				return {
 					status: "retryable-error",
 					itemId,
@@ -834,6 +947,14 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					]);
 
 				if (songRow.error || !songRow.data) {
+					// `.single()` returns PGRST116 for a genuinely missing song (the
+					// not-found outcome of this branch); any other code is operational.
+					if (songRow.error && songRow.error.code !== "PGRST116") {
+						reportQueueError(songRow.error, "present_match_review_item", {
+							accountId: session.accountId,
+							orientation: item.subject.orientation,
+						});
+					}
 					return {
 						status: "unavailable",
 						itemId,
@@ -842,7 +963,27 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					};
 				}
 
+				// Decorative optional reads (`.maybeSingle()`): a failure must not change
+				// the card outcome, but it should not vanish silently either.
+				if (audioRow.error) {
+					reportQueueError(audioRow.error, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
+				}
+				if (analysisRow.error) {
+					reportQueueError(analysisRow.error, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
+				}
+
 				if (playlistResult.error) {
+					// Operational DB failure on the suggestion-playlist `.in(...)` read.
+					reportQueueError(playlistResult.error, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
 					return {
 						status: "retryable-error",
 						itemId,
@@ -945,6 +1086,11 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				}
 
 				if (songRowsResult.error) {
+					// Operational DB failure on the suggestion-song `.in(...)` read.
+					reportQueueError(songRowsResult.error, "present_match_review_item", {
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					});
 					return {
 						status: "retryable-error",
 						itemId,
@@ -1042,7 +1188,11 @@ export const markMatchReviewItemPresented = createServerFn({ method: "POST" })
 
 			// Ownership check before any mutation — must confirm the item belongs to
 			// this account before writing the presented state.
-			const item = await fetchOwnedQueueItem(itemId, session.accountId);
+			const item = await fetchOwnedQueueItem(
+				itemId,
+				session.accountId,
+				"mark_item_presented",
+			);
 			if (!item) {
 				return { success: false, itemId, state: "unknown" };
 			}
@@ -1056,6 +1206,12 @@ export const markMatchReviewItemPresented = createServerFn({ method: "POST" })
 
 			const result = await markItemPresented(itemId, session.accountId, songId);
 			if (Result.isError(result)) {
+				// Operational DB failure stamping the presented state — not a normal
+				// race (that is the null-value branch below). Capture before swallowing.
+				reportQueueError(result.error, "mark_item_presented", {
+					accountId: session.accountId,
+					orientation: item.subject.orientation,
+				});
 				return { success: false, itemId, state: item.state };
 			}
 
@@ -1112,7 +1268,11 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 		const { session } = context;
 		const { itemId, suggestionId } = data;
 
-		const item = await fetchOwnedQueueItem(itemId, session.accountId);
+		const item = await fetchOwnedQueueItem(
+			itemId,
+			session.accountId,
+			"add_queue_item_decision",
+		);
 		if (!item) {
 			return { success: false, reason: "not-found" };
 		}
@@ -1132,7 +1292,15 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 			isSongOrientation ? null : suggestionId,
 			isSongOrientation ? suggestionId : null,
 		);
-		if (Result.isError(result)) return { success: false };
+		if (Result.isError(result)) {
+			// Atomic add-decision write failed at the DB — capture before returning
+			// the opaque failure so a stuck "Add" is diagnosable server-side.
+			reportQueueError(result.error, "add_queue_item_decision", {
+				accountId: session.accountId,
+				orientation: item.subject.orientation,
+			});
+			return { success: false };
+		}
 
 		if (result.value === "added") return { success: true };
 		if (result.value === "not_found") {
@@ -1182,7 +1350,11 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 		const { session } = context;
 		const { itemId } = data;
 
-		const item = await fetchOwnedQueueItem(itemId, session.accountId);
+		const item = await fetchOwnedQueueItem(
+			itemId,
+			session.accountId,
+			"dismiss_queue_item",
+		);
 		if (!item) {
 			return { success: false, reason: "not-found" };
 		}
@@ -1196,6 +1368,12 @@ export const dismissMatchReviewItem = createServerFn({ method: "POST" })
 			session.accountId,
 		);
 		if (Result.isError(dismissResult)) {
+			// Atomic dismiss write failed at the DB — capture before returning the
+			// opaque decision-write-failed so the failure is diagnosable server-side.
+			reportQueueError(dismissResult.error, "dismiss_queue_item", {
+				accountId: session.accountId,
+				orientation: item.subject.orientation,
+			});
 			return { success: false, reason: "decision-write-failed" };
 		}
 
@@ -1252,6 +1430,14 @@ export const finishMatchReviewItem = createServerFn({ method: "POST" })
 		// skipped while an add decision is in flight.
 		const result = await finishQueueItemAtomically(itemId, session.accountId);
 		if (Result.isError(result)) {
+			// Atomic finish/count failed at the DB. This path never loads the queue
+			// item, so orientation is unknown — capture with the itemId instead.
+			captureServerError(result.error, {
+				area: "match_review_queue",
+				operation: "finish_queue_item",
+				accountId: session.accountId,
+				extra: { itemId },
+			});
 			return { success: false, reason: "decision-count-failed" };
 		}
 
@@ -1311,6 +1497,17 @@ export async function resolveMatchReviewSummary(
 ): Promise<ServerMatchReviewSummaryResult> {
 	const summaryResult = await getQueueSummary(accountId, orientation);
 
+	if (Result.isError(summaryResult)) {
+		// The dashboard still degrades to the snapshot-fallback path below, but a DB
+		// failure here is operational (Result.ok carries the no-active-queue case),
+		// so capture it — otherwise a persistently blank summary looks like "caught
+		// up" with no server-side trace.
+		reportQueueError(summaryResult.error, "resolve_match_review_summary", {
+			accountId,
+			orientation,
+		});
+	}
+
 	const empty: ServerMatchReviewSummaryResult = {
 		pendingCount: 0,
 		previewImages: [],
@@ -1333,7 +1530,16 @@ export async function resolveMatchReviewSummary(
 		// NOT create a queue here; that is deferred to /match entry.
 		hasActiveQueue = false;
 		const snapshotResult = await getLatestMatchSnapshot(accountId);
-		if (Result.isError(snapshotResult) || !snapshotResult.value) return empty;
+		if (Result.isError(snapshotResult)) {
+			// DB failure reading the latest snapshot — capture before degrading to
+			// empty (a null value is the normal "no snapshot yet" case, not captured).
+			reportQueueError(snapshotResult.error, "resolve_match_review_summary", {
+				accountId,
+				orientation,
+			});
+			return empty;
+		}
+		if (!snapshotResult.value) return empty;
 
 		if (orientation === "playlist") {
 			const playlistIdsResult = await getOrderedUndecidedPlaylistIds(
@@ -1341,8 +1547,16 @@ export async function resolveMatchReviewSummary(
 				accountId,
 			);
 			// A transient failure surfaces as an empty summary rather than crashing
-			// the dashboard; the next refetch recovers.
-			if (Result.isError(playlistIdsResult)) return empty;
+			// the dashboard; the next refetch recovers — but capture it so the blank
+			// is diagnosable.
+			if (Result.isError(playlistIdsResult)) {
+				reportQueueError(
+					playlistIdsResult.error,
+					"resolve_match_review_summary",
+					{ accountId, orientation },
+				);
+				return empty;
+			}
 			pendingCount = playlistIdsResult.value.playlistIds.length;
 			topIds = playlistIdsResult.value.playlistIds.slice(0, 3);
 		} else {
@@ -1351,8 +1565,15 @@ export async function resolveMatchReviewSummary(
 				accountId,
 			);
 			// A transient failure surfaces as an empty summary rather than crashing
-			// the dashboard; the next refetch recovers.
-			if (Result.isError(songIdsResult)) return empty;
+			// the dashboard; the next refetch recovers — but capture it so the blank
+			// is diagnosable.
+			if (Result.isError(songIdsResult)) {
+				reportQueueError(songIdsResult.error, "resolve_match_review_summary", {
+					accountId,
+					orientation,
+				});
+				return empty;
+			}
 			pendingCount = songIdsResult.value.songIds.length;
 			topIds = songIdsResult.value.songIds.slice(0, 3);
 		}

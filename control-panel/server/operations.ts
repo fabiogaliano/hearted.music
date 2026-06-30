@@ -17,6 +17,7 @@
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantLikedSongAccessForAccount } from "@/lib/domains/billing/liked-song-access-grant";
 import { giftUnlimitedSubscriptionForAccount } from "@/lib/domains/billing/unlimited-subscription-gift";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { Result } from "better-result";
 import { prodSupabase } from "./supabase";
 
@@ -241,6 +242,12 @@ async function runGrantLikedAccess(
 		return { ok: true, status: "dry_run", message, details: base };
 	}
 
+	// The grant commits in the RPC, but its songs_unlocked enrichment trigger is a
+	// best-effort tail the domain helper swallows. This console is never deployed
+	// and has no Sentry, so "boundary capture" here means making that swallowed
+	// failure visible to the operator — in the server log and in the result they
+	// see — rather than silently reporting "Enrichment queued" when it didn't fire.
+	let sideEffectError: unknown = null;
 	const grantResult = await grantLikedSongAccessForAccount(
 		createAdminSupabaseClient(),
 		{
@@ -249,6 +256,15 @@ async function runGrantLikedAccess(
 			limit,
 			requestedBy: input.requestedBy ?? null,
 			note: input.reason ?? null,
+		},
+		{
+			onOperationalError: (error, context) => {
+				sideEffectError = error;
+				console.error(
+					`[operations] grant side effect failed (stage=${context.stage}) for ${account.id}:`,
+					error,
+				);
+			},
 		},
 	);
 	if (Result.isError(grantResult)) {
@@ -260,11 +276,16 @@ async function runGrantLikedAccess(
 	let details: Record<string, unknown> = base;
 	if (payload.status === "applied") {
 		const unlocked = payload.newlyUnlockedSongIds.length;
-		message = `Applied for ${who} — ${payload.candidateCount} candidates, ${unlocked} newly unlocked. Enrichment queued (lightweight + full) for the new songs.`;
+		message = sideEffectError
+			? `Applied for ${who} — ${payload.candidateCount} candidates, ${unlocked} newly unlocked. WARNING: the enrichment trigger failed to fire (see server logs); re-run enrichment for the new songs manually.`
+			: `Applied for ${who} — ${payload.candidateCount} candidates, ${unlocked} newly unlocked. Enrichment queued (lightweight + full) for the new songs.`;
 		details = {
 			...base,
 			candidateCount: payload.candidateCount,
 			newlyUnlocked: unlocked,
+			...(sideEffectError
+				? { enrichmentTriggerFailed: true, enrichmentError: errorMessage(sideEffectError) }
+				: {}),
 		};
 	} else if (payload.status === "already_applied") {
 		message = `${who} was already granted — nothing changed.`;

@@ -11,6 +11,7 @@
  * Mirrors src/lib/workflows/library-processing/runner.ts in shape.
  */
 
+import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { TablesUpdate } from "@/lib/data/database.types";
@@ -58,6 +59,30 @@ interface PhaseResults {
 		updatedTargetProfileTextPlaylistIds: string[];
 	};
 	playlistTracks?: { playlistsChanged: number };
+}
+
+/**
+ * Surfaces an operational extension-sync failure to Sentry before the job is
+ * marked failed. Without this, a failed sync only leaves a `failed` job row +
+ * `log.*` line (the worker runs with `enableLogs:false`), so incidents require
+ * DB/log spelunking. Uses `@sentry/bun` because this runs in the worker, not on
+ * Cloudflare. `level` lets a likely-client bad payload land as a warning instead
+ * of an error.
+ */
+function captureExtensionSyncFailure(
+	error: unknown,
+	context: {
+		phase: string;
+		jobId: string;
+		accountId: string;
+		level?: "warning" | "error";
+	},
+): void {
+	captureException(error, {
+		level: context.level ?? "error",
+		tags: { workflow: "extension_sync", phase: context.phase },
+		extra: { jobId: context.jobId, accountId: context.accountId },
+	});
 }
 
 /**
@@ -110,6 +135,11 @@ export async function runExtensionSyncJob(
 	// job with the Zod message instead of a 400 the extension can't see.
 	const downloadResult = await downloadSyncPayload(supabase, payloadPath);
 	if (Result.isError(downloadResult)) {
+		captureExtensionSyncFailure(downloadResult.error, {
+			phase: "download_payload",
+			jobId: job.id,
+			accountId,
+		});
 		return fail(
 			`Failed to download sync payload: ${downloadResult.error.message}`,
 		);
@@ -119,6 +149,14 @@ export async function runExtensionSyncJob(
 	try {
 		payload = SyncPayloadSchema.parse(JSON.parse(downloadResult.value));
 	} catch (error) {
+		// A malformed payload is most likely a bad client upload, so report it as a
+		// warning rather than an error to keep the issue feed honest.
+		captureExtensionSyncFailure(error, {
+			phase: "parse_payload",
+			jobId: job.id,
+			accountId,
+			level: "warning",
+		});
 		return fail(`Invalid sync payload: ${errorMessage(error)}`);
 	}
 
@@ -149,6 +187,11 @@ export async function runExtensionSyncJob(
 			});
 
 			if (Result.isError(songsResult)) {
+				captureExtensionSyncFailure(songsResult.error, {
+					phase: "liked_songs_sync",
+					jobId: job.id,
+					accountId,
+				});
 				return fail(`Liked songs sync failed: ${songsResult.error.message}`);
 			}
 			settledJobIds.add(phaseJobIds.liked_songs);
@@ -160,6 +203,11 @@ export async function runExtensionSyncJob(
 		} else {
 			const completeResult = await completeJob(phaseJobIds.liked_songs);
 			if (Result.isError(completeResult)) {
+				captureExtensionSyncFailure(completeResult.error, {
+					phase: "finalize_liked_songs",
+					jobId: job.id,
+					accountId,
+				});
 				return fail("Failed to finalize liked songs job");
 			}
 			settledJobIds.add(phaseJobIds.liked_songs);
@@ -172,6 +220,11 @@ export async function runExtensionSyncJob(
 				syncPlaylists(accountId, extensionPlaylists),
 			);
 			if (Result.isError(playlistResult)) {
+				captureExtensionSyncFailure(playlistResult.error, {
+					phase: "playlist_sync",
+					jobId: job.id,
+					accountId,
+				});
 				return fail(`Playlist sync failed: ${playlistResult.error.message}`);
 			}
 			settledJobIds.add(phaseJobIds.playlists);
@@ -183,6 +236,11 @@ export async function runExtensionSyncJob(
 		} else {
 			const completeResult = await completeJob(phaseJobIds.playlists);
 			if (Result.isError(completeResult)) {
+				captureExtensionSyncFailure(completeResult.error, {
+					phase: "finalize_playlists",
+					jobId: job.id,
+					accountId,
+				});
 				return fail("Failed to finalize playlists job");
 			}
 			settledJobIds.add(phaseJobIds.playlists);
@@ -193,6 +251,11 @@ export async function runExtensionSyncJob(
 		if (incomingPlaylistTracks.length > 0) {
 			const startResult = await startJob(phaseJobIds.playlist_tracks);
 			if (Result.isError(startResult)) {
+				captureExtensionSyncFailure(startResult.error, {
+					phase: "start_playlist_tracks",
+					jobId: job.id,
+					accountId,
+				});
 				return fail("Failed to start playlist tracks job");
 			}
 
@@ -228,6 +291,11 @@ export async function runExtensionSyncJob(
 
 			const completeResult = await completeJob(phaseJobIds.playlist_tracks);
 			if (Result.isError(completeResult)) {
+				captureExtensionSyncFailure(completeResult.error, {
+					phase: "finalize_playlist_tracks",
+					jobId: job.id,
+					accountId,
+				});
 				return fail("Failed to finalize playlist tracks job");
 			}
 			settledJobIds.add(phaseJobIds.playlist_tracks);
@@ -235,6 +303,11 @@ export async function runExtensionSyncJob(
 		} else {
 			const completeResult = await completeJob(phaseJobIds.playlist_tracks);
 			if (Result.isError(completeResult)) {
+				captureExtensionSyncFailure(completeResult.error, {
+					phase: "finalize_playlist_tracks",
+					jobId: job.id,
+					accountId,
+				});
 				return fail("Failed to finalize playlist tracks job");
 			}
 			settledJobIds.add(phaseJobIds.playlist_tracks);
@@ -252,29 +325,77 @@ export async function runExtensionSyncJob(
 			),
 		);
 		if (Result.isError(applyResult)) {
+			captureExtensionSyncFailure(applyResult.error, {
+				phase: "library_processing_apply",
+				jobId: job.id,
+				accountId,
+			});
 			return fail("library_processing_apply_failed");
 		}
 
-		// Automatic waitlist path. Best-effort — never fails the sync.
+		// Automatic waitlist path. Best-effort — never fails the sync. The reporter
+		// routes the grant's swallowed DB errors to the worker's @sentry/bun runtime
+		// (the domain module is SDK-agnostic so it can run here, not just on CF).
 		try {
-			await maybeGrantLikedSongAccessAfterSync(supabase, accountId);
+			await maybeGrantLikedSongAccessAfterSync(supabase, accountId, {
+				onOperationalError: (error, context) => {
+					captureException(error, {
+						tags: {
+							area: "billing",
+							operation: "maybe_grant_liked_song_access_after_sync",
+							runtime: "worker",
+						},
+						extra: {
+							accountId,
+							jobId: job.id,
+							stage: context.stage,
+							...(context.origin ? { origin: context.origin } : {}),
+						},
+					});
+				},
+			});
 		} catch (grantError) {
+			// The reporter above only sees the grant's *handled* swallows; an
+			// unexpected throw from maybeGrantLikedSongAccessAfterSync itself lands
+			// here. The worker runs with enableLogs:false, so log.error never reaches
+			// Sentry — capture explicitly while still swallowing so the job stays
+			// best-effort.
 			log.error("extension-sync-grant-threw", {
 				actor,
 				jobId: job.id,
 				accountId,
 				error: errorMessage(grantError),
 			});
+			captureException(grantError, {
+				tags: {
+					area: "billing",
+					operation: "maybe_grant_liked_song_access_after_sync",
+					runtime: "worker",
+				},
+				extra: { accountId, jobId: job.id, stage: "grant_threw" },
+			});
 		}
 
 		const completeParent = await completeJob(job.id);
 		if (Result.isError(completeParent)) {
+			captureExtensionSyncFailure(completeParent.error, {
+				phase: "complete_parent_job",
+				jobId: job.id,
+				accountId,
+			});
 			return { status: "failed", error: completeParent.error.message };
 		}
 
 		await deletePayloadBestEffort(supabase, payloadPath, job.id, actor);
 		return { status: "completed" };
 	} catch (error) {
+		// Catch-all for an unexpected throw in any phase above (the phase guards
+		// return early, so this only fires on a genuinely unhandled error).
+		captureExtensionSyncFailure(error, {
+			phase: "unexpected",
+			jobId: job.id,
+			accountId,
+		});
 		return fail(errorMessage(error));
 	}
 }

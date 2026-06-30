@@ -17,6 +17,7 @@ const {
 	mockApplyLibraryProcessingChange,
 	mockSyncActiveQueue,
 	mockCaptureWithWaitUntil,
+	mockCaptureServerError,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -28,6 +29,7 @@ const {
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockSyncActiveQueue: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+	mockCaptureServerError: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -73,6 +75,10 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 vi.mock("@/utils/posthog-server", () => ({
 	captureWithWaitUntil: (...args: unknown[]) =>
 		mockCaptureWithWaitUntil(...args),
+}));
+
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: (...args: unknown[]) => mockCaptureServerError(...args),
 }));
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
@@ -584,5 +590,29 @@ describe("savePlaylistMatchIntent", () => {
 			}),
 		).rejects.toThrow(/playlist not found/i);
 		expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
+	});
+
+	it("swallows a capture failure, still saves, and reports it to Sentry", async () => {
+		const captureError = new Error("posthog unavailable");
+		mockCaptureWithWaitUntil.mockRejectedValue(captureError);
+
+		const result = await savePlaylistMatchIntent({
+			data: { playlistId: "uuid-1", matchIntent: "vibes" },
+		});
+
+		// The intent is already written — a best-effort analytics failure must not
+		// turn the successful save into a thrown error.
+		expect(result).toEqual({ success: true, matchIntent: "vibes" });
+		await vi.waitFor(() =>
+			expect(mockCaptureServerError).toHaveBeenCalledTimes(1),
+		);
+		const [capturedError, context] = mockCaptureServerError.mock.calls[0] ?? [];
+		expect(capturedError).toBe(captureError);
+		expect(context).toMatchObject({
+			area: "analytics",
+			operation: "capture_match_intent_set",
+			accountId: "acct-1",
+			extra: { event: "match_intent_set" },
+		});
 	});
 });

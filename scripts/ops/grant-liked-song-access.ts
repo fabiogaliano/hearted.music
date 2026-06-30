@@ -303,12 +303,26 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	const result = await grantLikedSongAccessForAccount(supabase, {
-		accountId: account.id,
-		origin: "operator_manual",
-		requestedBy: options.requestedBy,
-		note: options.reason,
-	});
+	const result = await grantLikedSongAccessForAccount(
+		supabase,
+		{
+			accountId: account.id,
+			origin: "operator_manual",
+			requestedBy: options.requestedBy,
+			note: options.reason,
+		},
+		{
+			// The grant's enrichment trigger is a best-effort tail the domain helper
+			// swallows. This CLI has no Sentry, so surface the failure to the operator
+			// directly — otherwise a committed grant prints success while enrichment
+			// silently never fired.
+			onOperationalError: (cause, context) => {
+				error(
+					`Grant side effect failed (stage=${context.stage}): ${errorMessage(cause)} — re-run enrichment for the new songs manually.`,
+				);
+			},
+		},
+	);
 
 	if (Result.isError(result)) {
 		throw new Error(`Grant failed: ${result.error.message}`);

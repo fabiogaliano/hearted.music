@@ -231,7 +231,9 @@ describe("runExtensionSyncJob", () => {
 		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.playlist_tracks);
 		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
 		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
-		expect(mockMaybeGrant).toHaveBeenCalledWith({ id: "admin" }, ACCOUNT_ID);
+		expect(mockMaybeGrant).toHaveBeenCalledWith({ id: "admin" }, ACCOUNT_ID, {
+			onOperationalError: expect.any(Function),
+		});
 		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin" },
 			PAYLOAD_PATH,

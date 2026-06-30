@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
 import { log } from "@/lib/observability/logger";
 import {
@@ -139,18 +140,36 @@ export async function executeMatchSnapshotRefreshJob(
 	// completion and what it produced. Fired here at the worker boundary so the
 	// orchestrator stays free of analytics side effects. Superseded jobs are
 	// skipped above — they never published.
-	captureWorkerEvent({
-		distinctId: accountId,
-		event: "match_snapshot_published",
-		properties: {
-			published: result.published,
-			is_empty: result.isEmpty,
-			no_op: result.noOp,
-			matched_song_count: result.matchedSongCount,
-			candidate_count: result.candidateCount,
-			playlist_count: result.playlistCount,
-		},
-	});
+	// Best-effort: the snapshot is already published, so a PostHog config/flush
+	// failure must not turn a completed match job into a failed one. Use
+	// @sentry/bun directly (not the Cloudflare-only captureServerError).
+	try {
+		captureWorkerEvent({
+			distinctId: accountId,
+			event: "match_snapshot_published",
+			properties: {
+				published: result.published,
+				is_empty: result.isEmpty,
+				no_op: result.noOp,
+				matched_song_count: result.matchedSongCount,
+				candidate_count: result.candidateCount,
+				playlist_count: result.playlistCount,
+			},
+		});
+	} catch (error) {
+		Sentry.captureException(error, {
+			tags: {
+				area: "analytics",
+				operation: "capture_match_snapshot_published",
+				runtime: "worker",
+			},
+			extra: {
+				accountId,
+				jobId: job.id,
+				event: "match_snapshot_published",
+			},
+		});
+	}
 
 	return {
 		status: "published",

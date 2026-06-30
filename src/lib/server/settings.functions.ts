@@ -49,7 +49,9 @@ export const updateThemePreference = createServerFn({ method: "POST" })
 				operation: "update_theme_preference",
 				accountId: context.session.accountId,
 			});
-			throw new Error("Failed to save theme preference");
+			throw new Error("Failed to save theme preference", {
+				cause: result.error,
+			});
 		}
 
 		return { success: true };
@@ -96,7 +98,9 @@ export const updateMatchStrictnessPreference = createServerFn({
 				operation: "update_match_strictness_preference",
 				accountId: context.session.accountId,
 			});
-			throw new Error("Failed to save match strictness preference");
+			throw new Error("Failed to save match strictness preference", {
+				cause: result.error,
+			});
 		}
 
 		return { success: true };
@@ -126,7 +130,9 @@ export const setMatchViewModePreference = createServerFn({ method: "POST" })
 				operation: "set_match_view_mode_preference",
 				accountId: context.session.accountId,
 			});
-			throw new Error("Failed to save match view mode preference");
+			throw new Error("Failed to save match view mode preference", {
+				cause: result.error,
+			});
 		}
 
 		return { success: true };
