@@ -58,6 +58,8 @@ const domTestFiles = [
 	"src/lib/extension/__tests__/useSpotifyReconnectState.test.ts",
 	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",
 	"src/lib/extension/__tests__/transport.test.ts",
+	// useActiveJobs hook tests use renderHook and require a DOM environment.
+	"src/lib/hooks/__tests__/useActiveJobs.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {

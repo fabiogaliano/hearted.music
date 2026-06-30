@@ -90,6 +90,9 @@ export function useActiveJobs(accountId: string, enabled = true) {
 		isEnrichmentRunning: !!data?.enrichment,
 		isMatchSnapshotRefreshRunning: !!data?.matchSnapshotRefresh,
 		enrichmentProgress: data?.enrichment?.progress ?? null,
+		matchSnapshotRefreshProgress: data?.matchSnapshotRefresh?.progress ?? null,
+		// Conservative default while the query is loading: do not claim a visible match exists until the server confirms it.
+		firstVisibleMatchReady: data?.firstVisibleMatchReady ?? false,
 	};
 }
 

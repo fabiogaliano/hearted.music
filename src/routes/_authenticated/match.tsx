@@ -37,6 +37,7 @@ import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
+import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	addSongToPlaylistFromQueueItem,
@@ -155,6 +156,16 @@ function QueueMatchPage() {
 	// aware: songs in song mode, playlists in playlist mode.
 	const hiddenReviewItemCount = queue?.hiddenReviewItemCount ?? 0;
 
+	// Poll active jobs so the empty state can distinguish "still building" from
+	// "truly empty". Shares the query cache entry with the layout's completion
+	// effects hook — no extra fetches.
+	const {
+		isEnrichmentRunning,
+		isMatchSnapshotRefreshRunning,
+		firstVisibleMatchReady,
+	} = useActiveJobs(session.accountId);
+	const isJobsActive = isEnrichmentRunning || isMatchSnapshotRefreshRunning;
+
 	// Latch: once this visit has had unresolved items to work, keep rendering the
 	// session UI for the rest of the visit. Completing the last card invalidates the
 	// queue query, and its refetch reports caughtUp — without this latch the parent
@@ -213,12 +224,16 @@ function QueueMatchPage() {
 	// this visit). Mid-session completion is handled by QueueMatchContent's own
 	// CompletionScreen, which the latch keeps mounted.
 	if (caughtUp && !sessionStartedRef.current) {
-		const reason =
-			hiddenReviewItemCount > 0
-				? "filtered"
-				: total === 0
-					? "none-yet"
-					: "caught-up";
+		// Active-jobs states take priority — never show a terminal empty state
+		// while enrichment or match-refresh is still running.
+		const reason = (() => {
+			if (isJobsActive && !firstVisibleMatchReady && total === 0)
+				return "building";
+			if (isJobsActive) return "building-more";
+			if (hiddenReviewItemCount > 0) return "filtered";
+			if (total === 0) return "none-yet";
+			return "caught-up";
+		})();
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState

@@ -1,4 +1,6 @@
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import {
@@ -6,13 +8,22 @@ import {
 	matchReviewSummaryKeys,
 } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
-import { runMatchSnapshotRefreshEffects } from "../useActiveJobs";
+import type { ActiveJobs } from "@/lib/server/jobs.functions";
+import {
+	runMatchSnapshotRefreshEffects,
+	useActiveJobs,
+} from "../useActiveJobs";
 
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
 	syncActiveMatchReviewSessions: vi.fn(),
 }));
 
-// Import the mock after vi.mock so the reference is the hoisted spy.
+vi.mock("@/lib/server/jobs.functions", () => ({
+	getActiveJobs: vi.fn(),
+}));
+
+import { getActiveJobs } from "@/lib/server/jobs.functions";
+// Import mocks after vi.mock so references are the hoisted spies.
 import { syncActiveMatchReviewSessions } from "@/lib/server/match-review-queue.functions";
 
 const ACCOUNT_ID = "test-account-123";
@@ -187,5 +198,98 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		);
 
 		expect(calledKeys).not.toContainEqual(playlistKeys.all);
+	});
+});
+
+// Minimal ActiveJobs shape used by the hook tests — progress fields are
+// irrelevant to the assertions here so they are omitted.
+function makeActiveJobs(overrides: Partial<ActiveJobs> = {}): ActiveJobs {
+	return {
+		enrichment: null,
+		matchSnapshotRefresh: null,
+		firstMatchReady: false,
+		firstVisibleMatchReady: false,
+		...overrides,
+	};
+}
+
+describe("useActiveJobs return shape", () => {
+	let queryClient: QueryClient;
+
+	function wrapper({ children }: { children: ReactNode }) {
+		return createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			children,
+		);
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		// No retries so tests resolve on first response without timer manipulation.
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+	});
+
+	it("exposes firstVisibleMatchReady from server response", async () => {
+		vi.mocked(getActiveJobs).mockResolvedValue(
+			makeActiveJobs({ firstVisibleMatchReady: true }),
+		);
+
+		const { result } = renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(result.current.firstVisibleMatchReady).toBe(true);
+		});
+	});
+
+	it("defaults firstVisibleMatchReady to false before data loads", () => {
+		// Never resolves — simulates an in-flight request.
+		vi.mocked(getActiveJobs).mockReturnValue(new Promise(() => {}) as never);
+
+		const { result } = renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		// Synchronous check: data is undefined → hook must return false, not undefined.
+		expect(result.current.firstVisibleMatchReady).toBe(false);
+	});
+
+	it("exposes matchSnapshotRefreshProgress when a refresh job is active", async () => {
+		const refreshProgress = {
+			done: 3,
+			total: 10,
+			succeeded: 3,
+			failed: 0,
+		};
+		vi.mocked(getActiveJobs).mockResolvedValue(
+			makeActiveJobs({
+				matchSnapshotRefresh: {
+					id: "job-1",
+					status: "running",
+					progress: refreshProgress,
+				},
+			}),
+		);
+
+		const { result } = renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(result.current.matchSnapshotRefreshProgress).toEqual(
+				refreshProgress,
+			);
+			expect(result.current.isMatchSnapshotRefreshRunning).toBe(true);
+		});
+	});
+
+	it("returns null matchSnapshotRefreshProgress when no refresh job is active", async () => {
+		vi.mocked(getActiveJobs).mockResolvedValue(
+			makeActiveJobs({ matchSnapshotRefresh: null }),
+		);
+
+		const { result } = renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(result.current.matchSnapshotRefreshProgress).toBeNull();
+		});
 	});
 });

@@ -8,13 +8,16 @@ import type { MatchViewMode } from "../types";
 // "no-matches" maps to the case where a queue exists but every item was filtered
 // out by the user's strictness setting. "caught-up" is when all items are resolved.
 // Reason values per H8 (match-system-terminology-decisions.md).
+// "building" / "building-more" are active-jobs states — never shown when jobs are idle.
 type Reason =
 	| "no-context"
 	| "caught-up"
 	| "none-yet"
 	| "no-matches"
 	| "all-decided"
-	| "filtered";
+	| "filtered"
+	| "building"
+	| "building-more";
 
 interface Props {
 	reason: Reason;
@@ -68,6 +71,22 @@ const staticCopy = {
 			search: { from: "match" as const },
 			label: "Adjust strictness",
 		},
+	},
+	// Shown while enrichment or match-refresh is running and no visible card
+	// has appeared yet — prevents a false final-empty state during first setup.
+	building: {
+		overline: "finding matches",
+		headline: ["Finding your", "first matches…"],
+		body: "We're working through your library right now. Your first match cards will appear here shortly.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
+	},
+	// Shown while jobs are still running but the queue had items — user is
+	// caught up with what's been surfaced so far, more are on the way.
+	"building-more": {
+		overline: "more coming",
+		headline: ["More matches are", "still being found."],
+		body: "We're still working through your library. More match cards will appear here soon.",
+		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
 	},
 } as const;
 

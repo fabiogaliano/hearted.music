@@ -104,4 +104,32 @@ describe("MatchingEmptyState", () => {
 			expect(screen.getByText(/No matches/)).toBeDefined();
 		});
 	});
+
+	describe("building states — shown while jobs are active", () => {
+		it("renders 'building' state with finding-matches copy", () => {
+			render(<MatchingEmptyState reason="building" />);
+			expect(screen.getByText("finding matches")).toBeDefined();
+			expect(screen.getByText(/Finding your/)).toBeDefined();
+		});
+
+		it("renders 'building-more' state with more-coming copy", () => {
+			render(<MatchingEmptyState reason="building-more" />);
+			expect(screen.getByText("more coming")).toBeDefined();
+			expect(screen.getByText(/More matches are/)).toBeDefined();
+		});
+
+		it("does not show terminal empty-state copy while building", () => {
+			render(<MatchingEmptyState reason="building" />);
+			// These terminal strings must not appear in the building state so the
+			// user never sees a false "nothing found" message while jobs run.
+			expect(screen.queryByText(/No matches just yet/)).toBeNull();
+			expect(screen.queryByText(/You're caught up/)).toBeNull();
+		});
+
+		it("does not show terminal empty-state copy in building-more state", () => {
+			render(<MatchingEmptyState reason="building-more" />);
+			expect(screen.queryByText(/No matches just yet/)).toBeNull();
+			expect(screen.queryByText(/You're caught up/)).toBeNull();
+		});
+	});
 });
