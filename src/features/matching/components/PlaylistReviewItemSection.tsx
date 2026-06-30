@@ -27,7 +27,11 @@ export const PlaylistReviewItemSection = memo(
 		const prefersReducedMotion = useReducedMotion();
 
 		return (
-			<div className="flex h-full flex-col">
+			// min-w-0 lets this grid column shrink below its content's intrinsic width.
+			// Without it the truncated description (white-space: nowrap) sets the
+			// column's min-content to the full unwrapped line, blowing the 1.1fr track
+			// past the grid width and pushing the suggestions column off-screen.
+			<div className="flex h-full min-w-0 flex-col">
 				{/* initial={false}: the slide is a review-item transition, not a mount
 				entrance. StaggeredContent owns the entrance so the panel doesn't slide
 				in beside a static header on first render. */}
@@ -125,7 +129,10 @@ function AnimatedPlaylistPanel({
 	const isPresent = useIsPresent();
 	const skip = instant || prefersReducedMotion;
 	return (
+		// min-w-0: this is the flex item inside the column's flex-col, so it must
+		// also be allowed to shrink for the nowrap description to truncate.
 		<motion.div
+			className="min-w-0"
 			initial={skip ? false : { opacity: 0, x: 20 }}
 			animate={{
 				opacity: 1,
