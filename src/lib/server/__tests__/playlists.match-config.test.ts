@@ -409,8 +409,16 @@ describe("savePlaylistMatchConfig", () => {
 		// whichever session is active (MSR-37).
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "playlist");
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
+			"acct-1",
+			"song",
+			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
+		);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
+			"acct-1",
+			"playlist",
+			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
+		);
 	});
 
 	it("takes scoring path when intent changed even if filters are the same", async () => {

@@ -3,7 +3,7 @@
 	"include": ["./**/*.ts", "../../src/test/vitest.d.ts"],
 	"exclude": ["../../old_app", "../../node_modules", "../../extension"],
 	"compilerOptions": {
-		"types": ["@types/bun"],
+		"types": ["@types/bun", "vitest"],
 		"tsBuildInfoFile": "../../node_modules/.cache/tsgo/worker.tsbuildinfo"
 	}
 }

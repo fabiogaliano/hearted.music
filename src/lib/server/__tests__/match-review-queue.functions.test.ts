@@ -1271,8 +1271,16 @@ describe("syncActiveMatchReviewSessions", () => {
 
 		await syncActiveMatchReviewSessions();
 
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "song");
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith("acct-1", "playlist");
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
+			"acct-1",
+			"song",
+			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
+		);
+		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
+			"acct-1",
+			"playlist",
+			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
+		);
 		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
 	});
 

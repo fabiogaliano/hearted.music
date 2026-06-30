@@ -86,7 +86,6 @@ import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predi
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
-import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import * as queries from "../queries";
 // Import after mocks are set up
@@ -1153,7 +1152,7 @@ describe("appendSnapshotDelta", () => {
 // ============================================================================
 
 describe("appendSnapshotDelta — analytics events", () => {
-	it("emits review_queue_appended and first_visible_match_ready on a non-zero append", async () => {
+	it("invokes onVisibleAppend with correct info on a non-zero append", async () => {
 		// One entitled song above threshold, not yet queued — guarantees appendedCount=1.
 		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
 			Result.ok(new Set<string>()),
@@ -1180,10 +1179,12 @@ describe("appendSnapshotDelta — analytics events", () => {
 		);
 		vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
 
+		const onVisibleAppend = vi.fn();
 		const result = await appendSnapshotDelta(
 			fakeSession(),
 			SNAPSHOT_ID,
 			ACCOUNT_ID,
+			{ onVisibleAppend },
 		);
 
 		expect(result).toBeOk();
@@ -1191,38 +1192,26 @@ describe("appendSnapshotDelta — analytics events", () => {
 			expect(result.value.appendedCount).toBe(1);
 		}
 
-		const capture = vi.mocked(captureProductEventBestEffort);
-		expect(capture).toHaveBeenCalledWith(
-			expect.objectContaining({
-				event: "review_queue_appended",
-				properties: expect.objectContaining({
-					orientation: "song",
-					appended_count: 1,
-				}),
-			}),
-		);
-		expect(capture).toHaveBeenCalledWith(
-			expect.objectContaining({
-				event: "first_visible_match_ready",
-				properties: expect.objectContaining({
-					account_id: ACCOUNT_ID,
-					orientation: "song",
-					appended_count: 1,
-				}),
-			}),
-		);
+		expect(onVisibleAppend).toHaveBeenCalledOnce();
+		expect(onVisibleAppend).toHaveBeenCalledWith({
+			orientation: "song",
+			appendedCount: 1,
+			accountId: ACCOUNT_ID,
+		});
 	});
 
-	it("does not emit analytics events when appendedCount is zero", async () => {
+	it("does not invoke onVisibleAppend when appendedCount is zero", async () => {
 		// Default getMatchResults returns [] — no items can be appended.
 		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
 			Result.ok(new Set<string>()),
 		);
 
+		const onVisibleAppend = vi.fn();
 		const result = await appendSnapshotDelta(
 			fakeSession(),
 			SNAPSHOT_ID,
 			ACCOUNT_ID,
+			{ onVisibleAppend },
 		);
 
 		expect(result).toBeOk();
@@ -1230,13 +1219,7 @@ describe("appendSnapshotDelta — analytics events", () => {
 			expect(result.value.appendedCount).toBe(0);
 		}
 
-		const capture = vi.mocked(captureProductEventBestEffort);
-		expect(capture).not.toHaveBeenCalledWith(
-			expect.objectContaining({ event: "review_queue_appended" }),
-		);
-		expect(capture).not.toHaveBeenCalledWith(
-			expect.objectContaining({ event: "first_visible_match_ready" }),
-		);
+		expect(onVisibleAppend).not.toHaveBeenCalled();
 	});
 });
 

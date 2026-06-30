@@ -67,6 +67,36 @@ import type {
 
 const NoInputSchema = z.undefined();
 
+/** Best-effort PostHog events fired on every durable non-zero queue append. */
+function emitQueueAppendEvents({
+	orientation,
+	appendedCount,
+	accountId,
+}: {
+	orientation: MatchOrientation;
+	appendedCount: number;
+	accountId: string;
+}): void {
+	captureProductEventBestEffort({
+		distinctId: accountId,
+		event: "review_queue_appended",
+		accountId,
+		operation: "capture_review_queue_appended",
+		properties: { orientation, appended_count: appendedCount },
+	});
+	captureProductEventBestEffort({
+		distinctId: accountId,
+		event: "first_visible_match_ready",
+		accountId,
+		operation: "capture_first_visible_match_ready",
+		properties: {
+			account_id: accountId,
+			orientation,
+			appended_count: appendedCount,
+		},
+	});
+}
+
 // Typed item read result — co-located because it is owned by this file's read
 // path and nothing outside Phase 3 currently consumes it.
 export type MatchReviewItemRead =
@@ -206,6 +236,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		const queueResult = await createOrResumeQueue(
 			session.accountId,
 			orientation,
+			{ onVisibleAppend: emitQueueAppendEvents },
 		);
 		if (Result.isError(queueResult)) {
 			reportQueueError(queueResult.error, "create_or_resume_queue", {
@@ -1745,7 +1776,9 @@ export const syncActiveMatchReviewSessions = createServerFn({ method: "POST" })
 			}> = [];
 
 			for (const orientation of ALL_ORIENTATIONS) {
-				const result = await syncActiveQueue(session.accountId, orientation);
+				const result = await syncActiveQueue(session.accountId, orientation, {
+					onVisibleAppend: emitQueueAppendEvents,
+				});
 				results.push({
 					orientation,
 					appendedCount: Result.isOk(result) ? result.value.appendedCount : 0,

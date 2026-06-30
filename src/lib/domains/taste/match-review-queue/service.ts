@@ -24,7 +24,6 @@ import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
-import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
@@ -114,9 +113,18 @@ async function fetchLatestSnapshotId(
 	return Result.ok(snapshotResult.data?.id ?? null);
 }
 
+type AppendOpts = {
+	onVisibleAppend?: (info: {
+		orientation: MatchOrientation;
+		appendedCount: number;
+		accountId: string;
+	}) => void;
+};
+
 async function createQueueFromLatestSnapshot(
 	accountId: string,
 	orientation: MatchOrientation,
+	opts?: AppendOpts,
 ): Promise<Result<ActiveQueueResult, DbError>> {
 	const snapshotIdResult = await fetchLatestSnapshotId(accountId);
 	if (Result.isError(snapshotIdResult)) return snapshotIdResult;
@@ -152,7 +160,11 @@ async function createQueueFromLatestSnapshot(
 			const active = await fetchActiveSession(accountId, orientation);
 			if (Result.isError(active)) return active;
 			if (active.value) {
-				const syncResult = await appendLatestSnapshot(active.value, accountId);
+				const syncResult = await appendLatestSnapshot(
+					active.value,
+					accountId,
+					opts,
+				);
 				if (Result.isError(syncResult)) return syncResult;
 				return Result.ok<ActiveQueueResult, DbError>({
 					kind: "resumed",
@@ -168,6 +180,7 @@ async function createQueueFromLatestSnapshot(
 		session,
 		snapshotId,
 		accountId,
+		opts,
 	);
 
 	// Propagate append failures instead of returning a successful empty queue. A
@@ -203,6 +216,7 @@ async function createQueueFromLatestSnapshot(
 export async function createOrResumeQueue(
 	accountId: string,
 	orientation: MatchOrientation = "song",
+	opts?: AppendOpts,
 ): Promise<Result<ActiveQueueResult, DbError>> {
 	const existing = await fetchActiveSession(accountId, orientation);
 	if (Result.isError(existing)) return existing;
@@ -211,9 +225,9 @@ export async function createOrResumeQueue(
 		const advanceResult = await advanceActiveSession(
 			existing.value,
 			accountId,
-			appendLatestSnapshot,
+			(s, acctId) => appendLatestSnapshot(s, acctId, opts),
 			hasSessionBeenSeeded,
-			(acctId) => createQueueFromLatestSnapshot(acctId, orientation),
+			(acctId) => createQueueFromLatestSnapshot(acctId, orientation, opts),
 		);
 		if (Result.isError(advanceResult)) return advanceResult;
 
@@ -227,7 +241,7 @@ export async function createOrResumeQueue(
 		});
 	}
 
-	return createQueueFromLatestSnapshot(accountId, orientation);
+	return createQueueFromLatestSnapshot(accountId, orientation, opts);
 }
 
 /**
@@ -270,6 +284,7 @@ async function recordSnapshotApplied(
 async function appendLatestSnapshot(
 	session: MatchReviewSession,
 	accountId: string,
+	opts?: AppendOpts,
 ): Promise<Result<AppendResult, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const snapshotResult = await supabase
@@ -296,7 +311,7 @@ async function appendLatestSnapshot(
 		});
 	}
 
-	return appendSnapshotDelta(session, snapshotResult.data.id, accountId);
+	return appendSnapshotDelta(session, snapshotResult.data.id, accountId, opts);
 }
 
 /**
@@ -355,6 +370,7 @@ export async function appendSnapshotDelta(
 	session: MatchReviewSession,
 	snapshotId: string,
 	accountId: string,
+	opts?: AppendOpts,
 ): Promise<Result<AppendResult, DbError>> {
 	// Fetch current read-time filter config to build the visibility policy.
 	// This is a lightweight query (only id + match_filters from target playlists).
@@ -506,34 +522,18 @@ export async function appendSnapshotDelta(
 		if (Result.isError(recorded)) return recorded;
 
 		if (count > 0) {
-			// Event 5: review queue now has new visible subjects. Best-effort; the
-			// insert and idempotency record above are already committed.
-			captureProductEventBestEffort({
-				distinctId: accountId,
-				event: "review_queue_appended",
-				accountId,
-				operation: "capture_review_queue_appended",
-				properties: {
+			// Notify the caller that new visible subjects are in the queue. Best-effort:
+			// the insert and idempotency record above are already committed, so a
+			// callback throw must not roll back the append.
+			try {
+				opts?.onVisibleAppend?.({
 					orientation: session.orientation,
-					appended_count: count,
-				},
-			});
-
-			// Event 6: the first visible review card now exists. Fired every time a
-			// non-zero append succeeds; PostHog deduplication (first occurrence per
-			// account) provides the north-star timestamp
-			// first_visible_match_ready_at - matching_setup_completed_at.
-			captureProductEventBestEffort({
-				distinctId: accountId,
-				event: "first_visible_match_ready",
-				accountId,
-				operation: "capture_first_visible_match_ready",
-				properties: {
-					account_id: accountId,
-					orientation: session.orientation,
-					appended_count: count,
-				},
-			});
+					appendedCount: count,
+					accountId,
+				});
+			} catch {
+				// swallow — analytics must not roll back a durable append
+			}
 		}
 
 		return Result.ok<AppendResult, DbError>({
@@ -644,6 +644,7 @@ export async function appendSnapshotDelta(
 export async function syncActiveQueue(
 	accountId: string,
 	orientation: MatchOrientation = "song",
+	opts?: AppendOpts,
 ): Promise<Result<AppendResult, DbError>> {
 	const sessionResult = await fetchActiveSession(accountId, orientation);
 	if (Result.isError(sessionResult)) return sessionResult;
@@ -657,9 +658,9 @@ export async function syncActiveQueue(
 	const advanceResult = await advanceActiveSession(
 		sessionResult.value,
 		accountId,
-		appendLatestSnapshot,
+		(s, acctId) => appendLatestSnapshot(s, acctId, opts),
 		hasSessionBeenSeeded,
-		(acctId) => createQueueFromLatestSnapshot(acctId, orientation),
+		(acctId) => createQueueFromLatestSnapshot(acctId, orientation, opts),
 	);
 	if (Result.isError(advanceResult)) return advanceResult;
 
