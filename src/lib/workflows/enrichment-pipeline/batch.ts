@@ -4,6 +4,7 @@ import {
 	getByIds as getSongsByIds,
 	type Song,
 } from "@/lib/domains/library/songs/queries";
+import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import type { EnrichmentWorkPlan, SongStageFlags } from "./types";
 
 export interface PipelineBatch {
@@ -52,17 +53,32 @@ export async function getEntitledDataEnrichedSongIds(
  * All stage flags (audio_features, genre_tagging, analysis, embedding,
  * content_activation) are entitlement-gated. Optional Phase A signals with a
  * recorded source_not_found marker are masked off so they aren't retried.
+ *
+ * In first_match_bootstrap mode the bootstrap RPC is used, which orders songs by
+ * readiness_rank (fewest stages remaining first) before liked_at so the pipeline
+ * front-loads near-ready songs. The bootstrap RPC has an identical signature and
+ * return type to the normal one, so the cast below is accurate — types will be
+ * updated automatically once the migration is applied and gen:types is run.
  */
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
 	maxSongs: number,
+	mode: EnrichmentSelectionMode = "normal",
 ): Promise<EnrichmentWorkPlan> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_enrichment_work",
-		{ p_account_id: accountId, p_limit: maxSongs },
-	);
+	// The bootstrap RPC is not yet in database.types.ts (migration file-only);
+	// cast to the existing function name which has the same signature shape.
+	const rpcName = (
+		mode === "first_match_bootstrap"
+			? "select_liked_song_ids_needing_first_match_enrichment_work"
+			: "select_liked_song_ids_needing_enrichment_work"
+	) as "select_liked_song_ids_needing_enrichment_work";
+
+	const { data, error } = await supabase.rpc(rpcName, {
+		p_account_id: accountId,
+		p_limit: maxSongs,
+	});
 
 	if (error) {
 		throw new Error(`Failed to select enrichment work plan: ${error.message}`);

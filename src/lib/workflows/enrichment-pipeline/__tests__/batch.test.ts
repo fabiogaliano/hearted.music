@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let rpcResponse: { data: unknown; error: unknown };
+let lastCalledRpcName: string | null = null;
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(() => ({
-		rpc: vi.fn(() => rpcResponse),
+		rpc: vi.fn((name: string) => {
+			lastCalledRpcName = name;
+			return rpcResponse;
+		}),
 	})),
 }));
 
@@ -15,6 +19,7 @@ import {
 
 beforeEach(() => {
 	rpcResponse = { data: [], error: null };
+	lastCalledRpcName = null;
 });
 
 describe("selectEnrichmentWorkPlan", () => {
@@ -186,5 +191,57 @@ describe("hasMoreSongsNeedingEnrichmentWork", () => {
 		await expect(
 			hasMoreSongsNeedingEnrichmentWork("account-1"),
 		).rejects.toThrow("Failed to probe songs needing enrichment work: timeout");
+	});
+});
+
+describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
+	it("calls the normal RPC when mode is 'normal'", async () => {
+		await selectEnrichmentWorkPlan("account-1", 10, "normal");
+
+		expect(lastCalledRpcName).toBe(
+			"select_liked_song_ids_needing_enrichment_work",
+		);
+	});
+
+	it("calls the normal RPC when mode is omitted (default)", async () => {
+		await selectEnrichmentWorkPlan("account-1", 10);
+
+		expect(lastCalledRpcName).toBe(
+			"select_liked_song_ids_needing_enrichment_work",
+		);
+	});
+
+	it("calls the bootstrap RPC when mode is 'first_match_bootstrap'", async () => {
+		await selectEnrichmentWorkPlan("account-1", 10, "first_match_bootstrap");
+
+		expect(lastCalledRpcName).toBe(
+			"select_liked_song_ids_needing_first_match_enrichment_work",
+		);
+	});
+
+	it("bootstrap mode returns the same work plan shape as normal mode", async () => {
+		rpcResponse = {
+			data: [
+				{
+					song_id: "song-bootstrap",
+					needs_audio_features: false,
+					needs_genre_tagging: false,
+					needs_analysis: false,
+					needs_embedding: true,
+					needs_content_activation: false,
+				},
+			],
+			error: null,
+		};
+
+		const plan = await selectEnrichmentWorkPlan(
+			"account-1",
+			10,
+			"first_match_bootstrap",
+		);
+
+		expect(plan.allSongIds).toEqual(["song-bootstrap"]);
+		expect(plan.needEmbedding).toEqual(["song-bootstrap"]);
+		expect(plan.needAudioFeatures).toEqual([]);
 	});
 });

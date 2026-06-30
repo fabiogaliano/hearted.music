@@ -396,7 +396,8 @@ describe("scheduler", () => {
 		it("enrichment job stays at billing priority when first visible card is not ready", async () => {
 			// The enrichment job must NOT receive interactive priority — only the
 			// refresh is boosted so the refresh wins the next slot on a single worker.
-			// The probe is not invoked on the enrichment branch, so this value is irrelevant.
+			// The probe IS called on the enrichment branch (it sets selectionMode), but
+			// the readiness answer must never influence the enrichment queue priority.
 			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(false));
 			ensureEnrichmentJobMock.mockResolvedValue(
 				Result.ok({ id: "enrich-job", status: "pending" }),
@@ -687,6 +688,140 @@ describe("scheduler", () => {
 			});
 
 			expect(result).toEqual({ satisfiedMarker: null, batchSequence: null });
+		});
+	});
+
+	describe("enrichment selectionMode in job progress", () => {
+		it("sets selectionMode to 'first_match_bootstrap' when first visible card is not ready", async () => {
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(false));
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-bootstrap", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
+			expect(calledProgress.selectionMode).toBe("first_match_bootstrap");
+		});
+
+		it("sets selectionMode to 'normal' when first visible card is ready", async () => {
+			// Default mock: hasFirstVisibleReviewSubjectMock returns ok(true).
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-normal", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
+			expect(calledProgress.selectionMode).toBe("normal");
+		});
+
+		it("degrades selectionMode to 'normal' when readiness probe returns a DB error", async () => {
+			// On DB error → treat as ready → normal selection (no indefinite bootstrap spam)
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(
+				Result.err(
+					new DatabaseError({
+						code: "PGRST",
+						message: "connection timeout",
+					}),
+				),
+			);
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-degraded", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "library_synced",
+					accountId: "acct-1",
+					changes: {
+						likedSongs: { added: true, removed: false },
+						targetPlaylists: {
+							trackMembershipChanged: false,
+							profileTextChanged: false,
+							removed: false,
+						},
+					},
+				},
+				{ satisfiedMarker: null, batchSequence: null },
+			);
+
+			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
+			expect(calledProgress.selectionMode).toBe("normal");
+		});
+
+		it("enrichment job queue priority stays at billing band regardless of bootstrap mode", async () => {
+			// The priority for the enrichment job must not change in bootstrap mode —
+			// only the selection mode (which RPC to use) is affected by readiness state.
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(false));
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-priority-check", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			// billing band is "standard" → 50; bootstrap mode must NOT promote to interactive (200)
+			expect(ensureEnrichmentJobMock).toHaveBeenCalledWith(
+				expect.objectContaining({ queuePriority: 50 }),
+			);
 		});
 	});
 });

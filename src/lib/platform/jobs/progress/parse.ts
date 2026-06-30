@@ -67,6 +67,7 @@ function fillEnrichmentDefaults(
 		},
 		batchSize: partial.batchSize ?? 0,
 		batchSequence: partial.batchSequence ?? 0,
+		selectionMode: partial.selectionMode ?? "normal",
 	};
 }
 

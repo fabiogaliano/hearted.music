@@ -1,6 +1,7 @@
 import {
 	createPendingEnrichmentStages,
 	type EnrichmentChunkProgress,
+	type EnrichmentSelectionMode,
 	type EnrichmentStageProgressMap,
 } from "@/lib/platform/jobs/progress/enrichment";
 import type { EnrichmentStageName, SongStageFlags } from "./types";
@@ -41,11 +42,14 @@ function countPlannedWork(flags: readonly SongStageFlags[]): number {
 /**
  * Create initial progress. Pass work plan flags for accurate totals (orchestrator),
  * or a song count estimate for job-creation contexts where the plan isn't yet known.
+ * selectionMode defaults to "normal" and is preserved through all progress writes
+ * so the worker can read which RPC the scheduler intended for this batch.
  */
 export function makeInitialProgress(
 	batchSize: number,
 	batchSequence: number,
 	workOrEstimate: readonly SongStageFlags[] | number,
+	selectionMode: EnrichmentSelectionMode = "normal",
 ): InitializedEnrichmentChunkProgress {
 	const stages = createPendingEnrichmentStages();
 	const total =
@@ -62,5 +66,6 @@ export function makeInitialProgress(
 		stages,
 		batchSize,
 		batchSequence,
+		selectionMode,
 	};
 }

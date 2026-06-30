@@ -11,6 +11,15 @@ const ENRICHMENT_STAGE_NAMES = [
 
 const EnrichmentStageNameSchema = z.enum(ENRICHMENT_STAGE_NAMES);
 
+// .catch("normal") handles both undefined (schema default) and unknown string values
+// from old in-flight jobs, so stale progress always deserializes to a valid mode.
+const EnrichmentSelectionModeSchema = z
+	.enum(["normal", "first_match_bootstrap"])
+	.catch("normal");
+export type EnrichmentSelectionMode = z.infer<
+	typeof EnrichmentSelectionModeSchema
+>;
+
 const EnrichmentStageProgressMapSchema = z
 	.object({
 		audio_features: StageProgressSchema,
@@ -29,6 +38,7 @@ export const EnrichmentChunkProgressSchema = JobProgressBaseSchema.extend({
 	stages: EnrichmentStageProgressMapSchema.default({}),
 	batchSize: z.number().int().min(0),
 	batchSequence: z.number().int().min(0),
+	selectionMode: EnrichmentSelectionModeSchema,
 });
 export type EnrichmentChunkProgress = z.infer<
 	typeof EnrichmentChunkProgressSchema

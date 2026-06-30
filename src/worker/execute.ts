@@ -77,6 +77,7 @@ export async function executeEnrichmentJob(
 		job.id,
 		progress.batchSize ?? 1,
 		progress.batchSequence ?? 0,
+		progress.selectionMode ?? "normal",
 	);
 
 	return {

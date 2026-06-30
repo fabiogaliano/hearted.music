@@ -14,7 +14,10 @@ import {
 	ensureEnrichmentJob,
 	ensureMatchSnapshotRefreshJob,
 } from "@/lib/platform/jobs/library-processing-queue";
-import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
+import {
+	EnrichmentChunkProgressSchema,
+	type EnrichmentSelectionMode,
+} from "@/lib/platform/jobs/progress/enrichment";
 import { getJobById } from "@/lib/platform/jobs/repository";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
@@ -222,7 +225,26 @@ export async function executeEffect(
 			const nextSequence =
 				change.kind === "enrichment_completed" ? previousBatchSequence + 1 : 0;
 			const nextBatchSize = batchSizeForSequence(nextSequence);
-			const progress = makeInitialProgress(nextBatchSize, nextSequence, total);
+
+			// Probe first-visible readiness to decide which selector the worker should
+			// use for this batch. On DB error we degrade to "normal" (treat as ready)
+			// so a transient failure never spams bootstrap selection indefinitely.
+			const enrichmentVisibleResult = await hasFirstVisibleReviewSubject(
+				effect.accountId,
+			);
+			const enrichmentFirstVisibleReady = Result.isOk(enrichmentVisibleResult)
+				? enrichmentVisibleResult.value
+				: true;
+			const selectionMode: EnrichmentSelectionMode = enrichmentFirstVisibleReady
+				? "normal"
+				: "first_match_bootstrap";
+
+			const progress = makeInitialProgress(
+				nextBatchSize,
+				nextSequence,
+				total,
+				selectionMode,
+			);
 
 			const result = await ensureEnrichmentJob({
 				accountId: effect.accountId,
@@ -239,6 +261,7 @@ export async function executeEffect(
 				batch: nextSequence,
 				songs: total,
 				priority: band,
+				selectionMode,
 				jobId: result.value.id,
 			});
 			return Result.ok({

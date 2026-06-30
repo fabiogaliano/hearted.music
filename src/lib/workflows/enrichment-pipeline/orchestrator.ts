@@ -9,7 +9,10 @@ import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-pro
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { log } from "@/lib/observability/logger";
-import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
+import type {
+	EnrichmentChunkProgress,
+	EnrichmentSelectionMode,
+} from "@/lib/platform/jobs/progress/enrichment";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import {
 	getEntitledDataEnrichedSongIds,
@@ -461,6 +464,7 @@ export async function executeWorkerChunk(
 	jobId: string,
 	batchSize: number,
 	batchSequence: number,
+	selectionMode: EnrichmentSelectionMode = "normal",
 ): Promise<ChunkResult> {
 	const embeddingResult = EmbeddingService.create();
 	if (Result.isError(embeddingResult)) {
@@ -472,15 +476,22 @@ export async function executeWorkerChunk(
 
 	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
 
-	const workPlan = await selectEnrichmentWorkPlan(accountId, batchSize);
+	const workPlan = await selectEnrichmentWorkPlan(
+		accountId,
+		batchSize,
+		selectionMode,
+	);
 	const batch = await loadBatchSongs(workPlan.allSongIds);
 	const batchIds = new Set(batch.songIds);
 	const enrichedBefore = await loadEntitledReadyInBatch(accountId, batchIds);
 
+	// selectionMode is preserved in progress so monitoring/observability can see
+	// which selection strategy ran for each chunk.
 	const progress = makeInitialProgress(
 		batchSize,
 		batchSequence,
 		workPlan.flags,
+		selectionMode,
 	);
 
 	// Candidate-side enrichment only (phases A-C)

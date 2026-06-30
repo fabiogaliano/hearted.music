@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
 import { batchSizeForSequence, makeInitialProgress } from "../progress";
 
 describe("batchSizeForSequence", () => {
@@ -38,5 +39,81 @@ describe("makeInitialProgress", () => {
 				"content_activation",
 			]),
 		);
+	});
+
+	it("defaults selectionMode to 'normal' when not passed", () => {
+		const progress = makeInitialProgress(10, 2, 100);
+		expect(progress.selectionMode).toBe("normal");
+	});
+
+	it("stores 'first_match_bootstrap' when passed", () => {
+		const progress = makeInitialProgress(10, 2, 100, "first_match_bootstrap");
+		expect(progress.selectionMode).toBe("first_match_bootstrap");
+	});
+});
+
+describe("EnrichmentChunkProgressSchema — selectionMode safety", () => {
+	it("parses 'normal' as 'normal'", () => {
+		const result = EnrichmentChunkProgressSchema.safeParse({
+			total: 0,
+			done: 0,
+			succeeded: 0,
+			failed: 0,
+			batchSize: 1,
+			batchSequence: 0,
+			selectionMode: "normal",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.selectionMode).toBe("normal");
+		}
+	});
+
+	it("parses 'first_match_bootstrap' as 'first_match_bootstrap'", () => {
+		const result = EnrichmentChunkProgressSchema.safeParse({
+			total: 0,
+			done: 0,
+			succeeded: 0,
+			failed: 0,
+			batchSize: 1,
+			batchSequence: 0,
+			selectionMode: "first_match_bootstrap",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.selectionMode).toBe("first_match_bootstrap");
+		}
+	});
+
+	it("defaults to 'normal' when selectionMode is absent (old in-flight jobs)", () => {
+		const result = EnrichmentChunkProgressSchema.safeParse({
+			total: 0,
+			done: 0,
+			succeeded: 0,
+			failed: 0,
+			batchSize: 1,
+			batchSequence: 0,
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.selectionMode).toBe("normal");
+		}
+	});
+
+	it("defaults to 'normal' when selectionMode is an unknown string", () => {
+		const result = EnrichmentChunkProgressSchema.safeParse({
+			total: 0,
+			done: 0,
+			succeeded: 0,
+			failed: 0,
+			batchSize: 1,
+			batchSequence: 0,
+			selectionMode: "legacy_mode_from_old_deploy",
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			// .catch("normal") on the enum schema handles unknown values safely
+			expect(result.data.selectionMode).toBe("normal");
+		}
 	});
 });
