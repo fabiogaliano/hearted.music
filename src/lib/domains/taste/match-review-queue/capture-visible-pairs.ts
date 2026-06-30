@@ -146,7 +146,7 @@ export async function captureVisiblePairsAtomic(
 	}
 
 	const response = data as Record<string, unknown>;
-	const status = response["status"];
+	const status = response.status;
 
 	if (!isKnownStatus(status)) {
 		return {
@@ -159,7 +159,7 @@ export async function captureVisiblePairsAtomic(
 	}
 
 	if (status === "already_captured") {
-		const pairs = parsePairs(response["pairs"]);
+		const pairs = parsePairs(response.pairs);
 		if (pairs === null) {
 			return {
 				status: "db-error",
@@ -175,8 +175,7 @@ export async function captureVisiblePairsAtomic(
 	if (status === "invalid_input") {
 		return {
 			status: "invalid_input",
-			reason:
-				typeof response["reason"] === "string" ? response["reason"] : "unknown",
+			reason: typeof response.reason === "string" ? response.reason : "unknown",
 		};
 	}
 

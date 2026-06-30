@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/cloudflare";
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { applyServerErrorFingerprint } from "@/lib/observability/sentry-before-send";
 
 interface WorkerEnv {
 	SENTRY_DSN?: string;
@@ -57,6 +58,7 @@ export default Sentry.withSentry((env: WorkerEnv) => {
 		tracesSampleRate: 0.05,
 		sendDefaultPii: false,
 		enableLogs: false,
+		beforeSend: applyServerErrorFingerprint,
 		initialScope: { tags: { runtime: "web-server" } },
 	};
 }, entry);

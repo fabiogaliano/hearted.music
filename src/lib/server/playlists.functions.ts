@@ -45,6 +45,7 @@ import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 const SPOTIFY_PLAYLIST_URI_RE = /^spotify:playlist:([a-zA-Z0-9]+)$/;
 
@@ -609,6 +610,18 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 				applyResult.error,
 			);
 		}
+
+		// Funnel step 1 (intent → snapshot → review). intent text is private, so
+		// only its presence and length travel, never the content.
+		await captureWithWaitUntil({
+			distinctId: session.accountId,
+			event: "match_intent_set",
+			properties: {
+				playlist_id: data.playlistId,
+				has_intent: matchIntent !== null,
+				intent_length: matchIntent?.length ?? 0,
+			},
+		});
 
 		return { success: true, matchIntent };
 	});

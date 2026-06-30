@@ -55,6 +55,7 @@ function reportQueueError(
 import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { captureWithWaitUntil } from "@/utils/posthog-server";
 import type {
 	MatchingPlaylistForReview,
 	MatchingPlaylistMatch,
@@ -205,6 +206,14 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 				: queueResult.value.session;
 
 		if (!activeSession) {
+			// Funnel step 3 (intent → snapshot → review). "no_snapshot" is the
+			// drop-off Gabriel hit: intent set, /match opened, but matching hasn't
+			// published results yet.
+			await captureWithWaitUntil({
+				distinctId: session.accountId,
+				event: "match_review_opened",
+				properties: { orientation, state: "no_snapshot", result_count: 0 },
+			});
 			return { sessionId: "", itemIds: [], total: 0, caughtUp: true };
 		}
 
@@ -222,6 +231,16 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		const items = itemsResult.value;
 		const caughtUp = deriveCaughtUp(items);
 		const itemIds = items.map((i) => i.id);
+
+		await captureWithWaitUntil({
+			distinctId: session.accountId,
+			event: "match_review_opened",
+			properties: {
+				orientation,
+				state: caughtUp ? "caught_up" : "reviewing",
+				result_count: items.length,
+			},
+		});
 
 		return {
 			sessionId: activeSession.id,

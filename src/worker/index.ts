@@ -20,6 +20,7 @@ import {
 	startExtensionSyncPolling,
 	stopExtensionSyncPolling,
 } from "./poll-extension-sync";
+import { shutdownWorkerPostHog } from "./posthog-capture";
 import { shutdownPostHogOtel } from "./posthog-otel";
 import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
 
@@ -97,6 +98,9 @@ async function main() {
 
 		healthServer.stop();
 		await shutdownPostHogOtel();
+		// Drain any buffered product events (e.g. match_snapshot_published) before
+		// exit so the last jobs' analytics aren't lost on redeploy.
+		await shutdownWorkerPostHog();
 		// Flush queued events (e.g. exceptions from jobs interrupted mid-drain)
 		// before exit, matching the fatal-path flush in main().catch.
 		await Sentry.flush(2000);

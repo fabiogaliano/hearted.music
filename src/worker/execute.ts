@@ -13,6 +13,7 @@ import {
 	MatchSnapshotRefreshPlanSchema,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { workerConfig } from "./config";
+import { captureWorkerEvent } from "./posthog-capture";
 
 export interface EnrichmentExecuteResult {
 	accountId: string;
@@ -132,6 +133,23 @@ export async function executeMatchSnapshotRefreshJob(
 		isEmpty: result.isEmpty,
 		jobId: job.id,
 		accountId,
+	});
+
+	// Funnel step 2 (intent → snapshot → review): records that matching ran to
+	// completion and what it produced. Fired here at the worker boundary so the
+	// orchestrator stays free of analytics side effects. Superseded jobs are
+	// skipped above — they never published.
+	captureWorkerEvent({
+		distinctId: accountId,
+		event: "match_snapshot_published",
+		properties: {
+			published: result.published,
+			is_empty: result.isEmpty,
+			no_op: result.noOp,
+			matched_song_count: result.matchedSongCount,
+			candidate_count: result.candidateCount,
+			playlist_count: result.playlistCount,
+		},
 	});
 
 	return {

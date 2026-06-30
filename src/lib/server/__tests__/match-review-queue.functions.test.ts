@@ -42,6 +42,7 @@ const {
 	mockCaptureVisiblePairsAtomic,
 	mockClearSongNewness,
 	mockCaptureException,
+	mockCaptureWithWaitUntil,
 } = vi.hoisted(() => {
 	// Shared from mock — overridden per-test via mockFrom.mockImplementation
 	const mockFrom = vi.fn();
@@ -71,6 +72,7 @@ const {
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockClearSongNewness: vi.fn().mockResolvedValue(undefined),
 		mockCaptureException: vi.fn(),
+		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 	};
 });
 
@@ -103,6 +105,11 @@ vi.mock("@tanstack/react-start", () => {
 
 vi.mock("@sentry/cloudflare", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
+}));
+
+vi.mock("@/utils/posthog-server", () => ({
+	captureWithWaitUntil: (...args: unknown[]) =>
+		mockCaptureWithWaitUntil(...args),
 }));
 
 vi.mock("@/lib/data/client", () => ({
@@ -1317,6 +1324,16 @@ describe("startOrResumeMatchReview", () => {
 		});
 		// No session means the queue is never read.
 		expect(fetchQueueItems).not.toHaveBeenCalled();
+		// The "intent set, opened /match, nothing yet" funnel drop-off.
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
+			distinctId: "acct-1",
+			event: "match_review_opened",
+			properties: {
+				orientation: "song",
+				state: "no_snapshot",
+				result_count: 0,
+			},
+		});
 	});
 
 	it("returns ordered item ids and caughtUp=false for an active queue with unresolved items", async () => {
@@ -1342,6 +1359,11 @@ describe("startOrResumeMatchReview", () => {
 		expect(result.itemIds).toEqual(["item-1", "item-2"]);
 		expect(result.total).toBe(2);
 		expect(result.caughtUp).toBe(false);
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
+			distinctId: "acct-1",
+			event: "match_review_opened",
+			properties: { orientation: "song", state: "reviewing", result_count: 2 },
+		});
 	});
 
 	it("derives caughtUp=true from item states when every item is resolved", async () => {
@@ -1362,6 +1384,11 @@ describe("startOrResumeMatchReview", () => {
 
 		expect(result.caughtUp).toBe(true);
 		expect(result.total).toBe(2);
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
+			distinctId: "acct-1",
+			event: "match_review_opened",
+			properties: { orientation: "song", state: "caught_up", result_count: 2 },
+		});
 	});
 
 	it("throws a user-safe error when the domain queue setup fails", async () => {

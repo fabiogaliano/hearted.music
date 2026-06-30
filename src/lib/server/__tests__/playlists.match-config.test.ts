@@ -4,14 +4,19 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
-import { savePlaylistMatchConfig } from "../playlists.functions";
+import {
+	savePlaylistMatchConfig,
+	savePlaylistMatchIntent,
+} from "../playlists.functions";
 
 const {
 	mockAuthContext,
 	mockGetPlaylistById,
 	mockUpdatePlaylistMatchConfig,
+	mockUpdatePlaylistMatchIntent,
 	mockApplyLibraryProcessingChange,
 	mockSyncActiveQueue,
+	mockCaptureWithWaitUntil,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -19,8 +24,10 @@ const {
 	},
 	mockGetPlaylistById: vi.fn(),
 	mockUpdatePlaylistMatchConfig: vi.fn(),
+	mockUpdatePlaylistMatchIntent: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockSyncActiveQueue: vi.fn(),
+	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -57,9 +64,15 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	setPlaylistTarget: vi.fn(),
 	updatePlaylistMetadata: vi.fn(),
 	updatePlaylistGenrePills: vi.fn(),
-	updatePlaylistMatchIntent: vi.fn(),
+	updatePlaylistMatchIntent: (...args: unknown[]) =>
+		mockUpdatePlaylistMatchIntent(...args),
 	updatePlaylistMatchConfig: (...args: unknown[]) =>
 		mockUpdatePlaylistMatchConfig(...args),
+}));
+
+vi.mock("@/utils/posthog-server", () => ({
+	captureWithWaitUntil: (...args: unknown[]) =>
+		mockCaptureWithWaitUntil(...args),
 }));
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
@@ -511,5 +524,65 @@ describe("savePlaylistMatchConfig", () => {
 				matchFilters: { version: 1 },
 			},
 		);
+	});
+});
+
+describe("savePlaylistMatchIntent", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(makePlaylist({ account_id: "acct-1" })),
+		);
+		mockUpdatePlaylistMatchIntent.mockResolvedValue(Result.ok(makePlaylist()));
+		mockApplyLibraryProcessingChange.mockResolvedValue(
+			Result.ok(makeApplyOutcome()),
+		);
+	});
+
+	it("emits match_intent_set with presence + length but never the intent text", async () => {
+		await savePlaylistMatchIntent({
+			data: { playlistId: "uuid-1", matchIntent: "  chill evening vibes  " },
+		});
+
+		// Trimmed before write — length reflects the trimmed value, and the raw
+		// text is deliberately absent from the analytics payload (privacy).
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
+			distinctId: "acct-1",
+			event: "match_intent_set",
+			properties: {
+				playlist_id: "uuid-1",
+				has_intent: true,
+				intent_length: "chill evening vibes".length,
+			},
+		});
+	});
+
+	it("reports has_intent=false when the intent is cleared", async () => {
+		await savePlaylistMatchIntent({
+			data: { playlistId: "uuid-1", matchIntent: "   " },
+		});
+
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
+			distinctId: "acct-1",
+			event: "match_intent_set",
+			properties: {
+				playlist_id: "uuid-1",
+				has_intent: false,
+				intent_length: 0,
+			},
+		});
+	});
+
+	it("does not emit when the ownership check fails", async () => {
+		mockGetPlaylistById.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
+		);
+
+		await expect(
+			savePlaylistMatchIntent({
+				data: { playlistId: "uuid-1", matchIntent: "x" },
+			}),
+		).rejects.toThrow(/playlist not found/i);
+		expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
 	});
 });

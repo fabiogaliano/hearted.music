@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/bun";
+import { applyServerErrorFingerprint } from "@/lib/observability/sentry-before-send";
 import { registerWorkerFatalHandlers } from "./fatal-handlers";
 import { initPostHogOtel } from "./posthog-otel";
 
@@ -13,6 +14,7 @@ if (dsn) {
 		tracesSampleRate: 0.01,
 		sendDefaultPii: false,
 		enableLogs: false,
+		beforeSend: applyServerErrorFingerprint,
 		initialScope: { tags: { runtime: "worker" } },
 	});
 }
