@@ -10,6 +10,7 @@ import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
@@ -148,6 +149,13 @@ export async function requestSongUnlock(
 				"[unlocks] Failed to apply library processing change:",
 				applyResult.error,
 			);
+			// Unlock committed but the enrichment trigger silently didn't fire.
+			captureServerError(applyResult.error, {
+				area: "billing",
+				operation: "request_song_unlock",
+				accountId,
+				extra: { stage: "apply_library_processing_change" },
+			});
 		}
 	}
 
@@ -241,6 +249,13 @@ export async function grantFreeAllocation(
 				"[unlocks] Failed to apply library processing change for free allocation:",
 				applyResult.error,
 			);
+			// Unlock committed but the enrichment trigger silently didn't fire.
+			captureServerError(applyResult.error, {
+				area: "billing",
+				operation: "grant_free_allocation",
+				accountId,
+				extra: { stage: "apply_library_processing_change" },
+			});
 		}
 	}
 

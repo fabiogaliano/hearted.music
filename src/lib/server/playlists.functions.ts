@@ -40,6 +40,7 @@ import {
 	isGenre,
 	sanitizeGenrePills,
 } from "@/lib/integrations/lastfm/whitelist";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
@@ -72,6 +73,12 @@ export const getPlaylistManagementData = createServerFn({
 		]);
 
 		if (Result.isError(allResult)) {
+			// DB read failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(allResult.error, {
+				area: "playlists",
+				operation: "get_playlist_management_data",
+				accountId: session.accountId,
+			});
 			throw new Error(`Failed to load playlists: ${allResult.error.message}`);
 		}
 
@@ -120,6 +127,13 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 			data.playlistId,
 		);
 		if (Result.isError(playlistResult)) {
+			// DB error reading the playlist row — not a normal not-found; capture for Sentry.
+			captureServerError(playlistResult.error, {
+				area: "playlists",
+				operation: "get_playlist_tracks_page",
+				accountId: session.accountId,
+				extra: { stage: "playlist" },
+			});
 			console.warn("Failed to load playlist", {
 				playlistId: data.playlistId,
 				error: playlistResult.error,
@@ -148,6 +162,13 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 				limit,
 			});
 			if (Result.isError(songsResult)) {
+				// DB error fetching the songs page — not a normal empty result; capture for Sentry.
+				captureServerError(songsResult.error, {
+					area: "playlists",
+					operation: "get_playlist_tracks_page",
+					accountId: session.accountId,
+					extra: { stage: "songs" },
+				});
 				console.warn("Failed to load playlist tracks", {
 					playlistId: data.playlistId,
 					error: songsResult.error,
@@ -164,6 +185,13 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 			const songsDataResult = await getSongsByIds(songIds);
 
 			if (Result.isError(songsDataResult)) {
+				// DB error loading song rows by id — not a normal not-found; capture for Sentry.
+				captureServerError(songsDataResult.error, {
+					area: "playlists",
+					operation: "get_playlist_tracks_page",
+					accountId: session.accountId,
+					extra: { stage: "details" },
+				});
 				console.warn("Failed to load track details", {
 					playlistId: data.playlistId,
 					error: songsDataResult.error,
@@ -216,8 +244,17 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 			session.accountId,
 			data.playlistId,
 		);
+		if (Result.isError(playlistResult)) {
+			// DB error reading playlist for ownership check — not a normal not-found; capture for Sentry.
+			captureServerError(playlistResult.error, {
+				area: "playlists",
+				operation: "set_playlist_target",
+				accountId: session.accountId,
+				extra: { stage: "ownership_check" },
+			});
+			throw new Error("Playlist not found");
+		}
 		if (
-			Result.isError(playlistResult) ||
 			!playlistResult.value ||
 			playlistResult.value.account_id !== session.accountId
 		) {
@@ -231,6 +268,12 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 		);
 
 		if (Result.isError(result)) {
+			// DB write failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(result.error, {
+				area: "playlists",
+				operation: "set_playlist_target",
+				accountId: session.accountId,
+			});
 			throw new Error(`Failed to set playlist target: ${result.error.message}`);
 		}
 
@@ -272,6 +315,12 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 		]);
 
 		if (Result.isError(result)) {
+			// DB upsert failed for extension-initiated create — surfaces in Sentry since console is disabled in prod.
+			captureServerError(result.error, {
+				area: "playlists",
+				operation: "acknowledge_playlist_create",
+				accountId: session.accountId,
+			});
 			throw new Error(
 				`Failed to acknowledge playlist create: ${result.error.message}`,
 			);
@@ -315,6 +364,12 @@ export const acknowledgePlaylistUpdate = createServerFn({ method: "POST" })
 		);
 
 		if (Result.isError(result)) {
+			// DB write failed for extension-initiated update — surfaces in Sentry since console is disabled in prod.
+			captureServerError(result.error, {
+				area: "playlists",
+				operation: "acknowledge_playlist_update",
+				accountId: session.accountId,
+			});
 			throw new Error(
 				`Failed to acknowledge playlist update: ${result.error.message}`,
 			);
@@ -341,6 +396,13 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 
 		const existing = await getPlaylistBySpotifyId(session.accountId, spotifyId);
 		if (Result.isError(existing)) {
+			// DB error during look-up for extension-initiated delete — surfaces in Sentry since console is disabled in prod.
+			captureServerError(existing.error, {
+				area: "playlists",
+				operation: "acknowledge_playlist_delete",
+				accountId: session.accountId,
+				extra: { stage: "lookup" },
+			});
 			throw new Error(
 				`Failed to look up playlist for delete: ${existing.error.message}`,
 			);
@@ -356,6 +418,13 @@ export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
 			existing.value.id,
 		);
 		if (Result.isError(deleteResult)) {
+			// DB delete failed for extension-initiated delete — surfaces in Sentry since console is disabled in prod.
+			captureServerError(deleteResult.error, {
+				area: "playlists",
+				operation: "acknowledge_playlist_delete",
+				accountId: session.accountId,
+				extra: { stage: "delete" },
+			});
 			throw new Error(
 				`Failed to acknowledge playlist delete: ${deleteResult.error.message}`,
 			);
@@ -385,8 +454,17 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 			session.accountId,
 			data.playlistId,
 		);
+		if (Result.isError(playlistResult)) {
+			// DB error reading playlist for ownership check — not a normal not-found; capture for Sentry.
+			captureServerError(playlistResult.error, {
+				area: "playlists",
+				operation: "save_playlist_genre_pills",
+				accountId: session.accountId,
+				extra: { stage: "ownership_check" },
+			});
+			throw new Error("Playlist not found");
+		}
 		if (
-			Result.isError(playlistResult) ||
 			!playlistResult.value ||
 			playlistResult.value.account_id !== session.accountId
 		) {
@@ -401,6 +479,12 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 			pills,
 		);
 		if (Result.isError(updateResult)) {
+			// DB write failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(updateResult.error, {
+				area: "playlists",
+				operation: "save_playlist_genre_pills",
+				accountId: session.accountId,
+			});
 			throw new Error(
 				`Failed to save genre pills: ${updateResult.error.message}`,
 			);
@@ -422,6 +506,12 @@ export const savePlaylistGenrePills = createServerFn({ method: "POST" })
 			// Non-fatal: pills are written; invalidation failure is logged but does
 			// not roll back the save. The snapshot will recompute on the next
 			// organic trigger (library sync, enrichment, etc.).
+			captureServerError(applyResult.error, {
+				area: "playlists",
+				operation: "save_playlist_genre_pills",
+				accountId: session.accountId,
+				extra: { stage: "post_save_invalidation" },
+			});
 			console.error(
 				"[playlists] genre pills saved but snapshot invalidation failed:",
 				applyResult.error,
@@ -455,8 +545,17 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 			session.accountId,
 			data.playlistId,
 		);
+		if (Result.isError(playlistResult)) {
+			// DB error reading playlist for ownership check — not a normal not-found; capture for Sentry.
+			captureServerError(playlistResult.error, {
+				area: "playlists",
+				operation: "save_playlist_match_intent",
+				accountId: session.accountId,
+				extra: { stage: "ownership_check" },
+			});
+			throw new Error("Playlist not found");
+		}
 		if (
-			Result.isError(playlistResult) ||
 			!playlistResult.value ||
 			playlistResult.value.account_id !== session.accountId
 		) {
@@ -472,6 +571,12 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 			matchIntent,
 		);
 		if (Result.isError(updateResult)) {
+			// DB write failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(updateResult.error, {
+				area: "playlists",
+				operation: "save_playlist_match_intent",
+				accountId: session.accountId,
+			});
 			throw new Error(
 				`Failed to save match intent: ${updateResult.error.message}`,
 			);
@@ -493,6 +598,12 @@ export const savePlaylistMatchIntent = createServerFn({ method: "POST" })
 			// Non-fatal: the intent is written; invalidation failure is logged but
 			// does not roll back the save. The snapshot will recompute on the next
 			// organic trigger (library sync, enrichment, etc.).
+			captureServerError(applyResult.error, {
+				area: "playlists",
+				operation: "save_playlist_match_intent",
+				accountId: session.accountId,
+				extra: { stage: "post_save_invalidation" },
+			});
 			console.error(
 				"[playlists] match intent saved but snapshot invalidation failed:",
 				applyResult.error,
@@ -537,6 +648,13 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 				data.playlistId,
 			);
 			if (Result.isError(playlistResult)) {
+				// DB error reading playlist for ownership check — not a normal not-found; capture for Sentry.
+				captureServerError(playlistResult.error, {
+					area: "playlists",
+					operation: "save_playlist_match_config",
+					accountId: session.accountId,
+					extra: { stage: "ownership_check" },
+				});
 				console.warn("Failed to load playlist", {
 					playlistId: data.playlistId,
 					error: playlistResult.error,
@@ -577,6 +695,12 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 				{ matchIntent, genrePills, matchFilters },
 			);
 			if (Result.isError(updateResult)) {
+				// DB atomic write failed — surfaces in Sentry since console is disabled in prod.
+				captureServerError(updateResult.error, {
+					area: "playlists",
+					operation: "save_playlist_match_config",
+					accountId: session.accountId,
+				});
 				throw new Error(
 					`Failed to save match config: ${updateResult.error.message}`,
 				);
@@ -609,6 +733,12 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					// Non-fatal: fields are written; invalidation failure is logged but
 					// does not roll back or mask the save. The snapshot will recompute
 					// on the next organic trigger.
+					captureServerError(applyResult.error, {
+						area: "playlists",
+						operation: "save_playlist_match_config",
+						accountId: session.accountId,
+						extra: { stage: "post_save_invalidation" },
+					});
 					console.error(
 						"[playlists] match config saved but snapshot invalidation failed:",
 						applyResult.error,
@@ -627,6 +757,12 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					if (Result.isError(syncResult)) {
 						// Non-fatal: filters are written; sync failure is logged but does
 						// not roll back the save. Sessions will re-sync on the next read.
+						captureServerError(syncResult.error, {
+							area: "playlists",
+							operation: "save_playlist_match_config",
+							accountId: session.accountId,
+							extra: { stage: "post_save_invalidation" },
+						});
 						console.error(
 							"[playlists] match filters saved but session sync failed:",
 							syncResult.error,
@@ -798,6 +934,13 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 		try {
 			eligibleSongIds = await getEntitledDataEnrichedSongIds(accountId);
 		} catch (err) {
+			// Eligibility RPC threw — surfaces in Sentry since console is disabled in prod.
+			captureServerError(err, {
+				area: "playlists",
+				operation: "get_playlist_match_filter_options",
+				accountId,
+				extra: { stage: "eligibility" },
+			});
 			console.error("[filter-options] eligibility fetch failed:", err);
 			throw new Error("Failed to load filter options");
 		}
@@ -810,6 +953,13 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 			]);
 
 		if (Result.isError(languageResult)) {
+			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(languageResult.error, {
+				area: "playlists",
+				operation: "get_playlist_match_filter_options",
+				accountId,
+				extra: { stage: "language" },
+			});
 			console.error(
 				"[filter-options] language aggregation failed:",
 				languageResult.error,
@@ -817,6 +967,13 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 			throw new Error("Failed to load filter options");
 		}
 		if (Result.isError(releaseYearResult)) {
+			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(releaseYearResult.error, {
+				area: "playlists",
+				operation: "get_playlist_match_filter_options",
+				accountId,
+				extra: { stage: "releaseYear" },
+			});
 			console.error(
 				"[filter-options] release-year aggregation failed:",
 				releaseYearResult.error,
@@ -824,6 +981,13 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 			throw new Error("Failed to load filter options");
 		}
 		if (Result.isError(likedAtResult)) {
+			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
+			captureServerError(likedAtResult.error, {
+				area: "playlists",
+				operation: "get_playlist_match_filter_options",
+				accountId,
+				extra: { stage: "likedAt" },
+			});
 			console.error(
 				"[filter-options] liked-at aggregation failed:",
 				likedAtResult.error,

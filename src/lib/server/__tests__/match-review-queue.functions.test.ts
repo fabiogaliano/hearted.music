@@ -41,6 +41,7 @@ const {
 	mockComputeVisibleSuggestionList,
 	mockCaptureVisiblePairsAtomic,
 	mockClearSongNewness,
+	mockCaptureException,
 } = vi.hoisted(() => {
 	// Shared from mock — overridden per-test via mockFrom.mockImplementation
 	const mockFrom = vi.fn();
@@ -69,6 +70,7 @@ const {
 		mockComputeVisibleSuggestionList: vi.fn(),
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockClearSongNewness: vi.fn().mockResolvedValue(undefined),
+		mockCaptureException: vi.fn(),
 	};
 });
 
@@ -98,6 +100,10 @@ vi.mock("@tanstack/react-start", () => {
 		}),
 	};
 });
+
+vi.mock("@sentry/cloudflare", () => ({
+	captureException: (...args: unknown[]) => mockCaptureException(...args),
+}));
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
@@ -1359,13 +1365,27 @@ describe("startOrResumeMatchReview", () => {
 	});
 
 	it("throws a user-safe error when the domain queue setup fails", async () => {
-		vi.mocked(createOrResumeQueue).mockResolvedValue(
-			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
-		);
+		const dbError = new DatabaseError({ code: "08006", message: "db down" });
+		vi.mocked(createOrResumeQueue).mockResolvedValue(Result.err(dbError));
 
 		await expect(
 			startOrResumeMatchReview({ data: { orientation: "song" } }),
 		).rejects.toThrow(/prepare your match review queue/i);
+
+		// The user-facing message is intentionally generic; the underlying DbError
+		// (code + tag) must still reach Sentry so the failure is diagnosable.
+		// Assert by identity (toBe) rather than deep-equal: DatabaseError is an
+		// IterableError, and a structural match would iterate it and panic.
+		const [capturedError, capturedContext] =
+			mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(dbError);
+		expect(capturedContext).toMatchObject({
+			tags: {
+				operation: "create_or_resume_queue",
+				db_error: "DatabaseError",
+				db_code: "08006",
+			},
+		});
 	});
 
 	it("throws a user-safe error when loading the queue items fails", async () => {
@@ -1376,13 +1396,19 @@ describe("startOrResumeMatchReview", () => {
 				appendedCount: 0,
 			}),
 		);
-		vi.mocked(fetchQueueItems).mockResolvedValue(
-			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
-		);
+		const dbError = new DatabaseError({ code: "08006", message: "db down" });
+		vi.mocked(fetchQueueItems).mockResolvedValue(Result.err(dbError));
 
 		await expect(
 			startOrResumeMatchReview({ data: { orientation: "song" } }),
 		).rejects.toThrow(/load your match review queue/i);
+
+		const [capturedError, capturedContext] =
+			mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(dbError);
+		expect(capturedContext).toMatchObject({
+			tags: { operation: "fetch_queue_items" },
+		});
 	});
 });
 

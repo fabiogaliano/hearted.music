@@ -22,6 +22,7 @@ import {
 	parseStripePortalUrl,
 } from "@/lib/domains/billing/stripe-redirects";
 import { requestSongUnlock as orchestrateUnlock } from "@/lib/domains/billing/unlocks";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 const NoInputSchema = z.undefined();
@@ -33,6 +34,13 @@ export const getBillingState = createServerFn({ method: "GET" })
 		const result = await readBillingState(supabase, context.session.accountId);
 
 		if (Result.isError(result)) {
+			// Runs in the _authenticated layout beforeLoad — on every authed page
+			// load — so a silent DbError here would blank the whole app invisibly.
+			captureServerError(result.error, {
+				area: "billing",
+				operation: "get_billing_state",
+				accountId: context.session.accountId,
+			});
 			throw new Error("Failed to load billing state");
 		}
 
@@ -241,10 +249,14 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 					config.sharedSecret,
 				);
 			} catch (err) {
-				console.error(
-					"[billing] checkout: failed to reach billing service:",
-					err instanceof Error ? err.message : err,
-				);
+				// console.* does not reach Sentry (enableLogs:false) — a billing
+				// service outage would otherwise be silent. Capture it.
+				captureServerError(err, {
+					area: "billing",
+					operation: "create_checkout_session",
+					accountId: context.session.accountId,
+					extra: { stage: "reach_service", offer: data.offer },
+				});
 				return { success: false, error: "billing_unavailable" };
 			}
 
@@ -254,8 +266,18 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 
 			if (!response.ok) {
 				const text = await response.text().catch(() => "");
-				console.error(
-					`[billing] checkout: billing service returned ${String(response.status)}: ${text}`,
+				captureServerError(
+					new Error(`billing checkout service returned ${response.status}`),
+					{
+						area: "billing",
+						operation: "create_checkout_session",
+						accountId: context.session.accountId,
+						extra: {
+							stage: "response_not_ok",
+							status: response.status,
+							body: text,
+						},
+					},
 				);
 				return { success: false, error: "billing_unavailable" };
 			}
@@ -264,10 +286,12 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 			try {
 				json = (await response.json()) as { checkout_url?: unknown };
 			} catch (err) {
-				console.error(
-					"[billing] checkout: failed to parse billing service response:",
-					err instanceof Error ? err.message : err,
-				);
+				captureServerError(err, {
+					area: "billing",
+					operation: "create_checkout_session",
+					accountId: context.session.accountId,
+					extra: { stage: "parse_response" },
+				});
 				return { success: false, error: "billing_unavailable" };
 			}
 
@@ -308,10 +332,12 @@ export const createPortalSession = createServerFn({ method: "POST" })
 				config.sharedSecret,
 			);
 		} catch (err) {
-			console.error(
-				"[billing] portal: failed to reach billing service:",
-				err instanceof Error ? err.message : err,
-			);
+			captureServerError(err, {
+				area: "billing",
+				operation: "create_portal_session",
+				accountId: context.session.accountId,
+				extra: { stage: "reach_service" },
+			});
 			return { success: false, error: "billing_unavailable" };
 		}
 
@@ -321,8 +347,18 @@ export const createPortalSession = createServerFn({ method: "POST" })
 
 		if (!response.ok) {
 			const text = await response.text().catch(() => "");
-			console.error(
-				`[billing] portal: billing service returned ${String(response.status)}: ${text}`,
+			captureServerError(
+				new Error(`billing portal service returned ${response.status}`),
+				{
+					area: "billing",
+					operation: "create_portal_session",
+					accountId: context.session.accountId,
+					extra: {
+						stage: "response_not_ok",
+						status: response.status,
+						body: text,
+					},
+				},
 			);
 			return { success: false, error: "billing_unavailable" };
 		}
@@ -331,10 +367,12 @@ export const createPortalSession = createServerFn({ method: "POST" })
 		try {
 			json = (await response.json()) as { portal_url?: unknown };
 		} catch (err) {
-			console.error(
-				"[billing] portal: failed to parse billing service response:",
-				err instanceof Error ? err.message : err,
-			);
+			captureServerError(err, {
+				area: "billing",
+				operation: "create_portal_session",
+				accountId: context.session.accountId,
+				extra: { stage: "parse_response" },
+			});
 			return { success: false, error: "billing_unavailable" };
 		}
 

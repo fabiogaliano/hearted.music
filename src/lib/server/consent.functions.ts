@@ -19,6 +19,7 @@ import {
 	resolveStoredConsent,
 	saveConsentPreference,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 
@@ -68,6 +69,12 @@ export const persistConsentDecision = createServerFn({ method: "POST" })
 				accountId: context.session.accountId,
 				status: data.status,
 				error: result.error,
+			});
+			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			captureServerError(result.error, {
+				area: "consent",
+				operation: "persist_consent_decision",
+				accountId: context.session.accountId,
 			});
 			throw new Error("Failed to persist consent decision");
 		}

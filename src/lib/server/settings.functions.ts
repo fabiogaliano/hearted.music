@@ -19,6 +19,7 @@ import {
 	MATCH_STRICTNESS_VALUES,
 	type MatchStrictness,
 } from "@/lib/domains/taste/song-matching/strictness";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { themeSchema } from "@/lib/theme/types";
 
@@ -42,6 +43,12 @@ export const updateThemePreference = createServerFn({ method: "POST" })
 		const result = await updateTheme(context.session.accountId, data.theme);
 
 		if (Result.isError(result)) {
+			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			captureServerError(result.error, {
+				area: "settings",
+				operation: "update_theme_preference",
+				accountId: context.session.accountId,
+			});
 			throw new Error("Failed to save theme preference");
 		}
 
@@ -83,6 +90,12 @@ export const updateMatchStrictnessPreference = createServerFn({
 		);
 
 		if (Result.isError(result)) {
+			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			captureServerError(result.error, {
+				area: "settings",
+				operation: "update_match_strictness_preference",
+				accountId: context.session.accountId,
+			});
 			throw new Error("Failed to save match strictness preference");
 		}
 
@@ -107,6 +120,12 @@ export const setMatchViewModePreference = createServerFn({ method: "POST" })
 		);
 
 		if (Result.isError(result)) {
+			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			captureServerError(result.error, {
+				area: "settings",
+				operation: "set_match_view_mode_preference",
+				accountId: context.session.accountId,
+			});
 			throw new Error("Failed to save match view mode preference");
 		}
 

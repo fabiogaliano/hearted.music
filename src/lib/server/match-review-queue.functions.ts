@@ -26,9 +26,31 @@ import type {
 	MatchReviewSubject,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 /** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
+
+/**
+ * The errors thrown out of the queue boundary below intentionally hide DB
+ * internals from the client — but until now they hid them from us too: the
+ * typed error was dropped, so a failed `/match` reached Sentry only as the
+ * generic client-side message, with no code or cause. Capture the error (tag +
+ * underlying PostgREST/PG code) before translating it, so the next failure is
+ * diagnosable server-side instead of requiring a manual repro.
+ */
+function reportQueueError(
+	error: unknown,
+	operation: string,
+	context: { accountId: string; orientation: MatchOrientation },
+): void {
+	captureServerError(error, {
+		area: "match_review_queue",
+		operation,
+		accountId: context.accountId,
+		extra: { orientation: context.orientation },
+	});
+}
 
 import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/preferences-queries";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
@@ -168,6 +190,10 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 			orientation,
 		);
 		if (Result.isError(queueResult)) {
+			reportQueueError(queueResult.error, "create_or_resume_queue", {
+				accountId: session.accountId,
+				orientation,
+			});
 			throw new Error(
 				"Could not prepare your match review queue. Please try again.",
 			);
@@ -184,6 +210,10 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 
 		const itemsResult = await fetchQueueItems(activeSession.id);
 		if (Result.isError(itemsResult)) {
+			reportQueueError(itemsResult.error, "fetch_queue_items", {
+				accountId: session.accountId,
+				orientation,
+			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
 			);
@@ -222,6 +252,10 @@ export const getMatchReview = createServerFn({ method: "GET" })
 			orientation,
 		);
 		if (Result.isError(sessionResult)) {
+			reportQueueError(sessionResult.error, "fetch_active_session", {
+				accountId: session.accountId,
+				orientation,
+			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
 			);
@@ -241,6 +275,10 @@ export const getMatchReview = createServerFn({ method: "GET" })
 		const activeSession = sessionResult.value;
 		const itemsResult = await fetchQueueItems(activeSession.id);
 		if (Result.isError(itemsResult)) {
+			reportQueueError(itemsResult.error, "fetch_queue_items", {
+				accountId: session.accountId,
+				orientation,
+			});
 			throw new Error(
 				"Could not load your match review queue. Please try again.",
 			);
@@ -528,8 +566,16 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 				itemId,
 				message: "Couldn't load this match card. Try again.",
 			};
-		} catch {
-			// Unexpected DB or runtime failures must not leak internals.
+		} catch (error) {
+			// Unexpected DB or runtime failures must not leak internals to the
+			// client — but they must still reach us, or a card that silently fails
+			// to load looks identical to "no matches" (the bug that started this).
+			captureServerError(error, {
+				area: "match_review_queue",
+				operation: "get_match_review_item",
+				accountId: session.accountId,
+				extra: { itemId },
+			});
 			return {
 				status: "retryable-error",
 				itemId,
@@ -942,8 +988,15 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				itemId,
 				message: "Couldn't load this match card. Try again.",
 			};
-		} catch {
-			// Unexpected DB or runtime failures must not leak internals.
+		} catch (error) {
+			// Unexpected DB or runtime failures must not leak internals to the
+			// client — but they must still reach us (see get_match_review_item).
+			captureServerError(error, {
+				area: "match_review_queue",
+				operation: "present_match_review_item",
+				accountId: session.accountId,
+				extra: { itemId },
+			});
 			return {
 				status: "retryable-error",
 				itemId,

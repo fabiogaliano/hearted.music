@@ -12,6 +12,7 @@ import {
 	getStats,
 	type LikedSongPageRow,
 } from "@/lib/domains/library/liked-songs/queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 const MatchingStatusSchema = z.enum([
@@ -175,6 +176,12 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 				// Surface the failure so the route loader falls back to the normal
 				// first-page load. Seeding an empty page here would hydrate the deep
 				// link as an empty library on any transient server/DB error.
+				// console.error never reaches Sentry with enableLogs:false; capture explicitly
+				captureServerError(result.error, {
+					area: "liked_songs",
+					operation: "get_liked_songs_deeplink_bootstrap",
+					accountId: session.accountId,
+				});
 				throw new Error(
 					`Liked-songs deep-link bootstrap failed: ${result.error.message}`,
 				);

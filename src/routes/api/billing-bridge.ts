@@ -33,6 +33,7 @@ import {
 	parseBridgePayload,
 } from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import {
 	clientIpFrom,
 	withinRateLimit,
@@ -133,6 +134,13 @@ export const Route = createFileRoute("/api/billing-bridge")({
 						"[billing-bridge] Failed to claim bridge event:",
 						claim.error ?? { unexpected: claim.data },
 					);
+					// Cannot record this event as claimed; upstream will retry and may reprocess.
+					captureServerError(claim.error ?? { unexpected: claim.data }, {
+						area: "billing_bridge",
+						operation: "claim_event",
+						accountId: payload.account_id,
+						extra: { stripe_event_id: payload.stripe_event_id },
+					});
 					return Response.json(
 						{ error: "Internal server error" },
 						{ status: 500 },
@@ -171,6 +179,13 @@ export const Route = createFileRoute("/api/billing-bridge")({
 							"[billing-bridge] Failed to record dispatch failure:",
 							failMark.error,
 						);
+						// Event row stuck in 'processing'; lease timeout is the only recovery path.
+						captureServerError(failMark.error, {
+							area: "billing_bridge",
+							operation: "mark_event_failed",
+							accountId: payload.account_id,
+							extra: { stripe_event_id: payload.stripe_event_id },
+						});
 					}
 					console.error("[billing-bridge] Handler dispatch failed:", err);
 					return Response.json(
@@ -191,6 +206,13 @@ export const Route = createFileRoute("/api/billing-bridge")({
 						"[billing-bridge] Failed to mark event processed:",
 						processMark.error,
 					);
+					// Handler succeeded but 'processed' stamp missing; next retry re-runs the handler.
+					captureServerError(processMark.error, {
+						area: "billing_bridge",
+						operation: "mark_event_processed",
+						accountId: payload.account_id,
+						extra: { stripe_event_id: payload.stripe_event_id },
+					});
 					return Response.json(
 						{ error: "Internal server error" },
 						{ status: 500 },

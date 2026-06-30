@@ -3,6 +3,7 @@ import type { AdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	completeOnboarding,
@@ -82,6 +83,13 @@ export async function completeOnboardingWithAllocations(
 					"[onboarding] Free allocation failed:",
 					allocationResult.error,
 				);
+				// Free-plan user silently loses their baseline song allocation.
+				captureServerError(allocationResult.error, {
+					area: "onboarding",
+					operation: "grant_free_allocation",
+					accountId,
+					extra: { stage: "grant_free_allocation" },
+				});
 			}
 		}
 	} else {
@@ -89,6 +97,13 @@ export async function completeOnboardingWithAllocations(
 			"[onboarding] Failed to read billing state for free allocation:",
 			billingResult.error,
 		);
+		// Cannot determine plan; free allocation is skipped for this account.
+		captureServerError(billingResult.error, {
+			area: "onboarding",
+			operation: "onboarding_read_billing_state",
+			accountId,
+			extra: { stage: "read_billing_state" },
+		});
 	}
 
 	return result;

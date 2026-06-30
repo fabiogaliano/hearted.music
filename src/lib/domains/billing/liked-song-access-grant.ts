@@ -12,6 +12,7 @@
 
 import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
@@ -129,6 +130,13 @@ export async function grantLikedSongAccessForAccount(
 				"[liked-song-access-grant] Failed to apply library processing change:",
 				applyResult.error,
 			);
+			// Grant committed in DB but enrichment trigger silently didn't fire.
+			captureServerError(applyResult.error, {
+				area: "billing",
+				operation: "grant_liked_song_access",
+				accountId: args.accountId,
+				extra: { stage: "apply_library_processing_change" },
+			});
 		}
 	}
 
@@ -159,6 +167,13 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			"[liked-song-access-grant] Failed to read existing grant row:",
 			readError.message,
 		);
+		// Cannot determine grant status; sync-time best-effort path is now blind.
+		captureServerError(readError, {
+			area: "billing",
+			operation: "maybe_grant_liked_song_access_after_sync",
+			accountId,
+			extra: { stage: "read_existing_grant" },
+		});
 		return;
 	}
 
@@ -185,6 +200,13 @@ export async function maybeGrantLikedSongAccessAfterSync(
 				"[liked-song-access-grant] Failed to apply pending grant:",
 				result.error,
 			);
+			// Pre-existing operator grant failed to apply; account loses the benefit silently.
+			captureServerError(result.error, {
+				area: "billing",
+				operation: "maybe_grant_liked_song_access_after_sync",
+				accountId,
+				extra: { stage: "apply_pending_grant", origin },
+			});
 		}
 		return;
 	}
@@ -199,6 +221,13 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			"[liked-song-access-grant] Waitlist eligibility check failed:",
 			eligibilityError.message,
 		);
+		// Eligibility RPC failed; eligible accounts silently miss waitlist auto-grant.
+		captureServerError(eligibilityError, {
+			area: "billing",
+			operation: "maybe_grant_liked_song_access_after_sync",
+			accountId,
+			extra: { stage: "waitlist_eligibility_check" },
+		});
 		return;
 	}
 
@@ -213,5 +242,12 @@ export async function maybeGrantLikedSongAccessAfterSync(
 			"[liked-song-access-grant] Failed to apply waitlist grant:",
 			result.error,
 		);
+		// Eligible account passed the RPC check but grant application failed.
+		captureServerError(result.error, {
+			area: "billing",
+			operation: "maybe_grant_liked_song_access_after_sync",
+			accountId,
+			extra: { stage: "apply_waitlist_grant" },
+		});
 	}
 }

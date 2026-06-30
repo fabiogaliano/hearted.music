@@ -14,6 +14,7 @@ import {
 	getPublicHandleIdentityByHandle,
 	type PublicHandleIdentity,
 } from "@/lib/domains/library/accounts/queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 // .max() is a transport guard only — it bounds the payload on this
 // unauthenticated endpoint (hit on every /@handle load) so an anonymous caller
@@ -33,6 +34,12 @@ export const getPublicHandleIdentity = createServerFn({ method: "GET" })
 			// and throw a generic error so DB internals (table/constraint names)
 			// never reach an anonymous caller.
 			console.error("[getPublicHandleIdentity] lookup failed:", result.error);
+			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			captureServerError(result.error, {
+				area: "public_handle",
+				operation: "get_public_handle_identity",
+				extra: { handle: data.handle },
+			});
 			throw new Error("Failed to load profile");
 		}
 
