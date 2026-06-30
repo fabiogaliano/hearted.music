@@ -132,6 +132,7 @@ async function runEnrichmentJob(
 			jobId: result.jobId,
 			requestSatisfied,
 			newCandidatesAvailable: result.newCandidatesAvailable,
+			newCandidateSongIds: result.newCandidateSongIds,
 		});
 		const settlement = await settleLibraryProcessing(change, {
 			actor,

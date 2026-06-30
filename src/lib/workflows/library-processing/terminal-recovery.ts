@@ -195,6 +195,9 @@ async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
 					jobId: job.id,
 					requestSatisfied: details.requestSatisfied,
 					newCandidatesAvailable: details.newCandidatesAvailable,
+					// Terminal recovery reconstructs from a measurement record that
+					// predates the newCandidateSongIds field; no IDs are available.
+					newCandidateSongIds: [],
 				}),
 				strategy: "completed_from_measurement",
 			};

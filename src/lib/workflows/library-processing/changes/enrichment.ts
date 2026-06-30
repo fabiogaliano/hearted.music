@@ -6,6 +6,7 @@ export const EnrichmentChanges = {
 		jobId: string;
 		requestSatisfied: boolean;
 		newCandidatesAvailable: boolean;
+		newCandidateSongIds: string[];
 	}): Extract<LibraryProcessingChange, { kind: "enrichment_completed" }> {
 		return { kind: "enrichment_completed", ...opts };
 	},

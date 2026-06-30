@@ -40,6 +40,7 @@ export type LibraryProcessingChange =
 			jobId: string;
 			requestSatisfied: boolean;
 			newCandidatesAvailable: boolean;
+			newCandidateSongIds: string[];
 	  }
 	| {
 			kind: "enrichment_stopped";

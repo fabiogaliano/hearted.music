@@ -156,6 +156,7 @@ describe("scheduler", () => {
 					jobId: "old-job",
 					requestSatisfied: false,
 					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-a"],
 				},
 				{ satisfiedMarker: null, batchSequence: 2 },
 			);
@@ -400,6 +401,7 @@ describe("scheduler", () => {
 				jobId: "job-1",
 				requestSatisfied: true,
 				newCandidatesAvailable: false,
+				newCandidateSongIds: [],
 			});
 			expect(result).toBe(false);
 		});
@@ -515,6 +517,7 @@ describe("scheduler", () => {
 				jobId: "job-50",
 				requestSatisfied: true,
 				newCandidatesAvailable: false,
+				newCandidateSongIds: [],
 			});
 
 			expect(result.satisfiedMarker).toBe("2026-03-15T00:00:00Z");
@@ -532,6 +535,7 @@ describe("scheduler", () => {
 				jobId: "job-gone",
 				requestSatisfied: true,
 				newCandidatesAvailable: false,
+				newCandidateSongIds: [],
 			});
 
 			expect(result).toEqual({ satisfiedMarker: null, batchSequence: null });

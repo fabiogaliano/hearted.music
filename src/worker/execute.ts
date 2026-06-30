@@ -22,6 +22,7 @@ export interface EnrichmentExecuteResult {
 	batchSequence: number;
 	hasMoreSongs: boolean;
 	newCandidatesAvailable: boolean;
+	newCandidateSongIds: string[];
 	readyCount: number;
 	doneCount: number;
 	succeededCount: number;
@@ -84,6 +85,7 @@ export async function executeEnrichmentJob(
 		batchSequence: progress.batchSequence ?? 0,
 		hasMoreSongs: result.hasMoreSongs,
 		newCandidatesAvailable: result.newCandidatesAvailable,
+		newCandidateSongIds: result.newCandidateSongIds,
 		readyCount: result.readyCount,
 		doneCount: result.doneCount,
 		succeededCount: result.succeededCount,

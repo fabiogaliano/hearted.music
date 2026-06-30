@@ -263,6 +263,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: true,
 					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -288,6 +289,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: true,
 					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -313,6 +315,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: true,
 					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-candidate-1"],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -342,6 +345,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: false,
 					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-candidate-1"],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -370,6 +374,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: false,
 					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-candidate-1"],
 				},
 				{
 					hasTargetPlaylists: false,
@@ -395,6 +400,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: false,
 					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -764,6 +770,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: true,
 					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);
@@ -795,6 +802,7 @@ describe("reconcileLibraryProcessing", () => {
 					jobId: "job-1",
 					requestSatisfied: true,
 					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
 			);

@@ -90,6 +90,7 @@ const ENRICHMENT_EXEC_RESULT = {
 	batchSequence: 0,
 	hasMoreSongs: false,
 	newCandidatesAvailable: true,
+	newCandidateSongIds: ["song-a", "song-b"],
 	readyCount: 5,
 	doneCount: 20,
 	succeededCount: 18,
@@ -454,6 +455,7 @@ describe("runClaimedJob", () => {
 			batchSequence: 0,
 			hasMoreSongs: true,
 			newCandidatesAvailable: false,
+			newCandidateSongIds: [] as string[],
 			readyCount: 1,
 			doneCount: 0,
 			succeededCount: 0,
@@ -466,6 +468,7 @@ describe("runClaimedJob", () => {
 			batchSequence: 0,
 			hasMoreSongs: true,
 			newCandidatesAvailable: false,
+			newCandidateSongIds: [] as string[],
 			readyCount: 3,
 			doneCount: 2,
 			succeededCount: 1,
@@ -591,5 +594,21 @@ describe("runClaimedJob", () => {
 			expect(call?.kind).toBe("enrichment_completed");
 			expect(call?.requestSatisfied).toBe(true);
 		});
+	});
+
+	it("propagates newCandidateSongIds into the enrichment_completed change", async () => {
+		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+		vi.mocked(markJobCompleted).mockResolvedValue(
+			Result.ok(makeJob({ status: "completed" })),
+		);
+
+		await runClaimedJob(makeJob(), "@test");
+
+		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "enrichment_completed",
+				newCandidateSongIds: ENRICHMENT_EXEC_RESULT.newCandidateSongIds,
+			}),
+		);
 	});
 });

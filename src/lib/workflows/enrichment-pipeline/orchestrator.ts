@@ -449,6 +449,7 @@ async function enrichSongs(
 export interface ChunkResult {
 	hasMoreSongs: boolean;
 	newCandidatesAvailable: boolean;
+	newCandidateSongIds: string[];
 	readyCount: number;
 	doneCount: number;
 	succeededCount: number;
@@ -488,14 +489,19 @@ export async function executeWorkerChunk(
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);
 
+	let newCandidateSongIds: string[] = [];
 	let newCandidatesAvailable = batch.songIds.length > 0;
 	try {
 		const enrichedAfter = await loadEntitledReadyInBatch(accountId, batchIds);
-		newCandidatesAvailable = [...enrichedAfter].some(
+		newCandidateSongIds = [...enrichedAfter].filter(
 			(songId) => !enrichedBefore.has(songId),
 		);
+		newCandidatesAvailable = newCandidateSongIds.length > 0;
 	} catch {
-		// Preserve the prior behavior if the post-run readiness probe fails.
+		// Preserve the prior boolean behavior if the post-run readiness probe fails.
+		// IDs fall back to all batch songs as a conservative estimate so the invariant
+		// newCandidatesAvailable === (newCandidateSongIds.length > 0) is maintained.
+		newCandidateSongIds = batch.songIds.length > 0 ? [...batchIds] : [];
 		newCandidatesAvailable = batch.songIds.length > 0;
 	}
 
@@ -505,6 +511,7 @@ export async function executeWorkerChunk(
 	return {
 		hasMoreSongs,
 		newCandidatesAvailable,
+		newCandidateSongIds,
 		readyCount: batch.songIds.length,
 		doneCount: progress.done,
 		succeededCount: progress.succeeded,

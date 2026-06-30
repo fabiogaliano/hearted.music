@@ -808,4 +808,59 @@ describe("newCandidatesAvailable readiness", () => {
 
 		expect(result.newCandidatesAvailable).toBe(false);
 	});
+
+	it("newCandidateSongIds contains only the newly-ready ids", async () => {
+		const existingId = "already-ready";
+		const newId = "newly-ready";
+		const workPlan = makeWorkPlan({
+			allSongIds: [existingId, newId],
+			needEmbedding: [newId],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch([existingId, newId]));
+
+		// existingId was ready before; newId becomes ready after this chunk.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([existingId])
+			.mockResolvedValueOnce([existingId, newId]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidateSongIds).toEqual([newId]);
+	});
+
+	it("invariant: newCandidatesAvailable === newCandidateSongIds.length > 0 when new candidates exist", async () => {
+		const songId = "new-candidate";
+		readinessWorkPlan(songId);
+
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([songId]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidateSongIds.length).toBeGreaterThan(0);
+		expect(result.newCandidatesAvailable).toBe(true);
+		expect(result.newCandidatesAvailable).toBe(
+			result.newCandidateSongIds.length > 0,
+		);
+	});
+
+	it("invariant: newCandidatesAvailable === newCandidateSongIds.length > 0 when no new candidates", async () => {
+		const songId = "no-change-song";
+		readinessWorkPlan(songId);
+
+		// Song was already ready before and after — nothing newly available.
+		mockGetEntitledDataEnrichedSongIds
+			.mockResolvedValueOnce([songId])
+			.mockResolvedValueOnce([songId]);
+
+		const result = await executeWorkerChunk("account-1", "job-1", 10, 0);
+
+		expect(result.newCandidateSongIds).toEqual([]);
+		expect(result.newCandidatesAvailable).toBe(false);
+		expect(result.newCandidatesAvailable).toBe(
+			result.newCandidateSongIds.length > 0,
+		);
+	});
 });
