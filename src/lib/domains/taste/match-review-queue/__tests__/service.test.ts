@@ -91,6 +91,7 @@ import {
 	getOrderedUndecidedPlaylistIds,
 	getOrderedUndecidedSongIds,
 	getQueueSummary,
+	hasFirstVisibleReviewSubject,
 	markItemPresented,
 	markItemResolved,
 	syncActiveQueue,
@@ -2173,5 +2174,258 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 		if (Result.isOk(result)) {
 			expect(result.value.playlistIds).toEqual(["pl-B", "pl-A"]);
 		}
+	});
+});
+
+// ============================================================================
+// hasFirstVisibleReviewSubject
+// ============================================================================
+
+describe("hasFirstVisibleReviewSubject", () => {
+	// Returns a Supabase mock that answers the snapshot lookup with the given id
+	// and the entitlement RPC with the given song ids. Suitable for snapshot-path
+	// tests where active queues are empty (default mocks).
+	function snapshotAndEntitlementClient(
+		snapshotId: string,
+		entitledSongIds: string[],
+	) {
+		return {
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi
+					.fn()
+					.mockResolvedValue({ data: { id: snapshotId }, error: null }),
+			})),
+			rpc: vi.fn().mockResolvedValue({
+				data: entitledSongIds.map((song_id) => ({ song_id })),
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
+	}
+
+	it("returns false when the snapshot's only pair is below the balanced strictness threshold (fused_score 0.49)", async () => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.49,
+					fused_score: 0.49,
+				},
+			]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(false);
+	});
+
+	it("returns true when the snapshot has a visible undecided pair at fused_score 0.50", async () => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.5,
+					fused_score: 0.5,
+				},
+			]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(true);
+	});
+
+	it("returns false when the only above-threshold pair has already been decided", async () => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok([
+				{
+					id: "dec-1",
+					account_id: ACCOUNT_ID,
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					decision: "dismissed" as const,
+					decided_at: "2026-06-15T00:00:00Z",
+					created_at: "2026-06-15T00:00:00Z",
+					snapshot_id: null,
+					model_rank: null,
+					visible_rank: null,
+					served_orientation: null,
+					queue_item_id: null,
+				},
+			]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(false);
+	});
+
+	it("returns false when the only pair is hidden by playlist filters", async () => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-fr"]),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-fr",
+					playlist_id: "pl-A",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		// pl-A filters to English only; this French song fails it.
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(
+				new Map<string, PlaylistMatchFiltersV1 | null>([
+					["pl-A", { version: 1, languages: { codes: ["en"] } }],
+				]),
+			),
+		);
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
+			Result.ok(
+				new Map([
+					[
+						"song-fr",
+						{
+							language: "fr",
+							languageSecondary: null,
+							releaseYear: null,
+							vocalGender: null,
+							likedAt: null,
+						},
+					],
+				]),
+			),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(false);
+	});
+
+	it("returns false when the only song in the snapshot is not entitled", async () => {
+		// Entitlement RPC returns empty — the song is not entitled.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, []),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(false);
+	});
+
+	it("returns true when a playlist-mode subject is visible in the snapshot", async () => {
+		// An owned playlist with one entitled, above-threshold, undecided suggestion
+		// song produces a visible playlist subject even without a song subject.
+		// (Both orientations contribute — this exercises the playlist path.)
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
+		);
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-A",
+					score: 0.8,
+					fused_score: null,
+				},
+			]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		// Any pair that yields a playlist subject also yields a song subject under the
+		// current data model, so isolating the playlist branch from the song branch is
+		// structurally impossible here — this test exercises the playlist code path but
+		// the song path alone would also satisfy the OR.
+		if (Result.isOk(result)) expect(result.value).toBe(true);
+	});
+
+	it("returns true immediately when an active queue has pending items, without reading match results", async () => {
+		// Active song queue already has pending items — short-circuit before snapshot.
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(2));
+		vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(
+			Result.ok(["song-1", "song-2"]),
+		);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(true);
+		// getMatchResults must not be called — the queue summary short-circuited.
+		expect(getMatchResults).not.toHaveBeenCalled();
+	});
+
+	it("returns false when there is no snapshot and no active queue", async () => {
+		// Default beforeEach: fetchActiveSession → null, maybeSingle → null.
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value).toBe(false);
+	});
+
+	it("propagates a DB error from the snapshot lookup rather than collapsing it to false", async () => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi.fn().mockResolvedValue({
+					data: null,
+					error: { code: "08006", message: "conn lost" },
+				}),
+			})),
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
+
+		expect(result).toBeErr();
 	});
 });

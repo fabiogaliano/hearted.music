@@ -160,6 +160,7 @@ export const ReadyWhileEnrichmentRunning: Story = () => {
 			},
 			matchSnapshotRefresh: null,
 			firstMatchReady: false,
+			firstVisibleMatchReady: false,
 		};
 		queryClient.setQueryData(["active-jobs", props.accountId], activeJobs);
 		return queryClient;

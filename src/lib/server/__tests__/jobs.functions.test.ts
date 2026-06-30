@@ -1,13 +1,13 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import { getActiveJobs } from "../jobs.functions";
 
 const {
 	mockAuthContext,
 	mockLoadLibraryProcessingState,
 	mockGetJobById,
-	mockMatchSnapshotMaybeSingle,
-	mockMatchResultMaybeSingle,
+	mockHasFirstVisibleReviewSubject,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -15,8 +15,7 @@ const {
 	},
 	mockLoadLibraryProcessingState: vi.fn(),
 	mockGetJobById: vi.fn(),
-	mockMatchSnapshotMaybeSingle: vi.fn(),
-	mockMatchResultMaybeSingle: vi.fn(),
+	mockHasFirstVisibleReviewSubject: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -58,34 +57,9 @@ vi.mock("@/lib/platform/jobs/repository", async () => {
 	};
 });
 
-vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: () => ({
-		from: (table: string) => {
-			if (table === "match_snapshot") {
-				return {
-					select: () => ({
-						eq: () => ({
-							order: () => ({
-								limit: () => ({
-									maybeSingle: mockMatchSnapshotMaybeSingle,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-
-			return {
-				select: () => ({
-					eq: () => ({
-						limit: () => ({
-							maybeSingle: mockMatchResultMaybeSingle,
-						}),
-					}),
-				}),
-			};
-		},
-	}),
+vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
+	hasFirstVisibleReviewSubject: (...args: unknown[]) =>
+		mockHasFirstVisibleReviewSubject(...args),
 }));
 
 describe("jobs.functions", () => {
@@ -95,32 +69,46 @@ describe("jobs.functions", () => {
 		mockGetJobById.mockResolvedValue(Result.ok(null));
 	});
 
-	it("reports firstMatchReady=false when the latest snapshot has no matches", async () => {
-		mockMatchSnapshotMaybeSingle.mockResolvedValue({
-			data: { id: "ctx-1" },
-			error: null,
-		});
-		mockMatchResultMaybeSingle.mockResolvedValue({ data: null, error: null });
+	it("reports firstMatchReady=false and firstVisibleMatchReady=false when no visible review subject exists", async () => {
+		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(false));
 
 		const result = await getActiveJobs();
 
+		expect(result.firstMatchReady).toBe(false);
+		expect(result.firstVisibleMatchReady).toBe(false);
+		// matchSnapshotRefresh is null and targetPlaylistMatchRefresh is absent when
+		// getJobById returns null (no jobs running) — guards against silent regressions
+		// where a missing job surfaces as undefined instead of being omitted/nulled.
 		expect(result.matchSnapshotRefresh).toBeNull();
 		expect("targetPlaylistMatchRefresh" in result).toBe(false);
-		expect(result.firstMatchReady).toBe(false);
 	});
 
-	it("reports firstMatchReady=true when the latest snapshot has at least one match", async () => {
-		mockMatchSnapshotMaybeSingle.mockResolvedValue({
-			data: { id: "ctx-2" },
-			error: null,
-		});
-		mockMatchResultMaybeSingle.mockResolvedValue({
-			data: { id: "match-1" },
-			error: null,
-		});
+	it("reports firstMatchReady=true and firstVisibleMatchReady=true when a visible review subject exists", async () => {
+		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
 
 		const result = await getActiveJobs();
 
 		expect(result.firstMatchReady).toBe(true);
+		expect(result.firstVisibleMatchReady).toBe(true);
+	});
+
+	it("degrades firstMatchReady and firstVisibleMatchReady to false when the helper returns a DB error", async () => {
+		// Transient errors must not surface as a thrown exception — graceful false.
+		mockHasFirstVisibleReviewSubject.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		const result = await getActiveJobs();
+
+		expect(result.firstMatchReady).toBe(false);
+		expect(result.firstVisibleMatchReady).toBe(false);
+	});
+
+	it("firstMatchReady always mirrors firstVisibleMatchReady (backward-compat alias)", async () => {
+		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
+
+		const result = await getActiveJobs();
+
+		expect(result.firstMatchReady).toBe(result.firstVisibleMatchReady);
 	});
 });

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { createAdminSupabaseClient } from "@/lib/data/client";
+import { hasFirstVisibleReviewSubject } from "@/lib/domains/taste/match-review-queue/service";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type ParsedJobProgress,
@@ -25,7 +25,11 @@ export interface ActiveJobInfo {
 export interface ActiveJobs {
 	enrichment: ActiveJobInfo | null;
 	matchSnapshotRefresh: ActiveJobInfo | null;
+	// firstVisibleMatchReady is the authoritative check (visible queue subject).
+	// firstMatchReady is kept for backward-compatibility during migration and
+	// always mirrors firstVisibleMatchReady.
 	firstMatchReady: boolean;
+	firstVisibleMatchReady: boolean;
 }
 
 export const getActiveJobs = createServerFn({ method: "GET" })
@@ -33,10 +37,17 @@ export const getActiveJobs = createServerFn({ method: "GET" })
 	.handler(async ({ context }): Promise<ActiveJobs> => {
 		const { session } = context;
 
-		const [stateResult, firstMatchResult] = await Promise.all([
+		const [stateResult, firstVisibleResult] = await Promise.all([
 			loadLibraryProcessingState(session.accountId),
-			deriveFirstMatchReady(session.accountId),
+			hasFirstVisibleReviewSubject(session.accountId),
 		]);
+
+		// Degrade gracefully on helper error — a transient DB failure must not
+		// surface as a permanent false-empty state. No throw, matches the pattern
+		// of the original deriveFirstMatchReady which also returned false on error.
+		const firstVisibleMatchReady = Result.isOk(firstVisibleResult)
+			? firstVisibleResult.value
+			: false;
 
 		let enrichment: ActiveJobInfo | null = null;
 		let matchSnapshotRefresh: ActiveJobInfo | null = null;
@@ -62,7 +73,8 @@ export const getActiveJobs = createServerFn({ method: "GET" })
 		return {
 			enrichment,
 			matchSnapshotRefresh,
-			firstMatchReady: firstMatchResult,
+			firstMatchReady: firstVisibleMatchReady,
+			firstVisibleMatchReady,
 		};
 	});
 
@@ -81,35 +93,6 @@ async function resolveJobInfo(
 		status: job.status,
 		progress: extractProgressCounts(parseJobProgress(job.type, job.progress)),
 	};
-}
-
-async function deriveFirstMatchReady(accountId: string): Promise<boolean> {
-	const supabase = createAdminSupabaseClient();
-	const { data: latestSnapshot, error: latestSnapshotError } = await supabase
-		.from("match_snapshot")
-		.select("id")
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (latestSnapshotError || latestSnapshot === null) {
-		return false;
-	}
-
-	const { data: latestMatchResult, error: latestMatchResultError } =
-		await supabase
-			.from("match_result")
-			.select("id")
-			.eq("snapshot_id", latestSnapshot.id)
-			.limit(1)
-			.maybeSingle();
-
-	if (latestMatchResultError) {
-		return false;
-	}
-
-	return latestMatchResult !== null;
 }
 
 function extractProgressCounts(parsed: ParsedJobProgress): ProgressCounts {

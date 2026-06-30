@@ -915,6 +915,74 @@ export async function getOrderedUndecidedPlaylistIds(
 }
 
 /**
+ * Answers: "Would the latest snapshot or an active queue produce at least one
+ * visible unresolved review subject in either orientation under current
+ * visibility policy?"
+ *
+ * This is the authoritative first-visible-match readiness check. It is
+ * deliberately coarser than per-session visibility because its purpose is
+ * "any card could render" — it does not freeze strictness to a session bar.
+ * The live resolveMinMatchScore is used for the snapshot fallback, matching
+ * the existing no-active-queue dashboard preview behavior.
+ *
+ * Order of checks:
+ * 1. Active queue summaries for both orientations in parallel — a pending
+ *    item means a visible subject already exists; short-circuit immediately.
+ * 2. Latest snapshot via fetchLatestSnapshotId — no snapshot ⇒ false.
+ * 3. Snapshot-derived subjects for both orientations (reusing
+ *    getOrderedUndecidedSongIds / getOrderedUndecidedPlaylistIds, which apply
+ *    the full entitlement + ownership + strictness + filter + decision logic).
+ *
+ * DB errors propagate as Result.err — they must not be read as "not ready."
+ */
+export async function hasFirstVisibleReviewSubject(
+	accountId: string,
+): Promise<Result<boolean, DbError>> {
+	// Step 1: active queue summaries tell us if pending items already exist.
+	const [songSummaryResult, playlistSummaryResult] = await Promise.all([
+		getQueueSummary(accountId, "song"),
+		getQueueSummary(accountId, "playlist"),
+	]);
+
+	if (Result.isError(songSummaryResult)) return songSummaryResult;
+	if (Result.isError(playlistSummaryResult)) return playlistSummaryResult;
+
+	if (
+		songSummaryResult.value.pendingCount > 0 ||
+		playlistSummaryResult.value.pendingCount > 0
+	) {
+		return Result.ok(true);
+	}
+
+	// Step 2: fall back to snapshot — load via the private helper so the
+	// error-vs-no-snapshot distinction is preserved (same pattern as
+	// createQueueFromLatestSnapshot).
+	const snapshotIdResult = await fetchLatestSnapshotId(accountId);
+	if (Result.isError(snapshotIdResult)) return snapshotIdResult;
+
+	const snapshotId = snapshotIdResult.value;
+	if (!snapshotId) {
+		return Result.ok(false);
+	}
+
+	// Step 3: neither orientation has a pending active queue, so check whether
+	// the snapshot would produce visible subjects. Both helpers are independent;
+	// run them in parallel to avoid serial latency.
+	const [songSubjectsResult, playlistSubjectsResult] = await Promise.all([
+		getOrderedUndecidedSongIds(snapshotId, accountId),
+		getOrderedUndecidedPlaylistIds(snapshotId, accountId),
+	]);
+
+	if (Result.isError(songSubjectsResult)) return songSubjectsResult;
+	if (Result.isError(playlistSubjectsResult)) return playlistSubjectsResult;
+
+	return Result.ok(
+		songSubjectsResult.value.songIds.length > 0 ||
+			playlistSubjectsResult.value.playlistIds.length > 0,
+	);
+}
+
+/**
  * Marks a queue item as active: sets state=active, records presented_at,
  * and clears newness for the song durably.
  *
