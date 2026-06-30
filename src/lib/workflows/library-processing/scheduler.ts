@@ -46,6 +46,8 @@ export function describeTrigger(
 	switch (changeKind) {
 		case "onboarding_target_selection_confirmed":
 			return "starter playlists picked";
+		case "first_match_setup_completed":
+			return "first matching setup completed";
 		case "library_synced":
 			return "Spotify library synced";
 		case "enrichment_completed":
@@ -126,6 +128,10 @@ function changeMayNeedTargetSongEnrichment(
 ): boolean {
 	switch (change.kind) {
 		case "onboarding_target_selection_confirmed":
+			return true;
+		case "first_match_setup_completed":
+			// First target playlist was just saved — its songs may need enrichment
+			// before they become match candidates.
 			return true;
 		case "library_synced":
 			return change.changes.targetPlaylists.trackMembershipChanged;

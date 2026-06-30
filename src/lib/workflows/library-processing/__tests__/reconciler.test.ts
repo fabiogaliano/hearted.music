@@ -77,6 +77,45 @@ describe("reconcileLibraryProcessing", () => {
 		});
 	});
 
+	describe("first_match_setup_completed", () => {
+		it("advances both workflows and emits both effects when targets exist", () => {
+			const { state, effects } = reconcile(
+				makeState(),
+				{
+					kind: "first_match_setup_completed",
+					accountId: "acct-1",
+				},
+				{ hasTargetPlaylists: true },
+			);
+
+			expect(state.enrichment.requestedAt).toBe("2026-03-27T12:00:00Z");
+			expect(state.matchSnapshotRefresh.requestedAt).toBe(
+				"2026-03-27T12:00:00Z",
+			);
+			expect(effects).toHaveLength(2);
+			expect(effects[0].kind).toBe("ensure_enrichment_job");
+			expect(effects[1].kind).toBe("ensure_match_snapshot_refresh_job");
+		});
+
+		it("advances only match snapshot refresh when no targets exist", () => {
+			const { state, effects } = reconcile(
+				makeState(),
+				{
+					kind: "first_match_setup_completed",
+					accountId: "acct-1",
+				},
+				{ hasTargetPlaylists: false },
+			);
+
+			expect(state.enrichment.requestedAt).toBeNull();
+			expect(state.matchSnapshotRefresh.requestedAt).toBe(
+				"2026-03-27T12:00:00Z",
+			);
+			expect(effects).toHaveLength(1);
+			expect(effects[0].kind).toBe("ensure_match_snapshot_refresh_job");
+		});
+	});
+
 	describe("library_synced", () => {
 		it("liked songs added with targets: advances both workflows", () => {
 			const { state, effects } = reconcile(makeState(), {

@@ -80,6 +80,20 @@ export function reconcileLibraryProcessing(
 			break;
 		}
 
+		case "first_match_setup_completed": {
+			// User just crossed into valid matching setup for the first time. Advance
+			// both workflows so the scheduler can promote them to interactive priority
+			// (Phase 3) and select bootstrap-mode enrichment (Phase 5).
+			if (hasTargetPlaylists) {
+				enrichment = advanceRequestedAt(enrichment, requestMarker);
+			}
+			matchSnapshotRefresh = advanceRequestedAt(
+				matchSnapshotRefresh,
+				requestMarker,
+			);
+			break;
+		}
+
 		case "library_synced": {
 			const { likedSongs, targetPlaylists } = change.changes;
 

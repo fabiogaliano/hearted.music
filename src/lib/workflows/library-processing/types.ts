@@ -19,6 +19,7 @@ export type LibraryProcessingChange =
 			kind: "onboarding_target_selection_confirmed";
 			accountId: string;
 	  }
+	| { kind: "first_match_setup_completed"; accountId: string }
 	| {
 			kind: "library_synced";
 			accountId: string;

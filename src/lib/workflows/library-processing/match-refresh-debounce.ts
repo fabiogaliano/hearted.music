@@ -10,6 +10,7 @@ export const MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE: Record<
 > = {
 	playlist_management_session_flushed: 8_000,
 	onboarding_target_selection_confirmed: 0,
+	first_match_setup_completed: 0,
 	library_synced: 0,
 	enrichment_completed: 0,
 	enrichment_stopped: 0,

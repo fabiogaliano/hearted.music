@@ -34,7 +34,10 @@ import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
-import { syncActiveQueue } from "@/lib/domains/taste/match-review-queue/service";
+import {
+	hasFirstVisibleReviewSubject,
+	syncActiveQueue,
+} from "@/lib/domains/taste/match-review-queue/service";
 import {
 	canonicalizeGenre,
 	isGenre,
@@ -44,6 +47,7 @@ import { captureProductEventBestEffort } from "@/lib/observability/capture-produ
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
+import { FirstMatchSetupChanges } from "@/lib/workflows/library-processing/changes/first-match-setup";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
@@ -282,6 +286,47 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 				accountId: session.accountId,
 			});
 			throw new Error(`Failed to set playlist target: ${result.error.message}`);
+		}
+
+		// When the user adds their first target playlist and a visible match card
+		// does not yet exist, trigger first-match setup immediately so the scheduler
+		// can promote the match-snapshot refresh to interactive priority (Phase 3) and
+		// select bootstrap enrichment (Phase 5). This avoids waiting for the deferred
+		// pagehide/unmount flush, which only queues a standard refresh.
+		if (data.isTarget) {
+			const targetsResult = await getTargetPlaylists(session.accountId);
+			const isFirstTarget =
+				Result.isOk(targetsResult) && targetsResult.value.length === 1;
+
+			if (isFirstTarget) {
+				const readyResult = await hasFirstVisibleReviewSubject(
+					session.accountId,
+				);
+				// DB error → treat as ready so a transient blip does not accidentally
+				// fire the bootstrap path; mirrors the Phase 3 scheduler degradation.
+				const firstVisibleReady =
+					Result.isError(readyResult) || readyResult.value;
+
+				if (!firstVisibleReady) {
+					const applyResult = await applyLibraryProcessingChange(
+						FirstMatchSetupChanges.setupCompleted(session.accountId),
+					);
+					if (Result.isError(applyResult)) {
+						// Non-fatal: the playlist row is already committed. The deferred
+						// flush on page exit still fires a standard refresh.
+						captureServerError(applyResult.error, {
+							area: "playlists",
+							operation: "set_playlist_target",
+							accountId: session.accountId,
+							extra: { stage: "first_match_setup" },
+						});
+						console.error(
+							"[playlists] first target set but first-match setup trigger failed:",
+							applyResult.error,
+						);
+					}
+				}
+			}
 		}
 
 		return { success: true, playlist: result.value };

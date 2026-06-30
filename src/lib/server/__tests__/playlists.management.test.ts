@@ -24,6 +24,7 @@ const {
 	mockApplyLibraryProcessingChange,
 	mockUpdatePlaylistGenrePills,
 	mockSyncActiveQueue,
+	mockHasFirstVisibleReviewSubject,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -38,6 +39,7 @@ const {
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockUpdatePlaylistGenrePills: vi.fn(),
 	mockSyncActiveQueue: vi.fn(),
+	mockHasFirstVisibleReviewSubject: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -89,6 +91,8 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
+	hasFirstVisibleReviewSubject: (...args: unknown[]) =>
+		mockHasFirstVisibleReviewSubject(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -474,6 +478,8 @@ describe("setPlaylistTargetMutation", () => {
 		mockGetPlaylistById.mockResolvedValue(
 			Result.ok(makePlaylist({ account_id: "acct-1" })),
 		);
+		// Default: already has a visible card → trigger is skipped
+		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
 	});
 
 	it("sets target flag via setPlaylistTarget", async () => {
@@ -502,6 +508,93 @@ describe("setPlaylistTargetMutation", () => {
 				data: { playlistId: "uuid-1", isTarget: true },
 			}),
 		).rejects.toThrow("Failed to set playlist target");
+	});
+
+	describe("first-match setup trigger", () => {
+		beforeEach(() => {
+			mockSetPlaylistTarget.mockResolvedValue(
+				Result.ok(makePlaylist({ is_target: true })),
+			);
+			mockApplyLibraryProcessingChange.mockResolvedValue(
+				Result.ok(makeApplyOutcome()),
+			);
+		});
+
+		it("fires first_match_setup_completed when first target and no visible card", async () => {
+			// Exactly one target after the write → isFirstTarget === true
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([makePlaylist({ is_target: true })]),
+			);
+			// No visible card yet → probe returns false → trigger must fire
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(false));
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+				expect.objectContaining({ kind: "first_match_setup_completed" }),
+			);
+		});
+
+		it("does not fire when visible card already exists", async () => {
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([makePlaylist({ is_target: true })]),
+			);
+			// Probe returns true (ready) → trigger must be skipped
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		});
+
+		it("does not fire when this is not the first target (≥2 targets)", async () => {
+			// Two targets → not the first → skip probe and trigger entirely
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([
+					makePlaylist({ id: "uuid-1", is_target: true }),
+					makePlaylist({ id: "uuid-2", is_target: true }),
+				]),
+			);
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(false));
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		});
+
+		it("does not fire when isTarget is false", async () => {
+			// Removing a target — trigger branch is guarded by data.isTarget
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: false },
+			});
+
+			expect(mockHasFirstVisibleReviewSubject).not.toHaveBeenCalled();
+			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		});
+
+		it("does not fire when probe returns a DB error (degrades to ready)", async () => {
+			// Fix A: error → firstVisibleReady=true → trigger skipped, not fired
+			mockGetTargetPlaylists.mockResolvedValue(
+				Result.ok([makePlaylist({ is_target: true })]),
+			);
+			mockHasFirstVisibleReviewSubject.mockResolvedValue(
+				Result.err(
+					new DatabaseError({ code: "42000", message: "probe error" }),
+				),
+			);
+
+			await setPlaylistTargetMutation({
+				data: { playlistId: "uuid-1", isTarget: true },
+			});
+
+			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		});
 	});
 });
 
