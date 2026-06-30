@@ -7,6 +7,7 @@ import {
 	getPlaylistSongs,
 	getTargetPlaylists,
 } from "@/lib/domains/library/playlists/queries";
+import { hasFirstVisibleReviewSubject } from "@/lib/domains/taste/match-review-queue/service";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import {
@@ -257,6 +258,20 @@ export async function executeEffect(
 			change,
 		);
 
+		// Compute first-visible readiness to decide whether this refresh needs
+		// interactive priority (bootstrap) or normal billing priority (steady-state).
+		// On DB error we degrade to billingBand — treating the system as already
+		// ready — to avoid spamming interactive priority on transient failures.
+		const firstVisibleResult = await hasFirstVisibleReviewSubject(
+			effect.accountId,
+		);
+		const firstVisibleReady = Result.isOk(firstVisibleResult)
+			? firstVisibleResult.value
+			: true;
+		const isFirstVisibleBootstrap = !firstVisibleReady;
+		const refreshBand = isFirstVisibleBootstrap ? "interactive" : billingBand;
+		const refreshQueuePriority = bandToNumeric(refreshBand);
+
 		const availableAt = resolveMatchRefreshAvailableAt({
 			changeKind: change.kind,
 			now: new Date(),
@@ -265,7 +280,7 @@ export async function executeEffect(
 		const result = await ensureMatchSnapshotRefreshJob({
 			accountId: effect.accountId,
 			satisfiesRequestedAt: effect.satisfiesRequestedAt,
-			queuePriority,
+			queuePriority: refreshQueuePriority,
 			needsTargetSongEnrichment,
 			availableAt,
 		});
@@ -276,7 +291,8 @@ export async function executeEffect(
 			actor,
 			by: describeTrigger(change.kind),
 			needsTargetEnrichment: needsTargetSongEnrichment,
-			priority: band,
+			priority: refreshBand,
+			firstVisibleBootstrap: isFirstVisibleBootstrap,
 			jobId: result.value.id,
 		});
 		return Result.ok({

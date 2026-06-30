@@ -16,6 +16,13 @@ vi.mock("@/lib/platform/jobs/repository", () => ({
 	getJobById: (...args: unknown[]) => getJobByIdMock(...args),
 }));
 
+const hasFirstVisibleReviewSubjectMock = vi.fn();
+
+vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
+	hasFirstVisibleReviewSubject: (...args: unknown[]) =>
+		hasFirstVisibleReviewSubjectMock(...args),
+}));
+
 const readBillingStateMock = vi.fn();
 
 vi.mock("@/lib/domains/billing/queries", () => ({
@@ -91,6 +98,8 @@ describe("scheduler", () => {
 		getLikedSongCountMock.mockResolvedValue(Result.ok(100));
 		getTargetPlaylistsMock.mockResolvedValue(Result.ok([]));
 		getPlaylistSongsMock.mockResolvedValue(Result.ok([]));
+		// Default: first visible subject already exists → billing priority applies.
+		hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(true));
 	});
 
 	describe("executeEffect - ensure_enrichment_job", () => {
@@ -315,7 +324,146 @@ describe("scheduler", () => {
 			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
 				expect.objectContaining({
 					needsTargetSongEnrichment: true,
+					// billing priority resumes once a visible card exists (first-visible is READY by default)
+					queuePriority: 50,
 				}),
+			);
+		});
+	});
+
+	describe("first-visible bootstrap priority for match refresh", () => {
+		it("uses interactive priority (200) when first visible card is not ready", async () => {
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(false));
+			ensureMatchSnapshotRefreshJobMock.mockResolvedValue(
+				Result.ok({ id: "refresh-bootstrap", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_match_snapshot_refresh_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-a"],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
+				expect.objectContaining({ queuePriority: 200 }),
+			);
+		});
+
+		it("uses billing priority when first visible card is ready", async () => {
+			// Default mock: hasFirstVisibleReviewSubjectMock returns ok(true).
+			ensureMatchSnapshotRefreshJobMock.mockResolvedValue(
+				Result.ok({ id: "refresh-steady", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_match_snapshot_refresh_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-a"],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			// billing band is "standard" → 50
+			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
+				expect.objectContaining({ queuePriority: 50 }),
+			);
+		});
+
+		it("enrichment job stays at billing priority when first visible card is not ready", async () => {
+			// The enrichment job must NOT receive interactive priority — only the
+			// refresh is boosted so the refresh wins the next slot on a single worker.
+			// The probe is not invoked on the enrichment branch, so this value is irrelevant.
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(false));
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-job", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "old-job",
+					requestSatisfied: false,
+					newCandidatesAvailable: true,
+					newCandidateSongIds: ["song-a"],
+				},
+				{ satisfiedMarker: null, batchSequence: 0 },
+			);
+
+			// billing band is "standard" → 50, not interactive → 200
+			expect(ensureEnrichmentJobMock).toHaveBeenCalledWith(
+				expect.objectContaining({ queuePriority: 50 }),
+			);
+		});
+
+		it("degrades to billing priority when readiness probe returns a DB error", async () => {
+			const { DatabaseError } = await import("@/lib/shared/errors/database");
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(
+				Result.err(
+					new DatabaseError({ code: "PGRST", message: "connection timeout" }),
+				),
+			);
+			ensureMatchSnapshotRefreshJobMock.mockResolvedValue(
+				Result.ok({ id: "refresh-degraded", status: "pending" }),
+			);
+
+			const state = makeState();
+			await executeEffect(
+				{
+					kind: "ensure_match_snapshot_refresh_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				{
+					kind: "library_synced",
+					accountId: "acct-1",
+					changes: {
+						likedSongs: { added: true, removed: false },
+						targetPlaylists: {
+							trackMembershipChanged: false,
+							profileTextChanged: false,
+							removed: false,
+						},
+					},
+				},
+				{ satisfiedMarker: null, batchSequence: null },
+			);
+
+			// On DB error → treat as ready → billing priority, not interactive
+			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
+				expect.objectContaining({ queuePriority: 50 }),
 			);
 		});
 	});
