@@ -12,6 +12,7 @@ import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schem
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -464,15 +465,21 @@ export async function fetchOwnedPlaylistIds(
 ): Promise<Result<Set<string>, DbError>> {
 	if (playlistIds.length === 0) return Result.ok(new Set());
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("playlist")
-			.select("id")
-			.eq("account_id", accountId)
-			.in("id", [...playlistIds]),
+	// Chunk the `.in()` ids so the query string stays under the URI-length limit;
+	// merge the surviving ids into one Set (duplicates collapse naturally).
+	const rowsResult = await chunkedRead(playlistIds, (batch) =>
+		fromSupabaseMany(
+			supabase
+				.from("playlist")
+				.select("id")
+				.eq("account_id", accountId)
+				.in("id", batch),
+		),
 	);
-	if (Result.isError(result)) return result;
-	return Result.ok(new Set(result.value.map((r) => r.id)));
+	if (Result.isError(rowsResult)) return rowsResult;
+	const owned = new Set<string>();
+	for (const row of rowsResult.value) owned.add(row.id);
+	return Result.ok(owned);
 }
 
 /**

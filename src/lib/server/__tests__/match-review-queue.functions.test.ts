@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchQueueItems } from "@/lib/domains/taste/match-review-queue/queries";
 import { createOrResumeQueue } from "@/lib/domains/taste/match-review-queue/service";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
@@ -2251,5 +2252,165 @@ describe("presentMatchReviewItem", () => {
 			// fitScore comes from the captured pair row, not the fresh derivation.
 			expect(result.suggestions[0].fitScore).toBe(0.63);
 		}
+	});
+
+	/**
+	 * Wires the playlist-orientation present path with a capturing `song` `.in()`
+	 * mock so chunking can be asserted. The song read runs through chunkedRead +
+	 * fromSupabaseMany, so an oversized suggestion set must split into URL-safe
+	 * batches rather than encoding every id into one query string (the 414 bug
+	 * class). `songIn` resolves each captured batch to its `{ data, error }`.
+	 */
+	function installPlaylistPresentWithCapturingSongRead(
+		songIn: (batch: string[]) => { data: unknown; error: unknown },
+	): string[][] {
+		const inBatches: string[][] = [];
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "match_review_queue_item") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: BASE_PLAYLIST_ITEM,
+									error: null,
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "match_review_session") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: { strictness_min_score: 0 },
+									error: null,
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "playlist") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							single: vi.fn().mockResolvedValue({
+								data: {
+									id: "pl-review",
+									name: "Review Playlist",
+									match_intent: "test intent",
+									song_count: 20,
+									image_url: "pl.jpg",
+									spotify_id: "sp-pl-review",
+								},
+								error: null,
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "song") {
+				return {
+					select: vi.fn().mockReturnValue({
+						in: vi.fn((_col: string, batch: string[]) => {
+							inBatches.push(batch);
+							return Promise.resolve(songIn(batch));
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+		return inBatches;
+	}
+
+	function playlistListWithSongSuggestions(songIds: string[]) {
+		return {
+			orientation: "playlist" as const,
+			subject: { orientation: "playlist" as const, playlistId: "pl-review" },
+			suggestions: songIds.map((id, i) => ({
+				songId: id,
+				playlistId: "pl-review",
+				fitScore: 0.5,
+				modelRank: i + 1,
+				visibleRank: i + 1,
+			})),
+		};
+	}
+
+	it("chunks the suggestion-song .in() read when suggestions exceed the URL-safe limit", async () => {
+		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: playlistListWithSongSuggestions(songIds),
+		});
+		const inBatches = installPlaylistPresentWithCapturingSongRead((batch) => ({
+			data: batch.map((id) => ({
+				id,
+				name: `Song ${id}`,
+				artists: ["Artist"],
+				album_name: null,
+				image_url: "sg.jpg",
+				spotify_id: `sp-${id}`,
+				genres: [],
+			})),
+			error: null,
+		}));
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		// 201 ids at chunk size 100 → 3 batches, each within the URL-safe bound.
+		expect(inBatches).toHaveLength(3);
+		expect(inBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE)).toBe(
+			true,
+		);
+		// Every suggestion id is read exactly once across the batches.
+		expect(inBatches.flat().sort()).toEqual([...songIds].sort());
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.suggestions).toHaveLength(201);
+		}
+	});
+
+	it("surfaces retryable-error and reports when a chunked suggestion-song batch fails", async () => {
+		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: playlistListWithSongSuggestions(songIds),
+		});
+		// Fail only the batch containing song-150; healthy batches return rows.
+		installPlaylistPresentWithCapturingSongRead((batch) =>
+			batch.includes("song-150")
+				? { data: null, error: { code: "PGRST301", message: "boom" } }
+				: {
+						data: batch.map((id) => ({
+							id,
+							name: `Song ${id}`,
+							artists: ["Artist"],
+							album_name: null,
+							image_url: "sg.jpg",
+							spotify_id: `sp-${id}`,
+							genres: [],
+						})),
+						error: null,
+					},
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
+		// The merged chunk error must still reach Sentry before the opaque card.
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "present_match_review_item",
+			},
+		});
 	});
 });

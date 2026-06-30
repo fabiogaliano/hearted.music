@@ -39,6 +39,8 @@ import {
 import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 import {
 	fetchPlaylistsMatchFilters,
 	fetchSongFilterMeta,
@@ -301,17 +303,21 @@ async function fetchOwnedPlaylistIds(
 ): Promise<Result<Set<string>, DbError>> {
 	if (playlistIds.length === 0) return Result.ok(new Set());
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("playlist")
-		.select("id")
-		.eq("account_id", accountId)
-		.in("id", [...playlistIds]);
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	return Result.ok(new Set((data ?? []).map((r) => r.id)));
+	// Chunk the `.in()` ids so the query string stays under the URI-length limit;
+	// merge the surviving ids into one Set (duplicates collapse naturally).
+	const rowsResult = await chunkedRead(playlistIds, (batch) =>
+		fromSupabaseMany(
+			supabase
+				.from("playlist")
+				.select("id")
+				.eq("account_id", accountId)
+				.in("id", batch),
+		),
+	);
+	if (Result.isError(rowsResult)) return rowsResult;
+	const owned = new Set<string>();
+	for (const row of rowsResult.value) owned.add(row.id);
+	return Result.ok(owned);
 }
 
 /**

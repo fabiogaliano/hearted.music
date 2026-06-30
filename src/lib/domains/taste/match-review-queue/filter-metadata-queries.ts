@@ -17,6 +17,8 @@ import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schem
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 /**
  * Fetches language, vocal gender, release year, and liked-at metadata for
@@ -88,40 +90,38 @@ export async function fetchSongsFilterMeta(
 	if (songIds.length === 0) return Result.ok(new Map());
 	const ids = [...songIds];
 	const supabase = createAdminSupabaseClient();
+	// Both reads are chunked by the URL-safe id limit; the two run concurrently
+	// the same way the prior single-round-trip pair did.
 	const [songsResult, likedResult] = await Promise.all([
-		supabase
-			.from("song")
-			.select("id, language, language_secondary, release_year, vocal_gender")
-			.in("id", ids),
-		supabase
-			.from("liked_song")
-			.select("song_id, liked_at")
-			.in("song_id", ids)
-			.eq("account_id", accountId)
-			.is("unliked_at", null),
+		chunkedRead(ids, (batch) =>
+			fromSupabaseMany(
+				supabase
+					.from("song")
+					.select(
+						"id, language, language_secondary, release_year, vocal_gender",
+					)
+					.in("id", batch),
+			),
+		),
+		chunkedRead(ids, (batch) =>
+			fromSupabaseMany(
+				supabase
+					.from("liked_song")
+					.select("song_id, liked_at")
+					.in("song_id", batch)
+					.eq("account_id", accountId)
+					.is("unliked_at", null),
+			),
+		),
 	]);
-	if (songsResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: songsResult.error.code,
-				message: songsResult.error.message,
-			}),
-		);
-	}
-	if (likedResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: likedResult.error.code,
-				message: likedResult.error.message,
-			}),
-		);
-	}
+	if (Result.isError(songsResult)) return songsResult;
+	if (Result.isError(likedResult)) return likedResult;
 	const likedMap = new Map<string, number>();
-	for (const row of likedResult.data ?? []) {
+	for (const row of likedResult.value) {
 		likedMap.set(row.song_id, new Date(row.liked_at).getTime());
 	}
 	const metaMap = new Map<string, SongFilterMetadata>();
-	for (const row of songsResult.data ?? []) {
+	for (const row of songsResult.value) {
 		metaMap.set(row.id, {
 			language: row.language,
 			languageSecondary: row.language_secondary,
@@ -144,17 +144,14 @@ export async function fetchPlaylistsMatchFilters(
 	if (playlistIds.length === 0) return Result.ok(new Map());
 	const ids = [...playlistIds];
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("playlist")
-		.select("id, match_filters")
-		.in("id", ids);
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
+	const rowsResult = await chunkedRead(ids, (batch) =>
+		fromSupabaseMany(
+			supabase.from("playlist").select("id, match_filters").in("id", batch),
+		),
+	);
+	if (Result.isError(rowsResult)) return rowsResult;
 	const map = new Map<string, PlaylistMatchFiltersV1 | null>();
-	for (const row of data ?? []) {
+	for (const row of rowsResult.value) {
 		if (row.match_filters === null) {
 			map.set(row.id, null);
 		} else {

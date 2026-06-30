@@ -9,9 +9,11 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import {
 	addQueueItemDecisionAtomically,
 	dismissQueueItemAtomically,
+	fetchOwnedPlaylistIds,
 	finishQueueItemAtomically,
 	updateQueueItemPresented,
 	updateQueueItemResolved,
@@ -334,5 +336,110 @@ describe("finishQueueItemAtomically", () => {
 		const result = await finishQueueItemAtomically("item-1", "acct-1");
 
 		expect(result).toBeErr();
+	});
+});
+
+interface InCall {
+	table: string;
+	col: string;
+	batch: string[];
+}
+
+type BatchResolver = (ctx: {
+	table: string;
+	col: string | null;
+	batch: string[] | null;
+}) => { data: unknown; error: unknown };
+
+/**
+ * Installs a capturing `from()` mock: chain methods return the chain, `.in()`
+ * records the (table, col, batch) it received, and awaiting the chain resolves
+ * to `resolver(ctx)`. Lets the chunking tests assert batch shape and merging.
+ */
+function installCapturingClient(resolver: BatchResolver): InCall[] {
+	const inCalls: InCall[] = [];
+	const from = vi.fn((table: string) => {
+		const ctx: { table: string; col: string | null; batch: string[] | null } = {
+			table,
+			col: null,
+			batch: null,
+		};
+		const chain: Record<string, unknown> = {};
+		const passthrough = () => chain;
+		chain.select = vi.fn(passthrough);
+		chain.eq = vi.fn(passthrough);
+		chain.is = vi.fn(passthrough);
+		chain.order = vi.fn(passthrough);
+		chain.in = vi.fn((col: string, batch: string[]) => {
+			ctx.col = col;
+			ctx.batch = batch;
+			inCalls.push({ table, col, batch });
+			return chain;
+		});
+		// biome-ignore lint/suspicious/noThenProperty: the capturing mock chain is intentionally thenable so awaiting the query resolves to the per-batch response.
+		chain.then = (onF: (v: unknown) => unknown, onR: (e: unknown) => unknown) =>
+			Promise.resolve()
+				.then(() => resolver(ctx))
+				.then(onF, onR);
+		return chain;
+	});
+	vi.mocked(createAdminSupabaseClient).mockReturnValue({
+		from,
+	} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+	return inCalls;
+}
+
+describe("fetchOwnedPlaylistIds — chunking", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("returns an empty Set for empty input without touching the client", async () => {
+		installCapturingClient(() => ({ data: [], error: null }));
+
+		const result = await fetchOwnedPlaylistIds("acct-1", []);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) expect(result.value.size).toBe(0);
+		expect(createAdminSupabaseClient).not.toHaveBeenCalled();
+	});
+
+	it("chunks the .in() ids and merges the survivors into one Set", async () => {
+		const ids = Array.from({ length: 201 }, (_, i) => `pl-${i}`);
+		// Echo back every id in the batch as owned.
+		const inCalls = installCapturingClient((ctx) => ({
+			data: (ctx.batch ?? []).map((id) => ({ id })),
+			error: null,
+		}));
+
+		const result = await fetchOwnedPlaylistIds("acct-1", ids);
+
+		expect(result).toBeOk();
+		// 201 ids at chunk size 100 → 3 batches.
+		expect(inCalls).toHaveLength(3);
+		expect(inCalls.every((c) => c.table === "playlist")).toBe(true);
+		expect(inCalls.every((c) => c.col === "id")).toBe(true);
+		expect(
+			inCalls.every((c) => c.batch.length <= DB_IN_FILTER_CHUNK_SIZE),
+		).toBe(true);
+		if (Result.isOk(result)) {
+			expect(result.value.size).toBe(201);
+			expect(result.value.has("pl-200")).toBe(true);
+		}
+	});
+
+	it("propagates a batch DB error as Result.err", async () => {
+		const ids = Array.from({ length: 201 }, (_, i) => `pl-${i}`);
+		installCapturingClient((ctx) => {
+			if ((ctx.batch ?? []).includes("pl-150")) {
+				return { data: null, error: { code: "PGRST301", message: "boom" } };
+			}
+			return { data: (ctx.batch ?? []).map((id) => ({ id })), error: null };
+		});
+
+		const result = await fetchOwnedPlaylistIds("acct-1", ids);
+
+		expect(result).toBeErr();
+		if (Result.isError(result)) expect(result.error._tag).toBe("DatabaseError");
 	});
 });

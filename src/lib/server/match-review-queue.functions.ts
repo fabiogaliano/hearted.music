@@ -27,6 +27,8 @@ import type {
 } from "@/lib/domains/taste/match-review-queue/types";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 import { captureServerError } from "@/lib/observability/capture-server-error";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 /** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
@@ -1059,21 +1061,28 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 			) {
 				const playlistId = list.subject.playlistId;
 
+				// The suggestion song set for one playlist can reach the 1000-row cap,
+				// so the `.in("id", …)` read is chunked to keep each request's query
+				// string under the URI-length limit (same 414 bug class as the queue
+				// bootstrap). The playlist row read rides alongside it unchanged.
 				const [playlistRowResult, songRowsResult] = await Promise.all([
 					supabase
 						.from("playlist")
 						.select("id, name, match_intent, song_count, image_url, spotify_id")
 						.eq("id", playlistId)
 						.single(),
-					supabase
-						.from("song")
-						.select(
-							"id, name, artists, album_name, image_url, spotify_id, genres",
-						)
-						.in(
-							"id",
-							activeSuggestions.map((s) => s.songId),
-						),
+					chunkedRead(
+						activeSuggestions.map((s) => s.songId),
+						(batch) =>
+							fromSupabaseMany(
+								supabase
+									.from("song")
+									.select(
+										"id, name, artists, album_name, image_url, spotify_id, genres",
+									)
+									.in("id", batch),
+							),
+					),
 				]);
 
 				if (playlistRowResult.error || !playlistRowResult.data) {
@@ -1085,7 +1094,7 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					};
 				}
 
-				if (songRowsResult.error) {
+				if (Result.isError(songRowsResult)) {
 					// Operational DB failure on the suggestion-song `.in(...)` read.
 					reportQueueError(songRowsResult.error, "present_match_review_item", {
 						accountId: session.accountId,
@@ -1108,9 +1117,7 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					trackCount: pl.song_count,
 				};
 
-				const songMap = new Map(
-					(songRowsResult.data ?? []).map((s) => [s.id, s]),
-				);
+				const songMap = new Map(songRowsResult.value.map((s) => [s.id, s]));
 
 				// activeSuggestions arrives ordered by visibleRank from the capture RPC.
 				const suggestions: MatchingSongSuggestion[] = [];
