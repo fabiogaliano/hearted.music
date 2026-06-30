@@ -18,4 +18,5 @@ Start here for the fastest mental model.
 | --- | --- |
 | [`matching/score-normalization.md`](./matching/score-normalization.md) | Why fusion normalizes signals across the full candidate matrix |
 | [`matching/reranker.md`](./matching/reranker.md) | Cross-encoder reranking and offline replay evaluation |
+| [`matching/progressive-match-feed.md`](./matching/progressive-match-feed.md) | Future incremental-feed architecture and measurement gate for deciding if the refactor is worth it |
 | [`matching/roadmap.md`](./matching/roadmap.md) | Consolidated matching research and prioritized roadmap |
