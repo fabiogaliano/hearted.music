@@ -9,6 +9,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { CheckInboxPanel } from "@/features/auth/CheckInboxPanel";
 import {
 	LoginForm,
 	type LoginMode,
@@ -45,6 +46,7 @@ function LoginPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [loading, setLoading] = useState<LoadingState>(null);
+	const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
 	async function handleGoogle() {
 		setError(null);
@@ -90,13 +92,12 @@ function LoginPage() {
 			}
 			// requireEmailVerification means sign-up creates the account but
 			// issues no session — the user must click the verification link
-			// before they can sign in. Switch to the sign-in form with a notice
-			// rather than navigating into the authenticated area, which would
-			// just bounce back to /login with no explanation.
+			// before they can sign in. Show a dedicated confirmation panel (no
+			// credential fields) rather than dropping back into the sign-in form
+			// with the password still typed in, which reads as a login screen and
+			// keeps the browser's password-manager popup firing.
 			setMode("signin");
-			setNotice(
-				`One step left. We sent a verification link to ${email}. If it's not in your inbox, check spam.`,
-			);
+			setPendingEmail(email);
 			setLoading(null);
 			return;
 		}
@@ -124,6 +125,19 @@ function LoginPage() {
 		setMode(next);
 		setError(null);
 		setNotice(null);
+	}
+
+	if (pendingEmail) {
+		return (
+			<CheckInboxPanel
+				email={pendingEmail}
+				onBackToSignIn={() => {
+					setPendingEmail(null);
+					setNotice(null);
+					setError(null);
+				}}
+			/>
+		);
 	}
 
 	return (
