@@ -4,6 +4,27 @@ import {
 	MatchSnapshotRefreshProgressSchema,
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 
+// Returns the higher of two priority values; null existing means the incoming
+// value wins unconditionally (first write establishes the floor).
+export function maxQueuePriority(
+	existing: number | null,
+	incoming: number,
+): number {
+	if (existing === null) return incoming;
+	return existing >= incoming ? existing : incoming;
+}
+
+// Returns the earlier of two ISO timestamps so a pull-forward trigger cannot
+// be blocked by a later debounced one already in the queue.
+export function earliestAvailableAt(
+	existing: string,
+	incoming: string,
+): string {
+	return new Date(existing).getTime() <= new Date(incoming).getTime()
+		? existing
+		: incoming;
+}
+
 // Picks the later of two ISO timestamps, treating null as the earliest
 // possible value so any real timestamp supersedes it.
 export function latestRequestedAt(

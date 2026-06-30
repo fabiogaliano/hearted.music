@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createInitialMatchSnapshotRefreshProgress } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import {
+	earliestAvailableAt,
 	latestRequestedAt,
+	maxQueuePriority,
 	mergeMatchRefreshProgress,
 } from "../match-refresh-merge";
 
@@ -98,5 +100,78 @@ describe("mergeMatchRefreshProgress", () => {
 		const { plan: _plan, ...noPlan } = base;
 		const result = mergeMatchRefreshProgress(noPlan, false);
 		expect(result.plan?.needsTargetSongEnrichment).toBe(false);
+	});
+});
+
+describe("maxQueuePriority", () => {
+	it("returns incoming when existing is null", () => {
+		expect(maxQueuePriority(null, 50)).toBe(50);
+	});
+
+	it("returns incoming when it is higher than existing", () => {
+		expect(maxQueuePriority(50, 200)).toBe(200);
+	});
+
+	it("returns existing when it is higher than incoming", () => {
+		expect(maxQueuePriority(200, 50)).toBe(200);
+	});
+
+	it("returns the value when both are equal", () => {
+		expect(maxQueuePriority(100, 100)).toBe(100);
+	});
+
+	// The pending-merge semantics: a later lower-priority request cannot demote
+	// an interactive pending refresh that already holds priority 200.
+	it("interactive pending refresh is not demoted by a lower-priority request", () => {
+		const interactivePriority = 200;
+		const billingPriority = 50;
+		expect(maxQueuePriority(interactivePriority, billingPriority)).toBe(200);
+	});
+
+	// A later higher-priority request should promote an existing standard pending refresh.
+	it("a higher-priority incoming request promotes an existing lower-priority pending refresh", () => {
+		const standardPriority = 50;
+		const interactivePriority = 200;
+		expect(maxQueuePriority(standardPriority, interactivePriority)).toBe(200);
+	});
+});
+
+describe("earliestAvailableAt", () => {
+	it("returns existing when it is earlier than incoming", () => {
+		expect(
+			earliestAvailableAt(
+				"2026-06-25T10:00:00.000Z",
+				"2026-06-25T10:00:08.000Z",
+			),
+		).toBe("2026-06-25T10:00:00.000Z");
+	});
+
+	it("returns incoming when it is earlier than existing", () => {
+		expect(
+			earliestAvailableAt(
+				"2026-06-25T10:00:08.000Z",
+				"2026-06-25T10:00:00.000Z",
+			),
+		).toBe("2026-06-25T10:00:00.000Z");
+	});
+
+	it("returns either when both are equal", () => {
+		const ts = "2026-06-25T10:00:00.000Z";
+		expect(earliestAvailableAt(ts, ts)).toBe(ts);
+	});
+
+	// Pull-forward: an immediate trigger (availableAt = now) must win against a
+	// debounced pending job that has a later available_at.
+	it("immediate trigger pulls forward a debounced pending refresh", () => {
+		const debounced = "2026-06-25T10:00:08.000Z";
+		const immediate = "2026-06-25T10:00:00.000Z";
+		expect(earliestAvailableAt(debounced, immediate)).toBe(immediate);
+	});
+
+	// A later debounced trigger must not push back an already-immediate pending refresh.
+	it("debounced trigger does not push back an immediate pending refresh", () => {
+		const immediate = "2026-06-25T10:00:00.000Z";
+		const debounced = "2026-06-25T10:00:08.000Z";
+		expect(earliestAvailableAt(immediate, debounced)).toBe(immediate);
 	});
 });

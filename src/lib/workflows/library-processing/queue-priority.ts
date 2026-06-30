@@ -1,9 +1,10 @@
-type QueueBand = "low" | "standard" | "priority";
+type QueueBand = "low" | "standard" | "priority" | "interactive";
 
 const BAND_VALUES: Record<QueueBand, number> = {
 	low: 0,
 	standard: 50,
 	priority: 100,
+	interactive: 200,
 };
 
 export function bandToNumeric(band: QueueBand): number {

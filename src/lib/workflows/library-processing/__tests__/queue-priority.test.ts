@@ -13,4 +13,14 @@ describe("bandToNumeric", () => {
 	it("maps priority to 100", () => {
 		expect(bandToNumeric("priority")).toBe(100);
 	});
+
+	it("maps interactive to 200", () => {
+		expect(bandToNumeric("interactive")).toBe(200);
+	});
+
+	it("interactive outranks priority", () => {
+		expect(bandToNumeric("interactive")).toBeGreaterThan(
+			bandToNumeric("priority"),
+		);
+	});
 });

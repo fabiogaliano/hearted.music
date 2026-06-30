@@ -2,7 +2,9 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import {
+	earliestAvailableAt,
 	latestRequestedAt,
+	maxQueuePriority,
 	mergeMatchRefreshProgress,
 } from "@/lib/platform/jobs/match-refresh-merge";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
@@ -182,8 +184,14 @@ export async function ensureMatchSnapshotRefreshJob(opts: {
 							existing.value.satisfies_requested_at,
 							opts.satisfiesRequestedAt,
 						),
-						queue_priority: opts.queuePriority,
-						available_at: opts.availableAt,
+						queue_priority: maxQueuePriority(
+							existing.value.queue_priority,
+							opts.queuePriority,
+						),
+						available_at: earliestAvailableAt(
+							existing.value.available_at,
+							opts.availableAt,
+						),
 						progress: mergedProgress as unknown as Json,
 					})
 					.eq("id", existing.value.id)
