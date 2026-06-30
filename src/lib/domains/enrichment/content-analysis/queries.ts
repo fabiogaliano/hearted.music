@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
@@ -57,21 +58,30 @@ export async function get(
 export async function get(
 	songIds: string | string[],
 ): Promise<Result<SongAnalysis | null | Map<string, SongAnalysis>, DbError>> {
-	const supabase = createAdminSupabaseClient();
 	const isSingle = typeof songIds === "string";
-	const ids = isSingle ? [songIds] : songIds;
+	const ids = isSingle ? [songIds] : [...new Set(songIds)];
 
-	if (ids.length === 0) {
+	if (!isSingle && ids.length === 0) {
 		return Result.ok(new Map<string, SongAnalysis>());
 	}
 
-	// Get all analyses for the songs, ordered by created_at desc to get latest first
-	const result = await fromSupabaseMany(
-		supabase
-			.from("song_analysis")
-			.select("*")
-			.in("song_id", ids)
-			.order("created_at", { ascending: false }),
+	const supabase = createAdminSupabaseClient();
+
+	// Get all analyses for the songs, ordered by created_at desc to get latest
+	// first. Uncapped batch callers (snapshot refresh stored-pair songs) can pass
+	// song-sized id lists, so the `.in("song_id", …)` filter is chunked
+	// (DB_IN_FILTER_CHUNK_SIZE) to keep each request under the PostgREST
+	// URI-length limit. Each song_id lands in exactly one chunk and the per-chunk
+	// query keeps the created_at DESC order, so the latest-per-song first-occurrence
+	// dedup below is preserved when the chunk rows are merged.
+	const result = await chunkedRead(ids, (batch) =>
+		fromSupabaseMany(
+			supabase
+				.from("song_analysis")
+				.select("*")
+				.in("song_id", batch)
+				.order("created_at", { ascending: false }),
+		),
 	);
 
 	if (Result.isError(result)) {

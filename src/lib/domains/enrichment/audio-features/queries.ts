@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
@@ -43,6 +44,12 @@ export type UpsertData = Pick<
 /**
  * Gets audio features for multiple songs.
  * Returns a map of songId -> features.
+ *
+ * Uncapped callers (snapshot refresh, playlist profiling) can pass song-sized id
+ * lists, so the `.in("song_id", …)` filter is chunked (DB_IN_FILTER_CHUNK_SIZE)
+ * to keep each request's query string under the PostgREST URI-length limit. Each
+ * song_id lands in exactly one chunk, so merging the per-chunk rows into one map
+ * is dedup-safe — no row appears twice.
  */
 export async function getBatch(
 	songIds: string[],
@@ -52,8 +59,11 @@ export async function getBatch(
 	}
 
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase.from("song_audio_feature").select("*").in("song_id", songIds),
+	const uniqueSongIds = [...new Set(songIds)];
+	const result = await chunkedRead(uniqueSongIds, (batch) =>
+		fromSupabaseMany(
+			supabase.from("song_audio_feature").select("*").in("song_id", batch),
+		),
 	);
 
 	if (Result.isError(result)) {

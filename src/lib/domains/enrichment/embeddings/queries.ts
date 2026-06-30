@@ -9,6 +9,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
+import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -92,6 +93,13 @@ export function getSongEmbedding(
  *
  * Returns the most recent embedding (by created_at) for each song to handle model version changes.
  * When model_version changes, multiple rows may exist per song - we want the latest one per song.
+ *
+ * Uncapped callers (snapshot refresh, playlist profiling) can pass song-sized id
+ * lists, so the `.in("song_id", …)` filter is chunked (DB_IN_FILTER_CHUNK_SIZE)
+ * to keep each request's query string under the PostgREST URI-length limit. Each
+ * song_id lands in exactly one chunk and the per-chunk query keeps the created_at
+ * DESC order, so the latest-per-song first-occurrence dedup is preserved when the
+ * chunk rows are merged into one map.
  */
 export async function getSongEmbeddingsBatch(
 	songIds: string[],
@@ -103,14 +111,17 @@ export async function getSongEmbeddingsBatch(
 	}
 
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("song_embedding")
-			.select("*")
-			.in("song_id", songIds)
-			.eq("model", model)
-			.eq("kind", kind)
-			.order("created_at", { ascending: false }),
+	const uniqueSongIds = [...new Set(songIds)];
+	const result = await chunkedRead(uniqueSongIds, (batch) =>
+		fromSupabaseMany(
+			supabase
+				.from("song_embedding")
+				.select("*")
+				.in("song_id", batch)
+				.eq("model", model)
+				.eq("kind", kind)
+				.order("created_at", { ascending: false }),
+		),
 	);
 
 	if (Result.isError(result)) {
