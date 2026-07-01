@@ -212,26 +212,21 @@ function QueueMatchPage() {
 	// Recovery bootstrap: the loader creates the session only on entry. A user who
 	// opened /match before the first snapshot existed has no session, and once a
 	// first visible match becomes ready nothing else would create it (background
-	// refresh only syncs existing sessions). Re-run the one-shot bootstrap and
-	// refetch so the now-ready queue mounts instead of stranding on the empty state.
-	// The ref fires the attempt once per no-session→ready transition; resetting it
-	// whenever the condition is false lets a later teardown→ready cycle bootstrap
-	// again, and a failed attempt reset allows a retry on the next ready signal.
-	const bootstrapAttemptedRef = useRef(false);
+	// refresh only syncs existing sessions). Re-run the one-shot bootstrap so the
+	// now-ready queue mounts instead of stranding on the empty state. The helper
+	// owns retry-with-backoff (a failed attempt must not dead-end on "building");
+	// the AbortController stops it on unmount or when the stranded condition clears.
 	useEffect(() => {
-		if (!shouldBootstrapReadyQueue({ hasQueue, firstVisibleMatchReady })) {
-			bootstrapAttemptedRef.current = false;
+		if (!shouldBootstrapReadyQueue({ hasQueue, firstVisibleMatchReady }))
 			return;
-		}
-		if (bootstrapAttemptedRef.current) return;
-		bootstrapAttemptedRef.current = true;
+		const controller = new AbortController();
 		void bootstrapReadyMatchQueue({
 			mode,
 			accountId: session.accountId,
 			queryClient,
-		}).catch(() => {
-			bootstrapAttemptedRef.current = false;
+			signal: controller.signal,
 		});
+		return () => controller.abort();
 	}, [hasQueue, firstVisibleMatchReady, mode, session.accountId, queryClient]);
 
 	// No queue at all means no snapshot context yet. "no-context" (set a matching
