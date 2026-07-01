@@ -3,6 +3,7 @@ import type { MatchReviewResult } from "@/lib/server/match-review-queue.function
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
+	deriveNoQueueReason,
 	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
@@ -251,5 +252,50 @@ describe("deriveProgressIndex", () => {
 	it("clamps at 0 when the unresolved list is briefly longer than total", () => {
 		// Transient snapshot where an append lands before total updates.
 		expect(deriveProgressIndex(5, 6)).toBe(0);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// deriveNoQueueReason — building vs no-context when no session snapshot exists
+// ---------------------------------------------------------------------------
+
+describe("deriveNoQueueReason", () => {
+	it("returns 'building' when jobs are active and no first-visible card is ready", () => {
+		// Fresh first-match setup: enrichment/refresh running, no session row yet.
+		expect(
+			deriveNoQueueReason({
+				isJobsActive: true,
+				firstVisibleMatchReady: false,
+			}),
+		).toBe("building");
+	});
+
+	it("returns 'no-context' when jobs are idle (genuine no-setup case)", () => {
+		expect(
+			deriveNoQueueReason({
+				isJobsActive: false,
+				firstVisibleMatchReady: false,
+			}),
+		).toBe("no-context");
+	});
+
+	it("returns 'no-context' when a first-visible card is already ready", () => {
+		// A ready card with no queue means the snapshot simply hasn't been read into
+		// a session yet — not a still-building setup.
+		expect(
+			deriveNoQueueReason({
+				isJobsActive: true,
+				firstVisibleMatchReady: true,
+			}),
+		).toBe("no-context");
+	});
+
+	it("returns 'no-context' when jobs are idle and a card is ready", () => {
+		expect(
+			deriveNoQueueReason({
+				isJobsActive: false,
+				firstVisibleMatchReady: true,
+			}),
+		).toBe("no-context");
 	});
 });

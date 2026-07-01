@@ -116,3 +116,24 @@ export function deriveProgressIndex(
 ): number {
 	return Math.max(0, total - unresolvedCount);
 }
+
+/**
+ * Picks the empty-state reason when no queue/session snapshot exists yet.
+ *
+ * A fresh first-match setup has no session row while enrichment/match-refresh is
+ * still running, so the naive "no queue → no-context" fallback would flash the
+ * "set a matching intent" prompt at a user who has already done exactly that.
+ * Prefer the "building" state while jobs are active and no first-visible card is
+ * ready; fall back to "no-context" once jobs are idle or a card is ready (the
+ * genuine no-setup case).
+ */
+export function deriveNoQueueReason({
+	isJobsActive,
+	firstVisibleMatchReady,
+}: {
+	isJobsActive: boolean;
+	firstVisibleMatchReady: boolean;
+}): "building" | "no-context" {
+	if (isJobsActive && !firstVisibleMatchReady) return "building";
+	return "no-context";
+}

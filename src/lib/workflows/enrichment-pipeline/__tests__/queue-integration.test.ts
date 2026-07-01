@@ -51,6 +51,7 @@ vi.mock("@/lib/data/client", () => ({
 
 import {
 	createEnrichmentJob,
+	ensureEnrichmentJob,
 	getActiveEnrichmentJob,
 	getOrCreateEnrichmentJob,
 } from "@/lib/platform/jobs/library-processing-queue";
@@ -133,6 +134,42 @@ describe("Queue integration: getOrCreateEnrichmentJob", () => {
 			expect(
 				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
 			).toMatchObject({ batchSize: 10, batchSequence: 3 });
+		});
+
+		it("persists selectionMode in the serialized insert payload", async () => {
+			// The scheduler computes first_match_bootstrap when no first-visible card
+			// exists yet. If the serializer drops it, the worker silently falls back to
+			// normal selection — the regression this test guards.
+			const progress = makeInitialProgress(5, 0, 0, "first_match_bootstrap");
+			const newJob = fakeJob({ id: "job-bootstrap-1", progress });
+			activeJobResponse = {
+				data: null,
+				error: { code: "PGRST116", message: "not found" },
+			};
+			insertJobResponse = { data: newJob, error: null };
+
+			const result = await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
+
+			expect(result).toBeOk();
+			expect(
+				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
+			).toMatchObject({ selectionMode: "first_match_bootstrap" });
+		});
+
+		it("serializes the default normal selectionMode", async () => {
+			const progress = makeInitialProgress(5, 0, 0);
+			const newJob = fakeJob({ id: "job-normal-1", progress });
+			activeJobResponse = {
+				data: null,
+				error: { code: "PGRST116", message: "not found" },
+			};
+			insertJobResponse = { data: newJob, error: null };
+
+			await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
+
+			expect(
+				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
+			).toMatchObject({ selectionMode: "normal" });
 		});
 	});
 
@@ -360,5 +397,48 @@ describe("createEnrichmentJob", () => {
 		if (Result.isError(result)) {
 			expect(result.error._tag).toBe("ConstraintError");
 		}
+	});
+});
+
+describe("ensureEnrichmentJob", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		activeJobResponse = {
+			data: null,
+			error: { code: "PGRST116", message: "not found" },
+		};
+		insertJobResponse = { data: null, error: null };
+		activeJobResponseQueue = [];
+		lastInsertPayload = null;
+	});
+
+	it("persists the bootstrap selectionMode in the inserted job progress", async () => {
+		// The scheduler creates the enrichment job via ensureEnrichmentJob; this is
+		// the exact path where a dropped selectionMode would leave the worker on
+		// normal selection during first-match bootstrap.
+		const progress = makeInitialProgress(5, 0, 0, "first_match_bootstrap");
+		insertJobResponse = {
+			data: fakeJob({ id: "job-ensure-bootstrap", progress }),
+			error: null,
+		};
+
+		const result = await ensureEnrichmentJob({
+			accountId: ACCOUNT_ID,
+			satisfiesRequestedAt: "2026-03-15T00:00:00Z",
+			queuePriority: 100,
+			progress,
+		});
+
+		expect(result).toBeOk();
+		expect(lastInsertPayload).toMatchObject({
+			account_id: ACCOUNT_ID,
+			type: "enrichment",
+			status: "pending",
+			satisfies_requested_at: "2026-03-15T00:00:00Z",
+			queue_priority: 100,
+		});
+		expect(
+			(lastInsertPayload as { progress: Record<string, unknown> }).progress,
+		).toMatchObject({ selectionMode: "first_match_bootstrap" });
 	});
 });

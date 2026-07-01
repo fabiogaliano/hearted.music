@@ -20,6 +20,7 @@ import {
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
+	deriveNoQueueReason,
 	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
@@ -206,11 +207,17 @@ function QueueMatchPage() {
 		[navigate, queryClient, session.accountId],
 	);
 
-	// No queue at all means no snapshot context yet.
+	// No queue at all means no snapshot context yet. But a fresh first-match setup
+	// has no session row while enrichment/match-refresh is still running — show the
+	// "building" state there rather than the "set a matching intent" prompt.
 	if (!hasQueue) {
+		const reason = deriveNoQueueReason({
+			isJobsActive,
+			firstVisibleMatchReady,
+		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason="no-context" mode={mode} />
+				<MatchingEmptyState reason={reason} mode={mode} />
 			</div>
 		);
 	}

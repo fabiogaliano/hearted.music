@@ -40,6 +40,9 @@ function enrichmentProgressToJson(progress: EnrichmentChunkProgress): Json {
 		stages,
 		batchSize: progress.batchSize,
 		batchSequence: progress.batchSequence,
+		// The scheduler picks first_match_bootstrap when no first-visible card exists
+		// yet; dropping it here silently resets the worker to normal selection.
+		selectionMode: progress.selectionMode,
 	};
 }
 

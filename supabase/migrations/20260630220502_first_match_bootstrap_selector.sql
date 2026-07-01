@@ -294,4 +294,10 @@ AS $$
   LIMIT p_limit;
 $$;
 
+-- SECURITY DEFINER runs with the owner's rights, so lock execution down to the
+-- worker's service_role only. Without this, PUBLIC (and thus anon/authenticated)
+-- would inherit the default EXECUTE grant on the function.
+REVOKE ALL ON FUNCTION public.select_liked_song_ids_needing_first_match_enrichment_work(uuid, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.select_liked_song_ids_needing_first_match_enrichment_work(uuid, integer) TO service_role;
+
 NOTIFY pgrst, 'reload schema';
