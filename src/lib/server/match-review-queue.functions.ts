@@ -58,6 +58,7 @@ import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/prefer
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { fetchSongOrientationData } from "./match-review-queue.read";
 import { emitQueueAppendEvents } from "./match-review-queue-events";
 import type {
 	MatchingPlaylistForReview,
@@ -524,41 +525,13 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 
 			// Build render-ready data for song orientation.
 			if (list.orientation === "song" && list.subject.orientation === "song") {
-				const playlistIds = list.suggestions.map((s) => s.playlistId);
-
-				const [songRow, audioRow, analysisRow, playlistResult] =
-					await Promise.all([
-						supabase.from("song").select("*").eq("id", songId).single(),
-						supabase
-							.from("song_audio_feature")
-							.select("tempo, energy, valence")
-							.eq("song_id", songId)
-							.maybeSingle(),
-						supabase
-							.from("song_analysis")
-							.select("analysis")
-							.eq("song_id", songId)
-							.order("created_at", { ascending: false })
-							.limit(1)
-							.maybeSingle(),
-						supabase
-							.from("playlist")
-							.select(
-								"id, name, match_intent, song_count, image_url, spotify_id",
-							)
-							.in("id", playlistIds),
-					]);
-
-				if (songRow.error || !songRow.data) {
-					// `.single()` returns PGRST116 for a genuinely missing song — that is
-					// the not-found outcome this branch is for, not an incident. Any other
-					// code is an operational read failure and must reach Sentry.
-					if (songRow.error && songRow.error.code !== "PGRST116") {
-						reportQueueError(songRow.error, "get_match_review_item", {
-							accountId: session.accountId,
-							orientation: "song",
-						});
-					}
+				const fetchResult = await fetchSongOrientationData(supabase, {
+					songId,
+					suggestions: list.suggestions,
+					accountId: session.accountId,
+					operation: "get_match_review_item",
+				});
+				if (fetchResult.status === "missing-song") {
 					return {
 						status: "unavailable",
 						itemId,
@@ -566,96 +539,19 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 						message: "This song could not be found.",
 					};
 				}
-
-				// Audio/analysis are decorative optional reads (`.maybeSingle()`), so a
-				// failure must not change the card outcome — but it should still be visible
-				// rather than silently dropped into a degraded card.
-				if (audioRow.error) {
-					reportQueueError(audioRow.error, "get_match_review_item", {
-						accountId: session.accountId,
-						orientation: "song",
-					});
-				}
-				if (analysisRow.error) {
-					reportQueueError(analysisRow.error, "get_match_review_item", {
-						accountId: session.accountId,
-						orientation: "song",
-					});
-				}
-
-				if (playlistResult.error) {
-					// Operational DB failure loading the suggestion playlists (an
-					// `.in(...)` read, not a not-found). Capture before returning retryable.
-					reportQueueError(playlistResult.error, "get_match_review_item", {
-						accountId: session.accountId,
-						orientation: "song",
-					});
+				if (fetchResult.status === "playlist-error") {
 					return {
 						status: "retryable-error",
 						itemId,
 						message: "Could not load playlist data.",
 					};
 				}
-
-				const song = songRow.data;
-				const audio = audioRow.data;
-				const analysis = analysisRow.data?.analysis as
-					| MatchingSong["analysis"]
-					| undefined;
-
-				const builtSong: MatchingSong = {
-					id: song.id,
-					spotifyId: song.spotify_id,
-					name: song.name,
-					artist: song.artists[0] ?? "Unknown Artist",
-					album: song.album_name,
-					albumArtUrl: song.image_url,
-					genres: song.genres,
-					audioFeatures: audio
-						? {
-								tempo: audio.tempo,
-								energy: audio.energy,
-								valence: audio.valence,
-							}
-						: null,
-					analysis: analysis ?? null,
-				};
-
-				const playlistMap = new Map(
-					(playlistResult.data ?? []).map((p) => [p.id, p]),
-				);
-
-				// Suggestions arrive ordered by song-orientation model rank (ranked
-				// pairs first by rank ASC, unranked pairs after by fitScore DESC).
-				const suggestions: MatchingPlaylistMatch[] = [];
-				for (const s of list.suggestions) {
-					const playlist = playlistMap.get(s.playlistId);
-					if (!playlist) continue;
-					suggestions.push({
-						playlist: {
-							id: playlist.id,
-							name: playlist.name,
-							description: playlist.match_intent,
-							trackCount: playlist.song_count,
-							imageUrl: playlist.image_url,
-							spotifyId: playlist.spotify_id,
-						},
-						// Use fitScore (strictnessScore) as the match percent — never the
-						// ordering/reranker score (A5, E7, I1).
-						score: s.fitScore,
-						rank: s.visibleRank,
-						// factors are not needed for card render and not stored in ranking
-						// rows; aligns with presentMatchReviewItem (MSR-24 deviation).
-						factors: null,
-					});
-				}
-
 				return {
 					status: "ready",
 					itemId,
 					mode: "song" as const,
-					reviewItem: builtSong,
-					suggestions,
+					reviewItem: fetchResult.reviewItem,
+					suggestions: fetchResult.suggestions,
 				};
 			}
 
@@ -925,40 +821,13 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				const now = new Date().toISOString();
 				await clearSongNewness(session.accountId, songId, now);
 
-				const playlistIds = activeSuggestions.map((s) => s.playlistId);
-
-				const [songRow, audioRow, analysisRow, playlistResult] =
-					await Promise.all([
-						supabase.from("song").select("*").eq("id", songId).single(),
-						supabase
-							.from("song_audio_feature")
-							.select("tempo, energy, valence")
-							.eq("song_id", songId)
-							.maybeSingle(),
-						supabase
-							.from("song_analysis")
-							.select("analysis")
-							.eq("song_id", songId)
-							.order("created_at", { ascending: false })
-							.limit(1)
-							.maybeSingle(),
-						supabase
-							.from("playlist")
-							.select(
-								"id, name, match_intent, song_count, image_url, spotify_id",
-							)
-							.in("id", playlistIds),
-					]);
-
-				if (songRow.error || !songRow.data) {
-					// `.single()` returns PGRST116 for a genuinely missing song (the
-					// not-found outcome of this branch); any other code is operational.
-					if (songRow.error && songRow.error.code !== "PGRST116") {
-						reportQueueError(songRow.error, "present_match_review_item", {
-							accountId: session.accountId,
-							orientation: item.subject.orientation,
-						});
-					}
+				const fetchResult = await fetchSongOrientationData(supabase, {
+					songId,
+					suggestions: activeSuggestions,
+					accountId: session.accountId,
+					operation: "present_match_review_item",
+				});
+				if (fetchResult.status === "missing-song") {
 					return {
 						status: "unavailable",
 						itemId,
@@ -966,93 +835,19 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 						message: "This song could not be found.",
 					};
 				}
-
-				// Decorative optional reads (`.maybeSingle()`): a failure must not change
-				// the card outcome, but it should not vanish silently either.
-				if (audioRow.error) {
-					reportQueueError(audioRow.error, "present_match_review_item", {
-						accountId: session.accountId,
-						orientation: item.subject.orientation,
-					});
-				}
-				if (analysisRow.error) {
-					reportQueueError(analysisRow.error, "present_match_review_item", {
-						accountId: session.accountId,
-						orientation: item.subject.orientation,
-					});
-				}
-
-				if (playlistResult.error) {
-					// Operational DB failure on the suggestion-playlist `.in(...)` read.
-					reportQueueError(playlistResult.error, "present_match_review_item", {
-						accountId: session.accountId,
-						orientation: item.subject.orientation,
-					});
+				if (fetchResult.status === "playlist-error") {
 					return {
 						status: "retryable-error",
 						itemId,
 						message: "Couldn't load this match card. Try again.",
 					};
 				}
-
-				const song = songRow.data;
-				const audio = audioRow.data;
-				const analysis = analysisRow.data?.analysis as
-					| MatchingSong["analysis"]
-					| undefined;
-
-				const reviewItem: MatchingSong = {
-					id: song.id,
-					spotifyId: song.spotify_id,
-					name: song.name,
-					artist: song.artists[0] ?? "Unknown Artist",
-					album: song.album_name,
-					albumArtUrl: song.image_url,
-					genres: song.genres,
-					audioFeatures: audio
-						? {
-								tempo: audio.tempo,
-								energy: audio.energy,
-								valence: audio.valence,
-							}
-						: null,
-					analysis: analysis ?? null,
-				};
-
-				const playlistMap = new Map(
-					(playlistResult.data ?? []).map((p) => [p.id, p]),
-				);
-
-				// activeSuggestions arrives ordered by visibleRank from the capture RPC.
-				const suggestions: MatchingPlaylistMatch[] = [];
-				for (const s of activeSuggestions
-					.slice()
-					.sort((a, b) => a.visibleRank - b.visibleRank)) {
-					const playlist = playlistMap.get(s.playlistId);
-					if (!playlist) continue;
-					suggestions.push({
-						playlist: {
-							id: playlist.id,
-							name: playlist.name,
-							description: playlist.match_intent,
-							trackCount: playlist.song_count,
-							imageUrl: playlist.image_url,
-							spotifyId: playlist.spotify_id,
-						},
-						score: s.fitScore,
-						rank: s.visibleRank,
-						// Captured pair rows do not store match_result.factors — that
-						// diagnostic field is not needed for card render (MSR-24 deviation).
-						factors: null,
-					});
-				}
-
 				return {
 					status: "ready",
 					itemId,
 					mode: "song",
-					reviewItem,
-					suggestions,
+					reviewItem: fetchResult.reviewItem,
+					suggestions: fetchResult.suggestions,
 				};
 			}
 
