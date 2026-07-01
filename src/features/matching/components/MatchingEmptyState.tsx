@@ -5,6 +5,7 @@ import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
 import type { Reason } from "../queue-helpers";
 import type { MatchViewMode } from "../types";
+import { MatchModeToggle } from "./MatchModeToggle";
 
 // "no-matches" and "all-decided" are dead branches kept only as internal
 // fallbacks so the staticCopy map and its tests remain consistent.
@@ -17,6 +18,10 @@ interface Props {
 	hiddenCount?: number;
 	/** Orientation of the active session — drives H9 noun in filtered copy. */
 	mode?: MatchViewMode;
+	// When provided, renders the orientation toggle above the empty copy so a
+	// user who lands here isn't stranded in one mode (A2). Omitted in contexts
+	// with no orientation switch (e.g. isolated copy tests).
+	onModeChange?: (mode: MatchViewMode) => void;
 }
 
 const staticCopy = {
@@ -98,6 +103,7 @@ export function MatchingEmptyState({
 	reason,
 	hiddenCount = 0,
 	mode = "song",
+	onModeChange,
 }: Props) {
 	const copy =
 		reason === "filtered"
@@ -121,50 +127,57 @@ export function MatchingEmptyState({
 
 	return (
 		<div
-			className="flex min-h-[calc(100dvh-160px)] flex-col items-center justify-center px-8 text-center md:px-16"
+			className="flex min-h-[calc(100dvh-160px)] flex-col"
 			style={{ fontFamily: fonts.body }}
 		>
-			<StaggeredContent className="flex w-full flex-col items-center">
-				<p className="theme-text-muted mb-6 text-xs tracking-widest uppercase">
-					{overline}
-				</p>
-
-				<h1
-					className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight text-balance md:text-[54px]"
-					style={{ fontFamily: fonts.display }}
-				>
-					{headline[0]}
-					{headline.length > 1 ? (
-						<>
-							{" "}
-							<em>{headline[1]}</em>
-						</>
-					) : null}
-				</h1>
-
-				<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed text-pretty">
-					{body}
-				</p>
-
-				<div className="mt-12">
-					<Link
-						to={link.to}
-						hash={link.hash}
-						search={link.search}
-						className="theme-text group inline-flex items-center gap-3 transition-transform duration-150 ease-out motion-safe:active:scale-[0.98]"
-						style={{ fontFamily: fonts.body }}
-					>
-						<span className="text-base font-medium tracking-wide">
-							{link.label}
-						</span>
-						<ArrowRightIcon
-							size={16}
-							weight="regular"
-							className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
-						/>
-					</Link>
+			{onModeChange ? (
+				<div className="flex justify-end px-8 pt-2 md:px-16">
+					<MatchModeToggle mode={mode} onModeChange={onModeChange} />
 				</div>
-			</StaggeredContent>
+			) : null}
+			<div className="flex flex-1 flex-col items-center justify-center px-8 text-center md:px-16">
+				<StaggeredContent className="flex w-full flex-col items-center">
+					<p className="theme-text-muted mb-6 text-xs tracking-widest uppercase">
+						{overline}
+					</p>
+
+					<h1
+						className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight text-balance md:text-[54px]"
+						style={{ fontFamily: fonts.display }}
+					>
+						{headline[0]}
+						{headline.length > 1 ? (
+							<>
+								{" "}
+								<em>{headline[1]}</em>
+							</>
+						) : null}
+					</h1>
+
+					<p className="theme-text-muted mt-8 max-w-[360px] text-base leading-relaxed text-pretty">
+						{body}
+					</p>
+
+					<div className="mt-12">
+						<Link
+							to={link.to}
+							hash={link.hash}
+							search={link.search}
+							className="theme-text group inline-flex items-center gap-3 transition-transform duration-150 ease-out motion-safe:active:scale-[0.98]"
+							style={{ fontFamily: fonts.body }}
+						>
+							<span className="text-base font-medium tracking-wide">
+								{link.label}
+							</span>
+							<ArrowRightIcon
+								size={16}
+								weight="regular"
+								className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
+							/>
+						</Link>
+					</div>
+				</StaggeredContent>
+			</div>
 		</div>
 	);
 }

@@ -20,6 +20,7 @@ import {
 	getRecentWithDetails,
 } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
+import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
 import { resolvePreferredMatchReviewSummary } from "@/lib/server/match-review-queue.functions";
@@ -36,6 +37,10 @@ export interface DashboardStats {
 	// source. The route's stats→DashboardProps mapping is updated accordingly.
 	pendingReviewCount: number;
 	playlistCount: number;
+	// Orientation the preferred-summary resolved to, so the CTA links to the
+	// right /match orientation and uses the right noun (A2). Same source as
+	// pendingReviewCount, so count and link can never disagree.
+	matchOrientation: MatchOrientation;
 }
 
 export interface DashboardPageData {
@@ -51,6 +56,7 @@ export interface DashboardPageData {
 async function fetchDashboardStats(
 	accountId: string,
 	pendingReviewCount: number,
+	matchOrientation: MatchOrientation,
 ): Promise<DashboardStats> {
 	const [totalResult, analyzedResult, lastSyncResult, playlistCountResult] =
 		await Promise.all([
@@ -74,6 +80,7 @@ async function fetchDashboardStats(
 		lastSyncAt: lastSync?.completed_at ?? null,
 		pendingReviewCount,
 		playlistCount,
+		matchOrientation,
 	};
 }
 
@@ -127,6 +134,7 @@ export const getDashboardPageData = createServerFn({ method: "GET" })
 		const stats = await fetchDashboardStats(
 			session.accountId,
 			summary.pendingCount,
+			summary.orientation,
 		);
 		const matchPreviews: MatchPreview[] = summary.previewImages;
 
@@ -143,7 +151,11 @@ export const getDashboardStats = createServerFn({ method: "GET" })
 		const summary = await resolvePreferredMatchReviewSummary(
 			context.session.accountId,
 		);
-		return fetchDashboardStats(context.session.accountId, summary.pendingCount);
+		return fetchDashboardStats(
+			context.session.accountId,
+			summary.pendingCount,
+			summary.orientation,
+		);
 	});
 
 export const getRecentActivity = createServerFn({ method: "GET" })

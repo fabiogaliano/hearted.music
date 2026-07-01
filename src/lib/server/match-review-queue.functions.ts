@@ -107,8 +107,17 @@ export type MatchReviewItemRead =
 
 export interface MatchReviewStartResult {
 	sessionId: string;
-	/** Ordered queue item ids for the route loader to bootstrap the card stack. */
+	/** Ordered queue item ids the client bootstrap query uses to seed the card stack. */
 	itemIds: string[];
+	/**
+	 * The first card the stack will actually land on: the lowest-position item still
+	 * in a reviewable state, or null when caught up. Computed with the SAME predicate
+	 * as the client's deriveUnresolvedIds (pending|active, position-sorted) so the
+	 * route can warm exactly that card's present() capture the instant bootstrap
+	 * resolves — without inferring it from itemIds[0], which is the raw head item and
+	 * can be already-resolved on a resumed session.
+	 */
+	firstUnresolvedItemId: string | null;
 	total: number;
 	caughtUp: boolean;
 }
@@ -237,7 +246,13 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 				operation: "capture_match_review_opened",
 				properties: { orientation, state: "no_snapshot", result_count: 0 },
 			});
-			return { sessionId: "", itemIds: [], total: 0, caughtUp: true };
+			return {
+				sessionId: "",
+				itemIds: [],
+				firstUnresolvedItemId: null,
+				total: 0,
+				caughtUp: true,
+			};
 		}
 
 		const itemsResult = await fetchQueueItems(activeSession.id);
@@ -255,6 +270,14 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		const items = itemsResult.value;
 		const caughtUp = deriveCaughtUp(items);
 		const itemIds = items.map((i) => i.id);
+		// Lowest-position reviewable item — the card the stack lands on first. Mirrors
+		// the client's deriveUnresolvedIds predicate (pending|active, position-sorted)
+		// so the route seeds the correct card even when a resumed session's head item
+		// is already resolved. Null when nothing is reviewable (caught up).
+		const firstUnresolvedItemId =
+			items
+				.filter((i) => i.state === "pending" || i.state === "active")
+				.sort((a, b) => a.position - b.position)[0]?.id ?? null;
 
 		// Best-effort: the queue is loaded; an analytics failure must not turn this
 		// into a failed /match open.
@@ -273,6 +296,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 		return {
 			sessionId: activeSession.id,
 			itemIds,
+			firstUnresolvedItemId,
 			total: items.length,
 			caughtUp,
 		};
@@ -584,6 +608,19 @@ const PresentMatchReviewItemSchema = z.object({
 });
 
 /**
+ * Orientation-aware copy for the no-visible-suggestions card. A song-orientation
+ * subject is matched against playlists; a playlist-orientation subject against
+ * songs — so this must name the suggestion side. The UI renders itemData.message
+ * verbatim, so a hard-coded "playlist matches" would mislabel a playlist card
+ * whose missing suggestions are actually songs (A1 orientation correctness).
+ */
+function noVisibleSuggestionsMessage(orientation: MatchOrientation): string {
+	return orientation === "playlist"
+		? "No song matches are visible under your current settings."
+		: "No playlist matches are visible under your current settings.";
+}
+
+/**
  * Returns an `unavailable` card for an *owned* queue item whose subject can't be
  * shown (lost entitlement, unverifiable session), stamping an empty visible-pairs
  * capture FIRST so the card is skippable.
@@ -766,8 +803,7 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					status: "unavailable",
 					itemId,
 					reason: "no-visible-suggestions",
-					message:
-						"No playlist matches are visible under your current settings.",
+					message: noVisibleSuggestionsMessage(item.subject.orientation),
 				};
 			} else if (captureResult.status === "not_found") {
 				return {
@@ -807,8 +843,7 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					status: "unavailable",
 					itemId,
 					reason: "no-visible-suggestions",
-					message:
-						"No playlist matches are visible under your current settings.",
+					message: noVisibleSuggestionsMessage(item.subject.orientation),
 				};
 			}
 

@@ -33,6 +33,7 @@ describe("bootstrapReadyMatchQueue", () => {
 		vi.mocked(startOrResumeMatchReview).mockResolvedValue({
 			sessionId: "sess-1",
 			itemIds: ["item-1"],
+			firstUnresolvedItemId: "item-1",
 			total: 1,
 			caughtUp: false,
 		} as never);
@@ -56,6 +57,7 @@ describe("bootstrapReadyMatchQueue", () => {
 		vi.mocked(startOrResumeMatchReview).mockResolvedValue({
 			sessionId: "sess-2",
 			itemIds: [],
+			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
 		} as never);
@@ -86,6 +88,7 @@ describe("bootstrapReadyMatchQueue", () => {
 			startPromise.then(() => ({
 				sessionId: "sess-3",
 				itemIds: ["item-1"],
+				firstUnresolvedItemId: "item-1",
 				total: 1,
 				caughtUp: false,
 			})) as never,
@@ -117,6 +120,7 @@ describe("bootstrapReadyMatchQueue", () => {
 			.mockResolvedValueOnce({
 				sessionId: "sess-4",
 				itemIds: ["item-1"],
+				firstUnresolvedItemId: "item-1",
 				total: 1,
 				caughtUp: false,
 			} as never);

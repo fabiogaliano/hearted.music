@@ -9,6 +9,7 @@ import {
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
 	shouldBootstrapReadyQueue,
+	shouldOfferLoosenStrictness,
 } from "../queue-helpers";
 
 function makeQueue(
@@ -456,5 +457,22 @@ describe("shouldBootstrapReadyQueue", () => {
 				firstVisibleMatchReady: true,
 			}),
 		).toBe(false);
+	});
+});
+
+describe("shouldOfferLoosenStrictness", () => {
+	it("offers the loosen-strictness affordance only for no-visible-suggestions (A1)", () => {
+		expect(shouldOfferLoosenStrictness("no-visible-suggestions")).toBe(true);
+	});
+
+	it("does not offer it for entitlement/data reasons — those are not recoverable by strictness", () => {
+		for (const reason of [
+			"not-entitled",
+			"missing-song",
+			"snapshot-not-owned",
+			"already-resolved",
+		]) {
+			expect(shouldOfferLoosenStrictness(reason)).toBe(false);
+		}
 	});
 });

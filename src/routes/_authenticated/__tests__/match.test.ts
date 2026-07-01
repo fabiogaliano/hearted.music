@@ -5,9 +5,8 @@ const redirectMock = vi.fn((options: { to: string; replace?: boolean }) => ({
 	...options,
 }));
 const startOrResumeMatchReviewMock = vi.fn();
+const matchReviewBootstrapQueryOptionsMock = vi.fn();
 const matchReviewQueryOptionsMock = vi.fn();
-const matchReviewItemQueryOptionsMock = vi.fn();
-const presentMatchReviewItemQueryOptionsMock = vi.fn();
 const sessionModeMock = vi.fn();
 
 type OnboardingSession = { status: string };
@@ -20,13 +19,9 @@ type LoaderContext = {
 
 type MatchRoute = {
 	beforeLoad: (args: { location: { searchStr: string } }) => void;
-	loaderDeps: (args: { search: Record<string, unknown> }) => {
-		mode: "song" | "playlist";
-	};
-	loader: (args: {
-		context: LoaderContext;
-		deps: { mode: "song" | "playlist" };
-	}) => Promise<void>;
+	// Bootstrap + queue reads moved to the client (B1); the loader now only
+	// short-circuits walkthrough modes and returns void.
+	loader: (args: { context: LoaderContext }) => void;
 };
 
 function isMatchRoute(value: unknown): value is MatchRoute {
@@ -43,6 +38,7 @@ async function loadRoute(): Promise<MatchRoute> {
 		createFileRoute: () => (routeConfig: unknown) => routeConfig,
 		redirect: redirectMock,
 		useNavigate: vi.fn(),
+		Link: vi.fn(),
 	}));
 	vi.doMock("@tanstack/react-query", () => ({
 		useQueryClient: vi.fn(),
@@ -50,22 +46,27 @@ async function loadRoute(): Promise<MatchRoute> {
 		queryOptions: vi.fn((opts: unknown) => opts),
 	}));
 	vi.doMock("@/lib/server/match-review-queue.functions", () => ({
-		startOrResumeMatchReview: startOrResumeMatchReviewMock,
 		markMatchReviewItemPresented: vi.fn(),
 		addSongToPlaylistFromQueueItem: vi.fn(),
 		dismissMatchReviewItem: vi.fn(),
 		finishMatchReviewItem: vi.fn(),
 	}));
 	vi.doMock("@/features/matching/queries", () => ({
+		matchReviewBootstrapQueryOptions: matchReviewBootstrapQueryOptionsMock,
 		matchReviewQueryOptions: matchReviewQueryOptionsMock,
-		matchReviewItemQueryOptions: matchReviewItemQueryOptionsMock,
-		presentMatchReviewItemQueryOptions: presentMatchReviewItemQueryOptionsMock,
+		presentMatchReviewItemQueryOptions: vi.fn(),
 		matchReviewKeys: {
 			all: ["match-review"],
 			reviewsRoot: ["match-review", "review"],
 			review: (accountId: string, orientation: string) => [
 				"match-review",
 				"review",
+				accountId,
+				orientation,
+			],
+			bootstrap: (accountId: string, orientation: string) => [
+				"match-review",
+				"bootstrap",
 				accountId,
 				orientation,
 			],
@@ -91,6 +92,9 @@ async function loadRoute(): Promise<MatchRoute> {
 		sessionMode: sessionModeMock,
 	}));
 	vi.doMock("@/features/matching/Matching", () => ({ Matching: vi.fn() }));
+	vi.doMock("@/features/matching/components/MatchModeToggle", () => ({
+		MatchModeToggle: vi.fn(),
+	}));
 	vi.doMock("@/features/matching/WalkthroughMatchContent", () => ({
 		WalkthroughMatchContent: vi.fn(),
 	}));
@@ -112,9 +116,13 @@ async function loadRoute(): Promise<MatchRoute> {
 	vi.doMock("@/lib/observability/useAnalytics", () => ({
 		useAnalytics: vi.fn(),
 	}));
+	vi.doMock("@/lib/observability/sentry", () => ({
+		captureRouteError: vi.fn(),
+	}));
 	vi.doMock("@/lib/theme/fonts", () => ({ fonts: { body: "", display: "" } }));
 	vi.doMock("sonner", () => ({ toast: vi.fn() }));
 	vi.doMock("react", () => ({
+		Suspense: ({ children }: { children: unknown }) => children,
 		useCallback: vi.fn((fn: unknown) => fn),
 		useEffect: vi.fn(),
 		useMemo: vi.fn((fn: () => unknown) => fn()),
@@ -193,21 +201,7 @@ describe("/_authenticated/match route", () => {
 		});
 	});
 
-	describe("loaderDeps — mode derivation", () => {
-		it("returns mode=song when no mode param is present", async () => {
-			const route = await loadRoute();
-			expect(route.loaderDeps({ search: {} })).toEqual({ mode: "song" });
-		});
-
-		it("returns mode=playlist when search contains mode=playlist", async () => {
-			const route = await loadRoute();
-			expect(route.loaderDeps({ search: { mode: "playlist" } })).toEqual({
-				mode: "playlist",
-			});
-		});
-	});
-
-	describe("loader — orientation-scoped bootstrap", () => {
+	describe("loader — client-suspense contract (B1)", () => {
 		const makeContext = (
 			onboardingSession: OnboardingSession,
 		): LoaderContext => ({
@@ -216,110 +210,26 @@ describe("/_authenticated/match route", () => {
 			onboardingSession,
 		});
 
-		it("skips bootstrap for walkthrough sessions", async () => {
+		it("returns without any query work for walkthrough sessions", async () => {
 			const route = await loadRoute();
 			sessionModeMock.mockReturnValue("walkthrough");
 			const context = makeContext({ status: "song-walkthrough" });
 
-			await route.loader({ context, deps: { mode: "song" } });
-
-			expect(startOrResumeMatchReviewMock).not.toHaveBeenCalled();
+			expect(route.loader({ context })).toBeUndefined();
 			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
 		});
 
-		it("bootstraps song orientation with orientation:song when mode=song", async () => {
+		it("does no bootstrap or prefetch for normal sessions — moved to the client Suspense boundary", async () => {
 			const route = await loadRoute();
-			sessionModeMock.mockReturnValue("normal");
-			startOrResumeMatchReviewMock.mockResolvedValue({
-				sessionId: "sess-1",
-				itemIds: [],
-				total: 0,
-				caughtUp: true,
-			});
-			matchReviewQueryOptionsMock.mockReturnValue({
-				queryKey: ["match-review", "review", "acct-1", "song"],
-			});
+			sessionModeMock.mockReturnValue("complete");
 			const context = makeContext({ status: "complete" });
 
-			await route.loader({ context, deps: { mode: "song" } });
-
-			expect(startOrResumeMatchReviewMock).toHaveBeenCalledWith({
-				data: { orientation: "song" },
-			});
-			expect(matchReviewQueryOptionsMock).toHaveBeenCalledWith(
-				"acct-1",
-				"song",
-			);
-		});
-
-		it("bootstraps playlist orientation with orientation:playlist when mode=playlist", async () => {
-			const route = await loadRoute();
-			sessionModeMock.mockReturnValue("normal");
-			startOrResumeMatchReviewMock.mockResolvedValue({
-				sessionId: "sess-1",
-				itemIds: [],
-				total: 0,
-				caughtUp: true,
-			});
-			matchReviewQueryOptionsMock.mockReturnValue({
-				queryKey: ["match-review", "review", "acct-1", "playlist"],
-			});
-			const context = makeContext({ status: "complete" });
-
-			await route.loader({ context, deps: { mode: "playlist" } });
-
-			expect(startOrResumeMatchReviewMock).toHaveBeenCalledWith({
-				data: { orientation: "playlist" },
-			});
-			expect(matchReviewQueryOptionsMock).toHaveBeenCalledWith(
-				"acct-1",
-				"playlist",
-			);
-		});
-
-		it("prefetches the first card when the queue has items", async () => {
-			const route = await loadRoute();
-			sessionModeMock.mockReturnValue("normal");
-			startOrResumeMatchReviewMock.mockResolvedValue({
-				sessionId: "sess-1",
-				itemIds: ["item-1", "item-2"],
-				total: 2,
-				caughtUp: false,
-			});
-			matchReviewQueryOptionsMock.mockReturnValue({ queryKey: ["queue"] });
-			matchReviewItemQueryOptionsMock.mockReturnValue({ queryKey: ["item-1"] });
-			presentMatchReviewItemQueryOptionsMock.mockReturnValue({
-				queryKey: ["item-1", "present"],
-			});
-			const context = makeContext({ status: "complete" });
-
-			await route.loader({ context, deps: { mode: "song" } });
-
-			// All three prefetches should fire — queue, non-authoritative warm, authoritative present.
-			expect(context.queryClient.prefetchQuery).toHaveBeenCalledTimes(3);
-			expect(matchReviewItemQueryOptionsMock).toHaveBeenCalledWith("item-1");
-			expect(presentMatchReviewItemQueryOptionsMock).toHaveBeenCalledWith(
-				"item-1",
-			);
-		});
-
-		it("only prefetches the queue summary when caughtUp (no first card)", async () => {
-			const route = await loadRoute();
-			sessionModeMock.mockReturnValue("normal");
-			startOrResumeMatchReviewMock.mockResolvedValue({
-				sessionId: "sess-1",
-				itemIds: [],
-				total: 0,
-				caughtUp: true,
-			});
-			matchReviewQueryOptionsMock.mockReturnValue({ queryKey: ["queue"] });
-			const context = makeContext({ status: "complete" });
-
-			await route.loader({ context, deps: { mode: "song" } });
-
-			expect(context.queryClient.prefetchQuery).toHaveBeenCalledTimes(1);
-			expect(matchReviewItemQueryOptionsMock).not.toHaveBeenCalled();
-			expect(presentMatchReviewItemQueryOptionsMock).not.toHaveBeenCalled();
+			// The loader must not block SSR: create/resume + the queue read now run
+			// in QueueMatchPage via useSuspenseQuery under a Suspense fallback, so no
+			// prefetch or bootstrap call happens here.
+			expect(route.loader({ context })).toBeUndefined();
+			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
+			expect(startOrResumeMatchReviewMock).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -7,6 +7,8 @@
  * - Easy extension: add new type to union + add render case
  */
 
+import type { MatchViewMode } from "@/features/matching/types";
+
 interface ActivityBase {
 	id: string;
 	timestamp: string;
@@ -37,6 +39,9 @@ export interface DashboardStats {
 	analyzedPercent: number;
 	playlistCount: number;
 	reviewCount: number;
+	// Orientation the review count reflects — drives the CTA's /match link and
+	// noun so a playlist-first user isn't sent to song mode (A2).
+	matchOrientation: MatchViewMode;
 }
 
 export interface MatchPreview {

@@ -28,6 +28,7 @@ const baseStats = {
 	analyzedPercent: 80,
 	playlistCount: 5,
 	reviewCount: 3,
+	matchOrientation: "song" as const,
 };
 
 describe("DashboardHeader — handle identity", () => {

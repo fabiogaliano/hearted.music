@@ -1,6 +1,7 @@
 /** Only rendered when reviewCount > 0. */
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
+import type { MatchViewMode } from "@/features/matching/types";
 import { fonts } from "@/lib/theme/fonts";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
 import type { MatchPreview } from "../types";
@@ -8,17 +9,33 @@ import type { MatchPreview } from "../types";
 interface MatchReviewCTAProps {
 	reviewCount: number;
 	matchPreviews: MatchPreview[];
+	/** Orientation the count reflects — the CTA links and reads in this mode (A2). */
+	orientation: MatchViewMode;
 }
 
 export function MatchReviewCTA({
 	reviewCount,
 	matchPreviews,
+	orientation,
 }: MatchReviewCTAProps) {
 	if (reviewCount === 0) return null;
+
+	const isPlaylist = orientation === "playlist";
+	// Playlist mode uses the canonical ?mode=playlist URL; song mode is the bare
+	// /match (mode=song is non-canonical and would redirect).
+	const search = isPlaylist ? ({ mode: "playlist" } as const) : {};
+	const noun = isPlaylist
+		? reviewCount === 1
+			? "playlist"
+			: "playlists"
+		: reviewCount === 1
+			? "song"
+			: "songs";
 
 	return (
 		<Link
 			to="/match"
+			search={search}
 			className="theme-surface-bg group -mx-4 mb-10 block px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
 		>
 			<p
@@ -32,7 +49,7 @@ export function MatchReviewCTA({
 					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
-					{reviewCount} {reviewCount === 1 ? "song" : "songs"} to match
+					{reviewCount} {noun} to match
 				</h3>
 				<div className="flex items-center gap-8">
 					<FanSpreadAlbumArt images={matchPreviews} />

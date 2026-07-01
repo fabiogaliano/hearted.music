@@ -1370,6 +1370,7 @@ describe("startOrResumeMatchReview", () => {
 		expect(result).toEqual({
 			sessionId: "",
 			itemIds: [],
+			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
 		});
@@ -1403,6 +1404,7 @@ describe("startOrResumeMatchReview", () => {
 		expect(result).toEqual({
 			sessionId: "",
 			itemIds: [],
+			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
 		});
@@ -1437,6 +1439,8 @@ describe("startOrResumeMatchReview", () => {
 
 		expect(result.sessionId).toBe("session-1");
 		expect(result.itemIds).toEqual(["item-1", "item-2"]);
+		// First reviewable item by position — here the head, since both are unresolved.
+		expect(result.firstUnresolvedItemId).toBe("item-1");
 		expect(result.total).toBe(2);
 		expect(result.caughtUp).toBe(false);
 		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
@@ -1464,11 +1468,37 @@ describe("startOrResumeMatchReview", () => {
 
 		expect(result.caughtUp).toBe(true);
 		expect(result.total).toBe(2);
+		// Nothing reviewable → no card to seed.
+		expect(result.firstUnresolvedItemId).toBeNull();
 		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
 			distinctId: "acct-1",
 			event: "match_review_opened",
 			properties: { orientation: "song", state: "caught_up", result_count: 2 },
 		});
+	});
+
+	it("reports the first reviewable item by position, not the raw head, on a resumed session", async () => {
+		// Regression guard for the first-card seed contract: a resumed session whose
+		// head item is already resolved must still report the first pending/active item
+		// so the route warms the card the stack actually lands on (not itemIds[0]).
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({ kind: "resumed", session: { id: "session-1" } as never }),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "resolved", position: 0 }),
+				fakeDomainItem({ id: "item-2", state: "pending", position: 1 }),
+			]),
+		);
+
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
+
+		// Head (item-1) is resolved; the seed must point at item-2.
+		expect(result.itemIds).toEqual(["item-1", "item-2"]);
+		expect(result.firstUnresolvedItemId).toBe("item-2");
+		expect(result.caughtUp).toBe(false);
 	});
 
 	it("throws a user-safe error when the domain queue setup fails", async () => {
@@ -1918,6 +1948,8 @@ describe("presentMatchReviewItem", () => {
 		expect(result.status).toBe("unavailable");
 		if (result.status === "unavailable") {
 			expect(result.reason).toBe("no-visible-suggestions");
+			// Song-orientation subject → the missing suggestions are playlists (A1).
+			expect(result.message).toContain("playlist matches");
 		}
 	});
 
@@ -2259,6 +2291,27 @@ describe("presentMatchReviewItem", () => {
 		if (result.status === "ready" && result.mode === "playlist") {
 			// fitScore comes from the captured pair row, not the fresh derivation.
 			expect(result.suggestions[0].fitScore).toBe(0.63);
+		}
+	});
+
+	it("returns orientation-correct no-visible-suggestions copy for a playlist item (songs, not playlists)", async () => {
+		// The UI renders itemData.message verbatim, so a playlist-orientation card
+		// with no visible suggestions must name songs — a hard-coded "playlist
+		// matches" would mislabel it (A1). The suggestion side here is songs.
+		setupPlaylistPresentItemFetch();
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: { ...MOCK_PLAYLIST_LIST, suggestions: [] },
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "empty" });
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("no-visible-suggestions");
+			expect(result.message).toContain("song matches");
+			expect(result.message).not.toContain("playlist matches");
 		}
 	});
 

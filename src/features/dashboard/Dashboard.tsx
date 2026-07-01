@@ -28,6 +28,7 @@ export function Dashboard({
 			<MatchReviewCTA
 				reviewCount={stats.reviewCount}
 				matchPreviews={matchPreviews}
+				orientation={stats.matchOrientation}
 			/>
 
 			<ActivityFeed

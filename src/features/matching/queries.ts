@@ -3,10 +3,10 @@ import { dashboardKeys } from "@/features/dashboard/queries";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import {
 	getMatchReview,
-	getMatchReviewItem,
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
 	presentMatchReviewItem,
+	startOrResumeMatchReview,
 	syncActiveMatchReviewSessions,
 } from "@/lib/server/match-review-queue.functions";
 
@@ -19,8 +19,46 @@ export const matchReviewKeys = {
 	reviewsRoot: ["match-review", "review"] as const,
 	review: (accountId: string, orientation: MatchOrientation) =>
 		["match-review", "review", accountId, orientation] as const,
+	// Bootstrap key is deliberately kept OUT of the reviewsRoot/summary/dashboard
+	// invalidation sets: create/resume is expensive (it appends the latest
+	// snapshot), so it must run once per (account, orientation) mount and never
+	// re-fire when a mid-session snapshot refresh invalidates the queue list.
+	bootstrap: (accountId: string, orientation: MatchOrientation) =>
+		["match-review", "bootstrap", accountId, orientation] as const,
 	item: (itemId: string) => ["match-review", "item", itemId] as const,
 };
+
+/**
+ * Ensures the active review session exists for (account, orientation), returning
+ * the start result. Used by the route as a client-side `useSuspenseQuery` so the
+ * create/resume round-trip no longer blocks SSR: the shell + a Suspense spinner
+ * stream immediately and the (slow, when a large library is enriching) bootstrap
+ * resolves under the boundary instead of the 16s blank-HTML wait (B1).
+ *
+ * staleTime Infinity: the session, once created, is stable for the visit —
+ * re-running create/resume on every queue refetch would re-derive the snapshot
+ * append on each enrichment tick (the exact large-library amplification we're
+ * fixing). A fresh mount (new page load) gets a fresh cache and re-bootstraps.
+ *
+ * Never restaling is safe because bootstrap is NOT the source of truth for the
+ * live queue: the card list comes from matchReviewQueryOptions (60s staleTime,
+ * invalidated on snapshot refresh), so a stale bootstrap can't pin stale cards.
+ * The key is per-orientation, so a mode switch resumes the other session under
+ * its own key; and bootstrap is deliberately excluded from the snapshot-refresh
+ * invalidation set (see matchReviewKeys) so a mid-session enrichment tick can't
+ * re-run create/resume. The ready-queue recovery path re-runs create/resume
+ * directly (bootstrapReadyMatchQueue) rather than invalidating this key.
+ */
+export function matchReviewBootstrapQueryOptions(
+	accountId: string,
+	orientation: MatchOrientation,
+) {
+	return queryOptions({
+		queryKey: matchReviewKeys.bootstrap(accountId, orientation),
+		queryFn: () => startOrResumeMatchReview({ data: { orientation } }),
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+}
 
 export function matchReviewQueryOptions(
 	accountId: string,
@@ -35,26 +73,18 @@ export function matchReviewQueryOptions(
 	});
 }
 
-export function matchReviewItemQueryOptions(itemId: string) {
-	return queryOptions({
-		queryKey: matchReviewKeys.item(itemId),
-		queryFn: () => getMatchReviewItem({ data: { itemId } }),
-		// Per-card data is immutable once loaded (song/matches don't change mid-session).
-		// High staleTime prevents re-fetches when the queue query refreshes.
-		staleTime: 30 * 60_000,
-	});
-}
-
 /**
  * Authoritative card query: calls presentMatchReviewItem (POST), which captures
  * the visible pair set and returns render-ready data keyed off captured rows.
+ * This is the ONLY query the card renders from, and the same key the first-card
+ * seed and the next-card prefetch warm (see match.tsx) — warming any other key
+ * would leave present uncached and every advance would suspend (B2).
  *
- * Separate from matchReviewItemQueryOptions so the side-effectful capture path
- * is never confused with the side-effect-free prefetch warming path (D9, D10).
- * First-write-wins capture makes refetches safe — the same rows come back on retry.
- *
- * Do NOT use this key for next-card prefetch — capture should only fire when
- * the user is actually being shown the card, not speculatively.
+ * First-write-wins capture makes refetches safe — the same rows come back on
+ * retry. The prefetch is limited to exactly one card ahead so the speculative
+ * capture stays bounded to the card a forward advance lands on; strictness is
+ * session-frozen, so capturing a card a beat early yields the same visible pairs
+ * as capturing it on arrival.
  */
 export function presentMatchReviewItemQueryOptions(itemId: string) {
 	return queryOptions({

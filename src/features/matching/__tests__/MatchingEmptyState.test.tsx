@@ -105,6 +105,27 @@ describe("MatchingEmptyState", () => {
 		});
 	});
 
+	describe("orientation toggle (A2)", () => {
+		it("omits the toggle when onModeChange is not provided", () => {
+			render(<MatchingEmptyState reason="caught-up" />);
+			expect(screen.queryByRole("group", { name: "View mode" })).toBeNull();
+		});
+
+		it("renders the toggle so a caught-up user can switch orientation", async () => {
+			const onModeChange = vi.fn();
+			const { user } = render(
+				<MatchingEmptyState
+					reason="caught-up"
+					mode="song"
+					onModeChange={onModeChange}
+				/>,
+			);
+			expect(screen.getByRole("group", { name: "View mode" })).toBeDefined();
+			await user.click(screen.getByRole("button", { name: "Playlist" }));
+			expect(onModeChange).toHaveBeenCalledExactlyOnceWith("playlist");
+		});
+	});
+
 	describe("building states — shown while jobs are active", () => {
 		it("renders 'building' state with finding-matches copy", () => {
 			render(<MatchingEmptyState reason="building" />);

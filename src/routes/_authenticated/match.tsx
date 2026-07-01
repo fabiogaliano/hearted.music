@@ -1,10 +1,24 @@
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	createFileRoute,
+	type ErrorComponentProps,
+	Link,
+	redirect,
+	useNavigate,
+} from "@tanstack/react-router";
+import {
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { toast } from "sonner";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { bootstrapReadyMatchQueue } from "@/features/matching/bootstrap-ready-queue";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
+import { MatchModeToggle } from "@/features/matching/components/MatchModeToggle";
 import { Matching } from "@/features/matching/Matching";
 import {
 	hasNonCanonicalMatchMode,
@@ -12,7 +26,7 @@ import {
 	validateMatchSearch,
 } from "@/features/matching/match-search";
 import {
-	matchReviewItemQueryOptions,
+	matchReviewBootstrapQueryOptions,
 	matchReviewKeys,
 	matchReviewQueryOptions,
 	matchReviewSummaryKeys,
@@ -27,6 +41,7 @@ import {
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
 	shouldBootstrapReadyQueue,
+	shouldOfferLoosenStrictness,
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
@@ -41,13 +56,13 @@ import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outco
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
 	finishMatchReviewItem,
 	markMatchReviewItemPresented,
-	startOrResumeMatchReview,
 } from "@/lib/server/match-review-queue.functions";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -65,52 +80,85 @@ export const Route = createFileRoute("/_authenticated/match")({
 			throw redirect({ to: "/match", replace: true });
 		}
 	},
-	// Expose the URL mode to the loader so bootstrap query keys are
-	// orientation-scoped and the first-card prefetch targets the right session.
-	loaderDeps: ({ search }) => ({ mode: modeFromSearch(search) }),
-	// /_authenticated already resolved the session via resolveSession.
-	// Walkthrough modes skip queue bootstrap — the DU guarantees song presence.
-	loader: async ({ context, deps }) => {
+	// /_authenticated already resolved the session via resolveSession. Bootstrap
+	// (create/resume) and the queue read moved off the loader into a client-side
+	// Suspense boundary — see MatchPage → QueueMatchPage. Awaiting create/resume
+	// here blocked SSR on the page's slowest step (16s FCP while a large library
+	// enriches); now the shell + a spinner stream immediately and the queue
+	// resolves under the boundary. The loader stays only to short-circuit
+	// walkthrough modes, which have no queue (the DU guarantees song presence).
+	loader: ({ context }) => {
 		if (sessionMode(context.onboardingSession) === "walkthrough") return;
-		const { session, queryClient } = context;
-		const { mode } = deps;
-
-		// Bootstrap the queue (idempotent — resumes if one already exists). This
-		// must run before the prefetches to ensure a session row exists.
-		const startResult = await startOrResumeMatchReview({
-			data: { orientation: mode },
-		});
-
-		// The queue summary and the first card are independent reads (one keys off
-		// the account, the other off the item id), so fire them together — sequencing
-		// them adds a needless round-trip to the route's critical path. The summary
-		// primes the page's useSuspenseQuery; the first-item prefetch lets the first
-		// card render without a spinner (resolved items are skipped — no card data).
-		const firstId = startResult.caughtUp ? undefined : startResult.itemIds[0];
-		const prefetches = [
-			queryClient.prefetchQuery(
-				matchReviewQueryOptions(session.accountId, mode),
-			),
-		];
-		if (firstId) {
-			// Non-authoritative warming — fetches without capture side effects.
-			prefetches.push(
-				queryClient.prefetchQuery(matchReviewItemQueryOptions(firstId)),
-			);
-			// Authoritative first-card presentation: captures pairs and clears newness
-			// so QueueCardContent renders instantly from cache without a spinner.
-			prefetches.push(
-				queryClient.prefetchQuery(presentMatchReviewItemQueryOptions(firstId)),
-			);
-		}
-		await Promise.all(prefetches);
 	},
+	errorComponent: MatchErrorComponent,
 	pendingComponent: MatchPending,
 	component: MatchPage,
 });
 
 function MatchPending() {
 	return <div className="mx-auto w-full max-w-[min(1600px,100%)]" />;
+}
+
+// Streamed while the client-side bootstrap + queue read resolve under the
+// Suspense boundary (B1). A slow/enriching-library bootstrap now shows this
+// spinner instead of blank HTML or a hard error.
+function MatchLoading() {
+	return (
+		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+			<div
+				className="flex min-h-[calc(100dvh-160px)] items-center justify-center"
+				role="status"
+				aria-label="Loading matches"
+			>
+				<div className="theme-text-muted size-6 animate-spin rounded-full border-2 border-current border-t-transparent opacity-40" />
+			</div>
+		</div>
+	);
+}
+
+// Catches a failed bootstrap/queue read (thrown by the client Suspense queries)
+// so it renders a retry inside the app shell rather than bubbling to the
+// full-page _authenticated error fallback. resetQueries clears the errored
+// match-review caches so `reset()` re-mounts into a fresh fetch.
+function MatchErrorComponent({ error, reset }: ErrorComponentProps) {
+	const queryClient = useQueryClient();
+
+	useEffect(() => {
+		captureRouteError(error, { route: "_authenticated/match" });
+	}, [error]);
+
+	const handleRetry = () => {
+		queryClient.resetQueries({ queryKey: matchReviewKeys.all });
+		reset();
+	};
+
+	return (
+		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
+			<div
+				className="flex min-h-[calc(100dvh-160px)] flex-col items-center justify-center px-8 text-center md:px-16"
+				role="alert"
+				style={{ fontFamily: fonts.body }}
+			>
+				<p className="theme-text-muted mb-6 text-xs tracking-widest uppercase">
+					something went wrong
+				</p>
+				<h1
+					className="theme-text max-w-[520px] text-[44px] leading-[1.1] font-extralight tracking-tight text-balance md:text-[54px]"
+					style={{ fontFamily: fonts.display }}
+				>
+					We couldn't load <em>your matches.</em>
+				</h1>
+				<button
+					type="button"
+					onClick={handleRetry}
+					className="theme-text mt-12 text-base font-medium tracking-wide"
+					style={{ fontFamily: fonts.body }}
+				>
+					Try again →
+				</button>
+			</div>
+		</div>
+	);
 }
 
 function MatchPage() {
@@ -127,16 +175,50 @@ function MatchPage() {
 		);
 	}
 
-	return <QueueMatchPage />;
+	return (
+		<Suspense fallback={<MatchLoading />}>
+			<QueueMatchPage />
+		</Suspense>
+	);
 }
 
 function QueueMatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	// Read mode from validated URL search — never falls back to preference here
-	// because the loader already bootstrapped the correct orientation session.
+	// Read mode from validated URL search. The bootstrap query below (not the
+	// loader) creates/resumes the correct orientation session.
 	const mode = modeFromSearch(Route.useSearch());
+
+	// Ensure the active session exists before reading the queue. Two suspense
+	// queries in one component sequence naturally: React halts the render at the
+	// first suspend, so bootstrap resolves before the queue query fires — no race
+	// between create and read. This is the create/resume round-trip the loader
+	// used to block SSR on; it now streams behind the Suspense spinner (B1).
+	const { data: bootstrap } = useSuspenseQuery(
+		matchReviewBootstrapQueryOptions(session.accountId, mode),
+	);
+
+	// Overlap the first card's authoritative present() capture with the queue read.
+	// Bootstrap already created the session and reports firstUnresolvedItemId — the
+	// exact card the stack lands on, computed server-side with the same predicate as
+	// deriveUnresolvedIds — so warming its present query here lets that POST run
+	// concurrently with the queue read instead of firing only once QueueCardContent
+	// mounts and suspends, cutting the queue → present leg of the
+	// bootstrap → queue → present waterfall. Seeding off firstUnresolvedItemId (not
+	// itemIds[0]) means a resumed session with a resolved head still warms the right
+	// card. Prefetch is fired during render (not an effect) on purpose: an effect runs
+	// only after this component commits, which is gated on the queue suspend below, so
+	// it would never overlap. Exactly one present is warmed — present captures visible
+	// pairs, so we never speculate past the card a first render lands on — and it is
+	// deduped by key with first-write-wins capture, so this component's re-renders
+	// under job polling re-issue a cheap no-op.
+	const firstItemId = bootstrap.firstUnresolvedItemId;
+	if (firstItemId) {
+		void queryClient.prefetchQuery(
+			presentMatchReviewItemQueryOptions(firstItemId),
+		);
+	}
 
 	const { data: queue } = useSuspenseQuery(
 		matchReviewQueryOptions(session.accountId, mode),
@@ -244,7 +326,11 @@ function QueueMatchPage() {
 		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
-				<MatchingEmptyState reason={reason} mode={mode} />
+				<MatchingEmptyState
+					reason={reason}
+					mode={mode}
+					onModeChange={handleModeChange}
+				/>
 			</div>
 		);
 	}
@@ -274,6 +360,7 @@ function QueueMatchPage() {
 					reason={reason}
 					hiddenCount={hiddenReviewItemCount}
 					mode={mode}
+					onModeChange={handleModeChange}
 				/>
 			</div>
 		);
@@ -529,6 +616,50 @@ function QueueMatchContent({
 	);
 }
 
+// Header for the non-ready cards (unavailable / retryable-error). Mirrors the
+// ready card's "Matching / X of Y" heading but pairs it with the orientation
+// toggle so a user stuck on one of these states can still switch modes (A2)
+// instead of being stranded. No progress bar — these cards aren't a live
+// position in the walk.
+function NonReadyCardHeader({
+	progressIndex,
+	total,
+	mode,
+	disabled,
+	onModeChange,
+}: {
+	progressIndex: number;
+	total: number;
+	mode: MatchViewMode;
+	disabled: boolean;
+	onModeChange: (mode: MatchViewMode) => void;
+}) {
+	return (
+		<div className="mb-12 flex items-end justify-between gap-6">
+			<div>
+				<p
+					className="theme-text-muted text-xs tracking-widest uppercase"
+					style={{ fontFamily: fonts.body }}
+				>
+					Matching
+				</p>
+				<h2
+					className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
+					style={{ fontFamily: fonts.display }}
+				>
+					<span>{progressIndex + 1}</span>
+					<span className="theme-text-muted opacity-60"> / {total}</span>
+				</h2>
+			</div>
+			<MatchModeToggle
+				mode={mode}
+				disabled={disabled}
+				onModeChange={onModeChange}
+			/>
+		</div>
+	);
+}
+
 interface QueueCardContentProps {
 	itemId: string;
 	currentIndex: number;
@@ -589,8 +720,9 @@ function QueueCardContent({
 	analytics,
 	queryClient,
 }: QueueCardContentProps) {
-	// Authoritative card render: reads from captured pair rows (MSR-25).
-	// matchReviewItemQueryOptions is kept for next-card warming only (D9, D10).
+	// Authoritative card render: reads from captured pair rows (MSR-25) via the
+	// present (POST) capture path — the same query the first-card seed and the
+	// next-card prefetch warm, so an advance renders from cache instead of suspending.
 	const { data: itemData } = useSuspenseQuery(
 		presentMatchReviewItemQueryOptions(itemId),
 	);
@@ -610,12 +742,18 @@ function QueueCardContent({
 		void markMatchReviewItemPresented({ data: { itemId } });
 	}, [itemId, itemData.status]);
 
-	// Prefetch the next two items by id so they're in cache before navigation.
+	// Prefetch the next card's authoritative present query so a forward advance
+	// renders from cache instead of suspending (B2). Warming must target the present
+	// key the card actually reads — warming any other key leaves present uncached and
+	// every advance suspends (worst in playlist mode). Only next1 is warmed: present
+	// captures visible pairs and marks the item active, so we speculate exactly one
+	// card ahead — the one a forward advance lands on — and re-warm the new next1 on
+	// each advance.
 	useEffect(() => {
 		const next1 = unresolvedIds[currentIndex + 1];
-		const next2 = unresolvedIds[currentIndex + 2];
-		if (next1) queryClient.prefetchQuery(matchReviewItemQueryOptions(next1));
-		if (next2) queryClient.prefetchQuery(matchReviewItemQueryOptions(next2));
+		if (next1) {
+			queryClient.prefetchQuery(presentMatchReviewItemQueryOptions(next1));
+		}
 	}, [queryClient, currentIndex, unresolvedIds]);
 
 	// QueueCardContent now persists across cards (see the render site — it is not
@@ -712,14 +850,16 @@ function QueueCardContent({
 	// total − remaining advances the numerator instead.
 	const progressIndex = deriveProgressIndex(total, unresolvedIds.length);
 
-	// Unavailable card: the item cannot be shown (entitlement, missing data, etc.).
-	// H6 copy uses review-item noun by mode. Primary action skips via finishMatchReviewItem
-	// (marks the item resolved/skipped) — semantically correct for an unshowable card.
+	// Unavailable card: the item cannot be shown. The body copy is the server's
+	// real `message` for the specific `reason` (not-entitled, missing-song,
+	// snapshot-not-owned, already-resolved, no-visible-suggestions) — the old
+	// code re-derived a "no longer available" string from the URL mode, which was
+	// wrong for the no-visible-suggestions reason (A1). Skip resolves the card via
+	// finishMatchReviewItem (marks it resolved/skipped). When the subject only has
+	// matches hidden under the strictness bar (no-visible-suggestions), a
+	// recoverable "loosen strictness" link is the primary affordance instead.
 	if (itemData.status === "unavailable") {
-		const unavailableMessage =
-			mode === "playlist"
-				? "This playlist is no longer available to match."
-				: "This song is no longer available to match.";
+		const loosenStrictness = shouldOfferLoosenStrictness(itemData.reason);
 		const skipLabel = mode === "playlist" ? "Skip Playlist" : "Skip Song";
 
 		const handleSkipUnavailable = async () => {
@@ -749,43 +889,54 @@ function QueueCardContent({
 
 		return (
 			<div>
-				<div className="mb-12">
-					<p
-						className="theme-text-muted text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Matching
-					</p>
-					<h2
-						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
-						style={{ fontFamily: fonts.display }}
-					>
-						<span>{progressIndex + 1}</span>
-						<span className="theme-text-muted opacity-60"> / {total}</span>
-					</h2>
-				</div>
+				<NonReadyCardHeader
+					progressIndex={progressIndex}
+					total={total}
+					mode={mode}
+					disabled={navigationStatus === "pending"}
+					onModeChange={onModeChange}
+				/>
 				<div
 					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
 					role="status"
 					aria-label={
-						mode === "playlist" ? "Playlist unavailable" : "Song unavailable"
+						loosenStrictness
+							? "No matches visible"
+							: mode === "playlist"
+								? "Playlist unavailable"
+								: "Song unavailable"
 					}
 				>
 					<p
 						className="theme-text-muted text-sm"
 						style={{ fontFamily: fonts.body }}
 					>
-						{unavailableMessage}
+						{itemData.message}
 					</p>
-					<button
-						type="button"
-						onClick={handleSkipUnavailable}
-						className="theme-primary text-sm font-medium tracking-wide"
-						style={{ fontFamily: fonts.body }}
-						disabled={navigationStatus === "pending"}
-					>
-						{skipLabel} →
-					</button>
+					<div className="flex flex-wrap items-center gap-6">
+						{loosenStrictness && (
+							<Link
+								to="/settings"
+								hash="settings-section-matching"
+								search={{ from: "match" }}
+								className="theme-primary text-sm font-medium tracking-wide"
+								style={{ fontFamily: fonts.body }}
+							>
+								Adjust strictness →
+							</Link>
+						)}
+						<button
+							type="button"
+							onClick={handleSkipUnavailable}
+							className={`text-sm font-medium tracking-wide ${
+								loosenStrictness ? "theme-text-muted" : "theme-primary"
+							}`}
+							style={{ fontFamily: fonts.body }}
+							disabled={navigationStatus === "pending"}
+						>
+							{skipLabel} →
+						</button>
+					</div>
 				</div>
 			</div>
 		);
@@ -804,21 +955,13 @@ function QueueCardContent({
 
 		return (
 			<div>
-				<div className="mb-12">
-					<p
-						className="theme-text-muted text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Matching
-					</p>
-					<h2
-						className="theme-text mt-3 text-3xl font-extralight tabular-nums leading-none"
-						style={{ fontFamily: fonts.display }}
-					>
-						<span>{progressIndex + 1}</span>
-						<span className="theme-text-muted opacity-60"> / {total}</span>
-					</h2>
-				</div>
+				<NonReadyCardHeader
+					progressIndex={progressIndex}
+					total={total}
+					mode={mode}
+					disabled={navigationStatus === "pending"}
+					onModeChange={onModeChange}
+				/>
 				<div
 					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
 					role="status"
