@@ -198,6 +198,9 @@ export function JobsSection({ refreshKey }: { refreshKey: number }) {
 					</div>
 					<div className="stat-sub">
 						item-level failures awaiting resolution
+						{data.parkedFailures > 0 && (
+							<> · {fmt(data.parkedFailures)} parked (retry &gt;3d out)</>
+						)}
 					</div>
 				</div>
 				{data.failureCodes.map((c) => (

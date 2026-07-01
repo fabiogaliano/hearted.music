@@ -144,6 +144,7 @@ export interface JobMetrics {
 	completed: number;
 	staleRunning: number;
 	unresolvedFailures: number;
+	parkedFailures: number;
 	oldestPendingSeconds: number | null;
 	byType: { type: string; pending: number; running: number; failed: number }[];
 	recentFailures: {

@@ -395,6 +395,7 @@ export interface JobMetrics {
 	completed: number;
 	staleRunning: number;
 	unresolvedFailures: number;
+	parkedFailures: number;
 	oldestPendingSeconds: number | null;
 	byType: { type: string; pending: number; running: number; failed: number }[];
 	recentFailures: {
@@ -416,7 +417,15 @@ export async function jobMetrics(): Promise<JobMetrics> {
 			count(*) filter (where status = 'completed') as completed,
 			count(*) filter (where status = 'running' and heartbeat_at < now() - interval '5 minutes') as stale_running,
 			extract(epoch from (now() - min(created_at) filter (where status = 'pending')))::bigint as oldest_pending_seconds,
-			(select count(*) from job_item_failure where resolved_at is null) as unresolved_failures
+			-- "Parked" = the failure policy pushed the next retry >3 days out (e.g. genre
+			-- source_not_found gets 30d). Those are long-tail data gaps, not fresh
+			-- signal, so they're split out of the actionable count that drives the
+			-- "needs attention" panel — otherwise a permanently-high number trains you
+			-- to ignore it.
+			(select count(*) from job_item_failure where resolved_at is null
+				and (suppress_until is null or suppress_until <= now() + interval '3 days')) as unresolved_failures,
+			(select count(*) from job_item_failure where resolved_at is null
+				and suppress_until is not null and suppress_until > now() + interval '3 days') as parked_failures
 		from job
 	`),
 		read(`
@@ -440,6 +449,7 @@ export async function jobMetrics(): Promise<JobMetrics> {
 		select failure_code as code, count(*) as count
 		from job_item_failure
 		where resolved_at is null
+			and (suppress_until is null or suppress_until <= now() + interval '3 days')
 		group by 1 order by 2 desc limit 10
 	`),
 	]);
@@ -451,6 +461,7 @@ export async function jobMetrics(): Promise<JobMetrics> {
 		completed: num(totals?.completed),
 		staleRunning: num(totals?.stale_running),
 		unresolvedFailures: num(totals?.unresolved_failures),
+		parkedFailures: num(totals?.parked_failures),
 		oldestPendingSeconds:
 			totals?.oldest_pending_seconds == null
 				? null
@@ -503,6 +514,7 @@ export async function jobFailures(): Promise<JobFailureItem[]> {
 		left join account a on a.id = j.account_id
 		left join song s on s.id = f.item_id and f.item_type = 'song'
 		where f.resolved_at is null
+			and (f.suppress_until is null or f.suppress_until <= now() + interval '3 days')
 		order by f.created_at desc
 		limit 200
 	`);
