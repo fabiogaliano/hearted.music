@@ -61,3 +61,11 @@ This log records every decision that wasn't spelled out in the plan, with a one-
 - **Skipped cleanup (per user decision): `changes/` constructor pattern left as-is** — the plan's "half-applied" premise was false (all 13 change kinds covered, uniformly zero-logic); inlining would be pure churn. No code change made.
 
 - **Deferred (noted): relocating `QueueBand`/`BillingBand` to a foundational module.** Task 3 review's non-blocking recommendation — move the two vocabulary types out of `workflows/library-processing/band-policy.ts` into a neutral module so `billing/` no longer imports from a workflow module. Not done (respecting the plan's chosen placement + "build only what's asked"); recorded as a future follow-up.
+
+## Follow-ups (completed after the main run, at user request)
+
+- **[DONE] Duplicate test removed** (`batch.test.ts`) — the rename-artifact duplicate of "calls the normal RPC when mode is 'normal'" was removed (byte-for-byte identical, zero coverage loss). Commit `43b30bd4`.
+
+- **[DONE] `QueueBand`/`BillingBand` relocated to `src/lib/shared/queue/band.ts`** — the layering inversion is resolved; `billing/` no longer imports the band vocabulary from `workflows/`. Policy functions stay in `band-policy.ts`. New `shared/queue/` subdir mirrors the existing `shared/errors/` + `shared/utils/` convention. madge-confirmed no cycle. Commit `96a584eb`.
+
+- **[DONE] Scheduler cross-invocation double-probe eliminated** — `createReadinessAccessor(accountId)` (a per-change, lazy, memoized `() => Promise<boolean>` that bakes in `resolveReadinessPermissive`) is created once per change in `applyLibraryProcessingChange` and threaded into `executeEffect`. A change dispatching both effects now probes readiness exactly once (proven by a probe-count test); a change needing neither arm probes zero times (lazy by construction). accountId substitution (`change.accountId` for the old `effect.accountId`) verified provably safe: effects carry `state.accountId`, and state is loaded by `change.accountId`, so they're always equal. Behavior preserved. Commit pending.

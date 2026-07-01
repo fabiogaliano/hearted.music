@@ -58,6 +58,7 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import {
+	createReadinessAccessor,
 	deriveNeedsTargetSongEnrichment,
 	executeEffect,
 	loadJobOutcomeMetadata,
@@ -129,6 +130,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(Result.isOk(result)).toBe(true);
@@ -168,6 +170,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: ["song-a"],
 				},
 				{ satisfiedMarker: null, batchSequence: 2 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
@@ -202,6 +205,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(Result.isError(result)).toBe(true);
@@ -243,6 +247,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(Result.isOk(result)).toBe(true);
@@ -282,6 +287,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(Result.isError(result)).toBe(true);
@@ -319,6 +325,7 @@ describe("scheduler", () => {
 				state,
 				{ kind: "onboarding_target_selection_confirmed", accountId: "acct-1" },
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
@@ -355,6 +362,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: ["song-a"],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(ensureMatchSnapshotRefreshJobMock).toHaveBeenCalledWith(
@@ -385,6 +393,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: ["song-a"],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			// billing band is "standard" → 50
@@ -420,6 +429,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: ["song-a"],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			// billing band is "standard" → 50, not interactive → 200
@@ -460,6 +470,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			// On DB error → treat as ready → billing priority, not interactive
@@ -501,6 +512,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(ensureEnrichmentJobMock).toHaveBeenCalledWith(
@@ -534,6 +546,7 @@ describe("scheduler", () => {
 				state,
 				{ kind: "onboarding_target_selection_confirmed", accountId: "acct-1" },
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			expect(ensureEnrichmentJobMock).toHaveBeenCalledWith(
@@ -715,6 +728,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
@@ -744,6 +758,7 @@ describe("scheduler", () => {
 					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
@@ -785,6 +800,7 @@ describe("scheduler", () => {
 					},
 				},
 				{ satisfiedMarker: null, batchSequence: null },
+				createReadinessAccessor("acct-1"),
 			);
 
 			const calledProgress = ensureEnrichmentJobMock.mock.calls[0][0].progress;
@@ -816,12 +832,72 @@ describe("scheduler", () => {
 					newCandidateSongIds: [],
 				},
 				{ satisfiedMarker: null, batchSequence: 0 },
+				createReadinessAccessor("acct-1"),
 			);
 
 			// billing band is "standard" → 50; bootstrap mode must NOT promote to interactive (200)
 			expect(ensureEnrichmentJobMock).toHaveBeenCalledWith(
 				expect.objectContaining({ queuePriority: 50 }),
 			);
+		});
+	});
+
+	describe("readiness probe deduplication via createReadinessAccessor", () => {
+		it("probes hasFirstVisibleReviewSubject exactly once when both effects share the same accessor", async () => {
+			// Simulate a change that dispatches both an enrichment and a refresh effect.
+			// Both executeEffect calls share one accessor → only one DB read.
+			hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(true));
+			ensureEnrichmentJobMock.mockResolvedValue(
+				Result.ok({ id: "enrich-dedup", status: "pending" }),
+			);
+			ensureMatchSnapshotRefreshJobMock.mockResolvedValue(
+				Result.ok({ id: "refresh-dedup", status: "pending" }),
+			);
+
+			const change = {
+				kind: "enrichment_completed" as const,
+				accountId: "acct-1",
+				jobId: "old-job",
+				requestSatisfied: false,
+				newCandidatesAvailable: true,
+				newCandidateSongIds: ["song-a"],
+			};
+			const meta = { satisfiedMarker: null, batchSequence: 0 };
+			const state = makeState();
+			// One accessor per change — memoises the probe across both effect calls.
+			const accessor = createReadinessAccessor("acct-1");
+
+			await executeEffect(
+				{
+					kind: "ensure_enrichment_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				change,
+				meta,
+				accessor,
+			);
+			await executeEffect(
+				{
+					kind: "ensure_match_snapshot_refresh_job",
+					accountId: "acct-1",
+					satisfiesRequestedAt: "2026-05-01T00:00:00Z",
+				},
+				state,
+				change,
+				meta,
+				accessor,
+			);
+
+			// Despite two executeEffect calls, only one DB probe was made.
+			expect(hasFirstVisibleReviewSubjectMock).toHaveBeenCalledTimes(1);
+		});
+
+		it("probes zero times when the accessor is created but no effect is executed", async () => {
+			// Creating the accessor is lazy — no probe fires until it is first awaited.
+			createReadinessAccessor("acct-1");
+			expect(hasFirstVisibleReviewSubjectMock).not.toHaveBeenCalled();
 		});
 	});
 });

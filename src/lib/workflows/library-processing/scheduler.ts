@@ -203,11 +203,33 @@ export async function deriveNeedsTargetSongEnrichment(
 	return false;
 }
 
+/**
+ * Creates a memoized readiness accessor for a single change's effects.
+ *
+ * Probes `hasFirstVisibleReviewSubject` at most once regardless of how many
+ * effects share it — the Promise is cached on first call and reused thereafter.
+ * Callers that never invoke the accessor pay zero DB reads.
+ */
+export function createReadinessAccessor(
+	accountId: string,
+): () => Promise<boolean> {
+	let cachedPromise: Promise<boolean> | null = null;
+	return () => {
+		if (cachedPromise === null) {
+			cachedPromise = hasFirstVisibleReviewSubject(accountId).then(
+				resolveReadinessPermissive,
+			);
+		}
+		return cachedPromise;
+	};
+}
+
 export async function executeEffect(
 	effect: LibraryProcessingEffect,
 	state: LibraryProcessingState,
 	change: LibraryProcessingChange,
 	jobOutcomeMetadata: JobOutcomeMetadata,
+	readinessAccessor: () => Promise<boolean>,
 ): Promise<
 	Result<
 		{ state: LibraryProcessingState; jobId: string },
@@ -224,12 +246,10 @@ export async function executeEffect(
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);
 
-		// Single probe shared by both arms — enrichment and refresh are mutually
-		// exclusive (enrichment returns early), so one probe per call is sufficient.
-		// Permissive: error → true to avoid spamming bootstrap on transient failures.
-		const firstVisibleReady = resolveReadinessPermissive(
-			await hasFirstVisibleReviewSubject(effect.accountId),
-		);
+		// Delegate to the per-change memoized accessor — probes at most once across
+		// all effects for this change. Permissive degradation (error → true) is
+		// baked in at accessor creation time via resolveReadinessPermissive.
+		const firstVisibleReady = await readinessAccessor();
 
 		if (effect.kind === "ensure_enrichment_job") {
 			const countResult = await getLikedSongCount(effect.accountId);

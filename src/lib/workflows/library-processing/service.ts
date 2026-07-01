@@ -8,6 +8,7 @@ import {
 } from "./queries";
 import { reconcileLibraryProcessing } from "./reconciler";
 import {
+	createReadinessAccessor,
 	describeTrigger,
 	executeEffect,
 	loadJobOutcomeMetadata,
@@ -85,6 +86,9 @@ export async function applyLibraryProcessingChange(
 
 	let currentState = persistResult.value;
 	const effectResults: LibraryProcessingEffectResult[] = [];
+	// One accessor per change — memoises the readiness probe so that effects
+	// sharing this change pay at most one DB read between them.
+	const readinessAccessor = createReadinessAccessor(change.accountId);
 
 	for (const effect of effects) {
 		const effectResult = await executeEffect(
@@ -92,6 +96,7 @@ export async function applyLibraryProcessingChange(
 			currentState,
 			change,
 			jobOutcomeMetadata,
+			readinessAccessor,
 		);
 		if (Result.isError(effectResult)) {
 			const persistActiveRefsResult = await persistActiveRefs(
