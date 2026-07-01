@@ -4,7 +4,7 @@ import type { MatchViewMode } from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";
 
 function renderToggle({
-	mode = "song" as MatchViewMode,
+	mode = "playlist" as MatchViewMode,
 	disabled = false,
 	onModeChange = vi.fn(),
 }: {
@@ -22,11 +22,12 @@ function renderToggle({
 }
 
 describe("MatchModeToggle", () => {
-	it("renders Song and Playlist buttons in a labelled group", () => {
+	it("renders Playlist before Song in a labelled group", () => {
 		renderToggle();
 		expect(screen.getByRole("group", { name: "View mode" })).toBeDefined();
-		expect(screen.getByRole("button", { name: "Song" })).toBeDefined();
-		expect(screen.getByRole("button", { name: "Playlist" })).toBeDefined();
+		expect(
+			screen.getAllByRole("button").map((button) => button.textContent),
+		).toEqual(["Playlist", "Song"]);
 	});
 
 	it("marks the active mode with aria-pressed", () => {
@@ -43,15 +44,15 @@ describe("MatchModeToggle", () => {
 
 	it("calls onModeChange when the non-current mode is activated", async () => {
 		const onModeChange = vi.fn();
-		const { user } = renderToggle({ mode: "song", onModeChange });
-		await user.click(screen.getByRole("button", { name: "Playlist" }));
-		expect(onModeChange).toHaveBeenCalledExactlyOnceWith("playlist");
+		const { user } = renderToggle({ mode: "playlist", onModeChange });
+		await user.click(screen.getByRole("button", { name: "Song" }));
+		expect(onModeChange).toHaveBeenCalledExactlyOnceWith("song");
 	});
 
 	it("is a no-op when the already-current mode is activated", async () => {
 		const onModeChange = vi.fn();
-		const { user } = renderToggle({ mode: "song", onModeChange });
-		await user.click(screen.getByRole("button", { name: "Song" }));
+		const { user } = renderToggle({ mode: "playlist", onModeChange });
+		await user.click(screen.getByRole("button", { name: "Playlist" }));
 		expect(onModeChange).not.toHaveBeenCalled();
 	});
 

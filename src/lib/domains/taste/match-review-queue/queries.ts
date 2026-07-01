@@ -697,6 +697,28 @@ const DISMISS_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"no_captured_pairs",
 ] as const;
 
+const DISMISS_QUEUE_ITEM_SUGGESTION_ATOMIC_STATUSES = [
+	"dismissed",
+	"not_found",
+	"already_resolved",
+	"not_entitled",
+	"foreign_playlist",
+	"invalid_target",
+	"not_visible",
+	"already_added",
+] as const;
+
+export type DismissQueueItemSuggestionAtomicStatus =
+	(typeof DISMISS_QUEUE_ITEM_SUGGESTION_ATOMIC_STATUSES)[number];
+
+function isDismissQueueItemSuggestionAtomicStatus(
+	value: string | null,
+): value is DismissQueueItemSuggestionAtomicStatus {
+	return DISMISS_QUEUE_ITEM_SUGGESTION_ATOMIC_STATUSES.some(
+		(status) => status === value,
+	);
+}
+
 export type DismissQueueItemAtomicStatus =
 	(typeof DISMISS_QUEUE_ITEM_ATOMIC_STATUSES)[number];
 
@@ -739,6 +761,47 @@ export async function dismissQueueItemAtomically(
 			new DatabaseError({
 				code: "unexpected_rpc_result",
 				message: "dismiss_match_review_item_atomic returned an unknown status.",
+			}),
+		);
+	}
+
+	return Result.ok(data);
+}
+
+/**
+ * Writes a dismissed decision for one captured suggestion pair without resolving
+ * the queue item. Orientation-aware: pass suggestionPlaylistId for song items and
+ * suggestionSongId for playlist items.
+ */
+export async function dismissQueueItemSuggestionAtomically(
+	itemId: string,
+	accountId: string,
+	suggestionSongId: string | null,
+	suggestionPlaylistId: string | null,
+): Promise<Result<DismissQueueItemSuggestionAtomicStatus, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"dismiss_match_review_item_suggestion_atomic",
+		{
+			p_item_id: itemId,
+			p_account_id: accountId,
+			p_suggestion_song_id: suggestionSongId ?? undefined,
+			p_suggestion_playlist_id: suggestionPlaylistId ?? undefined,
+		},
+	);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	if (!isDismissQueueItemSuggestionAtomicStatus(data)) {
+		return Result.err(
+			new DatabaseError({
+				code: "unexpected_rpc_result",
+				message:
+					"dismiss_match_review_item_suggestion_atomic returned an unknown status.",
 			}),
 		);
 	}

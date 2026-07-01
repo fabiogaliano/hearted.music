@@ -11,8 +11,8 @@
  *  B4  — VisibleSuggestionList / VisibleSuggestion
  *  B5  — modelRank (from match_result_ranking), visibleRank (dense visible)
  *  A5  — fitScore = strictnessScore(row), shown as match percent
- *  C12 — inside-card order: orientation-specific model rank, then strictness
- *        desc + stable ID tiebreaker for unranked pairs
+ *  C12 — inside-card order: strictness desc, then model rank, then stable ID
+ *        tiebreaker
  *  E7  — strictnessScore(row) is the canonical quality signal, never reranker
  *  F2  — module lives in match-review-queue domain
  */
@@ -132,13 +132,14 @@ export interface RankingInput {
  * Steps:
  *  1. Filter pairs that pass strictness (fitScore >= minScore).
  *  2. Remove already-decided pairs.
- *  3. Join with ranking rows; split into ranked / unranked buckets.
- *  4. Sort ranked pairs by modelRank ASC, unranked by fitScore DESC then
+ *  3. Join with ranking rows and assign a modelRank to every eligible pair.
+ *  4. Sort all visible pairs by fitScore DESC, then modelRank ASC, then the
  *     stable suggestion-side ID ASC (C12 tiebreaker).
- *  5. Assign dense visibleRank (1, 2, 3, …) across the joined ordered set.
- *  6. Assign modelRank: ranked pairs use the ranking row rank; unranked pairs
- *     receive a synthetic rank starting after the highest ranked pair's rank
- *     so the entire visible list is contiguous and deterministic.
+ *  5. Assign dense visibleRank (1, 2, 3, …) across that ordered set.
+ *  6. Ranked pairs keep their ranking row's modelRank; unranked pairs receive
+ *     a synthetic rank starting after the highest ranked pair's rank so ties on
+ *     fitScore still resolve deterministically without losing ranked-vs-
+ *     unranked information.
  *
  * Pure: no side effects, no DB calls. Accepts the MatchPairInput /
  * RankingInput shapes that the query helpers return so tests can drive it
@@ -174,15 +175,14 @@ export function deriveVisibleSuggestions(
 		return true;
 	});
 
-	type RankedEntry = {
+	type Entry = {
 		pair: MatchPairInput;
 		fitScore: number;
 		modelRank: number;
 	};
-	type UnrankedEntry = { pair: MatchPairInput; fitScore: number };
 
-	const ranked: RankedEntry[] = [];
-	const unranked: UnrankedEntry[] = [];
+	const ranked: Entry[] = [];
+	const unranked: Array<{ pair: MatchPairInput; fitScore: number }> = [];
 
 	for (const pair of eligible) {
 		const pairKey = `${pair.songId}:${pair.playlistId}`;
@@ -198,52 +198,41 @@ export function deriveVisibleSuggestions(
 		}
 	}
 
-	ranked.sort((a, b) => a.modelRank - b.modelRank);
-
-	// Sort unranked by fitScore desc then stable suggestion-side ID asc (C12).
 	// For song orientation the stable ID is playlist_id; for playlist orientation
 	// it is song_id — the "other side" of the reviewed subject.
 	const stableId = (p: MatchPairInput): string =>
 		subject.orientation === "song" ? p.playlistId : p.songId;
 
-	unranked.sort((a, b) => {
-		if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore;
-		return stableId(a.pair).localeCompare(stableId(b.pair));
-	});
-
-	// Determine the offset for synthetic model ranks on unranked pairs so the
-	// full visible list is contiguous (ranked occupy 1..maxRanked; unranked
-	// start at maxRanked + 1).
+	// Synthetic rank starts after the last ranked pair's rank (or at 1 when there
+	// are no ranked pairs) so callers can still detect the unranked region.
 	const maxRankedModelRank =
 		ranked.length > 0 ? Math.max(...ranked.map((r) => r.modelRank)) : 0;
 
-	const suggestions: VisibleSuggestion[] = [];
-	let visibleRank = 1;
-
-	for (const item of ranked) {
-		suggestions.push({
-			songId: item.pair.songId,
-			playlistId: item.pair.playlistId,
+	const orderedUnranked = unranked
+		.slice()
+		.sort((a, b) => {
+			if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore;
+			return stableId(a.pair).localeCompare(stableId(b.pair));
+		})
+		.map((item, index) => ({
+			pair: item.pair,
 			fitScore: item.fitScore,
-			modelRank: item.modelRank,
-			visibleRank: visibleRank++,
-		});
-	}
+			modelRank: maxRankedModelRank + index + 1,
+		}));
 
-	for (let i = 0; i < unranked.length; i++) {
-		const item = unranked[i];
-		suggestions.push({
-			songId: item.pair.songId,
-			playlistId: item.pair.playlistId,
-			fitScore: item.fitScore,
-			// Synthetic rank starts after the last ranked pair's rank (or at 1 when
-			// there are no ranked pairs) so callers can detect the unranked region.
-			modelRank: maxRankedModelRank + i + 1,
-			visibleRank: visibleRank++,
-		});
-	}
+	const ordered = [...ranked, ...orderedUnranked].sort((a, b) => {
+		if (b.fitScore !== a.fitScore) return b.fitScore - a.fitScore;
+		if (a.modelRank !== b.modelRank) return a.modelRank - b.modelRank;
+		return stableId(a.pair).localeCompare(stableId(b.pair));
+	});
 
-	return suggestions;
+	return ordered.map((item, index) => ({
+		songId: item.pair.songId,
+		playlistId: item.pair.playlistId,
+		fitScore: item.fitScore,
+		modelRank: item.modelRank,
+		visibleRank: index + 1,
+	}));
 }
 
 /**

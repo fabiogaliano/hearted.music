@@ -21,9 +21,8 @@ export function MatchReviewCTA({
 	if (reviewCount === 0) return null;
 
 	const isPlaylist = orientation === "playlist";
-	// Playlist mode uses the canonical ?mode=playlist URL; song mode is the bare
-	// /match (mode=song is non-canonical and would redirect).
-	const search = isPlaylist ? ({ mode: "playlist" } as const) : {};
+	// Playlist mode is the canonical bare /match URL; song mode uses ?mode=song.
+	const search = isPlaylist ? {} : ({ mode: "song" } as const);
 	const noun = isPlaylist
 		? reviewCount === 1
 			? "playlist"

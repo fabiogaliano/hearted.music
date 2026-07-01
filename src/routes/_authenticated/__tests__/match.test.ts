@@ -49,6 +49,7 @@ async function loadRoute(): Promise<MatchRoute> {
 		markMatchReviewItemPresented: vi.fn(),
 		addSongToPlaylistFromQueueItem: vi.fn(),
 		dismissMatchReviewItem: vi.fn(),
+		dismissMatchReviewItemSuggestion: vi.fn(),
 		finishMatchReviewItem: vi.fn(),
 	}));
 	vi.doMock("@/features/matching/queries", () => ({
@@ -146,7 +147,7 @@ describe("/_authenticated/match route", () => {
 	});
 
 	describe("beforeLoad — mode normalisation", () => {
-		it("does not redirect when no mode param is present (canonical song mode)", async () => {
+		it("does not redirect when no mode param is present (canonical playlist mode)", async () => {
 			const route = await loadRoute();
 			// Should return undefined (no redirect)
 			const result = route.beforeLoad({ location: { searchStr: "" } });
@@ -154,20 +155,20 @@ describe("/_authenticated/match route", () => {
 			expect(redirectMock).not.toHaveBeenCalled();
 		});
 
-		it("does not redirect for mode=playlist (canonical playlist mode)", async () => {
+		it("does not redirect for mode=song (canonical song mode)", async () => {
 			const route = await loadRoute();
 			const result = route.beforeLoad({
-				location: { searchStr: "?mode=playlist" },
+				location: { searchStr: "?mode=song" },
 			});
 			expect(result).toBeUndefined();
 			expect(redirectMock).not.toHaveBeenCalled();
 		});
 
-		it("redirects mode=song to /match with replace:true", async () => {
+		it("redirects mode=playlist to /match with replace:true", async () => {
 			const route = await loadRoute();
 			let caught: unknown;
 			try {
-				route.beforeLoad({ location: { searchStr: "?mode=song" } });
+				route.beforeLoad({ location: { searchStr: "?mode=playlist" } });
 			} catch (e) {
 				caught = e;
 			}

@@ -22,9 +22,10 @@ export function Matching({
 	recentItems,
 	reconnectNeeded,
 	navigationDisabled,
-	mode = "song",
+	mode = "playlist",
 	onModeChange = () => {},
 	onAdd,
+	onDismissSuggestion,
 	onDismiss,
 	onNext,
 	onPrevious,
@@ -114,6 +115,7 @@ export function Matching({
 					isLastItem={offset >= totalSongs - 1}
 					animateReject
 					onAdd={onAdd}
+					onDismissSuggestion={onDismissSuggestion}
 					onDismiss={onDismiss}
 					onNext={onNext}
 					onPrevious={offset > 0 ? onPrevious : undefined}
@@ -129,6 +131,7 @@ export function Matching({
 					isLastItem={offset >= totalSongs - 1}
 					animateReject
 					onAdd={onAdd}
+					onDismissSuggestion={onDismissSuggestion}
 					onDismiss={onDismiss}
 					onNext={onNext}
 					onPrevious={offset > 0 ? onPrevious : undefined}

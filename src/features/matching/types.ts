@@ -1,6 +1,6 @@
 /**
  * UI/route-layer toggle mode (B2). Distinct from MatchOrientation (domain/server).
- * Canonical URL: `/match` = song mode; `/match?mode=playlist` = playlist mode.
+ * Canonical URL: `/match` = playlist mode; `/match?mode=song` = song mode.
  */
 export type MatchViewMode = "song" | "playlist";
 
@@ -98,6 +98,7 @@ export interface SongSuggestionsSectionProps {
 	isLastItem?: boolean;
 	suppressTransition?: boolean;
 	onAdd: (suggestionId: string) => void;
+	onDismissSuggestion?: (suggestionId: string) => void | Promise<void>;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
@@ -118,6 +119,7 @@ type MatchingSessionCommonProps = {
 	animateReject?: boolean;
 	onRefresh?: () => void;
 	onAdd: (suggestionId: string) => void;
+	onDismissSuggestion?: (suggestionId: string) => void | Promise<void>;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
@@ -181,6 +183,7 @@ export interface MatchingProps {
 	/** Callback for toggle navigation. No-op default keeps completion/story renders safe. */
 	onModeChange?: (mode: MatchViewMode) => void;
 	onAdd: (playlistId: string) => void;
+	onDismissSuggestion?: (suggestionId: string) => void | Promise<void>;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;

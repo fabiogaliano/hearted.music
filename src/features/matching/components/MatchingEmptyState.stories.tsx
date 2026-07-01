@@ -24,7 +24,7 @@ function EmptyStatePreview({
 	reason: Reason;
 	hiddenCount?: number;
 }) {
-	const [mode, setMode] = useState<MatchViewMode>("song");
+	const [mode, setMode] = useState<MatchViewMode>("playlist");
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 			<MatchingEmptyState

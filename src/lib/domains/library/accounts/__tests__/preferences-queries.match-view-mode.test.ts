@@ -2,9 +2,9 @@
  * Tests for getPreferredMatchViewMode and setPreferredMatchViewMode (C10 / E15).
  *
  * getPreferredMatchViewMode mirrors resolveMinMatchScore:
- * - defaults to 'song' when the row is absent or unreadable
+ * - defaults to 'playlist' when the row is absent or unreadable
  * - returns the stored value for known modes
- * - falls back to 'song' for unrecognised values (future-proofing)
+ * - falls back to 'playlist' for unrecognised values (future-proofing)
  *
  * setPreferredMatchViewMode is a thin upsert helper — tested via the mock
  * client to confirm the correct column + value are written.
@@ -87,7 +87,7 @@ describe("getPreferredMatchViewMode", () => {
 		expect(await getPreferredMatchViewMode("acct-1")).toBe("playlist");
 	});
 
-	it("falls back to 'song' when the stored value is unrecognised", async () => {
+	it("falls back to 'playlist' when the stored value is unrecognised", async () => {
 		state.select = {
 			data: {
 				match_view_mode: "unknown_future_mode",
@@ -95,12 +95,12 @@ describe("getPreferredMatchViewMode", () => {
 			},
 			error: null,
 		};
-		expect(await getPreferredMatchViewMode("acct-1")).toBe("song");
+		expect(await getPreferredMatchViewMode("acct-1")).toBe("playlist");
 	});
 
-	it("falls back to 'song' when no row exists and creation fails", async () => {
+	it("falls back to 'playlist' when no row exists and creation fails", async () => {
 		state.select = { data: null, error: { code: "PGRST116" } };
-		expect(await getPreferredMatchViewMode("acct-1")).toBe("song");
+		expect(await getPreferredMatchViewMode("acct-1")).toBe("playlist");
 	});
 });
 

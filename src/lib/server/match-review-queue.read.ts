@@ -131,6 +131,14 @@ export async function fetchSongOrientationData(
 	const { songId, suggestions, accountId, operation } = opts;
 	const playlistIds = suggestions.map((s) => s.playlistId);
 
+	const playlistRead =
+		playlistIds.length === 0
+			? Promise.resolve({ data: [] as PlaylistRow[], error: null })
+			: supabase
+					.from("playlist")
+					.select("id, name, match_intent, song_count, image_url, spotify_id")
+					.in("id", playlistIds);
+
 	const [songRow, audioRow, analysisRow, playlistResult] = await Promise.all([
 		supabase.from("song").select("*").eq("id", songId).single(),
 		supabase
@@ -145,10 +153,7 @@ export async function fetchSongOrientationData(
 			.order("created_at", { ascending: false })
 			.limit(1)
 			.maybeSingle(),
-		supabase
-			.from("playlist")
-			.select("id, name, match_intent, song_count, image_url, spotify_id")
-			.in("id", playlistIds),
+		playlistRead,
 	]);
 
 	// .single() returns PGRST116 for a genuinely missing song — not-found, not an

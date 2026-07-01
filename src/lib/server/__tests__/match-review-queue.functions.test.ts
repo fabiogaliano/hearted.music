@@ -7,6 +7,7 @@ import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
+	dismissMatchReviewItemSuggestion,
 	finishMatchReviewItem,
 	getMatchReview,
 	getMatchReviewItem,
@@ -34,6 +35,7 @@ const {
 	mockMarkItemResolved,
 	mockAddQueueItemDecisionAtomically,
 	mockDismissQueueItemAtomically,
+	mockDismissQueueItemSuggestionAtomically,
 	mockFinishQueueItemAtomically,
 	mockFetchActiveSession,
 	mockSyncActiveQueue,
@@ -64,6 +66,7 @@ const {
 		mockMarkItemResolved: vi.fn(),
 		mockAddQueueItemDecisionAtomically: vi.fn(),
 		mockDismissQueueItemAtomically: vi.fn(),
+		mockDismissQueueItemSuggestionAtomically: vi.fn(),
 		mockFinishQueueItemAtomically: vi.fn(),
 		mockFetchActiveSession: vi.fn(),
 		mockSyncActiveQueue: vi.fn(),
@@ -170,6 +173,8 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	clearSongNewness: (...args: unknown[]) => mockClearSongNewness(...args),
 	dismissQueueItemAtomically: (...args: unknown[]) =>
 		mockDismissQueueItemAtomically(...args),
+	dismissQueueItemSuggestionAtomically: (...args: unknown[]) =>
+		mockDismissQueueItemSuggestionAtomically(...args),
 	fetchActiveSession: (...args: unknown[]) => mockFetchActiveSession(...args),
 	fetchQueueItems: vi.fn(),
 	finishQueueItemAtomically: (...args: unknown[]) =>
@@ -540,9 +545,9 @@ describe("getMatchReviewItem", () => {
 		);
 	});
 
-	it("preserves model-rank order from computeVisibleSuggestionList in the result (MSR-25)", async () => {
-		// Suggestions arrive ordered by song-orientation model rank. The server
-		// function must preserve this ordering rather than re-sorting by score.
+	it("preserves compatibility-first order from computeVisibleSuggestionList in the result (MSR-25)", async () => {
+		// Suggestions arrive already ordered by fitScore desc. The server function
+		// must preserve that ordering rather than re-sorting by model rank.
 		setupGetItemFetch({
 			playlistRows: [
 				{
@@ -563,9 +568,8 @@ describe("getMatchReviewItem", () => {
 				},
 			],
 		});
-		// The model gives pl-ranked-first rank 1 and pl-ranked-second rank 2,
-		// even though pl-ranked-second has a higher fitScore (legacy ordering
-		// would have put it first).
+		// Compatibility-first ordering puts the higher fitScore suggestion first,
+		// even though its model rank is lower.
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: {
@@ -574,16 +578,16 @@ describe("getMatchReviewItem", () => {
 				suggestions: [
 					{
 						songId: "song-1",
-						playlistId: "pl-ranked-first",
-						fitScore: 0.7,
-						modelRank: 1,
+						playlistId: "pl-ranked-second",
+						fitScore: 0.9,
+						modelRank: 2,
 						visibleRank: 1,
 					},
 					{
 						songId: "song-1",
-						playlistId: "pl-ranked-second",
-						fitScore: 0.9,
-						modelRank: 2,
+						playlistId: "pl-ranked-first",
+						fitScore: 0.7,
+						modelRank: 1,
 						visibleRank: 2,
 					},
 				],
@@ -594,12 +598,12 @@ describe("getMatchReviewItem", () => {
 
 		expect(result.status).toBe("ready");
 		if (result.status === "ready" && result.mode === "song") {
-			// Model rank order is preserved: rank-1 first even though its fitScore is lower.
-			expect(result.suggestions[0].playlist.id).toBe("pl-ranked-first");
-			expect(result.suggestions[1].playlist.id).toBe("pl-ranked-second");
+			// Compatibility-first order is preserved: the higher fitScore stays first.
+			expect(result.suggestions[0].playlist.id).toBe("pl-ranked-second");
+			expect(result.suggestions[1].playlist.id).toBe("pl-ranked-first");
 			// fitScore is used as the match percent (A5, E7), not the ordering score.
-			expect(result.suggestions[0].score).toBe(0.7);
-			expect(result.suggestions[1].score).toBe(0.9);
+			expect(result.suggestions[0].score).toBe(0.9);
+			expect(result.suggestions[1].score).toBe(0.7);
 		}
 	});
 
@@ -1038,6 +1042,78 @@ describe("addSongToPlaylistFromQueueItem", () => {
 		expect(add2.success).toBe(true);
 		expect(mockMarkItemResolved).not.toHaveBeenCalled();
 		expect(mockAddQueueItemDecisionAtomically).toHaveBeenCalledTimes(2);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// dismissMatchReviewItemSuggestion tests
+// ---------------------------------------------------------------------------
+
+describe("dismissMatchReviewItemSuggestion", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockDismissQueueItemSuggestionAtomically.mockResolvedValue(
+			Result.ok("dismissed"),
+		);
+	});
+
+	it("passes suggestion playlist id for song mode without resolving the card", async () => {
+		mockItemOwnership(BASE_ITEM);
+
+		const result = await dismissMatchReviewItemSuggestion({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(true);
+		expect(mockDismissQueueItemSuggestionAtomically).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			null,
+			"pl-1",
+		);
+		expect(mockMarkItemResolved).not.toHaveBeenCalled();
+	});
+
+	it("passes suggestion_song_id for playlist orientation", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+
+		const result = await dismissMatchReviewItemSuggestion({
+			data: { itemId: "item-1", suggestionId: "song-2" },
+		});
+
+		expect(result.success).toBe(true);
+		expect(mockDismissQueueItemSuggestionAtomically).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			"song-2",
+			null,
+		);
+	});
+
+	it("does not call the RPC for a resolved item", async () => {
+		mockItemOwnership({ ...BASE_ITEM, state: "resolved" });
+
+		const result = await dismissMatchReviewItemSuggestion({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("already-resolved");
+		expect(mockDismissQueueItemSuggestionAtomically).not.toHaveBeenCalled();
+	});
+
+	it("maps added suggestions to already-added", async () => {
+		mockItemOwnership(BASE_ITEM);
+		mockDismissQueueItemSuggestionAtomically.mockResolvedValue(
+			Result.ok("already_added"),
+		);
+
+		const result = await dismissMatchReviewItemSuggestion({
+			data: { itemId: "item-1", suggestionId: "pl-1" },
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.reason).toBe("already-added");
 	});
 });
 
@@ -1807,6 +1883,7 @@ describe("presentMatchReviewItem", () => {
 			item?: typeof BASE_ITEM | null;
 			sessionRow?: { strictness_min_score: number } | null;
 			songRow?: typeof BASE_SONG_ROW | null;
+			dismissedRows?: Array<{ song_id: string; playlist_id: string }>;
 			playlistRows?: Array<{
 				id: string;
 				name: string;
@@ -1821,6 +1898,7 @@ describe("presentMatchReviewItem", () => {
 			item = BASE_ITEM,
 			sessionRow = { strictness_min_score: 0 },
 			songRow = BASE_SONG_ROW,
+			dismissedRows = [],
 			playlistRows = [
 				{
 					id: "pl-1",
@@ -1892,6 +1970,22 @@ describe("presentMatchReviewItem", () => {
 								limit: vi.fn().mockReturnValue({
 									maybeSingle: vi.fn().mockResolvedValue({
 										data: { analysis: { headline: "A song" } },
+										error: null,
+									}),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "match_decision") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockReturnValue({
+									in: vi.fn().mockResolvedValue({
+										data: dismissedRows,
 										error: null,
 									}),
 								}),
@@ -2083,6 +2177,53 @@ describe("presentMatchReviewItem", () => {
 		}
 	});
 
+	it("hides row-dismissed captured suggestions without resolving the card", async () => {
+		setupPresentItemFetch({
+			dismissedRows: [{ song_id: "song-1", playlist_id: "pl-1" }],
+			playlistRows: [
+				{
+					id: "pl-1",
+					name: "Playlist 1",
+					match_intent: "intent",
+					song_count: 10,
+					image_url: "pl.jpg",
+					spotify_id: "sp-pl-1",
+				},
+				{
+					id: "pl-2",
+					name: "Playlist 2",
+					match_intent: "intent",
+					song_count: 10,
+					image_url: "pl-2.jpg",
+					spotify_id: "sp-pl-2",
+				},
+			],
+		});
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: {
+				...MOCK_LIST,
+				suggestions: [
+					...MOCK_LIST.suggestions,
+					{
+						songId: "song-1",
+						playlistId: "pl-2",
+						fitScore: 0.8,
+						modelRank: 2,
+						visibleRank: 2,
+					},
+				],
+			},
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "song") {
+			expect(result.suggestions.map((s) => s.playlist.id)).toEqual(["pl-2"]);
+		}
+	});
+
 	it("clears song newness on song-mode capture", async () => {
 		setupPresentItemFetch();
 
@@ -2262,6 +2403,19 @@ describe("presentMatchReviewItem", () => {
 					}),
 				};
 			}
+			if (table === "match_decision") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockReturnValue({
+									in: vi.fn().mockResolvedValue({ data: [], error: null }),
+								}),
+							}),
+						}),
+					}),
+				};
+			}
 			if (table === "playlist") {
 				return {
 					select: vi.fn().mockReturnValue({
@@ -2436,6 +2590,19 @@ describe("presentMatchReviewItem", () => {
 								maybeSingle: vi.fn().mockResolvedValue({
 									data: { strictness_min_score: 0 },
 									error: null,
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			if (table === "match_decision") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								eq: vi.fn().mockReturnValue({
+									in: vi.fn().mockResolvedValue({ data: [], error: null }),
 								}),
 							}),
 						}),

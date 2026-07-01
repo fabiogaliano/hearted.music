@@ -34,7 +34,7 @@ interface SidebarProps {
 
 export function Sidebar({
 	unsortedCount,
-	matchViewMode = "song",
+	matchViewMode = "playlist",
 	handle,
 	userPlan,
 	userBalance,
@@ -99,11 +99,11 @@ export function Sidebar({
 					</li>
 					{/* Match link rendered directly — NavItem's generic `to: string`
 					    cannot carry typed route search params, so we replicate its DOM
-					    structure here to pass search={{ mode: "playlist" }} type-safely. */}
+					    structure here to pass search={{ mode: "song" }} type-safely. */}
 					<li>
 						<Link
 							to="/match"
-							search={matchViewMode === "playlist" ? { mode: "playlist" } : {}}
+							search={matchViewMode === "song" ? { mode: "song" } : {}}
 							data-active={isMatchActive || undefined}
 							aria-current={isMatchActive ? "page" : undefined}
 							className="group flex w-full items-center justify-between py-2 text-left"

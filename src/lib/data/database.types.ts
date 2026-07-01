@@ -3441,6 +3441,15 @@ export type Database = {
 				Args: { p_account_id: string; p_item_id: string };
 				Returns: string;
 			};
+			dismiss_match_review_item_suggestion_atomic: {
+				Args: {
+					p_account_id: string;
+					p_item_id: string;
+					p_suggestion_playlist_id?: string;
+					p_suggestion_song_id?: string;
+				};
+				Returns: string;
+			};
 			enqueue_audio_feature_backfill_manual: {
 				Args: {
 					p_requested_by_account_id?: string;

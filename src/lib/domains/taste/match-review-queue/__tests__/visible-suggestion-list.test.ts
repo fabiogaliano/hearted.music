@@ -188,7 +188,7 @@ describe("deriveVisibleSuggestions — ranked pairs ordering", () => {
 		expect(result[0].modelRank).toBe(3);
 	});
 
-	it("sorts ranked pairs by modelRank ascending", () => {
+	it("sorts ranked pairs by fitScore descending before modelRank", () => {
 		const pairs = [
 			makePair({ playlistId: "pl-a", score: 0.6 }),
 			makePair({ playlistId: "pl-b", score: 0.9 }),
@@ -206,17 +206,17 @@ describe("deriveVisibleSuggestions — ranked pairs ordering", () => {
 			new Set(),
 			0.0,
 		);
-		expect(result.map((s) => s.playlistId)).toEqual(["pl-b", "pl-a", "pl-c"]);
+		expect(result.map((s) => s.playlistId)).toEqual(["pl-b", "pl-c", "pl-a"]);
 	});
 
-	it("assigns dense visibleRank starting at 1 for ranked pairs", () => {
+	it("uses modelRank as the tiebreaker when ranked pairs share fitScore", () => {
 		const pairs = [
 			makePair({ playlistId: "pl-a", score: 0.8 }),
-			makePair({ playlistId: "pl-b", score: 0.7 }),
+			makePair({ playlistId: "pl-b", score: 0.8 }),
 		];
 		const rankings = [
-			makeRanking({ playlistId: "pl-a", rank: 1 }),
-			makeRanking({ playlistId: "pl-b", rank: 2 }),
+			makeRanking({ playlistId: "pl-a", rank: 2 }),
+			makeRanking({ playlistId: "pl-b", rank: 1 }),
 		];
 		const result = deriveVisibleSuggestions(
 			SONG_SUBJECT,
@@ -225,6 +225,7 @@ describe("deriveVisibleSuggestions — ranked pairs ordering", () => {
 			new Set(),
 			0.0,
 		);
+		expect(result.map((s) => s.playlistId)).toEqual(["pl-b", "pl-a"]);
 		expect(result[0].visibleRank).toBe(1);
 		expect(result[1].visibleRank).toBe(2);
 	});
@@ -315,7 +316,7 @@ describe("deriveVisibleSuggestions — unranked pairs fallback ordering", () => 
 });
 
 describe("deriveVisibleSuggestions — mixed ranked and unranked pairs", () => {
-	it("places ranked pairs first, unranked after, with contiguous visibleRank", () => {
+	it("orders all visible pairs by fitScore, with contiguous visibleRank", () => {
 		const pairs = [
 			makePair({ playlistId: "pl-ranked-2", score: 0.8 }),
 			makePair({ playlistId: "pl-unranked", score: 0.95 }), // high score but no ranking
@@ -333,9 +334,9 @@ describe("deriveVisibleSuggestions — mixed ranked and unranked pairs", () => {
 			0.0,
 		);
 		expect(result.map((s) => s.playlistId)).toEqual([
-			"pl-ranked-1",
-			"pl-ranked-2",
 			"pl-unranked",
+			"pl-ranked-2",
+			"pl-ranked-1",
 		]);
 		// visibleRank is dense 1, 2, 3
 		expect(result.map((s) => s.visibleRank)).toEqual([1, 2, 3]);

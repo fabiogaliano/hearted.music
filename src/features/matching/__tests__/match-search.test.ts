@@ -6,18 +6,18 @@ import {
 } from "../match-search";
 
 describe("validateMatchSearch", () => {
-	it("returns {} for empty params (song mode canonical)", () => {
+	it("returns {} for empty params (playlist mode canonical)", () => {
 		expect(validateMatchSearch({})).toEqual({});
 	});
 
-	it("returns { mode: 'playlist' } for mode=playlist", () => {
-		expect(validateMatchSearch({ mode: "playlist" })).toEqual({
-			mode: "playlist",
+	it("returns { mode: 'song' } for mode=song", () => {
+		expect(validateMatchSearch({ mode: "song" })).toEqual({
+			mode: "song",
 		});
 	});
 
-	it("returns {} for mode=song (normalised away — song is the default)", () => {
-		expect(validateMatchSearch({ mode: "song" })).toEqual({});
+	it("returns {} for mode=playlist (normalised away — playlist is the default)", () => {
+		expect(validateMatchSearch({ mode: "playlist" })).toEqual({});
 	});
 
 	it("returns {} for an unrecognised mode value", () => {
@@ -25,19 +25,19 @@ describe("validateMatchSearch", () => {
 	});
 
 	it("ignores unrelated params", () => {
-		expect(validateMatchSearch({ mode: "playlist", foo: "bar" })).toEqual({
-			mode: "playlist",
+		expect(validateMatchSearch({ mode: "song", foo: "bar" })).toEqual({
+			mode: "song",
 		});
 	});
 });
 
 describe("modeFromSearch", () => {
-	it("returns 'song' when no mode is present", () => {
-		expect(modeFromSearch({})).toBe("song");
+	it("returns 'playlist' when no mode is present", () => {
+		expect(modeFromSearch({})).toBe("playlist");
 	});
 
-	it("returns 'playlist' when mode is 'playlist'", () => {
-		expect(modeFromSearch({ mode: "playlist" })).toBe("playlist");
+	it("returns 'song' when mode is 'song'", () => {
+		expect(modeFromSearch({ mode: "song" })).toBe("song");
 	});
 });
 
@@ -46,12 +46,12 @@ describe("hasNonCanonicalMatchMode", () => {
 		expect(hasNonCanonicalMatchMode({})).toBe(false);
 	});
 
-	it("returns false when mode=playlist (canonical non-default)", () => {
-		expect(hasNonCanonicalMatchMode({ mode: "playlist" })).toBe(false);
+	it("returns false when mode=song (canonical non-default)", () => {
+		expect(hasNonCanonicalMatchMode({ mode: "song" })).toBe(false);
 	});
 
-	it("returns true for mode=song (redundant — should be normalised away)", () => {
-		expect(hasNonCanonicalMatchMode({ mode: "song" })).toBe(true);
+	it("returns true for mode=playlist (redundant — should be normalised away)", () => {
+		expect(hasNonCanonicalMatchMode({ mode: "playlist" })).toBe(true);
 	});
 
 	it("returns true for an unrecognised mode value", () => {

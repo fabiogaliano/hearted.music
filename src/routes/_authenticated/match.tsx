@@ -61,15 +61,17 @@ import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
+	dismissMatchReviewItemSuggestion,
 	finishMatchReviewItem,
+	type MatchReviewItemRead,
 	markMatchReviewItemPresented,
 } from "@/lib/server/match-review-queue.functions";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/_authenticated/match")({
-	// `mode=song` is non-canonical (A3) — `/match` is the canonical song-mode URL.
-	// Any non-`playlist` mode value in the URL is replaced with the bare `/match`
+	// `mode=playlist` is non-canonical (A3) — `/match` is the canonical playlist-mode URL.
+	// Any non-`song` mode value in the URL is replaced with the bare `/match`
 	// before the loader runs, preventing push-loop behavior via replace: true.
 	validateSearch: validateMatchSearch,
 	beforeLoad: ({ location }) => {
@@ -272,7 +274,7 @@ function QueueMatchPage() {
 		(newMode: MatchViewMode) => {
 			void navigate({
 				to: "/match",
-				search: newMode === "playlist" ? { mode: "playlist" } : {},
+				search: newMode === "song" ? { mode: "song" } : {},
 			});
 			void setMatchViewModePreference({ data: { mode: newMode } })
 				.then(() => {
@@ -1119,6 +1121,45 @@ function QueueCardContent({
 		}
 	};
 
+	const handleDismissSuggestion = async (suggestionId: string) => {
+		if (!currentReviewItem || !onLockNavigation()) return;
+		try {
+			const result = await dismissMatchReviewItemSuggestion({
+				data: { itemId, suggestionId },
+			});
+
+			if (!result.success) return;
+
+			queryClient.setQueryData<MatchReviewItemRead>(
+				presentMatchReviewItemQueryOptions(itemId).queryKey,
+				(current) => {
+					if (!current || current.status !== "ready") return current;
+					if (current.mode === "song") {
+						return {
+							...current,
+							suggestions: current.suggestions.filter(
+								(s) => s.playlist.id !== suggestionId,
+							),
+						};
+					}
+					return {
+						...current,
+						suggestions: current.suggestions.filter(
+							(s) => s.song.id !== suggestionId,
+						),
+					};
+				},
+			);
+
+			analytics.capture("match_suggestion_dismissed", {
+				orientation: currentReviewItem.mode,
+				suggestion_id: suggestionId,
+			});
+		} finally {
+			onReleaseNavigation();
+		}
+	};
+
 	const handleDismiss = async () => {
 		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
@@ -1209,6 +1250,7 @@ function QueueCardContent({
 			mode={mode}
 			onModeChange={onModeChange}
 			onAdd={handleAdd}
+			onDismissSuggestion={handleDismissSuggestion}
 			onDismiss={handleDismiss}
 			onNext={handleNext}
 			onPrevious={currentIndex > 0 ? handlePrevious : undefined}

@@ -1,3 +1,4 @@
+import { XIcon } from "@phosphor-icons/react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
@@ -21,6 +22,9 @@ interface PlaylistMatchRowProps {
 	leadProps?: HTMLAttributes<HTMLDivElement>;
 	/** "lg" for full-page match view, "sm" (default) for panel context */
 	size?: "sm" | "lg";
+	onDismiss?: (playlistId: string) => void;
+	dismissDisabled?: boolean;
+	dismissLabel?: string;
 	action: PlaylistMatchRowAction;
 }
 
@@ -32,6 +36,9 @@ export function PlaylistMatchRow({
 	media,
 	leadProps,
 	size = "sm",
+	onDismiss,
+	dismissDisabled,
+	dismissLabel,
 	action,
 }: PlaylistMatchRowProps) {
 	const nameFontSize = size === "lg" ? "1.5rem" : "1rem";
@@ -91,7 +98,22 @@ export function PlaylistMatchRow({
 					</div>
 				</div>
 
-				<div className="shrink-0">{actionElement}</div>
+				<div className="flex shrink-0 items-center gap-2">
+					{onDismiss && action.type !== "added" && (
+						<button
+							type="button"
+							disabled={dismissDisabled}
+							onClick={() => onDismiss(playlistId)}
+							aria-label={
+								dismissLabel ?? `Dismiss playlist suggestion: ${name}`
+							}
+							className="theme-text-muted inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+						>
+							<XIcon size={14} weight="bold" />
+						</button>
+					)}
+					{actionElement}
+				</div>
 			</div>
 		</div>
 	);

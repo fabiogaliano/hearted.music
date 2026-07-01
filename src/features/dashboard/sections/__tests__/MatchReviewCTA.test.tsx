@@ -41,7 +41,7 @@ describe("MatchReviewCTA — orientation awareness (A2)", () => {
 		expect(screen.queryByText(/to match/)).toBeNull();
 	});
 
-	it("links to bare /match and reads in songs for song orientation", () => {
+	it("links to ?mode=song and reads in songs for song orientation", () => {
 		render(
 			<MatchReviewCTA
 				reviewCount={3}
@@ -51,10 +51,10 @@ describe("MatchReviewCTA — orientation awareness (A2)", () => {
 		);
 		expect(screen.getByText("3 songs to match")).toBeDefined();
 		expect(linkCalls).toHaveLength(1);
-		expect(linkCalls[0]).toEqual({ to: "/match", search: {} });
+		expect(linkCalls[0]).toEqual({ to: "/match", search: { mode: "song" } });
 	});
 
-	it("links to ?mode=playlist and reads in playlists for playlist orientation", () => {
+	it("links to bare /match and reads in playlists for playlist orientation", () => {
 		render(
 			<MatchReviewCTA
 				reviewCount={2}
@@ -63,10 +63,7 @@ describe("MatchReviewCTA — orientation awareness (A2)", () => {
 			/>,
 		);
 		expect(screen.getByText("2 playlists to match")).toBeDefined();
-		expect(linkCalls[0]).toEqual({
-			to: "/match",
-			search: { mode: "playlist" },
-		});
+		expect(linkCalls[0]).toEqual({ to: "/match", search: {} });
 	});
 
 	it("uses the singular noun for a single item", () => {

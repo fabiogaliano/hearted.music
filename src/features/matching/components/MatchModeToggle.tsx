@@ -3,8 +3,8 @@ import { fonts } from "@/lib/theme/fonts";
 import type { MatchViewMode } from "../types";
 
 const MODES: { value: MatchViewMode; label: string }[] = [
-	{ value: "song", label: "Song" },
 	{ value: "playlist", label: "Playlist" },
+	{ value: "song", label: "Song" },
 ];
 
 export interface MatchModeToggleProps {

@@ -7,6 +7,7 @@ import {
 	addQueueItemDecisionAtomically,
 	clearSongNewness,
 	dismissQueueItemAtomically,
+	dismissQueueItemSuggestionAtomically,
 	fetchActiveSession,
 	fetchQueueItems,
 	finishQueueItemAtomically,
@@ -28,6 +29,7 @@ import type {
 } from "@/lib/domains/taste/match-review-queue/types";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 import { captureServerError } from "@/lib/observability/capture-server-error";
+import type { DbError } from "@/lib/shared/errors/database";
 import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
@@ -187,6 +189,13 @@ export interface MatchReviewItemPresentedResult {
  * subject rows (wrong orientation vs column) throw rather than returning null,
  * so ownership-verified callers always get a typed shape or a hard error.
  */
+type ActiveSuggestionEntry = {
+	songId: string;
+	playlistId: string;
+	fitScore: number;
+	visibleRank: number;
+};
+
 async function fetchOwnedQueueItem(
 	itemId: string,
 	accountId: string,
@@ -217,6 +226,56 @@ async function fetchOwnedQueueItem(
 	if (!data) return null;
 
 	return mapItemToDto(data);
+}
+
+async function filterDismissedActiveSuggestions(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	accountId: string,
+	subject: MatchReviewSubject,
+	suggestions: ActiveSuggestionEntry[],
+): Promise<Result<ActiveSuggestionEntry[], DbError>> {
+	if (suggestions.length === 0) return Result.ok(suggestions);
+
+	const dismissedRowsResult =
+		subject.orientation === "song"
+			? await fromSupabaseMany(
+					supabase
+						.from("match_decision")
+						.select("song_id, playlist_id")
+						.eq("account_id", accountId)
+						.eq("decision", "dismissed")
+						.eq("song_id", subject.songId)
+						.in(
+							"playlist_id",
+							suggestions.map((s) => s.playlistId),
+						),
+				)
+			: await fromSupabaseMany(
+					supabase
+						.from("match_decision")
+						.select("song_id, playlist_id")
+						.eq("account_id", accountId)
+						.eq("decision", "dismissed")
+						.eq("playlist_id", subject.playlistId)
+						.in(
+							"song_id",
+							suggestions.map((s) => s.songId),
+						),
+				);
+
+	if (Result.isError(dismissedRowsResult)) {
+		return Result.err(dismissedRowsResult.error);
+	}
+
+	const dismissedPairKeys = new Set(
+		dismissedRowsResult.value.map((r) => `${r.song_id}:${r.playlist_id}`),
+	);
+
+	return Result.ok(
+		suggestions.filter(
+			(s) => !dismissedPairKeys.has(`${s.songId}:${s.playlistId}`),
+		),
+	);
 }
 
 /** Derived from unresolved item count — never from null song data. */
@@ -849,13 +908,7 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 			// Determine the active suggestion set from the capture result. On retry
 			// the already_captured pairs are authoritative — the fresh derivation
 			// above is discarded in favour of the stored rows.
-			type SuggestionEntry = {
-				songId: string;
-				playlistId: string;
-				fitScore: number;
-				visibleRank: number;
-			};
-			let activeSuggestions: SuggestionEntry[];
+			let activeSuggestions: ActiveSuggestionEntry[];
 
 			if (captureResult.status === "captured") {
 				// Maps from the capped set actually written this call, not list.suggestions.
@@ -920,6 +973,29 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					message: noVisibleSuggestionsMessage(item.subject.orientation),
 				};
 			}
+
+			const filteredSuggestionsResult = await filterDismissedActiveSuggestions(
+				supabase,
+				session.accountId,
+				list.subject,
+				activeSuggestions,
+			);
+			if (Result.isError(filteredSuggestionsResult)) {
+				reportQueueError(
+					filteredSuggestionsResult.error,
+					"present_match_review_item",
+					{
+						accountId: session.accountId,
+						orientation: item.subject.orientation,
+					},
+				);
+				return {
+					status: "retryable-error",
+					itemId,
+					message: "Couldn't load this match card. Try again.",
+				};
+			}
+			activeSuggestions = filteredSuggestionsResult.value;
 
 			// Build render-ready data keyed off the active suggestion set.
 			if (list.orientation === "song" && list.subject.orientation === "song") {
@@ -1234,6 +1310,82 @@ export const addSongToPlaylistFromQueueItem = createServerFn({ method: "POST" })
 		return { success: false, reason: "foreign-playlist" };
 	});
 
+export interface DismissSuggestionResult {
+	success: boolean;
+	reason?:
+		| "not-found"
+		| "already-resolved"
+		| "not-entitled"
+		| "foreign-playlist"
+		| "not-visible"
+		| "invalid-target"
+		| "already-added";
+}
+
+/**
+ * Dismisses one suggestion row while keeping the queue item open. The captured
+ * visible pair remains immutable; the dismissed decision hides the row on future
+ * renders and excludes the pair from future cards.
+ */
+export const dismissMatchReviewItemSuggestion = createServerFn({
+	method: "POST",
+})
+	.middleware([authMiddleware])
+	.inputValidator((data) => AddFromQueueSchema.parse(data))
+	.handler(async ({ data, context }): Promise<DismissSuggestionResult> => {
+		const { session } = context;
+		const { itemId, suggestionId } = data;
+
+		const item = await fetchOwnedQueueItem(
+			itemId,
+			session.accountId,
+			"dismiss_queue_item_suggestion",
+		);
+		if (!item) {
+			return { success: false, reason: "not-found" };
+		}
+
+		if (item.state === "resolved") {
+			return { success: false, reason: "already-resolved" };
+		}
+
+		const isSongOrientation = item.subject.orientation === "song";
+		const result = await dismissQueueItemSuggestionAtomically(
+			itemId,
+			session.accountId,
+			isSongOrientation ? null : suggestionId,
+			isSongOrientation ? suggestionId : null,
+		);
+		if (Result.isError(result)) {
+			reportQueueError(result.error, "dismiss_queue_item_suggestion", {
+				accountId: session.accountId,
+				orientation: item.subject.orientation,
+			});
+			return { success: false };
+		}
+
+		if (result.value === "dismissed") return { success: true };
+		if (result.value === "not_found") {
+			return { success: false, reason: "not-found" };
+		}
+		if (result.value === "already_resolved") {
+			return { success: false, reason: "already-resolved" };
+		}
+		if (result.value === "not_entitled") {
+			return { success: false, reason: "not-entitled" };
+		}
+		if (result.value === "not_visible") {
+			return { success: false, reason: "not-visible" };
+		}
+		if (result.value === "invalid_target") {
+			return { success: false, reason: "invalid-target" };
+		}
+		if (result.value === "already_added") {
+			return { success: false, reason: "already-added" };
+		}
+		return { success: false, reason: "foreign-playlist" };
+	});
+
 const DismissQueueSchema = z.object({
 	itemId: z.uuid(),
 });
@@ -1385,7 +1537,7 @@ export interface ServerMatchReviewSummaryResult {
 	}>;
 	hasActiveQueue: boolean;
 	/** Which orientation this summary reflects — used by the sidebar/dashboard to
-	 *  build the correct Match link (/match vs /match?mode=playlist). */
+	 *  build the correct Match link (/match vs /match?mode=song). */
 	orientation: MatchOrientation;
 }
 

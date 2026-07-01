@@ -34,6 +34,7 @@ interface MatchesSectionProps {
 	suppressTransition?: boolean;
 	onRefresh?: () => void;
 	onAdd: (playlistId: string) => void;
+	onDismissSuggestion?: (playlistId: string) => void | Promise<void>;
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
@@ -51,6 +52,7 @@ export const MatchesSection = memo(function MatchesSection({
 	suppressTransition,
 	onRefresh,
 	onAdd,
+	onDismissSuggestion,
 	onDismiss,
 	onNext,
 	onPrevious,
@@ -135,17 +137,27 @@ export const MatchesSection = memo(function MatchesSection({
 					</AnimatePresence>
 
 					<div className="mt-6 flex min-h-0 flex-1 flex-col gap-5">
-						{playlists.map((playlist) => (
-							<MatchRow
-								key={playlist.id}
-								playlist={playlist}
-								added={addedTo.includes(playlist.id)}
-								isDemo={isDemo ?? false}
-								reconnectNode={reconnectAction}
-								navigationDisabled={navigationDisabled ?? false}
-								onAdd={onAdd}
-							/>
-						))}
+						{playlists.length === 0 ? (
+							<p
+								className="theme-text-muted text-sm"
+								style={{ fontFamily: fonts.body }}
+							>
+								All suggestions reviewed.
+							</p>
+						) : (
+							playlists.map((playlist) => (
+								<MatchRow
+									key={playlist.id}
+									playlist={playlist}
+									added={addedTo.includes(playlist.id)}
+									isDemo={isDemo ?? false}
+									reconnectNode={reconnectAction}
+									navigationDisabled={navigationDisabled ?? false}
+									onAdd={onAdd}
+									onDismiss={onDismissSuggestion}
+								/>
+							))
+						)}
 					</div>
 				</AnimatedMatchesPanel>
 			</AnimatePresence>
@@ -170,6 +182,7 @@ interface MatchRowProps {
 	reconnectNode?: ReactNode;
 	navigationDisabled: boolean;
 	onAdd: (playlistId: string) => void;
+	onDismiss?: (playlistId: string) => void | Promise<void>;
 }
 
 // One match row + its hover preview. A component (not an inline map body) so the
@@ -183,6 +196,7 @@ function MatchRow({
 	reconnectNode,
 	navigationDisabled,
 	onAdd,
+	onDismiss,
 }: MatchRowProps) {
 	const { triggerProps, preview } = usePlaylistTrackPreview({
 		playlistId: playlist.id,
@@ -209,6 +223,9 @@ function MatchRow({
 				}
 				reason={reconnectNode ? undefined : playlist.reason || undefined}
 				size="lg"
+				onDismiss={onDismiss}
+				dismissDisabled={navigationDisabled}
+				dismissLabel={`Dismiss playlist suggestion: ${playlist.name}`}
 				action={
 					added
 						? { type: "added" }

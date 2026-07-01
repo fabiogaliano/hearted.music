@@ -107,6 +107,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	isLastItem,
 	suppressTransition,
 	onAdd,
+	onDismissSuggestion,
 	onDismiss,
 	onNext,
 	onPrevious,
@@ -174,18 +175,28 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 							WebkitMaskImage: maskImage,
 						}}
 					>
-						{suggestions.map((row) => (
-							<SongSuggestionRowItem
-								key={row.song.id}
-								row={row}
-								added={addedTo.includes(row.song.id)}
-								navigationDisabled={navigationDisabled ?? false}
-								onAdd={onAdd}
-								isActive={activeSongId === row.song.id}
-								onActivate={setActiveSongId}
-								onDeactivate={() => setActiveSongId(null)}
-							/>
-						))}
+						{suggestions.length === 0 ? (
+							<p
+								className="theme-text-muted text-sm"
+								style={{ fontFamily: fonts.body }}
+							>
+								All suggestions reviewed.
+							</p>
+						) : (
+							suggestions.map((row) => (
+								<SongSuggestionRowItem
+									key={row.song.id}
+									row={row}
+									added={addedTo.includes(row.song.id)}
+									navigationDisabled={navigationDisabled ?? false}
+									onAdd={onAdd}
+									onDismiss={onDismissSuggestion}
+									isActive={activeSongId === row.song.id}
+									onActivate={setActiveSongId}
+									onDeactivate={() => setActiveSongId(null)}
+								/>
+							))
+						)}
 					</div>
 				</AnimatedSuggestionsPanel>
 			</AnimatePresence>
@@ -210,6 +221,7 @@ interface SongSuggestionRowItemProps {
 	added: boolean;
 	navigationDisabled: boolean;
 	onAdd: (suggestionId: string) => void;
+	onDismiss?: (suggestionId: string) => void | Promise<void>;
 	/** True when this row's preview is the one playing (see activeSongId). */
 	isActive: boolean;
 	onActivate: (songId: string) => void;
@@ -225,6 +237,7 @@ function SongSuggestionRowItem({
 	added,
 	navigationDisabled,
 	onAdd,
+	onDismiss,
 	isActive,
 	onActivate,
 	onDeactivate,
@@ -268,7 +281,18 @@ function SongSuggestionRowItem({
 					</div>
 				</div>
 
-				<div className="shrink-0">
+				<div className="flex shrink-0 items-center gap-2">
+					{onDismiss && !added && (
+						<button
+							type="button"
+							disabled={navigationDisabled}
+							onClick={() => onDismiss(song.id)}
+							aria-label={`Dismiss song suggestion: ${song.name}`}
+							className="theme-text-muted inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+						>
+							<XIcon size={14} weight="bold" />
+						</button>
+					)}
 					{added ? (
 						<span
 							className="theme-text-muted text-xs tracking-widest uppercase opacity-60"

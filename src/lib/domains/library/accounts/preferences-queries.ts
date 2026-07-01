@@ -33,7 +33,7 @@ import {
  * lib module stays within the lib dependency boundary.
  */
 type MatchViewMode = "song" | "playlist";
-const DEFAULT_MATCH_VIEW_MODE: MatchViewMode = "song";
+const DEFAULT_MATCH_VIEW_MODE: MatchViewMode = "playlist";
 
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -333,7 +333,7 @@ export function saveConsentPreference(
 
 /**
  * Returns the stored match view mode for an account.
- * Falls back to the default ('song') when the row is missing or the read fails,
+ * Falls back to the default ('playlist') when the row is missing or the read fails,
  * so the sidebar link and dashboard summaries are never blocked by a prefs read
  * error. Pattern mirrors resolveMinMatchScore.
  */

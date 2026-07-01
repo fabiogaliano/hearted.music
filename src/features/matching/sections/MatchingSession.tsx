@@ -31,6 +31,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 		animateReject,
 		onRefresh,
 		onAdd,
+		onDismissSuggestion,
 		onDismiss,
 		onNext,
 		onPrevious,
@@ -173,6 +174,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								suppressTransition={rejecting}
 								onRefresh={onRefresh}
 								onAdd={onAdd}
+								onDismissSuggestion={onDismissSuggestion}
 								onDismiss={animateReject ? handleReject : onDismiss}
 								onNext={onNext}
 								onPrevious={onPrevious}
@@ -194,6 +196,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								isLastItem={isLastItem}
 								suppressTransition={rejecting}
 								onAdd={onAdd}
+								onDismissSuggestion={onDismissSuggestion}
 								onDismiss={animateReject ? handleReject : onDismiss}
 								onNext={onNext}
 								onPrevious={onPrevious}

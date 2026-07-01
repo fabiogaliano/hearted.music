@@ -89,7 +89,7 @@ const staticCopy = {
 // H9: noun switches by orientation — songs in song mode, playlists in playlist mode.
 function filteredBody(
 	hiddenCount: number,
-	mode: MatchViewMode = "song",
+	mode: MatchViewMode = "playlist",
 ): string {
 	const noun = mode === "playlist" ? "playlist" : "song";
 	const subject =
@@ -102,7 +102,7 @@ function filteredBody(
 export function MatchingEmptyState({
 	reason,
 	hiddenCount = 0,
-	mode = "song",
+	mode = "playlist",
 	onModeChange,
 }: Props) {
 	const copy =
