@@ -19,6 +19,7 @@ import {
 } from "@/lib/domains/billing/state";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
+import type { BillingBand } from "@/lib/workflows/library-processing/band-policy";
 
 const VALID_PLANS = new Set<string>(["free", "quarterly", "yearly"]);
 
@@ -40,8 +41,6 @@ function parseUnlimitedAccess(source: string | null): UnlimitedAccess {
 	}
 }
 
-type QueueBand = "low" | "standard" | "priority";
-
 /**
  * True while the subscription still entitles the account to its paid tier.
  * `"ending"` = cancel_at_period_end=true but we're still inside the paid
@@ -58,7 +57,7 @@ function resolveQueueBand(
 	unlimitedAccess: UnlimitedAccess,
 	subscriptionStatus: NormalizedSubscriptionStatus,
 	creditBalance: number,
-): QueueBand {
+): BillingBand {
 	if (unlimitedAccess.kind === "self_hosted") return "priority";
 
 	if (

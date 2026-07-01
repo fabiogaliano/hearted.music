@@ -24,6 +24,7 @@ import {
 	batchSizeForSequence,
 	makeInitialProgress,
 } from "@/lib/workflows/enrichment-pipeline/progress";
+import { resolveEnrichmentBand, resolveRefreshBand } from "./band-policy";
 import { resolveMatchRefreshAvailableAt } from "./match-refresh-debounce";
 import { bandToNumeric, resolveQueuePriority } from "./queue-priority";
 import type {
@@ -216,10 +217,7 @@ export async function executeEffect(
 		const billingBand = resolveQueuePriority(
 			Result.isOk(billingResult) ? billingResult.value : FREE_BILLING_STATE,
 		);
-		const band =
-			change.kind === "onboarding_target_selection_confirmed"
-				? "priority"
-				: billingBand;
+		const band = resolveEnrichmentBand(billingBand, change.kind);
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);
 
@@ -298,7 +296,9 @@ export async function executeEffect(
 			? firstVisibleResult.value
 			: true;
 		const isFirstVisibleBootstrap = !firstVisibleReady;
-		const refreshBand = isFirstVisibleBootstrap ? "interactive" : billingBand;
+		const refreshBand = resolveRefreshBand(billingBand, {
+			isFirstVisibleBootstrap,
+		});
 		const refreshQueuePriority = bandToNumeric(refreshBand);
 
 		const availableAt = resolveMatchRefreshAvailableAt({

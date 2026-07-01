@@ -6,6 +6,8 @@
  * routes, UI) import from this file — never from database.types.ts directly.
  */
 
+import type { BillingBand } from "@/lib/workflows/library-processing/band-policy";
+
 /** The account's current subscription plan. */
 export type BillingPlan = "free" | "quarterly" | "yearly";
 
@@ -74,8 +76,8 @@ export interface BillingState {
 	/** ISO timestamp of the current subscription period end, if any. */
 	subscriptionPeriodEnd: string | null;
 	unlimitedAccess: UnlimitedAccess;
-	/** Resolved queue band for this account's pending jobs. */
-	queueBand: "low" | "standard" | "priority";
+	/** Resolved queue band for this account's pending jobs. Never "interactive" — billing can't produce that level. */
+	queueBand: BillingBand;
 }
 
 /**
