@@ -3712,6 +3712,7 @@ export type Database = {
 			};
 			mark_audio_feature_backfill_manual_needed: {
 				Args: {
+					p_candidates?: Json;
 					p_error_code: string;
 					p_error_message: string;
 					p_job_id: string;
@@ -3976,6 +3977,7 @@ export type Database = {
 				Args: {
 					p_aggregation_metadata?: Json;
 					p_candidate_rank?: number;
+					p_candidates?: Json;
 					p_clip_features?: Json;
 					p_clip_starts_seconds?: number[];
 					p_features: Json;

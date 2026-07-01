@@ -23,6 +23,14 @@ export const audioFeatureBackfillConfig = {
 	// 0.75, so this admits correct matches lacking a duration/official bonus while
 	// the reject phrases still bar wrong recordings.
 	minScore: 0.75,
+	// Search matches scoring at/above this auto-approve — the live feature is
+	// trusted and never lands in the control-panel review queue. Set to the
+	// selection floor (minScore) so every auto-selected match is trusted: minScore
+	// plus the scorer's reject phrases already bar wrong recordings, and the
+	// surviving matches were unanimously correct in manual review. Raise this ABOVE
+	// minScore to route the weakest matches (title+artist only, duration
+	// unconfirmed) back to human review — e.g. 0.80 keeps 0.75/0.79 pending.
+	autoApproveScore: 0.75,
 	requestTimeoutMs: 120_000,
 	// ReccoBeats truncates anything past 30s, so clips are capped there and we
 	// take up to three of them to cover a full track.

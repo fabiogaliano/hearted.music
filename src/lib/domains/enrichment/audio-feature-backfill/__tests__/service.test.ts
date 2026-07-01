@@ -3,7 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FfmpegError } from "@/lib/shared/errors/external/youtube-audio";
 
 vi.mock("@/lib/integrations/youtube-audio/service");
-vi.mock("@/lib/integrations/youtube-audio/yt-dlp");
+// Keep the real summarizeYtDlpFailure (a pure helper the settle path uses to
+// enrich stored error messages); only checkYtDlpAvailable needs stubbing.
+vi.mock("@/lib/integrations/youtube-audio/yt-dlp", async (importOriginal) => ({
+	...(await importOriginal<
+		typeof import("@/lib/integrations/youtube-audio/yt-dlp")
+	>()),
+	checkYtDlpAvailable: vi.fn(),
+}));
 vi.mock("@/lib/integrations/reccobeats/file-analysis");
 vi.mock("@/lib/data/client");
 vi.mock("../jobs");
@@ -69,7 +76,35 @@ function acquiredSource() {
 		matchScore: 0.95,
 		matchReasons: ["title contains full song title"],
 		candidateRank: 1,
-		scored: [],
+		scored: [
+			{
+				candidate: {
+					videoId: "vid",
+					url: "https://www.youtube.com/watch?v=vid",
+					title: "Artist - Song (Official Audio)",
+					channel: "Artist - Topic",
+					durationSeconds: 200,
+					thumbnailUrl: "thumb",
+				},
+				score: 0.95,
+				reasons: ["title contains full song title"],
+				rejected: false,
+			},
+			{
+				candidate: {
+					videoId: "rej",
+					url: "https://www.youtube.com/watch?v=rej",
+					title: "Artist - Song (Live)",
+					channel: null,
+					durationSeconds: 240,
+					thumbnailUrl: null,
+				},
+				score: 0,
+				reasons: [],
+				rejected: true,
+				rejectReason: 'contains "live"',
+			},
+		],
 	};
 }
 
@@ -154,7 +189,7 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("processBackfillJob", () => {
-	it("high-confidence: settles atomically as pending review, then wakes", async () => {
+	it("high-confidence search auto-approves (score ≥ autoApproveScore), then wakes", async () => {
 		const outcome = await processBackfillJob(makeJob(), WORKER);
 
 		expect(outcome).toBe("completed");
@@ -163,10 +198,24 @@ describe("processBackfillJob", () => {
 		expect(jobs.settleBackfillJob).toHaveBeenCalledTimes(1);
 		expect(
 			vi.mocked(jobs.settleBackfillJob).mock.calls[0]?.[0].reviewStatus,
-		).toBe("pending");
+		).toBe("approved");
 		expect(
 			vi.mocked(jobs.settleBackfillJob).mock.calls[0]?.[0].reviewedBy,
-		).toBeNull();
+		).toBe("auto-approve");
+		// The full scored set is persisted on the review: viable-first (ranked),
+		// then rejected — so an accepted match carries the alternatives it beat.
+		const settleInput = vi.mocked(jobs.settleBackfillJob).mock.calls[0]?.[0];
+		expect(settleInput?.candidates).toHaveLength(2);
+		expect(settleInput?.candidates[0]).toMatchObject({
+			videoId: "vid",
+			rank: 1,
+			rejected: false,
+		});
+		expect(settleInput?.candidates[1]).toMatchObject({
+			videoId: "rej",
+			rank: null,
+			rejected: true,
+		});
 		expect(wakeEnrichmentForSong).toHaveBeenCalledWith("song-1");
 	});
 
@@ -185,22 +234,61 @@ describe("processBackfillJob", () => {
 		expect(input?.reviewedBy).toBe("control-panel");
 	});
 
-	it("low-confidence: marks manual_needed and never settles", async () => {
+	it("a search match below autoApproveScore stays pending for review", async () => {
+		// Can't occur while autoApproveScore == minScore (nothing below the 0.75
+		// floor is selected), but the gate must still route a weak match to manual
+		// review if the knob is later raised above the selection floor.
+		vi.mocked(acquireSource).mockResolvedValue(
+			Result.ok({ ...acquiredSource(), matchScore: 0.7 }),
+		);
+
+		const outcome = await processBackfillJob(makeJob(), WORKER);
+
+		expect(outcome).toBe("completed");
+		const input = vi.mocked(jobs.settleBackfillJob).mock.calls[0]?.[0];
+		expect(input?.reviewStatus).toBe("pending");
+		expect(input?.reviewedBy).toBeNull();
+	});
+
+	it("low-confidence: marks manual_needed with the scored candidates and never settles", async () => {
 		vi.mocked(acquireSource).mockResolvedValue(
 			Result.ok({
 				kind: "manual_needed",
 				code: "yt_search_low_confidence",
-				reason: "best score 0.40 below 0.82",
-				scored: [],
+				reason: "best score 0.63 below 0.75",
+				scored: [
+					{
+						candidate: {
+							videoId: "cand",
+							url: "https://www.youtube.com/watch?v=cand",
+							title: "Los Enanitos Verdes - Tequila (En Vivo)",
+							channel: "Fan Uploads",
+							durationSeconds: 246,
+							thumbnailUrl: null,
+						},
+						score: 0.63,
+						reasons: ["title partially matches song title"],
+						rejected: false,
+					},
+				],
 			}),
 		);
 
 		const outcome = await processBackfillJob(makeJob(), WORKER);
 
 		expect(outcome).toBe("manual_needed");
-		expect(jobs.markJobManualNeeded).toHaveBeenCalled();
 		expect(jobs.settleBackfillJob).not.toHaveBeenCalled();
 		expect(wakeEnrichmentForSong).toHaveBeenCalledWith("song-1");
+		// The candidate the search actually found is persisted onto the stuck job,
+		// as the 5th arg — the operator can now see the 0.63 link, not just the number.
+		const call = vi.mocked(jobs.markJobManualNeeded).mock.calls[0];
+		expect(call?.[4]).toHaveLength(1);
+		expect(call?.[4]?.[0]).toMatchObject({
+			videoId: "cand",
+			score: 0.63,
+			rank: 1,
+			rejected: false,
+		});
 	});
 
 	it("auto-search skips when a feature already existed, but still wakes (now ready)", async () => {
@@ -262,6 +350,30 @@ describe("processBackfillJob", () => {
 		expect(outcome).toBe("deferred");
 		expect(jobs.deferJob).toHaveBeenCalled();
 		expect(jobs.settleBackfillJob).not.toHaveBeenCalled();
+	});
+
+	it("persists the yt-dlp stderr summary on a download failure", async () => {
+		const { YtDlpError } = await import(
+			"@/lib/shared/errors/external/youtube-audio"
+		);
+		vi.mocked(acquireSource).mockResolvedValue(
+			Result.err(
+				new YtDlpError({
+					message: "yt-dlp download failed",
+					code: "download_failed",
+					stderr:
+						"WARNING: noise\nERROR: [youtube] abc: Sign in to confirm you’re not a bot.",
+				}),
+			),
+		);
+
+		const outcome = await processBackfillJob(makeJob(), WORKER);
+
+		expect(outcome).toBe("deferred");
+		const [, , , errorCode, errorMessage] =
+			vi.mocked(jobs.deferJob).mock.calls[0] ?? [];
+		expect(errorCode).toBe("yt_download_failed");
+		expect(errorMessage).toContain("Sign in to confirm");
 	});
 
 	it("ffprobe-invalid audio goes to manual_needed, not retry", async () => {

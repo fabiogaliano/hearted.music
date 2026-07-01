@@ -20,8 +20,12 @@ import {
 	analyzeClipsAll,
 } from "@/lib/integrations/reccobeats/file-analysis";
 import { audioFeatureBackfillConfig } from "@/lib/integrations/youtube-audio/config";
+import { toCandidateSnapshots } from "@/lib/integrations/youtube-audio/scoring";
 import { acquireSource } from "@/lib/integrations/youtube-audio/service";
-import { checkYtDlpAvailable } from "@/lib/integrations/youtube-audio/yt-dlp";
+import {
+	checkYtDlpAvailable,
+	summarizeYtDlpFailure,
+} from "@/lib/integrations/youtube-audio/yt-dlp";
 import { log } from "@/lib/observability/logger";
 import {
 	ReccoBeatsApiError,
@@ -167,6 +171,7 @@ export async function processBackfillJob(
 				workerId,
 				acquired.value.code,
 				acquired.value.reason,
+				toCandidateSnapshots(acquired.value.scored),
 			);
 			await wakeEnrichmentForSong(job.song_id);
 			return "manual_needed";
@@ -221,15 +226,30 @@ export async function processBackfillJob(
 		// The RPC re-checks the fence, (for youtube_search) skips if a feature
 		// landed meanwhile, upserts the feature, inserts the review, and completes
 		// the job — all in one transaction.
+		// Review status: manual URL rows are operator-vetted (approved). Search rows
+		// auto-approve once their score clears autoApproveScore; below it they stay
+		// pending for the control-panel queue. With autoApproveScore at the selection
+		// floor, every selected match auto-approves — the search queue only fills if
+		// that knob is raised above minScore.
 		const isManual = job.source_type === "youtube_url";
+		const autoApproved =
+			!isManual &&
+			source.matchScore != null &&
+			source.matchScore >= audioFeatureBackfillConfig.autoApproveScore;
+		const approved = isManual || autoApproved;
+		const reviewedBy = isManual
+			? "control-panel"
+			: autoApproved
+				? "auto-approve"
+				: null;
 		const settled = await settleBackfillJob({
 			jobId: job.id,
 			workerId,
 			songId: job.song_id,
 			sourceType: job.source_type as "youtube_search" | "youtube_url",
 			features,
-			reviewStatus: isManual ? "approved" : "pending",
-			reviewedBy: isManual ? "control-panel" : null,
+			reviewStatus: approved ? "approved" : "pending",
+			reviewedBy,
 			youtubeVideoId: source.candidate.videoId,
 			youtubeUrl: source.candidate.url,
 			youtubeTitle: source.candidate.title || null,
@@ -247,6 +267,7 @@ export async function processBackfillJob(
 					title: s.candidate.title,
 					reason: s.rejectReason,
 				})),
+			candidates: toCandidateSnapshots(source.scored),
 			clipStartsSeconds: source.clips.map((c) => c.startSeconds),
 			clipFeatures: analysis.value.map((a) => a.features),
 			aggregationMetadata: metadata,
@@ -293,7 +314,8 @@ export async function processBackfillJob(
 		log.info("youtube-audio-review-created", {
 			jobId: job.id,
 			reviewId: settled.value.reviewId,
-			status: isManual ? "approved" : "pending",
+			status: approved ? "approved" : "pending",
+			reviewedBy,
 		});
 
 		// Clear any stale pre-backfill source_not_found suppression for this song.
@@ -329,7 +351,7 @@ export async function processBackfillJob(
 async function settleAcquisitionError(
 	job: BackfillJob,
 	workerId: string,
-	error: { _tag: string; code: string; message: string },
+	error: { _tag: string; code: string; message: string; stderr?: string },
 ): Promise<ProcessOutcome> {
 	const validationCodes = new Set([
 		"no_audio_stream",
@@ -349,12 +371,18 @@ async function settleAcquisitionError(
 
 	const code =
 		error._tag === "FfmpegError" ? "ffmpeg_clip_failed" : "yt_download_failed";
+	// Persist yt-dlp/ffmpeg's real stderr line (e.g. "Sign in to confirm you're
+	// not a bot", "This video is not available") into the stored message. Without
+	// this the coarse code was all we kept, so every download failure read as an
+	// opaque "yt-dlp download failed". Mirrors the hydrate path's summary.
+	const detail = summarizeYtDlpFailure(error.stderr);
+	const message = detail ? `${error.message}: ${detail}` : error.message;
 	return deferAndMaybeWake(
 		job,
 		workerId,
 		TRANSIENT_RETRY_SECONDS,
 		code,
-		error.message,
+		message,
 	);
 }
 

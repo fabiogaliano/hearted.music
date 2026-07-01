@@ -146,6 +146,9 @@ export async function markJobManualNeeded(
 	workerId: string,
 	errorCode: string,
 	errorMessage: string,
+	/** Scored candidate snapshots to persist on the stuck job (empty for the
+	 * environment/validation manual paths that never ran a search). */
+	candidates: unknown[] = [],
 ): Promise<Result<BackfillJob | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(
@@ -155,6 +158,7 @@ export async function markJobManualNeeded(
 			p_worker_id: workerId,
 			p_error_code: errorCode,
 			p_error_message: errorMessage,
+			p_candidates: candidates as unknown as Json,
 		},
 	);
 	if (error) return Result.err(dbErr(error));
@@ -214,6 +218,8 @@ export interface SettleBackfillInput {
 	matchScore: number | null;
 	matchReasons: string[];
 	rejectedCandidates: unknown[];
+	/** Full scored candidate set (viable + rejected) behind this match. */
+	candidates: unknown[];
 	clipStartsSeconds: number[];
 	clipFeatures: unknown;
 	aggregationMetadata: unknown;
@@ -259,6 +265,7 @@ export async function settleBackfillJob(
 			p_match_score: input.matchScore ?? undefined,
 			p_match_reasons: input.matchReasons as unknown as Json,
 			p_rejected_candidates: input.rejectedCandidates as unknown as Json,
+			p_candidates: input.candidates as unknown as Json,
 			p_clip_starts_seconds: input.clipStartsSeconds,
 			p_clip_features: input.clipFeatures as Json,
 			p_aggregation_metadata: input.aggregationMetadata as Json,
