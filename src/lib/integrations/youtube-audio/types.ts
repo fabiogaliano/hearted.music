@@ -23,6 +23,29 @@ export interface ScoredCandidate {
 }
 
 /**
+ * A flattened, persistence-ready snapshot of one scored candidate. This is the
+ * exact JSON we store on the job (low-confidence) and the review (accepted) so
+ * the operator can see WHICH links the search found and why each scored what it
+ * did — and so the accepted-vs-candidate set can later be exported as labeled
+ * data for tuning the reject phrases / weights / thresholds. `rank` is the
+ * 1-based position among viable (non-rejected) candidates by score; rejected
+ * candidates carry `null`.
+ */
+export interface MatchCandidateSnapshot {
+	videoId: string;
+	url: string;
+	title: string;
+	channel: string | null;
+	durationSeconds: number | null;
+	thumbnailUrl: string | null;
+	score: number;
+	reasons: string[];
+	rejected: boolean;
+	rejectReason: string | null;
+	rank: number | null;
+}
+
+/**
  * Result of scoring a candidate set. `selected` means one candidate cleared the
  * confidence bar and beat the runner-up; `manual_needed` means the worker should
  * not auto-insert and the song needs an operator-provided source.

@@ -3,8 +3,13 @@ import {
 	scoreCandidate,
 	scoreCandidates,
 	stripVersionQualifier,
+	toCandidateSnapshots,
 } from "../scoring";
-import type { SongForScoring, YoutubeCandidate } from "../types";
+import type {
+	ScoredCandidate,
+	SongForScoring,
+	YoutubeCandidate,
+} from "../types";
 
 const SONG: SongForScoring = {
 	name: "Blinding Lights",
@@ -199,6 +204,71 @@ describe("scoreCandidates", () => {
 		expect(decision.kind).toBe("selected");
 		if (decision.kind === "selected")
 			expect(decision.candidate.videoId).toBe("rm");
+	});
+});
+
+describe("toCandidateSnapshots", () => {
+	function scored(
+		p: Partial<ScoredCandidate> & { videoId: string },
+	): ScoredCandidate {
+		return {
+			candidate: candidate({ videoId: p.videoId, title: p.videoId }),
+			score: p.score ?? 0,
+			reasons: p.reasons ?? [],
+			rejected: p.rejected ?? false,
+			rejectReason: p.rejectReason,
+		};
+	}
+
+	it("orders viable-by-score first, then rejected, and ranks only viable", () => {
+		const snaps = toCandidateSnapshots([
+			scored({ videoId: "mid", score: 0.5 }),
+			scored({
+				videoId: "rej",
+				score: 0.9,
+				rejected: true,
+				rejectReason: 'contains "live"',
+			}),
+			scored({ videoId: "top", score: 0.7 }),
+		]);
+
+		// Viable come first ordered by score desc (top, mid), then rejected (rej),
+		// regardless of the rejected one's raw score.
+		expect(snaps.map((s) => s.videoId)).toEqual(["top", "mid", "rej"]);
+		expect(snaps.map((s) => s.rank)).toEqual([1, 2, null]);
+		expect(snaps[2]?.rejectReason).toBe('contains "live"');
+	});
+
+	it("carries the full candidate provenance and null-defaults an absent reject reason", () => {
+		const [snap] = toCandidateSnapshots([
+			{
+				candidate: candidate({
+					videoId: "v",
+					url: "https://youtu.be/v",
+					title: "Los Enanitos Verdes - Tequila (En Vivo)",
+					channel: "Fan Uploads",
+					durationSeconds: 246,
+					thumbnailUrl: "https://img/v.jpg",
+				}),
+				score: 0.63,
+				reasons: ["title partially matches song title"],
+				rejected: false,
+			},
+		]);
+
+		expect(snap).toMatchObject({
+			videoId: "v",
+			url: "https://youtu.be/v",
+			title: "Los Enanitos Verdes - Tequila (En Vivo)",
+			channel: "Fan Uploads",
+			durationSeconds: 246,
+			thumbnailUrl: "https://img/v.jpg",
+			score: 0.63,
+			reasons: ["title partially matches song title"],
+			rejected: false,
+			rejectReason: null,
+			rank: 1,
+		});
 	});
 });
 

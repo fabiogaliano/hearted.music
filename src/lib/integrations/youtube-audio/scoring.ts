@@ -17,6 +17,7 @@
 
 import type {
 	CandidateDecision,
+	MatchCandidateSnapshot,
 	ScoredCandidate,
 	SongForScoring,
 	YoutubeCandidate,
@@ -213,6 +214,43 @@ export function scoreCandidate(
 	}
 
 	return { candidate, score, reasons, rejected: false };
+}
+
+/**
+ * Flatten a scored candidate set into the persistence snapshot shape, ordered
+ * viable-first (by score desc) then rejected (by score desc). Viable candidates
+ * are ranked 1..n; rejected ones get rank null. Pure — the whole scored set,
+ * including the runner-ups the current review row discards, so nothing about the
+ * decision is lost.
+ */
+export function toCandidateSnapshots(
+	scored: ScoredCandidate[],
+): MatchCandidateSnapshot[] {
+	const byScore = (a: ScoredCandidate, b: ScoredCandidate) => b.score - a.score;
+	const viable = scored.filter((s) => !s.rejected).sort(byScore);
+	const rejected = scored.filter((s) => s.rejected).sort(byScore);
+
+	const snap = (
+		s: ScoredCandidate,
+		rank: number | null,
+	): MatchCandidateSnapshot => ({
+		videoId: s.candidate.videoId,
+		url: s.candidate.url,
+		title: s.candidate.title,
+		channel: s.candidate.channel,
+		durationSeconds: s.candidate.durationSeconds,
+		thumbnailUrl: s.candidate.thumbnailUrl,
+		score: s.score,
+		reasons: s.reasons,
+		rejected: s.rejected,
+		rejectReason: s.rejectReason ?? null,
+		rank,
+	});
+
+	return [
+		...viable.map((s, i) => snap(s, i + 1)),
+		...rejected.map((s) => snap(s, null)),
+	];
 }
 
 export function scoreCandidates(
