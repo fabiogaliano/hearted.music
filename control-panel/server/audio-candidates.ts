@@ -1,48 +1,27 @@
 /**
- * Shared shape + parser for the scored YouTube candidate snapshots the worker
- * persists on a backfill job (low-confidence / no-match) and on a source review
- * (accepted). Mirrors the worker's MatchCandidateSnapshot but is defined locally
- * so the control-panel server stays self-contained (see README "Architecture").
+ * Parser for the scored YouTube candidate snapshots the worker persists on a
+ * backfill job (low-confidence / no-match) and on a source review (accepted).
+ *
+ * The authoritative shape is `MatchCandidateSnapshotSchema` in the shared
+ * youtube-audio types module. This module re-exports the type alias
+ * `AudioFeatureCandidate` (consumed by other control-panel server files) and
+ * provides `asCandidates`, which validates each item through the schema so any
+ * schema drift between the writer and the DB surfaces as a logged seam error
+ * instead of silently coerced nulls.
  *
  * JSONB columns arrive already parsed from postgres.js (built-in JSON OIDs are
  * decoded even with fetch_types:false — only text[]/numeric[] come back as raw
- * literals), but we still normalize defensively: nulls, a missing field, or a
- * stray JSON string can't be allowed to crash the queue render.
+ * literals). We still handle the raw-string fallback for defensiveness.
  */
-export interface AudioFeatureCandidate {
-	videoId: string | null;
-	url: string | null;
-	title: string | null;
-	channel: string | null;
-	durationSeconds: number | null;
-	thumbnailUrl: string | null;
-	score: number | null;
-	reasons: string[];
-	rejected: boolean;
-	rejectReason: string | null;
-	rank: number | null;
-}
 
-const str = (v: unknown): string | null => (v == null ? null : String(v));
-const num = (v: unknown): number | null => (v == null ? null : Number(v));
+import { z } from "zod";
+import {
+	MatchCandidateSnapshotSchema,
+	type MatchCandidateSnapshot,
+} from "@/lib/integrations/youtube-audio/types";
 
-function mapCandidate(raw: unknown): AudioFeatureCandidate | null {
-	if (!raw || typeof raw !== "object") return null;
-	const c = raw as Record<string, unknown>;
-	return {
-		videoId: str(c.videoId),
-		url: str(c.url),
-		title: str(c.title),
-		channel: str(c.channel),
-		durationSeconds: num(c.durationSeconds),
-		thumbnailUrl: str(c.thumbnailUrl),
-		score: num(c.score),
-		reasons: Array.isArray(c.reasons) ? c.reasons.map(String) : [],
-		rejected: c.rejected === true,
-		rejectReason: str(c.rejectReason),
-		rank: num(c.rank),
-	};
-}
+/** Alias consumed by other control-panel server files. */
+export type AudioFeatureCandidate = MatchCandidateSnapshot;
 
 export function asCandidates(v: unknown): AudioFeatureCandidate[] {
 	let arr: unknown = v;
@@ -54,7 +33,22 @@ export function asCandidates(v: unknown): AudioFeatureCandidate[] {
 		}
 	}
 	if (!Array.isArray(arr)) return [];
-	return arr
-		.map(mapCandidate)
-		.filter((c): c is AudioFeatureCandidate => c !== null);
+
+	const out: AudioFeatureCandidate[] = [];
+	for (let i = 0; i < arr.length; i++) {
+		const result = MatchCandidateSnapshotSchema.safeParse(arr[i]);
+		if (result.success) {
+			out.push(result.data);
+		} else {
+			// Log loudly so schema drift between the writer and the stored JSONB
+			// surfaces in server logs rather than silently disappearing from the UI.
+			// Skip the bad item so the rest of the list still renders.
+			console.error(
+				`[audio-candidates] candidate ${i} failed schema parse; skipping.`,
+				z.flattenError(result.error),
+				"raw:", JSON.stringify(arr[i]),
+			);
+		}
+	}
+	return out;
 }

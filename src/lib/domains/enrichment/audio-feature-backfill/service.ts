@@ -267,13 +267,9 @@ export async function processBackfillJob(
 			candidateRank: source.candidateRank,
 			matchScore: source.matchScore,
 			matchReasons: source.matchReasons,
-			rejectedCandidates: source.scored
-				.filter((s) => s.rejected)
-				.map((s) => ({
-					videoId: s.candidate.videoId,
-					title: s.candidate.title,
-					reason: s.rejectReason,
-				})),
+			rejectedCandidates: toCandidateSnapshots(
+				source.scored.filter((s) => s.rejected),
+			),
 			candidates: toCandidateSnapshots(source.scored),
 			clipStartsSeconds: source.clips.map((c) => c.startSeconds),
 			clipFeatures: analysis.value.map((a) => a.features),

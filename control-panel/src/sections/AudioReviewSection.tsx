@@ -11,25 +11,12 @@ import {
 	YoutubeLogoIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
+import type { MatchCandidateSnapshot } from "@/lib/integrations/youtube-audio/types";
 import { Badge, Card, ErrorState } from "../components/primitives";
 import { postJson, useApi } from "../lib/api";
 import { noAutofill } from "../lib/form";
 
-// One scored YouTube candidate the auto-search evaluated. Mirrors the server's
-// AudioFeatureCandidate (control-panel/server/audio-candidates.ts).
-interface AudioFeatureCandidate {
-	videoId: string | null;
-	url: string | null;
-	title: string | null;
-	channel: string | null;
-	durationSeconds: number | null;
-	thumbnailUrl: string | null;
-	score: number | null;
-	reasons: string[];
-	rejected: boolean;
-	rejectReason: string | null;
-	rank: number | null;
-}
+type AudioFeatureCandidate = MatchCandidateSnapshot;
 
 interface AudioFeatureReviewRow {
 	id: string;
@@ -335,7 +322,7 @@ function CandidateRow({
 						<button
 							type="button"
 							className="btn mini"
-							onClick={() => onUse(c.url as string)}
+							onClick={() => onUse(c.url)}
 						>
 							Use
 						</button>

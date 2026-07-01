@@ -8,6 +8,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
+import type { MatchCandidateSnapshot } from "@/lib/integrations/youtube-audio/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -176,7 +177,7 @@ export async function markJobManualNeeded(
 	errorMessage: string,
 	/** Scored candidate snapshots to persist on the stuck job (empty for the
 	 * environment/validation manual paths that never ran a search). */
-	candidates: unknown[] = [],
+	candidates: MatchCandidateSnapshot[] = [],
 ): Promise<Result<BackfillJob | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const { data, error } = await supabase.rpc(
@@ -245,9 +246,9 @@ export interface SettleBackfillInput {
 	candidateRank: number | null;
 	matchScore: number | null;
 	matchReasons: string[];
-	rejectedCandidates: unknown[];
+	rejectedCandidates: MatchCandidateSnapshot[];
 	/** Full scored candidate set (viable + rejected) behind this match. */
-	candidates: unknown[];
+	candidates: MatchCandidateSnapshot[];
 	clipStartsSeconds: number[];
 	clipFeatures: unknown;
 	aggregationMetadata: unknown;
