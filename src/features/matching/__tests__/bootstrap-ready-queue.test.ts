@@ -14,11 +14,11 @@ import {
 
 function makeFakeQueryClient(): {
 	queryClient: QueryClient;
-	invalidateQueries: ReturnType<typeof vi.fn>;
+	setQueryData: ReturnType<typeof vi.fn>;
 } {
-	const invalidateQueries = vi.fn().mockResolvedValue(undefined);
-	const queryClient = { invalidateQueries } as unknown as QueryClient;
-	return { queryClient, invalidateQueries };
+	const setQueryData = vi.fn();
+	const queryClient = { setQueryData } as unknown as QueryClient;
+	return { queryClient, setQueryData };
 }
 
 beforeEach(() => {
@@ -26,18 +26,21 @@ beforeEach(() => {
 });
 
 describe("bootstrapReadyMatchQueue", () => {
-	it("creates/resumes the session for the given orientation, then invalidates its review query", async () => {
+	it("creates/resumes the session for the given orientation, then seeds its review query from the returned payload", async () => {
 		// Transition under test: no_snapshot → first visible match ready. The queue
-		// must be created (startOrResume) and the review query refetched so the page
-		// mounts the now-ready queue instead of stranding on no-context.
+		// must be created (startOrResume) and its review cache seeded from the SAME
+		// payload create/resume returns so the page mounts the now-ready queue
+		// without a second getMatchReview read.
+		const review = { sessionId: "sess-1", items: [] };
 		vi.mocked(startOrResumeMatchReview).mockResolvedValue({
 			sessionId: "sess-1",
 			itemIds: ["item-1"],
 			firstUnresolvedItemId: "item-1",
 			total: 1,
 			caughtUp: false,
+			review,
 		} as never);
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 
 		await bootstrapReadyMatchQueue({
 			mode: "song",
@@ -48,20 +51,23 @@ describe("bootstrapReadyMatchQueue", () => {
 		expect(startOrResumeMatchReview).toHaveBeenCalledWith({
 			data: { orientation: "song" },
 		});
-		expect(invalidateQueries).toHaveBeenCalledWith({
-			queryKey: matchReviewKeys.review("acct-1", "song"),
-		});
+		expect(setQueryData).toHaveBeenCalledWith(
+			matchReviewKeys.review("acct-1", "song"),
+			review,
+		);
 	});
 
-	it("passes the playlist orientation through and invalidates the playlist review query", async () => {
+	it("passes the playlist orientation through and seeds the playlist review query", async () => {
+		const review = { sessionId: "sess-2", items: [] };
 		vi.mocked(startOrResumeMatchReview).mockResolvedValue({
 			sessionId: "sess-2",
 			itemIds: [],
 			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
+			review,
 		} as never);
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 
 		await bootstrapReadyMatchQueue({
 			mode: "playlist",
@@ -72,14 +78,18 @@ describe("bootstrapReadyMatchQueue", () => {
 		expect(startOrResumeMatchReview).toHaveBeenCalledWith({
 			data: { orientation: "playlist" },
 		});
-		expect(invalidateQueries).toHaveBeenCalledWith({
-			queryKey: matchReviewKeys.review("acct-2", "playlist"),
-		});
+		expect(setQueryData).toHaveBeenCalledWith(
+			matchReviewKeys.review("acct-2", "playlist"),
+			review,
+		);
 	});
 
-	it("does NOT invalidate until the session create/resume resolves", async () => {
-		// Ordering guard: invalidating before the session row exists would refetch
-		// "no session" and leave the page stranded.
+	it("does NOT seed the review cache until the session create/resume resolves", async () => {
+		// Ordering guard: seeding before the session row exists would only be
+		// possible by writing the review payload before create/resume returns it —
+		// destructuring it from the awaited result makes that impossible by
+		// construction, which this test pins.
+		const review = { sessionId: "sess-3", items: [] };
 		let resolveStart!: () => void;
 		const startPromise = new Promise<void>((res) => {
 			resolveStart = res;
@@ -91,9 +101,10 @@ describe("bootstrapReadyMatchQueue", () => {
 				firstUnresolvedItemId: "item-1",
 				total: 1,
 				caughtUp: false,
+				review,
 			})) as never,
 		);
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 
 		const done = bootstrapReadyMatchQueue({
 			mode: "song",
@@ -101,19 +112,21 @@ describe("bootstrapReadyMatchQueue", () => {
 			queryClient,
 		});
 
-		expect(invalidateQueries).not.toHaveBeenCalled();
+		expect(setQueryData).not.toHaveBeenCalled();
 
 		resolveStart();
 		await done;
 
-		expect(invalidateQueries).toHaveBeenCalledWith({
-			queryKey: matchReviewKeys.review("acct-3", "song"),
-		});
+		expect(setQueryData).toHaveBeenCalledWith(
+			matchReviewKeys.review("acct-3", "song"),
+			review,
+		);
 	});
 
-	it("retries with backoff until create succeeds, then invalidates exactly once", async () => {
+	it("retries with backoff until create succeeds, then seeds the review cache exactly once", async () => {
 		// The stranding bug: a failed create must not dead-end on "building". The
-		// loop retries transient failures and only invalidates after it succeeds.
+		// loop retries transient failures and only seeds after it succeeds.
+		const review = { sessionId: "sess-4", items: [] };
 		vi.mocked(startOrResumeMatchReview)
 			.mockRejectedValueOnce(new Error("transient-1"))
 			.mockRejectedValueOnce(new Error("transient-2"))
@@ -123,8 +136,9 @@ describe("bootstrapReadyMatchQueue", () => {
 				firstUnresolvedItemId: "item-1",
 				total: 1,
 				caughtUp: false,
+				review,
 			} as never);
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 		const delays: number[] = [];
 		const sleep = vi.fn(async (ms: number) => {
 			delays.push(ms);
@@ -140,10 +154,11 @@ describe("bootstrapReadyMatchQueue", () => {
 		expect(startOrResumeMatchReview).toHaveBeenCalledTimes(3);
 		// Backoff between the two failures: 2s then 4s.
 		expect(delays).toEqual([2_000, 4_000]);
-		expect(invalidateQueries).toHaveBeenCalledTimes(1);
-		expect(invalidateQueries).toHaveBeenCalledWith({
-			queryKey: matchReviewKeys.review("acct-4", "song"),
-		});
+		expect(setQueryData).toHaveBeenCalledTimes(1);
+		expect(setQueryData).toHaveBeenCalledWith(
+			matchReviewKeys.review("acct-4", "song"),
+			review,
+		);
 	});
 
 	it("stops retrying once the abort signal fires (unmount / condition cleared)", async () => {
@@ -151,7 +166,7 @@ describe("bootstrapReadyMatchQueue", () => {
 			new Error("persistent"),
 		);
 		const controller = new AbortController();
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 		// Abort during the first backoff so the loop exits instead of retrying forever.
 		const sleep = vi.fn(async () => {
 			controller.abort();
@@ -166,13 +181,13 @@ describe("bootstrapReadyMatchQueue", () => {
 		});
 
 		expect(startOrResumeMatchReview).toHaveBeenCalledTimes(1);
-		expect(invalidateQueries).not.toHaveBeenCalled();
+		expect(setQueryData).not.toHaveBeenCalled();
 	});
 
 	it("does not attempt at all when already aborted", async () => {
 		const controller = new AbortController();
 		controller.abort();
-		const { queryClient, invalidateQueries } = makeFakeQueryClient();
+		const { queryClient, setQueryData } = makeFakeQueryClient();
 
 		await bootstrapReadyMatchQueue({
 			mode: "song",
@@ -182,7 +197,7 @@ describe("bootstrapReadyMatchQueue", () => {
 		});
 
 		expect(startOrResumeMatchReview).not.toHaveBeenCalled();
-		expect(invalidateQueries).not.toHaveBeenCalled();
+		expect(setQueryData).not.toHaveBeenCalled();
 	});
 });
 

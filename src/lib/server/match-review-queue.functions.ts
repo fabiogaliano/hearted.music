@@ -23,6 +23,7 @@ import {
 import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
+	MatchReviewSession,
 	MatchReviewSubject,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
@@ -68,6 +69,22 @@ import type {
 } from "./matching.functions";
 
 const NoInputSchema = z.undefined();
+
+/**
+ * Max suggestion songs shown on a single playlist-orientation review card (P2).
+ *
+ * One hub playlist can match hundreds of eligible songs; SongSuggestionsSection
+ * renders them unvirtualized, so payload, JSON parse, and DOM cost all scale with
+ * the raw count (the ~845-suggestion pathological card). The cap is applied to the
+ * card's captured suggestion set BEFORE capture, so the visible-pair rows the
+ * finish/dismiss RPCs read are exactly the top-N the user could actually see and
+ * act on — decisions never touch a suggestion off the bottom of the list. Ordering
+ * is deterministic (visibleRank asc from the derivation), so the same top N is
+ * shown across retries. Song mode is naturally small (target playlists per song),
+ * so it is left uncapped. Product tradeoff: a playlist's lower-ranked song matches
+ * are deferred to a later pass rather than shown on one giant card.
+ */
+const PLAYLIST_CARD_SUGGESTION_CAP = 100;
 
 // Typed item read result — co-located because it is owned by this file's read
 // path and nothing outside Phase 3 currently consumes it.
@@ -120,6 +137,15 @@ export interface MatchReviewStartResult {
 	firstUnresolvedItemId: string | null;
 	total: number;
 	caughtUp: boolean;
+	/**
+	 * The complete queue-list payload for `matchReviewKeys.review(accountId,
+	 * orientation)`, built from the SAME queue read the bootstrap already performed.
+	 * The bootstrap query seeds this into the review cache so the subsequent
+	 * `matchReviewQueryOptions` suspense query resolves from cache instead of firing
+	 * a second `getMatchReview` round-trip — collapsing the bootstrap → queue
+	 * waterfall and removing the duplicate `fetchQueueItems` read (P0).
+	 */
+	review: MatchReviewResult;
 }
 
 export interface MatchReviewResult {
@@ -198,6 +224,81 @@ function deriveCaughtUp(items: MatchReviewQueueItemDto[]): boolean {
 	return items.every((item) => item.state === "resolved");
 }
 
+/**
+ * Eligible-but-hidden review subject count for a caught-up session, computed
+ * against the session's FROZEN strictness bar (not the live preference) so the
+ * caught-up empty state counts against the exact policy the queue and cards used.
+ * Orientation-aware: song mode counts hidden songs, playlist mode hidden
+ * playlists. Returns 0 when there is no snapshot or the ordering read fails, so a
+ * transient failure degrades to the neutral "nothing surfaced" empty state rather
+ * than a wrong "loosen strictness" nudge.
+ */
+async function computeHiddenReviewItemCount(
+	accountId: string,
+	activeSession: MatchReviewSession,
+): Promise<number> {
+	const snapshotResult = await getLatestMatchSnapshot(accountId);
+	if (!Result.isOk(snapshotResult) || !snapshotResult.value) return 0;
+
+	if (activeSession.orientation === "playlist") {
+		const ordered = await getOrderedUndecidedPlaylistIds(
+			snapshotResult.value.id,
+			accountId,
+			activeSession.strictnessMinScore,
+		);
+		return Result.isOk(ordered) ? ordered.value.hiddenReviewItemCount : 0;
+	}
+	const ordered = await getOrderedUndecidedSongIds(
+		snapshotResult.value.id,
+		accountId,
+		activeSession.strictnessMinScore,
+	);
+	return Result.isOk(ordered) ? ordered.value.hiddenReviewItemCount : 0;
+}
+
+/**
+ * Builds the authoritative `MatchReviewResult` for an active session from its
+ * already-fetched queue items. Both `getMatchReview` (the refetch-after-
+ * invalidation path) and `startOrResumeMatchReview` (the bootstrap seed) build
+ * their queue payload here, so the list the client renders can't drift between
+ * the two entry points. `hiddenReviewItemCount` is computed only on the caught-up
+ * path — mirroring what `getMatchReview` did inline — so the active-review hot
+ * path never pays for the extra snapshot read.
+ */
+async function buildMatchReviewResult(
+	activeSession: MatchReviewSession,
+	items: MatchReviewQueueItemDto[],
+	accountId: string,
+): Promise<MatchReviewResult> {
+	const caughtUp = deriveCaughtUp(items);
+	const hiddenReviewItemCount = caughtUp
+		? await computeHiddenReviewItemCount(accountId, activeSession)
+		: 0;
+
+	return {
+		sessionId: activeSession.id,
+		items: items.map((item) => ({
+			id: item.id,
+			position: item.position,
+			state: item.state,
+			subject: item.subject,
+			sourceSnapshotId: item.sourceSnapshotId,
+		})),
+		total: items.length,
+		caughtUp,
+		hiddenReviewItemCount,
+	};
+}
+
+/** Empty queue-list payload for the no-active-session / no-snapshot paths. */
+const EMPTY_MATCH_REVIEW_RESULT: MatchReviewResult = {
+	sessionId: "",
+	items: [],
+	total: 0,
+	caughtUp: true,
+	hiddenReviewItemCount: 0,
+};
+
 const StartMatchReviewSchema = z.object({
 	orientation: MatchOrientationSchema,
 });
@@ -252,6 +353,7 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 				firstUnresolvedItemId: null,
 				total: 0,
 				caughtUp: true,
+				review: EMPTY_MATCH_REVIEW_RESULT,
 			};
 		}
 
@@ -293,12 +395,22 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 			},
 		});
 
+		// Build the full queue-list payload from the SAME items just fetched, so the
+		// bootstrap query can seed the review cache and the client's queue
+		// useSuspenseQuery resolves without a second getMatchReview round-trip (P0).
+		const review = await buildMatchReviewResult(
+			activeSession,
+			items,
+			session.accountId,
+		);
+
 		return {
 			sessionId: activeSession.id,
 			itemIds,
 			firstUnresolvedItemId,
 			total: items.length,
 			caughtUp,
+			review,
 		};
 	});
 
@@ -335,13 +447,7 @@ export const getMatchReview = createServerFn({ method: "GET" })
 
 		if (!sessionResult.value) {
 			// No active queue: caller should run startOrResumeMatchReview first.
-			return {
-				sessionId: "",
-				items: [],
-				total: 0,
-				caughtUp: true,
-				hiddenReviewItemCount: 0,
-			};
+			return EMPTY_MATCH_REVIEW_RESULT;
 		}
 
 		const activeSession = sessionResult.value;
@@ -357,58 +463,14 @@ export const getMatchReview = createServerFn({ method: "GET" })
 			);
 		}
 
-		const items = itemsResult.value;
-		const caughtUp = deriveCaughtUp(items);
-
-		// Only the caught-up empty state needs the hidden-by-visibility count, so
-		// computing it here keeps the active-review hot path free of the extra
-		// snapshot read. The count is orientation-specific: song mode counts hidden
-		// songs, playlist mode counts hidden playlists — each being eligible subjects
-		// kept out of view by the visibility policy (strictness bar plus filters).
-		let hiddenReviewItemCount = 0;
-		if (caughtUp) {
-			const snapshotResult = await getLatestMatchSnapshot(session.accountId);
-			if (Result.isOk(snapshotResult) && snapshotResult.value) {
-				// Freeze the hidden count to the session's stored strictness bar, not the
-				// live preference: an active session's queue and cards use
-				// activeSession.strictnessMinScore, so the caught-up empty state must
-				// count against the same bar or it could disagree after a mid-review
-				// strictness change.
-				if (orientation === "playlist") {
-					const ordered = await getOrderedUndecidedPlaylistIds(
-						snapshotResult.value.id,
-						session.accountId,
-						activeSession.strictnessMinScore,
-					);
-					if (Result.isOk(ordered)) {
-						hiddenReviewItemCount = ordered.value.hiddenReviewItemCount;
-					}
-				} else {
-					const ordered = await getOrderedUndecidedSongIds(
-						snapshotResult.value.id,
-						session.accountId,
-						activeSession.strictnessMinScore,
-					);
-					if (Result.isOk(ordered)) {
-						hiddenReviewItemCount = ordered.value.hiddenReviewItemCount;
-					}
-				}
-			}
-		}
-
-		return {
-			sessionId: activeSession.id,
-			items: items.map((item) => ({
-				id: item.id,
-				position: item.position,
-				state: item.state,
-				subject: item.subject,
-				sourceSnapshotId: item.sourceSnapshotId,
-			})),
-			total: items.length,
-			caughtUp,
-			hiddenReviewItemCount,
-		};
+		// Shared with startOrResumeMatchReview's bootstrap seed so the two entry
+		// points can't drift; hiddenReviewItemCount is computed against the session's
+		// frozen strictness bar and only on the caught-up path.
+		return buildMatchReviewResult(
+			activeSession,
+			itemsResult.value,
+			session.accountId,
+		);
 	});
 
 const GetMatchReviewItemSchema = z.object({
@@ -765,12 +827,23 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 
 			const { list } = listResult;
 
+			// Cap the playlist card's suggestion set to the top N by visibleRank BEFORE
+			// capture (P2). Capturing the capped set keeps the visible-pair rows — the
+			// authority the finish/dismiss RPCs read — aligned with exactly what the
+			// card renders, so a skip/dismiss never writes decisions for a suggestion
+			// the user couldn't see. list.suggestions is already visibleRank-ordered, so
+			// slicing preserves ranks 1..N. Song mode stays uncapped.
+			const suggestionsToCapture =
+				list.orientation === "playlist"
+					? list.suggestions.slice(0, PLAYLIST_CARD_SUGGESTION_CAP)
+					: list.suggestions;
+
 			// Atomically capture the visible pairs (MSR-23 first-write-wins RPC).
 			// Retries return the original captured rows so visible ranks are stable.
 			const captureResult = await captureVisiblePairsAtomic(
 				itemId,
 				session.accountId,
-				list.suggestions,
+				suggestionsToCapture,
 			);
 
 			// Determine the active suggestion set from the capture result. On retry
@@ -785,7 +858,8 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 			let activeSuggestions: SuggestionEntry[];
 
 			if (captureResult.status === "captured") {
-				activeSuggestions = list.suggestions.map((s) => ({
+				// Maps from the capped set actually written this call, not list.suggestions.
+				activeSuggestions = suggestionsToCapture.map((s) => ({
 					songId: s.songId,
 					playlistId: s.playlistId,
 					fitScore: s.fitScore,
@@ -1571,20 +1645,21 @@ export const syncActiveMatchReviewSessions = createServerFn({ method: "POST" })
 		async ({ context }): Promise<SyncActiveMatchReviewSessionsResult> => {
 			const { session } = context;
 
-			const results: Array<{
-				orientation: MatchOrientation;
-				appendedCount: number;
-			}> = [];
-
-			for (const orientation of ALL_ORIENTATIONS) {
-				const result = await syncActiveQueue(session.accountId, orientation, {
-					onVisibleAppend: emitQueueAppendEvents,
-				});
-				results.push({
-					orientation,
-					appendedCount: Result.isOk(result) ? result.value.appendedCount : 0,
-				});
-			}
+			// Sync both orientations concurrently (P3): each syncActiveQueue call
+			// operates on its own orientation's session (independent rows + unique
+			// index), so there's no ordering dependency — the old serial for...of just
+			// added latency. Promise.all preserves ALL_ORIENTATIONS order in the result.
+			const results = await Promise.all(
+				ALL_ORIENTATIONS.map(async (orientation) => {
+					const result = await syncActiveQueue(session.accountId, orientation, {
+						onVisibleAppend: emitQueueAppendEvents,
+					});
+					return {
+						orientation,
+						appendedCount: Result.isOk(result) ? result.value.appendedCount : 0,
+					};
+				}),
+			);
 
 			return { results };
 		},

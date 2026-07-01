@@ -126,17 +126,30 @@ async function createQueueFromLatestSnapshot(
 	orientation: MatchOrientation,
 	opts?: AppendOpts,
 ): Promise<Result<ActiveQueueResult, DbError>> {
-	const snapshotIdResult = await fetchLatestSnapshotId(accountId);
-	if (Result.isError(snapshotIdResult)) return snapshotIdResult;
+	// Start the strictness resolve alongside the snapshot lookup (P3): the session
+	// insert needs minScore but the snapshot lookup does not, so the two reads are
+	// independent. Await snapshot first so the no-snapshot / error paths return
+	// without blocking on minScore; the dangling promise gets a no-op catch so an
+	// (unexpected — resolveMinMatchScore is designed never to reject) failure on
+	// those paths can't surface as an unhandled rejection.
+	const snapshotIdPromise = fetchLatestSnapshotId(accountId);
+	const minScorePromise = resolveMinMatchScore(accountId);
+
+	const snapshotIdResult = await snapshotIdPromise;
+	if (Result.isError(snapshotIdResult)) {
+		void minScorePromise.catch(() => {});
+		return snapshotIdResult;
+	}
 
 	const snapshotId = snapshotIdResult.value;
 	if (!snapshotId) {
+		void minScorePromise.catch(() => {});
 		return Result.ok<ActiveQueueResult, DbError>({ kind: "no_snapshot" });
 	}
 
-	// Resolve strictness at session creation time — stored so mid-review setting
-	// changes don't shift the bar on cards the user is already looking at.
-	const minScore = await resolveMinMatchScore(accountId);
+	// Strictness is stored at session creation time so mid-review setting changes
+	// don't shift the bar on cards the user is already looking at.
+	const minScore = await minScorePromise;
 	const preset =
 		Object.entries(STRICTNESS_MIN_SCORE).find(([, v]) => v === minScore)?.[0] ??
 		DEFAULT_MATCH_STRICTNESS;
@@ -764,14 +777,18 @@ export async function getOrderedUndecidedSongIds(
 ): Promise<
 	Result<{ songIds: string[]; hiddenReviewItemCount: number }, DbError>
 > {
-	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
-
+	// Fold the strictness resolve into the parallel batch (P3): minScore isn't
+	// needed until the policy is built after these reads, so awaiting it first only
+	// added serial latency. When an override is passed, use it directly — Promise.all
+	// passes a plain number through unchanged. `??` (not `||`) so a 0 override holds.
 	const [
+		minScore,
 		matchResultsResult,
 		newSongIdsResult,
 		entitledResult,
 		targetFiltersResult,
 	] = await Promise.all([
+		minScoreOverride ?? resolveMinMatchScore(accountId),
 		getMatchResults(snapshotId),
 		getNewItemIds(accountId, "song"),
 		createAdminSupabaseClient().rpc(
@@ -870,10 +887,12 @@ export async function getOrderedUndecidedPlaylistIds(
 ): Promise<
 	Result<{ playlistIds: string[]; hiddenReviewItemCount: number }, DbError>
 > {
-	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
-
-	const [matchResultsResult, entitledResult, targetFiltersResult] =
+	// Fold the strictness resolve into the parallel batch (P3): minScore isn't
+	// needed until the policy is built after these reads. Override passes through
+	// Promise.all unchanged; `??` (not `||`) so a 0 override holds.
+	const [minScore, matchResultsResult, entitledResult, targetFiltersResult] =
 		await Promise.all([
+			minScoreOverride ?? resolveMinMatchScore(accountId),
 			getMatchResults(snapshotId),
 			createAdminSupabaseClient().rpc(
 				"select_entitled_data_enriched_liked_song_ids",

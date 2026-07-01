@@ -31,8 +31,9 @@ function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * Creates (or resumes) the match review session for `mode`, then invalidates the
- * queue query so it refetches the now-existing session.
+ * Creates (or resumes) the match review session for `mode`, then seeds the queue
+ * query cache with the payload create/resume returns so the now-existing session
+ * renders straight from cache — no second read.
  *
  * The route loader bootstraps the queue only once, on entry. A user who opens
  * /match before the first snapshot exists (fresh first-match setup) gets no
@@ -46,8 +47,8 @@ function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
  * effect mutating a ref in its catch can't re-trigger a render, and the effect
  * deps don't change. Retrying with capped backoff until the session is created —
  * or the caller aborts on unmount / when the stranded condition clears — keeps a
- * transient failure from becoming a dead end, and keeps the create-then-
- * invalidate ordering unit-testable without a React tree.
+ * transient failure from becoming a dead end, and keeps the create-then-seed
+ * ordering unit-testable without a React tree.
  */
 export async function bootstrapReadyMatchQueue({
 	mode,
@@ -65,12 +66,16 @@ export async function bootstrapReadyMatchQueue({
 	for (let attempt = 0; ; attempt++) {
 		if (signal?.aborted) return;
 		try {
-			// Create/resume must resolve before the refetch, or the invalidation races
-			// ahead of the new session row and the queue query re-reads "no session".
-			await startOrResumeMatchReview({ data: { orientation: mode } });
-			queryClient.invalidateQueries({
-				queryKey: matchReviewKeys.review(accountId, mode),
+			// create/resume returns the complete queue-list payload built from the same
+			// read it just performed. Seed the review cache with it directly rather than
+			// invalidating: the live queue query updates from cache with no second
+			// getMatchReview round-trip, removing the duplicate fetchQueueItems read
+			// (the P0 waterfall the route-entry path already collapses). Seeding only
+			// after the await also can't land before the session row exists.
+			const { review } = await startOrResumeMatchReview({
+				data: { orientation: mode },
 			});
+			queryClient.setQueryData(matchReviewKeys.review(accountId, mode), review);
 			return;
 		} catch {
 			await sleep(bootstrapRetryDelayMs(attempt), signal);

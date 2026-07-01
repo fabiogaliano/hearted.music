@@ -1356,6 +1356,11 @@ function fakeDomainItem(overrides: Record<string, unknown> = {}) {
 describe("startOrResumeMatchReview", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// The bootstrap now builds the full review payload (P0). Its caught-up path
+		// computes the hidden count via getLatestMatchSnapshot; default to no snapshot
+		// so caught-up bootstraps report 0 hidden without reaching the ordered-ids
+		// helpers. Tests exercising the hidden-count path override this.
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
 	});
 
 	it("returns an empty caught-up payload when there is no snapshot", async () => {
@@ -1373,6 +1378,15 @@ describe("startOrResumeMatchReview", () => {
 			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
+			// The bootstrap carries the queue-list payload it seeds into the review
+			// cache; the no-snapshot case seeds the empty caught-up result (P0).
+			review: {
+				sessionId: "",
+				items: [],
+				total: 0,
+				caughtUp: true,
+				hiddenReviewItemCount: 0,
+			},
 		});
 		// No session means the queue is never read.
 		expect(fetchQueueItems).not.toHaveBeenCalled();
@@ -1407,6 +1421,13 @@ describe("startOrResumeMatchReview", () => {
 			firstUnresolvedItemId: null,
 			total: 0,
 			caughtUp: true,
+			review: {
+				sessionId: "",
+				items: [],
+				total: 0,
+				caughtUp: true,
+				hiddenReviewItemCount: 0,
+			},
 		});
 		await vi.waitFor(() =>
 			expect(mockCaptureException).toHaveBeenCalledTimes(1),
@@ -1443,6 +1464,33 @@ describe("startOrResumeMatchReview", () => {
 		expect(result.firstUnresolvedItemId).toBe("item-1");
 		expect(result.total).toBe(2);
 		expect(result.caughtUp).toBe(false);
+		// P0: the bootstrap carries the complete queue-list payload it seeds into the
+		// review cache, built from the same items — mapped to the review item shape,
+		// and hiddenReviewItemCount stays 0 while items remain unresolved (no snapshot
+		// read on the hot path).
+		expect(result.review).toEqual({
+			sessionId: "session-1",
+			items: [
+				{
+					id: "item-1",
+					position: 0,
+					state: "pending",
+					subject: { orientation: "song", songId: "song-1" },
+					sourceSnapshotId: "snap-1",
+				},
+				{
+					id: "item-2",
+					position: 1,
+					state: "active",
+					subject: { orientation: "song", songId: "song-1" },
+					sourceSnapshotId: "snap-1",
+				},
+			],
+			total: 2,
+			caughtUp: false,
+			hiddenReviewItemCount: 0,
+		});
+		expect(mockGetLatestMatchSnapshot).not.toHaveBeenCalled();
 		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
 			distinctId: "acct-1",
 			event: "match_review_opened",
@@ -1475,6 +1523,45 @@ describe("startOrResumeMatchReview", () => {
 			event: "match_review_opened",
 			properties: { orientation: "song", state: "caught_up", result_count: 2 },
 		});
+	});
+
+	it("seeds a caught-up review payload with the same hiddenReviewItemCount getMatchReview would report", async () => {
+		// P0 parity: a caught-up bootstrap must carry the same hidden count the
+		// refetch path (getMatchReview) computes, against the session's frozen
+		// strictness bar — so seeding the cache can't disagree with a later refetch.
+		vi.mocked(createOrResumeQueue).mockResolvedValue(
+			Result.ok({
+				kind: "resumed",
+				session: {
+					id: "session-1",
+					orientation: "song",
+					strictnessMinScore: 0.7,
+				} as never,
+			}),
+		);
+		vi.mocked(fetchQueueItems).mockResolvedValue(
+			Result.ok([
+				fakeDomainItem({ id: "item-1", state: "resolved", position: 0 }),
+			]),
+		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockGetOrderedUndecidedSongIds.mockResolvedValue(
+			Result.ok({ songIds: [], hiddenReviewItemCount: 4 }),
+		);
+
+		const result = await startOrResumeMatchReview({
+			data: { orientation: "song" },
+		});
+
+		expect(result.caughtUp).toBe(true);
+		expect(result.review.caughtUp).toBe(true);
+		expect(result.review.hiddenReviewItemCount).toBe(4);
+		// Frozen strictness bar is passed, mirroring getMatchReview's caught-up path.
+		expect(mockGetOrderedUndecidedSongIds).toHaveBeenCalledWith(
+			"snap-1",
+			"acct-1",
+			0.7,
+		);
 	});
 
 	it("reports the first reviewable item by position, not the raw head, on a resumed session", async () => {
@@ -2403,11 +2490,31 @@ describe("presentMatchReviewItem", () => {
 		};
 	}
 
-	it("chunks the suggestion-song .in() read when suggestions exceed the URL-safe limit", async () => {
+	// Builds an already_captured capture result with the given stored pairs. The
+	// fresh derivation is capped to PLAYLIST_CARD_SUGGESTION_CAP before capture, so
+	// an oversized activeSuggestions set can now only arrive via already_captured —
+	// a card captured before the cap shipped whose stored pairs still exceed it.
+	// That is the path the chunked `.in()` read must still protect (the 414 class).
+	function storedPairs(songIds: string[]) {
+		return songIds.map((id, i) => ({
+			songId: id,
+			playlistId: "pl-review",
+			fitScore: 0.5,
+			visibleRank: i + 1,
+		}));
+	}
+
+	it("chunks the suggestion-song .in() read when captured pairs exceed the URL-safe limit", async () => {
 		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
+		// already_captured (legacy pre-cap capture) returns 201 stored pairs; the cap
+		// only bounds fresh derivation, so this path still drives the chunked read.
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: playlistListWithSongSuggestions(songIds),
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: storedPairs(songIds),
 		});
 		const inBatches = installPlaylistPresentWithCapturingSongRead((batch) => ({
 			data: batch.map((id) => ({
@@ -2443,6 +2550,10 @@ describe("presentMatchReviewItem", () => {
 			kind: "ok",
 			list: playlistListWithSongSuggestions(songIds),
 		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: storedPairs(songIds),
+		});
 		// Fail only the batch containing song-150; healthy batches return rows.
 		installPlaylistPresentWithCapturingSongRead((batch) =>
 			batch.includes("song-150")
@@ -2473,5 +2584,46 @@ describe("presentMatchReviewItem", () => {
 				operation: "present_match_review_item",
 			},
 		});
+	});
+
+	it("caps a fresh playlist capture to the top N suggestions before capture (P2)", async () => {
+		// A hub playlist deriving 250 visible song suggestions must capture only the
+		// top 100 by visibleRank, so the visible-pair rows the finish/dismiss RPCs read
+		// match exactly what the card renders. list.suggestions is visibleRank-ordered.
+		const songIds = Array.from({ length: 250 }, (_, i) => `song-${i}`);
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: playlistListWithSongSuggestions(songIds),
+		});
+		// Fresh capture (default happy-path status "captured").
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "captured" });
+		const inBatches = installPlaylistPresentWithCapturingSongRead((batch) => ({
+			data: batch.map((id) => ({
+				id,
+				name: `Song ${id}`,
+				artists: ["Artist"],
+				album_name: null,
+				image_url: "sg.jpg",
+				spotify_id: `sp-${id}`,
+				genres: [],
+			})),
+			error: null,
+		}));
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		// Capture is invoked with only the top 100 pairs — decisions can't touch a
+		// suggestion off the bottom of the list.
+		const capturedArg = mockCaptureVisiblePairsAtomic.mock.calls[0]?.[2] as
+			| unknown[]
+			| undefined;
+		expect(capturedArg).toHaveLength(100);
+		// The song read (and the rendered card) is bounded to the capped set.
+		expect(inBatches.flat()).toHaveLength(100);
+		expect(inBatches.flat()).toEqual(songIds.slice(0, 100));
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.suggestions).toHaveLength(100);
+		}
 	});
 });

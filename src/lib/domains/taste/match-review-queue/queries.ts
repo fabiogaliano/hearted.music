@@ -53,13 +53,42 @@ function toOrientation(s: string): MatchOrientation {
 }
 
 /**
+ * The subset of match_review_queue_item columns mapItemToDto consumes. Typing the
+ * mapper to exactly these lets fetchQueueItems narrow its `select` to the DTO
+ * columns (P1) while a full `*` row (fetchOwnedQueueItem) still satisfies it —
+ * structural subtyping means a wider row is assignable to the narrower shape.
+ */
+type MatchReviewQueueItemDtoColumns = Pick<
+	MatchReviewQueueItemRow,
+	| "id"
+	| "session_id"
+	| "account_id"
+	| "orientation"
+	| "song_id"
+	| "playlist_id"
+	| "source_snapshot_id"
+	| "position"
+	| "state"
+	| "resolution"
+	| "source_fit_score"
+	| "was_new_at_enqueue"
+	| "presented_at"
+	| "resolved_at"
+	| "created_at"
+	| "updated_at"
+>;
+
+/**
  * Maps the orientation + nullable subject columns from a DB row to the
  * MatchReviewSubject discriminated union. Throws instead of returning an
  * invalid/optional shape so callers never encounter missing-subject ambiguity
  * in exported DTOs (MSR-18 acceptance criterion: invalid rows are errors).
  */
 function toMatchReviewSubject(
-	row: MatchReviewQueueItemRow,
+	row: Pick<
+		MatchReviewQueueItemRow,
+		"id" | "orientation" | "song_id" | "playlist_id"
+	>,
 ): MatchReviewSubject {
 	const orientation = toOrientation(row.orientation);
 	if (orientation === "song") {
@@ -121,7 +150,7 @@ function mapItemRow(row: MatchReviewQueueItemRow): MatchReviewQueueItem {
  * or a hard error (MSR-18 B3/E8).
  */
 export function mapItemToDto(
-	row: MatchReviewQueueItemRow,
+	row: MatchReviewQueueItemDtoColumns,
 ): MatchReviewQueueItemDto {
 	return {
 		id: row.id,
@@ -398,7 +427,13 @@ export async function fetchQueueItems(
 	const result = await fromSupabaseMany(
 		supabase
 			.from("match_review_queue_item")
-			.select("*")
+			// Explicit column list rather than `*`: this read runs on every /match
+			// entry AND every queue refetch (P1). The list is exactly the set
+			// mapItemToDto consumes — narrowing further would need a separate
+			// lightweight mapper, and under-selecting would silently null a DTO field.
+			.select(
+				"id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, resolution, source_fit_score, was_new_at_enqueue, presented_at, resolved_at, created_at, updated_at",
+			)
 			.eq("session_id", sessionId)
 			.order("position", { ascending: true }),
 	);

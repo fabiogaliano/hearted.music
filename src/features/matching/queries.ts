@@ -55,7 +55,27 @@ export function matchReviewBootstrapQueryOptions(
 ) {
 	return queryOptions({
 		queryKey: matchReviewKeys.bootstrap(accountId, orientation),
-		queryFn: () => startOrResumeMatchReview({ data: { orientation } }),
+		// The bootstrap round-trip now returns the full queue-list payload too, so
+		// we seed matchReviewKeys.review from the SAME server result rather than
+		// letting the queue useSuspenseQuery fire a second getMatchReview call. That
+		// collapses the bootstrap → queue client waterfall and removes the duplicate
+		// server-side fetchQueueItems read (P0). QueryFunctionContext.client is the
+		// route's QueryClient (TanStack Query v5), so the seed lands in the same cache
+		// the queue query reads. Seeded data is a COMPLETE MatchReviewResult and its
+		// 60s staleTime keeps it fresh past the initial render, so the queue query
+		// resolves from cache with no network request. Bootstrap stays out of the
+		// snapshot-refresh invalidation set, so a mid-session tick refetches via
+		// getMatchReview (the authoritative path) without re-running create/resume.
+		queryFn: async ({ client }) => {
+			const { review, ...start } = await startOrResumeMatchReview({
+				data: { orientation },
+			});
+			client.setQueryData(
+				matchReviewKeys.review(accountId, orientation),
+				review,
+			);
+			return start;
+		},
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 }
