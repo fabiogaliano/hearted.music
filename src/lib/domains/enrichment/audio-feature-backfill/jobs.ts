@@ -141,6 +141,34 @@ export async function deferJob(
 	return Result.ok(firstRow<BackfillJob>(data));
 }
 
+/**
+ * Re-queue a job WITHOUT consuming a retry attempt or ever terminalizing it — for
+ * guaranteed-transient, zero-work failures (currently just provider_busy, where the
+ * ReccoBeats lease's 600s TTL makes contention always clear). See the RPC comment
+ * in 20260701130000_backfill_repend_no_penalty.sql.
+ */
+export async function rependBackfillJob(
+	jobId: string,
+	workerId: string,
+	retrySeconds: number,
+	errorCode: string,
+	errorMessage: string,
+): Promise<Result<BackfillJob | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"repend_audio_feature_backfill_job",
+		{
+			p_job_id: jobId,
+			p_worker_id: workerId,
+			p_retry_seconds: retrySeconds,
+			p_error_code: errorCode,
+			p_error_message: errorMessage,
+		},
+	);
+	if (error) return Result.err(dbErr(error));
+	return Result.ok(firstRow<BackfillJob>(data));
+}
+
 export async function markJobManualNeeded(
 	jobId: string,
 	workerId: string,

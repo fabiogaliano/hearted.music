@@ -177,6 +177,9 @@ beforeEach(() => {
 	vi.mocked(jobs.deferJob).mockResolvedValue(
 		Result.ok(makeJob({ status: "pending" })),
 	);
+	vi.mocked(jobs.rependBackfillJob).mockResolvedValue(
+		Result.ok(makeJob({ status: "pending" })),
+	);
 	vi.mocked(jobs.failJob).mockResolvedValue(
 		Result.ok(makeJob({ status: "failed" })),
 	);
@@ -350,6 +353,25 @@ describe("processBackfillJob", () => {
 		expect(outcome).toBe("deferred");
 		expect(jobs.deferJob).toHaveBeenCalled();
 		expect(jobs.settleBackfillJob).not.toHaveBeenCalled();
+	});
+
+	it("provider lease unavailable re-queues without a retry penalty (never terminal)", async () => {
+		vi.mocked(jobs.acquireProviderLease).mockResolvedValue(Result.ok(false));
+
+		const outcome = await processBackfillJob(makeJob(), WORKER);
+
+		expect(outcome).toBe("deferred");
+		expect(jobs.rependBackfillJob).toHaveBeenCalledWith(
+			"job-1",
+			WORKER,
+			expect.any(Number),
+			"provider_busy",
+			expect.any(String),
+		);
+		// Not the penalizing defer path, and no terminal transition to wake for.
+		expect(jobs.deferJob).not.toHaveBeenCalled();
+		expect(jobs.settleBackfillJob).not.toHaveBeenCalled();
+		expect(wakeEnrichmentForSong).not.toHaveBeenCalled();
 	});
 
 	it("persists the yt-dlp stderr summary on a download failure", async () => {

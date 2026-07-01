@@ -3400,6 +3400,43 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			repend_audio_feature_backfill_job: {
+				Args: {
+					p_error_code: string;
+					p_error_message: string;
+					p_job_id: string;
+					p_retry_seconds: number;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			dismiss_match_review_item_atomic: {
 				Args: { p_account_id: string; p_item_id: string };
 				Returns: string;

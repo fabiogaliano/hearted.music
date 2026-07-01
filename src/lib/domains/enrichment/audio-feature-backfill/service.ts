@@ -38,6 +38,7 @@ import {
 	failJob,
 	markJobManualNeeded,
 	releaseProviderLease,
+	rependBackfillJob,
 	settleBackfillJob,
 } from "./jobs";
 import type { BackfillJob } from "./types";
@@ -192,13 +193,19 @@ export async function processBackfillJob(
 			PROVIDER_LEASE_SECONDS,
 		);
 		if (Result.isError(lease) || !lease.value) {
-			return deferAndMaybeWake(
-				job,
+			// Couldn't acquire the ReccoBeats lease — the worker did zero song-specific
+			// work, and the lease's 600s TTL makes contention always transient. Re-queue
+			// WITHOUT a retry penalty so a burst of contention can't terminalize a good
+			// song (the 2026-06-27 incident's 19 false unavailable_terminal). No terminal
+			// transition happens here, so there's nothing to wake enrichment for.
+			await rependBackfillJob(
+				job.id,
 				workerId,
 				TRANSIENT_RETRY_SECONDS,
 				"provider_busy",
 				"reccobeats provider lease unavailable",
 			);
+			return "deferred";
 		}
 
 		let analysis: Awaited<ReturnType<typeof analyzeClipsAll>>;
