@@ -36,8 +36,9 @@ import type {
 } from "@/lib/domains/taste/match-filters/types";
 import {
 	hasFirstVisibleReviewSubject,
-	syncActiveQueue,
-} from "@/lib/domains/taste/match-review-queue/service";
+	resolveReadinessPermissive,
+} from "@/lib/domains/taste/match-review-queue/readiness";
+import { syncActiveQueue } from "@/lib/domains/taste/match-review-queue/service";
 import {
 	canonicalizeGenre,
 	isGenre,
@@ -300,13 +301,11 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 				Result.isOk(targetsResult) && targetsResult.value.length === 1;
 
 			if (isFirstTarget) {
-				const readyResult = await hasFirstVisibleReviewSubject(
-					session.accountId,
+				// Permissive: error → ready so a transient blip does not accidentally
+				// trigger the bootstrap path; mirrors scheduler degradation.
+				const firstVisibleReady = resolveReadinessPermissive(
+					await hasFirstVisibleReviewSubject(session.accountId),
 				);
-				// DB error → treat as ready so a transient blip does not accidentally
-				// fire the bootstrap path; mirrors the Phase 3 scheduler degradation.
-				const firstVisibleReady =
-					Result.isError(readyResult) || readyResult.value;
 
 				if (!firstVisibleReady) {
 					// Emit before the apply so the timestamp reflects when setup

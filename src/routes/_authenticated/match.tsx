@@ -21,7 +21,7 @@ import {
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
-	deriveNoQueueReason,
+	deriveEmptyStateReason,
 	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
@@ -234,9 +234,13 @@ function QueueMatchPage() {
 	// ready match whose session the recovery effect above is creating — shows
 	// "building" instead of the wrong prompt.
 	if (!hasQueue) {
-		const reason = deriveNoQueueReason({
+		const reason = deriveEmptyStateReason({
+			hasQueue,
+			caughtUp,
 			isJobsActive,
 			firstVisibleMatchReady,
+			total,
+			hiddenReviewItemCount,
 		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
@@ -256,14 +260,14 @@ function QueueMatchPage() {
 	if (caughtUp && !sessionStartedRef.current) {
 		// Active-jobs states take priority — never show a terminal empty state
 		// while enrichment or match-refresh is still running.
-		const reason = (() => {
-			if (isJobsActive && !firstVisibleMatchReady && total === 0)
-				return "building";
-			if (isJobsActive) return "building-more";
-			if (hiddenReviewItemCount > 0) return "filtered";
-			if (total === 0) return "none-yet";
-			return "caught-up";
-		})();
+		const reason = deriveEmptyStateReason({
+			hasQueue,
+			caughtUp,
+			isJobsActive,
+			firstVisibleMatchReady,
+			total,
+			hiddenReviewItemCount,
+		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState

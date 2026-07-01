@@ -7,7 +7,10 @@ import {
 	getPlaylistSongs,
 	getTargetPlaylists,
 } from "@/lib/domains/library/playlists/queries";
-import { hasFirstVisibleReviewSubject } from "@/lib/domains/taste/match-review-queue/service";
+import {
+	hasFirstVisibleReviewSubject,
+	resolveReadinessPermissive,
+} from "@/lib/domains/taste/match-review-queue/readiness";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import {
@@ -221,6 +224,13 @@ export async function executeEffect(
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);
 
+		// Single probe shared by both arms — enrichment and refresh are mutually
+		// exclusive (enrichment returns early), so one probe per call is sufficient.
+		// Permissive: error → true to avoid spamming bootstrap on transient failures.
+		const firstVisibleReady = resolveReadinessPermissive(
+			await hasFirstVisibleReviewSubject(effect.accountId),
+		);
+
 		if (effect.kind === "ensure_enrichment_job") {
 			const countResult = await getLikedSongCount(effect.accountId);
 			const total = Result.isOk(countResult) ? countResult.value : 0;
@@ -230,16 +240,7 @@ export async function executeEffect(
 				change.kind === "enrichment_completed" ? previousBatchSequence + 1 : 0;
 			const nextBatchSize = batchSizeForSequence(nextSequence);
 
-			// Probe first-visible readiness to decide which selector the worker should
-			// use for this batch. On DB error we degrade to "normal" (treat as ready)
-			// so a transient failure never spams bootstrap selection indefinitely.
-			const enrichmentVisibleResult = await hasFirstVisibleReviewSubject(
-				effect.accountId,
-			);
-			const enrichmentFirstVisibleReady = Result.isOk(enrichmentVisibleResult)
-				? enrichmentVisibleResult.value
-				: true;
-			const selectionMode: EnrichmentSelectionMode = enrichmentFirstVisibleReady
+			const selectionMode: EnrichmentSelectionMode = firstVisibleReady
 				? "normal"
 				: "first_match_bootstrap";
 
@@ -285,16 +286,6 @@ export async function executeEffect(
 			change,
 		);
 
-		// Compute first-visible readiness to decide whether this refresh needs
-		// interactive priority (bootstrap) or normal billing priority (steady-state).
-		// On DB error we degrade to billingBand — treating the system as already
-		// ready — to avoid spamming interactive priority on transient failures.
-		const firstVisibleResult = await hasFirstVisibleReviewSubject(
-			effect.accountId,
-		);
-		const firstVisibleReady = Result.isOk(firstVisibleResult)
-			? firstVisibleResult.value
-			: true;
 		const isFirstVisibleBootstrap = !firstVisibleReady;
 		const refreshBand = resolveRefreshBand(billingBand, {
 			isFirstVisibleBootstrap,

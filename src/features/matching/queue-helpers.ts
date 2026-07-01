@@ -117,27 +117,51 @@ export function deriveProgressIndex(
 	return Math.max(0, total - unresolvedCount);
 }
 
+export type Reason =
+	| "building"
+	| "building-more"
+	| "filtered"
+	| "none-yet"
+	| "caught-up"
+	| "no-context";
+
 /**
- * Picks the empty-state reason when no queue/session snapshot exists yet.
+ * Single derivation for all empty-state reasons, covering both the no-queue
+ * and the caught-up branch from match.tsx.
  *
- * "no-context" (the "set a matching intent" prompt) is correct ONLY for a user
- * who has genuinely done no setup: no processing running and no visible match
- * ready. Every other no-queue state is transient and shows "building":
- *  - jobs active, no match ready yet → first-match setup is still running.
- *  - a first visible match IS ready but no session exists → the route loader's
- *    one-shot bootstrap ran before the snapshot published; the component's
- *    recovery effect is creating the session now, so "building" bridges the gap
- *    instead of flashing "no-context" (see shouldBootstrapReadyQueue).
+ * No-queue branch (hasQueue=false):
+ *   "no-context" is correct ONLY when no processing is running and no visible
+ *   match is ready — i.e., genuinely no setup. Everything else is transient
+ *   ("building"), including when a first match IS ready but the recovery effect
+ *   is still creating the session (shouldBootstrapReadyQueue).
+ *
+ * Caught-up branch (hasQueue=true, caughtUp=true):
+ *   Active-jobs states take priority; terminal states ("filtered", "none-yet",
+ *   "caught-up") are only shown when no job is running.
  */
-export function deriveNoQueueReason({
-	isJobsActive,
-	firstVisibleMatchReady,
-}: {
+export function deriveEmptyStateReason(signals: {
+	hasQueue: boolean;
+	caughtUp: boolean;
 	isJobsActive: boolean;
 	firstVisibleMatchReady: boolean;
-}): "building" | "no-context" {
-	if (isJobsActive || firstVisibleMatchReady) return "building";
-	return "no-context";
+	total: number;
+	hiddenReviewItemCount: number;
+}): Reason {
+	if (!signals.hasQueue) {
+		if (signals.isJobsActive || signals.firstVisibleMatchReady)
+			return "building";
+		return "no-context";
+	}
+	if (
+		signals.isJobsActive &&
+		!signals.firstVisibleMatchReady &&
+		signals.total === 0
+	)
+		return "building";
+	if (signals.isJobsActive) return "building-more";
+	if (signals.hiddenReviewItemCount > 0) return "filtered";
+	if (signals.total === 0) return "none-yet";
+	return "caught-up";
 }
 
 /**

@@ -6,13 +6,11 @@ import { dashboardKeys } from "@/features/dashboard/queries";
 import {
 	matchReviewKeys,
 	matchReviewSummaryKeys,
+	runMatchSnapshotRefreshEffects,
 } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
 import type { ActiveJobs } from "@/lib/server/jobs.functions";
-import {
-	runMatchSnapshotRefreshEffects,
-	useActiveJobs,
-} from "../useActiveJobs";
+import { useActiveJobs } from "../useActiveJobs";
 
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
 	syncActiveMatchReviewSessions: vi.fn(),

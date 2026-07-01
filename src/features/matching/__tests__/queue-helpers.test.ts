@@ -3,7 +3,7 @@ import type { MatchReviewResult } from "@/lib/server/match-review-queue.function
 import {
 	countAppendedFromTotal,
 	deriveCaughtUp,
-	deriveNoQueueReason,
+	deriveEmptyStateReason,
 	deriveProgressIndex,
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
@@ -257,14 +257,42 @@ describe("deriveProgressIndex", () => {
 });
 
 // ---------------------------------------------------------------------------
-// deriveNoQueueReason — building vs no-context when no session snapshot exists
+// deriveEmptyStateReason — single derivation for both no-queue and caught-up branches
+//
+// Truth table (old output = what match.tsx produced before; new output = deriveEmptyStateReason):
+//
+// hasQueue | caughtUp | isJobsActive | firstVisibleMatchReady | total | hiddenReviewItemCount | old       | new
+// false    | N/A      | true         | false                  | N/A   | N/A                   | building  | building
+// false    | N/A      | false        | false                  | N/A   | N/A                   | no-context| no-context
+// false    | N/A      | false        | true                   | N/A   | N/A                   | building  | building
+// false    | N/A      | true         | true                   | N/A   | N/A                   | building  | building
+// true     | true     | true         | false                  | 0     | N/A                   | building  | building
+// true     | true     | true         | true                   | 0     | N/A                   | building-more | building-more
+// true     | true     | true         | false                  | 5     | N/A                   | building-more | building-more
+// true     | true     | true         | true                   | 5     | N/A                   | building-more | building-more
+// true     | true     | false        | N/A                    | 5     | 3                     | filtered  | filtered
+// true     | true     | false        | N/A                    | 0     | 0                     | none-yet  | none-yet
+// true     | true     | false        | N/A                    | 5     | 0                     | caught-up | caught-up
 // ---------------------------------------------------------------------------
 
-describe("deriveNoQueueReason", () => {
-	it("returns 'building' when jobs are active and no first-visible card is ready", () => {
-		// Fresh first-match setup: enrichment/refresh running, no session row yet.
+// Shared base for no-queue signals (only hasQueue matters for the no-queue branch).
+const noQueue = {
+	hasQueue: false as const,
+	caughtUp: false as const,
+	total: 0,
+	hiddenReviewItemCount: 0,
+};
+// Shared base for caught-up signals.
+const withQueue = {
+	hasQueue: true as const,
+	caughtUp: true as const,
+};
+
+describe("deriveEmptyStateReason — no-queue branch (hasQueue=false)", () => {
+	it("returns 'building' when jobs are active (first-match setup running)", () => {
 		expect(
-			deriveNoQueueReason({
+			deriveEmptyStateReason({
+				...noQueue,
 				isJobsActive: true,
 				firstVisibleMatchReady: false,
 			}),
@@ -273,19 +301,20 @@ describe("deriveNoQueueReason", () => {
 
 	it("returns 'no-context' only when jobs are idle AND no card is ready (genuine no-setup)", () => {
 		expect(
-			deriveNoQueueReason({
+			deriveEmptyStateReason({
+				...noQueue,
 				isJobsActive: false,
 				firstVisibleMatchReady: false,
 			}),
 		).toBe("no-context");
 	});
 
-	it("returns 'building' when a first-visible card is ready but no session exists yet", () => {
-		// The loader bootstrapped before the snapshot published; the recovery effect
-		// is creating the session now. "building" bridges the gap so the page never
-		// flashes the "set a matching intent" prompt at a user whose match is ready.
+	it("returns 'building' when a first-visible card is ready but no session exists (recovery)", () => {
+		// Loader bootstrapped before snapshot published; recovery effect is creating
+		// the session. "building" bridges the gap so the page never flashes no-context.
 		expect(
-			deriveNoQueueReason({
+			deriveEmptyStateReason({
+				...noQueue,
 				isJobsActive: true,
 				firstVisibleMatchReady: true,
 			}),
@@ -294,11 +323,104 @@ describe("deriveNoQueueReason", () => {
 
 	it("returns 'building' when jobs are idle but a card is ready (post-completion recovery)", () => {
 		expect(
-			deriveNoQueueReason({
+			deriveEmptyStateReason({
+				...noQueue,
 				isJobsActive: false,
 				firstVisibleMatchReady: true,
 			}),
 		).toBe("building");
+	});
+});
+
+describe("deriveEmptyStateReason — caught-up branch (hasQueue=true, caughtUp=true)", () => {
+	it("returns 'building' when jobs active, no visible match ready, and total=0", () => {
+		// Pure first-match bootstrap: jobs running, nothing surfaced yet.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: true,
+				firstVisibleMatchReady: false,
+				total: 0,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("building");
+	});
+
+	it("returns 'building-more' when jobs active and firstVisibleMatchReady=true (total=0)", () => {
+		// Jobs running but a match already exists — more are being found.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: true,
+				firstVisibleMatchReady: true,
+				total: 0,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("building-more");
+	});
+
+	it("returns 'building-more' when jobs active and total>0 (firstVisibleMatchReady=false)", () => {
+		// Queue had items (total>0) and jobs are still running.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: true,
+				firstVisibleMatchReady: false,
+				total: 5,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("building-more");
+	});
+
+	it("returns 'building-more' when jobs active, firstVisibleMatchReady=true, total>0", () => {
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: true,
+				firstVisibleMatchReady: true,
+				total: 5,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("building-more");
+	});
+
+	it("returns 'filtered' when jobs idle and hiddenReviewItemCount>0", () => {
+		// Songs with matches just under the strictness bar — loosen to recover.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: false,
+				firstVisibleMatchReady: false,
+				total: 5,
+				hiddenReviewItemCount: 3,
+			}),
+		).toBe("filtered");
+	});
+
+	it("returns 'none-yet' when jobs idle, total=0, hiddenReviewItemCount=0", () => {
+		// Matching ran but surfaced nothing — distinct from caught-up.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: false,
+				firstVisibleMatchReady: false,
+				total: 0,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("none-yet");
+	});
+
+	it("returns 'caught-up' when jobs idle, total>0, hiddenReviewItemCount=0", () => {
+		// Worked through a real pile — all decided.
+		expect(
+			deriveEmptyStateReason({
+				...withQueue,
+				isJobsActive: false,
+				firstVisibleMatchReady: false,
+				total: 5,
+				hiddenReviewItemCount: 0,
+			}),
+		).toBe("caught-up");
 	});
 });
 

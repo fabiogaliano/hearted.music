@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
-import { hasFirstVisibleReviewSubject } from "@/lib/domains/taste/match-review-queue/service";
+import {
+	hasFirstVisibleReviewSubject,
+	resolveReadinessConservative,
+} from "@/lib/domains/taste/match-review-queue/readiness";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type ParsedJobProgress,
@@ -42,12 +45,10 @@ export const getActiveJobs = createServerFn({ method: "GET" })
 			hasFirstVisibleReviewSubject(session.accountId),
 		]);
 
-		// Degrade gracefully on helper error — a transient DB failure must not
-		// surface as a permanent false-empty state. No throw, matches the pattern
-		// of the original deriveFirstMatchReady which also returned false on error.
-		const firstVisibleMatchReady = Result.isOk(firstVisibleResult)
-			? firstVisibleResult.value
-			: false;
+		// Conservative: error → false so a transient DB failure must not
+		// surface as a permanent false-empty state on the UI.
+		const firstVisibleMatchReady =
+			resolveReadinessConservative(firstVisibleResult);
 
 		let enrichment: ActiveJobInfo | null = null;
 		let matchSnapshotRefresh: ActiveJobInfo | null = null;

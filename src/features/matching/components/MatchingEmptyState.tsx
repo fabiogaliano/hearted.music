@@ -3,24 +3,15 @@ import { Link } from "@tanstack/react-router";
 
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
+import type { Reason } from "../queue-helpers";
 import type { MatchViewMode } from "../types";
 
-// "no-matches" maps to the case where a queue exists but every item was filtered
-// out by the user's strictness setting. "caught-up" is when all items are resolved.
-// Reason values per H8 (match-system-terminology-decisions.md).
-// "building" / "building-more" are active-jobs states — never shown when jobs are idle.
-type Reason =
-	| "no-context"
-	| "caught-up"
-	| "none-yet"
-	| "no-matches"
-	| "all-decided"
-	| "filtered"
-	| "building"
-	| "building-more";
+// "no-matches" and "all-decided" are dead branches kept only as internal
+// fallbacks so the staticCopy map and its tests remain consistent.
+type ComponentReason = Reason | "no-matches" | "all-decided";
 
 interface Props {
-	reason: Reason;
+	reason: ComponentReason;
 	// Only meaningful for reason="filtered": entitled, undecided review items
 	// whose only matches sit below the user's strictness bar.
 	hiddenCount?: number;
