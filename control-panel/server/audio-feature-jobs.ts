@@ -22,13 +22,12 @@
  * The submit-URL action reuses the product's enqueue_audio_feature_backfill_manual
  * RPC (obsoletes any active job first, so a late auto worker can't overwrite the
  * pick) and the product's enrichment wake helper — identical to the replace path
- * in audio-feature-reviews.ts, so a manual pick is processed promptly. parseYoutube
- * Url is shared from that module rather than re-inlined.
+ * in audio-feature-reviews.ts, so a manual pick is processed promptly.
  */
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
+import { extractYoutubeVideoId } from "@/lib/integrations/youtube-audio/url";
 import { type AudioFeatureCandidate, asCandidates } from "./audio-candidates";
-import { parseYoutubeUrl } from "./audio-feature-reviews";
 import { read, tx } from "./db";
 import { HttpError } from "./http-error";
 
@@ -206,11 +205,11 @@ export async function submitManualUrl(
 	songId: string,
 	rawUrl: string,
 ): Promise<SubmitUrlResult> {
-	const parsed = parseYoutubeUrl(rawUrl);
+	const parsed = extractYoutubeVideoId(rawUrl);
 	if (!parsed) {
 		throw new HttpError(
 			400,
-			"Invalid YouTube URL. Allowed hosts: youtube.com, music.youtube.com, youtu.be.",
+			"Invalid YouTube URL. Allowed hosts: youtube.com, m.youtube.com, music.youtube.com, youtu.be.",
 		);
 	}
 

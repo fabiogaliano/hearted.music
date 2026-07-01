@@ -23,6 +23,7 @@
  */
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
+import { extractYoutubeVideoId } from "@/lib/integrations/youtube-audio/url";
 import { type AudioFeatureCandidate, asCandidates } from "./audio-candidates";
 import { read, tx } from "./db";
 
@@ -356,47 +357,6 @@ export async function rejectAudioReview(
 	return { ok: true, ...result, wokeAccounts: woke.length };
 }
 
-const ALLOWED_YOUTUBE_HOSTS = new Set([
-	"youtube.com",
-	"www.youtube.com",
-	"music.youtube.com",
-	"youtu.be",
-]);
-
-/**
- * Validate a YouTube URL by host allow-list and return the canonical watch URL
- * + video id. Inlined (not imported from the product) to keep the review server
- * self-contained, mirroring the worker's url.ts host policy.
- */
-export function parseYoutubeUrl(
-	input: string,
-): { canonicalUrl: string; videoId: string } | null {
-	let url: URL;
-	try {
-		url = new URL(input.trim());
-	} catch {
-		return null;
-	}
-	if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-	const host = url.hostname.toLowerCase();
-	if (!ALLOWED_YOUTUBE_HOSTS.has(host)) return null;
-
-	let videoId: string | null = null;
-	if (host === "youtu.be") {
-		videoId = url.pathname.slice(1).split("/")[0] || null;
-	} else if (url.pathname === "/watch") {
-		videoId = url.searchParams.get("v");
-	} else if (url.pathname.startsWith("/shorts/")) {
-		videoId = url.pathname.split("/")[2] ?? null;
-	}
-	if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) return null;
-
-	return {
-		canonicalUrl: `https://www.youtube.com/watch?v=${videoId}`,
-		videoId,
-	};
-}
-
 export interface ReplaceResult {
 	ok: true;
 	songId: string;
@@ -420,10 +380,10 @@ export async function replaceAudioReviewWithYoutube(
 	rawUrl: string,
 	reviewedBy: string,
 ): Promise<ReplaceResult> {
-	const parsed = parseYoutubeUrl(rawUrl);
+	const parsed = extractYoutubeVideoId(rawUrl);
 	if (!parsed) {
 		throw new Error(
-			"Invalid YouTube URL. Allowed hosts: youtube.com, music.youtube.com, youtu.be.",
+			"Invalid YouTube URL. Allowed hosts: youtube.com, m.youtube.com, music.youtube.com, youtu.be.",
 		);
 	}
 

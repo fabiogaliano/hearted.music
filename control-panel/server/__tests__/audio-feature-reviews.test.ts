@@ -4,82 +4,9 @@ vi.mock("../db");
 vi.mock("@/lib/domains/enrichment/audio-feature-backfill/wake");
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
-import {
-	mapRow,
-	parseYoutubeUrl,
-	rejectAudioReview,
-} from "../audio-feature-reviews";
+import { mapRow, rejectAudioReview } from "../audio-feature-reviews";
 import type { TxRun } from "../db";
 import { tx } from "../db";
-
-describe("parseYoutubeUrl host validation", () => {
-	it("accepts canonical watch URLs and extracts the video id", () => {
-		expect(parseYoutubeUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toEqual(
-			{
-				canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-				videoId: "dQw4w9WgXcQ",
-			},
-		);
-	});
-
-	it("accepts youtu.be short links", () => {
-		expect(parseYoutubeUrl("https://youtu.be/dQw4w9WgXcQ")).toEqual({
-			canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-			videoId: "dQw4w9WgXcQ",
-		});
-	});
-
-	it("accepts music.youtube.com and bare youtube.com", () => {
-		expect(
-			parseYoutubeUrl("https://music.youtube.com/watch?v=dQw4w9WgXcQ"),
-		).not.toBeNull();
-		expect(
-			parseYoutubeUrl("https://youtube.com/watch?v=dQw4w9WgXcQ"),
-		).not.toBeNull();
-	});
-
-	it("accepts /shorts/ URLs", () => {
-		expect(parseYoutubeUrl("https://www.youtube.com/shorts/dQw4w9WgXcQ")).toEqual(
-			{
-				canonicalUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-				videoId: "dQw4w9WgXcQ",
-			},
-		);
-	});
-
-	it("normalizes extra query params to the canonical watch URL", () => {
-		expect(
-			parseYoutubeUrl(
-				"https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=ABC&t=42s",
-			)?.canonicalUrl,
-		).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-	});
-
-	it("rejects non-YouTube hosts", () => {
-		expect(parseYoutubeUrl("https://vimeo.com/watch?v=dQw4w9WgXcQ")).toBeNull();
-		expect(
-			parseYoutubeUrl("https://notyoutube.com/watch?v=dQw4w9WgXcQ"),
-		).toBeNull();
-		// Subdomain spoofing must not pass the exact-host allow-list.
-		expect(
-			parseYoutubeUrl("https://youtube.com.evil.com/watch?v=dQw4w9WgXcQ"),
-		).toBeNull();
-	});
-
-	it("rejects non-http(s) schemes and malformed input", () => {
-		expect(
-			parseYoutubeUrl("javascript:alert(1)//youtube.com/watch?v=dQw4w9WgXcQ"),
-		).toBeNull();
-		expect(parseYoutubeUrl("not a url")).toBeNull();
-		expect(parseYoutubeUrl("")).toBeNull();
-	});
-
-	it("rejects URLs without a valid 11-char video id", () => {
-		expect(parseYoutubeUrl("https://www.youtube.com/watch?v=short")).toBeNull();
-		expect(parseYoutubeUrl("https://www.youtube.com/feed/subscriptions")).toBeNull();
-		expect(parseYoutubeUrl("https://youtu.be/")).toBeNull();
-	});
-});
 
 describe("mapRow → UI shape", () => {
 	const dbRow: Record<string, unknown> = {
