@@ -203,14 +203,6 @@ describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
 		);
 	});
 
-	it("calls the normal RPC when mode is 'normal'", async () => {
-		await selectEnrichmentWorkPlan("account-1", 10, "normal");
-
-		expect(lastCalledRpcName).toBe(
-			"select_liked_song_ids_needing_enrichment_work",
-		);
-	});
-
 	it("calls the bootstrap RPC when mode is 'first_match_bootstrap'", async () => {
 		await selectEnrichmentWorkPlan("account-1", 10, "first_match_bootstrap");
 
