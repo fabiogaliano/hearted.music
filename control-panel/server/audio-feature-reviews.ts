@@ -23,6 +23,7 @@
  */
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
+import { type AudioFeatureCandidate, asCandidates } from "./audio-candidates";
 import { read, tx } from "./db";
 
 export interface AudioFeatureReviewRow {
@@ -61,6 +62,11 @@ export interface AudioFeatureReviewRow {
 	matchReasons: string[];
 	clipStartsSeconds: number[];
 	aggregationMetadata: Record<string, unknown>;
+
+	// The full scored candidate set behind this accepted match — the alternatives
+	// it beat, with their scores/reasons. Evidence for the decision, and the
+	// positive-label half of the corpus for tuning the matcher.
+	candidates: AudioFeatureCandidate[];
 }
 
 const numOrNull = (v: unknown): number | null =>
@@ -171,6 +177,7 @@ export function mapRow(r: Record<string, unknown>): AudioFeatureReviewRow {
 		matchReasons: asStringArray(r.match_reasons),
 		clipStartsSeconds: asNumberArray(r.clip_starts_seconds),
 		aggregationMetadata: asRecord(r.aggregation_metadata),
+		candidates: asCandidates(r.candidates),
 	};
 }
 
@@ -181,7 +188,7 @@ const REVIEW_SELECT = `
 		r.youtube_url, r.youtube_video_id, r.youtube_title, r.youtube_channel,
 		r.youtube_duration_seconds, r.youtube_thumbnail_url,
 		r.search_query, r.match_score, r.match_reasons, r.clip_starts_seconds,
-		r.aggregation_metadata,
+		r.aggregation_metadata, r.candidates,
 		s.name as song_name, s.artists, s.album_name, s.image_url, s.duration_ms,
 		saf.acousticness, saf.danceability, saf.energy, saf.instrumentalness,
 		saf.liveness, saf.loudness, saf.speechiness, saf.tempo, saf.valence

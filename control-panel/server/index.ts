@@ -13,6 +13,12 @@ import {
 	rejectAudioReview,
 	replaceAudioReviewWithYoutube,
 } from "./audio-feature-reviews";
+import {
+	countAudioQueueBuckets,
+	type JobFilter,
+	listAudioFeatureJobs,
+	submitManualUrl,
+} from "./audio-feature-jobs";
 import { cached } from "./cache";
 import { prodRef, warm } from "./db";
 import { HttpError } from "./http-error";
@@ -220,6 +226,28 @@ const server = Bun.serve({
 						body.reviewedBy ?? "control-panel",
 					),
 				);
+			}
+
+			if (path === "/api/audio-feature-queue/counts" && req.method === "GET") {
+				return json(
+					await cached("audio-queue:counts", countAudioQueueBuckets, fresh),
+				);
+			}
+
+			if (path === "/api/audio-feature-jobs" && req.method === "GET") {
+				const filterParam = url.searchParams.get("filter");
+				const filter: JobFilter =
+					filterParam === "failed" ? "failed" : "needs_url";
+				return json({ jobs: await listAudioFeatureJobs(filter) });
+			}
+
+			const submitUrlMatch = path.match(
+				/^\/api\/audio-feature-jobs\/([0-9a-fA-F-]+)\/submit-url$/,
+			);
+			if (submitUrlMatch && req.method === "POST") {
+				const body = (await req.json().catch(() => ({}))) as { url?: string };
+				if (!body.url) return json({ error: "Missing url" }, 400);
+				return json(await submitManualUrl(submitUrlMatch[1]!, body.url));
 			}
 
 			if (path === "/api/release-year-reviews" && req.method === "GET") {
