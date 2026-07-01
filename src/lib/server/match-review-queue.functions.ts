@@ -58,6 +58,7 @@ import { getPreferredMatchViewMode } from "@/lib/domains/library/accounts/prefer
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { emitQueueAppendEvents } from "./match-review-queue-events";
 import type {
 	MatchingPlaylistForReview,
 	MatchingPlaylistMatch,
@@ -66,36 +67,6 @@ import type {
 } from "./matching.functions";
 
 const NoInputSchema = z.undefined();
-
-/** Best-effort PostHog events fired on every durable non-zero queue append. */
-function emitQueueAppendEvents({
-	orientation,
-	appendedCount,
-	accountId,
-}: {
-	orientation: MatchOrientation;
-	appendedCount: number;
-	accountId: string;
-}): void {
-	captureProductEventBestEffort({
-		distinctId: accountId,
-		event: "review_queue_appended",
-		accountId,
-		operation: "capture_review_queue_appended",
-		properties: { orientation, appended_count: appendedCount },
-	});
-	captureProductEventBestEffort({
-		distinctId: accountId,
-		event: "first_visible_match_ready",
-		accountId,
-		operation: "capture_first_visible_match_ready",
-		properties: {
-			account_id: accountId,
-			orientation,
-			appended_count: appendedCount,
-		},
-	});
-}
 
 // Typed item read result — co-located because it is owned by this file's read
 // path and nothing outside Phase 3 currently consumes it.
