@@ -120,12 +120,14 @@ export function deriveProgressIndex(
 /**
  * Picks the empty-state reason when no queue/session snapshot exists yet.
  *
- * A fresh first-match setup has no session row while enrichment/match-refresh is
- * still running, so the naive "no queue → no-context" fallback would flash the
- * "set a matching intent" prompt at a user who has already done exactly that.
- * Prefer the "building" state while jobs are active and no first-visible card is
- * ready; fall back to "no-context" once jobs are idle or a card is ready (the
- * genuine no-setup case).
+ * "no-context" (the "set a matching intent" prompt) is correct ONLY for a user
+ * who has genuinely done no setup: no processing running and no visible match
+ * ready. Every other no-queue state is transient and shows "building":
+ *  - jobs active, no match ready yet → first-match setup is still running.
+ *  - a first visible match IS ready but no session exists → the route loader's
+ *    one-shot bootstrap ran before the snapshot published; the component's
+ *    recovery effect is creating the session now, so "building" bridges the gap
+ *    instead of flashing "no-context" (see shouldBootstrapReadyQueue).
  */
 export function deriveNoQueueReason({
 	isJobsActive,
@@ -134,6 +136,26 @@ export function deriveNoQueueReason({
 	isJobsActive: boolean;
 	firstVisibleMatchReady: boolean;
 }): "building" | "no-context" {
-	if (isJobsActive && !firstVisibleMatchReady) return "building";
+	if (isJobsActive || firstVisibleMatchReady) return "building";
 	return "no-context";
+}
+
+/**
+ * Whether the route should re-run the one-shot queue bootstrap.
+ *
+ * The loader creates the review session only on entry. A user who opens /match
+ * before the first snapshot exists gets no session, and background refresh only
+ * syncs EXISTING sessions — so once a first visible match becomes ready nothing
+ * ever creates the queue and the page would strand on the empty state. When we
+ * have no session but a visible match is ready, the component re-runs the
+ * bootstrap to create the session and refetch.
+ */
+export function shouldBootstrapReadyQueue({
+	hasQueue,
+	firstVisibleMatchReady,
+}: {
+	hasQueue: boolean;
+	firstVisibleMatchReady: boolean;
+}): boolean {
+	return !hasQueue && firstVisibleMatchReady;
 }

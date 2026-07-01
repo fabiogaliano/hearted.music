@@ -8,6 +8,7 @@ import {
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
+	shouldBootstrapReadyQueue,
 } from "../queue-helpers";
 
 function makeQueue(
@@ -270,7 +271,7 @@ describe("deriveNoQueueReason", () => {
 		).toBe("building");
 	});
 
-	it("returns 'no-context' when jobs are idle (genuine no-setup case)", () => {
+	it("returns 'no-context' only when jobs are idle AND no card is ready (genuine no-setup)", () => {
 		expect(
 			deriveNoQueueReason({
 				isJobsActive: false,
@@ -279,23 +280,59 @@ describe("deriveNoQueueReason", () => {
 		).toBe("no-context");
 	});
 
-	it("returns 'no-context' when a first-visible card is already ready", () => {
-		// A ready card with no queue means the snapshot simply hasn't been read into
-		// a session yet — not a still-building setup.
+	it("returns 'building' when a first-visible card is ready but no session exists yet", () => {
+		// The loader bootstrapped before the snapshot published; the recovery effect
+		// is creating the session now. "building" bridges the gap so the page never
+		// flashes the "set a matching intent" prompt at a user whose match is ready.
 		expect(
 			deriveNoQueueReason({
 				isJobsActive: true,
 				firstVisibleMatchReady: true,
 			}),
-		).toBe("no-context");
+		).toBe("building");
 	});
 
-	it("returns 'no-context' when jobs are idle and a card is ready", () => {
+	it("returns 'building' when jobs are idle but a card is ready (post-completion recovery)", () => {
 		expect(
 			deriveNoQueueReason({
 				isJobsActive: false,
 				firstVisibleMatchReady: true,
 			}),
-		).toBe("no-context");
+		).toBe("building");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// shouldBootstrapReadyQueue — re-run the one-shot bootstrap when a match is ready
+// ---------------------------------------------------------------------------
+
+describe("shouldBootstrapReadyQueue", () => {
+	it("bootstraps when there is no session but a first-visible match is ready", () => {
+		// The exact stranded state: loader ran before the snapshot existed, a match
+		// is now ready, and nothing else would create the session.
+		expect(
+			shouldBootstrapReadyQueue({
+				hasQueue: false,
+				firstVisibleMatchReady: true,
+			}),
+		).toBe(true);
+	});
+
+	it("does not bootstrap while no first-visible match is ready yet", () => {
+		expect(
+			shouldBootstrapReadyQueue({
+				hasQueue: false,
+				firstVisibleMatchReady: false,
+			}),
+		).toBe(false);
+	});
+
+	it("does not bootstrap once a session already exists", () => {
+		expect(
+			shouldBootstrapReadyQueue({
+				hasQueue: true,
+				firstVisibleMatchReady: true,
+			}),
+		).toBe(false);
 	});
 });

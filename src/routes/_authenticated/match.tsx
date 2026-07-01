@@ -3,6 +3,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { dashboardKeys } from "@/features/dashboard/queries";
+import { bootstrapReadyMatchQueue } from "@/features/matching/bootstrap-ready-queue";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { Matching } from "@/features/matching/Matching";
 import {
@@ -25,6 +26,7 @@ import {
 	deriveUnresolvedIds,
 	nextItemIdAfterResolved,
 	resolveCurrentItemId,
+	shouldBootstrapReadyQueue,
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
@@ -207,9 +209,35 @@ function QueueMatchPage() {
 		[navigate, queryClient, session.accountId],
 	);
 
-	// No queue at all means no snapshot context yet. But a fresh first-match setup
-	// has no session row while enrichment/match-refresh is still running — show the
-	// "building" state there rather than the "set a matching intent" prompt.
+	// Recovery bootstrap: the loader creates the session only on entry. A user who
+	// opened /match before the first snapshot existed has no session, and once a
+	// first visible match becomes ready nothing else would create it (background
+	// refresh only syncs existing sessions). Re-run the one-shot bootstrap and
+	// refetch so the now-ready queue mounts instead of stranding on the empty state.
+	// The ref fires the attempt once per no-session→ready transition; resetting it
+	// whenever the condition is false lets a later teardown→ready cycle bootstrap
+	// again, and a failed attempt reset allows a retry on the next ready signal.
+	const bootstrapAttemptedRef = useRef(false);
+	useEffect(() => {
+		if (!shouldBootstrapReadyQueue({ hasQueue, firstVisibleMatchReady })) {
+			bootstrapAttemptedRef.current = false;
+			return;
+		}
+		if (bootstrapAttemptedRef.current) return;
+		bootstrapAttemptedRef.current = true;
+		void bootstrapReadyMatchQueue({
+			mode,
+			accountId: session.accountId,
+			queryClient,
+		}).catch(() => {
+			bootstrapAttemptedRef.current = false;
+		});
+	}, [hasQueue, firstVisibleMatchReady, mode, session.accountId, queryClient]);
+
+	// No queue at all means no snapshot context yet. "no-context" (set a matching
+	// intent) shows only for genuinely-no-setup users; a still-running setup — or a
+	// ready match whose session the recovery effect above is creating — shows
+	// "building" instead of the wrong prompt.
 	if (!hasQueue) {
 		const reason = deriveNoQueueReason({
 			isJobsActive,
