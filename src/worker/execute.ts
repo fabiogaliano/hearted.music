@@ -1,11 +1,8 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
 import { log } from "@/lib/observability/logger";
-import {
-	type EnrichmentChunkProgress,
-	EnrichmentChunkProgressSchema,
-	type EnrichmentSelectionMode,
-} from "@/lib/platform/jobs/progress/enrichment";
+import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
+import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
 import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
@@ -56,16 +53,21 @@ export async function executeEnrichmentJob(
 	actor: string,
 ): Promise<EnrichmentExecuteResult> {
 	const accountId = job.account_id;
-	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
-		job.progress ?? {},
-	);
-	const progress: Partial<EnrichmentChunkProgress> = progressResult.success
-		? progressResult.data
-		: {};
+	// Route through the canonical parse so fillEnrichmentDefaults guarantees all
+	// fields — including selectionMode — are non-optional. The "unknown" branch
+	// cannot fire for a valid DB enrichment job (jsonb column is always an object),
+	// so throw rather than silently swallow a malformed row.
+	const parsed = parseJobProgress("enrichment", job.progress ?? {});
+	if (parsed.type !== "enrichment") {
+		throw new Error(
+			`Unexpected progress format for enrichment job ${job.id}: type=${parsed.type}`,
+		);
+	}
+	const progress = parsed.progress;
 
 	// First batch of a run is the "new process" moment; later batches are
 	// continuations, so keep them lower-key.
-	const isFirstBatch = (progress.batchSequence ?? 0) === 0;
+	const isFirstBatch = progress.batchSequence === 0;
 	log.info(isFirstBatch ? "▶ ENRICH RUN" : "enrich:batch", {
 		actor,
 		batch: progress.batchSequence,
@@ -74,22 +76,26 @@ export async function executeEnrichmentJob(
 		accountId,
 	});
 
+	// batchSize=0 is the fillEnrichmentDefaults sentinel for "not yet set";
+	// promote it to 1 so the very first chunk loads at least one song.
+	const batchSize = progress.batchSize || 1;
+
 	const result: ChunkResult = await executeWorkerChunk(
 		accountId,
 		job.id,
-		progress.batchSize ?? 1,
-		progress.batchSequence ?? 0,
-		progress.selectionMode ?? "normal",
+		batchSize,
+		progress.batchSequence,
+		progress.selectionMode,
 	);
 
 	return {
 		accountId,
 		jobId: job.id,
-		batchSequence: progress.batchSequence ?? 0,
+		batchSequence: progress.batchSequence,
 		hasMoreSongs: result.hasMoreSongs,
 		newCandidatesAvailable: result.newCandidatesAvailable,
 		newCandidateSongIds: result.newCandidateSongIds,
-		selectionMode: progress.selectionMode ?? "normal",
+		selectionMode: progress.selectionMode,
 		readyCount: result.readyCount,
 		doneCount: result.doneCount,
 		succeededCount: result.succeededCount,

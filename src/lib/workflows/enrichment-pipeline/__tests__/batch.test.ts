@@ -26,7 +26,7 @@ describe("selectEnrichmentWorkPlan", () => {
 	it("returns empty work plan when no rows are returned", async () => {
 		rpcResponse = { data: [], error: null };
 
-		const plan = await selectEnrichmentWorkPlan("account-1", 50);
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
 
 		expect(plan.allSongIds).toEqual([]);
 		expect(plan.flags).toEqual([]);
@@ -68,7 +68,7 @@ describe("selectEnrichmentWorkPlan", () => {
 			error: null,
 		};
 
-		const plan = await selectEnrichmentWorkPlan("account-1", 50);
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
 
 		expect(plan.allSongIds).toEqual(["song-1", "song-2", "song-3"]);
 		expect(plan.needAudioFeatures).toEqual(["song-1", "song-3"]);
@@ -93,7 +93,7 @@ describe("selectEnrichmentWorkPlan", () => {
 			error: null,
 		};
 
-		const plan = await selectEnrichmentWorkPlan("account-1", 10);
+		const plan = await selectEnrichmentWorkPlan("account-1", 10, "normal");
 
 		expect(plan.needAudioFeatures).toEqual(["song-only-af"]);
 		expect(plan.needGenreTagging).toEqual([]);
@@ -117,7 +117,7 @@ describe("selectEnrichmentWorkPlan", () => {
 			error: null,
 		};
 
-		const plan = await selectEnrichmentWorkPlan("account-1", 10);
+		const plan = await selectEnrichmentWorkPlan("account-1", 10, "normal");
 
 		expect(plan.needAnalysis).toEqual(["song-multi"]);
 		expect(plan.needEmbedding).toEqual(["song-multi"]);
@@ -141,7 +141,7 @@ describe("selectEnrichmentWorkPlan", () => {
 			error: null,
 		};
 
-		const plan = await selectEnrichmentWorkPlan("account-1", 10);
+		const plan = await selectEnrichmentWorkPlan("account-1", 10, "normal");
 
 		expect(plan.flags[0]).toEqual({
 			songId: "s1",
@@ -156,9 +156,9 @@ describe("selectEnrichmentWorkPlan", () => {
 	it("throws on RPC error", async () => {
 		rpcResponse = { data: null, error: { message: "db down" } };
 
-		await expect(selectEnrichmentWorkPlan("account-1", 10)).rejects.toThrow(
-			"Failed to select enrichment work plan: db down",
-		);
+		await expect(
+			selectEnrichmentWorkPlan("account-1", 10, "normal"),
+		).rejects.toThrow("Failed to select enrichment work plan: db down");
 	});
 });
 
@@ -203,8 +203,8 @@ describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
 		);
 	});
 
-	it("calls the normal RPC when mode is omitted (default)", async () => {
-		await selectEnrichmentWorkPlan("account-1", 10);
+	it("calls the normal RPC when mode is 'normal'", async () => {
+		await selectEnrichmentWorkPlan("account-1", 10, "normal");
 
 		expect(lastCalledRpcName).toBe(
 			"select_liked_song_ids_needing_enrichment_work",

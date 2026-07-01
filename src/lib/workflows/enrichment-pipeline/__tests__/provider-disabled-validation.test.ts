@@ -596,7 +596,13 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 
 	describe("4. Full pipeline runs all phases (A + B + C + activation)", () => {
 		it("orchestrator runs all four enrichment stages for self_hosted account", async () => {
-			const result = await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
+			const result = await executeWorkerChunk(
+				ACCOUNT_ID,
+				"job-1",
+				50,
+				0,
+				"normal",
+			);
 
 			expect(mockRunAudioFeatures).toHaveBeenCalledOnce();
 			expect(mockRunGenreTagging).toHaveBeenCalledOnce();
@@ -613,7 +619,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("Phase B (analysis) receives all songs — not gated out", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
+			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
 
 			const analysisBatch = mockRunSongAnalysis.mock
 				.calls[0][1] as PipelineBatch;
@@ -621,7 +627,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("Phase C (embedding) receives all songs — not gated out", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
+			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
 
 			const embeddingBatch = mockRunSongEmbedding.mock
 				.calls[0][1] as PipelineBatch;
@@ -629,7 +635,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("content activation is called with all songs", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
+			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
 
 			expect(mockRunContentActivation).toHaveBeenCalledOnce();
 			const [ctx, songIds] = mockRunContentActivation.mock.calls[0] as [
@@ -643,7 +649,13 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 
 	describe("6. No regressions: self_hosted equivalent to pre-billing full-library", () => {
 		it("orchestrator processes same count as pre-billing (all songs)", async () => {
-			const result = await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0);
+			const result = await executeWorkerChunk(
+				ACCOUNT_ID,
+				"job-1",
+				50,
+				0,
+				"normal",
+			);
 
 			expect(result.readyCount).toBe(3);
 			expect(result.doneCount).toBeGreaterThan(0);

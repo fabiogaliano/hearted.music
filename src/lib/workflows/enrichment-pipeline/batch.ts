@@ -63,7 +63,7 @@ export async function getEntitledDataEnrichedSongIds(
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
 	maxSongs: number,
-	mode: EnrichmentSelectionMode = "normal",
+	mode: EnrichmentSelectionMode,
 ): Promise<EnrichmentWorkPlan> {
 	const supabase = createAdminSupabaseClient();
 

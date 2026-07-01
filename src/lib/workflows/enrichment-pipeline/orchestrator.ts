@@ -464,7 +464,7 @@ export async function executeWorkerChunk(
 	jobId: string,
 	batchSize: number,
 	batchSequence: number,
-	selectionMode: EnrichmentSelectionMode = "normal",
+	selectionMode: EnrichmentSelectionMode,
 ): Promise<ChunkResult> {
 	const embeddingResult = EmbeddingService.create();
 	if (Result.isError(embeddingResult)) {
