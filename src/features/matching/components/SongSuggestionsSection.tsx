@@ -114,6 +114,23 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	const prefersReducedMotion = useReducedMotion();
 	const { setRef, onScroll, maskImage } = useScrollFade();
 
+	// One active preview at a time. Each row owns its play affordance but not the
+	// decision of *which* row plays — that lives here so activating one row flips
+	// the previously-active row's isActive to false, pausing its iframe. Without a
+	// single owner every row plays independently and stack up simultaneously.
+	const [activeSongId, setActiveSongId] = useState<string | null>(null);
+
+	// Navigating to a new review item swaps the whole suggestion set; drop the
+	// active id so a stale one can't mark a row in the next playlist as playing.
+	// (The exiting panel also unmounts, destroying its iframe and stopping audio.)
+	// Adjusting state during render on an itemKey change is React's recommended
+	// alternative to a reset effect — it applies before the children paint.
+	const [prevItemKey, setPrevItemKey] = useState(itemKey);
+	if (itemKey !== prevItemKey) {
+		setPrevItemKey(itemKey);
+		setActiveSongId(null);
+	}
+
 	return (
 		<div
 			className="flex flex-col"
@@ -164,6 +181,9 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 								added={addedTo.includes(row.song.id)}
 								navigationDisabled={navigationDisabled ?? false}
 								onAdd={onAdd}
+								isActive={activeSongId === row.song.id}
+								onActivate={setActiveSongId}
+								onDeactivate={() => setActiveSongId(null)}
 							/>
 						))}
 					</div>
@@ -190,17 +210,24 @@ interface SongSuggestionRowItemProps {
 	added: boolean;
 	navigationDisabled: boolean;
 	onAdd: (suggestionId: string) => void;
+	/** True when this row's preview is the one playing (see activeSongId). */
+	isActive: boolean;
+	onActivate: (songId: string) => void;
+	onDeactivate: () => void;
 }
 
 // One song suggestion row: score, album art with play affordance, name/artist,
 // and Add/Added action. A named component (not an inline map body) so
-// SongAlbumWithPlay's local state is owned once per row under the rules of
+// SongAlbumWithPlay's premount state is owned once per row under the rules of
 // hooks. Keyboard tab order per row: play button, then Add button.
 function SongSuggestionRowItem({
 	row,
 	added,
 	navigationDisabled,
 	onAdd,
+	isActive,
+	onActivate,
+	onDeactivate,
 }: SongSuggestionRowItemProps) {
 	const { song, fitScore } = row;
 
@@ -217,7 +244,12 @@ function SongSuggestionRowItem({
 				</div>
 
 				<div className="flex min-w-0 flex-1 items-center gap-4">
-					<SongAlbumWithPlay song={song} />
+					<SongAlbumWithPlay
+						song={song}
+						isActive={isActive}
+						onActivate={onActivate}
+						onDeactivate={onDeactivate}
+					/>
 
 					<div className="min-w-0 flex-1">
 						<p
@@ -262,14 +294,24 @@ function SongSuggestionRowItem({
 
 interface SongAlbumWithPlayProps {
 	song: SongForMatching;
+	/** Whether this row is the single active preview (owned by the parent). */
+	isActive: boolean;
+	onActivate: (songId: string) => void;
+	onDeactivate: () => void;
 }
 
 // Album art thumbnail with an optional Spotify play button overlay. The 48×48
 // container stays fixed before and after activation so row layout is stable.
 // Keyboard tab order: this play button precedes the Add button in DOM order,
 // satisfying the per-row keyboard navigation requirement (story constraint).
-function SongAlbumWithPlay({ song }: SongAlbumWithPlayProps) {
-	const [activated, setActivated] = useState(false);
+// Active state is lifted so only one row plays at a time; premount stays local
+// since warming an iframe is independent of which row is currently playing.
+function SongAlbumWithPlay({
+	song,
+	isActive,
+	onActivate,
+	onDeactivate,
+}: SongAlbumWithPlayProps) {
 	const [premounted, setPremounted] = useState(false);
 	const premountTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const canPreview = Boolean(song.spotifyId);
@@ -303,14 +345,14 @@ function SongAlbumWithPlay({ song }: SongAlbumWithPlayProps) {
 		}, delayMs);
 	};
 
-	const showIframe = canPreview && song.spotifyId && (premounted || activated);
+	const showIframe = canPreview && song.spotifyId && (premounted || isActive);
 
 	return (
 		<div
 			className="relative shrink-0 overflow-hidden"
 			style={{ width: 48, height: 48 }}
 		>
-			{!activated &&
+			{!isActive &&
 				(song.albumArtUrl ? (
 					<img
 						src={song.albumArtUrl}
@@ -323,12 +365,12 @@ function SongAlbumWithPlay({ song }: SongAlbumWithPlayProps) {
 					</div>
 				))}
 
-			{canPreview && !activated && (
+			{canPreview && !isActive && (
 				<button
 					type="button"
 					onClick={() => {
 						warmPreview(0);
-						setActivated(true);
+						onActivate(song.id);
 					}}
 					onPointerEnter={() => warmPreview(50)}
 					onPointerDown={() => warmPreview(0)}
@@ -349,19 +391,19 @@ function SongAlbumWithPlay({ song }: SongAlbumWithPlayProps) {
 					className="absolute inset-0"
 					initial={{ opacity: 0 }}
 					animate={{
-						opacity: activated ? 1 : 0,
+						opacity: isActive ? 1 : 0,
 						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
 					}}
-					style={{ pointerEvents: activated ? "auto" : "none" }}
+					style={{ pointerEvents: isActive ? "auto" : "none" }}
 				>
 					<SpotifyEmbedIframe
 						spotifyId={song.spotifyId}
-						playWhenReady={activated}
+						playWhenReady={isActive}
 					/>
-					{activated && (
+					{isActive && (
 						<button
 							type="button"
-							onClick={() => setActivated(false)}
+							onClick={onDeactivate}
 							aria-label="Close preview"
 							className="absolute top-1 left-1 z-10 cursor-pointer text-white opacity-90 drop-shadow-md transition-opacity duration-200 hover:opacity-100 motion-safe:active:scale-[0.96]"
 						>
