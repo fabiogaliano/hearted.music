@@ -91,16 +91,33 @@ function PlaylistCoverAndName({
 
 				{/* mt-auto pins the text block to the column bottom so it aligns with
 				the suggestion-section controls in the adjacent column, mirroring how
-				SongSection anchors its title block. */}
-				<div className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]">
+				SongSection anchors its title block. maxWidth ties the text to the cover's
+				width (COVER_SIZE): the cover is capped well below the 1.1fr grid track, so
+				without this the intent + name span the full track and sprawl toward the
+				suggestions. Bounding them to the cover keeps the left column one coherent,
+				left-aligned block. */}
+				<div
+					className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]"
+					style={{ maxWidth: COVER_SIZE }}
+				>
+					{/* The match intent is the user's stated purpose for the playlist —
+					it's the reason these suggestions exist, so show it in full. It wraps
+					across lines (text-pretty avoids a lone trailing word) rather than
+					truncating to a single ellipsised line. */}
 					<p
-						className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
+						className="theme-text-muted text-[10px] leading-[1.5] tracking-[0.25em] text-pretty uppercase opacity-70"
 						style={{ fontFamily: fonts.body }}
 					>
 						{reviewItem.description ?? "Playlist"}
 					</p>
+					{/* break-words: playlist names can be a single spaceless token
+					(e.g. "gaming+anime+vibez"). Without it that token can't wrap and
+					overflows the grid track into the suggestions column. leading-[1.1]
+					(over a flat 1) leaves room for serif descenders — at leading-[1] the
+					card's overflow-hidden clips the tails of letters like g/y/p — and
+					spaces the lines when a long name wraps. */}
 					<h2
-						className="theme-text mt-[clamp(0.75rem,2dvh,1rem)] text-[clamp(2.25rem,5.2dvh,3rem)] font-extralight text-balance leading-[1]"
+						className="theme-text mt-[clamp(0.75rem,2dvh,1rem)] text-[clamp(2.25rem,5.2dvh,3rem)] font-extralight break-words text-balance leading-[1.1]"
 						style={{ fontFamily: fonts.display }}
 					>
 						{reviewItem.name}

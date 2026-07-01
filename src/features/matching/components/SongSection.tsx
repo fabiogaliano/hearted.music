@@ -66,15 +66,25 @@ export const SongSection = memo(function SongSection({
 					which pin to their own bottom. The dvh-based type/margin clamps
 					shrink the block on short viewports so the card fits without
 					scrolling. */}
-					<div className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]">
+					{/* maxWidth ties the title block to the album art's width (ALBUM_SIZE),
+					mirroring the playlist column, so the title/artist stay a coherent
+					left-aligned block under the art rather than spanning the full track. */}
+					<div
+						className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]"
+						style={{ maxWidth: ALBUM_SIZE }}
+					>
 						<p
 							className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
 							style={{ fontFamily: fonts.body }}
 						>
 							{song.album}
 						</p>
+						{/* break-words keeps a long unbreakable title from overflowing the
+						grid track into the matches column; leading-[1.1] leaves room for
+						serif descenders (else overflow-hidden clips g/y/p tails) and spaces
+						wrapped lines — mirrors the playlist name. */}
 						<h2
-							className="theme-text mt-[clamp(0.75rem,2dvh,1rem)] text-[clamp(2.25rem,5.2dvh,3rem)] font-extralight text-balance leading-[1]"
+							className="theme-text mt-[clamp(0.75rem,2dvh,1rem)] text-[clamp(2.25rem,5.2dvh,3rem)] font-extralight break-words text-balance leading-[1.1]"
 							style={{ fontFamily: fonts.display }}
 						>
 							{song.name}

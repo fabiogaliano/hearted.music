@@ -358,32 +358,37 @@ const PLAYLIST_MODE_SONGS: SongSuggestionRow[] = [
 	},
 ];
 
+// Framed to match the real page: the route renders inside the app shell's
+// <main className="flex-1 p-8">, so the bare story (especially in ?mode=preview)
+// otherwise sits edge-to-edge and clips the left gutter, reading as "not real".
 export const PlaylistMode: Story = () => (
-	<Matching
-		mode="playlist"
-		currentReviewItem={{ mode: "playlist", playlist: PLAYLIST_REVIEW_ITEM }}
-		currentSuggestions={PLAYLIST_MODE_SONGS.map((row) => ({
-			mode: "playlist" as const,
-			song: row.song,
-			fitScore: row.fitScore,
-		}))}
-		totalSongs={3}
-		offset={0}
-		addedTo={[]}
-		isComplete={false}
-		completionStats={{
-			totalItems: 3,
-			itemsMatched: 0,
-			totalAdditions: 0,
-			dismissedCount: 0,
-			skippedCount: 0,
-		}}
-		recentItems={[]}
-		onAdd={() => {}}
-		onDismiss={() => {}}
-		onNext={() => {}}
-		onExit={() => {}}
-	/>
+	<div className="theme-bg min-h-dvh p-8">
+		<Matching
+			mode="playlist"
+			currentReviewItem={{ mode: "playlist", playlist: PLAYLIST_REVIEW_ITEM }}
+			currentSuggestions={PLAYLIST_MODE_SONGS.map((row) => ({
+				mode: "playlist" as const,
+				song: row.song,
+				fitScore: row.fitScore,
+			}))}
+			totalSongs={3}
+			offset={0}
+			addedTo={[]}
+			isComplete={false}
+			completionStats={{
+				totalItems: 3,
+				itemsMatched: 0,
+				totalAdditions: 0,
+				dismissedCount: 0,
+				skippedCount: 0,
+			}}
+			recentItems={[]}
+			onAdd={() => {}}
+			onDismiss={() => {}}
+			onNext={() => {}}
+			onExit={() => {}}
+		/>
+	</div>
 );
 PlaylistMode.meta = {
 	description:
