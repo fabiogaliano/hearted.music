@@ -1,5 +1,5 @@
 import type { BillingState } from "@/lib/domains/billing/state";
-import type { BillingBand, QueueBand } from "./band-policy";
+import type { BillingBand, QueueBand } from "@/lib/shared/queue/band";
 
 const BAND_VALUES: Record<QueueBand, number> = {
 	low: 0,

@@ -6,7 +6,7 @@
  * routes, UI) import from this file — never from database.types.ts directly.
  */
 
-import type { BillingBand } from "@/lib/workflows/library-processing/band-policy";
+import type { BillingBand } from "@/lib/shared/queue/band";
 
 /** The account's current subscription plan. */
 export type BillingPlan = "free" | "quarterly" | "yearly";

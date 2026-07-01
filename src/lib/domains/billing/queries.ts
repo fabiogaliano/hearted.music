@@ -18,8 +18,8 @@ import {
 	STRIPE_STATUS_TO_NORMALIZED,
 } from "@/lib/domains/billing/state";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import type { BillingBand } from "@/lib/shared/queue/band";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
-import type { BillingBand } from "@/lib/workflows/library-processing/band-policy";
 
 const VALID_PLANS = new Set<string>(["free", "quarterly", "yearly"]);
 
