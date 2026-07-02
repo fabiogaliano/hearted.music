@@ -2557,16 +2557,22 @@ describe("presentMatchReviewItem", () => {
 	});
 
 	/**
-	 * Wires the playlist-orientation present path with a capturing `song` `.in()`
-	 * mock so chunking can be asserted. The song read runs through chunkedRead +
-	 * fromSupabaseMany, so an oversized suggestion set must split into URL-safe
-	 * batches rather than encoding every id into one query string (the 414 bug
-	 * class). `songIn` resolves each captured batch to its `{ data, error }`.
+	 * Wires the playlist-orientation present path with capturing `.in()` mocks so
+	 * chunking can be asserted on BOTH oversized-id reads: the suggestion-song
+	 * fetch and the dismissed-pair match_decision fetch. Each runs through
+	 * chunkedRead + fromSupabaseMany, so an oversized suggestion set must split
+	 * into URL-safe batches rather than encoding every id into one query string
+	 * (the 414 bug class — the dismissed read shipped un-chunked once because
+	 * only the song read had a batch assertion). `songIn` resolves each captured
+	 * song batch to its `{ data, error }`; dismissed reads resolve to
+	 * `dismissedRows` filtered to the batch.
 	 */
 	function installPlaylistPresentWithCapturingSongRead(
 		songIn: (batch: string[]) => { data: unknown; error: unknown },
-	): string[][] {
-		const inBatches: string[][] = [];
+		dismissedRows: Array<{ song_id: string; playlist_id: string }> = [],
+	): { songBatches: string[][]; dismissedBatches: string[][] } {
+		const songBatches: string[][] = [];
+		const dismissedBatches: string[][] = [];
 		mockFrom.mockImplementation((table: string) => {
 			if (table === "match_review_queue_item") {
 				return {
@@ -2602,7 +2608,15 @@ describe("presentMatchReviewItem", () => {
 						eq: vi.fn().mockReturnValue({
 							eq: vi.fn().mockReturnValue({
 								eq: vi.fn().mockReturnValue({
-									in: vi.fn().mockResolvedValue({ data: [], error: null }),
+									in: vi.fn((_col: string, batch: string[]) => {
+										dismissedBatches.push(batch);
+										return Promise.resolve({
+											data: dismissedRows.filter((r) =>
+												batch.includes(r.song_id),
+											),
+											error: null,
+										});
+									}),
 								}),
 							}),
 						}),
@@ -2632,7 +2646,7 @@ describe("presentMatchReviewItem", () => {
 				return {
 					select: vi.fn().mockReturnValue({
 						in: vi.fn((_col: string, batch: string[]) => {
-							inBatches.push(batch);
+							songBatches.push(batch);
 							return Promise.resolve(songIn(batch));
 						}),
 					}),
@@ -2640,7 +2654,7 @@ describe("presentMatchReviewItem", () => {
 			}
 			return { select: vi.fn() };
 		});
-		return inBatches;
+		return { songBatches, dismissedBatches };
 	}
 
 	function playlistListWithSongSuggestions(songIds: string[]) {
@@ -2683,31 +2697,82 @@ describe("presentMatchReviewItem", () => {
 			status: "already_captured",
 			pairs: storedPairs(songIds),
 		});
-		const inBatches = installPlaylistPresentWithCapturingSongRead((batch) => ({
-			data: batch.map((id) => ({
-				id,
-				name: `Song ${id}`,
-				artists: ["Artist"],
-				album_name: null,
-				image_url: "sg.jpg",
-				spotify_id: `sp-${id}`,
-				genres: [],
-			})),
-			error: null,
-		}));
+		const { songBatches, dismissedBatches } =
+			installPlaylistPresentWithCapturingSongRead((batch) => ({
+				data: batch.map((id) => ({
+					id,
+					name: `Song ${id}`,
+					artists: ["Artist"],
+					album_name: null,
+					image_url: "sg.jpg",
+					spotify_id: `sp-${id}`,
+					genres: [],
+				})),
+				error: null,
+			}));
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
 		// 201 ids at chunk size 100 → 3 batches, each within the URL-safe bound.
-		expect(inBatches).toHaveLength(3);
-		expect(inBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE)).toBe(
+		expect(songBatches).toHaveLength(3);
+		expect(songBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE)).toBe(
 			true,
 		);
 		// Every suggestion id is read exactly once across the batches.
-		expect(inBatches.flat().sort()).toEqual([...songIds].sort());
+		expect(songBatches.flat().sort()).toEqual([...songIds].sort());
+		// The dismissed-pair match_decision read carries the same 201-id set, so it
+		// must chunk identically — it shipped un-chunked once (the prod 414).
+		expect(dismissedBatches).toHaveLength(3);
+		expect(
+			dismissedBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE),
+		).toBe(true);
+		expect(dismissedBatches.flat().sort()).toEqual([...songIds].sort());
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.suggestions).toHaveLength(201);
+		}
+	});
+
+	it("filters dismissed pairs across chunk boundaries on an oversized capture", async () => {
+		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: playlistListWithSongSuggestions(songIds),
+		});
+		mockCaptureVisiblePairsAtomic.mockResolvedValue({
+			status: "already_captured",
+			pairs: storedPairs(songIds),
+		});
+		// One dismissed pair per chunk — filtering must survive the batch merge.
+		installPlaylistPresentWithCapturingSongRead(
+			(batch) => ({
+				data: batch.map((id) => ({
+					id,
+					name: `Song ${id}`,
+					artists: ["Artist"],
+					album_name: null,
+					image_url: "sg.jpg",
+					spotify_id: `sp-${id}`,
+					genres: [],
+				})),
+				error: null,
+			}),
+			[
+				{ song_id: "song-0", playlist_id: "pl-review" },
+				{ song_id: "song-150", playlist_id: "pl-review" },
+				{ song_id: "song-200", playlist_id: "pl-review" },
+			],
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.suggestions).toHaveLength(198);
+			const ids = result.suggestions.map((s) => s.song.id);
+			expect(ids).not.toContain("song-0");
+			expect(ids).not.toContain("song-150");
+			expect(ids).not.toContain("song-200");
 		}
 	});
 
@@ -2764,18 +2829,20 @@ describe("presentMatchReviewItem", () => {
 		});
 		// Fresh capture (default happy-path status "captured").
 		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "captured" });
-		const inBatches = installPlaylistPresentWithCapturingSongRead((batch) => ({
-			data: batch.map((id) => ({
-				id,
-				name: `Song ${id}`,
-				artists: ["Artist"],
-				album_name: null,
-				image_url: "sg.jpg",
-				spotify_id: `sp-${id}`,
-				genres: [],
-			})),
-			error: null,
-		}));
+		const { songBatches } = installPlaylistPresentWithCapturingSongRead(
+			(batch) => ({
+				data: batch.map((id) => ({
+					id,
+					name: `Song ${id}`,
+					artists: ["Artist"],
+					album_name: null,
+					image_url: "sg.jpg",
+					spotify_id: `sp-${id}`,
+					genres: [],
+				})),
+				error: null,
+			}),
+		);
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -2786,8 +2853,8 @@ describe("presentMatchReviewItem", () => {
 			| undefined;
 		expect(capturedArg).toHaveLength(100);
 		// The song read (and the rendered card) is bounded to the capped set.
-		expect(inBatches.flat()).toHaveLength(100);
-		expect(inBatches.flat()).toEqual(songIds.slice(0, 100));
+		expect(songBatches.flat()).toHaveLength(100);
+		expect(songBatches.flat()).toEqual(songIds.slice(0, 100));
 		expect(result.status).toBe("ready");
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.suggestions).toHaveLength(100);

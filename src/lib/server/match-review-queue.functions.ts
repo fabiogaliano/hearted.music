@@ -236,30 +236,35 @@ async function filterDismissedActiveSuggestions(
 ): Promise<Result<ActiveSuggestionEntry[], DbError>> {
 	if (suggestions.length === 0) return Result.ok(suggestions);
 
+	// Chunked because captured pair sets can exceed the URL-safe id limit —
+	// pre-cap legacy captures and uncapped song mode both reach it (the 414
+	// class; encoding every id into one .in() query string overflows the proxy).
 	const dismissedRowsResult =
 		subject.orientation === "song"
-			? await fromSupabaseMany(
-					supabase
-						.from("match_decision")
-						.select("song_id, playlist_id")
-						.eq("account_id", accountId)
-						.eq("decision", "dismissed")
-						.eq("song_id", subject.songId)
-						.in(
-							"playlist_id",
-							suggestions.map((s) => s.playlistId),
+			? await chunkedRead(
+					suggestions.map((s) => s.playlistId),
+					(batch) =>
+						fromSupabaseMany(
+							supabase
+								.from("match_decision")
+								.select("song_id, playlist_id")
+								.eq("account_id", accountId)
+								.eq("decision", "dismissed")
+								.eq("song_id", subject.songId)
+								.in("playlist_id", batch),
 						),
 				)
-			: await fromSupabaseMany(
-					supabase
-						.from("match_decision")
-						.select("song_id, playlist_id")
-						.eq("account_id", accountId)
-						.eq("decision", "dismissed")
-						.eq("playlist_id", subject.playlistId)
-						.in(
-							"song_id",
-							suggestions.map((s) => s.songId),
+			: await chunkedRead(
+					suggestions.map((s) => s.songId),
+					(batch) =>
+						fromSupabaseMany(
+							supabase
+								.from("match_decision")
+								.select("song_id, playlist_id")
+								.eq("account_id", accountId)
+								.eq("decision", "dismissed")
+								.eq("playlist_id", subject.playlistId)
+								.in("song_id", batch),
 						),
 				);
 
