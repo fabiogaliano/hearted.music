@@ -88,8 +88,11 @@ export function PlaylistMatchRow({
 							{name}
 						</p>
 						{reason && (
+							// Clamped to two lines so a long "what it's for" doesn't dominate
+							// the row; the full text is revealed in the hover/focus preview
+							// card (usePlaylistTrackPreview) that this whole lead region opens.
 							<p
-								className="theme-text-muted mt-1.5 text-xs leading-snug"
+								className="theme-text-muted mt-1.5 line-clamp-2 text-xs leading-snug"
 								style={{ fontFamily: fonts.body }}
 							>
 								{reason}

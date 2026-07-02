@@ -15,7 +15,7 @@ import { usePlaylistTrackPreview } from "./usePlaylistTrackPreview";
 
 // Match SongSection's ALBUM_SIZE constant so the left columns across both
 // orientations stay visually consistent regardless of viewport size.
-const COVER_SIZE = "min(100%, clamp(200px, 30vw, 560px), calc(50dvh - 40px))";
+const COVER_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 40px))";
 
 export const PlaylistReviewItemSection = memo(
 	function PlaylistReviewItemSection({
@@ -28,9 +28,9 @@ export const PlaylistReviewItemSection = memo(
 
 		return (
 			// min-w-0 lets this grid column shrink below its content's intrinsic width.
-			// Without it the truncated description (white-space: nowrap) sets the
-			// column's min-content to the full unwrapped line, blowing the 1.1fr track
-			// past the grid width and pushing the suggestions column off-screen.
+			// Without it a long unbreakable name token sets the column's min-content to
+			// that full word, blowing the grid track past the grid width and pushing the
+			// suggestions column off-screen (break-words on the name needs this to act).
 			<div className="flex h-full min-w-0 flex-col">
 				{/* initial={false}: the slide is a review-item transition, not a mount
 				entrance. StaggeredContent owns the entrance so the panel doesn't slide
@@ -92,24 +92,31 @@ function PlaylistCoverAndName({
 				{/* mt-auto pins the text block to the column bottom so it aligns with
 				the suggestion-section controls in the adjacent column, mirroring how
 				SongSection anchors its title block. maxWidth ties the text to the cover's
-				width (COVER_SIZE): the cover is capped well below the 1.1fr grid track, so
-				without this the intent + name span the full track and sprawl toward the
+				width (COVER_SIZE): the cover is capped well below the grid track, so
+				without this the name + intent span the full track and sprawl toward the
 				suggestions. Bounding them to the cover keeps the left column one coherent,
-				left-aligned block. */}
+				left-aligned block.
+
+				Structure mirrors SongSection's album / song / artist so the two review
+				orientations read the same: a short uppercase label (track count, the
+				playlist analog of the album eyebrow), the name as the headline, then the
+				match intent as a readable sentence-case deck below it — not crammed into
+				the label slot, where an ALL-CAPS, wide-tracked sentence became the least
+				readable and, sitting above the name, out-ranked the playlist's own
+				identity. */}
 				<div
 					className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]"
 					style={{ maxWidth: COVER_SIZE }}
 				>
-					{/* The match intent is the user's stated purpose for the playlist —
-					it's the reason these suggestions exist, so show it in full. It wraps
-					across lines (text-pretty avoids a lone trailing word) rather than
-					truncating to a single ellipsised line. */}
-					<p
-						className="theme-text-muted text-[10px] leading-[1.5] tracking-[0.25em] text-pretty uppercase opacity-70"
-						style={{ fontFamily: fonts.body }}
-					>
-						{reviewItem.description ?? "Playlist"}
-					</p>
+					{reviewItem.trackCount != null && (
+						<p
+							className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
+							style={{ fontFamily: fonts.body }}
+						>
+							{reviewItem.trackCount}{" "}
+							{reviewItem.trackCount === 1 ? "song" : "songs"}
+						</p>
+					)}
 					{/* break-words: playlist names can be a single spaceless token
 					(e.g. "gaming+anime+vibez"). Without it that token can't wrap and
 					overflows the grid track into the suggestions column. leading-[1.1]
@@ -122,6 +129,19 @@ function PlaylistCoverAndName({
 					>
 						{reviewItem.name}
 					</h2>
+					{/* The match intent — the user's stated purpose for the playlist, and
+					the reason these suggestions exist. Shown in full as sentence-case body
+					(italic, the brand's "key line quote" register), text-pretty to avoid a
+					lone trailing word. Mirrors how the same intent reads in the match rows,
+					just given more room as the review subject's defining line. */}
+					{reviewItem.description && (
+						<p
+							className="theme-text-muted mt-[clamp(0.5rem,1.8dvh,1rem)] text-[clamp(0.95rem,2dvh,1.15rem)] text-pretty italic leading-snug"
+							style={{ fontFamily: fonts.body }}
+						>
+							{reviewItem.description}
+						</p>
+					)}
 				</div>
 			</div>
 			{preview}

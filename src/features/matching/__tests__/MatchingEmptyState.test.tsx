@@ -25,11 +25,6 @@ describe("MatchingEmptyState", () => {
 			);
 			expect(screen.getByText(/3 songs have matches/)).toBeDefined();
 		});
-
-		it("defaults to song mode when mode prop is omitted", () => {
-			render(<MatchingEmptyState reason="filtered" hiddenCount={2} />);
-			expect(screen.getByText(/2 songs have matches/)).toBeDefined();
-		});
 	});
 
 	describe("filtered reason — playlist mode (H9)", () => {
@@ -53,6 +48,11 @@ describe("MatchingEmptyState", () => {
 				/>,
 			);
 			expect(screen.getByText(/4 playlists have matches/)).toBeDefined();
+		});
+
+		it("defaults to playlist mode when mode prop is omitted", () => {
+			render(<MatchingEmptyState reason="filtered" hiddenCount={2} />);
+			expect(screen.getByText(/2 playlists have matches/)).toBeDefined();
 		});
 	});
 

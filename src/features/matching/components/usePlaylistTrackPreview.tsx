@@ -23,6 +23,11 @@ interface UsePlaylistTrackPreviewArgs {
 	songCount: number | null;
 	/** Off in the canned demo/walkthrough, where playlist ids aren't real rows. */
 	canLoadTracks: boolean;
+	/** Optional card header: the playlist name shown above the track list. */
+	name?: string;
+	/** Optional card header: the playlist's full "what it's for". The match row
+	 *  clamps this to two lines, so the card is where the whole text is read. */
+	reason?: string;
 }
 
 type TriggerProps = Pick<
@@ -114,6 +119,8 @@ export function usePlaylistTrackPreview({
 	playlistId,
 	songCount,
 	canLoadTracks,
+	name,
+	reason,
 }: UsePlaylistTrackPreviewArgs): PlaylistTrackPreview {
 	const prefersReducedMotion = useReducedMotion();
 	const [open, setOpen] = useState(false);
@@ -299,6 +306,38 @@ export function usePlaylistTrackPreview({
 									willChange: "transform",
 								}}
 							>
+								{reason && (
+									// The full "what it's for" — the row clamps it to two
+									// lines, so this header is where the whole intent is read.
+									// Its own bottom border keeps it out of the (potentially
+									// long, scrolling) track list's rhythm.
+									<div className="theme-border-color mb-3 border-b pb-3">
+										{name && (
+											// break-words: names can be a single spaceless token
+											// (e.g. "gaming+anime+vibez") that would otherwise
+											// overflow the fixed-width card. text-balance evens the
+											// wrap — mirrors the review-item name treatment.
+											<p
+												className="theme-text font-light text-balance break-words leading-[1.15]"
+												style={{
+													fontFamily: fonts.display,
+													fontSize: "1.125rem",
+												}}
+											>
+												{name}
+											</p>
+										)}
+										{/* text-pretty: unclamped body copy here, so avoid a lone
+										trailing word on the last line. */}
+										<p
+											className="theme-text-muted mt-1 text-xs leading-snug text-pretty"
+											style={{ fontFamily: fonts.body }}
+										>
+											{reason}
+										</p>
+									</div>
+								)}
+
 								{tracksQuery.isLoading ? (
 									<p
 										className="theme-text-muted text-xs"

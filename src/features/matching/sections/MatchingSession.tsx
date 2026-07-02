@@ -154,7 +154,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 			>
 				<motion.div initial={CARD_AT_REST} animate={cardControls}>
 					{props.mode === "song" ? (
-						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+						<div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
 							<SongSection
 								songKey={songId}
 								song={song}
@@ -181,7 +181,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 							/>
 						</div>
 					) : (
-						<div className="grid gap-10 lg:grid-cols-[1.1fr_1fr]">
+						<div className="grid gap-10 lg:grid-cols-[1fr_1fr]">
 							<PlaylistReviewItemSection
 								itemKey={props.reviewItem.id}
 								reviewItem={props.reviewItem}

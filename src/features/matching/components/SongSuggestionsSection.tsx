@@ -10,14 +10,7 @@ import {
 	useIsPresent,
 	useReducedMotion,
 } from "framer-motion";
-import {
-	memo,
-	type ReactNode,
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
@@ -27,6 +20,7 @@ import type {
 	SongSuggestionsSectionProps,
 } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
+import { ReviewListScroll } from "./ReviewListScroll";
 import {
 	preloadSpotifyEmbedAPI,
 	SpotifyEmbedIframe,
@@ -34,70 +28,7 @@ import {
 
 // Mirrors MatchesSection's MIN_HEIGHT so both columns in the playlist-mode
 // grid stay visually consistent regardless of suggestion list length.
-const MIN_HEIGHT = "min(clamp(300px, 30vw, 560px), calc(50dvh - 40px))";
-
-// Caps the scrollable suggestion list so a long match set scrolls internally
-// instead of growing the card down the page. dvh-relative so it shows ~3-4 rows
-// on a laptop and more on taller screens; clamped to keep both extremes sane.
-const LIST_MAX_HEIGHT = "clamp(260px, 42dvh, 560px)";
-
-// Depth of the fade signifier in px — roughly half a row, enough to dissolve the
-// partial edge row so it reads as "more below" without hiding a full item.
-const FADE = 44;
-
-// Soft fade signifier for an overflowing scroll region. macOS hides scrollbars
-// until you scroll, so a hard cut reads as "the list ends here". This fades the
-// edge that has hidden content: bottom when more is below, top once scrolled
-// down, both in the middle. A mask is used so the fade tracks the theme bg.
-function useScrollFade() {
-	const elRef = useRef<HTMLDivElement | null>(null);
-	const observerRef = useRef<ResizeObserver | null>(null);
-	const [edges, setEdges] = useState({ top: false, bottom: false });
-
-	const measure = useCallback(() => {
-		const el = elRef.current;
-		if (!el) return;
-		const top = el.scrollTop > 1;
-		const bottom =
-			Math.ceil(el.scrollTop + el.clientHeight) < el.scrollHeight - 1;
-		setEdges((prev) =>
-			prev.top === top && prev.bottom === bottom ? prev : { top, bottom },
-		);
-	}, []);
-
-	// Callback ref so re-measure fires when the node mounts AND when it is
-	// replaced — AnimatePresence remounts this subtree on every review-item swap.
-	const setRef = useCallback(
-		(el: HTMLDivElement | null) => {
-			observerRef.current?.disconnect();
-			elRef.current = el;
-			if (!el) return;
-			measure();
-			// Catches viewport resizes (dvh cap changes the clientHeight). Guarded
-			// for environments without ResizeObserver (jsdom, SSR) — scroll + the
-			// on-attach measure above still drive the fade there.
-			if (typeof ResizeObserver !== "undefined") {
-				const observer = new ResizeObserver(measure);
-				observer.observe(el);
-				observerRef.current = observer;
-			}
-		},
-		[measure],
-	);
-
-	useEffect(() => () => observerRef.current?.disconnect(), []);
-
-	const maskImage =
-		edges.top && edges.bottom
-			? `linear-gradient(to bottom, transparent, #000 ${FADE}px, #000 calc(100% - ${FADE}px), transparent)`
-			: edges.bottom
-				? `linear-gradient(to bottom, #000 calc(100% - ${FADE}px), transparent)`
-				: edges.top
-					? `linear-gradient(to bottom, transparent, #000 ${FADE}px)`
-					: undefined;
-
-	return { setRef, onScroll: measure, maskImage };
-}
+const MIN_HEIGHT = "min(clamp(300px, 34vw, 620px), calc(56dvh - 40px))";
 
 export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	itemKey,
@@ -113,7 +44,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	onPrevious,
 }: SongSuggestionsSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
-	const { setRef, onScroll, maskImage } = useScrollFade();
 
 	// One active preview at a time. Each row owns its play affordance but not the
 	// decision of *which* row plays — that lives here so activating one row flips
@@ -161,20 +91,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 						Song Suggestions
 					</p>
 
-					{/* min-h-0 lets the flex child shrink below its intrinsic height so
-					overflow-y-auto triggers when the list exceeds available space.
-					maxHeight bounds it so a long set scrolls here rather than growing
-					the card. Controls below stay pinned outside this scrollable region. */}
-					<div
-						ref={setRef}
-						onScroll={onScroll}
-						className="mt-6 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto"
-						style={{
-							maxHeight: LIST_MAX_HEIGHT,
-							maskImage,
-							WebkitMaskImage: maskImage,
-						}}
-					>
+					<ReviewListScroll>
 						{suggestions.length === 0 ? (
 							<p
 								className="theme-text-muted text-sm"
@@ -197,7 +114,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 								/>
 							))
 						)}
-					</div>
+					</ReviewListScroll>
 				</AnimatedSuggestionsPanel>
 			</AnimatePresence>
 

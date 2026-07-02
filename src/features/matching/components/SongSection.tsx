@@ -15,11 +15,13 @@ import {
 
 // The dvh term caps the art by viewport height so the whole card (art + title +
 // matches + controls) stays reachable without scrolling on short viewports; on
-// tall screens 30vw wins and the size is unchanged. The -40px reserves vertical
+// tall screens 34vw wins and the size is unchanged. The -40px reserves vertical
 // room so the bottom controls (Next Song) clear the fixed feedback launcher
 // (size-10 @ right-6/bottom-6 → a 64px bottom-right corner) instead of sliding
-// under it when the card fills a short viewport.
-const ALBUM_SIZE = "min(100%, clamp(200px, 30vw, 560px), calc(50dvh - 40px))";
+// under it when the card fills a short viewport. 34vw/56dvh (up from 30vw/50dvh)
+// grows the art toward the column edge on a laptop, closing the dead band that
+// sat between the height-capped square and the wider grid track.
+const ALBUM_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 40px))";
 
 interface SongSectionProps {
 	song: {

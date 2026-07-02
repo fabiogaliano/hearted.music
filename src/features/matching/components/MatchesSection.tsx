@@ -13,13 +13,14 @@ import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
+import { ReviewListScroll } from "./ReviewListScroll";
 import { usePlaylistTrackPreview } from "./usePlaylistTrackPreview";
 
 // Mirrors the album art's height cap (SongSection), including the -40px reserve
 // for the fixed feedback launcher, so on short viewports the matches column
 // collapses in step with the art instead of forcing a tall row that pushes the
 // controls below the fold or under the launcher.
-const MIN_HEIGHT = "min(clamp(300px, 30vw, 560px), calc(50dvh - 40px))";
+const MIN_HEIGHT = "min(clamp(300px, 34vw, 620px), calc(56dvh - 40px))";
 
 interface MatchesSectionProps {
 	songKey: string;
@@ -136,7 +137,7 @@ export const MatchesSection = memo(function MatchesSection({
 						)}
 					</AnimatePresence>
 
-					<div className="mt-6 flex min-h-0 flex-1 flex-col gap-5">
+					<ReviewListScroll>
 						{playlists.length === 0 ? (
 							<p
 								className="theme-text-muted text-sm"
@@ -158,7 +159,7 @@ export const MatchesSection = memo(function MatchesSection({
 								/>
 							))
 						)}
-					</div>
+					</ReviewListScroll>
 				</AnimatedMatchesPanel>
 			</AnimatePresence>
 
@@ -202,6 +203,8 @@ function MatchRow({
 		playlistId: playlist.id,
 		songCount: playlist.songCount,
 		canLoadTracks: !isDemo,
+		name: playlist.name,
+		reason: playlist.reason || undefined,
 	});
 
 	return (
@@ -211,7 +214,7 @@ function MatchRow({
 				name={playlist.name}
 				leadProps={triggerProps}
 				media={
-					<Cover src={playlist.imageUrl} size={48} className="flex-none" />
+					<Cover src={playlist.imageUrl} size={56} className="flex-none" />
 				}
 				scoreDisplay={
 					<NumberFlow

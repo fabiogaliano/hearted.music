@@ -40,7 +40,7 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.getByText("Chill Vibes")).toBeDefined();
 	});
 
-	it("renders the description as subtitle when present", () => {
+	it("renders the description as the intent deck when present", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -53,7 +53,23 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.getByText("Lo-fi beats")).toBeDefined();
 	});
 
-	it("falls back to 'Playlist' subtitle when description is null", () => {
+	it("renders the track count as the label above the name", () => {
+		render(
+			<QueryClientProvider client={makeQueryClient()}>
+				<PlaylistReviewItemSection
+					itemKey="pl-1"
+					reviewItem={REVIEW_ITEM}
+					canLoadTracks={false}
+				/>
+			</QueryClientProvider>,
+		);
+		expect(screen.getByText("15 songs")).toBeDefined();
+	});
+
+	// The old design put a "Playlist" filler in the label slot when the description
+	// was absent; the intent is now a deck below the name, so an absent description
+	// simply renders no deck (no empty-label placeholder).
+	it("omits the intent deck when description is null", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -63,7 +79,8 @@ describe("PlaylistReviewItemSection", () => {
 				/>
 			</QueryClientProvider>,
 		);
-		expect(screen.getByText("Playlist")).toBeDefined();
+		expect(screen.getByText("Focus Mode")).toBeDefined();
+		expect(screen.queryByText("Playlist")).toBeNull();
 	});
 
 	it("renders with suppressTransition=true without crashing", () => {
