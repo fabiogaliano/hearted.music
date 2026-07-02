@@ -102,6 +102,18 @@ export interface SongSuggestionsSectionProps {
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
+	/**
+	 * Playlist-mode tail-paging state from useMatchReviewCard (first-page-fast,
+	 * P3). Optional — undefined in song mode and in Ladle stories, both of which
+	 * have no tail query. Threaded here for step 5 (footer/sentinel UI); this
+	 * component doesn't render them yet.
+	 */
+	suggestionTotal?: number;
+	hasMoreSuggestions?: boolean;
+	isLoadingMoreSuggestions?: boolean;
+	loadMoreSuggestions?: () => void;
+	loadMoreError?: Error | null;
+	retryLoadMore?: () => void;
 }
 
 type MatchingSessionCommonProps = {
@@ -135,6 +147,13 @@ type PlaylistModeSession = MatchingSessionCommonProps & {
 	mode: "playlist";
 	reviewItem: PlaylistForMatching;
 	suggestions: SongSuggestionRow[];
+	/** Tail-paging state (see SongSuggestionsSectionProps) — playlist mode only. */
+	suggestionTotal?: number;
+	hasMoreSuggestions?: boolean;
+	isLoadingMoreSuggestions?: boolean;
+	loadMoreSuggestions?: () => void;
+	loadMoreError?: Error | null;
+	retryLoadMore?: () => void;
 };
 
 export type MatchingSessionProps = SongModeSession | PlaylistModeSession;
@@ -182,6 +201,13 @@ export interface MatchingProps {
 	mode?: MatchViewMode;
 	/** Callback for toggle navigation. No-op default keeps completion/story renders safe. */
 	onModeChange?: (mode: MatchViewMode) => void;
+	/** Playlist-mode tail-paging state (see SongSuggestionsSectionProps) — undefined in song mode. */
+	suggestionTotal?: number;
+	hasMoreSuggestions?: boolean;
+	isLoadingMoreSuggestions?: boolean;
+	loadMoreSuggestions?: () => void;
+	loadMoreError?: Error | null;
+	retryLoadMore?: () => void;
 	onAdd: (playlistId: string) => void;
 	onDismissSuggestion?: (suggestionId: string) => void | Promise<void>;
 	onDismiss: () => void | Promise<void>;

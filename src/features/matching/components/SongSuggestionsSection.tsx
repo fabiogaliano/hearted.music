@@ -37,6 +37,10 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
+	// Tail-paging props accepted but not yet rendered — the footer/sentinel UI
+	// that consumes them is a separate change (ReviewListScroll footer slot).
+	// suggestionTotal already drives SuggestionsControls' pluralization below.
+	suggestionTotal,
 	onAdd,
 	onDismissSuggestion,
 	onDismiss,
@@ -124,7 +128,10 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			<SuggestionsControls
 				disabled={navigationDisabled ?? false}
 				isLastItem={isLastItem ?? false}
-				suggestionCount={suggestions.length}
+				// suggestionTotal (capped, post-dismissal) is the playlist-mode source
+				// of truth once tail paging is in play — suggestions.length undercounts
+				// once earlier rows are loaded but later ones aren't yet.
+				suggestionCount={suggestionTotal ?? suggestions.length}
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
 				onNext={onNext}
