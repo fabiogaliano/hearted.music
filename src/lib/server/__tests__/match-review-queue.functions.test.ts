@@ -2505,6 +2505,27 @@ describe("presentMatchReviewItem", () => {
 		}
 	});
 
+	it("returns retryable-error and reports when the playlist read fails on playlist mode", async () => {
+		setupPlaylistPresentItemFetch({ playlistReadError: true });
+		mockComputeVisibleSuggestionList.mockResolvedValue({
+			kind: "ok",
+			list: MOCK_PLAYLIST_LIST,
+		});
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("retryable-error");
+		// The playlist read error must still reach Sentry before the opaque card.
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "present_match_review_item",
+			},
+		});
+	});
+
 	it("returns retryable-error and reports when the suggestion read RPC fails on playlist mode", async () => {
 		setupPlaylistPresentItemFetch({ suggestionReadError: true });
 		mockComputeVisibleSuggestionList.mockResolvedValue({
