@@ -1,10 +1,36 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
 	SongForMatching,
 	SongSuggestionRow,
 } from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";
 import { SongSuggestionsSection } from "../components/SongSuggestionsSection";
+
+// jsdom has no IntersectionObserver; the footer sentinel wires one via
+// useInfiniteScroll whenever hasMoreSuggestions is true. These tests only
+// assert on render output, not observer callbacks, so a bare stub suffices
+// (see src/lib/hooks/__tests__/useInfiniteScroll.test.tsx for a fuller fake
+// that exercises the trigger callback).
+class NoopIntersectionObserver implements IntersectionObserver {
+	readonly root: Element | Document | null = null;
+	readonly rootMargin = "0px";
+	readonly scrollMargin = "0px";
+	readonly thresholds: readonly number[] = [0];
+	observe = vi.fn();
+	unobserve = vi.fn();
+	disconnect = vi.fn();
+	takeRecords(): IntersectionObserverEntry[] {
+		return [];
+	}
+}
+
+beforeEach(() => {
+	vi.stubGlobal("IntersectionObserver", NoopIntersectionObserver);
+});
+
+afterEach(() => {
+	vi.unstubAllGlobals();
+});
 
 function makeSong(overrides?: Partial<SongForMatching>): SongForMatching {
 	return {
@@ -223,6 +249,79 @@ describe("SongSuggestionsSection", () => {
 			<SongSuggestionsSection {...DEFAULT_PROPS} suggestions={suggestions} />,
 		);
 		expect(screen.queryByRole("button", { name: /Play preview/i })).toBeNull();
+	});
+
+	it("renders the sentinel footer when hasMoreSuggestions is true", () => {
+		const { container } = render(
+			<SongSuggestionsSection {...DEFAULT_PROPS} hasMoreSuggestions />,
+		);
+		// The sentinel renders even while idle (isLoadingMoreSuggestions unset) —
+		// it's an aria-live region so IntersectionObserver has something to attach
+		// to before a load is ever in flight.
+		expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();
+	});
+
+	it("shows 'Loading more…' text while isLoadingMoreSuggestions is true", () => {
+		render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				hasMoreSuggestions
+				isLoadingMoreSuggestions
+			/>,
+		);
+		expect(screen.getByText("Loading more…")).toBeDefined();
+	});
+
+	it("suppresses 'All suggestions reviewed.' while hasMoreSuggestions is true, even with an empty suggestions list", () => {
+		render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				suggestions={[]}
+				hasMoreSuggestions
+			/>,
+		);
+		expect(screen.queryByText("All suggestions reviewed.")).toBeNull();
+	});
+
+	it("shows 'All suggestions reviewed.' when the list is empty and there's nothing more to load", () => {
+		render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				suggestions={[]}
+				hasMoreSuggestions={false}
+			/>,
+		);
+		expect(screen.getByText("All suggestions reviewed.")).toBeDefined();
+	});
+
+	it("renders a retry footer instead of the sentinel when loadMoreError is set", () => {
+		const { container } = render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				hasMoreSuggestions
+				loadMoreError={new Error("network down")}
+			/>,
+		);
+		expect(
+			screen.getByText("Couldn't load more suggestions.", { exact: false }),
+		).toBeDefined();
+		expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
+		// Stalled pagination is announced to screen readers, same as the loading sentinel.
+		expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();
+	});
+
+	it("calls retryLoadMore when the retry button is clicked", async () => {
+		const retryLoadMore = vi.fn();
+		const { user } = render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				hasMoreSuggestions
+				loadMoreError={new Error("network down")}
+				retryLoadMore={retryLoadMore}
+			/>,
+		);
+		await user.click(screen.getByRole("button", { name: "Retry" }));
+		expect(retryLoadMore).toHaveBeenCalledOnce();
 	});
 
 	it("added rows remain visible after being added", () => {
