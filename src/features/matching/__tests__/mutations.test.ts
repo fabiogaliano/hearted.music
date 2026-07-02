@@ -216,10 +216,13 @@ describe("dismissSuggestionMutation", () => {
 
 	it("onMutate patches both caches and decrements suggestionTotal", async () => {
 		const { present, tail } = seedCaches();
-		const options = dismissSuggestionMutation(queryClient, itemId);
+		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate) throw new Error("expected onMutate");
 
-		const context = await options.onMutate("song-1", fakeMutationContext());
+		const context = await options.onMutate(
+			{ itemId, suggestionId: "song-1" },
+			fakeMutationContext(),
+		);
 
 		const patchedPresent =
 			queryClient.getQueryData<MatchReviewItemRead>(presentKey);
@@ -254,17 +257,25 @@ describe("dismissSuggestionMutation", () => {
 
 	it("onSuccess with success:false rolls back both caches to the pre-mutation snapshot", async () => {
 		const { present, tail } = seedCaches();
-		const options = dismissSuggestionMutation(queryClient, itemId);
+		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate || !options.onSuccess) {
 			throw new Error("expected onMutate/onSuccess");
 		}
 
-		const context = await options.onMutate("song-1", fakeMutationContext());
+		const context = await options.onMutate(
+			{ itemId, suggestionId: "song-1" },
+			fakeMutationContext(),
+		);
 		const failure: DismissSuggestionResult = {
 			success: false,
 			reason: "already-resolved",
 		};
-		await options.onSuccess(failure, "song-1", context, fakeMutationContext());
+		await options.onSuccess(
+			failure,
+			{ itemId, suggestionId: "song-1" },
+			context,
+			fakeMutationContext(),
+		);
 
 		expect(queryClient.getQueryData(presentKey)).toEqual(present);
 		expect(queryClient.getQueryData(tailKey)).toEqual(tail);
@@ -272,14 +283,22 @@ describe("dismissSuggestionMutation", () => {
 
 	it("onSuccess with success:true leaves the optimistic patch in place", async () => {
 		seedCaches();
-		const options = dismissSuggestionMutation(queryClient, itemId);
+		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate || !options.onSuccess) {
 			throw new Error("expected onMutate/onSuccess");
 		}
 
-		const context = await options.onMutate("song-1", fakeMutationContext());
+		const context = await options.onMutate(
+			{ itemId, suggestionId: "song-1" },
+			fakeMutationContext(),
+		);
 		const success: DismissSuggestionResult = { success: true };
-		await options.onSuccess(success, "song-1", context, fakeMutationContext());
+		await options.onSuccess(
+			success,
+			{ itemId, suggestionId: "song-1" },
+			context,
+			fakeMutationContext(),
+		);
 
 		const patchedPresent =
 			queryClient.getQueryData<MatchReviewItemRead>(presentKey);
@@ -294,16 +313,59 @@ describe("dismissSuggestionMutation", () => {
 		]);
 	});
 
-	it("onError restores both snapshots and reports the failure", async () => {
-		const { present, tail } = seedCaches();
-		const options = dismissSuggestionMutation(queryClient, itemId);
+	it("leaves a tail page that loads during a dismiss whose snapshot had no tail data", async () => {
+		// The auto first-tail-page window: present has data, the tail cache is
+		// still empty (its first page is in flight and hasn't resolved).
+		const present = makePlaylistReadyItem(["song-1", "song-2"], 5);
+		queryClient.setQueryData(presentKey, present);
+
+		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate || !options.onError) {
 			throw new Error("expected onMutate/onError");
 		}
 
-		const context = await options.onMutate("song-1", fakeMutationContext());
+		const context = await options.onMutate(
+			{ itemId, suggestionId: "song-1" },
+			fakeMutationContext(),
+		);
+		expect(context?.previousTail).toBeUndefined();
+
+		// The first tail page resolves after onMutate captured an empty snapshot.
+		const lateTail = makeTailData([["song-9", "song-10"]]);
+		queryClient.setQueryData(tailKey, lateTail);
+
+		// A failed dismiss rolls back the present card but must not clobber the
+		// freshly loaded tail with the empty (undefined) snapshot — doing so would
+		// re-strand the tail with no way to page in the rest of the card.
+		await options.onError(
+			new Error("boom"),
+			{ itemId, suggestionId: "song-1" },
+			context,
+			fakeMutationContext(),
+		);
+
+		expect(queryClient.getQueryData(presentKey)).toEqual(present);
+		expect(queryClient.getQueryData(tailKey)).toEqual(lateTail);
+	});
+
+	it("onError restores both snapshots and reports the failure", async () => {
+		const { present, tail } = seedCaches();
+		const options = dismissSuggestionMutation(queryClient);
+		if (!options.onMutate || !options.onError) {
+			throw new Error("expected onMutate/onError");
+		}
+
+		const context = await options.onMutate(
+			{ itemId, suggestionId: "song-1" },
+			fakeMutationContext(),
+		);
 		const error = new Error("network down");
-		await options.onError(error, "song-1", context, fakeMutationContext());
+		await options.onError(
+			error,
+			{ itemId, suggestionId: "song-1" },
+			context,
+			fakeMutationContext(),
+		);
 
 		expect(queryClient.getQueryData(presentKey)).toEqual(present);
 		expect(queryClient.getQueryData(tailKey)).toEqual(tail);

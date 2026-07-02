@@ -135,7 +135,9 @@ describe("useMatchReviewCard", () => {
 			songId: "song-1",
 		});
 
-		let resolveTailPage!: (page: ListMatchReviewItemSuggestionsPage) => void;
+		let resolveTailPage:
+			| ((page: ListMatchReviewItemSuggestionsPage) => void)
+			| undefined;
 		listMatchReviewItemSuggestionsMock.mockReturnValue(
 			new Promise<ListMatchReviewItemSuggestionsPage>((resolve) => {
 				resolveTailPage = resolve;
@@ -153,6 +155,7 @@ describe("useMatchReviewCard", () => {
 		// before the first page settles.
 		expect(result.current.hasMoreSuggestions).toBe(true);
 
+		if (!resolveTailPage) throw new Error("tail fetch was never issued");
 		resolveTailPage({ suggestions: [], nextCursor: null });
 
 		await waitFor(() => expect(result.current.hasMoreSuggestions).toBe(false));
@@ -221,5 +224,208 @@ describe("useMatchReviewCard", () => {
 			"song-1",
 			"song-2",
 		]);
+	});
+
+	it("serializes overlapping dismisses so a failed one can't resurrect a concurrent one", async () => {
+		const presentKey = presentMatchReviewItemQueryOptions(ITEM_ID).queryKey;
+		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
+		queryClient.setQueryData(presentKey, itemData);
+
+		// Dismiss A (song-1) stays pending until we resolve it as a failure; dismiss
+		// B (song-2) succeeds. Without serialization, B would snapshot the cache
+		// while A's row is already optimistically gone, and A's later whole-snapshot
+		// rollback would resurrect BOTH rows (final ["song-1","song-2"]).
+		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
+		dismissMatchReviewItemSuggestionMock.mockImplementation(
+			(arg: { data: { suggestionId: string } }) => {
+				if (arg.data.suggestionId === "song-1") {
+					return new Promise<DismissSuggestionResult>((resolve) => {
+						resolveA = resolve;
+					});
+				}
+				return Promise.resolve<DismissSuggestionResult>({ success: true });
+			},
+		);
+
+		const { result } = renderHook(
+			() => useMatchReviewCard({ itemId: ITEM_ID, itemData, queryClient }),
+			{ wrapper },
+		);
+
+		await act(async () => {
+			void result.current.dismissSuggestion("song-1");
+			void result.current.dismissSuggestion("song-2");
+		});
+
+		// B is queued behind A: only A's request has been issued so far.
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledWith({
+			data: { itemId: ITEM_ID, suggestionId: "song-1" },
+		});
+
+		if (!resolveA) throw new Error("dismiss A was never issued");
+		const settleA = resolveA;
+		await act(async () => {
+			settleA({ success: false, reason: "already-resolved" });
+		});
+
+		// A settled (and rolled back) before B ran, so B is issued only now.
+		await waitFor(() =>
+			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+		);
+
+		await waitFor(() => {
+			const patched = queryClient.getQueryData<MatchReviewItemRead>(presentKey);
+			if (patched?.status !== "ready" || patched.mode !== "playlist") {
+				throw new Error("expected a ready playlist card");
+			}
+			// song-1 restored by A's rollback, song-2 dismissed by B — no resurrection.
+			expect(patched.suggestions.map((s) => s.song.id)).toEqual(["song-1"]);
+		});
+	});
+
+	it("does not serialize dismisses across different cards", async () => {
+		// QueueCardContent stays mounted as itemId changes, so the dismiss chain
+		// must be per-card: a pending dismiss on the card the user left must never
+		// stall the new card's dismiss (their caches are disjoint by itemId).
+		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
+		dismissMatchReviewItemSuggestionMock.mockImplementation(
+			(arg: { data: { itemId: string; suggestionId: string } }) => {
+				if (arg.data.itemId === "item-a") {
+					return new Promise<DismissSuggestionResult>((resolve) => {
+						resolveA = resolve;
+					});
+				}
+				return Promise.resolve<DismissSuggestionResult>({ success: true });
+			},
+		);
+
+		const { result, rerender } = renderHook(
+			({
+				itemId,
+				itemData,
+			}: {
+				itemId: string;
+				itemData: MatchReviewItemRead;
+			}) => useMatchReviewCard({ itemId, itemData, queryClient }),
+			{
+				wrapper,
+				initialProps: {
+					itemId: "item-a",
+					itemData: makePlaylistReadyItem(["song-1"], null),
+				},
+			},
+		);
+
+		// Card A's dismiss is issued and left pending (item-a never resolves).
+		await act(async () => {
+			void result.current.dismissSuggestion("song-1");
+		});
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+
+		// Navigate to card B without resolving A. B's dismiss must fire and settle
+		// on its own; a shared chain would leave it queued behind A forever.
+		rerender({
+			itemId: "item-b",
+			itemData: makePlaylistReadyItem(["song-9"], null),
+		});
+		await act(async () => {
+			const dismissed = await result.current.dismissSuggestion("song-9");
+			expect(dismissed).toBe(true);
+		});
+
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2);
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenLastCalledWith({
+			data: { itemId: "item-b", suggestionId: "song-9" },
+		});
+
+		// A is still pending — B did not wait on it.
+		expect(resolveA).toBeDefined();
+	});
+
+	it("routes a queued dismiss to the card it was enqueued on, not the mounted one", async () => {
+		// A dismiss that queues behind a pending one on card A must still target
+		// card A even if it dequeues after the user navigated to card B — itemId
+		// is carried in the mutation variables, not the (per-render) observer
+		// options, so it can't bind to whatever card happens to be mounted.
+		const presentKeyA = presentMatchReviewItemQueryOptions("item-a").queryKey;
+		const presentKeyB = presentMatchReviewItemQueryOptions("item-b").queryKey;
+		queryClient.setQueryData(
+			presentKeyA,
+			makePlaylistReadyItem(["song-1", "song-2"], null),
+		);
+		queryClient.setQueryData(
+			presentKeyB,
+			makePlaylistReadyItem(["song-9"], null),
+		);
+
+		let resolveRow1: ((value: DismissSuggestionResult) => void) | undefined;
+		dismissMatchReviewItemSuggestionMock.mockImplementation(
+			(arg: { data: { itemId: string; suggestionId: string } }) => {
+				if (arg.data.suggestionId === "song-1") {
+					return new Promise<DismissSuggestionResult>((resolve) => {
+						resolveRow1 = resolve;
+					});
+				}
+				return Promise.resolve<DismissSuggestionResult>({ success: true });
+			},
+		);
+
+		const { result, rerender } = renderHook(
+			({
+				itemId,
+				itemData,
+			}: {
+				itemId: string;
+				itemData: MatchReviewItemRead;
+			}) => useMatchReviewCard({ itemId, itemData, queryClient }),
+			{
+				wrapper,
+				initialProps: {
+					itemId: "item-a",
+					itemData: makePlaylistReadyItem(["song-1", "song-2"], null),
+				},
+			},
+		);
+
+		// Both dismisses are enqueued while card A is mounted; row 2 queues behind
+		// the still-pending row 1.
+		await act(async () => {
+			void result.current.dismissSuggestion("song-1");
+			void result.current.dismissSuggestion("song-2");
+		});
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+
+		// Navigate to card B, THEN let row 1 settle so the queued row 2 dequeues
+		// while card B is the mounted card.
+		rerender({
+			itemId: "item-b",
+			itemData: makePlaylistReadyItem(["song-9"], null),
+		});
+		if (!resolveRow1) throw new Error("row 1 was never issued");
+		const settleRow1 = resolveRow1;
+		await act(async () => {
+			settleRow1({ success: true });
+		});
+
+		await waitFor(() =>
+			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+		);
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenLastCalledWith({
+			data: { itemId: "item-a", suggestionId: "song-2" },
+		});
+
+		// Card A drained both rows; card B is untouched by A's queued dismiss.
+		const patchedA = queryClient.getQueryData<MatchReviewItemRead>(presentKeyA);
+		if (patchedA?.status !== "ready" || patchedA.mode !== "playlist") {
+			throw new Error("expected a ready playlist card");
+		}
+		expect(patchedA.suggestions.map((s) => s.song.id)).toEqual([]);
+
+		const patchedB = queryClient.getQueryData<MatchReviewItemRead>(presentKeyB);
+		if (patchedB?.status !== "ready" || patchedB.mode !== "playlist") {
+			throw new Error("expected a ready playlist card");
+		}
+		expect(patchedB.suggestions.map((s) => s.song.id)).toEqual(["song-9"]);
 	});
 });
