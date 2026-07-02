@@ -11,6 +11,7 @@ Start here for the fastest mental model.
 | [`library-processing.md`](./library-processing.md) | Control plane for scheduling `enrichment` and `match_snapshot_refresh` |
 | [`module-boundaries.md`](./module-boundaries.md) | Ownership rules for `src/lib/*` modules |
 | [`onboarding.md`](./onboarding.md) | Walkthrough onboarding system: steps, modules, step→route mapping |
+| [`deepening-opportunities-2026-07-02.md`](./deepening-opportunities-2026-07-02.md) | Architecture review: ranked refactor candidates for deepening shallow modules |
 
 ## Matching deep dives
 
