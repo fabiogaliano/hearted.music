@@ -3917,9 +3917,11 @@ export type Database = {
 			read_match_review_item_song_suggestions: {
 				Args: {
 					p_account_id: string;
+					p_after_fit_score?: number;
+					p_after_model_rank?: number;
+					p_after_song_id?: string;
 					p_item_id: string;
 					p_limit?: number;
-					p_offset?: number;
 				};
 				Returns: {
 					album_name: string;

@@ -7,6 +7,7 @@
  */
 
 import { Result } from "better-result";
+import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
@@ -16,6 +17,7 @@ import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
+	fromSupabaseRpc,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type {
@@ -712,11 +714,46 @@ export interface QueueItemSongSuggestionRow {
 }
 
 /**
+ * Cursor into the keyset-paged suggestion read. Mirrors the RPC's total order
+ * (fit_score DESC, model_rank ASC, song_id ASC) — song_id is unique per item,
+ * so the triple is a strict total order and a dismissed cursor row is
+ * harmless (the WHERE compares sort-key values, not row existence).
+ */
+export interface QueueItemSongSuggestionCursor {
+	fitScore: number;
+	modelRank: number;
+	songId: string;
+}
+
+// Loose row schema: validates only the fields readQueueItemSongSuggestions
+// maps below, so an RPC column addition doesn't need a schema update here.
+const QueueItemSongSuggestionRpcRowSchema = z.looseObject({
+	song_id: z.string(),
+	name: z.string(),
+	artists: z.array(z.string()),
+	album_name: z.string().nullable().optional(),
+	image_url: z.string().nullable().optional(),
+	spotify_id: z.string(),
+	genres: z.array(z.string()),
+	fit_score: z.number(),
+	visible_rank: z.number(),
+	model_rank: z.number(),
+	total_active_count: z.number(),
+});
+const QueueItemSongSuggestionRpcRowsSchema = z.array(
+	QueueItemSongSuggestionRpcRowSchema,
+);
+
+/**
  * Reads a playlist-orientation card's suggestion list from the captured
  * authority in ONE round trip: visible pairs ⋈ song, dismissed anti-join,
  * ordering and paging all inside Postgres. No id set leaves the database, so
  * this read cannot hit the URI-length limit regardless of capture size (the
  * 414 class that chunkedRead only mitigates call-site by call-site).
+ *
+ * `options.after` is a keyset cursor rather than an offset — offsets drift
+ * mid-review because the dismissed anti-join removes rows server-side, which
+ * would otherwise skip or repeat rows on a paged card.
  *
  * Returns zero rows for both an empty capture and an all-dismissed capture —
  * disambiguate with countCapturedVisiblePairs.
@@ -724,27 +761,25 @@ export interface QueueItemSongSuggestionRow {
 export async function readQueueItemSongSuggestions(
 	itemId: string,
 	accountId: string,
-	options: { limit?: number; offset?: number } = {},
+	options: { limit?: number; after?: QueueItemSongSuggestionCursor } = {},
 ): Promise<Result<QueueItemSongSuggestionRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc(
-		"read_match_review_item_song_suggestions",
-		{
+	const result = await fromSupabaseRpc(
+		QueueItemSongSuggestionRpcRowsSchema,
+		supabase.rpc("read_match_review_item_song_suggestions", {
 			p_item_id: itemId,
 			p_account_id: accountId,
 			p_limit: options.limit,
-			p_offset: options.offset,
-		},
+			p_after_fit_score: options.after?.fitScore,
+			p_after_model_rank: options.after?.modelRank,
+			p_after_song_id: options.after?.songId,
+		}),
 	);
 
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
+	if (Result.isError(result)) return result;
 
 	return Result.ok(
-		(data ?? []).map((row) => ({
+		result.value.map((row) => ({
 			songId: row.song_id,
 			name: row.name,
 			artists: row.artists,

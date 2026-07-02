@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { getPlaylistById } from "@/lib/domains/library/playlists/queries";
 import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
 import {
 	addQueueItemDecisionAtomically,
@@ -751,19 +752,13 @@ async function readPlaylistCardFromCapture(
 	accountId: string,
 	playlistId: string,
 ): Promise<MatchReviewItemRead> {
-	const supabase = createAdminSupabaseClient();
-	const [playlistRowResult, suggestionRowsResult] = await Promise.all([
-		supabase
-			.from("playlist")
-			.select("id, name, match_intent, song_count, image_url, spotify_id")
-			.eq("id", playlistId)
-			.eq("account_id", accountId)
-			.maybeSingle(),
+	const [playlistResult, suggestionRowsResult] = await Promise.all([
+		getPlaylistById(accountId, playlistId),
 		readQueueItemSongSuggestions(itemId, accountId),
 	]);
 
-	if (playlistRowResult.error) {
-		reportQueueError(playlistRowResult.error, "present_match_review_item", {
+	if (Result.isError(playlistResult)) {
+		reportQueueError(playlistResult.error, "present_match_review_item", {
 			accountId,
 			orientation: "playlist",
 		});
@@ -773,8 +768,8 @@ async function readPlaylistCardFromCapture(
 			message: "Couldn't load this match card. Try again.",
 		};
 	}
-	if (!playlistRowResult.data) {
-		// Account-filtered read doubles as the entitlement check the fast path
+	if (playlistResult.value === null) {
+		// Account-scoped read doubles as the entitlement check the fast path
 		// skips (the derivation path ran checkPlaylistOwned). The card is already
 		// captured, so it is skippable without the empty-capture stamp that
 		// presentUnavailableOwnedItem exists to write pre-capture.
@@ -829,7 +824,7 @@ async function readPlaylistCardFromCapture(
 		}
 	}
 
-	const pl = playlistRowResult.data;
+	const pl = playlistResult.value;
 	const reviewItem: MatchingPlaylistForReview = {
 		id: pl.id,
 		spotifyId: pl.spotify_id,
