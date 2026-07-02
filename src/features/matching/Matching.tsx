@@ -24,6 +24,12 @@ export function Matching({
 	navigationDisabled,
 	mode = "playlist",
 	onModeChange = () => {},
+	suggestionTotal,
+	hasMoreSuggestions,
+	isLoadingMoreSuggestions,
+	loadMoreSuggestions,
+	loadMoreError,
+	retryLoadMore,
 	onAdd,
 	onDismissSuggestion,
 	onDismiss,
@@ -130,6 +136,12 @@ export function Matching({
 					navigationDisabled={navigationDisabled}
 					isLastItem={offset >= totalSongs - 1}
 					animateReject
+					suggestionTotal={suggestionTotal}
+					hasMoreSuggestions={hasMoreSuggestions}
+					isLoadingMoreSuggestions={isLoadingMoreSuggestions}
+					loadMoreSuggestions={loadMoreSuggestions}
+					loadMoreError={loadMoreError}
+					retryLoadMore={retryLoadMore}
 					onAdd={onAdd}
 					onDismissSuggestion={onDismissSuggestion}
 					onDismiss={onDismiss}

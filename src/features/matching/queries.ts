@@ -1,10 +1,16 @@
-import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import {
+	infiniteQueryOptions,
+	type QueryClient,
+	queryOptions,
+} from "@tanstack/react-query";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import {
 	getMatchReview,
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
+	listMatchReviewItemSuggestions,
+	type MatchReviewItemSuggestionCursor,
 	presentMatchReviewItem,
 	startOrResumeMatchReview,
 	syncActiveMatchReviewSessions,
@@ -112,6 +118,37 @@ export function presentMatchReviewItemQueryOptions(itemId: string) {
 		queryFn: () => presentMatchReviewItem({ data: { itemId } }),
 		// Capture is first-write-wins idempotent, so refetches always return the
 		// same captured rows. High staleTime matches the non-authoritative path.
+		staleTime: 30 * 60_000,
+	});
+}
+
+/**
+ * Tail pages for a playlist card's suggestion list (first-page-fast, P3):
+ * readPlaylistCardFromCapture returns only the first
+ * PLAYLIST_CARD_FIRST_PAGE_SIZE rows on the item read; the rest page in here as
+ * the user scrolls. Shares the item's key prefix (not matchReviewKeys.item's
+ * bare key) so a suggestion-dismiss mutation can target both the present cache
+ * and this tail cache from one itemId without invalidating either.
+ *
+ * `initialCursor` comes from the ready playlist card's `nextCursor` — null both
+ * when the card has no more rows AND for song-mode cards (which have no
+ * suggestionTotal/nextCursor at all), so `enabled` gates network work in both
+ * cases without the caller needing to branch on mode.
+ */
+export function matchReviewItemSuggestionsInfiniteQueryOptions(
+	itemId: string,
+	initialCursor: MatchReviewItemSuggestionCursor | null,
+) {
+	return infiniteQueryOptions({
+		queryKey: [...matchReviewKeys.item(itemId), "suggestions"] as const,
+		queryFn: ({ pageParam }) =>
+			listMatchReviewItemSuggestions({ data: { itemId, cursor: pageParam } }),
+		initialPageParam: initialCursor,
+		getNextPageParam: (page) => page.nextCursor ?? undefined,
+		enabled: initialCursor !== null,
+		// Matches presentMatchReviewItemQueryOptions: pages are keyed off an
+		// immutable captured suggestion order, so a refetch is never needed within
+		// one review visit.
 		staleTime: 30 * 60_000,
 	});
 }

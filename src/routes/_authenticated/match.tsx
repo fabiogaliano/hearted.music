@@ -45,11 +45,11 @@ import {
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
-	MatchingReviewItem,
 	MatchingSuggestion,
 	MatchViewMode,
 	ReviewedItem,
 } from "@/features/matching/types";
+import { useMatchReviewCard } from "@/features/matching/useMatchReviewCard";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
@@ -61,9 +61,7 @@ import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
-	dismissMatchReviewItemSuggestion,
 	finishMatchReviewItem,
-	type MatchReviewItemRead,
 	markMatchReviewItemPresented,
 } from "@/lib/server/match-review-queue.functions";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
@@ -768,71 +766,20 @@ function QueueCardContent({
 		onReleaseNavigation();
 	}, [itemId, onReleaseNavigation]);
 
-	// Map server shape → orientation-aware union types.
-	const currentReviewItem: MatchingReviewItem | null = (() => {
-		if (itemData.status !== "ready") return null;
-		if (itemData.mode === "song") {
-			return {
-				mode: "song" as const,
-				song: {
-					id: itemData.reviewItem.id,
-					spotifyId: itemData.reviewItem.spotifyId,
-					name: itemData.reviewItem.name,
-					artist: itemData.reviewItem.artist,
-					album: itemData.reviewItem.album ?? null,
-					albumArtUrl: itemData.reviewItem.albumArtUrl,
-					genres: itemData.reviewItem.genres,
-					audioFeatures: itemData.reviewItem.audioFeatures ?? null,
-					analysis: itemData.reviewItem.analysis ?? null,
-				},
-			};
-		}
-		return {
-			mode: "playlist" as const,
-			playlist: {
-				id: itemData.reviewItem.id,
-				spotifyId: itemData.reviewItem.spotifyId,
-				name: itemData.reviewItem.name,
-				description: itemData.reviewItem.description,
-				imageUrl: itemData.reviewItem.imageUrl,
-				trackCount: itemData.reviewItem.trackCount,
-			},
-		};
-	})();
-
-	const currentSuggestions: MatchingSuggestion[] =
-		useMemo((): MatchingSuggestion[] => {
-			if (itemData.status !== "ready") return [];
-			if (itemData.mode === "song") {
-				return itemData.suggestions.map((m) => ({
-					mode: "song" as const,
-					playlist: {
-						id: m.playlist.id,
-						spotifyId: m.playlist.spotifyId,
-						name: m.playlist.name,
-						reason: m.playlist.description ?? "",
-						matchScore: m.score,
-						imageUrl: m.playlist.imageUrl,
-						songCount: m.playlist.trackCount,
-					},
-				}));
-			}
-			return itemData.suggestions.map((s) => ({
-				mode: "playlist" as const,
-				song: {
-					id: s.song.id,
-					spotifyId: s.song.spotifyId,
-					name: s.song.name,
-					artist: s.song.artist,
-					album: s.song.album ?? null,
-					albumArtUrl: s.song.albumArtUrl,
-					genres: s.song.genres,
-					audioFeatures: s.song.audioFeatures ?? null,
-					analysis: s.song.analysis ?? null,
-				},
-				fitScore: s.fitScore,
-			}));
-		}, [itemData]);
+	// Present-card mapping, tail paging, and suggestion-dismiss cache behavior
+	// are owned by the hook (Deepening #2 tracer bullet) — this component stays
+	// responsible for navigation/session concerns only.
+	const {
+		currentReviewItem,
+		currentSuggestions,
+		suggestionTotal,
+		hasMoreSuggestions,
+		isLoadingMoreSuggestions,
+		loadMoreSuggestions,
+		loadMoreError,
+		retryLoadMore,
+		dismissSuggestion,
+	} = useMatchReviewCard({ itemId, itemData, queryClient });
 
 	// Narrow helpers — each is null when the other orientation is active.
 	const currentSong =
@@ -1121,43 +1068,18 @@ function QueueCardContent({
 		}
 	};
 
+	// No navigation lock here: the mutation's optimistic removal (+ rollback on
+	// failure) is the interaction feedback, unlike add/whole-card dismiss/finish
+	// which advance the card and must serialize against Previous/Next.
 	const handleDismissSuggestion = async (suggestionId: string) => {
-		if (!currentReviewItem || !onLockNavigation()) return;
-		try {
-			const result = await dismissMatchReviewItemSuggestion({
-				data: { itemId, suggestionId },
-			});
+		if (!currentReviewItem) return;
+		const success = await dismissSuggestion(suggestionId);
+		if (!success) return;
 
-			if (!result.success) return;
-
-			queryClient.setQueryData<MatchReviewItemRead>(
-				presentMatchReviewItemQueryOptions(itemId).queryKey,
-				(current) => {
-					if (!current || current.status !== "ready") return current;
-					if (current.mode === "song") {
-						return {
-							...current,
-							suggestions: current.suggestions.filter(
-								(s) => s.playlist.id !== suggestionId,
-							),
-						};
-					}
-					return {
-						...current,
-						suggestions: current.suggestions.filter(
-							(s) => s.song.id !== suggestionId,
-						),
-					};
-				},
-			);
-
-			analytics.capture("match_suggestion_dismissed", {
-				orientation: currentReviewItem.mode,
-				suggestion_id: suggestionId,
-			});
-		} finally {
-			onReleaseNavigation();
-		}
+		analytics.capture("match_suggestion_dismissed", {
+			orientation: currentReviewItem.mode,
+			suggestion_id: suggestionId,
+		});
 	};
 
 	const handleDismiss = async () => {
@@ -1249,6 +1171,12 @@ function QueueCardContent({
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}
 			onModeChange={onModeChange}
+			suggestionTotal={suggestionTotal}
+			hasMoreSuggestions={hasMoreSuggestions}
+			isLoadingMoreSuggestions={isLoadingMoreSuggestions}
+			loadMoreSuggestions={loadMoreSuggestions}
+			loadMoreError={loadMoreError}
+			retryLoadMore={retryLoadMore}
 			onAdd={handleAdd}
 			onDismissSuggestion={handleDismissSuggestion}
 			onDismiss={handleDismiss}

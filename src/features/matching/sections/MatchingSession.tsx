@@ -195,6 +195,12 @@ export function MatchingSession(props: MatchingSessionProps) {
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}
 								suppressTransition={rejecting}
+								suggestionTotal={props.suggestionTotal}
+								hasMoreSuggestions={props.hasMoreSuggestions}
+								isLoadingMoreSuggestions={props.isLoadingMoreSuggestions}
+								loadMoreSuggestions={props.loadMoreSuggestions}
+								loadMoreError={props.loadMoreError}
+								retryLoadMore={props.retryLoadMore}
 								onAdd={onAdd}
 								onDismissSuggestion={onDismissSuggestion}
 								onDismiss={animateReject ? handleReject : onDismiss}
