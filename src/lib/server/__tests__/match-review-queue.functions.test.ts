@@ -48,6 +48,7 @@ const {
 	mockCountCapturedVisiblePairs,
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
+	mockGetPlaylistById,
 } = vi.hoisted(() => {
 	// Shared from mock — overridden per-test via mockFrom.mockImplementation
 	const mockFrom = vi.fn();
@@ -81,6 +82,7 @@ const {
 		mockCountCapturedVisiblePairs: vi.fn(),
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+		mockGetPlaylistById: vi.fn(),
 	};
 });
 
@@ -129,6 +131,10 @@ vi.mock("@/lib/data/client", () => ({
 
 vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
+}));
+
+vi.mock("@/lib/domains/library/playlists/queries", () => ({
+	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
@@ -2350,8 +2356,10 @@ describe("presentMatchReviewItem", () => {
 	 * Wires the playlist-orientation presentMatchReviewItem path:
 	 *  - ownership (queue item) + session reads via mockFrom, same chain as
 	 *    setupPresentItemFetch
-	 *  - playlist subject row via .eq(id).eq(account_id).maybeSingle() — the
-	 *    account filter doubles as the entitlement check on the captured path
+	 *  - playlist subject row via getPlaylistById(accountId, playlistId) — the
+	 *    account-scoped read doubles as the entitlement check on the captured
+	 *    path (readPlaylistCardFromCapture no longer runs a raw `.from("playlist")`
+	 *    read)
 	 *  - suggestions via the read-model RPC (readQueueItemSongSuggestions), NOT
 	 *    table reads: song and match_decision are never queried on this arm, so
 	 *    no id list can hit the URL-length limit regardless of capture size.
@@ -2368,6 +2376,7 @@ describe("presentMatchReviewItem", () => {
 				image_url: string | null;
 				spotify_id: string;
 			} | null;
+			playlistReadError?: boolean;
 			suggestionRows?: Array<typeof BASE_SUGGESTION_ROW>;
 			suggestionReadError?: boolean;
 			capturedPairCount?: number;
@@ -2384,6 +2393,7 @@ describe("presentMatchReviewItem", () => {
 				image_url: "pl.jpg",
 				spotify_id: "sp-pl-review",
 			},
+			playlistReadError = false,
 			suggestionRows = [BASE_SUGGESTION_ROW],
 			suggestionReadError = false,
 			capturedPairCount = 1,
@@ -2396,6 +2406,11 @@ describe("presentMatchReviewItem", () => {
 		);
 		mockCountCapturedVisiblePairs.mockResolvedValue(
 			Result.ok(capturedPairCount),
+		);
+		mockGetPlaylistById.mockResolvedValue(
+			playlistReadError
+				? Result.err(new DatabaseError({ code: "PGRST301", message: "boom" }))
+				: Result.ok(playlistRow),
 		);
 
 		mockFrom.mockImplementation((table: string) => {
@@ -2425,19 +2440,6 @@ describe("presentMatchReviewItem", () => {
 					}),
 				};
 			}
-			if (table === "playlist") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi
-									.fn()
-									.mockResolvedValue({ data: playlistRow, error: null }),
-							}),
-						}),
-					}),
-				};
-			}
 			return { select: vi.fn() };
 		});
 	}
@@ -2458,6 +2460,9 @@ describe("presentMatchReviewItem", () => {
 			"item-1",
 			"acct-1",
 		);
+		// The playlist row comes from the existing getPlaylistById domain query
+		// (account-scoped), not a raw `.from("playlist")` read.
+		expect(mockGetPlaylistById).toHaveBeenCalledWith("acct-1", "pl-review");
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.itemId).toBe("item-1");
 			expect(result.reviewItem.id).toBe("pl-review");
