@@ -31,7 +31,21 @@ function baseCapPx() {
 // just always ending on a half-row. When it overflows, a soft scrim
 // (.review-list-fade) dissolves the sliced cover art into the page background so
 // the cut doesn't end on a razor edge.
-export function ReviewListScroll({ children }: { children: ReactNode }) {
+export function ReviewListScroll({
+	children,
+	footer,
+}: {
+	children: ReactNode;
+	/**
+	 * Rendered inside the scrolling container but outside the measured `listRef`
+	 * div — e.g. the tail-paging sentinel. It must scroll with the rows so
+	 * IntersectionObserver fires on approach, but staying outside `listRef`
+	 * keeps it out of the half-row-peek measurement and the `rows.length < 2`
+	 * fallback (a sentinel isn't a "row" for either purpose). Rendered after the
+	 * fade so the fade's negative margin overlaps the last row, not the footer.
+	 */
+	footer?: ReactNode;
+}) {
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const listRef = useRef<HTMLDivElement | null>(null);
 	const [maxHeight, setMaxHeight] = useState<string>(FALLBACK_MAX_HEIGHT);
@@ -100,6 +114,7 @@ export function ReviewListScroll({ children }: { children: ReactNode }) {
 				{children}
 			</div>
 			{overflowing && <div className="review-list-fade" aria-hidden />}
+			{footer}
 		</div>
 	);
 }

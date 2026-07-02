@@ -13,6 +13,7 @@ import {
 import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { Button } from "@/components/ui/Button";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type {
 	SongForMatching,
@@ -37,10 +38,14 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
-	// Tail-paging props accepted but not yet rendered — the footer/sentinel UI
-	// that consumes them is a separate change (ReviewListScroll footer slot).
-	// suggestionTotal already drives SuggestionsControls' pluralization below.
+	// suggestionTotal drives SuggestionsControls' pluralization below; the rest
+	// drive the tail-paging sentinel/retry footer rendered in ReviewListScroll.
 	suggestionTotal,
+	hasMoreSuggestions,
+	isLoadingMoreSuggestions,
+	loadMoreSuggestions,
+	loadMoreError,
+	retryLoadMore,
 	onAdd,
 	onDismissSuggestion,
 	onDismiss,
@@ -48,6 +53,40 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	onPrevious,
 }: SongSuggestionsSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
+
+	// A load-more error stops the auto-observer (retry is manual) but keeps
+	// hasMoreSuggestions true so the empty-state gate below stays suppressed —
+	// pagination isn't "done", it's stalled, and the footer should say so.
+	const { sentinelRef } = useInfiniteScroll({
+		onLoadMore: loadMoreSuggestions ?? (() => {}),
+		hasMore: (hasMoreSuggestions ?? false) && !loadMoreError,
+	});
+
+	const suggestionsFooter = loadMoreError ? (
+		<div
+			className="theme-text-muted flex items-center justify-center gap-1.5 py-3 text-center text-xs"
+			style={{ fontFamily: fonts.body }}
+			aria-live="polite"
+		>
+			<span>Couldn't load more suggestions.</span>
+			<button
+				type="button"
+				onClick={retryLoadMore}
+				className="theme-text cursor-pointer underline underline-offset-2 opacity-90 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+			>
+				Retry
+			</button>
+		</div>
+	) : hasMoreSuggestions ? (
+		<div
+			ref={sentinelRef}
+			className="theme-text-muted py-3 text-center text-xs"
+			style={{ fontFamily: fonts.body }}
+			aria-live="polite"
+		>
+			{isLoadingMoreSuggestions ? "Loading more…" : null}
+		</div>
+	) : null;
 
 	// One active preview at a time. Each row owns its play affordance but not the
 	// decision of *which* row plays — that lives here so activating one row flips
@@ -95,8 +134,8 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 						Song Suggestions
 					</p>
 
-					<ReviewListScroll>
-						{suggestions.length === 0 ? (
+					<ReviewListScroll footer={suggestionsFooter}>
+						{suggestions.length === 0 && !hasMoreSuggestions ? (
 							<p
 								className="theme-text-muted text-sm"
 								style={{ fontFamily: fonts.body }}
