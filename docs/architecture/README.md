@@ -12,6 +12,7 @@ Start here for the fastest mental model.
 | [`module-boundaries.md`](./module-boundaries.md) | Ownership rules for `src/lib/*` modules |
 | [`onboarding.md`](./onboarding.md) | Walkthrough onboarding system: steps, modules, step→route mapping |
 | [`deepening-opportunities-2026-07-02.md`](./deepening-opportunities-2026-07-02.md) | Architecture review: ranked refactor candidates for deepening shallow modules |
+| [`architecture-patterns-review-2026-07-02.md`](./architecture-patterns-review-2026-07-02.md) | System-wide pattern review: layering, TanStack usage, type/error boundaries, worker lifecycle, React patterns — top-10 improvement plan |
 
 ## Matching deep dives
 
