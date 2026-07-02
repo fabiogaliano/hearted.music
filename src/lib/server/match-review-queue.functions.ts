@@ -38,7 +38,10 @@ import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-q
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { chunkedRead } from "@/lib/shared/utils/chunked-read";
-import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
+import {
+	fromSupabaseMany,
+	fromSupabaseMaybe,
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 /** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
 export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
@@ -223,36 +226,53 @@ type ActiveSuggestionEntry = {
 	visibleRank: number;
 };
 
-async function fetchOwnedQueueItem(
+/**
+ * Ownership read that preserves the miss-vs-error distinction. `Result.ok(null)`
+ * is a genuine no-row/foreign-item miss; `Result.err` is an operational read
+ * failure. Callers then decide whether a failed ownership check should degrade
+ * to "not found" (fetchOwnedQueueItem, below) or surface as a retryable error —
+ * listMatchReviewItemSuggestions needs the latter, since collapsing a read
+ * failure to null there silently truncates a card's tail forever.
+ *
+ * Orientation is unknown here (it lives on the row this read failed to load), so
+ * the failure is captured via captureServerError directly rather than
+ * reportQueueError.
+ */
+async function readOwnedQueueItem(
 	itemId: string,
 	accountId: string,
 	operation: string,
-): Promise<MatchReviewQueueItemDto | null> {
+): Promise<Result<MatchReviewQueueItemDto | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("match_review_queue_item")
-		.select("*")
-		.eq("id", itemId)
-		.eq("account_id", accountId)
-		.maybeSingle();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("match_review_queue_item")
+			.select("*")
+			.eq("id", itemId)
+			.eq("account_id", accountId)
+			.maybeSingle(),
+	);
 
-	if (error) {
-		// `.maybeSingle()` returns a null error for a real no-row/foreign-item miss,
-		// so a truthy error is an operational read failure on the ownership check —
-		// capture it before collapsing into the same null callers treat as not-found.
-		// Orientation is unknown here (it lives on the row this read failed to load),
-		// so this uses captureServerError directly rather than reportQueueError.
-		captureServerError(error, {
+	if (Result.isError(result)) {
+		captureServerError(result.error, {
 			area: "match_review_queue",
 			operation,
 			accountId,
 			extra: { itemId },
 		});
-		return null;
+		return Result.err(result.error);
 	}
-	if (!data) return null;
 
-	return mapItemToDto(data);
+	return Result.ok(result.value ? mapItemToDto(result.value) : null);
+}
+
+async function fetchOwnedQueueItem(
+	itemId: string,
+	accountId: string,
+	operation: string,
+): Promise<MatchReviewQueueItemDto | null> {
+	const result = await readOwnedQueueItem(itemId, accountId, operation);
+	return Result.isError(result) ? null : result.value;
 }
 
 async function filterDismissedActiveSuggestions(
@@ -1323,13 +1343,17 @@ const ListMatchReviewItemSuggestionsSchema = z.object({
  * and mapSuggestionRow with the first-page path so first page and tail pages
  * can never render suggestions differently.
  *
- * Ownership-verified but deliberately quiet on failure: a foreign/missing item
- * or a song-orientation item (this path is playlist-mode only) both degrade to
- * an empty page rather than leaking ownership/orientation details to the caller.
+ * Ownership-verified but deliberately quiet on a genuine miss: a foreign/missing
+ * item or a song-orientation item (this path is playlist-mode only) both degrade
+ * to an empty page rather than leaking ownership/orientation details to the
+ * caller.
  *
- * A DB error on the read is thrown (not returned as an empty page) so the
- * client's infinite query enters its `error` state — treating a real failure as
- * "no more pages" would silently truncate a >8-row card's tail forever.
+ * A DB error on either read — the ownership check OR the suggestion rows — is
+ * thrown (not returned as an empty page) so the client's infinite query enters
+ * its `error` state. Treating a real read failure as "no more pages" would
+ * silently truncate a >8-row card's tail forever, which is why the ownership
+ * read goes through readOwnedQueueItem (miss vs error) rather than the
+ * null-collapsing fetchOwnedQueueItem.
  */
 export const listMatchReviewItemSuggestions = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
@@ -1339,11 +1363,20 @@ export const listMatchReviewItemSuggestions = createServerFn({ method: "POST" })
 			const { session } = context;
 			const { itemId, cursor } = data;
 
-			const item = await fetchOwnedQueueItem(
+			const itemResult = await readOwnedQueueItem(
 				itemId,
 				session.accountId,
 				"list_match_review_item_suggestions",
 			);
+			// A failed ownership read must NOT collapse to "no more pages": that
+			// would silently truncate a >8-row card's tail forever (the same reason
+			// the suggestion-rows error below is thrown, not swallowed). The read
+			// already reported to Sentry; surface the generic retryable error so the
+			// client's infinite query enters its error/retry state.
+			if (Result.isError(itemResult)) {
+				throw new Error("Couldn't load more suggestions. Please try again.");
+			}
+			const item = itemResult.value;
 			if (!item || item.subject.orientation !== "playlist") {
 				return { suggestions: [], nextCursor: null };
 			}

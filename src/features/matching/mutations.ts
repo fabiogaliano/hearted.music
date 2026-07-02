@@ -73,12 +73,32 @@ interface DismissSuggestionMutationContext {
 	previousTail: TailPagesData | undefined;
 }
 
+export interface DismissSuggestionVariables {
+	itemId: string;
+	suggestionId: string;
+}
+
+function itemKeys(itemId: string) {
+	return {
+		presentKey: presentMatchReviewItemQueryOptions(itemId).queryKey,
+		tailKey: [...matchReviewKeys.item(itemId), "suggestions"] as const,
+	};
+}
+
 /**
  * First `mutationOptions` adoption in the repo (Patterns #2): per-suggestion
  * row dismiss inside a playlist/song card. Paged caches (the tail infinite
  * query) need principled dismiss surgery on top of the present-card cache, so
  * the optimistic update + rollback logic is centralized here rather than
  * inlined at the call site (previously match.tsx).
+ *
+ * `itemId` travels in the mutation *variables* rather than being closed over at
+ * construction time. A single MutationObserver is reused across cards (its
+ * options are re-set every render as itemId changes), and mutateAsync runs
+ * against the observer's CURRENT options — so a dismiss queued on card A that
+ * settles after the user navigated to card B would otherwise execute with B's
+ * closed-over keys. Deriving keys from the per-call variables makes each
+ * execution target the card it was enqueued for, regardless of what is mounted.
  *
  * Rollback happens on two distinct paths:
  * - `onSuccess` with `result.success === false` — the server function returns
@@ -87,37 +107,58 @@ interface DismissSuggestionMutationContext {
  *   actually dismissed.
  * - `onError` — thrown/network failures.
  */
-export function dismissSuggestionMutation(
-	queryClient: QueryClient,
-	itemId: string,
-) {
-	const presentKey = presentMatchReviewItemQueryOptions(itemId).queryKey;
-	const tailKey = [...matchReviewKeys.item(itemId), "suggestions"] as const;
-
-	const rollback = (context: DismissSuggestionMutationContext | undefined) => {
+export function dismissSuggestionMutation(queryClient: QueryClient) {
+	const rollback = (
+		itemId: string,
+		context: DismissSuggestionMutationContext | undefined,
+	) => {
 		if (!context) return;
+		const { presentKey, tailKey } = itemKeys(itemId);
 		queryClient.setQueryData(presentKey, context.previousPresent);
-		queryClient.setQueryData(tailKey, context.previousTail);
+		// Only restore the tail when this mutation actually snapshotted loaded
+		// pages. If previousTail was undefined the optimistic tail patch was a
+		// no-op, so there is nothing to undo — and writing undefined back here
+		// would clobber a first tail page that finished loading during the
+		// mutation window, re-stranding the tail (see the onMutate cancel note).
+		if (context.previousTail !== undefined) {
+			queryClient.setQueryData(tailKey, context.previousTail);
+		}
 	};
 
 	return mutationOptions<
 		DismissSuggestionResult,
 		Error,
-		string,
+		DismissSuggestionVariables,
 		DismissSuggestionMutationContext
 	>({
-		mutationFn: (suggestionId) =>
+		// This whole-snapshot rollback is only sound if dismisses for one card never
+		// overlap: two concurrent onMutate snapshots plus a failed rollback would
+		// resurrect a row a succeeded dismiss removed. That serialization lives in
+		// useMatchReviewCard (a per-card promise chain), NOT in a mutation `scope` —
+		// scope serializes only the mutationFn, and onMutate runs before it.
+		mutationFn: ({ itemId, suggestionId }) =>
 			dismissMatchReviewItemSuggestion({ data: { itemId, suggestionId } }),
 
-		onMutate: async (suggestionId) => {
+		onMutate: async ({ itemId, suggestionId }) => {
+			const { presentKey, tailKey } = itemKeys(itemId);
+			const previousTail = queryClient.getQueryData<TailPagesData>(tailKey);
+
+			// Cancelling an in-flight fetch reverts it. That is fine for the present
+			// query and for the tail once it has pages, but cancelling the tail's
+			// auto-fired FIRST page (no data yet) reverts it to a data-less,
+			// hasNextPage=false state that loadMoreSuggestions refuses to restart —
+			// the tail would strand with no way to page in the rest of a >8-row
+			// card. When the tail has no data the optimistic patch below is a no-op
+			// anyway, so there is nothing to protect by cancelling it.
 			await Promise.all([
 				queryClient.cancelQueries({ queryKey: presentKey }),
-				queryClient.cancelQueries({ queryKey: tailKey }),
+				...(previousTail !== undefined
+					? [queryClient.cancelQueries({ queryKey: tailKey })]
+					: []),
 			]);
 
 			const previousPresent =
 				queryClient.getQueryData<MatchReviewItemRead>(presentKey);
-			const previousTail = queryClient.getQueryData<TailPagesData>(tailKey);
 
 			queryClient.setQueryData<MatchReviewItemRead>(presentKey, (current) =>
 				patchPresentCacheOnSuggestionDismiss(current, suggestionId),
@@ -129,12 +170,12 @@ export function dismissSuggestionMutation(
 			return { previousPresent, previousTail };
 		},
 
-		onSuccess: (result, _suggestionId, context) => {
-			if (!result.success) rollback(context);
+		onSuccess: (result, { itemId }, context) => {
+			if (!result.success) rollback(itemId, context);
 		},
 
-		onError: (error, _suggestionId, context) => {
-			rollback(context);
+		onError: (error, { itemId }, context) => {
+			rollback(itemId, context);
 			captureRouteError(error, { route: "match-review-suggestion-dismiss" });
 		},
 	});

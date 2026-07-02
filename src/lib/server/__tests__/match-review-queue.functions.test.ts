@@ -2935,4 +2935,43 @@ describe("listMatchReviewItemSuggestions", () => {
 			},
 		});
 	});
+
+	it("reports and throws when the ownership read itself errors, instead of treating it as a miss", async () => {
+		// A transient read failure on the ownership check must NOT collapse to the
+		// empty-page "ownership miss" shape — that would look like "no more pages"
+		// and truncate the tail forever. It must surface as a retryable error.
+		mockFrom.mockImplementation((table: string) => {
+			if (table === "match_review_queue_item") {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: null,
+									error: { code: "PGRST301", message: "ownership boom" },
+								}),
+							}),
+						}),
+					}),
+				};
+			}
+			return { select: vi.fn() };
+		});
+
+		await expect(
+			listMatchReviewItemSuggestions({
+				data: { itemId: "item-1", cursor: null },
+			}),
+		).rejects.toThrow();
+
+		expect(mockReadQueueItemSongSuggestions).not.toHaveBeenCalled();
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "list_match_review_item_suggestions",
+			},
+		});
+	});
 });

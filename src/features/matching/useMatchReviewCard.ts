@@ -3,7 +3,7 @@ import {
 	useInfiniteQuery,
 	useMutation,
 } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type {
 	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
@@ -62,9 +62,7 @@ export function useMatchReviewCard({
 		matchReviewItemSuggestionsInfiniteQueryOptions(itemId, initialCursor),
 	);
 
-	const dismissMutation = useMutation(
-		dismissSuggestionMutation(queryClient, itemId),
-	);
+	const dismissMutation = useMutation(dismissSuggestionMutation(queryClient));
 
 	// Cheap union-to-union mapping — not memoized, matching the previous
 	// inline version's cost profile (route.tsx's now-removed IIFE).
@@ -175,10 +173,49 @@ export function useMatchReviewCard({
 		void tailQuery.fetchNextPage();
 	}, [tailQuery.fetchNextPage]);
 
+	// Serializes overlapping dismisses within ONE card. The dismiss mutation
+	// snapshots that card's present + tail caches in onMutate and restores the
+	// snapshot on a failed rollback, so two dismisses of the SAME card must never
+	// interleave: if B snapshots after A removed its row but before A fails, A's
+	// rollback would resurrect the row B already dismissed. TanStack's mutation
+	// `scope` can't prevent this — it serializes only the mutationFn, not onMutate
+	// (onMutate runs before the retryer). So we chain each dismiss behind the prior
+	// one's FULL settlement here: mutateAsync resolves only after onSuccess/onError
+	// (and thus the rollback) have run, so the next dismiss's onMutate always
+	// snapshots a settled cache.
+	//
+	// The chain is keyed by itemId because the mutation's snapshot keys are
+	// per-item (see dismissSuggestionMutation): dismisses on different cards touch
+	// disjoint caches and can't resurrect each other, so they must NOT serialize.
+	// QueueCardContent stays mounted across cards (itemId flows in as a prop, no
+	// remount), so a single shared chain would wrongly stall — and drop optimistic
+	// feedback for — a new card's dismiss behind a still-pending dismiss on the
+	// card the user just left. A Map per itemId also makes re-entry to a card
+	// resume its own chain rather than reset it mid-flight.
+	const dismissChainsRef = useRef<Map<string, Promise<unknown>>>(new Map());
+
 	const dismissSuggestion = useCallback(
 		async (suggestionId: string) => {
+			const chains = dismissChainsRef.current;
+			const prior = chains.get(itemId) ?? Promise.resolve();
+			// itemId is captured in these variables at enqueue time, so a dismiss
+			// queued here still targets THIS card even if it settles after the user
+			// navigated away (see dismissSuggestionMutation's variables note).
+			const run = prior.then(() =>
+				dismissMutation.mutateAsync({ itemId, suggestionId }),
+			);
+			// The chain must survive a rejected dismiss so the next one still runs;
+			// swallow here (the boolean the caller needs is derived from `run` below).
+			chains.set(
+				itemId,
+				run.then(
+					() => undefined,
+					() => undefined,
+				),
+			);
+
 			try {
-				const result = await dismissMutation.mutateAsync(suggestionId);
+				const result = await run;
 				return result.success;
 			} catch {
 				// dismissSuggestionMutation's onError already rolled back the caches
@@ -186,7 +223,7 @@ export function useMatchReviewCard({
 				return false;
 			}
 		},
-		[dismissMutation.mutateAsync],
+		[dismissMutation.mutateAsync, itemId],
 	);
 
 	return {
