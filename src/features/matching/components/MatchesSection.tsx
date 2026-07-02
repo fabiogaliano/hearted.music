@@ -199,20 +199,37 @@ function MatchRow({
 	onAdd,
 	onDismiss,
 }: MatchRowProps) {
-	const { triggerProps, preview } = usePlaylistTrackPreview({
+	const canLoadTracks = !isDemo;
+	const { hoverProps, handleProps, preview } = usePlaylistTrackPreview({
 		playlistId: playlist.id,
 		songCount: playlist.songCount,
-		canLoadTracks: !isDemo,
+		canLoadTracks,
 		name: playlist.name,
 		reason: playlist.reason || undefined,
+		// The cover is a real disclosure button now: hover opens it on fine
+		// pointers, click/tap/Enter pins it. That gives touch and keyboard users
+		// the same preview — the old hover-only tooltip left them with no way in.
+		interaction: "disclosure",
+		label: playlist.name,
 	});
+
+	// Merge the pointer bridge with the button handle onto one cover button.
+	// hoverProps.style (a default cursor) is intentionally dropped — the cover is
+	// clickable now, so PlaylistMatchRow styles it with a pointer cursor instead.
+	const coverProps = canLoadTracks
+		? {
+				onPointerEnter: hoverProps.onPointerEnter,
+				onPointerLeave: hoverProps.onPointerLeave,
+				...handleProps,
+			}
+		: undefined;
 
 	return (
 		<>
 			<PlaylistMatchRow
 				playlistId={playlist.id}
 				name={playlist.name}
-				coverProps={triggerProps}
+				coverProps={coverProps}
 				media={
 					<Cover src={playlist.imageUrl} size={56} className="flex-none" />
 				}

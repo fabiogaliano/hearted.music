@@ -1,6 +1,7 @@
 import { ListBulletsIcon, XIcon } from "@phosphor-icons/react";
-import type { HTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
+import { CoverPeekBadge } from "@/components/ui/CoverPeekBadge";
 import { fonts } from "@/lib/theme/fonts";
 
 type PlaylistMatchRowAction =
@@ -17,9 +18,10 @@ interface PlaylistMatchRowProps {
 	reason?: string;
 	/** Media slot (e.g. the playlist cover) rendered between the score and name. */
 	media?: ReactNode;
-	/** Spread onto the cover so just the album art is the preview trigger — the
-	 *  name and reason stay inert so they can be read and selected in peace. */
-	coverProps?: HTMLAttributes<HTMLDivElement>;
+	/** Spread onto the cover *button* so just the album art is the preview trigger
+	 *  — hover opens it, click/tap/Enter pins it. The name and reason stay inert so
+	 *  they can be read and selected in peace. Omitted (demo mode) → inert media. */
+	coverProps?: ButtonHTMLAttributes<HTMLButtonElement>;
 	/** "lg" for full-page match view, "sm" (default) for panel context */
 	size?: "sm" | "lg";
 	onDismiss?: (playlistId: string) => void;
@@ -77,15 +79,23 @@ export function PlaylistMatchRow({
 					{media &&
 						(coverProps ? (
 							// Only the cover is the preview trigger — the name and reason stay
-							// inert (readable/selectable). A scrim + list glyph fade in on hover
-							// to signal the art reveals the track list; the wrapper is
-							// keyboard-focusable so AT users reach the same preview.
-							<div
+							// inert (readable/selectable). A real button so touch/keyboard reach
+							// the same preview, not just hover. A small list glyph rests in the
+							// corner at all times (the signifier that pulls the hover — a
+							// hover-only hint can't advertise itself); on hover it gives way to
+							// the full scrim + centered glyph.
+							<button
+								type="button"
 								{...coverProps}
-								className="group/peek relative shrink-0 overflow-hidden rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+								aria-label={`Preview tracks: ${name}`}
+								className="group/peek relative shrink-0 cursor-pointer overflow-hidden border-0 bg-transparent p-0 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] motion-safe:active:scale-[0.97]"
 							>
 								{media}
-								<div
+								<CoverPeekBadge
+									size={18}
+									className="transition-opacity duration-200 group-hover/peek:opacity-0"
+								/>
+								<span
 									aria-hidden="true"
 									className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/peek:opacity-100"
 									style={{
@@ -97,8 +107,8 @@ export function PlaylistMatchRow({
 										size={20}
 										style={{ color: "var(--t-surface)" }}
 									/>
-								</div>
-							</div>
+								</span>
+							</button>
 						) : (
 							<div className="shrink-0">{media}</div>
 						))}

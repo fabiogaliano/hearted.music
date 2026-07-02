@@ -53,7 +53,7 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.getByText("Lo-fi beats")).toBeDefined();
 	});
 
-	it("renders the track count as the label above the name", () => {
+	it("renders the track count on the cover badge", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -97,7 +97,7 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.getByText("Chill Vibes")).toBeDefined();
 	});
 
-	it("exposes the track count as a preview-opening button when canLoadTracks is true", () => {
+	it("exposes the cover as a track-list disclosure button when canLoadTracks is true", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -107,11 +107,10 @@ describe("PlaylistReviewItemSection", () => {
 				/>
 			</QueryClientProvider>,
 		);
-		// Playlist mode's keyboard/touch entry point is the "N songs" count rendered
-		// as a real button (a disclosure for the track-list dialog), not a focusable
-		// div — so it's reachable and announced without relying on hover.
+		// Playlist mode's keyboard/touch entry point is the cover rendered as a real
+		// button that morphs into the track list in place — a disclosure (collapsed
+		// by default), reachable and announced without relying on hover.
 		const handle = screen.getByRole("button", { name: /15 songs/i });
-		expect(handle.getAttribute("aria-haspopup")).toBe("dialog");
 		expect(handle.getAttribute("aria-expanded")).toBe("false");
 	});
 
