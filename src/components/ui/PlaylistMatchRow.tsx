@@ -1,4 +1,4 @@
-import { XIcon } from "@phosphor-icons/react";
+import { ListBulletsIcon, XIcon } from "@phosphor-icons/react";
 import type { HTMLAttributes, ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
@@ -17,9 +17,9 @@ interface PlaylistMatchRowProps {
 	reason?: string;
 	/** Media slot (e.g. the playlist cover) rendered between the score and name. */
 	media?: ReactNode;
-	/** Spread onto the cover+name group so the caller can make that whole region a
-	 *  single hover trigger (cover, name, and the gap between them). */
-	leadProps?: HTMLAttributes<HTMLDivElement>;
+	/** Spread onto the cover so just the album art is the preview trigger — the
+	 *  name and reason stay inert so they can be read and selected in peace. */
+	coverProps?: HTMLAttributes<HTMLDivElement>;
 	/** "lg" for full-page match view, "sm" (default) for panel context */
 	size?: "sm" | "lg";
 	onDismiss?: (playlistId: string) => void;
@@ -34,7 +34,7 @@ export function PlaylistMatchRow({
 	scoreDisplay,
 	reason,
 	media,
-	leadProps,
+	coverProps,
 	size = "sm",
 	onDismiss,
 	dismissDisabled,
@@ -73,8 +73,35 @@ export function PlaylistMatchRow({
 			<div className="flex items-center gap-6 py-1 pr-1">
 				<div className="shrink-0">{scoreDisplay}</div>
 
-				<div className="flex min-w-0 flex-1 items-center gap-4" {...leadProps}>
-					{media && <div className="shrink-0">{media}</div>}
+				<div className="flex min-w-0 flex-1 items-center gap-4">
+					{media &&
+						(coverProps ? (
+							// Only the cover is the preview trigger — the name and reason stay
+							// inert (readable/selectable). A scrim + list glyph fade in on hover
+							// to signal the art reveals the track list; the wrapper is
+							// keyboard-focusable so AT users reach the same preview.
+							<div
+								{...coverProps}
+								className="group/peek relative shrink-0 overflow-hidden rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+							>
+								{media}
+								<div
+									aria-hidden="true"
+									className="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover/peek:opacity-100"
+									style={{
+										background:
+											"color-mix(in srgb, var(--t-text) 42%, transparent)",
+									}}
+								>
+									<ListBulletsIcon
+										size={20}
+										style={{ color: "var(--t-surface)" }}
+									/>
+								</div>
+							</div>
+						) : (
+							<div className="shrink-0">{media}</div>
+						))}
 
 					<div className="min-w-0 flex-1">
 						<p
@@ -89,8 +116,8 @@ export function PlaylistMatchRow({
 						</p>
 						{reason && (
 							// Clamped to two lines so a long "what it's for" doesn't dominate
-							// the row; the full text is revealed in the hover/focus preview
-							// card (usePlaylistTrackPreview) that this whole lead region opens.
+							// the row; the full text is revealed in the preview card that the
+							// cover opens (usePlaylistTrackPreview).
 							<p
 								className="theme-text-muted mt-1.5 line-clamp-2 text-xs leading-snug"
 								style={{ fontFamily: fonts.body }}

@@ -97,7 +97,7 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.getByText("Chill Vibes")).toBeDefined();
 	});
 
-	it("exposes a focusable trigger region when canLoadTracks is true", () => {
+	it("exposes the track count as a preview-opening button when canLoadTracks is true", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -107,13 +107,15 @@ describe("PlaylistReviewItemSection", () => {
 				/>
 			</QueryClientProvider>,
 		);
-		// usePlaylistTrackPreview sets tabIndex=0 on the trigger when canLoadTracks.
-		// The region must be keyboard-reachable so focus-driven preview works (a11y).
-		const trigger = document.querySelector('[tabindex="0"]');
-		expect(trigger).not.toBeNull();
+		// Playlist mode's keyboard/touch entry point is the "N songs" count rendered
+		// as a real button (a disclosure for the track-list dialog), not a focusable
+		// div — so it's reachable and announced without relying on hover.
+		const handle = screen.getByRole("button", { name: /15 songs/i });
+		expect(handle.getAttribute("aria-haspopup")).toBe("dialog");
+		expect(handle.getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("does not expose a focusable trigger when canLoadTracks is false", () => {
+	it("renders the count as static text with no trigger when canLoadTracks is false", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
 				<PlaylistReviewItemSection
@@ -123,8 +125,9 @@ describe("PlaylistReviewItemSection", () => {
 				/>
 			</QueryClientProvider>,
 		);
-		// No tabIndex=0 is set when preview is disabled (demo/walkthrough mode).
-		const trigger = document.querySelector('[tabindex="0"]');
-		expect(trigger).toBeNull();
+		// Demo/walkthrough mode has no preview, so the count is plain text — no
+		// button, no focusable region.
+		expect(screen.queryByRole("button")).toBeNull();
+		expect(document.querySelector('[tabindex="0"]')).toBeNull();
 	});
 });

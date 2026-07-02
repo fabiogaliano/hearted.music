@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
 	type HTMLAttributes,
 	type FocusEvent as ReactFocusEvent,
+	type MouseEvent as ReactMouseEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
 	useCallback,
@@ -28,12 +29,31 @@ interface UsePlaylistTrackPreviewArgs {
 	/** Optional card header: the playlist's full "what it's for". The match row
 	 *  clamps this to two lines, so the card is where the whole text is read. */
 	reason?: string;
+	/**
+	 * How the preview is opened.
+	 * - "hover" (song mode): a bridged cover+name region opens it on hover/focus;
+	 *   the card is a `role="tooltip"` described by that region.
+	 * - "disclosure" (playlist mode): the region still opens it on hover, but a
+	 *   dedicated button handle (the "N songs" count) also toggles it on
+	 *   click/tap/keyboard, so touch and AT users get a first-class trigger. The
+	 *   card is then a `role="dialog"`.
+	 */
+	interaction?: "hover" | "disclosure";
+	/** aria-label for the disclosure dialog, where there's no in-card header. */
+	label?: string;
+	/**
+	 * Load the first track page immediately instead of on first open. Used in
+	 * playlist mode: the single review subject's tracks are almost certainly
+	 * wanted, so eager-loading seeds the handle's cover fan and makes the preview
+	 * open instantly. Song mode leaves this off — its many candidate rows stay
+	 * lazy so we don't fetch tracks nobody previews.
+	 */
+	eager?: boolean;
 }
 
 type TriggerProps = Pick<
 	HTMLAttributes<HTMLElement>,
 	| "onPointerEnter"
-	| "onPointerMove"
 	| "onPointerLeave"
 	| "onFocus"
 	| "onBlur"
@@ -42,12 +62,45 @@ type TriggerProps = Pick<
 	| "style"
 >;
 
+// Pointer-only subset for the region when a separate handle owns click/keyboard.
+type HoverProps = Pick<
+	HTMLAttributes<HTMLElement>,
+	"onPointerEnter" | "onPointerLeave" | "style"
+>;
+
+interface HandleProps {
+	type: "button";
+	onClick: (event: ReactMouseEvent<HTMLElement>) => void;
+	"aria-haspopup": "dialog";
+	"aria-expanded": boolean;
+	"aria-controls"?: string;
+}
+
+/** A cover for the handle's fan. `reused` marks art that likely already appears
+ *  in the playlist's mosaic cover, so the UI sinks it to the back of the fan
+ *  rather than showing it full and up front. */
+export interface PlaylistPreviewCover {
+	url: string;
+	reused: boolean;
+}
+
 interface PlaylistTrackPreview {
-	/** Spread onto the cover+name region so both — and the gap between them — open
-	 *  the preview as one bridge. Empty when previews are disabled. */
+	/** Full bundle for the hover model (song mode): spread onto the cover+name
+	 *  region so both — and the gap between them — open the preview as one bridge. */
 	triggerProps: TriggerProps;
+	/** Pointer-only bundle for the disclosure model (playlist mode): the region
+	 *  opens on hover, but keyboard/click belong to `handleProps`. */
+	hoverProps: HoverProps;
+	/** Button props for the disclosure handle (playlist mode's "N songs" count). */
+	handleProps: HandleProps;
 	/** The floating preview, portaled to <body>. Render it once near the trigger. */
 	preview: ReactNode;
+	/** A few track covers for the handle's fan, ordered back-to-front (reused
+	 *  covers first so they sink behind the fresh ones). Empty until the track
+	 *  query has data (immediately, when `eager`). */
+	previewCovers: PlaylistPreviewCover[];
+	/** Whether the preview is currently open (drives the handle's caret/aria). */
+	isOpen: boolean;
 }
 
 // Hover-intent timing mirrors InfoTip: a deliberate open delay so a cursor
@@ -65,13 +118,15 @@ interface CardPosition {
 	top: number;
 	width: number;
 	maxHeight: number;
-	/** Placed to the left of the cursor → scale out from its right edge. */
+	/** Placed to the left of the anchor → scale out from its right edge. */
 	placeLeft: boolean;
 }
 
-interface Point {
-	x: number;
-	y: number;
+/** The trigger's viewport box — the subset of DOMRect the math needs. */
+interface AnchorRect {
+	top: number;
+	left: number;
+	right: number;
 }
 
 interface Viewport {
@@ -79,41 +134,50 @@ interface Viewport {
 	height: number;
 }
 
-/** Pure placement math (no DOM globals) so it stays node-testable: anchor the
- *  card at the cursor, opening down-right of it, flipping left when there isn't
- *  room, and clamping both axes into the viewport. */
+/** Pure placement math (no DOM globals) so it stays node-testable. Anchors the
+ *  card to the *trigger element* (not the cursor), placing it to the anchor's
+ *  right and flipping to its left when there isn't room, top-aligned to the
+ *  anchor and clamped into the viewport. Element-anchoring is what keeps the card
+ *  in the same place every open — no "lands wherever the cursor stopped" jitter —
+ *  and never covers the trigger it describes. */
 export function computePosition(
-	point: Point,
+	anchor: AnchorRect,
 	viewport: Viewport,
 ): CardPosition {
 	const { width: vw, height: vh } = viewport;
 	const width = Math.min(CARD_WIDTH, vw - VIEWPORT_MARGIN * 2);
 	const maxHeight = Math.min(460, Math.round(vh * 0.7));
 
-	const placeLeft = point.x + CARD_GAP + width > vw - VIEWPORT_MARGIN;
-	const rawLeft = placeLeft ? point.x - CARD_GAP - width : point.x + CARD_GAP;
+	const placeLeft = anchor.right + CARD_GAP + width > vw - VIEWPORT_MARGIN;
+	const rawLeft = placeLeft
+		? anchor.left - CARD_GAP - width
+		: anchor.right + CARD_GAP;
 	const left = Math.max(
 		VIEWPORT_MARGIN,
 		Math.min(rawLeft, vw - VIEWPORT_MARGIN - width),
 	);
 	const top = Math.max(
 		VIEWPORT_MARGIN,
-		Math.min(point.y + CARD_GAP, vh - VIEWPORT_MARGIN - maxHeight),
+		Math.min(anchor.top, vh - VIEWPORT_MARGIN - maxHeight),
 	);
 	return { left, top, width, maxHeight, placeLeft };
 }
 
 /**
- * Drives the playlist track preview for a match row. Hovering the cover or the
- * name (one bridged region via `triggerProps`) reveals a floating card at the
- * cursor showing that playlist's track list — and nothing else. The card is
- * portaled to <body> so it escapes the matching panel's overflow-hidden height
- * animator, and stays open while the cursor is inside it so the list can scroll.
+ * Drives the playlist track preview for a match row / review item. The preview
+ * is a floating card, anchored to its trigger element, showing that playlist's
+ * track list. It's portaled to <body> so it escapes the matching panel's
+ * overflow-hidden height animator, and stays open while the cursor is inside it
+ * so the list can scroll.
  *
- * Tracks load lazily — the infinite query is only enabled once the card has
- * opened, and React Query keeps the result cached so re-hovering is instant.
- * Hover is gated to fine-pointer devices; on touch the row's cover + reason
- * already identify the playlist.
+ * Two interaction models share the machinery (see `interaction`): song mode's
+ * hover tooltip on a bridged cover+name region, and playlist mode's disclosure
+ * where a button handle also toggles the card on click/tap/keyboard.
+ *
+ * Tracks load lazily by default — the infinite query is only enabled once the
+ * card has opened — unless `eager`, which fetches the first page up front.
+ * React Query keeps the result cached so re-opening is instant. Hover is gated
+ * to fine-pointer devices; touch and keyboard reach the same card via the handle.
  */
 export function usePlaylistTrackPreview({
 	playlistId,
@@ -121,12 +185,25 @@ export function usePlaylistTrackPreview({
 	canLoadTracks,
 	name,
 	reason,
+	interaction = "hover",
+	label,
+	eager = false,
 }: UsePlaylistTrackPreviewArgs): PlaylistTrackPreview {
 	const prefersReducedMotion = useReducedMotion();
 	const [open, setOpen] = useState(false);
 	const [everOpened, setEverOpened] = useState(false);
 	const [position, setPosition] = useState<CardPosition | null>(null);
-	const pointer = useRef<Point>({ x: 0, y: 0 });
+	// Rows stagger in on the first reveal only; on later re-opens the list appears
+	// at once, so a repeated hover-sweep doesn't replay the whole ripple.
+	const [animateRows, setAnimateRows] = useState(true);
+	const staggeredRef = useRef(false);
+	// The element the card anchors to — set to whatever opened it (the region on
+	// hover/focus, the handle on click). Read on open and on scroll/resize.
+	const anchorEl = useRef<HTMLElement | null>(null);
+	// Sticky = opened by an explicit click; it ignores hover-out and closes only on
+	// Escape, click-outside, or a second click on the handle.
+	const sticky = useRef(false);
+	const previewRef = useRef<HTMLDivElement | null>(null);
 	const openTimer = useRef<number | null>(null);
 	const closeTimer = useRef<number | null>(null);
 	const id = useId();
@@ -138,22 +215,39 @@ export function usePlaylistTrackPreview({
 		closeTimer.current = null;
 	}, []);
 
+	const reposition = useCallback(() => {
+		const el = anchorEl.current;
+		if (!el) return;
+		const rect = el.getBoundingClientRect();
+		setPosition(
+			computePosition(
+				{ top: rect.top, left: rect.left, right: rect.right },
+				{ width: window.innerWidth, height: window.innerHeight },
+			),
+		);
+	}, []);
+
+	const openNow = useCallback(() => {
+		reposition();
+		setOpen(true);
+		setEverOpened(true);
+		setAnimateRows(!staggeredRef.current);
+		staggeredRef.current = true;
+	}, [reposition]);
+
+	const close = useCallback(() => {
+		setOpen(false);
+		sticky.current = false;
+	}, []);
+
 	const scheduleOpen = useCallback(() => {
 		clearTimers();
-		openTimer.current = window.setTimeout(() => {
-			// Anchor at wherever the cursor settled when the intent delay elapsed.
-			setPosition(
-				computePosition(pointer.current, {
-					width: window.innerWidth,
-					height: window.innerHeight,
-				}),
-			);
-			setOpen(true);
-			setEverOpened(true);
-		}, OPEN_DELAY);
-	}, [clearTimers]);
+		openTimer.current = window.setTimeout(openNow, OPEN_DELAY);
+	}, [clearTimers, openNow]);
 
 	const scheduleClose = useCallback(() => {
+		// A sticky (click-opened) card stays until dismissed explicitly.
+		if (sticky.current) return;
 		clearTimers();
 		closeTimer.current = window.setTimeout(() => setOpen(false), CLOSE_DELAY);
 	}, [clearTimers]);
@@ -164,38 +258,38 @@ export function usePlaylistTrackPreview({
 			// tap and would trap the card open over the row the user meant to add.
 			if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches)
 				return;
-			pointer.current = { x: event.clientX, y: event.clientY };
+			anchorEl.current = event.currentTarget as HTMLElement;
 			scheduleOpen();
 		},
 		[scheduleOpen],
 	);
 
-	// Record the cursor as it moves over the trigger, so the card anchors wherever
-	// the pointer settled when the intent delay elapses. Position is computed once
-	// (in scheduleOpen) and then frozen, so the card stays put while the user moves
-	// into it to scroll — tracking past that point is harmless.
-	const handleTriggerMove = useCallback((event: ReactPointerEvent) => {
-		pointer.current = { x: event.clientX, y: event.clientY };
-	}, []);
-
-	// Keyboard/AT entry point. Focus is deliberate, so there's no hover-intent
-	// delay and no fine-pointer gate; we anchor to the trigger's own box (no
-	// cursor to follow) and reuse the same flip/clamp placement math.
+	// Keyboard/AT entry point for the hover model (song mode). Focus is deliberate,
+	// so there's no hover-intent delay and no fine-pointer gate.
 	const handleTriggerFocus = useCallback(
 		(event: ReactFocusEvent<HTMLElement>) => {
 			clearTimers();
-			const rect = event.currentTarget.getBoundingClientRect();
-			pointer.current = { x: rect.left, y: rect.bottom };
-			setPosition(
-				computePosition(pointer.current, {
-					width: window.innerWidth,
-					height: window.innerHeight,
-				}),
-			);
-			setOpen(true);
-			setEverOpened(true);
+			anchorEl.current = event.currentTarget;
+			openNow();
 		},
-		[clearTimers],
+		[clearTimers, openNow],
+	);
+
+	// The disclosure handle (playlist mode): click/tap/Enter toggles the card. A
+	// click "pins" a card that hover may have already opened, so it survives the
+	// pointer leaving; clicking a pinned card closes it.
+	const handleClick = useCallback(
+		(event: ReactMouseEvent<HTMLElement>) => {
+			clearTimers();
+			if (open && sticky.current) {
+				close();
+				return;
+			}
+			sticky.current = true;
+			anchorEl.current = event.currentTarget;
+			openNow();
+		},
+		[open, close, clearTimers, openNow],
 	);
 
 	useEffect(() => clearTimers, [clearTimers]);
@@ -203,20 +297,52 @@ export function usePlaylistTrackPreview({
 	useEffect(() => {
 		if (!open) return;
 		const onKey = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				clearTimers();
-				setOpen(false);
-			}
+			if (event.key !== "Escape") return;
+			clearTimers();
+			// Return focus to the handle when the user dismissed a pinned card, so
+			// keyboard focus doesn't fall back to <body>.
+			const returnFocus = sticky.current;
+			const el = anchorEl.current;
+			close();
+			if (returnFocus) el?.focus?.();
 		};
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
-	}, [open, clearTimers]);
+	}, [open, clearTimers, close]);
 
-	// Lazy: until the card has opened once, pass null so the query key resolves to
-	// tracks("") and stays disabled — no fetch for rows nobody previews. On first
-	// open the key switches to the real playlist id and the fetch (or cache hit)
-	// fires; React Query keeps it cached so re-hovering is instant.
-	const enabledId = canLoadTracks && everOpened ? playlistId : null;
+	// Keep the card glued to its anchor as the page scrolls or the window resizes.
+	useEffect(() => {
+		if (!open) return;
+		const onReflow = () => reposition();
+		window.addEventListener("scroll", onReflow, true);
+		window.addEventListener("resize", onReflow);
+		return () => {
+			window.removeEventListener("scroll", onReflow, true);
+			window.removeEventListener("resize", onReflow);
+		};
+	}, [open, reposition]);
+
+	// Dismiss on a pointer-down outside both the card and its anchor — the standard
+	// close for a click-opened (or lingering) card.
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (event: PointerEvent) => {
+			const target = event.target as Node;
+			if (previewRef.current?.contains(target)) return;
+			if (anchorEl.current?.contains(target)) return;
+			clearTimers();
+			close();
+		};
+		document.addEventListener("pointerdown", onDown, true);
+		return () => document.removeEventListener("pointerdown", onDown, true);
+	}, [open, clearTimers, close]);
+
+	// Lazy by default: until the card has opened once, pass null so the query key
+	// resolves to tracks("") and stays disabled — no fetch for rows nobody
+	// previews. `eager` (playlist mode) fetches up front instead. On enable the key
+	// switches to the real id and the fetch (or cache hit) fires; React Query keeps
+	// it cached so re-opening is instant.
+	const enabledId = canLoadTracks && (eager || everOpened) ? playlistId : null;
 	const tracksQuery = useInfiniteQuery(
 		playlistTracksInfiniteQueryOptions(enabledId),
 	);
@@ -233,6 +359,34 @@ export function usePlaylistTrackPreview({
 			),
 		[tracksQuery.data],
 	);
+	const previewCovers = useMemo<PlaylistPreviewCover[]>(() => {
+		// One cover per album, in track order, so the fan shows variety instead of
+		// three tiles of the same record.
+		const byAlbum: string[] = [];
+		const seen = new Set<string>();
+		for (const track of tracks) {
+			if (!track.imageUrl) continue;
+			const key = track.albumName ?? track.imageUrl;
+			if (seen.has(key)) continue;
+			seen.add(key);
+			byAlbum.push(track.imageUrl);
+		}
+		// Spotify builds a playlist's auto-mosaic cover from the first four distinct
+		// album covers, so treat those as "reused" and prefer the covers past them —
+		// the fan then previews art the cover doesn't already show.
+		const MOSAIC_COVERS = 4;
+		const fresh = byAlbum.slice(MOSAIC_COVERS);
+		const freshSet = new Set(fresh);
+		// Prefer fresh covers; only fall back to cover art to reach three.
+		const chosen = [...fresh, ...byAlbum.slice(0, MOSAIC_COVERS)].slice(0, 3);
+		// A cover reused from the playlist's own art gets marked so the UI sinks it
+		// to the back of the fan instead of showing it full and up front — but only
+		// when there's a fresh cover to contrast it against (a short, all-reused
+		// playlist just shows its covers normally).
+		return chosen
+			.map((url) => ({ url, reused: fresh.length > 0 && !freshSet.has(url) }))
+			.sort((a, b) => (a.reused === b.reused ? 0 : a.reused ? -1 : 1));
+	}, [tracks]);
 	const loadMoreTracks = useCallback(() => {
 		if (tracksQuery.hasNextPage && !tracksQuery.isFetchingNextPage)
 			void tracksQuery.fetchNextPage();
@@ -240,10 +394,11 @@ export function usePlaylistTrackPreview({
 
 	const total = songCount ?? tracks.length;
 
+	const cursorStyle = { cursor: "default" } as const;
+
 	const triggerProps: TriggerProps = canLoadTracks
 		? {
 				onPointerEnter: handleTriggerEnter,
-				onPointerMove: handleTriggerMove,
 				onPointerLeave: scheduleClose,
 				onFocus: handleTriggerFocus,
 				onBlur: scheduleClose,
@@ -255,9 +410,27 @@ export function usePlaylistTrackPreview({
 				// Override the text I-beam the name <p> would otherwise show: the name
 				// is a hover surface, not editable text. `default` (not `pointer`) —
 				// there's nothing to click here; Add owns the action.
-				style: { cursor: "default" },
+				style: cursorStyle,
 			}
 		: {};
+
+	const hoverProps: HoverProps = canLoadTracks
+		? {
+				onPointerEnter: handleTriggerEnter,
+				onPointerLeave: scheduleClose,
+				style: cursorStyle,
+			}
+		: {};
+
+	const handleProps: HandleProps = {
+		type: "button",
+		onClick: handleClick,
+		"aria-haspopup": "dialog",
+		"aria-expanded": open,
+		"aria-controls": open ? id : undefined,
+	};
+
+	const isDisclosure = interaction === "disclosure";
 
 	const preview =
 		canLoadTracks && typeof document !== "undefined"
@@ -267,7 +440,13 @@ export function usePlaylistTrackPreview({
 							<motion.div
 								key={id}
 								id={id}
-								role="tooltip"
+								ref={previewRef}
+								role={isDisclosure ? "dialog" : "tooltip"}
+								aria-label={
+									isDisclosure
+										? (label ?? name ?? "Playlist tracks")
+										: undefined
+								}
 								onPointerEnter={clearTimers}
 								onPointerLeave={scheduleClose}
 								initial={
@@ -294,15 +473,17 @@ export function usePlaylistTrackPreview({
 												},
 											}
 								}
-								className="theme-surface-bg theme-border-color fixed z-[60] flex flex-col overflow-y-auto overscroll-contain border px-4 py-3"
+								className="theme-surface-bg fixed z-[60] flex flex-col overflow-y-auto overscroll-contain rounded-xl px-4 py-3"
 								style={{
 									left: position.left,
 									top: position.top,
 									width: position.width,
 									maxHeight: position.maxHeight,
 									transformOrigin: `${position.placeLeft ? "right" : "left"} top`,
+									// Layered shadow (no hard border) so the card floats naturally
+									// over any surface underneath.
 									boxShadow:
-										"0 18px 48px -24px color-mix(in srgb, var(--t-text) 42%, transparent)",
+										"0 1px 1px color-mix(in srgb, var(--t-text) 5%, transparent), 0 10px 20px -12px color-mix(in srgb, var(--t-text) 22%, transparent), 0 28px 56px -28px color-mix(in srgb, var(--t-text) 34%, transparent)",
 									willChange: "transform",
 								}}
 							>
@@ -352,6 +533,7 @@ export function usePlaylistTrackPreview({
 										hasMore={tracksQuery.hasNextPage}
 										isLoadingMore={tracksQuery.isFetchingNextPage}
 										onLoadMore={loadMoreTracks}
+										animateIn={animateRows}
 										hideAlbum
 										hideEmptyState
 									/>
@@ -370,5 +552,12 @@ export function usePlaylistTrackPreview({
 				)
 			: null;
 
-	return { triggerProps, preview };
+	return {
+		triggerProps,
+		hoverProps,
+		handleProps,
+		preview,
+		previewCovers,
+		isOpen: open,
+	};
 }

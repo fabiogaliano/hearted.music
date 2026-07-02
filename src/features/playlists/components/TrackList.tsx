@@ -20,6 +20,9 @@ interface TrackListProps {
 	/** Drop the per-track album column — for tight contexts like the match
 	 *  preview card where the extra text is noise. */
 	hideAlbum?: boolean;
+	/** Stagger the rows in on mount. The preview card sets this false on re-opens
+	 *  so a repeated hover-sweep doesn't replay the whole ripple every time. */
+	animateIn?: boolean;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
@@ -33,6 +36,7 @@ export function TrackList({
 	onLoadMore,
 	hideEmptyState = false,
 	hideAlbum = false,
+	animateIn = true,
 }: TrackListProps) {
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
@@ -63,8 +67,10 @@ export function TrackList({
 			{tracks.map((track, i) => (
 				<div
 					key={`${track.position}-${track.name}`}
-					className="theme-border-color xpl-track-enter flex items-center gap-3.5 border-b py-2.5 last:border-b-0"
-					style={{ animationDelay: `${i * 26}ms` }}
+					className={`theme-border-color flex items-center gap-3.5 border-b py-2.5 last:border-b-0 ${
+						animateIn ? "xpl-track-enter" : ""
+					}`}
+					style={animateIn ? { animationDelay: `${i * 26}ms` } : undefined}
 				>
 					<span
 						className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"

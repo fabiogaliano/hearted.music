@@ -212,7 +212,7 @@ function MatchRow({
 			<PlaylistMatchRow
 				playlistId={playlist.id}
 				name={playlist.name}
-				leadProps={triggerProps}
+				coverProps={triggerProps}
 				media={
 					<Cover src={playlist.imageUrl} size={56} className="flex-none" />
 				}

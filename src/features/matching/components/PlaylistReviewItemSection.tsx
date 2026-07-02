@@ -1,3 +1,4 @@
+import { CaretRightIcon } from "@phosphor-icons/react";
 import {
 	AnimatePresence,
 	motion,
@@ -63,20 +64,26 @@ function PlaylistCoverAndName({
 	reviewItem,
 	canLoadTracks,
 }: PlaylistCoverAndNameProps) {
-	const { triggerProps, preview } = usePlaylistTrackPreview({
-		playlistId: reviewItem.id,
-		songCount: reviewItem.trackCount,
-		canLoadTracks,
-	});
+	const { hoverProps, handleProps, preview, previewCovers } =
+		usePlaylistTrackPreview({
+			playlistId: reviewItem.id,
+			songCount: reviewItem.trackCount,
+			canLoadTracks,
+			interaction: "disclosure",
+			label: reviewItem.name,
+			eager: true,
+		});
 
-	// triggerProps bridges the cover + gap + name into one hover/focus region.
-	// A single wrapper div receives them so the user can move between the cover
-	// and the text without the preview closing. Keyboard users can tab to this
-	// region and the same preview opens — no hover required (a11y parity).
+	// The cover and the "N songs" count both open the preview on hover; the count
+	// also carries handleProps as the real (button) trigger — click, tap, or
+	// keyboard — so touch and AT users open the same card without hovering. Name
+	// and intent stay inert so they can be read (and selected) without the card
+	// popping over them.
 	return (
 		<>
-			<div {...triggerProps} className="flex flex-col">
+			<div className="flex flex-col">
 				<div
+					{...hoverProps}
 					className="relative aspect-square shrink-0 origin-top overflow-hidden"
 					style={{ maxWidth: COVER_SIZE, width: COVER_SIZE }}
 				>
@@ -108,15 +115,61 @@ function PlaylistCoverAndName({
 					className="mt-auto pt-[clamp(1rem,4dvh,2.5rem)]"
 					style={{ maxWidth: COVER_SIZE }}
 				>
-					{reviewItem.trackCount != null && (
-						<p
-							className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
-							style={{ fontFamily: fonts.body }}
-						>
-							{reviewItem.trackCount}{" "}
-							{reviewItem.trackCount === 1 ? "song" : "songs"}
-						</p>
-					)}
+					{reviewItem.trackCount != null &&
+						(canLoadTracks ? (
+							// The count doubles as the handle into the track list: a real
+							// button (44px tall) opening the card on click/tap/keyboard, so
+							// touch and AT users get a first-class trigger — not just hover.
+							// The fan of first covers previews what's inside, turning the
+							// number from a readout into a doorway. -mx/-mt cancel the button's
+							// own padding so text still aligns with the name and eyebrow rhythm.
+							<button
+								{...hoverProps}
+								{...handleProps}
+								className="group/handle theme-text-muted -mx-1.5 -mt-2 inline-flex min-h-11 items-center gap-2.5 rounded-md px-1.5 py-2 text-[10px] tracking-[0.25em] uppercase opacity-70 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+								style={{ fontFamily: fonts.body, cursor: "pointer" }}
+							>
+								{previewCovers.length > 0 && (
+									<span className="flex items-center" aria-hidden="true">
+										{previewCovers.map((cover, i) => (
+											<img
+												key={cover.url}
+												src={cover.url}
+												alt=""
+												className="image-outline rounded-[3px] object-cover"
+												style={{
+													// A cover reused from the playlist's mosaic art sinks to
+													// the back of the fan — smaller and dimmer, tucked under
+													// the fresh cover painted on top of it — so a repeat
+													// doesn't read as the prominent tile.
+													width: cover.reused ? 18 : 22,
+													height: cover.reused ? 18 : 22,
+													marginLeft: i === 0 ? 0 : -8,
+													opacity: cover.reused ? 0.6 : 1,
+												}}
+											/>
+										))}
+									</span>
+								)}
+								<span className="border-b border-transparent tabular-nums transition-colors group-hover/handle:border-current">
+									{reviewItem.trackCount}{" "}
+									{reviewItem.trackCount === 1 ? "song" : "songs"}
+								</span>
+								<CaretRightIcon
+									size={11}
+									weight="bold"
+									className="-translate-x-0.5 opacity-0 transition-[opacity,transform] group-hover/handle:translate-x-0 group-hover/handle:opacity-70"
+								/>
+							</button>
+						) : (
+							<p
+								className="theme-text-muted truncate text-[10px] tracking-[0.25em] uppercase opacity-70"
+								style={{ fontFamily: fonts.body }}
+							>
+								{reviewItem.trackCount}{" "}
+								{reviewItem.trackCount === 1 ? "song" : "songs"}
+							</p>
+						))}
 					{/* break-words: playlist names can be a single spaceless token
 					(e.g. "gaming+anime+vibez"). Without it that token can't wrap and
 					overflows the grid track into the suggestions column. leading-[1.1]
