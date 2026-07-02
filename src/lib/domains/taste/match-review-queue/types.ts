@@ -96,6 +96,10 @@ export interface MatchReviewQueueItemDto {
 	wasNewAtEnqueue: boolean;
 	presentedAt: string | null;
 	resolvedAt: string | null;
+	// Set by the capture RPC when the visible pairs were frozen. Once set, the
+	// captured rows are the card's authority — presentation can read them
+	// directly instead of re-deriving the visible list.
+	visiblePairsCapturedAt: string | null;
 	createdAt: string;
 	updatedAt: string;
 }

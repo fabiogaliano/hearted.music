@@ -6,12 +6,14 @@ import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queu
 import {
 	addQueueItemDecisionAtomically,
 	clearSongNewness,
+	countCapturedVisiblePairs,
 	dismissQueueItemAtomically,
 	dismissQueueItemSuggestionAtomically,
 	fetchActiveSession,
 	fetchQueueItems,
 	finishQueueItemAtomically,
 	mapItemToDto,
+	readQueueItemSongSuggestions,
 } from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	createOrResumeQueue,
@@ -734,6 +736,140 @@ const PresentMatchReviewItemSchema = z.object({
 });
 
 /**
+ * Renders a playlist-orientation card entirely from the captured authority:
+ * the playlist row plus ONE read-model RPC over the captured pairs — joined to
+ * song rows, dismissed pairs anti-joined, display-ordered, all inside
+ * Postgres. No id set crosses HTTP, so this path cannot hit the URI-length
+ * limit at any capture size (845-pair legacy captures included), and a card
+ * render is 2 round trips instead of ~10 chunked reads.
+ *
+ * Only valid post-capture: callers must have verified visible_pairs_captured_at
+ * on the item, or have just run captureVisiblePairsAtomic successfully.
+ */
+async function readPlaylistCardFromCapture(
+	itemId: string,
+	accountId: string,
+	playlistId: string,
+): Promise<MatchReviewItemRead> {
+	const supabase = createAdminSupabaseClient();
+	const [playlistRowResult, suggestionRowsResult] = await Promise.all([
+		supabase
+			.from("playlist")
+			.select("id, name, match_intent, song_count, image_url, spotify_id")
+			.eq("id", playlistId)
+			.eq("account_id", accountId)
+			.maybeSingle(),
+		readQueueItemSongSuggestions(itemId, accountId),
+	]);
+
+	if (playlistRowResult.error) {
+		reportQueueError(playlistRowResult.error, "present_match_review_item", {
+			accountId,
+			orientation: "playlist",
+		});
+		return {
+			status: "retryable-error",
+			itemId,
+			message: "Couldn't load this match card. Try again.",
+		};
+	}
+	if (!playlistRowResult.data) {
+		// Account-filtered read doubles as the entitlement check the fast path
+		// skips (the derivation path ran checkPlaylistOwned). The card is already
+		// captured, so it is skippable without the empty-capture stamp that
+		// presentUnavailableOwnedItem exists to write pre-capture.
+		return {
+			status: "unavailable",
+			itemId,
+			reason: "not-entitled",
+			message: "This playlist is no longer available to match.",
+		};
+	}
+
+	if (Result.isError(suggestionRowsResult)) {
+		reportQueueError(suggestionRowsResult.error, "present_match_review_item", {
+			accountId,
+			orientation: "playlist",
+		});
+		return {
+			status: "retryable-error",
+			itemId,
+			message: "Couldn't load this match card. Try again.",
+		};
+	}
+
+	const rows = suggestionRowsResult.value;
+
+	// Zero active rows is ambiguous: an empty capture (no-visible-suggestions
+	// card) vs a capture whose pairs were all row-dismissed after presentation
+	// (ready card, empty list — matches the pre-RPC filter behavior).
+	if (rows.length === 0) {
+		const capturedCountResult = await countCapturedVisiblePairs(
+			itemId,
+			accountId,
+		);
+		if (Result.isError(capturedCountResult)) {
+			reportQueueError(capturedCountResult.error, "present_match_review_item", {
+				accountId,
+				orientation: "playlist",
+			});
+			return {
+				status: "retryable-error",
+				itemId,
+				message: "Couldn't load this match card. Try again.",
+			};
+		}
+		if (capturedCountResult.value === 0) {
+			return {
+				status: "unavailable",
+				itemId,
+				reason: "no-visible-suggestions",
+				message: noVisibleSuggestionsMessage("playlist"),
+			};
+		}
+	}
+
+	const pl = playlistRowResult.data;
+	const reviewItem: MatchingPlaylistForReview = {
+		id: pl.id,
+		spotifyId: pl.spotify_id,
+		name: pl.name,
+		description: pl.match_intent,
+		imageUrl: pl.image_url,
+		trackCount: pl.song_count,
+	};
+
+	// Rows arrive in display order from the RPC (fit_score DESC, model_rank
+	// ASC, stable id — the same C12 order derivation assigns visible ranks in),
+	// so no re-sort here.
+	const suggestions: MatchingSongSuggestion[] = rows.map((r) => ({
+		song: {
+			id: r.songId,
+			spotifyId: r.spotifyId,
+			name: r.name,
+			artist: r.artists[0] ?? "Unknown Artist",
+			album: r.albumName,
+			albumArtUrl: r.imageUrl,
+			genres: r.genres,
+			// Audio features and analysis are not surfaced in the playlist-mode
+			// card render; fetching them would add two joins with no UI benefit.
+			audioFeatures: null,
+			analysis: null,
+		},
+		// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
+		fitScore: r.fitScore,
+	}));
+
+	return {
+		status: "ready",
+		itemId,
+		mode: "playlist",
+		reviewItem,
+		suggestions,
+	};
+}
+
+/**
  * Orientation-aware copy for the no-visible-suggestions card. A song-orientation
  * subject is matched against playlists; a playlist-orientation subject against
  * songs — so this must name the suggestion side. The UI renders itemData.message
@@ -821,6 +957,21 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					reason: "not-entitled",
 					message: "Item not found.",
 				};
+			}
+
+			// Fast path: a captured playlist card renders from the captured
+			// authority alone. Before this check, every revisit/retry re-ran the
+			// full visible-list derivation (~25 round trips) only for the capture
+			// RPC to discard it as already_captured.
+			if (
+				item.subject.orientation === "playlist" &&
+				item.visiblePairsCapturedAt
+			) {
+				return readPlaylistCardFromCapture(
+					itemId,
+					session.accountId,
+					item.subject.playlistId,
+				);
 			}
 
 			// Load session's stored strictness — must not re-read live preferences so
@@ -979,32 +1130,35 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				};
 			}
 
-			const filteredSuggestionsResult = await filterDismissedActiveSuggestions(
-				supabase,
-				session.accountId,
-				list.subject,
-				activeSuggestions,
-			);
-			if (Result.isError(filteredSuggestionsResult)) {
-				reportQueueError(
-					filteredSuggestionsResult.error,
-					"present_match_review_item",
-					{
-						accountId: session.accountId,
-						orientation: item.subject.orientation,
-					},
-				);
-				return {
-					status: "retryable-error",
-					itemId,
-					message: "Couldn't load this match card. Try again.",
-				};
-			}
-			activeSuggestions = filteredSuggestionsResult.value;
-
 			// Build render-ready data keyed off the active suggestion set.
 			if (list.orientation === "song" && list.subject.orientation === "song") {
 				const songId = list.subject.songId;
+
+				// Row-dismissed pairs are excluded app-side on the song arm only —
+				// the playlist arm's read RPC anti-joins them inside Postgres.
+				const filteredSuggestionsResult =
+					await filterDismissedActiveSuggestions(
+						supabase,
+						session.accountId,
+						list.subject,
+						activeSuggestions,
+					);
+				if (Result.isError(filteredSuggestionsResult)) {
+					reportQueueError(
+						filteredSuggestionsResult.error,
+						"present_match_review_item",
+						{
+							accountId: session.accountId,
+							orientation: item.subject.orientation,
+						},
+					);
+					return {
+						status: "retryable-error",
+						itemId,
+						message: "Couldn't load this match card. Try again.",
+					};
+				}
+				activeSuggestions = filteredSuggestionsResult.value;
 
 				// Clear song newness on song-mode presentation — idempotent upsert.
 				// Best-effort: a failure must not fail the presentation.
@@ -1041,104 +1195,21 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 				};
 			}
 
-			// Playlist arm: review subject is a playlist; suggestions are songs.
+			// Playlist arm: capture just ran (fresh or already_captured), so render
+			// from the captured authority via the read-model RPC — one round trip,
+			// no id lists over HTTP, dismissed pairs anti-joined in SQL. The
+			// in-memory activeSuggestions set is deliberately NOT used to build the
+			// card: both first presentation and every revisit render through the
+			// same read path, so the two can never drift.
 			if (
 				list.orientation === "playlist" &&
 				list.subject.orientation === "playlist"
 			) {
-				const playlistId = list.subject.playlistId;
-
-				// The suggestion song set for one playlist can reach the 1000-row cap,
-				// so the `.in("id", …)` read is chunked to keep each request's query
-				// string under the URI-length limit (same 414 bug class as the queue
-				// bootstrap). The playlist row read rides alongside it unchanged.
-				const [playlistRowResult, songRowsResult] = await Promise.all([
-					supabase
-						.from("playlist")
-						.select("id, name, match_intent, song_count, image_url, spotify_id")
-						.eq("id", playlistId)
-						.single(),
-					chunkedRead(
-						activeSuggestions.map((s) => s.songId),
-						(batch) =>
-							fromSupabaseMany(
-								supabase
-									.from("song")
-									.select(
-										"id, name, artists, album_name, image_url, spotify_id, genres",
-									)
-									.in("id", batch),
-							),
-					),
-				]);
-
-				if (playlistRowResult.error || !playlistRowResult.data) {
-					return {
-						status: "unavailable",
-						itemId,
-						reason: "missing-song",
-						message: "This playlist could not be found.",
-					};
-				}
-
-				if (Result.isError(songRowsResult)) {
-					// Operational DB failure on the suggestion-song `.in(...)` read.
-					reportQueueError(songRowsResult.error, "present_match_review_item", {
-						accountId: session.accountId,
-						orientation: item.subject.orientation,
-					});
-					return {
-						status: "retryable-error",
-						itemId,
-						message: "Couldn't load this match card. Try again.",
-					};
-				}
-
-				const pl = playlistRowResult.data;
-				const reviewItem: MatchingPlaylistForReview = {
-					id: pl.id,
-					spotifyId: pl.spotify_id,
-					name: pl.name,
-					description: pl.match_intent,
-					imageUrl: pl.image_url,
-					trackCount: pl.song_count,
-				};
-
-				const songMap = new Map(songRowsResult.value.map((s) => [s.id, s]));
-
-				// activeSuggestions arrives ordered by visibleRank from the capture RPC.
-				const suggestions: MatchingSongSuggestion[] = [];
-				for (const s of activeSuggestions
-					.slice()
-					.sort((a, b) => a.visibleRank - b.visibleRank)) {
-					const songRow = songMap.get(s.songId);
-					if (!songRow) continue;
-					suggestions.push({
-						song: {
-							id: songRow.id,
-							spotifyId: songRow.spotify_id,
-							name: songRow.name,
-							artist: songRow.artists[0] ?? "Unknown Artist",
-							album: songRow.album_name,
-							albumArtUrl: songRow.image_url,
-							genres: songRow.genres,
-							// Audio features and analysis are not surfaced in the playlist-mode
-							// card render; fetching them would add two joins with no UI benefit.
-							audioFeatures: null,
-							analysis: null,
-						},
-						// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
-						fitScore: s.fitScore,
-					});
-				}
-
-				return {
-					status: "ready",
+				return readPlaylistCardFromCapture(
 					itemId,
-					mode: "playlist",
-					reviewItem,
-					suggestions,
-				};
+					session.accountId,
+					list.subject.playlistId,
+				);
 			}
 
 			// Should not be reachable; guards above cover all orientations.

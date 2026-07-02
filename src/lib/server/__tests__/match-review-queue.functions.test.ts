@@ -1,9 +1,9 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { QueueItemSongSuggestionRow } from "@/lib/domains/taste/match-review-queue/queries";
 import { fetchQueueItems } from "@/lib/domains/taste/match-review-queue/queries";
 import { createOrResumeQueue } from "@/lib/domains/taste/match-review-queue/service";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import {
 	addSongToPlaylistFromQueueItem,
 	dismissMatchReviewItem,
@@ -44,6 +44,8 @@ const {
 	mockComputeVisibleSuggestionList,
 	mockCaptureVisiblePairsAtomic,
 	mockClearSongNewness,
+	mockReadQueueItemSongSuggestions,
+	mockCountCapturedVisiblePairs,
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
 } = vi.hoisted(() => {
@@ -75,6 +77,8 @@ const {
 		mockComputeVisibleSuggestionList: vi.fn(),
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockClearSongNewness: vi.fn().mockResolvedValue(undefined),
+		mockReadQueueItemSongSuggestions: vi.fn(),
+		mockCountCapturedVisiblePairs: vi.fn(),
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 	};
@@ -171,6 +175,10 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	addQueueItemDecisionAtomically: (...args: unknown[]) =>
 		mockAddQueueItemDecisionAtomically(...args),
 	clearSongNewness: (...args: unknown[]) => mockClearSongNewness(...args),
+	countCapturedVisiblePairs: (...args: unknown[]) =>
+		mockCountCapturedVisiblePairs(...args),
+	readQueueItemSongSuggestions: (...args: unknown[]) =>
+		mockReadQueueItemSongSuggestions(...args),
 	dismissQueueItemAtomically: (...args: unknown[]) =>
 		mockDismissQueueItemAtomically(...args),
 	dismissQueueItemSuggestionAtomically: (...args: unknown[]) =>
@@ -198,6 +206,7 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 		wasNewAtEnqueue: data.was_new_at_enqueue,
 		presentedAt: data.presented_at,
 		resolvedAt: data.resolved_at,
+		visiblePairsCapturedAt: data.visible_pairs_captured_at ?? null,
 		createdAt: data.created_at,
 		updatedAt: data.updated_at,
 	}),
@@ -223,7 +232,7 @@ const BASE_ITEM = {
 	resolution: null,
 	source_fit_score: 0.85,
 	was_new_at_enqueue: false,
-	visible_pairs_captured_at: null,
+	visible_pairs_captured_at: null as string | null,
 	presented_at: null,
 	resolved_at: null,
 	created_at: "2026-01-01T00:00:00Z",
@@ -1423,6 +1432,7 @@ function fakeDomainItem(overrides: Record<string, unknown> = {}) {
 		wasNewAtEnqueue: false,
 		presentedAt: null,
 		resolvedAt: null,
+		visiblePairsCapturedAt: null,
 		createdAt: "2026-01-01T00:00:00Z",
 		updatedAt: "2026-01-01T00:00:00Z",
 		...overrides,
@@ -2320,12 +2330,31 @@ describe("presentMatchReviewItem", () => {
 		],
 	};
 
+	// Default read-model row for the playlist arm — mirrors what the
+	// read_match_review_item_song_suggestions RPC returns for song-2.
+	const BASE_SUGGESTION_ROW: QueueItemSongSuggestionRow = {
+		songId: "song-2",
+		name: "Suggested Song",
+		artists: ["Suggested Artist"],
+		albumName: "Suggested Album",
+		imageUrl: "sg.jpg",
+		spotifyId: "sp-song-2",
+		genres: ["rock"],
+		fitScore: 0.75,
+		visibleRank: 1,
+		modelRank: 1,
+		totalActiveCount: 1,
+	};
+
 	/**
-	 * Wires mockFrom for playlist-orientation presentMatchReviewItem DB fetches:
-	 *  - ownership (queue item) + session reads use the same chain as setupPresentItemFetch
-	 *  - playlist table: single row via .eq().single() (the review subject)
-	 *  - song table: array via .in() (the song candidates)
-	 * No song_audio_feature or song_analysis mocks needed — playlist mode does not fetch them.
+	 * Wires the playlist-orientation presentMatchReviewItem path:
+	 *  - ownership (queue item) + session reads via mockFrom, same chain as
+	 *    setupPresentItemFetch
+	 *  - playlist subject row via .eq(id).eq(account_id).maybeSingle() — the
+	 *    account filter doubles as the entitlement check on the captured path
+	 *  - suggestions via the read-model RPC (readQueueItemSongSuggestions), NOT
+	 *    table reads: song and match_decision are never queried on this arm, so
+	 *    no id list can hit the URL-length limit regardless of capture size.
 	 */
 	function setupPlaylistPresentItemFetch(
 		opts: {
@@ -2339,16 +2368,9 @@ describe("presentMatchReviewItem", () => {
 				image_url: string | null;
 				spotify_id: string;
 			} | null;
-			songRows?: Array<{
-				id: string;
-				name: string;
-				artists: string[];
-				album_name: string | null;
-				image_url: string | null;
-				spotify_id: string;
-				genres: string[];
-			}>;
-			songRowsError?: boolean;
+			suggestionRows?: Array<typeof BASE_SUGGESTION_ROW>;
+			suggestionReadError?: boolean;
+			capturedPairCount?: number;
 		} = {},
 	) {
 		const {
@@ -2362,19 +2384,19 @@ describe("presentMatchReviewItem", () => {
 				image_url: "pl.jpg",
 				spotify_id: "sp-pl-review",
 			},
-			songRows = [
-				{
-					id: "song-2",
-					name: "Suggested Song",
-					artists: ["Suggested Artist"],
-					album_name: "Suggested Album",
-					image_url: "sg.jpg",
-					spotify_id: "sp-song-2",
-					genres: ["rock"],
-				},
-			],
-			songRowsError = false,
+			suggestionRows = [BASE_SUGGESTION_ROW],
+			suggestionReadError = false,
+			capturedPairCount = 1,
 		} = opts;
+
+		mockReadQueueItemSongSuggestions.mockResolvedValue(
+			suggestionReadError
+				? Result.err(new DatabaseError({ code: "PGRST301", message: "boom" }))
+				: Result.ok(suggestionRows),
+		);
+		mockCountCapturedVisiblePairs.mockResolvedValue(
+			Result.ok(capturedPairCount),
+		);
 
 		mockFrom.mockImplementation((table: string) => {
 			if (table === "match_review_queue_item") {
@@ -2403,37 +2425,15 @@ describe("presentMatchReviewItem", () => {
 					}),
 				};
 			}
-			if (table === "match_decision") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								eq: vi.fn().mockReturnValue({
-									in: vi.fn().mockResolvedValue({ data: [], error: null }),
-								}),
-							}),
-						}),
-					}),
-				};
-			}
 			if (table === "playlist") {
 				return {
 					select: vi.fn().mockReturnValue({
 						eq: vi.fn().mockReturnValue({
-							single: vi.fn().mockResolvedValue({
-								data: playlistRow,
-								error: playlistRow ? null : { message: "not found" },
+							eq: vi.fn().mockReturnValue({
+								maybeSingle: vi
+									.fn()
+									.mockResolvedValue({ data: playlistRow, error: null }),
 							}),
-						}),
-					}),
-				};
-			}
-			if (table === "song") {
-				return {
-					select: vi.fn().mockReturnValue({
-						in: vi.fn().mockResolvedValue({
-							data: songRowsError ? null : songRows,
-							error: songRowsError ? { message: "db error" } : null,
 						}),
 					}),
 				};
@@ -2452,6 +2452,12 @@ describe("presentMatchReviewItem", () => {
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
+		// Suggestions come from the read-model RPC keyed by item + account only —
+		// never from id-list table reads.
+		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+		);
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.itemId).toBe("item-1");
 			expect(result.reviewItem.id).toBe("pl-review");
@@ -2479,7 +2485,7 @@ describe("presentMatchReviewItem", () => {
 		expect(mockClearSongNewness).not.toHaveBeenCalled();
 	});
 
-	it("returns unavailable missing-song when the review playlist row is not found", async () => {
+	it("returns unavailable not-entitled when the review playlist row is not owned or missing", async () => {
 		setupPlaylistPresentItemFetch({ playlistRow: null });
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
@@ -2490,12 +2496,12 @@ describe("presentMatchReviewItem", () => {
 
 		expect(result.status).toBe("unavailable");
 		if (result.status === "unavailable") {
-			expect(result.reason).toBe("missing-song");
+			expect(result.reason).toBe("not-entitled");
 		}
 	});
 
-	it("returns retryable-error when the suggestion song rows fetch fails on playlist mode", async () => {
-		setupPlaylistPresentItemFetch({ songRowsError: true });
+	it("returns retryable-error and reports when the suggestion read RPC fails on playlist mode", async () => {
+		setupPlaylistPresentItemFetch({ suggestionReadError: true });
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: MOCK_PLAYLIST_LIST,
@@ -2504,15 +2510,27 @@ describe("presentMatchReviewItem", () => {
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("retryable-error");
+		// The RPC error must still reach Sentry before the opaque card.
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "present_match_review_item",
+			},
+		});
 	});
 
-	it("uses fitScore from captured pairs in playlist mode (already_captured path)", async () => {
-		setupPlaylistPresentItemFetch();
+	it("uses fitScore from the read-model rows in playlist mode (already_captured path)", async () => {
+		// The read RPC reads the captured pair rows, so its fitScore — not the
+		// fresh derivation's — is what renders.
+		setupPlaylistPresentItemFetch({
+			suggestionRows: [{ ...BASE_SUGGESTION_ROW, fitScore: 0.63 }],
+		});
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: MOCK_PLAYLIST_LIST,
 		});
-		// already_captured returns different fitScore than the fresh derivation.
 		mockCaptureVisiblePairsAtomic.mockResolvedValue({
 			status: "already_captured",
 			pairs: [
@@ -2530,7 +2548,6 @@ describe("presentMatchReviewItem", () => {
 
 		expect(result.status).toBe("ready");
 		if (result.status === "ready" && result.mode === "playlist") {
-			// fitScore comes from the captured pair row, not the fresh derivation.
 			expect(result.suggestions[0].fitScore).toBe(0.63);
 		}
 	});
@@ -2556,107 +2573,6 @@ describe("presentMatchReviewItem", () => {
 		}
 	});
 
-	/**
-	 * Wires the playlist-orientation present path with capturing `.in()` mocks so
-	 * chunking can be asserted on BOTH oversized-id reads: the suggestion-song
-	 * fetch and the dismissed-pair match_decision fetch. Each runs through
-	 * chunkedRead + fromSupabaseMany, so an oversized suggestion set must split
-	 * into URL-safe batches rather than encoding every id into one query string
-	 * (the 414 bug class — the dismissed read shipped un-chunked once because
-	 * only the song read had a batch assertion). `songIn` resolves each captured
-	 * song batch to its `{ data, error }`; dismissed reads resolve to
-	 * `dismissedRows` filtered to the batch.
-	 */
-	function installPlaylistPresentWithCapturingSongRead(
-		songIn: (batch: string[]) => { data: unknown; error: unknown },
-		dismissedRows: Array<{ song_id: string; playlist_id: string }> = [],
-	): { songBatches: string[][]; dismissedBatches: string[][] } {
-		const songBatches: string[][] = [];
-		const dismissedBatches: string[][] = [];
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: BASE_PLAYLIST_ITEM,
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_review_session") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: { strictness_min_score: 0 },
-									error: null,
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "match_decision") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								eq: vi.fn().mockReturnValue({
-									in: vi.fn((_col: string, batch: string[]) => {
-										dismissedBatches.push(batch);
-										return Promise.resolve({
-											data: dismissedRows.filter((r) =>
-												batch.includes(r.song_id),
-											),
-											error: null,
-										});
-									}),
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "playlist") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							single: vi.fn().mockResolvedValue({
-								data: {
-									id: "pl-review",
-									name: "Review Playlist",
-									match_intent: "test intent",
-									song_count: 20,
-									image_url: "pl.jpg",
-									spotify_id: "sp-pl-review",
-								},
-								error: null,
-							}),
-						}),
-					}),
-				};
-			}
-			if (table === "song") {
-				return {
-					select: vi.fn().mockReturnValue({
-						in: vi.fn((_col: string, batch: string[]) => {
-							songBatches.push(batch);
-							return Promise.resolve(songIn(batch));
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
-		return { songBatches, dismissedBatches };
-	}
-
 	function playlistListWithSongSuggestions(songIds: string[]) {
 		return {
 			orientation: "playlist" as const,
@@ -2671,151 +2587,129 @@ describe("presentMatchReviewItem", () => {
 		};
 	}
 
-	// Builds an already_captured capture result with the given stored pairs. The
-	// fresh derivation is capped to PLAYLIST_CARD_SUGGESTION_CAP before capture, so
-	// an oversized activeSuggestions set can now only arrive via already_captured —
-	// a card captured before the cap shipped whose stored pairs still exceed it.
-	// That is the path the chunked `.in()` read must still protect (the 414 class).
-	function storedPairs(songIds: string[]) {
+	// Read-model rows for a generated id set, mirroring the RPC's display order.
+	function suggestionRowsFor(songIds: string[]): QueueItemSongSuggestionRow[] {
 		return songIds.map((id, i) => ({
 			songId: id,
-			playlistId: "pl-review",
+			name: `Song ${id}`,
+			artists: ["Artist"],
+			albumName: null,
+			imageUrl: "sg.jpg",
+			spotifyId: `sp-${id}`,
+			genres: [] as string[],
 			fitScore: 0.5,
 			visibleRank: i + 1,
+			modelRank: i + 1,
+			totalActiveCount: songIds.length,
 		}));
 	}
 
-	it("chunks the suggestion-song .in() read when captured pairs exceed the URL-safe limit", async () => {
-		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		// already_captured (legacy pre-cap capture) returns 201 stored pairs; the cap
-		// only bounds fresh derivation, so this path still drives the chunked read.
+	// A queue item whose visible pairs were already captured on an earlier
+	// present — the trigger for the derivation-skipping fast path.
+	const CAPTURED_PLAYLIST_ITEM = {
+		...BASE_PLAYLIST_ITEM,
+		visible_pairs_captured_at: "2026-07-01T02:12:48Z",
+	};
+
+	it("renders an oversized legacy capture via the read RPC with no id-list reads", async () => {
+		// Pre-cap captures reach 845 pairs. Chunk-reading their ids over HTTP is
+		// the 414 bug class (it shipped un-chunked once); the read model keys by
+		// item + account only, so no suggestion id ever enters a query string.
+		const songIds = Array.from({ length: 845 }, (_, i) => `song-${i}`);
+		setupPlaylistPresentItemFetch({
+			suggestionRows: suggestionRowsFor(songIds),
+		});
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: playlistListWithSongSuggestions(songIds),
 		});
 		mockCaptureVisiblePairsAtomic.mockResolvedValue({
 			status: "already_captured",
-			pairs: storedPairs(songIds),
+			pairs: songIds.map((id, i) => ({
+				songId: id,
+				playlistId: "pl-review",
+				fitScore: 0.5,
+				visibleRank: i + 1,
+			})),
 		});
-		const { songBatches, dismissedBatches } =
-			installPlaylistPresentWithCapturingSongRead((batch) => ({
-				data: batch.map((id) => ({
-					id,
-					name: `Song ${id}`,
-					artists: ["Artist"],
-					album_name: null,
-					image_url: "sg.jpg",
-					spotify_id: `sp-${id}`,
-					genres: [],
-				})),
-				error: null,
-			}));
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
-		// 201 ids at chunk size 100 → 3 batches, each within the URL-safe bound.
-		expect(songBatches).toHaveLength(3);
-		expect(songBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE)).toBe(
-			true,
+		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
 		);
-		// Every suggestion id is read exactly once across the batches.
-		expect(songBatches.flat().sort()).toEqual([...songIds].sort());
-		// The dismissed-pair match_decision read carries the same 201-id set, so it
-		// must chunk identically — it shipped un-chunked once (the prod 414).
-		expect(dismissedBatches).toHaveLength(3);
-		expect(
-			dismissedBatches.every((b) => b.length <= DB_IN_FILTER_CHUNK_SIZE),
-		).toBe(true);
-		expect(dismissedBatches.flat().sort()).toEqual([...songIds].sort());
+		expect(mockFrom).not.toHaveBeenCalledWith("song");
+		expect(mockFrom).not.toHaveBeenCalledWith("match_decision");
 		if (result.status === "ready" && result.mode === "playlist") {
-			expect(result.suggestions).toHaveLength(201);
+			expect(result.suggestions).toHaveLength(845);
 		}
 	});
 
-	it("filters dismissed pairs across chunk boundaries on an oversized capture", async () => {
-		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		mockComputeVisibleSuggestionList.mockResolvedValue({
-			kind: "ok",
-			list: playlistListWithSongSuggestions(songIds),
+	it("skips derivation and capture entirely for an already-captured playlist item", async () => {
+		setupPlaylistPresentItemFetch({ item: CAPTURED_PLAYLIST_ITEM });
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		// The fast path renders from the captured authority alone — the heavy
+		// visible-list derivation and the capture RPC never run on a revisit.
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
+		expect(mockCaptureVisiblePairsAtomic).not.toHaveBeenCalled();
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.suggestions).toHaveLength(1);
+			expect(result.reviewItem.id).toBe("pl-review");
+		}
+	});
+
+	it("returns unavailable not-entitled on the captured fast path when the playlist is gone", async () => {
+		// The account-filtered playlist read doubles as the entitlement check the
+		// fast path skips (no checkPlaylistOwned runs without derivation).
+		setupPlaylistPresentItemFetch({
+			item: CAPTURED_PLAYLIST_ITEM,
+			playlistRow: null,
 		});
-		mockCaptureVisiblePairsAtomic.mockResolvedValue({
-			status: "already_captured",
-			pairs: storedPairs(songIds),
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+		}
+	});
+
+	it("returns ready with an empty list when every captured pair was row-dismissed", async () => {
+		setupPlaylistPresentItemFetch({
+			item: CAPTURED_PLAYLIST_ITEM,
+			suggestionRows: [],
+			capturedPairCount: 3,
 		});
-		// One dismissed pair per chunk — filtering must survive the batch merge.
-		installPlaylistPresentWithCapturingSongRead(
-			(batch) => ({
-				data: batch.map((id) => ({
-					id,
-					name: `Song ${id}`,
-					artists: ["Artist"],
-					album_name: null,
-					image_url: "sg.jpg",
-					spotify_id: `sp-${id}`,
-					genres: [],
-				})),
-				error: null,
-			}),
-			[
-				{ song_id: "song-0", playlist_id: "pl-review" },
-				{ song_id: "song-150", playlist_id: "pl-review" },
-				{ song_id: "song-200", playlist_id: "pl-review" },
-			],
-		);
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
 		expect(result.status).toBe("ready");
 		if (result.status === "ready" && result.mode === "playlist") {
-			expect(result.suggestions).toHaveLength(198);
-			const ids = result.suggestions.map((s) => s.song.id);
-			expect(ids).not.toContain("song-0");
-			expect(ids).not.toContain("song-150");
-			expect(ids).not.toContain("song-200");
+			expect(result.suggestions).toHaveLength(0);
 		}
 	});
 
-	it("surfaces retryable-error and reports when a chunked suggestion-song batch fails", async () => {
-		const songIds = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		mockComputeVisibleSuggestionList.mockResolvedValue({
-			kind: "ok",
-			list: playlistListWithSongSuggestions(songIds),
+	it("returns no-visible-suggestions on the fast path when the capture is empty", async () => {
+		// An empty capture (stamped for skippability) must not render as a ready
+		// card — zero RPC rows with zero captured pairs is the unavailable state.
+		setupPlaylistPresentItemFetch({
+			item: CAPTURED_PLAYLIST_ITEM,
+			suggestionRows: [],
+			capturedPairCount: 0,
 		});
-		mockCaptureVisiblePairsAtomic.mockResolvedValue({
-			status: "already_captured",
-			pairs: storedPairs(songIds),
-		});
-		// Fail only the batch containing song-150; healthy batches return rows.
-		installPlaylistPresentWithCapturingSongRead((batch) =>
-			batch.includes("song-150")
-				? { data: null, error: { code: "PGRST301", message: "boom" } }
-				: {
-						data: batch.map((id) => ({
-							id,
-							name: `Song ${id}`,
-							artists: ["Artist"],
-							album_name: null,
-							image_url: "sg.jpg",
-							spotify_id: `sp-${id}`,
-							genres: [],
-						})),
-						error: null,
-					},
-		);
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
-		expect(result.status).toBe("retryable-error");
-		// The merged chunk error must still reach Sentry before the opaque card.
-		expect(mockCaptureException).toHaveBeenCalledTimes(1);
-		const [, ctx] = mockCaptureException.mock.calls[0] ?? [];
-		expect(ctx).toMatchObject({
-			tags: {
-				area: "match_review_queue",
-				operation: "present_match_review_item",
-			},
-		});
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("no-visible-suggestions");
+			expect(result.message).toContain("song matches");
+		}
 	});
 
 	it("caps a fresh playlist capture to the top N suggestions before capture (P2)", async () => {
@@ -2823,26 +2717,16 @@ describe("presentMatchReviewItem", () => {
 		// top 100 by visibleRank, so the visible-pair rows the finish/dismiss RPCs read
 		// match exactly what the card renders. list.suggestions is visibleRank-ordered.
 		const songIds = Array.from({ length: 250 }, (_, i) => `song-${i}`);
+		setupPlaylistPresentItemFetch({
+			// The read RPC returns exactly what capture wrote — the capped set.
+			suggestionRows: suggestionRowsFor(songIds.slice(0, 100)),
+		});
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
 			list: playlistListWithSongSuggestions(songIds),
 		});
 		// Fresh capture (default happy-path status "captured").
 		mockCaptureVisiblePairsAtomic.mockResolvedValue({ status: "captured" });
-		const { songBatches } = installPlaylistPresentWithCapturingSongRead(
-			(batch) => ({
-				data: batch.map((id) => ({
-					id,
-					name: `Song ${id}`,
-					artists: ["Artist"],
-					album_name: null,
-					image_url: "sg.jpg",
-					spotify_id: `sp-${id}`,
-					genres: [],
-				})),
-				error: null,
-			}),
-		);
 
 		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
 
@@ -2852,9 +2736,6 @@ describe("presentMatchReviewItem", () => {
 			| unknown[]
 			| undefined;
 		expect(capturedArg).toHaveLength(100);
-		// The song read (and the rendered card) is bounded to the capped set.
-		expect(songBatches.flat()).toHaveLength(100);
-		expect(songBatches.flat()).toEqual(songIds.slice(0, 100));
 		expect(result.status).toBe("ready");
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.suggestions).toHaveLength(100);

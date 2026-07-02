@@ -366,6 +366,7 @@ export type Database = {
 			audio_feature_backfill_job: {
 				Row: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -388,6 +389,7 @@ export type Database = {
 				};
 				Insert: {
 					attempts?: number;
+					candidates?: Json;
 					completed_at?: string | null;
 					created_at?: string;
 					error_code?: string | null;
@@ -410,6 +412,7 @@ export type Database = {
 				};
 				Update: {
 					attempts?: number;
+					candidates?: Json;
 					completed_at?: string | null;
 					created_at?: string;
 					error_code?: string | null;
@@ -468,6 +471,7 @@ export type Database = {
 					averaged_features: Json;
 					backfill_job_id: string | null;
 					candidate_rank: number | null;
+					candidates: Json;
 					clip_features: Json;
 					clip_starts_seconds: number[];
 					created_at: string;
@@ -496,6 +500,7 @@ export type Database = {
 					averaged_features: Json;
 					backfill_job_id?: string | null;
 					candidate_rank?: number | null;
+					candidates?: Json;
 					clip_features: Json;
 					clip_starts_seconds: number[];
 					created_at?: string;
@@ -524,6 +529,7 @@ export type Database = {
 					averaged_features?: Json;
 					backfill_job_id?: string | null;
 					candidate_rank?: number | null;
+					candidates?: Json;
 					clip_features?: Json;
 					clip_starts_seconds?: number[];
 					created_at?: string;
@@ -3151,6 +3157,7 @@ export type Database = {
 				};
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3290,6 +3297,7 @@ export type Database = {
 				Args: { p_job_id: string; p_worker_id: string };
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3373,43 +3381,7 @@ export type Database = {
 				};
 				Returns: {
 					attempts: number;
-					completed_at: string | null;
-					created_at: string;
-					error_code: string | null;
-					error_message: string | null;
-					id: string;
-					lease_expires_at: string | null;
-					locked_at: string | null;
-					locked_by: string | null;
-					max_attempts: number;
-					not_before: string;
-					progress: Json;
-					requested_by_account_id: string | null;
-					song_id: string;
-					source_type: string;
-					source_url: string | null;
-					started_at: string | null;
-					status: string;
-					superseded_by_job_id: string | null;
-					updated_at: string;
-				}[];
-				SetofOptions: {
-					from: "*";
-					to: "audio_feature_backfill_job";
-					isOneToOne: false;
-					isSetofReturn: true;
-				};
-			};
-			repend_audio_feature_backfill_job: {
-				Args: {
-					p_error_code: string;
-					p_error_message: string;
-					p_job_id: string;
-					p_retry_seconds: number;
-					p_worker_id: string;
-				};
-				Returns: {
-					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3458,6 +3430,7 @@ export type Database = {
 				};
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3489,6 +3462,7 @@ export type Database = {
 				Args: { p_requested_by_account_id?: string; p_song_id: string };
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3525,6 +3499,7 @@ export type Database = {
 				};
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3766,6 +3741,7 @@ export type Database = {
 				};
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;
@@ -3938,6 +3914,27 @@ export type Database = {
 					discount_cents: number;
 				}[];
 			};
+			read_match_review_item_song_suggestions: {
+				Args: {
+					p_account_id: string;
+					p_item_id: string;
+					p_limit?: number;
+					p_offset?: number;
+				};
+				Returns: {
+					album_name: string;
+					artists: string[];
+					fit_score: number;
+					genres: string[];
+					image_url: string;
+					model_rank: number;
+					name: string;
+					song_id: string;
+					spotify_id: string;
+					total_active_count: number;
+					visible_rank: number;
+				}[];
+			};
 			refresh_song_vocal_gender: { Args: never; Returns: number };
 			refresh_song_vocal_gender_for: {
 				Args: { p_song_ids: string[] };
@@ -3950,6 +3947,44 @@ export type Database = {
 			release_subscription_upgrade_conversion: {
 				Args: { p_conversion_id: string };
 				Returns: undefined;
+			};
+			repend_audio_feature_backfill_job: {
+				Args: {
+					p_error_code: string;
+					p_error_message: string;
+					p_job_id: string;
+					p_retry_seconds: number;
+					p_worker_id: string;
+				};
+				Returns: {
+					attempts: number;
+					candidates: Json;
+					completed_at: string | null;
+					created_at: string;
+					error_code: string | null;
+					error_message: string | null;
+					id: string;
+					lease_expires_at: string | null;
+					locked_at: string | null;
+					locked_by: string | null;
+					max_attempts: number;
+					not_before: string;
+					progress: Json;
+					requested_by_account_id: string | null;
+					song_id: string;
+					source_type: string;
+					source_url: string | null;
+					started_at: string | null;
+					status: string;
+					superseded_by_job_id: string | null;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "audio_feature_backfill_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
 			};
 			reprioritize_pending_jobs_for_account: {
 				Args: { p_account_id: string };
@@ -3996,6 +4031,17 @@ export type Database = {
 				}[];
 			};
 			select_liked_song_ids_needing_enrichment_work: {
+				Args: { p_account_id: string; p_limit: number };
+				Returns: {
+					needs_analysis: boolean;
+					needs_audio_features: boolean;
+					needs_content_activation: boolean;
+					needs_embedding: boolean;
+					needs_genre_tagging: boolean;
+					song_id: string;
+				}[];
+			};
+			select_liked_song_ids_needing_first_match_enrichment_work: {
 				Args: { p_account_id: string; p_limit: number };
 				Returns: {
 					needs_analysis: boolean;
@@ -4060,6 +4106,7 @@ export type Database = {
 				Args: never;
 				Returns: {
 					attempts: number;
+					candidates: Json;
 					completed_at: string | null;
 					created_at: string;
 					error_code: string | null;

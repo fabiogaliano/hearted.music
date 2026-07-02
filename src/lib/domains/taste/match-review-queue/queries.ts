@@ -74,6 +74,7 @@ type MatchReviewQueueItemDtoColumns = Pick<
 	| "was_new_at_enqueue"
 	| "presented_at"
 	| "resolved_at"
+	| "visible_pairs_captured_at"
 	| "created_at"
 	| "updated_at"
 >;
@@ -165,6 +166,7 @@ export function mapItemToDto(
 		wasNewAtEnqueue: row.was_new_at_enqueue,
 		presentedAt: row.presented_at,
 		resolvedAt: row.resolved_at,
+		visiblePairsCapturedAt: row.visible_pairs_captured_at,
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
@@ -432,7 +434,7 @@ export async function fetchQueueItems(
 			// mapItemToDto consumes — narrowing further would need a separate
 			// lightweight mapper, and under-selecting would silently null a DTO field.
 			.select(
-				"id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, resolution, source_fit_score, was_new_at_enqueue, presented_at, resolved_at, created_at, updated_at",
+				"id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, resolution, source_fit_score, was_new_at_enqueue, presented_at, resolved_at, visible_pairs_captured_at, created_at, updated_at",
 			)
 			.eq("session_id", sessionId)
 			.order("position", { ascending: true }),
@@ -686,6 +688,101 @@ export async function addQueueItemDecisionAtomically(
 	}
 
 	return Result.ok(data);
+}
+
+/**
+ * One row of the playlist-card read model: a captured visible pair joined to
+ * its song row, with post-capture dismissed pairs already excluded. Rows come
+ * back in display order (fit_score DESC, model_rank ASC, stable id — C12), so
+ * callers must not re-sort.
+ */
+export interface QueueItemSongSuggestionRow {
+	songId: string;
+	name: string;
+	artists: string[];
+	albumName: string | null;
+	imageUrl: string | null;
+	spotifyId: string;
+	genres: string[];
+	fitScore: number;
+	visibleRank: number;
+	modelRank: number;
+	/** Post-dismissal total for the item — identical on every row of a page. */
+	totalActiveCount: number;
+}
+
+/**
+ * Reads a playlist-orientation card's suggestion list from the captured
+ * authority in ONE round trip: visible pairs ⋈ song, dismissed anti-join,
+ * ordering and paging all inside Postgres. No id set leaves the database, so
+ * this read cannot hit the URI-length limit regardless of capture size (the
+ * 414 class that chunkedRead only mitigates call-site by call-site).
+ *
+ * Returns zero rows for both an empty capture and an all-dismissed capture —
+ * disambiguate with countCapturedVisiblePairs.
+ */
+export async function readQueueItemSongSuggestions(
+	itemId: string,
+	accountId: string,
+	options: { limit?: number; offset?: number } = {},
+): Promise<Result<QueueItemSongSuggestionRow[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"read_match_review_item_song_suggestions",
+		{
+			p_item_id: itemId,
+			p_account_id: accountId,
+			p_limit: options.limit,
+			p_offset: options.offset,
+		},
+	);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(
+		(data ?? []).map((row) => ({
+			songId: row.song_id,
+			name: row.name,
+			artists: row.artists,
+			albumName: row.album_name ?? null,
+			imageUrl: row.image_url ?? null,
+			spotifyId: row.spotify_id,
+			genres: row.genres,
+			fitScore: row.fit_score,
+			visibleRank: row.visible_rank,
+			modelRank: row.model_rank,
+			totalActiveCount: row.total_active_count,
+		})),
+	);
+}
+
+/**
+ * Counts an item's captured visible pairs (pre-dismissal). Used to tell an
+ * empty capture (no-visible-suggestions card) apart from a capture whose
+ * suggestions were all row-dismissed after presentation (ready card, empty list).
+ */
+export async function countCapturedVisiblePairs(
+	itemId: string,
+	accountId: string,
+): Promise<Result<number, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { count, error } = await supabase
+		.from("match_review_item_visible_pair")
+		.select("*", { count: "exact", head: true })
+		.eq("queue_item_id", itemId)
+		.eq("account_id", accountId);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(count ?? 0);
 }
 
 const DISMISS_QUEUE_ITEM_ATOMIC_STATUSES = [
