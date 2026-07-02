@@ -11,11 +11,18 @@ import {
 	finishMatchReviewItem,
 	getMatchReview,
 	getMatchReviewItem,
+	listMatchReviewItemSuggestions,
 	markMatchReviewItemPresented,
 	presentMatchReviewItem,
 	startOrResumeMatchReview,
 	syncActiveMatchReviewSessions,
 } from "../match-review-queue.functions";
+
+// Mirrors the private PLAYLIST_CARD_FIRST_PAGE_SIZE / PLAYLIST_CARD_TAIL_PAGE_SIZE
+// constants in match-review-queue.functions.ts (not exported — page sizes are an
+// internal server-side concern).
+const PLAYLIST_CARD_FIRST_PAGE_SIZE = 8;
+const PLAYLIST_CARD_TAIL_PAGE_SIZE = 24;
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks — all vi.fn() calls must live here so Vitest hoists them
@@ -2455,10 +2462,12 @@ describe("presentMatchReviewItem", () => {
 
 		expect(result.status).toBe("ready");
 		// Suggestions come from the read-model RPC keyed by item + account only —
-		// never from id-list table reads.
+		// never from id-list table reads. Only the first page is fetched (P3,
+		// first-page-fast) — the rest pages in via listMatchReviewItemSuggestions.
 		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
 			"item-1",
 			"acct-1",
+			{ limit: PLAYLIST_CARD_FIRST_PAGE_SIZE },
 		);
 		// The playlist row comes from the existing getPlaylistById domain query
 		// (account-scoped), not a raw `.from("playlist")` read.
@@ -2473,6 +2482,9 @@ describe("presentMatchReviewItem", () => {
 			expect(result.suggestions[0].song.name).toBe("Suggested Song");
 			// fitScore = strictnessScore from captured pair — never reranker/ordering (A5, E7).
 			expect(result.suggestions[0].fitScore).toBe(0.75);
+			// Single row, well under the first page and the (1-row) total — no tail page.
+			expect(result.suggestionTotal).toBe(1);
+			expect(result.nextCursor).toBeNull();
 		}
 	});
 
@@ -2637,21 +2649,32 @@ describe("presentMatchReviewItem", () => {
 		visible_pairs_captured_at: "2026-07-01T02:12:48Z",
 	};
 
-	it("renders an oversized legacy capture via the read RPC with no id-list reads", async () => {
-		// Pre-cap captures reach 845 pairs. Chunk-reading their ids over HTTP is
-		// the 414 bug class (it shipped un-chunked once); the read model keys by
-		// item + account only, so no suggestion id ever enters a query string.
-		const songIds = Array.from({ length: 845 }, (_, i) => `song-${i}`);
-		setupPlaylistPresentItemFetch({
-			suggestionRows: suggestionRowsFor(songIds),
-		});
+	it("renders only the first page of an oversized legacy capture, capped total + cursor (P3)", async () => {
+		// Pre-cap captures reach 845 pairs. The RPC mock returns just the first
+		// PLAYLIST_CARD_FIRST_PAGE_SIZE rows (as the real keyset RPC would for a
+		// cursorless, limited first-page call) with total_active_count reflecting
+		// the full post-dismissal 845. The read model keys by item + account only,
+		// so no suggestion id ever enters a query string regardless of capture size
+		// (the 414 bug class this read model already fixed) — and first paint now
+		// only pays for 8 rows instead of 845.
+		const pageSongIds = Array.from(
+			{ length: PLAYLIST_CARD_FIRST_PAGE_SIZE },
+			(_, i) => `song-${i}`,
+		);
+		const firstPageRows = suggestionRowsFor(pageSongIds).map((row) => ({
+			...row,
+			// total_active_count is identical on every row of a page — the RPC's
+			// post-dismissal total for the full legacy capture.
+			totalActiveCount: 845,
+		}));
+		setupPlaylistPresentItemFetch({ suggestionRows: firstPageRows });
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
-			list: playlistListWithSongSuggestions(songIds),
+			list: playlistListWithSongSuggestions(pageSongIds),
 		});
 		mockCaptureVisiblePairsAtomic.mockResolvedValue({
 			status: "already_captured",
-			pairs: songIds.map((id, i) => ({
+			pairs: pageSongIds.map((id, i) => ({
 				songId: id,
 				playlistId: "pl-review",
 				fitScore: 0.5,
@@ -2665,11 +2688,21 @@ describe("presentMatchReviewItem", () => {
 		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
 			"item-1",
 			"acct-1",
+			{ limit: PLAYLIST_CARD_FIRST_PAGE_SIZE },
 		);
 		expect(mockFrom).not.toHaveBeenCalledWith("song");
 		expect(mockFrom).not.toHaveBeenCalledWith("match_decision");
 		if (result.status === "ready" && result.mode === "playlist") {
-			expect(result.suggestions).toHaveLength(845);
+			expect(result.suggestions).toHaveLength(PLAYLIST_CARD_FIRST_PAGE_SIZE);
+			// Capped to PLAYLIST_CARD_SUGGESTION_CAP (100) — never the raw 845; the
+			// "Reject Match(es)" label must stay bounded to what was ever captured (P2).
+			expect(result.suggestionTotal).toBe(100);
+			const lastRow = firstPageRows.at(-1);
+			expect(result.nextCursor).toEqual({
+				fitScore: lastRow?.fitScore,
+				modelRank: lastRow?.modelRank,
+				songId: lastRow?.songId,
+			});
 		}
 	});
 
@@ -2766,5 +2799,140 @@ describe("presentMatchReviewItem", () => {
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.suggestions).toHaveLength(100);
 		}
+	});
+});
+
+// ---------------------------------------------------------------------------
+// listMatchReviewItemSuggestions tests
+// ---------------------------------------------------------------------------
+
+describe("listMatchReviewItemSuggestions", () => {
+	// A single tail-page row, mirroring the read-model RPC's shape.
+	const TAIL_ROW: QueueItemSongSuggestionRow = {
+		songId: "song-9",
+		name: "Tail Song",
+		artists: ["Tail Artist"],
+		albumName: "Tail Album",
+		imageUrl: "tail.jpg",
+		spotifyId: "sp-song-9",
+		genres: ["indie"],
+		fitScore: 0.6,
+		visibleRank: 9,
+		modelRank: 9,
+		totalActiveCount: 20,
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockReadQueueItemSongSuggestions.mockResolvedValue(Result.ok([TAIL_ROW]));
+	});
+
+	it("returns an empty page for a foreign/missing queue item (ownership miss)", async () => {
+		mockItemOwnership(null);
+
+		const result = await listMatchReviewItemSuggestions({
+			data: { itemId: "item-foreign", cursor: null },
+		});
+
+		expect(result).toEqual({ suggestions: [], nextCursor: null });
+		expect(mockReadQueueItemSongSuggestions).not.toHaveBeenCalled();
+	});
+
+	it("returns an empty page for a song-orientation item (tail paging is playlist-mode only)", async () => {
+		mockItemOwnership(BASE_ITEM);
+
+		const result = await listMatchReviewItemSuggestions({
+			data: { itemId: "item-1", cursor: null },
+		});
+
+		expect(result).toEqual({ suggestions: [], nextCursor: null });
+		expect(mockReadQueueItemSongSuggestions).not.toHaveBeenCalled();
+	});
+
+	it("passes the client cursor through to the domain read", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+		const cursor = { fitScore: 0.7, modelRank: 3, songId: "song-3" };
+
+		await listMatchReviewItemSuggestions({
+			data: { itemId: "item-1", cursor },
+		});
+
+		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			{ limit: PLAYLIST_CARD_TAIL_PAGE_SIZE, after: cursor },
+		);
+	});
+
+	it("passes after: undefined for a null cursor (first tail page)", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+
+		await listMatchReviewItemSuggestions({
+			data: { itemId: "item-1", cursor: null },
+		});
+
+		expect(mockReadQueueItemSongSuggestions).toHaveBeenCalledWith(
+			"item-1",
+			"acct-1",
+			{ limit: PLAYLIST_CARD_TAIL_PAGE_SIZE, after: undefined },
+		);
+	});
+
+	it("returns nextCursor: null for a short page (fewer rows than the tail page size)", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+
+		const result = await listMatchReviewItemSuggestions({
+			data: { itemId: "item-1", cursor: null },
+		});
+
+		expect(result.suggestions).toHaveLength(1);
+		expect(result.nextCursor).toBeNull();
+	});
+
+	it("returns a cursor from the last row when a full tail page comes back", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+		const fullPage = Array.from(
+			{ length: PLAYLIST_CARD_TAIL_PAGE_SIZE },
+			(_, i) => ({
+				...TAIL_ROW,
+				songId: `song-tail-${i}`,
+				fitScore: 0.6 - i * 0.001,
+				modelRank: i + 1,
+			}),
+		);
+		mockReadQueueItemSongSuggestions.mockResolvedValue(Result.ok(fullPage));
+
+		const result = await listMatchReviewItemSuggestions({
+			data: { itemId: "item-1", cursor: null },
+		});
+
+		const lastRow = fullPage.at(-1);
+		expect(result.nextCursor).toEqual({
+			fitScore: lastRow?.fitScore,
+			modelRank: lastRow?.modelRank,
+			songId: lastRow?.songId,
+		});
+	});
+
+	it("reports and throws a generic retryable failure on a DB error, instead of silently ending pagination", async () => {
+		mockItemOwnership(BASE_PLAYLIST_ITEM);
+		const rpcError = new DatabaseError({ code: "PGRST301", message: "boom" });
+		mockReadQueueItemSongSuggestions.mockResolvedValue(Result.err(rpcError));
+
+		await expect(
+			listMatchReviewItemSuggestions({
+				data: { itemId: "item-1", cursor: null },
+			}),
+		).rejects.toThrow();
+
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		const [capturedError, ctx] = mockCaptureException.mock.calls[0] ?? [];
+		expect(capturedError).toBe(rpcError);
+		expect(ctx).toMatchObject({
+			tags: {
+				area: "match_review_queue",
+				operation: "list_match_review_item_suggestions",
+			},
+		});
 	});
 });

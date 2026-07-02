@@ -4,6 +4,10 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getPlaylistById } from "@/lib/domains/library/playlists/queries";
 import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
+import type {
+	QueueItemSongSuggestionCursor,
+	QueueItemSongSuggestionRow,
+} from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	addQueueItemDecisionAtomically,
 	clearSongNewness,
@@ -91,6 +95,18 @@ const NoInputSchema = z.undefined();
  */
 const PLAYLIST_CARD_SUGGESTION_CAP = 100;
 
+/**
+ * First-page row count for a playlist card's suggestion list (P3, first-page-fast).
+ * ReviewListScroll shows ~4–6 rows before the fold; 8 covers that plus a little
+ * headroom without paying to serialize/parse/render the whole capped set (up to
+ * PLAYLIST_CARD_SUGGESTION_CAP) before first paint.
+ */
+const PLAYLIST_CARD_FIRST_PAGE_SIZE = 8;
+
+/** Tail page size for listMatchReviewItemSuggestions (P3). Larger than the first
+ * page since it loads in the background/on scroll rather than blocking paint. */
+const PLAYLIST_CARD_TAIL_PAGE_SIZE = 24;
+
 // Typed item read result — co-located because it is owned by this file's read
 // path and nothing outside Phase 3 currently consumes it.
 export type MatchReviewItemRead =
@@ -108,7 +124,15 @@ export type MatchReviewItemRead =
 			// Playlist orientation: review subject is a playlist; suggestions are songs.
 			mode: "playlist";
 			reviewItem: MatchingPlaylistForReview;
+			// First page only (PLAYLIST_CARD_FIRST_PAGE_SIZE rows) — the rest pages in
+			// via listMatchReviewItemSuggestions.
 			suggestions: MatchingSongSuggestion[];
+			/** min(post-dismissal active count, PLAYLIST_CARD_SUGGESTION_CAP) — read on
+			 *  the cursorless first-page call only (see readQueueItemSongSuggestions). */
+			suggestionTotal: number;
+			/** Keyset cursor for the next tail page, or null when the first page was
+			 *  the whole (capped) suggestion set. */
+			nextCursor: QueueItemSongSuggestionCursor | null;
 	  }
 	| {
 			status: "unavailable";
@@ -737,12 +761,44 @@ const PresentMatchReviewItemSchema = z.object({
 });
 
 /**
+ * Maps one read-model row to the client-facing MatchingSongSuggestion shape.
+ * Shared by readPlaylistCardFromCapture's first page and
+ * listMatchReviewItemSuggestions' tail pages so the two can't drift.
+ */
+function mapSuggestionRow(
+	row: QueueItemSongSuggestionRow,
+): MatchingSongSuggestion {
+	return {
+		song: {
+			id: row.songId,
+			spotifyId: row.spotifyId,
+			name: row.name,
+			artist: row.artists[0] ?? "Unknown Artist",
+			album: row.albumName,
+			albumArtUrl: row.imageUrl,
+			genres: row.genres,
+			// Audio features and analysis are not surfaced in the playlist-mode
+			// card render; fetching them would add two joins with no UI benefit.
+			audioFeatures: null,
+			analysis: null,
+		},
+		// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
+		fitScore: row.fitScore,
+	};
+}
+
+/**
  * Renders a playlist-orientation card entirely from the captured authority:
  * the playlist row plus ONE read-model RPC over the captured pairs — joined to
  * song rows, dismissed pairs anti-joined, display-ordered, all inside
  * Postgres. No id set crosses HTTP, so this path cannot hit the URI-length
  * limit at any capture size (845-pair legacy captures included), and a card
  * render is 2 round trips instead of ~10 chunked reads.
+ *
+ * Only the first PLAYLIST_CARD_FIRST_PAGE_SIZE rows are read here — the rest
+ * page in lazily via listMatchReviewItemSuggestions (first-page-fast: this is
+ * on the critical path to first paint, so it must not pay to serialize/parse/
+ * render the whole capped suggestion set up front).
  *
  * Only valid post-capture: callers must have verified visible_pairs_captured_at
  * on the item, or have just run captureVisiblePairsAtomic successfully.
@@ -754,7 +810,9 @@ async function readPlaylistCardFromCapture(
 ): Promise<MatchReviewItemRead> {
 	const [playlistResult, suggestionRowsResult] = await Promise.all([
 		getPlaylistById(accountId, playlistId),
-		readQueueItemSongSuggestions(itemId, accountId),
+		readQueueItemSongSuggestions(itemId, accountId, {
+			limit: PLAYLIST_CARD_FIRST_PAGE_SIZE,
+		}),
 	]);
 
 	if (Result.isError(playlistResult)) {
@@ -837,23 +895,30 @@ async function readPlaylistCardFromCapture(
 	// Rows arrive in display order from the RPC (fit_score DESC, model_rank
 	// ASC, stable id — the same C12 order derivation assigns visible ranks in),
 	// so no re-sort here.
-	const suggestions: MatchingSongSuggestion[] = rows.map((r) => ({
-		song: {
-			id: r.songId,
-			spotifyId: r.spotifyId,
-			name: r.name,
-			artist: r.artists[0] ?? "Unknown Artist",
-			album: r.albumName,
-			albumArtUrl: r.imageUrl,
-			genres: r.genres,
-			// Audio features and analysis are not surfaced in the playlist-mode
-			// card render; fetching them would add two joins with no UI benefit.
-			audioFeatures: null,
-			analysis: null,
-		},
-		// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
-		fitScore: r.fitScore,
-	}));
+	const suggestions: MatchingSongSuggestion[] = rows.map(mapSuggestionRow);
+
+	// total_active_count is a full active total only on this cursorless
+	// first-page call (a cursor call counts only post-cursor rows). Capped so
+	// the "Reject Match(es)" pluralization stays bounded to what the card ever
+	// actually captured (P2) — never a rendered number.
+	const suggestionTotal = Math.min(
+		rows[0]?.totalActiveCount ?? 0,
+		PLAYLIST_CARD_SUGGESTION_CAP,
+	);
+	// A full first page that hasn't exhausted the total means there is more to
+	// page in; the cursor is the last row's sort key (fit_score, model_rank,
+	// song_id — the RPC's total order).
+	const lastRow = rows.at(-1);
+	const nextCursor: QueueItemSongSuggestionCursor | null =
+		rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
+		rows.length < suggestionTotal &&
+		lastRow
+			? {
+					fitScore: lastRow.fitScore,
+					modelRank: lastRow.modelRank,
+					songId: lastRow.songId,
+				}
+			: null;
 
 	return {
 		status: "ready",
@@ -861,6 +926,8 @@ async function readPlaylistCardFromCapture(
 		mode: "playlist",
 		reviewItem,
 		suggestions,
+		suggestionTotal,
+		nextCursor,
 	};
 }
 
@@ -1229,6 +1296,93 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 			};
 		}
 	});
+
+/** Cursor alias for the client — mirrors the domain layer's keyset cursor shape. */
+export type MatchReviewItemSuggestionCursor = QueueItemSongSuggestionCursor;
+
+export interface ListMatchReviewItemSuggestionsPage {
+	suggestions: MatchingSongSuggestion[];
+	nextCursor: MatchReviewItemSuggestionCursor | null;
+}
+
+const ListMatchReviewItemSuggestionsSchema = z.object({
+	itemId: z.uuid(),
+	cursor: z
+		.object({
+			fitScore: z.number(),
+			modelRank: z.number(),
+			songId: z.uuid(),
+		})
+		.nullable(),
+});
+
+/**
+ * Tail page for a playlist card's suggestion list (P3, first-page-fast): pages
+ * in the rows readPlaylistCardFromCapture didn't include in the first
+ * PLAYLIST_CARD_FIRST_PAGE_SIZE-row response. Shares readQueueItemSongSuggestions
+ * and mapSuggestionRow with the first-page path so first page and tail pages
+ * can never render suggestions differently.
+ *
+ * Ownership-verified but deliberately quiet on failure: a foreign/missing item
+ * or a song-orientation item (this path is playlist-mode only) both degrade to
+ * an empty page rather than leaking ownership/orientation details to the caller.
+ *
+ * A DB error on the read is thrown (not returned as an empty page) so the
+ * client's infinite query enters its `error` state — treating a real failure as
+ * "no more pages" would silently truncate a >8-row card's tail forever.
+ */
+export const listMatchReviewItemSuggestions = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => ListMatchReviewItemSuggestionsSchema.parse(data))
+	.handler(
+		async ({ data, context }): Promise<ListMatchReviewItemSuggestionsPage> => {
+			const { session } = context;
+			const { itemId, cursor } = data;
+
+			const item = await fetchOwnedQueueItem(
+				itemId,
+				session.accountId,
+				"list_match_review_item_suggestions",
+			);
+			if (!item || item.subject.orientation !== "playlist") {
+				return { suggestions: [], nextCursor: null };
+			}
+
+			const rowsResult = await readQueueItemSongSuggestions(
+				itemId,
+				session.accountId,
+				{ limit: PLAYLIST_CARD_TAIL_PAGE_SIZE, after: cursor ?? undefined },
+			);
+
+			if (Result.isError(rowsResult)) {
+				reportQueueError(
+					rowsResult.error,
+					"list_match_review_item_suggestions",
+					{ accountId: session.accountId, orientation: "playlist" },
+				);
+				throw new Error("Couldn't load more suggestions. Please try again.");
+			}
+
+			const rows = rowsResult.value;
+			const lastRow = rows.at(-1);
+			// A full page can still be the last one — the next call simply comes back
+			// empty. That final empty fetch is acceptable/standard for a cursor-paged
+			// infinite query, so a full page alone is the only nextCursor signal.
+			const nextCursor: MatchReviewItemSuggestionCursor | null =
+				rows.length === PLAYLIST_CARD_TAIL_PAGE_SIZE && lastRow
+					? {
+							fitScore: lastRow.fitScore,
+							modelRank: lastRow.modelRank,
+							songId: lastRow.songId,
+						}
+					: null;
+
+			return {
+				suggestions: rows.map(mapSuggestionRow),
+				nextCursor,
+			};
+		},
+	);
 
 const MarkPresentedSchema = z.object({
 	itemId: z.uuid(),
