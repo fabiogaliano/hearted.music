@@ -206,13 +206,20 @@ export function useMatchReviewCard({
 			);
 			// The chain must survive a rejected dismiss so the next one still runs;
 			// swallow here (the boolean the caller needs is derived from `run` below).
-			chains.set(
-				itemId,
-				run.then(
-					() => undefined,
-					() => undefined,
-				),
+			const settled = run.then(
+				() => undefined,
+				() => undefined,
 			);
+			chains.set(itemId, settled);
+			// Evict the settled chain unless a newer dismiss has already queued behind
+			// it, so the Map doesn't retain one resolved-promise entry per card visited
+			// across a long review session. A later dismiss on the same card overwrites
+			// the entry first, so the identity check leaves any live chain intact.
+			// Serialization is unaffected: an evicted entry was fully settled, so the
+			// next dismiss's Promise.resolve() fallback is equivalent to what it replaced.
+			void settled.then(() => {
+				if (chains.get(itemId) === settled) chains.delete(itemId);
+			});
 
 			try {
 				const result = await run;
