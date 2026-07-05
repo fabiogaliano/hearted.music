@@ -214,7 +214,7 @@ export function PlaylistsCoverFlowScreen({
 
 	if (!data) {
 		return (
-			<div className="mx-auto flex min-h-[40vh] max-w-[1180px] items-center justify-center">
+			<div className="mx-auto flex min-h-[40vh] max-w-5xl items-center justify-center">
 				<p
 					className="theme-text-muted text-sm"
 					style={{ fontFamily: fonts.body }}

@@ -174,7 +174,7 @@ export function CoverFlowPlaylists({
 	});
 
 	return (
-		<div className="mx-auto max-w-[1180px] pb-24">
+		<div className="mx-auto max-w-5xl pb-24">
 			<header className="mb-2 flex items-end justify-between gap-6">
 				<h1
 					data-tour="page-title"
