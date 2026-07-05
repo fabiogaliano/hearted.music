@@ -12,6 +12,11 @@ import { Children, useMemo } from "react";
 
 interface StaggeredContentProps {
 	children: ReactNode;
+	/**
+	 * When false, children render immediately with no stagger/fade (same path as
+	 * reduced motion). Defaults to true.
+	 */
+	enabled?: boolean;
 	/** Delay between each child animation (seconds) */
 	staggerDelay?: number;
 	/** Initial delay before first child animates (seconds) */
@@ -41,6 +46,7 @@ const itemVariants = {
 
 export function StaggeredContent({
 	children,
+	enabled = true,
 	staggerDelay: staggerDelayOverride,
 	initialDelay: initialDelayOverride,
 	className,
@@ -65,7 +71,7 @@ export function StaggeredContent({
 		[staggerDelay, initialDelay],
 	);
 
-	if (shouldReduceMotion) {
+	if (shouldReduceMotion || !enabled) {
 		return (
 			<>
 				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label only applied when role is explicitly set by caller */}
