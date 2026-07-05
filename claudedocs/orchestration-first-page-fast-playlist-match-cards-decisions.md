@@ -28,6 +28,9 @@ Run started 2026-07-02. Baseline commit: 76a323c1
   string` (not `{ suggestionId }`) — the plan doesn't specify a shape and a
   bare string keeps `mutateAsync(suggestionId)` in `useMatchReviewCard`
   symmetric with `dismissSuggestion(suggestionId)`'s own signature.
+  **[SUPERSEDED by `d1ba3c0d` — see Post-run fixes below. Variables are now
+  `{ itemId, suggestionId }` so a dismiss targets the card it was enqueued for
+  even after the user navigates away.]**
 • `useMatchReviewCard`'s `currentReviewItem` mapping is left unmemoized
   (plain IIFE), mirroring the exact cost profile of the inline code it
   replaced in `match.tsx` (only `currentSuggestions` was `useMemo`'d there);
@@ -113,3 +116,71 @@ Run started 2026-07-02. Baseline commit: 76a323c1
 
 ## Orchestrator notes
 - Unattributed working-tree change detected mid-run: `src/features/matching/sections/MatchingSession.tsx` (grid `1fr_1fr` → `minmax(0,1fr)`, both modes). Claimed by neither Task A nor Task B. Excluded from task commits; surfaced in final report.
+
+## Post-run fixes (commits after the deviation-log commit `0774f51b`)
+
+Two commits landed after this log was committed and made design decisions the
+sections above didn't capture. Recorded here so the log stays the complete
+deviation record.
+
+### `d7c861a1` — session grid columns shrink below content width
+- Resolution of the Orchestrator note above: the `MatchingSession.tsx` grid
+  change flagged as "unattributed, excluded from task commits" was promoted to
+  its own commit. `1fr` columns carry an implicit `min-width: auto`, so a long
+  unbreakable suggestion row could push a column past the 50/50 split;
+  `minmax(0,1fr)` on both the song and playlist arms keeps the split and defers
+  to inner truncation. No longer unattributed.
+
+### `d1ba3c0d` — key dismiss by item variables + surface tail read errors
+- **Dismiss mutation variables are now `{ itemId, suggestionId }`, not a bare
+  `suggestionId` string** — supersedes the Task D bullet above. A single
+  MutationObserver is reused across cards (its options re-set each render as
+  itemId changes) and `mutateAsync` runs against the observer's CURRENT
+  options, so a dismiss queued on card A that settles after navigating to card
+  B would otherwise execute with B's closed-over keys. Carrying `itemId` in the
+  per-call variables makes each execution target the card it was enqueued for.
+- **Per-itemId promise chain in `useMatchReviewCard`** serializes overlapping
+  same-card dismisses. The whole-snapshot rollback is only sound if dismisses
+  for one card never overlap: two concurrent onMutate snapshots plus a failed
+  rollback would resurrect a row a succeeded dismiss removed. TanStack's
+  mutation `scope` can't prevent this — it serializes only the mutationFn, and
+  onMutate runs before the retryer — so the hook chains each dismiss behind the
+  prior one's full settlement. Keyed by itemId (not one shared chain) so
+  dismisses on different cards, which touch disjoint caches, don't stall each
+  other.
+- **`onMutate` tail-cancel and rollback tail-restore became conditional on
+  `previousTail !== undefined`.** Cancelling the tail's auto-fired FIRST page
+  (no data yet) reverts it to a data-less `hasNextPage=false` state that
+  `loadMoreSuggestions` refuses to restart, stranding a >8-row card's tail; and
+  writing `undefined` back on rollback would clobber a first tail page that
+  finished loading during the mutation window. Both are gated to act only when
+  loaded pages were actually snapshotted.
+- **`readOwnedQueueItem` split from `fetchOwnedQueueItem` (miss vs error).**
+  Deviates from the plan's literal "ownership via `fetchOwnedQueueItem`" in
+  `listMatchReviewItemSuggestions`, but honors the plan's stated intent ("DB
+  error → throw a generic retryable load-more error") better than its letter:
+  collapsing an ownership-read DB failure to an empty page silently truncated a
+  >8-row card's tail forever. `readOwnedQueueItem` preserves the miss-vs-error
+  distinction so a genuine miss still returns an empty page while a read failure
+  throws into the infinite query's error/retry state.
+
+### `dismissChainsRef` Map eviction (this doc-update pass)
+- The per-itemId promise-chain Map never evicted settled entries, so it retained
+  one resolved-promise reference per card visited across a review session
+  (bounded and tiny, but unbounded in principle). Added identity-checked
+  eviction in `useMatchReviewCard`: once a chain settles, its entry is deleted
+  UNLESS a newer dismiss has already overwritten it (the `chains.get(itemId) ===
+  settled` guard), so a live chain is never removed. Serialization is unaffected
+  — an evicted entry was fully settled, so the next dismiss's `Promise.resolve()`
+  fallback is equivalent to the chain it replaced.
+
+## Carried forward (not code — verify before/at deploy)
+- **Deploy order** (from the plan, restated here so it isn't lost): prod runs
+  pre-RPC code and neither migration is applied. Apply `20260702120000` then
+  `20260703000000` to prod BEFORE deploying any build containing the RPC-calling
+  server code. The v1 signature has no live caller, so the `DROP IF EXISTS`
+  transition is safe.
+- **Manual verification items 3 & 4** from the plan's Verification section
+  (manual `/match` run against the legacy 845-pair card; read-only keyset SQL
+  validation via `bun run prod:sql`) are not reproducible from the repo and
+  remain to be done by a human before merge.
