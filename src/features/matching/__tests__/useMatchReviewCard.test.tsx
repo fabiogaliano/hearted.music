@@ -428,4 +428,68 @@ describe("useMatchReviewCard", () => {
 		}
 		expect(patchedB.suggestions.map((s) => s.song.id)).toEqual(["song-9"]);
 	});
+
+	it("waitForPendingDismisses drains a dismiss queued during its own await window", async () => {
+		// A whole-card action awaits waitForPendingDismisses() while row dismiss A
+		// is in flight. If a row dismiss B is enqueued *during* that await, it
+		// chains behind A and replaces the map entry the drain first snapshotted —
+		// so awaiting only that snapshot would return while B is still mid-onMutate.
+		// The drain must loop until the chain is truly quiescent.
+		const presentKey = presentMatchReviewItemQueryOptions(ITEM_ID).queryKey;
+		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
+		queryClient.setQueryData(presentKey, itemData);
+
+		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
+		let resolveB: ((value: DismissSuggestionResult) => void) | undefined;
+		dismissMatchReviewItemSuggestionMock.mockImplementation(
+			(arg: { data: { suggestionId: string } }) =>
+				new Promise<DismissSuggestionResult>((resolve) => {
+					if (arg.data.suggestionId === "song-1") resolveA = resolve;
+					else resolveB = resolve;
+				}),
+		);
+
+		const { result } = renderHook(
+			() => useMatchReviewCard({ itemId: ITEM_ID, itemData, queryClient }),
+			{ wrapper },
+		);
+
+		await act(async () => {
+			void result.current.dismissSuggestion("song-1");
+		});
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+
+		let drained = false;
+		let drainPromise: Promise<void> | undefined;
+		await act(async () => {
+			drainPromise = result.current.waitForPendingDismisses().then(() => {
+				drained = true;
+			});
+			// Enqueued after the drain snapshotted A — queues behind it and swaps
+			// the map entry, reproducing the narrow real-world click window.
+			void result.current.dismissSuggestion("song-2");
+		});
+		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+
+		// A settles → B is issued, but B is still pending, so the drain must NOT
+		// have resolved yet. The pre-fix single-read would have resolved here.
+		if (!resolveA) throw new Error("dismiss A was never issued");
+		const settleA = resolveA;
+		await act(async () => {
+			settleA({ success: true });
+		});
+		await waitFor(() =>
+			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+		);
+		expect(drained).toBe(false);
+
+		// B settles → the drain finally resolves.
+		if (!resolveB) throw new Error("dismiss B was never issued");
+		const settleB = resolveB;
+		await act(async () => {
+			settleB({ success: true });
+		});
+		await waitFor(() => expect(drained).toBe(true));
+		await drainPromise;
+	});
 });

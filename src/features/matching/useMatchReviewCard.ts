@@ -236,8 +236,18 @@ export function useMatchReviewCard({
 	);
 
 	const waitForPendingDismisses = useCallback(async () => {
-		const chain = dismissChainsRef.current.get(itemId);
-		if (chain) await chain;
+		// Drain in a loop, not a single read: a row dismiss enqueued during the
+		// await window chains behind the promise we snapshotted and replaces the
+		// map entry, so awaiting only the snapshot would return while that newer
+		// dismiss is still mid-onMutate. Re-read after each await; stop once the
+		// entry is unchanged (nothing queued) or gone (evicted after settling).
+		let chain = dismissChainsRef.current.get(itemId);
+		while (chain) {
+			await chain;
+			const next = dismissChainsRef.current.get(itemId);
+			if (next === chain) break;
+			chain = next;
+		}
 	}, [itemId]);
 
 	return {
