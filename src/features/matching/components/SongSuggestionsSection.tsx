@@ -62,11 +62,16 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 		hasMore: (hasMoreSuggestions ?? false) && !loadMoreError,
 	});
 
+	const liveAnnouncement = loadMoreError
+		? "Couldn't load more suggestions."
+		: isLoadingMoreSuggestions
+			? "Loading more…"
+			: "";
+
 	const suggestionsFooter = loadMoreError ? (
 		<div
 			className="theme-text-muted flex items-center justify-center gap-1.5 py-3 text-center text-xs"
 			style={{ fontFamily: fonts.body }}
-			aria-live="polite"
 		>
 			<span>Couldn't load more suggestions.</span>
 			<button
@@ -82,7 +87,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			ref={sentinelRef}
 			className="theme-text-muted py-3 text-center text-xs"
 			style={{ fontFamily: fonts.body }}
-			aria-live="polite"
 		>
 			{isLoadingMoreSuggestions ? "Loading more…" : null}
 		</div>
@@ -117,6 +121,10 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			two-column split gives on wider viewports. Hidden at lg, where columns
 			sit side by side. */}
 			<div className="theme-border-color mb-8 border-t lg:hidden" />
+
+			<div aria-live="polite" aria-atomic="true" className="sr-only">
+				{liveAnnouncement}
+			</div>
 
 			{/* initial={false}: slide is a review-item transition, not a mount
 			entrance. StaggeredContent owns the entrance so the panel doesn't slide
