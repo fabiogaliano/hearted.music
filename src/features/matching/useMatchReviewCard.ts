@@ -32,6 +32,8 @@ export interface UseMatchReviewCardResult {
 	retryLoadMore: () => void;
 	/** Resolves true on a confirmed dismiss, false on rejection/failure (already rolled back). */
 	dismissSuggestion: (suggestionId: string) => Promise<boolean>;
+	/** Awaits any in-flight dismiss chain for this card so whole-card actions don't race. */
+	waitForPendingDismisses: () => Promise<void>;
 }
 
 /**
@@ -233,6 +235,11 @@ export function useMatchReviewCard({
 		[dismissMutation.mutateAsync, itemId],
 	);
 
+	const waitForPendingDismisses = useCallback(async () => {
+		const chain = dismissChainsRef.current.get(itemId);
+		if (chain) await chain;
+	}, [itemId]);
+
 	return {
 		currentReviewItem,
 		currentSuggestions,
@@ -243,5 +250,6 @@ export function useMatchReviewCard({
 		loadMoreError: tailQuery.error,
 		retryLoadMore,
 		dismissSuggestion,
+		waitForPendingDismisses,
 	};
 }

@@ -141,7 +141,8 @@ export function dismissSuggestionMutation(queryClient: QueryClient) {
 
 		onMutate: async ({ itemId, suggestionId }) => {
 			const { presentKey, tailKey } = itemKeys(itemId);
-			const previousTail = queryClient.getQueryData<TailPagesData>(tailKey);
+			const hasTailData =
+				queryClient.getQueryData<TailPagesData>(tailKey) !== undefined;
 
 			// Cancelling an in-flight fetch reverts it. That is fine for the present
 			// query and for the tail once it has pages, but cancelling the tail's
@@ -152,13 +153,16 @@ export function dismissSuggestionMutation(queryClient: QueryClient) {
 			// anyway, so there is nothing to protect by cancelling it.
 			await Promise.all([
 				queryClient.cancelQueries({ queryKey: presentKey }),
-				...(previousTail !== undefined
+				...(hasTailData
 					? [queryClient.cancelQueries({ queryKey: tailKey })]
 					: []),
 			]);
 
+			// Snapshot AFTER cancel so a fetch that resolved during the cancel
+			// window is included — restoring a pre-cancel snapshot would lose it.
 			const previousPresent =
 				queryClient.getQueryData<MatchReviewItemRead>(presentKey);
+			const previousTail = queryClient.getQueryData<TailPagesData>(tailKey);
 
 			queryClient.setQueryData<MatchReviewItemRead>(presentKey, (current) =>
 				patchPresentCacheOnSuggestionDismiss(current, suggestionId),

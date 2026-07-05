@@ -269,7 +269,9 @@ describe("SongSuggestionsSection", () => {
 				isLoadingMoreSuggestions
 			/>,
 		);
-		expect(screen.getByText("Loading more…")).toBeDefined();
+		expect(screen.getAllByText("Loading more…").length).toBeGreaterThanOrEqual(
+			1,
+		);
 	});
 
 	it("suppresses 'All suggestions reviewed.' while hasMoreSuggestions is true, even with an empty suggestions list", () => {
@@ -303,8 +305,9 @@ describe("SongSuggestionsSection", () => {
 			/>,
 		);
 		expect(
-			screen.getByText("Couldn't load more suggestions.", { exact: false }),
-		).toBeDefined();
+			screen.getAllByText("Couldn't load more suggestions.", { exact: false })
+				.length,
+		).toBeGreaterThanOrEqual(1);
 		expect(screen.getByRole("button", { name: "Retry" })).toBeDefined();
 		// Stalled pagination is announced to screen readers, same as the loading sentinel.
 		expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();

@@ -779,6 +779,7 @@ function QueueCardContent({
 		loadMoreError,
 		retryLoadMore,
 		dismissSuggestion,
+		waitForPendingDismisses,
 	} = useMatchReviewCard({ itemId, itemData, queryClient });
 
 	// Narrow helpers — each is null when the other orientation is active.
@@ -1085,6 +1086,7 @@ function QueueCardContent({
 	const handleDismiss = async () => {
 		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
+			await waitForPendingDismisses();
 			recordCurrentItem();
 			if (currentReviewItem.mode === "song") {
 				analytics.capture("song_dismissed", {
@@ -1117,6 +1119,7 @@ function QueueCardContent({
 	const handleNext = async () => {
 		if (!currentReviewItem || !onLockNavigation()) return;
 		try {
+			await waitForPendingDismisses();
 			recordCurrentItem();
 			const result = await finishMatchReviewItem({ data: { itemId } });
 

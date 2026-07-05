@@ -76,8 +76,18 @@ AS $$
     AND (
       p_after_fit_score IS NULL
       OR vp.fit_score < p_after_fit_score
-      OR (vp.fit_score = p_after_fit_score AND vp.model_rank > p_after_model_rank)
-      OR (vp.fit_score = p_after_fit_score AND vp.model_rank = p_after_model_rank AND vp.song_id > p_after_song_id)
+      OR (
+        p_after_model_rank IS NOT NULL
+        AND vp.fit_score = p_after_fit_score
+        AND vp.model_rank > p_after_model_rank
+      )
+      OR (
+        p_after_model_rank IS NOT NULL
+        AND p_after_song_id IS NOT NULL
+        AND vp.fit_score = p_after_fit_score
+        AND vp.model_rank = p_after_model_rank
+        AND vp.song_id > p_after_song_id
+      )
     )
   ORDER BY vp.fit_score DESC, vp.model_rank ASC, vp.song_id ASC
   LIMIT p_limit
