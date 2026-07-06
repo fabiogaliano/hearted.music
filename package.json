@@ -25,7 +25,7 @@
 		"check": "biome check",
 		"lint": "biome lint",
 		"format": "biome format",
-		"gen:types": "supabase gen types typescript --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres > src/lib/data/database.types.ts",
+		"gen:types": "supabase gen types typescript --db-url postgresql://postgres:postgres@127.0.0.1:54322/postgres > src/lib/data/database.types.ts && biome format --write src/lib/data/database.types.ts",
 		"fixtures": "bun src/stories/fixtures/build-fixtures.ts",
 		"lyrics:validate": "PARSER_VALIDATION=true vitest run lyrics-service.integration",
 		"voice-audit": "bun scripts/voice-audit/cli.ts",
