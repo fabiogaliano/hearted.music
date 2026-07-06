@@ -4,6 +4,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getPlaylistById } from "@/lib/domains/library/playlists/queries";
 import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
+import { PLAYLIST_CARD_SUGGESTION_CAP } from "@/lib/domains/taste/match-review-queue/card-suggestion-caps";
 import type {
 	QueueItemSongSuggestionCursor,
 	QueueItemSongSuggestionRow,
@@ -82,22 +83,6 @@ import type {
 } from "./matching.functions";
 
 const NoInputSchema = z.undefined();
-
-/**
- * Max suggestion songs shown on a single playlist-orientation review card (P2).
- *
- * One hub playlist can match hundreds of eligible songs; SongSuggestionsSection
- * renders them unvirtualized, so payload, JSON parse, and DOM cost all scale with
- * the raw count (the ~845-suggestion pathological card). The cap is applied to the
- * card's captured suggestion set BEFORE capture, so the visible-pair rows the
- * finish/dismiss RPCs read are exactly the top-N the user could actually see and
- * act on — decisions never touch a suggestion off the bottom of the list. Ordering
- * is deterministic (visibleRank asc from the derivation), so the same top N is
- * shown across retries. Song mode is naturally small (target playlists per song),
- * so it is left uncapped. Product tradeoff: a playlist's lower-ranked song matches
- * are deferred to a later pass rather than shown on one giant card.
- */
-const PLAYLIST_CARD_SUGGESTION_CAP = 100;
 
 /**
  * First-page row count for a playlist card's suggestion list (P3, first-page-fast).

@@ -1,5 +1,8 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
+import type { Json } from "@/lib/data/database.types";
+import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
+import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import { log } from "@/lib/observability/logger";
 import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
@@ -183,6 +186,38 @@ export async function executeMatchSnapshotRefreshJob(
 				event: "match_snapshot_published",
 			},
 		});
+	}
+
+	// Deck read model (plan §6, R2): a fresh published snapshot triggers proposal
+	// building for BOTH orientations; each build_proposals handler then chains
+	// append_sessions. Enqueued here at the worker boundary — the equivalent seam
+	// to the plan's "inside executeMatchSnapshotRefresh" — right after publish, so
+	// the pure orchestrator (with its unit-test mocks and 3 return points) stays
+	// analytics/side-effect free. Best-effort: the snapshot is already durable and
+	// the read path self-heals on a proposal miss, so an enqueue failure must not
+	// fail a completed match job.
+	if (result.published && result.snapshotId) {
+		const snapshotId = result.snapshotId;
+		const orientations: MatchOrientation[] = ["song", "playlist"];
+		for (const orientation of orientations) {
+			const enqueued = await enqueueDeckJob({
+				accountId,
+				orientation,
+				kind: "build_proposals",
+				idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}`,
+				payload: { snapshotId } as Json,
+			});
+			if (Result.isError(enqueued)) {
+				Sentry.captureException(enqueued.error, {
+					tags: {
+						area: "match_deck",
+						operation: "enqueue_build_proposals",
+						runtime: "worker",
+					},
+					extra: { accountId, jobId: job.id, orientation, snapshotId },
+				});
+			}
+		}
 	}
 
 	return {
