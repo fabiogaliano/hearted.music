@@ -236,3 +236,209 @@ Deferred to a local Postgres pass (no live DB in this cloud env):
   `match_review_session_snapshot` ledger row; plan §4 types `snapshotId` as
   `string`. Phase 3's `MatchDeckView` parser must tolerate a null `snapshotId`
   (coerce / treat as "unknown snapshot") rather than assume non-null.
+
+## Phase 2 — Worker
+
+Files added: `src/lib/data/deck-db-types.ts`,
+`src/lib/domains/taste/match-review-queue/deck-jobs.ts`,
+`.../eligible-subjects.ts`, `.../proposal-builder.ts`, `.../session-appender.ts`,
+`.../card-materializer.ts`, `.../card-suggestion-caps.ts`,
+`src/worker/poll-match-deck-jobs.ts`,
+`supabase/migrations/20260706000010_enqueue_match_review_deck_job.sql`, and the
+two parity suites `__tests__/proposal-order-parity.test.ts` /
+`__tests__/seed-pair-parity.test.ts`.
+Files edited: `src/worker/index.ts`, `src/worker/execute.ts`,
+`.../match-review-queue/service.ts`,
+`src/lib/server/match-review-queue.functions.ts`,
+`src/worker/__tests__/execute.test.ts`.
+
+### Rulings as applied
+
+- **R1 — `append_sessions` does NOT touch `appendSnapshotDelta`, and that stays
+  deletable for Phase 5.** `appendSessionsForAccountOrientation`
+  (`session-appender.ts`) loads the READY proposal for the
+  account+orientation+snapshot under the active session's frozen-strictness
+  `visibility_config_hash`, reads its `match_review_proposal_subject` rows, drops
+  subjects already in the session queue, and inserts the rest via the EXISTING
+  `insertQueueItems` / `insertQueuePlaylistItems` wrappers + the
+  `insertSessionSnapshot` ledger. **Factoring chosen:** it shares the *machinery*
+  (the `./queries` insert RPCs + ledger + dedupe helpers), NOT `appendSnapshotDelta`
+  itself — rather than extracting `appendSnapshotDelta`'s apply-tail into a common
+  helper (R1's "preferred" option). Rationale: extraction would have edited
+  `appendSnapshotDelta` and risked its `service.test.ts` coverage; the independent
+  implementation reusing the same `./queries` wrappers is equally Phase-5-safe
+  (deleting `appendSnapshotDelta` touches neither the wrappers nor the appender)
+  and lower-risk. "The derivation moves, the machinery stays" is honored via the
+  shared `./queries` layer. No `TODO(phase5)` fallback was needed.
+- **R1 "prior match_decisions" delta — interpreted as queue-membership dedupe.**
+  Proposal subjects already exclude build-time-decided pairs (via
+  `deriveProposalSubjects`), and `fetchQueuedSongIds`/`fetchQueuedPlaylistIds`
+  select ALL session items regardless of state, so a resolved subject is
+  "already queued" and excluded — matching exactly what `appendSnapshotDelta`
+  does (it re-derives but its only queue-level dedup is the same set). No coarse
+  per-subject decision re-fetch was added (it would over-exclude a song with a
+  remaining undecided pair and diverge from `appendSnapshotDelta`). Residual: a
+  subject decided in a *different* session between build and append can
+  transiently append as an empty card — self-healing at card read, and near-nil
+  since build chains append back-to-back. Flagged for the live-DB pass.
+- **R2 — publish→build enqueue chained in `execute.ts`'s
+  `executeMatchSnapshotRefreshJob`** (after the post-publish PostHog block,
+  guarded on `result.published && result.snapshotId`), enqueuing `build_proposals`
+  for BOTH orientations, key `build:{account}:{orientation}:{snapshot}`,
+  best-effort (Sentry per orientation on enqueue failure, never a throw — the
+  snapshot is durable and the read path self-heals). Deviation from plan §6's
+  literal "inside `executeMatchSnapshotRefresh`": the pure orchestrator has 3
+  return points and unit-test mocks, so the worker-boundary job is the equivalent
+  seam. The `build_proposals` handler chains `append_sessions`
+  (`append:{account}:{orientation}:{snapshot}`) on success.
+- **R3 — NOTIFY fast path skipped.** No `notify-listener.ts` change and no
+  `pg_notify` in the enqueue RPC. The poll loop covers pickup; the plan makes the
+  fast path explicitly optional. Deferred optional optimization.
+- **R4 — `SONG_CARD_SUGGESTION_CAP = 100`**, mirroring
+  `PLAYLIST_CARD_SUGGESTION_CAP` (no reason for the arms to differ). Co-location
+  decision: BOTH caps moved to a new domain module
+  `card-suggestion-caps.ts` (they are co-located with each other), and
+  `match-review-queue.functions.ts` now imports `PLAYLIST_CARD_SUGGESTION_CAP`
+  from there. Deviation from the literal "co-locate in the server-fn file": the
+  worker's `card-materializer` must import the caps but cannot import that
+  server-fn file (it pulls `@tanstack/react-start` into the worker bundle), so the
+  domain module is the shared home. The server test references the value only in
+  comments, so nothing broke.
+- **R5 — `enqueue_match_review_deck_job` migration added**
+  (`20260706000010_...`): `INSERT ... ON CONFLICT (idempotency_key) WHERE status
+  NOT IN ('completed','dead') DO NOTHING`, SECURITY DEFINER, `SET
+  search_path=public`, REVOKE from PUBLIC/anon/authenticated + GRANT service_role,
+  `RETURNS SETOF match_review_deck_job` (0 or 1 row). No `pg_notify` (R3). All
+  enqueues route through it because supabase-js `.upsert` can't target the partial
+  index predicate.
+
+### Other Phase-2 decisions
+
+- **Escape hatch (`deck-db-types.ts`) surface.** A synthetic `DeckDatabase` +
+  `deckDb()` cast covers ONLY: the 4 new tables (`match_review_deck_job`,
+  `match_review_proposal`, `_subject`, `_seed_pair`), the 4 deck RPCs
+  (`claim/sweep/mark_dead/enqueue`), AND — added beyond the spec's list —
+  `match_review_session`'s Phase-1a deck columns (`active_proposal_id`,
+  `deck_revision`, `resume_position`), which are ALSO absent from the ungenerated
+  types. Call sites through `deckDb()`: `deck-jobs.ts` (all RPCs + settlement
+  UPDATEs), `proposal-builder.ts` (proposal/subject/seed writes + stale-marking),
+  `session-appender.ts` (ready-proposal + subject reads), and
+  `card-materializer.readSessionResumePosition` (the `resume_position` read).
+  Everything else (queue items, `insert_queue_*`, `capture_*`, entitlement RPCs,
+  `select("*")` on `match_review_session` via `fetchActiveSession`) uses the
+  normal generated-type client. The file's header marks it deletable; the swap
+  after `gen:types` is mechanical.
+- **Settlement by direct UPDATE.** No complete/defer settlement RPC exists and the
+  table has no fencing column, so `completeDeckJob`/`deferDeckJob`/`heartbeatDeckJob`
+  are plain `deckDb().from("match_review_deck_job").update(...)` by id. `attempts`
+  was consumed at claim, so defer = re-`pending` with a future `available_at`
+  (30s) + null heartbeat; `mark_dead` terminalizes exhausted attempts on the sweep
+  tick. Client-clock timestamps are used (no DB `now()` in a supabase-js update) —
+  acceptable against the 900s lease.
+- **Worker concurrency = 1, claim `p_limit = 1`.** The claim's NOT EXISTS
+  self-join only sees committed running rows, so a single-slot poller is the only
+  safe drain shape (Phase-1a note). Mirrors the audio-backfill loop wiring in
+  `index.ts` (startup sweep, sweep timer, shutdown stop, drain guard, awaited loop).
+- **`deriveProposalSubjects` returns the `filtersByPlaylistId` it read** so the
+  builder computes `visibility_config_hash` / `read_time_filters_hash` from the
+  exact same filter map + the one shared `nowMs` — keeping the proposal key
+  byte-identical to what `appendSnapshotDelta` would compute (UTC-today folding
+  parity). Cost: match results + target filters are fetched once per preset (3×);
+  accepted for Phase 2 (plan §6 calls 3× cheap), noted as a possible memoization.
+- **`PROMOTION_SEED_SUBJECTS = 3`**, **`CAPTURE_AHEAD_WINDOW = 5`** — new constants
+  (neither pinned by the plan). Seed is a small promotion window; capture-ahead
+  keeps a fast swiper from outrunning capture. Both in the domain modules that use
+  them.
+- **Seed derivation reuses `computeVisibleSuggestionList` via a synthetic queue-item
+  DTO** (only `subject`/`accountId`/`sourceSnapshotId` are read by it), capped per
+  orientation before writing seed rows, so the seed mirrors what a card would
+  capture. Pure mapping helpers `orderedSubjectsToProposalSubjectRows` /
+  `visibleSuggestionsToSeedPairRows` are exported and driven directly by the parity
+  suites.
+- **Parity-suite approach.** Both suites are DB-free: they mock `@/lib/data/client`
+  and drive the pure `deriveEligibleSubjects` / `deriveVisibleSuggestions` on inline
+  fixtures (the `review-subject-selector.test.ts` / `visible-suggestion-list.test.ts`
+  pattern — the referenced tests themselves use inline data, not the `*-raw.json`
+  harness). `proposal-order-parity` asserts the proposal-subject position order
+  equals the derived subject order and guards that both derivation entrypoints are
+  exported from the one shared `eligible-subjects.ts` (agree by construction).
+  `seed-pair-parity` asserts the seed rows equal `deriveVisibleSuggestions` output
+  field-for-field.
+- **`build_proposals` is rebuild-safe** — the proposal upserts on its unique key
+  and subjects are deleted-then-reinserted (cascading seed rows), so a
+  sweep-resurrected double-run converges. `repair` reuses
+  `buildProposalsForAccountOrientation`, resolving the latest snapshot when its
+  payload omits `snapshotId`.
+- **`execute.test.ts` fix (not a weakening).** The R2 enqueue is a new dependency
+  of `executeMatchSnapshotRefreshJob`; the analytics-swallow test asserted an exact
+  Sentry count and broke because the unmocked deck client captured on failure. Root
+  cause: (a) `enqueueDeckJob` was unmocked, now mocked to `Result.ok(null)`; (b) a
+  pre-existing latent bug — `mockCaptureWorkerEvent`'s throw impl leaked past
+  `clearAllMocks` (which doesn't reset implementations) into later tests, fixed with
+  a `mockReset()` in `beforeEach`. Added R2 coverage: both-orientation enqueue keys,
+  best-effort swallow, and no-enqueue-on-no-publish.
+
+### LOCAL VERIFICATION REQUIRED (Phase 2)
+
+All live-DB verification is deferred (no Postgres in this cloud env). A local-DB
+machine must verify:
+
+- **Migration replay** `20260706000010` applies cleanly and the enqueue RPC's
+  `ON CONFLICT (idempotency_key) WHERE status NOT IN ('completed','dead') DO
+  NOTHING` binds the partial index
+  `idx_match_review_deck_job_idempotency_key_active`
+  (`20260706000005_..._deck_job_table.sql:61-63`).
+- **`bun run gen:types`** regenerates `database.types.ts` to include the 4 deck
+  tables, the deck columns on `match_review_session`, and the deck RPCs — then
+  DELETE `deck-db-types.ts`, swap every `deckDb()` → `createAdminSupabaseClient()`,
+  and confirm the real Row/Insert shapes match this file's (payload jsonb → `Json`,
+  nullable `session_id`/`heartbeat_at`/`resume_position`).
+- **Idempotent double-run** (no fencing column): re-running each handler
+  (build/append/capture, e.g. a sweep-resurrected job) must converge — proposal
+  upsert + delete/reinsert, `insert_queue_*` ON CONFLICT DO NOTHING, and
+  `captureVisiblePairsAtomic` first-write-wins.
+- **Subject-order parity vs the entitlement/ownership prefilters** against a real
+  snapshot: `deriveProposalSubjects` applies `select_entitled_...` +
+  `fetchOwnedPlaylistIds` (which `getOrderedUndecidedSubjects` alone does NOT), so
+  proposal order must equal `appendSnapshotDelta`'s. Run the §12 read-only
+  shadow-compare script.
+- **`nowMs` UTC-midnight folding**: the builder's `visibility_config_hash` must
+  equal `appendSnapshotDelta`'s for the same policy across a midnight boundary
+  (liked-at "today" filter).
+- **Entitlement/ownership parity** at capture: `capture_ahead`'s per-card
+  `computeVisibleSuggestionList` output (and its caps) must match the request-path
+  card, and a mid-flight decision must be re-excluded by `captureVisiblePairsAtomic`
+  on the next derive (capture-ahead DTO freshness).
+- **`append_sessions` residual** (see R1 note): a subject decided in a different
+  session between build and append should self-heal to an empty card, not a wrong
+  or duplicated one.
+- **End-to-end drain**: publish → `build_proposals` (both orientations, all
+  presets) → chained `append_sessions` → `capture_ahead`, plus `sweep`/`mark_dead`
+  reclaim/dead-letter behavior and the `index.ts` startup sweep + shutdown drain.
+
+### Review patch round (M2 / M3 / N1 applied; M1 / M4 residual)
+
+- **M3 fixed** (`proposal-builder.ts`) — the "mark prior proposals stale" step now
+  runs ONLY when the built snapshot IS the account's latest
+  (`getLatestMatchSnapshot` id equality guard) before the existing
+  `.neq("snapshot_id", …)` update, so building/repairing an OLDER snapshot can no
+  longer flip a newer snapshot's `ready` proposals to `stale`. Approach (b) over
+  (a): a correlated `match_snapshot.created_at` subquery isn't expressible as a
+  clean single supabase-js `.update()`, and the id-list variant would violate the
+  DB-derived-id-set `.in()` rule.
+- **M2 fixed** (`session-appender.ts` + `poll-match-deck-jobs.ts`) — the appender
+  reads `status` instead of filtering `.eq("status","ready")` and returns a new
+  `{ kind: "superseded" }` outcome when a proposal row EXISTS for the frozen hash
+  but is `stale` (a newer snapshot took over); the poll loop lets `superseded`
+  fall through to `completeDeckJob` (no defer, no dead-letter, no Sentry). A
+  genuinely-absent row (or one still `building`/`failed`) keeps the retryable
+  `no_ready_proposal` path.
+- **N1 fixed** (`poll-match-deck-jobs.ts`) — `completeDeckJob`/`deferDeckJob`
+  Results are now checked via a `logSettlementFailure` helper that `log.error`s
+  (job id + kind + settlement) on a failed settlement write; control flow is
+  unchanged (the sweep still reclaims), the failure is just no longer silent.
+- **M1 residual** (append decision re-check divergence) and **M4 residual**
+  (midnight UTC-rollover `visibility_config_hash` skew) remain as recorded
+  self-healing residuals — an empty transiently-appended card resolves at card
+  read, and a rollover-skewed append lands `no_ready_proposal` → retry/self-heal.
+  Both to be verified in the local-DB pass (see LOCAL VERIFICATION REQUIRED).

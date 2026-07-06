@@ -1,3 +1,4 @@
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/platform/jobs/repository";
 import type {
@@ -6,16 +7,24 @@ import type {
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { executeMatchSnapshotRefreshJob } from "../execute";
 
-const { mockExecute, mockCaptureWorkerEvent, mockSentryCapture } = vi.hoisted(
-	() => ({
-		mockExecute: vi.fn(),
-		mockCaptureWorkerEvent: vi.fn(),
-		mockSentryCapture: vi.fn(),
-	}),
-);
+const {
+	mockExecute,
+	mockCaptureWorkerEvent,
+	mockSentryCapture,
+	mockEnqueueDeckJob,
+} = vi.hoisted(() => ({
+	mockExecute: vi.fn(),
+	mockCaptureWorkerEvent: vi.fn(),
+	mockSentryCapture: vi.fn(),
+	mockEnqueueDeckJob: vi.fn(),
+}));
 
 vi.mock("@sentry/bun", () => ({
 	captureException: (...args: unknown[]) => mockSentryCapture(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
+	enqueueDeckJob: (...args: unknown[]) => mockEnqueueDeckJob(...args),
 }));
 
 vi.mock("@/lib/workflows/match-snapshot-refresh/orchestrator", () => ({
@@ -71,6 +80,12 @@ function makeResult(
 describe("executeMatchSnapshotRefreshJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// clearAllMocks resets calls but not implementations; drop the per-test
+		// throw impl so it can't leak into a later test's Sentry-count assertion.
+		mockCaptureWorkerEvent.mockReset();
+		// R2 chain: the post-publish build_proposals enqueue is best-effort; default
+		// it to success so unrelated assertions aren't perturbed by deck side effects.
+		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
 	});
 
 	it("emits match_snapshot_published with the result counts", async () => {
@@ -134,5 +149,60 @@ describe("executeMatchSnapshotRefreshJob", () => {
 
 		expect(result.status).toBe("superseded");
 		expect(mockCaptureWorkerEvent).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+	});
+
+	it("enqueues build_proposals for both orientations after a publish (R2)", async () => {
+		mockExecute.mockResolvedValue({
+			status: "published",
+			result: makeResult(),
+		} satisfies MatchSnapshotRefreshOutcome);
+
+		await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(2);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountId: "acct-1",
+				orientation: "song",
+				kind: "build_proposals",
+				idempotencyKey: "build:acct-1:song:snap-1",
+			}),
+		);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountId: "acct-1",
+				orientation: "playlist",
+				kind: "build_proposals",
+				idempotencyKey: "build:acct-1:playlist:snap-1",
+			}),
+		);
+	});
+
+	it("swallows an enqueue failure (best-effort) and still returns published", async () => {
+		mockExecute.mockResolvedValue({
+			status: "published",
+			result: makeResult(),
+		} satisfies MatchSnapshotRefreshOutcome);
+		mockEnqueueDeckJob.mockResolvedValue(
+			Result.err(new Error("deck enqueue failed")),
+		);
+
+		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+
+		expect(result.status).toBe("published");
+		// One Sentry capture per orientation whose enqueue failed — never a throw.
+		expect(mockSentryCapture).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not enqueue deck jobs when nothing published (no-op refresh)", async () => {
+		mockExecute.mockResolvedValue({
+			status: "published",
+			result: makeResult({ published: false, snapshotId: null, noOp: true }),
+		} satisfies MatchSnapshotRefreshOutcome);
+
+		await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 });

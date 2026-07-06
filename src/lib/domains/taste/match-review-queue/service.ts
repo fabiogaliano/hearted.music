@@ -14,12 +14,8 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
-import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import {
-	getMatchResults,
-	type MatchResultRow,
-} from "@/lib/domains/taste/song-matching/queries";
+import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
@@ -27,6 +23,7 @@ import {
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { deriveEligibleSubjects } from "./eligible-subjects";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
 import { advanceActiveSession } from "./pass-advance";
 import {
@@ -51,7 +48,6 @@ import {
 	updateQueueItemPresented,
 	updateQueueItemResolved,
 } from "./queries";
-import { getOrderedUndecidedSubjects } from "./review-subject-selector";
 import type {
 	ActiveQueueResult,
 	AppendResult,
@@ -59,7 +55,6 @@ import type {
 	MatchReviewQueueItem,
 	MatchReviewSession,
 	MatchReviewSummary,
-	OrderedSubject,
 	QueueItemResolution,
 	QueueItemState,
 } from "./types";
@@ -479,38 +474,6 @@ async function appendLatestSnapshot(
 	}
 
 	return appendSnapshotDelta(session, snapshotResult.data.id, accountId, opts);
-}
-
-/**
- * Restricts snapshot match results to *eligible* pairs — song still entitled to
- * the account AND playlist still owned by it — before deriving ordered subjects
- * under the visibility policy.
- *
- * Eligibility is symmetric across orientation: a pair can only ever render on a
- * card when its song is entitled (the suggestion in playlist mode, the subject in
- * song mode) and its playlist is owned (the subject in playlist mode, the
- * suggestion in song mode). Pre-filtering here means the selector's ordering,
- * sourceScore, and hidden count all reflect exactly the pairs a card could show —
- * closing the gap where a non-entitled song or non-owned playlist drove ordering
- * or marked a subject queue-eligible that card visibility would later drop
- * (Findings 1 & 2).
- */
-function deriveEligibleSubjects(input: {
-	matchResults: MatchResultRow[];
-	decidedPairs: ReadonlySet<string>;
-	policy: VisibilityPolicy;
-	entitledSongIds: ReadonlySet<string>;
-	ownedPlaylistIds: ReadonlySet<string>;
-	newSongIds: ReadonlySet<string>;
-	songMetaBySongId: ReadonlyMap<string, SongFilterMetadata>;
-	nowMs: number;
-}): { subjects: OrderedSubject[]; hiddenReviewItemCount: number } {
-	const eligible = input.matchResults.filter(
-		(mr) =>
-			input.entitledSongIds.has(mr.song_id) &&
-			input.ownedPlaylistIds.has(mr.playlist_id),
-	);
-	return getOrderedUndecidedSubjects({ ...input, matchResults: eligible });
 }
 
 /**
