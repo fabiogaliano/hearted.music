@@ -20,6 +20,13 @@ import {
 	startExtensionSyncPolling,
 	stopExtensionSyncPolling,
 } from "./poll-extension-sync";
+import {
+	getActiveMatchDeckJobCount,
+	runMatchDeckJobSweepTick,
+	startMatchDeckJobPolling,
+	startMatchDeckJobSweep,
+	stopMatchDeckJobPolling,
+} from "./poll-match-deck-jobs";
 import { shutdownWorkerPostHog } from "./posthog-capture";
 import { shutdownPostHogOtel } from "./posthog-otel";
 import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
@@ -48,9 +55,13 @@ async function main() {
 	// Reclaim any backfill job whose worker died mid-run before the loop opens,
 	// so an expired lease can't keep the selector wedged in backfill_active.
 	await runAudioFeatureBackfillSweepTick();
+	// Reclaim any deck job whose worker died mid-run (stale heartbeat) and
+	// dead-letter exhausted ones before the deck poll loop opens.
+	await runMatchDeckJobSweepTick();
 
 	const sweep = startDefaultSweep();
 	const audioBackfillSweep = startAudioFeatureBackfillSweep();
+	const matchDeckSweep = startMatchDeckJobSweep();
 
 	// Primary wake-up for extension sync: a job_created NOTIFY drains the queue
 	// immediately; the poll loop is the at-most-once-delivery safety net.
@@ -67,22 +78,26 @@ async function main() {
 		stopPolling();
 		stopExtensionSyncPolling();
 		stopAudioFeatureBackfillPolling();
+		stopMatchDeckJobPolling();
 		await notifyListener.stop();
 		keepAlive.stop();
 		dbBackup.stop();
 		sweep.stop();
 		audioBackfillSweep.stop();
+		matchDeckSweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
 		const drainPending = () =>
 			getActiveJobCount() > 0 ||
 			getActiveExtensionSyncJobCount() > 0 ||
-			getActiveAudioFeatureBackfillJobCount() > 0;
+			getActiveAudioFeatureBackfillJobCount() > 0 ||
+			getActiveMatchDeckJobCount() > 0;
 		while (drainPending() && Date.now() < deadline) {
 			log.info("draining", {
 				activeJobs: getActiveJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
+				activeMatchDeckJobs: getActiveMatchDeckJobCount(),
 				remainingMs: deadline - Date.now(),
 			});
 			await Bun.sleep(1000);
@@ -93,6 +108,7 @@ async function main() {
 				activeJobs: getActiveJobCount(),
 				activeExtensionSyncJobs: getActiveExtensionSyncJobCount(),
 				activeAudioBackfillJobs: getActiveAudioFeatureBackfillJobCount(),
+				activeMatchDeckJobs: getActiveMatchDeckJobCount(),
 			});
 		}
 
@@ -130,9 +146,19 @@ async function main() {
 		});
 	});
 
+	// Match deck jobs run their own single-slot loop with a dedicated claim RPC,
+	// draining publish→build→append and capture-ahead off the request path.
+	const matchDeckLoop = startMatchDeckJobPolling().catch((err) => {
+		log.error("match-deck-poll-loop-error", { error: String(err) });
+		Sentry.captureException(err, {
+			tags: { loop: "match-deck-jobs" },
+		});
+	});
+
 	await startPolling();
 	await extensionSyncLoop;
 	await audioBackfillLoop;
+	await matchDeckLoop;
 
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");
