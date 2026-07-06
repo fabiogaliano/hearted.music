@@ -78,6 +78,8 @@ function makeSongReadyItem(
 			rank: 1,
 			factors: {},
 		})),
+		suggestionTotal: suggestionPlaylistIds.length,
+		nextCursor: null,
 	};
 }
 
