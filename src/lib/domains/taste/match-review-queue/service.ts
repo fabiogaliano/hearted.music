@@ -24,12 +24,15 @@ import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
 import { advanceActiveSession } from "./pass-advance";
 import {
+	callResumeMatchReviewSession,
 	clearSongNewness,
+	completeSession,
 	countUnresolvedItems,
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
@@ -44,6 +47,7 @@ import {
 	insertQueueItems,
 	insertQueuePlaylistItems,
 	insertSessionSnapshot,
+	mapItemToDto,
 	updateQueueItemPresented,
 	updateQueueItemResolved,
 } from "./queries";
@@ -229,6 +233,156 @@ async function createQueueFromLatestSnapshot(
 export async function createOrResumeQueue(
 	accountId: string,
 	orientation: MatchOrientation = "song",
+	opts?: AppendOpts,
+): Promise<Result<ActiveQueueResult, DbError>> {
+	// Fast path: single-RPC resume. Returns session, unresolved count, latest
+	// snapshot, applied snapshot keys, and queue items in one round trip. If the
+	// latest snapshot is already applied (common case), the resume is done.
+	const rpcResult = await callResumeMatchReviewSession(accountId, orientation);
+	if (Result.isError(rpcResult)) {
+		// RPC failure: fall through to the legacy multi-hop path rather than
+		// failing outright — the RPC is an optimization, not a new capability. But
+		// report it first: a silent fallback would revert /match bootstrap to the
+		// slow 6-round-trip path forever (e.g. migration forgotten in prod) with no
+		// signal. captureServerError is the same Sentry boundary the server layer
+		// uses; the service layer still returns the fallback so behaviour is intact.
+		captureServerError(rpcResult.error, {
+			area: "match_review_queue",
+			operation: "resume_session_rpc",
+			accountId,
+			extra: { orientation },
+		});
+		return createOrResumeQueueLegacy(accountId, orientation, opts);
+	}
+
+	const rpc = rpcResult.value;
+	if (rpc.status === "no_session") {
+		return createQueueFromLatestSnapshot(accountId, orientation, opts);
+	}
+
+	// Map the RPC session to a domain type
+	const session = mapRpcSession(rpc.session!);
+	const unresolvedCount = rpc.unresolved_count ?? 0;
+	const latestSnapshotId = rpc.latest_snapshot_id ?? null;
+	const appliedKeys = new Set(
+		(rpc.applied_snapshots ?? []).map(
+			(a) => `${a.snapshot_id}:${a.visibility_config_hash}`,
+		),
+	);
+	const items = (rpc.items ?? []).map(mapItemToDto);
+
+	// Decide which advance branch applies — same logic as advanceActiveSession
+	// but using the data already fetched by the RPC.
+	if (unresolvedCount > 0) {
+		// Items remain: check if the latest snapshot needs appending
+		if (latestSnapshotId) {
+			const snapshotApplied = await isSnapshotAlreadyApplied(
+				session,
+				accountId,
+				latestSnapshotId,
+				appliedKeys,
+			);
+			if (snapshotApplied) {
+				// Common short-circuit: session active, snapshot applied, items remain.
+				// Everything we need was in the RPC response — zero extra round trips.
+				return Result.ok<ActiveQueueResult, DbError>({
+					kind: "resumed",
+					session,
+					items,
+				});
+			}
+		} else {
+			// No snapshot at all — nothing to append, just resume with items.
+			return Result.ok<ActiveQueueResult, DbError>({
+				kind: "resumed",
+				session,
+				items,
+			});
+		}
+
+		// Snapshot not yet applied: fall through to the append logic.
+		const appendResult = await appendLatestSnapshot(session, accountId, opts);
+		if (Result.isError(appendResult)) return appendResult;
+		return Result.ok<ActiveQueueResult, DbError>({
+			kind: "resumed",
+			session,
+		});
+	}
+
+	// Zero unresolved: check if session has been seeded
+	const seededResult = await hasSessionBeenSeeded(session.id);
+	if (Result.isError(seededResult)) return seededResult;
+
+	if (!seededResult.value) {
+		const appendResult = await appendLatestSnapshot(session, accountId, opts);
+		if (Result.isError(appendResult)) return appendResult;
+		return Result.ok<ActiveQueueResult, DbError>({
+			kind: "resumed",
+			session,
+		});
+	}
+
+	// Caught up — complete and create fresh
+	const completeResult = await completeSession(session.id, accountId);
+	if (Result.isError(completeResult)) return completeResult;
+
+	return createQueueFromLatestSnapshot(accountId, orientation, opts);
+}
+
+/**
+ * Maps the RPC's raw session JSON to a MatchReviewSession domain type.
+ */
+function mapRpcSession(
+	raw: NonNullable<
+		import("./queries").ResumeMatchReviewSessionRpcResult["session"]
+	>,
+): MatchReviewSession {
+	return {
+		id: raw.id,
+		accountId: raw.account_id,
+		orientation: raw.orientation as MatchOrientation,
+		status: raw.status as import("./types").SessionStatus,
+		strictnessPreset: raw.strictness_preset,
+		strictnessMinScore: raw.strictness_min_score,
+		createdAt: raw.created_at,
+		updatedAt: raw.updated_at,
+		completedAt: raw.completed_at,
+	};
+}
+
+/**
+ * Checks whether the latest snapshot is already applied under the current
+ * visibility policy. Performs the hash computation in TypeScript (reading
+ * target playlist filters) and checks against the applied set from the RPC.
+ */
+async function isSnapshotAlreadyApplied(
+	session: MatchReviewSession,
+	accountId: string,
+	snapshotId: string,
+	appliedKeys: Set<string>,
+): Promise<boolean> {
+	const targetFiltersResult = await fetchTargetPlaylistFilters(accountId);
+	if (Result.isError(targetFiltersResult)) return false;
+
+	const policy: VisibilityPolicy = {
+		orientation: session.orientation,
+		minScore: session.strictnessMinScore,
+		filtersByPlaylistId: targetFiltersResult.value,
+	};
+	const nowMs = Date.now();
+	const visibilityHash = computeVisibilityPolicyHash(policy, nowMs);
+	const appliedKey = `${snapshotId}:${visibilityHash}`;
+
+	return appliedKeys.has(appliedKey);
+}
+
+/**
+ * Legacy multi-hop resume path — kept as fallback when the single-RPC call
+ * fails. Identical to the pre-optimization createOrResumeQueue logic.
+ */
+async function createOrResumeQueueLegacy(
+	accountId: string,
+	orientation: MatchOrientation,
 	opts?: AppendOpts,
 ): Promise<Result<ActiveQueueResult, DbError>> {
 	const existing = await fetchActiveSession(accountId, orientation);

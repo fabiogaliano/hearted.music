@@ -22,6 +22,7 @@ import type { MatchReviewQueueItem } from "../types";
 // ============================================================================
 
 vi.mock("../queries", () => ({
+	callResumeMatchReviewSession: vi.fn(),
 	fetchActiveSession: vi.fn(),
 	insertMatchReviewSession: vi.fn(),
 	completeSession: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock("../queries", () => ({
 	updateQueueItemResolved: vi.fn(),
 	clearSongNewness: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
+	mapItemToDto: vi.fn(),
 }));
 
 vi.mock("../filter-metadata-queries", () => ({
@@ -79,6 +81,14 @@ vi.mock("@/lib/observability/capture-product-event", () => ({
 	captureProductEventBestEffort: vi.fn(),
 }));
 
+// createOrResumeQueue reports a resume-RPC failure through captureServerError
+// before falling back to the legacy path (Finding 5). Mock it so the fallback
+// tests (which drive the RPC to error by default) don't hit real Sentry and so
+// the report can be asserted.
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: vi.fn(),
+}));
+
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
@@ -86,6 +96,7 @@ import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predi
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
 import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import * as queries from "../queries";
 // Import after mocks are set up
@@ -173,6 +184,11 @@ beforeEach(() => {
 	vi.mocked(getMatchResults).mockResolvedValue(Result.ok([]));
 
 	// Default query mocks — safe no-op defaults
+	// Resume RPC defaults to error so tests fall through to the legacy multi-hop
+	// path (the RPC is an optimization; existing tests exercise the legacy logic).
+	vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
+		Result.err(new DatabaseError({ code: "mock", message: "not wired" })),
+	);
 	vi.mocked(queries.fetchActiveSession).mockResolvedValue(Result.ok(null));
 	vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
 		Result.ok(fakeSession()),
@@ -551,6 +567,184 @@ describe("createOrResumeQueue", () => {
 		const result = await createOrResumeQueue(ACCOUNT_ID);
 
 		expect(result).toBeErr();
+	});
+
+	// --------------------------------------------------------------------------
+	// Single-RPC fast resume path (callResumeMatchReviewSession success)
+	// --------------------------------------------------------------------------
+
+	it("resumes from the fast RPC with items when the latest snapshot is already applied", async () => {
+		// mapItemToDto is mocked in this file — give it a passthrough so the resumed
+		// items are the RPC rows themselves and the assertion sees real values.
+		vi.mocked(queries.mapItemToDto).mockImplementation(
+			(row) => row as unknown as ReturnType<typeof queries.mapItemToDto>,
+		);
+		// Full raw row shape the RPC returns (matches the SQL jsonb_build_object).
+		const rpcRow = {
+			id: "item-rpc-1",
+			session_id: SESSION_ID,
+			account_id: ACCOUNT_ID,
+			orientation: "song",
+			song_id: "song-rpc-1",
+			playlist_id: null,
+			source_snapshot_id: SNAPSHOT_ID,
+			position: 0,
+			state: "pending",
+			resolution: null,
+			source_fit_score: 0.8,
+			was_new_at_enqueue: false,
+			presented_at: null,
+			resolved_at: null,
+			visible_pairs_captured_at: null,
+			created_at: "2026-06-15T00:00:00Z",
+			updated_at: "2026-06-15T00:00:00Z",
+		};
+		vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
+			Result.ok({
+				status: "found",
+				session: {
+					id: SESSION_ID,
+					account_id: ACCOUNT_ID,
+					orientation: "song",
+					status: "active",
+					strictness_preset: "balanced",
+					strictness_min_score: 0.5,
+					created_at: "2026-06-15T00:00:00Z",
+					updated_at: "2026-06-15T00:00:00Z",
+					completed_at: null,
+				},
+				unresolved_count: 3,
+				latest_snapshot_id: SNAPSHOT_ID,
+				applied_snapshots: [
+					{
+						snapshot_id: SNAPSHOT_ID,
+						visibility_config_hash: SONG_VISIBILITY_HASH,
+					},
+				],
+				items: [rpcRow],
+			}),
+		);
+		// Empty filter map → the TS-side computeVisibilityPolicyHash matches the
+		// SONG_VISIBILITY_HASH the RPC reported as applied, so the resume is a no-op.
+		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(new Map()),
+		);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result) && result.value.kind === "resumed") {
+			expect(result.value.items).toEqual([rpcRow]);
+		} else {
+			throw new Error("expected a resumed queue with items");
+		}
+		// The RPC carried session, count, applied set, and items in one round trip —
+		// the legacy multi-hop reads must never run.
+		expect(queries.fetchActiveSession).not.toHaveBeenCalled();
+		expect(queries.countUnresolvedItems).not.toHaveBeenCalled();
+	});
+
+	it("falls through to createQueueFromLatestSnapshot when the RPC reports no_session", async () => {
+		vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
+			Result.ok({ status: "no_session" }),
+		);
+		// Default supabase client returns no snapshot, so createQueueFromLatestSnapshot
+		// short-circuits to no_snapshot — proof the no_session branch was taken and
+		// no session was inserted.
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.kind).toBe("no_snapshot");
+		}
+		expect(queries.fetchActiveSession).not.toHaveBeenCalled();
+		expect(queries.insertMatchReviewSession).not.toHaveBeenCalled();
+	});
+
+	it("completes a caught-up session from the RPC and creates a fresh pass", async () => {
+		vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
+			Result.ok({
+				status: "found",
+				session: {
+					id: SESSION_ID,
+					account_id: ACCOUNT_ID,
+					orientation: "song",
+					status: "active",
+					strictness_preset: "balanced",
+					strictness_min_score: 0.5,
+					created_at: "2026-06-15T00:00:00Z",
+					updated_at: "2026-06-15T00:00:00Z",
+					completed_at: null,
+				},
+				unresolved_count: 0,
+				latest_snapshot_id: SNAPSHOT_ID,
+				applied_snapshots: [],
+				items: [],
+			}),
+		);
+		// Seeded (has an applied snapshot) + zero unresolved ⇒ caught up ⇒ roll over.
+		vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
+			Result.ok(new Set(["snap-old"])),
+		);
+		vi.mocked(queries.completeSession).mockResolvedValue(
+			Result.ok({ ...fakeSession(), status: "completed" as const }),
+		);
+		const freshSession = { ...fakeSession(), id: "session-fresh-rpc" };
+		vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
+			Result.ok(freshSession),
+		);
+		// A snapshot exists so the fresh pass is created (not no_snapshot).
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from: vi.fn(() => ({
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				order: vi.fn().mockReturnThis(),
+				limit: vi.fn().mockReturnThis(),
+				maybeSingle: vi
+					.fn()
+					.mockResolvedValue({ data: { id: SNAPSHOT_ID }, error: null }),
+			})),
+			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result) && result.value.kind === "created") {
+			expect(result.value.session.id).toBe("session-fresh-rpc");
+		} else {
+			throw new Error("expected a freshly created queue");
+		}
+		// The caught-up pass was completed before the fresh one was created.
+		expect(queries.completeSession).toHaveBeenCalledWith(
+			SESSION_ID,
+			ACCOUNT_ID,
+		);
+	});
+
+	it("reports the resume-RPC failure before falling back to the legacy path (Finding 5)", async () => {
+		// Default resume RPC errors; an existing active session lets the legacy
+		// fallback resume successfully.
+		vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "57014", message: "rpc timeout" })),
+		);
+		vi.mocked(queries.fetchActiveSession).mockResolvedValue(
+			Result.ok(fakeSession()),
+		);
+		vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(2));
+
+		const result = await createOrResumeQueue(ACCOUNT_ID);
+
+		expect(result).toBeOk();
+		// A silent fallback would hide a broken optimization — the RPC failure is
+		// captured before the legacy path runs.
+		expect(captureServerError).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ operation: "resume_session_rpc" }),
+		);
+		// Legacy path ran: the active-session lookup the RPC would have replaced.
+		expect(queries.fetchActiveSession).toHaveBeenCalled();
 	});
 });
 

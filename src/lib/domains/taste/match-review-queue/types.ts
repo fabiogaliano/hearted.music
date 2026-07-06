@@ -118,7 +118,13 @@ export interface MatchReviewSession {
 
 export type ActiveQueueResult =
 	| { kind: "created"; session: MatchReviewSession; appendedCount: number }
-	| { kind: "resumed"; session: MatchReviewSession }
+	| {
+			kind: "resumed";
+			session: MatchReviewSession;
+			/** Populated by the single-RPC fast resume path so the caller can skip
+			 *  a separate fetchQueueItems round trip. */
+			items?: MatchReviewQueueItemDto[];
+	  }
 	| { kind: "no_snapshot" };
 
 export interface MatchReviewSummary {

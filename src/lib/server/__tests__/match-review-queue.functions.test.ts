@@ -53,6 +53,7 @@ const {
 	mockClearSongNewness,
 	mockReadQueueItemSongSuggestions,
 	mockCountCapturedVisiblePairs,
+	mockCallPresentMatchReviewItemFast,
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
 	mockGetPlaylistById,
@@ -87,6 +88,7 @@ const {
 		mockClearSongNewness: vi.fn().mockResolvedValue(undefined),
 		mockReadQueueItemSongSuggestions: vi.fn(),
 		mockCountCapturedVisiblePairs: vi.fn(),
+		mockCallPresentMatchReviewItemFast: vi.fn(),
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 		mockGetPlaylistById: vi.fn(),
@@ -187,6 +189,8 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	addQueueItemDecisionAtomically: (...args: unknown[]) =>
 		mockAddQueueItemDecisionAtomically(...args),
+	callPresentMatchReviewItemFast: (...args: unknown[]) =>
+		mockCallPresentMatchReviewItemFast(...args),
 	clearSongNewness: (...args: unknown[]) => mockClearSongNewness(...args),
 	countCapturedVisiblePairs: (...args: unknown[]) =>
 		mockCountCapturedVisiblePairs(...args),
@@ -1892,6 +1896,15 @@ describe("presentMatchReviewItem", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// Default: the fast RPC returns a non-terminal 'not_captured' so the
+		// optimistic path falls through to the standard multi-step flow WITHOUT
+		// reporting — existing tests exercise that flow via the individual query
+		// mocks. Fast-path-specific tests override this. A Result.err default would
+		// fire the Finding-5 fallback report on every test, inflating the
+		// captureException counts other tests assert on.
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "not_captured" }),
+		);
 		// Default happy-path mocks
 		mockComputeVisibleSuggestionList.mockResolvedValue({
 			kind: "ok",
@@ -2799,6 +2812,228 @@ describe("presentMatchReviewItem", () => {
 		if (result.status === "ready" && result.mode === "playlist") {
 			expect(result.suggestions).toHaveLength(100);
 		}
+	});
+
+	// -------------------------------------------------------------------------
+	// Optimistic single-RPC fast path (callPresentMatchReviewItemFast)
+	// -------------------------------------------------------------------------
+
+	it("renders a playlist card directly from the fast RPC 'ready' payload (full first page → cursor)", async () => {
+		// A full first page whose post-dismissal total exceeds the page size, so a
+		// nextCursor is derived from the last row.
+		const rpcRows = Array.from(
+			{ length: PLAYLIST_CARD_FIRST_PAGE_SIZE },
+			(_, i) => ({
+				song_id: `song-${i}`,
+				name: `Song ${i}`,
+				artists: [`Artist ${i}`],
+				album_name: `Album ${i}`,
+				image_url: `img-${i}.jpg`,
+				spotify_id: `sp-${i}`,
+				genres: ["pop"],
+				fit_score: 0.9 - i * 0.01,
+				visible_rank: i + 1,
+				model_rank: i + 1,
+			}),
+		);
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({
+				status: "ready",
+				item: {
+					id: "item-1",
+					session_id: "session-1",
+					orientation: "playlist",
+					playlist_id: "pl-review",
+					state: "active",
+					visible_pairs_captured_at: "2026-07-01T00:00:00Z",
+				},
+				playlist: {
+					id: "pl-review",
+					spotify_id: "sp-pl-review",
+					name: "Review Playlist",
+					match_intent: "test intent",
+					image_url: "pl.jpg",
+					song_count: 20,
+				},
+				suggestions: rpcRows,
+				total_active_count: 150,
+			}),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		// The optimistic RPC is terminal for a captured playlist card — the standard
+		// flow (ownership fetch + derivation) never runs.
+		expect(mockFrom).not.toHaveBeenCalledWith("match_review_queue_item");
+		expect(mockComputeVisibleSuggestionList).not.toHaveBeenCalled();
+		if (result.status === "ready" && result.mode === "playlist") {
+			// reviewItem field mapping: match_intent → description, song_count → trackCount.
+			expect(result.reviewItem.id).toBe("pl-review");
+			expect(result.reviewItem.spotifyId).toBe("sp-pl-review");
+			expect(result.reviewItem.description).toBe("test intent");
+			expect(result.reviewItem.trackCount).toBe(20);
+			// Suggestion mapping: song fields + fitScore from the captured pair.
+			expect(result.suggestions).toHaveLength(PLAYLIST_CARD_FIRST_PAGE_SIZE);
+			expect(result.suggestions[0].song.id).toBe("song-0");
+			expect(result.suggestions[0].song.artist).toBe("Artist 0");
+			expect(result.suggestions[0].fitScore).toBe(0.9);
+			// total_active_count (150) capped to PLAYLIST_CARD_SUGGESTION_CAP (100).
+			expect(result.suggestionTotal).toBe(100);
+			// Full first page below the capped total → cursor from the last row.
+			const lastRow = rpcRows.at(-1);
+			expect(result.nextCursor).toEqual({
+				fitScore: lastRow?.fit_score,
+				modelRank: lastRow?.model_rank,
+				songId: lastRow?.song_id,
+			});
+		}
+	});
+
+	it("derives nextCursor null on the fast path when the first page is the whole set", async () => {
+		// A short page (2 rows < first-page size) means there is no tail to page in.
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({
+				status: "ready",
+				playlist: {
+					id: "pl-review",
+					spotify_id: "sp-pl-review",
+					name: "Review Playlist",
+					match_intent: null,
+					image_url: null,
+					song_count: 5,
+				},
+				suggestions: [
+					{
+						song_id: "song-0",
+						name: "S0",
+						artists: ["A0"],
+						album_name: null,
+						image_url: null,
+						spotify_id: "sp-0",
+						genres: [],
+						fit_score: 0.8,
+						visible_rank: 1,
+						model_rank: 1,
+					},
+					{
+						song_id: "song-1",
+						name: "S1",
+						artists: ["A1"],
+						album_name: null,
+						image_url: null,
+						spotify_id: "sp-1",
+						genres: [],
+						fit_score: 0.7,
+						visible_rank: 2,
+						model_rank: 2,
+					},
+				],
+				total_active_count: 2,
+			}),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("ready");
+		if (result.status === "ready" && result.mode === "playlist") {
+			expect(result.suggestions).toHaveLength(2);
+			expect(result.suggestionTotal).toBe(2);
+			expect(result.nextCursor).toBeNull();
+		}
+	});
+
+	it("maps fast-path 'not_found' to unavailable/not-entitled without loading the item", async () => {
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "not_found" }),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+		}
+		expect(mockFrom).not.toHaveBeenCalledWith("match_review_queue_item");
+	});
+
+	it("maps fast-path 'playlist_gone' to unavailable/not-entitled", async () => {
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "playlist_gone" }),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("not-entitled");
+		}
+	});
+
+	it("maps fast-path 'no_visible_suggestions' to unavailable/no-visible-suggestions", async () => {
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "no_visible_suggestions" }),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(result.status).toBe("unavailable");
+		if (result.status === "unavailable") {
+			expect(result.reason).toBe("no-visible-suggestions");
+			// Playlist-orientation suggestion side is songs (A1 orientation copy).
+			expect(result.message).toContain("song matches");
+		}
+	});
+
+	it("falls through to the standard flow when the fast RPC returns 'not_captured'", async () => {
+		setupPresentItemFetch();
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "not_captured" }),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		// Non-terminal status → the ownership fetch (standard flow) runs.
+		expect(mockFrom).toHaveBeenCalledWith("match_review_queue_item");
+		expect(result.status).toBe("ready");
+	});
+
+	it("falls through to the standard flow when the fast RPC returns 'not_playlist' (song card)", async () => {
+		setupPresentItemFetch();
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(
+			Result.ok({ status: "not_playlist" }),
+		);
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		expect(mockFrom).toHaveBeenCalledWith("match_review_queue_item");
+		expect(result.status).toBe("ready");
+		if (result.status === "ready") {
+			expect(result.mode).toBe("song");
+		}
+	});
+
+	it("reports the RPC error before falling back to the standard flow (Finding 5)", async () => {
+		setupPresentItemFetch();
+		const rpcError = new DatabaseError({
+			code: "PGRST301",
+			message: "rpc down",
+		});
+		mockCallPresentMatchReviewItemFast.mockResolvedValue(Result.err(rpcError));
+
+		const result = await presentMatchReviewItem({ data: { itemId: "item-1" } });
+
+		// A silent fallback would hide a broken optimization — the RPC failure is
+		// captured under the present_fast_rpc stage before the standard flow runs.
+		const reported = mockCaptureException.mock.calls.some(
+			([, ctx]) =>
+				(ctx as { tags?: { operation?: string } })?.tags?.operation ===
+				"present_fast_rpc",
+		);
+		expect(reported).toBe(true);
+		// The standard flow still runs, so the card resolves normally.
+		expect(mockFrom).toHaveBeenCalledWith("match_review_queue_item");
+		expect(result.status).toBe("ready");
 	});
 });
 

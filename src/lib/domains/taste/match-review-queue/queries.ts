@@ -1055,6 +1055,148 @@ export async function insertSessionSnapshot(
 }
 
 /**
+ * Raw payload returned by the resume_match_review_session RPC. The RPC
+ * consolidates 6 serial PostgREST reads into one database call; TypeScript
+ * maps these raw shapes to domain types before the service layer sees them.
+ */
+export interface ResumeMatchReviewSessionRpcResult {
+	status: "found" | "no_session";
+	session?: {
+		id: string;
+		account_id: string;
+		orientation: string;
+		status: string;
+		strictness_preset: string;
+		strictness_min_score: number;
+		created_at: string;
+		updated_at: string;
+		completed_at: string | null;
+	};
+	unresolved_count?: number;
+	latest_snapshot_id?: string | null;
+	applied_snapshots?: Array<{
+		snapshot_id: string;
+		visibility_config_hash: string;
+	}>;
+	items?: Array<{
+		id: string;
+		session_id: string;
+		account_id: string;
+		orientation: string;
+		song_id: string | null;
+		playlist_id: string | null;
+		source_snapshot_id: string;
+		position: number;
+		state: string;
+		resolution: string | null;
+		source_fit_score: number;
+		was_new_at_enqueue: boolean;
+		presented_at: string | null;
+		resolved_at: string | null;
+		visible_pairs_captured_at: string | null;
+		created_at: string;
+		updated_at: string;
+	}>;
+}
+
+/**
+ * Calls the resume_match_review_session RPC which consolidates the 6 serial
+ * reads of the common resume path into one database round trip. Returns the
+ * raw JSONB payload; the service layer maps it to domain types.
+ */
+export async function callResumeMatchReviewSession(
+	accountId: string,
+	orientation: MatchOrientation,
+): Promise<Result<ResumeMatchReviewSessionRpcResult, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("resume_match_review_session", {
+		p_account_id: accountId,
+		p_orientation: orientation,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	// The RPC returns JSONB (typed as Json); narrow to the raw payload shape the
+	// service layer maps. The SQL function's status union guarantees the shape.
+	return Result.ok(data as unknown as ResumeMatchReviewSessionRpcResult);
+}
+
+/**
+ * Raw payload returned by the present_match_review_item_fast RPC. Collapses
+ * the 3-round-trip playlist card fast path (ownership check + playlist row +
+ * suggestion read) into one database call.
+ */
+export interface PresentMatchReviewItemFastRpcResult {
+	status:
+		| "ready"
+		| "not_found"
+		| "not_playlist"
+		| "not_captured"
+		| "playlist_gone"
+		| "no_visible_suggestions";
+	item?: {
+		id: string;
+		session_id: string;
+		orientation: string;
+		playlist_id: string;
+		state: string;
+		visible_pairs_captured_at: string | null;
+	};
+	playlist?: {
+		id: string;
+		spotify_id: string;
+		name: string;
+		match_intent: string | null;
+		image_url: string | null;
+		song_count: number;
+	};
+	suggestions?: Array<{
+		song_id: string;
+		name: string;
+		artists: string[];
+		album_name: string | null;
+		image_url: string | null;
+		spotify_id: string;
+		genres: string[];
+		fit_score: number;
+		visible_rank: number;
+		model_rank: number;
+	}>;
+	total_active_count?: number;
+}
+
+/**
+ * Calls the present_match_review_item_fast RPC which collapses the 3 serial
+ * reads of the captured playlist card path into one database round trip.
+ */
+export async function callPresentMatchReviewItemFast(
+	itemId: string,
+	accountId: string,
+	limit?: number,
+): Promise<Result<PresentMatchReviewItemFastRpcResult, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("present_match_review_item_fast", {
+		p_item_id: itemId,
+		p_account_id: accountId,
+		p_limit: limit ?? undefined,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	// The RPC returns JSONB (typed as Json); narrow to the raw payload shape the
+	// server layer maps. The SQL function's status union guarantees the shape.
+	return Result.ok(data as unknown as PresentMatchReviewItemFastRpcResult);
+}
+
+/**
  * Marks account_item_newness.is_new = false for a single song.
  * Called when an item is presented so newness is cleared durably, not on
  * unload. Best-effort: a failure here must not fail the presented transition.

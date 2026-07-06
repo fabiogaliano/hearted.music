@@ -10,6 +10,7 @@ import type {
 } from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	addQueueItemDecisionAtomically,
+	callPresentMatchReviewItemFast,
 	clearSongNewness,
 	countCapturedVisiblePairs,
 	dismissQueueItemAtomically,
@@ -468,19 +469,31 @@ export const startOrResumeMatchReview = createServerFn({ method: "POST" })
 			};
 		}
 
-		const itemsResult = await fetchQueueItems(activeSession.id);
-		if (Result.isError(itemsResult)) {
-			reportQueueError(itemsResult.error, "fetch_queue_items", {
-				accountId: session.accountId,
-				orientation,
-			});
-			throw new Error(
-				"Could not load your match review queue. Please try again.",
-				{ cause: itemsResult.error },
-			);
-		}
+		// Use items from the fast resume RPC when available (1 round trip),
+		// otherwise fall back to a separate fetchQueueItems call.
+		const rpcItems =
+			queueResult.value.kind === "resumed"
+				? queueResult.value.items
+				: undefined;
 
-		const items = itemsResult.value;
+		let items: MatchReviewQueueItemDto[];
+
+		if (rpcItems) {
+			items = rpcItems;
+		} else {
+			const itemsResult = await fetchQueueItems(activeSession.id);
+			if (Result.isError(itemsResult)) {
+				reportQueueError(itemsResult.error, "fetch_queue_items", {
+					accountId: session.accountId,
+					orientation,
+				});
+				throw new Error(
+					"Could not load your match review queue. Please try again.",
+					{ cause: itemsResult.error },
+				);
+			}
+			items = itemsResult.value;
+		}
 		const caughtUp = deriveCaughtUp(items);
 		const itemIds = items.map((i) => i.id);
 		// Lowest-position reviewable item — the card the stack lands on first. Mirrors
@@ -828,6 +841,121 @@ async function readPlaylistCardFromCapture(
 	accountId: string,
 	playlistId: string,
 ): Promise<MatchReviewItemRead> {
+	// Single-RPC fast path: ownership check + playlist row + suggestion read
+	// in one database call (down from 2–3 round trips).
+	const rpcResult = await callPresentMatchReviewItemFast(
+		itemId,
+		accountId,
+		PLAYLIST_CARD_FIRST_PAGE_SIZE,
+	);
+
+	if (Result.isOk(rpcResult)) {
+		const rpc = rpcResult.value;
+
+		if (rpc.status === "not_found") {
+			return {
+				status: "unavailable",
+				itemId,
+				reason: "not-entitled",
+				message: "Item not found.",
+			};
+		}
+		if (rpc.status === "playlist_gone") {
+			return {
+				status: "unavailable",
+				itemId,
+				reason: "not-entitled",
+				message: "This playlist is no longer available to match.",
+			};
+		}
+		if (rpc.status === "no_visible_suggestions") {
+			return {
+				status: "unavailable",
+				itemId,
+				reason: "no-visible-suggestions",
+				message: noVisibleSuggestionsMessage("playlist"),
+			};
+		}
+		if (rpc.status === "ready") {
+			const pl = rpc.playlist!;
+			const reviewItem: MatchingPlaylistForReview = {
+				id: pl.id,
+				spotifyId: pl.spotify_id,
+				name: pl.name,
+				description: pl.match_intent,
+				imageUrl: pl.image_url,
+				trackCount: pl.song_count,
+			};
+
+			const rows = (rpc.suggestions ?? []).map(
+				(s): QueueItemSongSuggestionRow => ({
+					songId: s.song_id,
+					name: s.name,
+					artists: s.artists,
+					albumName: s.album_name,
+					imageUrl: s.image_url,
+					spotifyId: s.spotify_id,
+					genres: s.genres,
+					fitScore: s.fit_score,
+					visibleRank: s.visible_rank,
+					modelRank: s.model_rank,
+					totalActiveCount: rpc.total_active_count ?? 0,
+				}),
+			);
+
+			const suggestions: MatchingSongSuggestion[] = rows.map(mapSuggestionRow);
+
+			const suggestionTotal = Math.min(
+				rpc.total_active_count ?? 0,
+				PLAYLIST_CARD_SUGGESTION_CAP,
+			);
+
+			const lastRow = rows.at(-1);
+			const nextCursor: QueueItemSongSuggestionCursor | null =
+				rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
+				rows.length < suggestionTotal &&
+				lastRow
+					? {
+							fitScore: lastRow.fitScore,
+							modelRank: lastRow.modelRank,
+							songId: lastRow.songId,
+						}
+					: null;
+
+			return {
+				status: "ready",
+				itemId,
+				mode: "playlist",
+				reviewItem,
+				suggestions,
+				suggestionTotal,
+				nextCursor,
+			};
+		}
+		// not_captured or not_playlist — fall through to legacy path
+	} else {
+		// Report the RPC failure before falling back to the legacy multi-hop path —
+		// a silent fallback would hide a broken optimization (e.g. migration not
+		// applied in prod) and revert card reads to the slow path indefinitely.
+		reportQueueError(rpcResult.error, "present_fast_rpc", {
+			accountId,
+			orientation: "playlist",
+		});
+	}
+
+	// Fallback: legacy multi-hop path (RPC failed or returned unexpected status)
+	return readPlaylistCardFromCaptureLegacy(itemId, accountId, playlistId);
+}
+
+/**
+ * Legacy multi-hop path for reading a captured playlist card. Kept as fallback
+ * when the single-RPC call fails or isn't available yet.
+ */
+async function readPlaylistCardFromCaptureLegacy(
+	itemId: string,
+	accountId: string,
+	playlistId: string,
+): Promise<MatchReviewItemRead> {
 	const [playlistResult, suggestionRowsResult] = await Promise.all([
 		getPlaylistById(accountId, playlistId),
 		readQueueItemSongSuggestions(itemId, accountId, {
@@ -847,10 +975,6 @@ async function readPlaylistCardFromCapture(
 		};
 	}
 	if (playlistResult.value === null) {
-		// Account-scoped read doubles as the entitlement check the fast path
-		// skips (the derivation path ran checkPlaylistOwned). The card is already
-		// captured, so it is skippable without the empty-capture stamp that
-		// presentUnavailableOwnedItem exists to write pre-capture.
 		return {
 			status: "unavailable",
 			itemId,
@@ -873,9 +997,6 @@ async function readPlaylistCardFromCapture(
 
 	const rows = suggestionRowsResult.value;
 
-	// Zero active rows is ambiguous: an empty capture (no-visible-suggestions
-	// card) vs a capture whose pairs were all row-dismissed after presentation
-	// (ready card, empty list — matches the pre-RPC filter behavior).
 	if (rows.length === 0) {
 		const capturedCountResult = await countCapturedVisiblePairs(
 			itemId,
@@ -912,22 +1033,12 @@ async function readPlaylistCardFromCapture(
 		trackCount: pl.song_count,
 	};
 
-	// Rows arrive in display order from the RPC (fit_score DESC, model_rank
-	// ASC, stable id — the same C12 order derivation assigns visible ranks in),
-	// so no re-sort here.
 	const suggestions: MatchingSongSuggestion[] = rows.map(mapSuggestionRow);
 
-	// total_active_count is a full active total only on this cursorless
-	// first-page call (a cursor call counts only post-cursor rows). Capped so
-	// the "Reject Match(es)" pluralization stays bounded to what the card ever
-	// actually captured (P2) — never a rendered number.
 	const suggestionTotal = Math.min(
 		rows[0]?.totalActiveCount ?? 0,
 		PLAYLIST_CARD_SUGGESTION_CAP,
 	);
-	// A full first page that hasn't exhausted the total means there is more to
-	// page in; the cursor is the last row's sort key (fit_score, model_rank,
-	// song_id — the RPC's total order).
 	const lastRow = rows.at(-1);
 	const nextCursor: QueueItemSongSuggestionCursor | null =
 		rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
@@ -1025,8 +1136,113 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 		const { itemId } = data;
 
 		try {
-			// Ownership check: load item by id AND account_id in one query. Foreign
-			// or missing items return unavailable without leaking id existence.
+			// Optimistic fast path: try the single-RPC present for captured playlist
+			// cards FIRST (1 round trip). The RPC handles ownership, orientation, and
+			// capture checks internally. If it returns a terminal result we're done
+			// without the fetchOwnedQueueItem read; non-terminal statuses fall through
+			// to the standard multi-step flow below.
+			//
+			// Trade-off: playlist cards are the hot path, so they win a round trip
+			// here. A song-orientation item pays +1 hop instead — the RPC returns
+			// 'not_playlist' and the item is re-loaded on the standard flow (~50ms).
+			// That is deliberate: the optimistic call can't know the orientation
+			// until it reads the row, and song cards are the cheaper, less-frequent
+			// path.
+			const fastResult = await callPresentMatchReviewItemFast(
+				itemId,
+				session.accountId,
+				PLAYLIST_CARD_FIRST_PAGE_SIZE,
+			);
+			if (Result.isOk(fastResult)) {
+				const fast = fastResult.value;
+				if (fast.status === "ready") {
+					const pl = fast.playlist!;
+					const rows = (fast.suggestions ?? []).map(
+						(s): QueueItemSongSuggestionRow => ({
+							songId: s.song_id,
+							name: s.name,
+							artists: s.artists,
+							albumName: s.album_name,
+							imageUrl: s.image_url,
+							spotifyId: s.spotify_id,
+							genres: s.genres,
+							fitScore: s.fit_score,
+							visibleRank: s.visible_rank,
+							modelRank: s.model_rank,
+							totalActiveCount: fast.total_active_count ?? 0,
+						}),
+					);
+					const suggestions: MatchingSongSuggestion[] =
+						rows.map(mapSuggestionRow);
+					const suggestionTotal = Math.min(
+						fast.total_active_count ?? 0,
+						PLAYLIST_CARD_SUGGESTION_CAP,
+					);
+					const lastRow = rows.at(-1);
+					const nextCursor: QueueItemSongSuggestionCursor | null =
+						rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
+						rows.length < suggestionTotal &&
+						lastRow
+							? {
+									fitScore: lastRow.fitScore,
+									modelRank: lastRow.modelRank,
+									songId: lastRow.songId,
+								}
+							: null;
+					return {
+						status: "ready",
+						itemId,
+						mode: "playlist" as const,
+						reviewItem: {
+							id: pl.id,
+							spotifyId: pl.spotify_id,
+							name: pl.name,
+							description: pl.match_intent,
+							imageUrl: pl.image_url,
+							trackCount: pl.song_count,
+						},
+						suggestions,
+						suggestionTotal,
+						nextCursor,
+					};
+				}
+				if (fast.status === "not_found") {
+					return {
+						status: "unavailable",
+						itemId,
+						reason: "not-entitled",
+						message: "Item not found.",
+					};
+				}
+				if (fast.status === "playlist_gone") {
+					return {
+						status: "unavailable",
+						itemId,
+						reason: "not-entitled",
+						message: "This playlist is no longer available to match.",
+					};
+				}
+				if (fast.status === "no_visible_suggestions") {
+					return {
+						status: "unavailable",
+						itemId,
+						reason: "no-visible-suggestions",
+						message: noVisibleSuggestionsMessage("playlist"),
+					};
+				}
+				// not_captured, not_playlist: fall through to full flow
+			} else {
+				// The RPC failed (e.g. migration not yet applied in prod, or the
+				// function regressed). Report before falling back to the standard
+				// multi-step flow — a silent fallback would revert /match to the slow
+				// path forever with no signal that the optimization is broken.
+				reportQueueError(fastResult.error, "present_fast_rpc", {
+					accountId: session.accountId,
+					orientation: "playlist",
+				});
+			}
+
+			// Standard path: load item first, then branch by orientation/state.
 			const item = await fetchOwnedQueueItem(
 				itemId,
 				session.accountId,
@@ -1042,14 +1258,13 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 			}
 
 			// Fast path: a captured playlist card renders from the captured
-			// authority alone. Before this check, every revisit/retry re-ran the
-			// full visible-list derivation (~25 round trips) only for the capture
-			// RPC to discard it as already_captured.
+			// authority alone. The single-RPC path above should have caught this,
+			// but if it failed we fall back to the legacy multi-hop path.
 			if (
 				item.subject.orientation === "playlist" &&
 				item.visiblePairsCapturedAt
 			) {
-				return readPlaylistCardFromCapture(
+				return readPlaylistCardFromCaptureLegacy(
 					itemId,
 					session.accountId,
 					item.subject.playlistId,

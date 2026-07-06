@@ -3893,6 +3893,10 @@ export type Database = {
 					discount_cents: number;
 				}[];
 			};
+			present_match_review_item_fast: {
+				Args: { p_account_id: string; p_item_id: string; p_limit?: number };
+				Returns: Json;
+			};
 			publish_match_snapshot: {
 				Args: {
 					p_account_id: string;
@@ -3995,6 +3999,10 @@ export type Database = {
 			resolve_job_item_stage_failures: {
 				Args: { p_account_id: string; p_item_id: string; p_stage: string };
 				Returns: number;
+			};
+			resume_match_review_session: {
+				Args: { p_account_id: string; p_orientation: string };
+				Returns: Json;
 			};
 			reverse_pack_entitlement: {
 				Args: {
