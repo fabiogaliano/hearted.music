@@ -4,7 +4,10 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getPlaylistById } from "@/lib/domains/library/playlists/queries";
 import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
-import { PLAYLIST_CARD_SUGGESTION_CAP } from "@/lib/domains/taste/match-review-queue/card-suggestion-caps";
+import {
+	PLAYLIST_CARD_SUGGESTION_CAP,
+	SONG_CARD_SUGGESTION_CAP,
+} from "@/lib/domains/taste/match-review-queue/card-suggestion-caps";
 import type {
 	QueueItemSongSuggestionCursor,
 	QueueItemSongSuggestionRow,
@@ -30,6 +33,7 @@ import {
 	markItemPresented,
 	syncActiveQueue,
 } from "@/lib/domains/taste/match-review-queue/service";
+import { deriveSuggestionNextCursor } from "@/lib/domains/taste/match-review-queue/suggestion-cursor";
 import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
@@ -106,6 +110,12 @@ export type MatchReviewItemRead =
 			mode: "song";
 			reviewItem: MatchingSong;
 			suggestions: MatchingPlaylistMatch[];
+			/** min(suggestion count, SONG_CARD_SUGGESTION_CAP). Mirrors the playlist
+			 *  arm so both orientations share one pagination contract (R-D). */
+			suggestionTotal: number;
+			/** Always null in Phase 3: song suggestions are playlists and there is no
+			 *  song-mode tail endpoint, so the (song-keyed) cursor is never emitted. */
+			nextCursor: QueueItemSongSuggestionCursor | null;
 	  }
 	| {
 			status: "ready";
@@ -747,6 +757,11 @@ export const getMatchReviewItem = createServerFn({ method: "GET" })
 					mode: "song" as const,
 					reviewItem: fetchResult.reviewItem,
 					suggestions: fetchResult.suggestions,
+					suggestionTotal: Math.min(
+						fetchResult.suggestions.length,
+						SONG_CARD_SUGGESTION_CAP,
+					),
+					nextCursor: null,
 				};
 			}
 
@@ -895,17 +910,11 @@ async function readPlaylistCardFromCapture(
 				PLAYLIST_CARD_SUGGESTION_CAP,
 			);
 
-			const lastRow = rows.at(-1);
-			const nextCursor: QueueItemSongSuggestionCursor | null =
-				rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
-				rows.length < suggestionTotal &&
-				lastRow
-					? {
-							fitScore: lastRow.fitScore,
-							modelRank: lastRow.modelRank,
-							songId: lastRow.songId,
-						}
-					: null;
+			const nextCursor = deriveSuggestionNextCursor(
+				rows,
+				PLAYLIST_CARD_FIRST_PAGE_SIZE,
+				suggestionTotal,
+			);
 
 			return {
 				status: "ready",
@@ -1024,17 +1033,11 @@ async function readPlaylistCardFromCaptureLegacy(
 		rows[0]?.totalActiveCount ?? 0,
 		PLAYLIST_CARD_SUGGESTION_CAP,
 	);
-	const lastRow = rows.at(-1);
-	const nextCursor: QueueItemSongSuggestionCursor | null =
-		rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
-		rows.length < suggestionTotal &&
-		lastRow
-			? {
-					fitScore: lastRow.fitScore,
-					modelRank: lastRow.modelRank,
-					songId: lastRow.songId,
-				}
-			: null;
+	const nextCursor = deriveSuggestionNextCursor(
+		rows,
+		PLAYLIST_CARD_FIRST_PAGE_SIZE,
+		suggestionTotal,
+	);
 
 	return {
 		status: "ready",
@@ -1054,7 +1057,9 @@ async function readPlaylistCardFromCaptureLegacy(
  * verbatim, so a hard-coded "playlist matches" would mislabel a playlist card
  * whose missing suggestions are actually songs (A1 orientation correctness).
  */
-function noVisibleSuggestionsMessage(orientation: MatchOrientation): string {
+export function noVisibleSuggestionsMessage(
+	orientation: MatchOrientation,
+): string {
 	return orientation === "playlist"
 		? "No song matches are visible under your current settings."
 		: "No playlist matches are visible under your current settings.";
@@ -1163,17 +1168,11 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 						fast.total_active_count ?? 0,
 						PLAYLIST_CARD_SUGGESTION_CAP,
 					);
-					const lastRow = rows.at(-1);
-					const nextCursor: QueueItemSongSuggestionCursor | null =
-						rows.length === PLAYLIST_CARD_FIRST_PAGE_SIZE &&
-						rows.length < suggestionTotal &&
-						lastRow
-							? {
-									fitScore: lastRow.fitScore,
-									modelRank: lastRow.modelRank,
-									songId: lastRow.songId,
-								}
-							: null;
+					const nextCursor = deriveSuggestionNextCursor(
+						rows,
+						PLAYLIST_CARD_FIRST_PAGE_SIZE,
+						suggestionTotal,
+					);
 					return {
 						status: "ready",
 						itemId,
@@ -1474,6 +1473,11 @@ export const presentMatchReviewItem = createServerFn({ method: "POST" })
 					mode: "song",
 					reviewItem: fetchResult.reviewItem,
 					suggestions: fetchResult.suggestions,
+					suggestionTotal: Math.min(
+						fetchResult.suggestions.length,
+						SONG_CARD_SUGGESTION_CAP,
+					),
+					nextCursor: null,
 				};
 			}
 
@@ -1597,18 +1601,13 @@ export const listMatchReviewItemSuggestions = createServerFn({ method: "POST" })
 			}
 
 			const rows = rowsResult.value;
-			const lastRow = rows.at(-1);
 			// A full page can still be the last one — the next call simply comes back
-			// empty. That final empty fetch is acceptable/standard for a cursor-paged
-			// infinite query, so a full page alone is the only nextCursor signal.
-			const nextCursor: MatchReviewItemSuggestionCursor | null =
-				rows.length === PLAYLIST_CARD_TAIL_PAGE_SIZE && lastRow
-					? {
-							fitScore: lastRow.fitScore,
-							modelRank: lastRow.modelRank,
-							songId: lastRow.songId,
-						}
-					: null;
+			// empty; that final empty fetch is standard for a cursor-paged infinite
+			// query, so a full tail page alone is the nextCursor signal (total omitted).
+			const nextCursor = deriveSuggestionNextCursor(
+				rows,
+				PLAYLIST_CARD_TAIL_PAGE_SIZE,
+			);
 
 			return {
 				suggestions: rows.map(mapSuggestionRow),

@@ -442,3 +442,188 @@ machine must verify:
   self-healing residuals — an empty transiently-appended card resolves at card
   read, and a rollover-skewed append lands `no_ready_proposal` → retry/self-heal.
   Both to be verified in the local-DB pass (see LOCAL VERIFICATION REQUIRED).
+
+## Phase 3 — Server contracts
+
+New files: `src/lib/domains/taste/match-review-queue/suggestion-cursor.ts`,
+`.../deck-read-queries.ts`, `src/lib/server/match-deck.functions.ts`,
+`src/lib/server/match-deck-miss-path.ts`,
+`src/features/matching/deck-queries.ts`, plus three test suites
+(`__tests__/suggestion-cursor.test.ts`,
+`src/lib/server/__tests__/match-deck.functions.test.ts`,
+`src/features/matching/__tests__/deck-queries.test.ts`).
+Files edited (compile-forced only): `src/lib/data/deck-db-types.ts` (E3),
+`src/lib/server/match-review-queue.functions.ts` (E1 song-arm fields + 2 legacy
+constructors, E2 cursor collapse),
+`src/lib/domains/taste/match-review-queue/proposal-builder.ts` (E4 export),
+`src/features/matching/__tests__/mutations.test.ts` (E1-forced song-ready
+fixture gains the 2 new fields).
+
+### Rulings as applied
+
+- **R-A (read-after-write, no return-type migration).** `submitMatchDeckAction`
+  takes the plan §4 `MatchDeckAction` discriminated union (no orientation on the
+  wire), loads the owned queue item to resolve orientation, dispatches to the
+  EXISTING atomic wrappers (`addQueueItemDecisionAtomically` /
+  `dismissQueueItemSuggestionAtomically` / `finishQueueItemAtomically` /
+  `dismissQueueItemAtomically` — all still `RETURNS TEXT`), captures the raw TEXT
+  status, then calls the shared `resolveMatchDeckView` and returns
+  `{ actionStatus, view }`. No action-RPC return type changed; no legacy caller
+  touched. Deviation from the blueprint's literal "load the item only for the 2
+  suggestion actions": the item is loaded for ALL FOUR actions — the suggestion
+  actions need it for orientation-aware column routing anyway, and finish/dismiss
+  need the same orientation to rebuild the view (the input carries none). A
+  missing/foreign item throws (stale client → refetch) rather than fabricating a
+  view for an unknown orientation.
+- **R-B (miss path = approach X).** `buildFirstWindowAndPromote`
+  (`match-deck-miss-path.ts`) reuses the now-exported `buildOneProposal` as-is for
+  the CURRENT preset, re-invokes `start_or_resume_match_deck` with the SAME
+  `visibilityConfigHash`, then best-effort `enqueueDeckJob` the full
+  `build_proposals` (`build:{account}:{orientation}:{snapshot}`, payload
+  `{snapshotId}`). ONE `nowMs` is threaded from `resolveMatchDeckView` into both
+  `computeVisibilityPolicyHash` (the RPC hash) and `buildOneProposal` (which
+  derives its own hash from the same filters + nowMs) so branch-2 is a guaranteed
+  in-request hit. No new plpgsql. No-snapshot → `{ status: "building" }`.
+- **Deviation from §8.3 "bounded first-window scan" (recorded).** Approach X
+  derives the FULL current-preset subject list on a miss (≈ the pre-refactor
+  baseline cost, not a true bounded first-window scan). Accepted because a miss is
+  rare (§13), self-heals, and the enqueued full build makes the next entry a hit.
+- **R-C (cursor collapse).** All 4 sites collapsed onto the one pure helper
+  `deriveSuggestionNextCursor(rows, pageSize, total?)`: the 3 first-page sites in
+  `match-review-queue.functions.ts` (`readPlaylistCardFromCapture`, its legacy
+  twin, the present-fast branch) pass `PLAYLIST_CARD_FIRST_PAGE_SIZE` +
+  `suggestionTotal`; the tail site omits `total` (a full tail page always earns a
+  cursor). The deck-card mapper is the 5th consumer. Behavior byte-identical to
+  the prior inline ternaries (verified: the existing suite still passes).
+- **R-D (song-arm pagination fields).** `MatchReviewItemRead` song ready arm gains
+  required `suggestionTotal: number` + `nextCursor: QueueItemSongSuggestionCursor |
+  null`; the 2 legacy song-arm constructors set
+  `suggestionTotal = min(len, SONG_CARD_SUGGESTION_CAP)`, `nextCursor: null`. The
+  deck song-card mapper does the same. **Limitation (recorded):** song `nextCursor`
+  is ALWAYS null in Phase 3 — song suggestions are playlists and the cursor type is
+  song-keyed (`{fitScore, modelRank, songId}`), and there is no song-mode tail
+  endpoint. Song decks therefore read the whole capped set in one shot (window =
+  `SONG_CARD_SUGGESTION_CAP`); a live check that prod song cards stay ≤ the cap is
+  deferred.
+- **R-E (`not_captured` on-demand materialize).** Implemented in the
+  `readMatchDeckCard` server fn only: on a `not_captured` RPC result it loads the
+  item's session/orientation/position, reuses `captureAheadForSession({… window:
+  1})`, re-reads ONCE with `p_mark_presented=true`, and if still `not_captured`
+  the mapper's `retryable-error` fallback applies. The pure `mapReadDeckCardToItemRead`
+  maps `not_captured → retryable-error` (the terminal fallback). **Open item:** the
+  deck VIEW's baked current/next cards do NOT run R-E — a `not_captured` baked card
+  maps to `retryable-error` and the client re-fetches it via `readMatchDeckCard`
+  (which does R-E). Normally the current card is captured (seed window / capture-
+  ahead), so this is the rare cold edge; whether the deck view's current card also
+  needs R-E is flagged for the live-DB pass.
+- **R-F (`snapshotId: null` tolerance).** `mapStartOrResumeToView` coerces a null
+  `snapshotId` → `""` (the `EMPTY_MATCH_REVIEW_RESULT.sessionId=""` precedent) and
+  emits a `Sentry.addBreadcrumb` (category `match_deck`, level warning); it never
+  throws. `MatchDeckView.snapshotId` stays typed `string` per plan §4.
+
+### Other Phase-3 decisions
+
+- **Module layout.** Contract types + the 3 server fns + the 2 exported mappers
+  (`mapReadDeckCardToItemRead`, `mapStartOrResumeToView`) + private
+  `resolveMatchDeckView`/`resolveDeckCard`/`loadOwnedItem`/`materializeOnDemand`
+  live in `src/lib/server/match-deck.functions.ts`. The two deck-read RPC wrappers
+  + their raw result interfaces live in the DOMAIN layer
+  (`deck-read-queries.ts`), mirroring `callResumeMatchReviewSession` /
+  `callPresentMatchReviewItemFast` in `queries.ts`. The miss composition is its own
+  server-layer file (`match-deck-miss-path.ts`) so `match-deck.functions.ts`
+  imports one symbol and the miss logic is unit-isolatable. The shared cursor
+  helper is a pure domain module.
+- **The deck contract types (`MatchDeckView`, `MatchDeckCard`, `MatchDeckAction`,
+  `MatchDeckBuildingState`, `StartOrResumeMatchDeckResult`,
+  `SubmitMatchDeckActionResult`) live in `match-deck.functions.ts`** (verbatim from
+  plan §4), co-located with their sole producers. `StartOrResumeMatchDeckResult =
+  MatchDeckView | MatchDeckBuildingState` is discriminated by `version` (view) vs
+  `status:"building"` — MatchDeckView carries no `status` field, per §4 verbatim.
+- **`resolveMatchDeckView` factoring.** ONE private function does nowMs → minScore
+  → preset → target-filters → hash → RPC → (active ? map : miss handling), shared
+  by `startOrResumeMatchDeck` and the read-after-write of `submitMatchDeckAction`.
+  This is the single seam where the request hash is computed, keeping the R-B
+  byte-identity invariant in one place.
+- **Deck suggestion window is orientation-based.** Playlist decks bake first-page
+  (`PLAYLIST_CARD_FIRST_PAGE_SIZE = 8`, mirrored as a local const — a first-paint
+  tuning number, not a shared contract) with a tail cursor; song decks bake the
+  whole capped set (`SONG_CARD_SUGGESTION_CAP = 100`, nextCursor null). The
+  standalone `readMatchDeckCard` uses window `SONG_CARD_SUGGESTION_CAP` (=100 =
+  both caps) because orientation is unknown up front — never truncates either arm;
+  a playlist card read on navigation therefore returns up to 100 rows (nextCursor
+  null) rather than a first page, trading first-paint size for orientation
+  simplicity (navigation is off the SSR-critical path).
+- **Escape-hatch additions (E3).** `deck-db-types.ts` `Functions` gains
+  `start_or_resume_match_deck` and `read_match_deck_card`, both `Returns: Json`
+  (the wrappers `as unknown as` narrow); the header "Migrations mirrored" list adds
+  007 + 008. No hand-edit to `database.types.ts`.
+- **`MatchReviewItemRead` imported type-only** into `match-deck.functions.ts` (and
+  the render types from `matching.functions.ts`) so the big server-fn file is NOT
+  pulled into `match-deck.functions.ts`'s runtime module graph; a local
+  `OrientationSchema` avoids importing `MatchOrientationSchema` as a value.
+- **Test approach (DB-free).** `match-deck.functions.test.ts` mocks
+  `deck-read-queries`, the 4 atomic wrappers + `fetchTargetPlaylistFilters` +
+  `mapItemToDto`, `resolveMinMatchScore`, `getLatestMatchSnapshot`,
+  `captureAheadForSession`, and `../match-deck-miss-path` (`buildFirstWindowAndPromote`
+  mocked to isolate miss→build→active from `buildOneProposal`'s DB writes); the pure
+  hash/caps/cursor helpers run for real. Covers ready song+playlist mapping,
+  suggestionTotal capping, nextCursor full-page vs partial, every non-ready status,
+  `snapshotId:null` no-throw + breadcrumb, miss→building, miss→build→active,
+  miss→build-still-misses→building, R-E materialize-and-re-read, and each action
+  dispatch incl. orientation-aware suggestion routing (song vs playlist column).
+
+### Post-review PATCH round (SHIP + NITs)
+
+Review returned SHIP; two NIT-level fixes applied. (1) **Copy parity:** the deck
+`mapReadDeckCardToItemRead` `no_visible_suggestions` branch now reuses the legacy
+`noVisibleSuggestionsMessage(orientation)` (exported from
+`match-review-queue.functions.ts`) instead of a hardcoded generic — the deck read
+now emits the same orientation-aware copy as `readPlaylistCardFromCapture`. The
+mapper gained an `orientation: MatchOrientation | null` arg: the deck VIEW threads
+the single deck orientation (always correct); the standalone `readMatchDeckCard`
+GET passes the orientation only when the payload carries it (`ready`, or the
+post-materialize re-read) and `null` otherwise — the `no_visible_suggestions`
+payload omits orientation, so `null` falls back to the orientation-neutral copy
+rather than risk a mislabel. (2) **Miss-path test:** added
+`__tests__/match-deck-miss-path.test.ts` (DB-free, mirrors the
+`match-deck.functions.test.ts` scaffold — mocks `buildOneProposal`,
+`callStartOrResumeMatchDeck`, `enqueueDeckJob`, `captureServerError`) covering
+happy path (build→re-invoke active + enqueue key/kind assertion), **enqueue
+`Result.err` never fails the request** (the previously-untested best-effort point),
+`buildOneProposal` error surfaces without promoting, and a still-miss re-invoke
+returned unchanged (caller maps to building). Remaining NITs — the GET
+`readMatchDeckCard` doing idempotent `presented_at` writes (per spec §7) and the
+documented R-B/R-E residuals — are accepted for the local-DB pass.
+
+### LOCAL VERIFICATION REQUIRED (Phase 3)
+
+All live-DB verification is deferred (no Postgres in this cloud env):
+
+- **Request hash ≡ worker proposal hash (load-bearing).** Else every entry is a
+  miss (right output, wrong cost). `resolveMatchDeckView`'s
+  `computeVisibilityPolicyHash(policy, nowMs)` and `buildOneProposal`'s internally
+  derived hash must be byte-identical for the same account/orientation/preset —
+  both read `fetchTargetPlaylistFilters` and fold the same `nowMs`. Verify a normal
+  entry is a branch-2 HIT, and that the miss path's re-invoke lands active (not a
+  second miss). Note the small residual: the two `fetchTargetPlaylistFilters`
+  reads (RPC-hash side + `buildOneProposal` side) are separate; a filter change
+  between them would skew the hash → transient miss loop, self-heals next request.
+- **`bun run gen:types` swap.** Regenerate for the two deck read RPCs, then delete
+  `deck-db-types.ts`, swap `deckDb()` → `createAdminSupabaseClient()`, and drop the
+  `as unknown as` narrows where the generated Row/Return shapes now type the calls.
+- **`snapshotId:null` coercion renders** and no downstream deck cache key breaks on
+  `""`.
+- **song `nextCursor` contract-only (null):** confirm prod song cards stay ≤
+  `SONG_CARD_SUGGESTION_CAP` (no 2nd page needed).
+- **`not_captured` on-demand materialize** re-read returns ready with acceptable
+  latency; confirm whether the deck VIEW's baked current card also needs R-E (see
+  R-E open item) or is reliably captured by the seed/capture-ahead.
+- **branch-2 promotion fires after the single-preset build** (queue items + seed
+  copy + ledger + capture_ahead job).
+- **resume_position advance → follow-up view returns the promoted (not
+  just-resolved) card** — i.e. `submitMatchDeckAction`'s read-after-write reflects
+  the advanced deck.
+- **same-snapshot/different-hash proposal duplication at UTC-midnight stays
+  benign.**
+- **`total_active_count` bigint→number** for 845-suggestion cards (no precision
+  surprise in `suggestionTotal` / cursor derivation).
