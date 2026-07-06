@@ -627,3 +627,85 @@ All live-DB verification is deferred (no Postgres in this cloud env):
   benign.**
 - **`total_active_count` bigint→number** for 845-suggestion cards (no precision
   surprise in `suggestionTotal` / cursor derivation).
+
+---
+
+## ORCHESTRATION RESUME STATE (paused for session reset)
+
+Paused mid-Phase-4 at a safe, fully-pushed boundary. Read this to resume.
+
+**Done + pushed** (branch `claude/match-deck-read-model-orchestrate-kzd5xs`):
+- Phase 1a (pre-existing), 1b (`2985319`), 2 (`f9c2d94`), 3 (`71ec019`). Each
+  passed `bun run typecheck` + `typecheck:worker` + full `bun run test` at push
+  (the pre-push hook runs all three). HEAD when paused = `71ec019` (Phase 3).
+- Migrations through `20260706000010_enqueue_match_review_deck_job.sql`.
+
+**Cloud constraint (still applies):** no local Postgres. Cannot run
+`supabase db reset` / `migration up` / `gen:types` / any live-DB test. Do NOT
+hand-edit `src/lib/data/database.types.ts` — new tables/RPCs are typed via the
+`deck-db-types.ts` escape hatch (deletable after `gen:types`). Verify statically.
+The GitHub git-deps `better-result` + `uipane` fail `bun install` (proxy blocks
+`api.github.com` tarballs); recover by `git clone`-ing them at their `bun.lock`
+pinned commits into `node_modules/` (github.com over HTTPS works).
+
+**Per-phase cycle:** implement (fresh subagent, specific files + acceptance
+criteria) → review (fresh-context subagent) → patch (≤2 rounds) → `/commit` style
+Conventional Commit → push with retry. Commit trailer:
+`Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` +
+`Claude-Session: https://claude.ai/code/session_016N8d44sYacwMpN2bZVfbgb`.
+
+### Phase 4 — Route cutover (IN PROGRESS — resume here)
+A partial implementation was stashed to keep the tree green:
+`git stash list` → `phase4-partial-wip` (the `deck-action-status.ts` classifier +
+its test, and `mutations.ts` / `queries.ts` / `useMatchReviewCard.ts` retargeted to
+the deck caches + `submitMatchDeckAction`). `match.tsx` was NOT yet cut over, so the
+stash alone is a broken intermediate — recover it with `git stash pop` ONLY if this
+is the same container (else re-run Phase 4 fresh). Full Phase 4 blueprint (if the
+container persists) is at
+`scratchpad/.../phase4-blueprint.md` (session scratchpad, NOT in repo).
+
+Phase 4 rulings already decided (durable copy — implement to these):
+- **RA** add `src/features/matching/deck-action-status.ts` classifier: success tokens
+  add-suggestion→`added`; dismiss-suggestion→`dismissed`; finish-card→`completed_added|
+  skipped`; dismiss-card→`dismissed`; everything else = rejection (don't advance).
+- **RB** loader AWAITS `startOrResumeMatchDeck` (plan §8 unblocks this; paths are
+  bounded); `MatchLoading` = route `pendingComponent` for cold/miss tail.
+- **RC** building-recovery effect: when `{status:"building"}` && `useActiveJobs().
+  firstVisibleMatchReady` → invalidate `matchDeckKeys.deck(accountId,mode)` (replaces
+  `bootstrapReadyMatchQueue`).
+- **RD** preserve no-context-vs-building via `deriveEmptyStateReason` + `useActiveJobs`.
+- **RE** delete the client `markMatchReviewItemPresented` effect (server stamps
+  `presented_at`); accept the minor browsed-but-not-acted seeded-card newness lag.
+- **RF** dismiss-suggestion KEEPS its optimistic cache surgery and does NOT apply the
+  returned view; whole-card actions (finish/dismiss-card) DO apply `result.view` to the
+  deck cache + advance the pointer to `result.view.cards.current?.itemId`.
+- **RG** preserve the id-based Previous/Next pointer (`resolveCurrentItemId`) over
+  `view.itemIds`; only the id-list SOURCE changes.
+Scope: route/component cutover ONLY — do NOT delete legacy server fns / query families
+/ `appendSnapshotDelta` / `presentMatchReviewItem` / `bootstrapReadyMatchQueue` (that is
+Phase 5); the route just STOPS using them. Land the new rendering + the removal of the
+three-query orchestration in ONE commit (plan §10). Use the `tanstack-start-react` +
+`react-best-practices` skills. Key files: `src/routes/_authenticated/match.tsx`,
+`src/features/matching/{mutations,useMatchReviewCard,deck-queries}.ts`. Tests to update
+(DB-free): `match.test.ts` (loader inversion), `mutations.test.ts` (dismiss retarget),
+`useMatchReviewCard.test.tsx` (retarget) + the new classifier test.
+
+### Phase 5 — Delete legacy (NOT STARTED)
+Delete `appendSnapshotDelta` + its 2 playlist-sync call sites (switch them to enqueue
+`build_proposals`/`append_sessions` deck jobs), `createOrResumeQueueLegacy`,
+`presentMatchReviewItem`, `getMatchReviewItem`, `markMatchReviewItemPresented`, the 3
+legacy query families, and the now-collapsed `nextCursor` twins. Keep legacy SQL objects
+physically intact (drop only in a later cleanup migration). Note: Phase 3 kept the action
+RPCs' TEXT return; the rich-JSONB single-RPC action optimization can fold in here once the
+action RPCs are single-caller (see Phase 1b/3 decisions).
+
+### Phase 6 — Ops (NOT STARTED)
+`scripts/` warm/backfill (build proposals for all accounts), Smart Placement in
+`wrangler.jsonc`, Sentry + PostHog metrics (§13).
+
+### Final deliverable when all phases land
+A consolidated `LOCAL VERIFICATION REQUIRED` checklist for a machine with local
+Supabase: `bun run gen:types` (regenerates away `deck-db-types.ts`), migration replay
+007→010, full `bun run test` + e2e, and the §12 shadow-compare script (request
+visibility hash ≡ worker proposal hash is the load-bearing check). Do NOT merge / open a
+PR unless asked.
