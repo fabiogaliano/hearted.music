@@ -189,7 +189,16 @@ async function buildSeedForSubject(
 	);
 }
 
-async function buildOneProposal(
+/**
+ * Builds one proposal for a single (account, orientation, snapshot, preset).
+ * Exported for the Phase 3 request-path miss handler (match-deck-miss-path.ts),
+ * which builds ONLY the current preset synchronously so a re-invoked
+ * start_or_resume_match_deck hits a ready proposal for the exact same
+ * visibility_config_hash (the hash is derived here from the SAME filters + nowMs
+ * the caller passes to the RPC, so byte-identical keys are guaranteed). Behavior
+ * is unchanged from the private version.
+ */
+export async function buildOneProposal(
 	accountId: string,
 	orientation: MatchOrientation,
 	snapshotId: string,

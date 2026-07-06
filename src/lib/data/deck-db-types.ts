@@ -24,6 +24,8 @@
  *  - 20260706000003_deck_read_model_proposal_tables.sql
  *  - 20260706000005_deck_read_model_deck_job_table.sql
  *  - 20260706000006_deck_read_model_deck_job_functions.sql
+ *  - 20260706000007_read_match_deck_card_rpc.sql
+ *  - 20260706000008_start_or_resume_match_deck_rpc.sql
  *  - 20260706000010_enqueue_match_review_deck_job.sql
  */
 
@@ -227,6 +229,26 @@ export type DeckDatabase = {
 					p_payload?: Json;
 				};
 				Returns: DeckJobRow[];
+			};
+			// Both deck read RPCs return the full MatchDeckView / MatchReviewItemRead
+			// JSONB (typed Json here); the Phase 3 TS wrappers narrow the raw payload.
+			start_or_resume_match_deck: {
+				Args: {
+					p_account_id: string;
+					p_orientation: string;
+					p_visibility_config_hash: string;
+					p_window?: number | null;
+				};
+				Returns: Json;
+			};
+			read_match_deck_card: {
+				Args: {
+					p_item_id: string;
+					p_account_id: string;
+					p_limit?: number | null;
+					p_mark_presented?: boolean;
+				};
+				Returns: Json;
 			};
 		};
 		Enums: Record<string, never>;
