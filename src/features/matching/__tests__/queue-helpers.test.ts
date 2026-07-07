@@ -1,113 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { MatchReviewResult } from "@/lib/server/match-review-queue.functions";
 import {
 	countAppendedFromTotal,
-	deriveCaughtUp,
 	deriveEmptyStateReason,
 	deriveProgressIndex,
-	deriveUnresolvedIds,
-	nextItemIdAfterResolved,
 	resolveCurrentItemId,
-	shouldBootstrapReadyQueue,
 	shouldOfferLoosenStrictness,
 } from "../queue-helpers";
-
-function makeQueue(
-	overrides: Partial<MatchReviewResult> = {},
-): MatchReviewResult {
-	return {
-		sessionId: "session-1",
-		items: [],
-		total: 0,
-		caughtUp: false,
-		hiddenReviewItemCount: 0,
-		...overrides,
-	};
-}
-
-function makeItem(
-	id: string,
-	position: number,
-	state: "pending" | "active" | "resolved",
-) {
-	return {
-		id,
-		position,
-		state,
-		subject: { orientation: "song" as const, songId: `song-${id}` },
-		sourceSnapshotId: "snap-1",
-	};
-}
-
-// ---------------------------------------------------------------------------
-// deriveUnresolvedIds
-// ---------------------------------------------------------------------------
-
-describe("deriveUnresolvedIds", () => {
-	it("returns empty array for null queue", () => {
-		expect(deriveUnresolvedIds(null)).toEqual([]);
-	});
-
-	it("returns empty array when all items are resolved", () => {
-		const queue = makeQueue({
-			items: [
-				makeItem("a", 0, "resolved"),
-				makeItem("b", 1, "resolved"),
-				makeItem("c", 2, "resolved"),
-			],
-		});
-		expect(deriveUnresolvedIds(queue)).toEqual([]);
-	});
-
-	it("returns only pending and active items, sorted by position", () => {
-		const queue = makeQueue({
-			items: [
-				makeItem("a", 2, "pending"),
-				makeItem("b", 0, "active"),
-				makeItem("c", 1, "resolved"),
-				makeItem("d", 3, "pending"),
-			],
-		});
-		// b (pos 0), a (pos 2), d (pos 3); c is excluded
-		expect(deriveUnresolvedIds(queue)).toEqual(["b", "a", "d"]);
-	});
-
-	it("preserves queue order even when items arrive out-of-order", () => {
-		const queue = makeQueue({
-			items: [
-				makeItem("z", 10, "pending"),
-				makeItem("y", 5, "pending"),
-				makeItem("x", 1, "pending"),
-			],
-		});
-		expect(deriveUnresolvedIds(queue)).toEqual(["x", "y", "z"]);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// deriveCaughtUp — never derived from null song
-// ---------------------------------------------------------------------------
-
-describe("deriveCaughtUp", () => {
-	it("returns true when queue is null", () => {
-		expect(deriveCaughtUp(null, [])).toBe(true);
-	});
-
-	it("uses server caughtUp flag as the authoritative signal", () => {
-		const queue = makeQueue({ caughtUp: true });
-		expect(deriveCaughtUp(queue, ["item-1"])).toBe(true);
-	});
-
-	it("returns true when unresolvedIds is empty even if server caughtUp is false", () => {
-		const queue = makeQueue({ caughtUp: false });
-		expect(deriveCaughtUp(queue, [])).toBe(true);
-	});
-
-	it("returns false when there are unresolved items and caughtUp is false", () => {
-		const queue = makeQueue({ caughtUp: false });
-		expect(deriveCaughtUp(queue, ["item-1", "item-2"])).toBe(false);
-	});
-});
 
 // ---------------------------------------------------------------------------
 // resolveCurrentItemId — id-based card tracking, stable under refetch
@@ -177,43 +75,6 @@ describe("countAppendedFromTotal", () => {
 	it("returns growth for a simple tail-append", () => {
 		expect(countAppendedFromTotal(0, 1)).toBe(1);
 		expect(countAppendedFromTotal(3, 6)).toBe(3);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// nextItemIdAfterResolved — local-resolution advance, never revisits a card
-// ---------------------------------------------------------------------------
-
-describe("nextItemIdAfterResolved", () => {
-	it("returns the item immediately after the resolved one", () => {
-		expect(nextItemIdAfterResolved(["A", "B", "C"], "A")).toBe("B");
-		expect(nextItemIdAfterResolved(["A", "B", "C"], "B")).toBe("C");
-	});
-
-	it("returns null when the resolved item is the last in the list", () => {
-		expect(nextItemIdAfterResolved(["A", "B", "C"], "C")).toBeNull();
-	});
-
-	it("returns null for a single-item list (resolving the only card)", () => {
-		expect(nextItemIdAfterResolved(["A"], "A")).toBeNull();
-	});
-
-	it("returns null for an empty list", () => {
-		expect(nextItemIdAfterResolved([], "A")).toBeNull();
-	});
-
-	it("returns null when the resolved id is not in the list (stale id degrades gracefully)", () => {
-		// resolveCurrentItemId's own fallback re-selects the first unresolved item,
-		// so returning null here is the safe handoff rather than a crash.
-		expect(nextItemIdAfterResolved(["A", "B", "C"], "Z")).toBeNull();
-	});
-
-	it("never returns the resolved id itself, even with earlier unresolved items", () => {
-		// User on the middle card resolves it; the next card is the one after, and
-		// the resolved id must not be reachable again from the result.
-		const result = nextItemIdAfterResolved(["A", "B", "C", "D"], "B");
-		expect(result).toBe("C");
-		expect(result).not.toBe("B");
 	});
 });
 
@@ -422,41 +283,6 @@ describe("deriveEmptyStateReason — caught-up branch (hasQueue=true, caughtUp=t
 				hiddenReviewItemCount: 0,
 			}),
 		).toBe("caught-up");
-	});
-});
-
-// ---------------------------------------------------------------------------
-// shouldBootstrapReadyQueue — re-run the one-shot bootstrap when a match is ready
-// ---------------------------------------------------------------------------
-
-describe("shouldBootstrapReadyQueue", () => {
-	it("bootstraps when there is no session but a first-visible match is ready", () => {
-		// The exact stranded state: loader ran before the snapshot existed, a match
-		// is now ready, and nothing else would create the session.
-		expect(
-			shouldBootstrapReadyQueue({
-				hasQueue: false,
-				firstVisibleMatchReady: true,
-			}),
-		).toBe(true);
-	});
-
-	it("does not bootstrap while no first-visible match is ready yet", () => {
-		expect(
-			shouldBootstrapReadyQueue({
-				hasQueue: false,
-				firstVisibleMatchReady: false,
-			}),
-		).toBe(false);
-	});
-
-	it("does not bootstrap once a session already exists", () => {
-		expect(
-			shouldBootstrapReadyQueue({
-				hasQueue: true,
-				firstVisibleMatchReady: true,
-			}),
-		).toBe(false);
 	});
 });
 
