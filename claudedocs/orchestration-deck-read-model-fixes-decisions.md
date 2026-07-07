@@ -842,3 +842,20 @@ per decision + rationale.
   the guard the post-pass-3 amendment (above) and
   `docs/architecture/matching/deck-promotion-count-guard-handoff.md` deferred to
   this pass.
+- **Test coverage for the guard: migration byte-diff + existing TS, no SQL
+  harness.** The repo has no practical SQL/pgTAP test harness — `supabase/`
+  holds only `migrations`, `snippets`, `seed.sql`, and `config.toml`, and the
+  `test` script is Vitest-only — so the two desired promotion-level cases (a
+  `ready` proposal whose `total_subjects` matches its subject rows promotes; one
+  whose `total_subjects` exceeds the live row count returns
+  `{status:'miss', reason:'no_ready_proposal'}`) can't be pinned as SQL/RPC
+  integration tests without standing up a new harness, which is out of scope for
+  this surgical fix. Coverage instead rests on the migration byte-diff (only the
+  header comment and the single `total_subjects = (SELECT count(*) …)` predicate
+  differ from `20260707000018` — the rest of the function body, `SECURITY
+  DEFINER`, `SET search_path`, and the `REVOKE`/`GRANT` footer are byte-identical)
+  plus the existing `match-deck-miss-path.test.ts` TS coverage of the handler
+  that now defers to this DB-side guard. Full verification this pass: `bun run
+  typecheck`, `bun run typecheck:worker`, `bun run check` all clean; `bun run
+  test` 305 files passed / 1 pre-existing skip, 3427 passed / 8 skipped / 11
+  todo, zero failures — nothing disabled or skipped to pass.
