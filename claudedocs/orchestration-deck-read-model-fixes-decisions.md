@@ -566,3 +566,41 @@ per decision + rationale.
   idempotency-key string (both the concrete-`resumePosition` and `?? "none"`
   branches) and the `superseded` no-defer/no-Sentry case are covered via
   `dispatchDeckJob` directly, since they don't touch settlement at all.
+
+- **P2.1 (`proposal-order-parity.test.ts`)**: rewrote the file per review L10.
+  Kept the one hand-computed test (`deriveEligibleSubjects` entitlement/
+  ownership prefilter + tie-break-by-id pin) verbatim; replaced the vacuous
+  `typeof deriveEligibleSubjects === "function"` closer and the two tests that
+  only re-exercised the same pure fixture with two new tests that drive
+  `deriveProposalSubjects` end-to-end (all six of its DB-facing dependencies —
+  `getMatchResults`, `getNewItemIds`, `getMatchDecisionsForSongs`,
+  `fetchSongsFilterMeta`, `fetchOwnedPlaylistIds`, `fetchTargetPlaylistFilters`,
+  plus the admin-client entitlement RPC — mocked; `getOrderedUndecidedSubjects`
+  and `deriveEligibleSubjects` themselves run for real) and pin the exact
+  `match_review_proposal_subject` rows (order + every field) for both song and
+  playlist orientation. Corrected the docstring to say parity is by
+  construction via the shared `deriveEligibleSubjects` seam, not via a deleted
+  shadow-compare.
+- **P2.3 (plan §12)**: replaced the "read-only shadow-compare script in
+  `scripts/`" pre-merge bullet with a note that it's superseded —
+  `appendSnapshotDelta` is gone, so parity now rests on the shared
+  `deriveEligibleSubjects` seam plus the fixture suites
+  (`proposal-order-parity.test.ts`, `proposal-builder.test.ts`) that pin its
+  output.
+- **P2.4 (fix-pass-verification.md closing note)**: corrected the stale "tree
+  dirty / branch unpushed" note. Verified via `git status` (clean) and
+  `git log origin/<branch>..HEAD` (11 commits ahead, `813f35b4` — this doc's
+  own commit — is the pushed tip): the tree is clean, the work through that
+  commit is pushed, and the fix-pass-2 commits (P2.1/P2.3–P2.5) are local and
+  unpushed, per the no-push contract.
+- **P2.5 (`matchReviewKeys` dead exports)**: grepped the whole repo first —
+  `matchReviewKeys.bootstrap` had zero references anywhere (not even a test);
+  `matchReviewKeys.item` had zero production callers, and its one test
+  reference (`useActiveJobs.test.ts`) never actually called the export — it
+  hand-built the `["match-review", "item"]` key prefix in a comment/assertion
+  to pin an invariant on a key nothing produces anymore. Deleted both exports
+  from `queries.ts` (and the now-stale comment referencing `.item`); removed
+  that dead-invariant test case rather than rewriting it, since nothing in
+  production emits an `["match-review", "item", ...]` key post-cutover for it
+  to guard against. Kept `all`/`reviewsRoot`/`review` — confirmed still
+  referenced by `SettingsPage.tsx` and `PlaylistsCoverFlowScreen.tsx`.
