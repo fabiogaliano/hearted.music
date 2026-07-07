@@ -2,8 +2,8 @@
  * Match review queue query-level tests.
  *
  * These exercise the real query functions with only the Supabase client mocked,
- * so they assert the actual filter/chain shape — e.g. that the presented-update
- * is guarded against resurrecting resolved cards.
+ * so they assert the actual filter/chain shape — e.g. that resolved-state writes
+ * stay guarded against resurrecting decided cards.
  */
 
 import { Result } from "better-result";
@@ -16,7 +16,6 @@ import {
 	fetchOwnedPlaylistIds,
 	finishQueueItemAtomically,
 	readQueueItemSongSuggestions,
-	updateQueueItemPresented,
 	updateQueueItemResolved,
 } from "../queries";
 
@@ -49,7 +48,7 @@ const ROW = {
  *   from().update().eq("id").eq("account_id").in("state", …).select().maybeSingle()
  * and returns the .in() spy so tests can assert the conditional state guard.
  */
-function mockPresentedUpdate(row: typeof ROW | null) {
+function mockResolvedUpdate(row: typeof ROW | null) {
 	const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
 	const select = vi.fn().mockReturnValue({ maybeSingle });
 	const inSpy = vi.fn().mockReturnValue({ select });
@@ -65,56 +64,6 @@ function mockPresentedUpdate(row: typeof ROW | null) {
 	return { inSpy, update };
 }
 
-describe("updateQueueItemPresented", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("guards the transition to only pending/active rows", async () => {
-		const { inSpy } = mockPresentedUpdate(ROW);
-
-		await updateQueueItemPresented("item-1", "acct-1", "2026-06-16T00:00:00Z");
-
-		// The conditional update must restrict to unresolved states so a resolved
-		// card can never be resurrected (B9-C lifecycle: active replaces presented).
-		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "active"]);
-	});
-
-	it("returns the mapped item when an eligible row is updated", async () => {
-		mockPresentedUpdate(ROW);
-
-		const result = await updateQueueItemPresented(
-			"item-1",
-			"acct-1",
-			"2026-06-16T00:00:00Z",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).not.toBeNull();
-			expect(result.value?.id).toBe("item-1");
-			expect(result.value?.state).toBe("active");
-		}
-	});
-
-	it("returns ok(null) when no eligible row matched (resolved or raced)", async () => {
-		// maybeSingle yields no row without erroring → the resolved item was left
-		// untouched by the .in("state", …) guard.
-		mockPresentedUpdate(null);
-
-		const result = await updateQueueItemPresented(
-			"item-resolved",
-			"acct-1",
-			"2026-06-16T00:00:00Z",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toBeNull();
-		}
-	});
-});
-
 describe("updateQueueItemResolved", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -123,7 +72,7 @@ describe("updateQueueItemResolved", () => {
 	it("guards the resolution to only pending/active rows", async () => {
 		// Same conditional-update shape as the active transition, so two
 		// concurrent finish/dismiss flows can't clobber each other's resolution.
-		const { inSpy } = mockPresentedUpdate(ROW);
+		const { inSpy } = mockResolvedUpdate(ROW);
 
 		await updateQueueItemResolved(
 			"item-1",
@@ -139,7 +88,7 @@ describe("updateQueueItemResolved", () => {
 	it("returns ok(null) when the item was already resolved (no eligible row)", async () => {
 		// The conditional update matched nothing — a concurrent action won the race.
 		// The lost flow must see null rather than overwriting the winner's row.
-		mockPresentedUpdate(null);
+		mockResolvedUpdate(null);
 
 		const result = await updateQueueItemResolved(
 			"item-resolved",
