@@ -106,7 +106,7 @@ export function parseArgs(argv: string[]): WarmOptions {
 	return { dryRun: args.includes("--dry-run") };
 }
 
-interface AccountLatestSnapshot {
+export interface AccountLatestSnapshot {
 	accountId: string;
 	snapshotId: string;
 }
@@ -150,14 +150,16 @@ async function* iterateLatestSnapshotPerAccount(
 	}
 }
 
-interface WarmCounts {
+export interface WarmCounts {
 	accounts: number;
 	enqueued: number;
 	deduped: number;
 	failed: number;
 }
 
-async function warmAccount(
+// Exported for direct testing (vitest seeds placeholder env vars, so importing
+// this module in tests is safe — see the M1 hash-fail-skip regression test).
+export async function warmAccount(
 	target: AccountLatestSnapshot,
 	dryRun: boolean,
 	counts: WarmCounts,
