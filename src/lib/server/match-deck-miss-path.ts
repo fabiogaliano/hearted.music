@@ -38,9 +38,13 @@
  *      result instead of propagating: the request path must never surface a
  *      500 for losing this race.
  *   2. RE-INVOKE start_or_resume_match_deck with the SAME visibilityConfigHash.
- *      buildOneProposal derived its own hash from the same target filters + the
- *      same `nowMs` the caller hashed with, so branch-2 promotion is guaranteed
- *      to find the just-built ready proposal within this request.
+ *      buildOneProposal derives its own hash from the same target filters + the
+ *      same `nowMs` the caller hashed with, so branch-2 promotion normally
+ *      finds the just-built ready proposal within this request — but this is
+ *      NOT guaranteed: a filter change racing between the request's hash read
+ *      and the builder's own filters read can skew the hash, producing a
+ *      transient miss here that self-heals on the next entry (recorded in the
+ *      decisions log).
  *   3. Best-effort enqueue the full `build_proposals` (all presets) so the next
  *      entry after a preset change is a hit. A failure here never fails the
  *      request — the snapshot is durable and the read path self-heals.
