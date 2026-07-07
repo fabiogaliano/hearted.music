@@ -21,4 +21,5 @@ Start here for the fastest mental model.
 | [`matching/score-normalization.md`](./matching/score-normalization.md) | Why fusion normalizes signals across the full candidate matrix |
 | [`matching/reranker.md`](./matching/reranker.md) | Cross-encoder reranking and offline replay evaluation |
 | [`matching/progressive-match-feed.md`](./matching/progressive-match-feed.md) | Future incremental-feed architecture and measurement gate for deciding if the refactor is worth it |
+| [`matching/immutable-proposal-versions-plan.md`](./matching/immutable-proposal-versions-plan.md) | Follow-up plan to make match-deck proposal builds immutable/versioned and remove rebuild races at the root |
 | [`matching/roadmap.md`](./matching/roadmap.md) | Consolidated matching research and prioritized roadmap |
