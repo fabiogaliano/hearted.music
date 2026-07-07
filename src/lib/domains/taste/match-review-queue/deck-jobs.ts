@@ -9,17 +9,16 @@
  * flips scoped by id. `attempts` is already incremented at claim time, so a
  * defer is just re-pending with a future available_at; exhausted attempts are
  * terminalized by mark_dead in the sweep tick.
- *
- * All new-table/RPC access routes through deckDb() (the temporary escape hatch,
- * src/lib/data/deck-db-types.ts) until `gen:types` folds the deck schema into
- * the generated Database.
  */
 
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
-import { type DeckJob, deckDb } from "@/lib/data/deck-db-types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Json, Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+
+/** The deck-job row shape, exported for the DB layer + worker dispatch. */
+export type DeckJob = Tables<"match_review_deck_job">;
 
 function dbErr(error: { code?: string; message: string }): DbError {
 	return new DatabaseError({
@@ -42,7 +41,7 @@ function firstRow<T>(data: unknown): T | null {
  * job or null when nothing is claimable.
  */
 export async function claimDeckJob(): Promise<Result<DeckJob | null, DbError>> {
-	const { data, error } = await deckDb().rpc(
+	const { data, error } = await createAdminSupabaseClient().rpc(
 		"claim_pending_match_review_deck_job",
 		{ p_limit: 1 },
 	);
@@ -54,7 +53,7 @@ export async function claimDeckJob(): Promise<Result<DeckJob | null, DbError>> {
 export async function heartbeatDeckJob(
 	jobId: string,
 ): Promise<Result<void, DbError>> {
-	const { error } = await deckDb()
+	const { error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ heartbeat_at: new Date().toISOString() })
 		.eq("id", jobId)
@@ -71,7 +70,7 @@ export async function heartbeatDeckJob(
 export async function completeDeckJob(
 	jobId: string,
 ): Promise<Result<void, DbError>> {
-	const { error } = await deckDb()
+	const { error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ status: "completed" })
 		.eq("id", jobId);
@@ -92,7 +91,7 @@ export async function deferDeckJob(
 	const availableAt = new Date(
 		Date.now() + backoffSeconds * 1000,
 	).toISOString();
-	const { error } = await deckDb()
+	const { error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({
 			status: "pending",
@@ -108,7 +107,7 @@ export async function deferDeckJob(
 export async function sweepStaleDeckJobs(): Promise<
 	Result<DeckJob[], DbError>
 > {
-	const { data, error } = await deckDb().rpc(
+	const { data, error } = await createAdminSupabaseClient().rpc(
 		"sweep_stale_match_review_deck_jobs",
 		{},
 	);
@@ -118,9 +117,8 @@ export async function sweepStaleDeckJobs(): Promise<
 
 /** Dead-letters jobs that have exhausted max_attempts. */
 export async function markDeadDeckJobs(): Promise<Result<DeckJob[], DbError>> {
-	const { data, error } = await deckDb().rpc(
+	const { data, error } = await createAdminSupabaseClient().rpc(
 		"mark_dead_match_review_deck_jobs",
-		{},
 	);
 	if (error) return Result.err(dbErr(error));
 	return Result.ok((data ?? []) as DeckJob[]);
@@ -143,14 +141,17 @@ export interface EnqueueDeckJobInput {
 export async function enqueueDeckJob(
 	input: EnqueueDeckJobInput,
 ): Promise<Result<DeckJob | null, DbError>> {
-	const { data, error } = await deckDb().rpc("enqueue_match_review_deck_job", {
-		p_account_id: input.accountId,
-		p_orientation: input.orientation,
-		p_kind: input.kind,
-		p_idempotency_key: input.idempotencyKey,
-		p_session_id: input.sessionId ?? undefined,
-		p_payload: input.payload ?? undefined,
-	});
+	const { data, error } = await createAdminSupabaseClient().rpc(
+		"enqueue_match_review_deck_job",
+		{
+			p_account_id: input.accountId,
+			p_orientation: input.orientation,
+			p_kind: input.kind,
+			p_idempotency_key: input.idempotencyKey,
+			p_session_id: input.sessionId ?? undefined,
+			p_payload: input.payload ?? undefined,
+		},
+	);
 	if (error) return Result.err(dbErr(error));
 	return Result.ok(firstRow<DeckJob>(data));
 }

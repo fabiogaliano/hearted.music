@@ -1559,6 +1559,72 @@ export type Database = {
 					},
 				];
 			};
+			match_review_deck_job: {
+				Row: {
+					account_id: string;
+					attempts: number;
+					available_at: string;
+					created_at: string;
+					heartbeat_at: string | null;
+					id: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts: number;
+					orientation: string;
+					payload: Json;
+					session_id: string | null;
+					status: string;
+					updated_at: string;
+				};
+				Insert: {
+					account_id: string;
+					attempts?: number;
+					available_at?: string;
+					created_at?: string;
+					heartbeat_at?: string | null;
+					id?: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts?: number;
+					orientation: string;
+					payload?: Json;
+					session_id?: string | null;
+					status?: string;
+					updated_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					attempts?: number;
+					available_at?: string;
+					created_at?: string;
+					heartbeat_at?: string | null;
+					id?: string;
+					idempotency_key?: string;
+					kind?: string;
+					max_attempts?: number;
+					orientation?: string;
+					payload?: Json;
+					session_id?: string | null;
+					status?: string;
+					updated_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_deck_job_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_deck_job_session_id_fkey";
+						columns: ["session_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_session";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			match_review_item_visible_pair: {
 				Row: {
 					account_id: string;
@@ -1644,6 +1710,194 @@ export type Database = {
 					},
 					{
 						foreignKeyName: "match_review_item_visible_pair_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_proposal: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					hidden_review_item_count: number;
+					id: string;
+					orientation: string;
+					read_time_filters_hash: string;
+					snapshot_id: string;
+					status: string;
+					strictness_min_score: number;
+					strictness_preset: string;
+					total_subjects: number;
+					updated_at: string;
+					visibility_config_hash: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					hidden_review_item_count?: number;
+					id?: string;
+					orientation: string;
+					read_time_filters_hash: string;
+					snapshot_id: string;
+					status?: string;
+					strictness_min_score: number;
+					strictness_preset: string;
+					total_subjects?: number;
+					updated_at?: string;
+					visibility_config_hash: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					hidden_review_item_count?: number;
+					id?: string;
+					orientation?: string;
+					read_time_filters_hash?: string;
+					snapshot_id?: string;
+					status?: string;
+					strictness_min_score?: number;
+					strictness_preset?: string;
+					total_subjects?: number;
+					updated_at?: string;
+					visibility_config_hash?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_proposal_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_snapshot_id_fkey";
+						columns: ["snapshot_id"];
+						isOneToOne: false;
+						referencedRelation: "match_snapshot";
+						referencedColumns: ["id"];
+					},
+				];
+			};
+			match_review_proposal_seed_pair: {
+				Row: {
+					fit_score: number;
+					model_rank: number;
+					playlist_id: string;
+					proposal_id: string;
+					song_id: string;
+					subject_position: number;
+					visible_rank: number;
+				};
+				Insert: {
+					fit_score: number;
+					model_rank: number;
+					playlist_id: string;
+					proposal_id: string;
+					song_id: string;
+					subject_position: number;
+					visible_rank: number;
+				};
+				Update: {
+					fit_score?: number;
+					model_rank?: number;
+					playlist_id?: string;
+					proposal_id?: string;
+					song_id?: string;
+					subject_position?: number;
+					visible_rank?: number;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_proposal_seed_pair_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_seed_pair_proposal_id_fkey";
+						columns: ["proposal_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_proposal";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_seed_pair_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_seed_pair_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_seed_pair_subject_fkey";
+						columns: ["proposal_id", "subject_position"];
+						isOneToOne: false;
+						referencedRelation: "match_review_proposal_subject";
+						referencedColumns: ["proposal_id", "position"];
+					},
+				];
+			};
+			match_review_proposal_subject: {
+				Row: {
+					orientation: string;
+					playlist_id: string | null;
+					position: number;
+					proposal_id: string;
+					song_id: string | null;
+					source_fit_score: number;
+					was_new_at_enqueue: boolean;
+				};
+				Insert: {
+					orientation: string;
+					playlist_id?: string | null;
+					position: number;
+					proposal_id: string;
+					song_id?: string | null;
+					source_fit_score?: number;
+					was_new_at_enqueue?: boolean;
+				};
+				Update: {
+					orientation?: string;
+					playlist_id?: string | null;
+					position?: number;
+					proposal_id?: string;
+					song_id?: string | null;
+					source_fit_score?: number;
+					was_new_at_enqueue?: boolean;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "match_review_proposal_subject_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlist";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_subject_proposal_id_fkey";
+						columns: ["proposal_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_proposal";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_subject_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "match_review_proposal_subject_song_id_fkey";
 						columns: ["song_id"];
 						isOneToOne: false;
 						referencedRelation: "song";
@@ -1757,10 +2011,13 @@ export type Database = {
 			match_review_session: {
 				Row: {
 					account_id: string;
+					active_proposal_id: string | null;
 					completed_at: string | null;
 					created_at: string;
+					deck_revision: number;
 					id: string;
 					orientation: string;
+					resume_position: number | null;
 					status: string;
 					strictness_min_score: number;
 					strictness_preset: string;
@@ -1768,10 +2025,13 @@ export type Database = {
 				};
 				Insert: {
 					account_id: string;
+					active_proposal_id?: string | null;
 					completed_at?: string | null;
 					created_at?: string;
+					deck_revision?: number;
 					id?: string;
 					orientation?: string;
+					resume_position?: number | null;
 					status: string;
 					strictness_min_score: number;
 					strictness_preset: string;
@@ -1779,10 +2039,13 @@ export type Database = {
 				};
 				Update: {
 					account_id?: string;
+					active_proposal_id?: string | null;
 					completed_at?: string | null;
 					created_at?: string;
+					deck_revision?: number;
 					id?: string;
 					orientation?: string;
+					resume_position?: number | null;
 					status?: string;
 					strictness_min_score?: number;
 					strictness_preset?: string;
@@ -1794,6 +2057,13 @@ export type Database = {
 						columns: ["account_id"];
 						isOneToOne: false;
 						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "match_review_session_active_proposal_id_fkey";
+						columns: ["active_proposal_id"];
+						isOneToOne: false;
+						referencedRelation: "match_review_proposal";
 						referencedColumns: ["id"];
 					},
 				];
@@ -3266,6 +3536,31 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			claim_pending_match_review_deck_job: {
+				Args: { p_limit?: number };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					available_at: string;
+					created_at: string;
+					heartbeat_at: string | null;
+					id: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts: number;
+					orientation: string;
+					payload: Json;
+					session_id: string | null;
+					status: string;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "match_review_deck_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			claim_pending_rematch_job: {
 				Args: never;
 				Returns: {
@@ -3488,6 +3783,38 @@ export type Database = {
 					to: "audio_feature_backfill_job";
 					isOneToOne: true;
 					isSetofReturn: false;
+				};
+			};
+			enqueue_match_review_deck_job: {
+				Args: {
+					p_account_id: string;
+					p_idempotency_key: string;
+					p_kind: string;
+					p_orientation: string;
+					p_payload?: Json;
+					p_session_id?: string;
+				};
+				Returns: {
+					account_id: string;
+					attempts: number;
+					available_at: string;
+					created_at: string;
+					heartbeat_at: string | null;
+					id: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts: number;
+					orientation: string;
+					payload: Json;
+					session_id: string | null;
+					status: string;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "match_review_deck_job";
+					isOneToOne: false;
+					isSetofReturn: true;
 				};
 			};
 			fail_audio_feature_backfill_job: {
@@ -3831,6 +4158,31 @@ export type Database = {
 					isSetofReturn: true;
 				};
 			};
+			mark_dead_match_review_deck_jobs: {
+				Args: never;
+				Returns: {
+					account_id: string;
+					attempts: number;
+					available_at: string;
+					created_at: string;
+					heartbeat_at: string | null;
+					id: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts: number;
+					orientation: string;
+					payload: Json;
+					session_id: string | null;
+					status: string;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "match_review_deck_job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
 			mark_dead_rematch_jobs: {
 				Args: { stale_threshold: string };
 				Returns: {
@@ -3917,6 +4269,15 @@ export type Database = {
 					converted_credits: number;
 					discount_cents: number;
 				}[];
+			};
+			read_match_deck_card: {
+				Args: {
+					p_account_id: string;
+					p_item_id: string;
+					p_limit?: number;
+					p_mark_presented?: boolean;
+				};
+				Returns: Json;
 			};
 			read_match_review_item_song_suggestions: {
 				Args: {
@@ -4112,6 +4473,15 @@ export type Database = {
 				Args: { p_artists: string[]; p_name: string };
 				Returns: string;
 			};
+			start_or_resume_match_deck: {
+				Args: {
+					p_account_id: string;
+					p_orientation: string;
+					p_visibility_config_hash: string;
+					p_window?: number;
+				};
+				Returns: Json;
+			};
 			sweep_stale_audio_feature_backfill_jobs: {
 				Args: never;
 				Returns: {
@@ -4194,6 +4564,31 @@ export type Database = {
 				SetofOptions: {
 					from: "*";
 					to: "job";
+					isOneToOne: false;
+					isSetofReturn: true;
+				};
+			};
+			sweep_stale_match_review_deck_jobs: {
+				Args: { p_lease_seconds?: number };
+				Returns: {
+					account_id: string;
+					attempts: number;
+					available_at: string;
+					created_at: string;
+					heartbeat_at: string | null;
+					id: string;
+					idempotency_key: string;
+					kind: string;
+					max_attempts: number;
+					orientation: string;
+					payload: Json;
+					session_id: string | null;
+					status: string;
+					updated_at: string;
+				}[];
+				SetofOptions: {
+					from: "*";
+					to: "match_review_deck_job";
 					isOneToOne: false;
 					isSetofReturn: true;
 				};

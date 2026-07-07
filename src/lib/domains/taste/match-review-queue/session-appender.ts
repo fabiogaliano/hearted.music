@@ -17,11 +17,12 @@
  * queued. A subject decided in a different session between build and append can
  * transiently append as an empty card — self-healing (the card read derives no
  * visible suggestions and resolves), and near-nil in practice since build chains
- * append back-to-back. Proposal-table reads use deckDb() (escape hatch).
+ * append back-to-back.
  */
 
 import { Result } from "better-result";
-import { deckDb, type ProposalSubject } from "@/lib/data/deck-db-types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
@@ -40,6 +41,8 @@ import {
 	computeVisibilityPolicyHash,
 	type VisibilityPolicy,
 } from "./visibility-policy";
+
+type ProposalSubject = Tables<"match_review_proposal_subject">;
 
 export type AppendSessionsOutcome =
 	| { kind: "no_active_session" }
@@ -114,7 +117,7 @@ export async function appendSessionsForAccountOrientation(input: {
 	// Read status (not `.eq("status","ready")`) so a proposal that a newer
 	// snapshot marked `stale` is distinguishable from one that never existed:
 	// the former is a correct skip, the latter a genuine miss (M2).
-	const proposalResult = await deckDb()
+	const proposalResult = await createAdminSupabaseClient()
 		.from("match_review_proposal")
 		.select("id, status")
 		.eq("account_id", accountId)
@@ -140,7 +143,7 @@ export async function appendSessionsForAccountOrientation(input: {
 	}
 	const proposalId = proposalResult.data.id;
 
-	const subjectsResult = await deckDb()
+	const subjectsResult = await createAdminSupabaseClient()
 		.from("match_review_proposal_subject")
 		.select("*")
 		.eq("proposal_id", proposalId)
