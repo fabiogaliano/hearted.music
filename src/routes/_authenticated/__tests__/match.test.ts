@@ -23,6 +23,7 @@ type LoaderContext = {
 	queryClient: {
 		ensureQueryData: (options: unknown) => Promise<unknown>;
 		setQueryData: (key: unknown, value: unknown) => void;
+		prefetchQuery: (options: unknown) => Promise<unknown>;
 	};
 	onboardingSession: OnboardingSession;
 };
@@ -219,6 +220,7 @@ describe("/_authenticated/match route", () => {
 			queryClient: {
 				ensureQueryData: vi.fn().mockResolvedValue(ensureData),
 				setQueryData: vi.fn(),
+				prefetchQuery: vi.fn().mockResolvedValue(undefined),
 			},
 			onboardingSession,
 		});
@@ -295,6 +297,49 @@ describe("/_authenticated/match route", () => {
 			expect(context.queryClient.ensureQueryData).toHaveBeenCalled();
 			// Building state carries no itemIds/cards, so nothing is seeded.
 			expect(context.queryClient.setQueryData).not.toHaveBeenCalled();
+			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
+		});
+
+		it("auto-retries a baked retryable card instead of seeding it into the card cache", async () => {
+			const route = await loadRoute();
+			sessionModeMock.mockReturnValue("complete");
+			const view = {
+				itemIds: ["item-1", "item-2"],
+				cards: {
+					current: {
+						itemId: "item-1",
+						position: 0,
+						presentation: {
+							status: "retryable-error",
+							itemId: "item-1",
+							message: "Couldn't load this match card. Try again.",
+						},
+					},
+					next: {
+						itemId: "item-2",
+						position: 1,
+						presentation: { status: "ready", itemId: "item-2" },
+					},
+				},
+				progress: {
+					total: 2,
+					remaining: 2,
+					caughtUp: false,
+					hiddenReviewItemCount: 0,
+				},
+			};
+			const context = makeContext({ status: "complete" }, view);
+
+			await route.loader({ context, deps: { mode: "playlist" } });
+
+			expect(context.queryClient.prefetchQuery).toHaveBeenCalledWith({
+				queryKey: ["match-deck", "card", "item-1", "read"],
+			});
+			expect(context.queryClient.setQueryData).toHaveBeenCalledTimes(1);
+			expect(context.queryClient.setQueryData).toHaveBeenCalledWith(
+				["match-deck", "card", "item-2", "read"],
+				view.cards.next.presentation,
+			);
 		});
 
 		it("skips the next-card seed when the deck has only a current card", async () => {
@@ -326,6 +371,7 @@ describe("/_authenticated/match route", () => {
 				["match-deck", "card", "item-1", "read"],
 				view.cards.current.presentation,
 			);
+			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
 		});
 	});
 });
