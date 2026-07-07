@@ -563,7 +563,7 @@ correctness step.
    Smart Placement in `wrangler.jsonc`, metrics wiring (§13).
 
 Rollback story: revert the merge commit. The additive schema tolerates old
-code; no data migration touched legacy tables.
+code; the one legacy-table behavior change is the snapshot FK swap below.
 
 **Rollback note (review M13a):** reverting the merge commit does NOT undo
 `20260706000009_extend_deck_action_rpcs.sql`'s `CREATE OR REPLACE` of the four
@@ -575,6 +575,12 @@ and are not rolled back by a git revert. After reverting the app code, also run
 against the target database) to restore those four RPCs to their pre-branch
 bodies. That script is deliberately kept outside `supabase/migrations/` so it
 never auto-applies.
+
+**Rollback note (review M13b):** `20260706000015_proposal_snapshot_fk_cascade.sql`
+replaces `match_review_proposal.snapshot_id`'s FK with `ON DELETE CASCADE`.
+That DDL touches the live `match_snapshot` relationship and also survives a git
+revert; if rollback needs the pre-branch FK semantics, restore the prior
+constraint explicitly as a follow-up DB change.
 
 Pre-merge verification (replaces the flagged parallel-run):
 
