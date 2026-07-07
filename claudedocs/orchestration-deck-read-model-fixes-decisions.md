@@ -519,3 +519,50 @@ per decision + rationale.
   of three independent SELECTs, so the three can never disagree in one
   response; diffed the new function body against 000013's verbatim and
   confirmed the only hunk is that consolidation — no other line changed.
+- **P1.1 (L3, `match-deck.functions.ts`)**: `mapReadDeckCardToItemRead` is pure
+  by design (no accountId param; directly unit-tested with fabricated raw RPC
+  shapes), so the two silent fallback arms (ready-with-no-subject, unknown
+  status) can't capture themselves — hoisted a `captureUnexpectedCardShape`
+  helper to every call site instead (`mapCardEnvelope`/`mapStartOrResumeToView`,
+  and both read points in `resolveDeckCard`), keeping the mapper untouched.
+  `not_captured` is deliberately excluded from the "unexpected" set — that cold
+  path is already tracked via the `match_deck_materialize_on_read` product
+  event, not a shape violation worth a new Sentry capture.
+- **P1.2 (`poll-match-deck-jobs.ts`)**: added a `captureDeckJobDispatchError`
+  helper mirroring the existing build_proposals/repair `Sentry.captureException`
+  call's exact tag shape (`area=match_deck, operation=<kind>, runtime=worker`),
+  wired to the genuine failure paths only — `append_sessions`'s
+  `Result.isError(outcome)` branch and both `capture_ahead` failure points
+  (`readSessionResumePosition`, `captureAheadForSession`). Left the
+  `no_ready_proposal` retry-defer and the `superseded`/`no_active_session`
+  complete-without-defer outcomes uncaptured on purpose — those are expected,
+  routine control flow (the same reasoning the existing M2 comment already
+  gives for `superseded`), not dispatch failures.
+- **P1.5 (`deck-read-queries.ts`)**: added a minimal `status`-discriminator
+  allowlist (array + `as const` + type guard) to both RPC wrappers, mirroring
+  the style of `./queries.ts`'s `is*AtomicStatus` guards — but NOT their
+  behavior: those convert an unknown status into `Result.err`, while these two
+  deliberately still `Result.ok` the value (the mappers' fallback arms already
+  handle an unexpected status gracefully) and instead fire a `captureServerError`
+  at the wrapper boundary so the drift is visible. Confirmed via grep that
+  neither wrapper is imported from `src/worker` (only `src/lib/server`), so
+  importing the Cloudflare-only `captureServerError` here doesn't cross-
+  contaminate the worker bundle — same constraint M1's decisions already
+  documented for `proposal-builder.ts`.
+- **P3.2 (`poll-match-deck-jobs.ts` / `.test.ts`)**: exported `dispatchDeckJob`
+  (no behavior change) for direct per-kind dispatch tests. The claim → dispatch
+  → settle lifecycle tests (happy-path complete, handler-error defer, N2's
+  0-row settlement-guard warn) needed more than `dispatchDeckJob` alone since
+  `logSettlementFailure` only runs inside the poll loop's fire-and-forget task
+  — but driving the real `startMatchDeckJobPolling` while-loop in a test hit a
+  hard wall: it idles on the global `Bun.sleep`, which the vitest node pool this
+  suite runs under doesn't provide (confirmed absent — `ReferenceError: Bun is
+  not defined`), and stubbing it to resolve immediately just turns the loop
+  into a busy-spin that OOM'd the test worker. Instead, extracted the loop's
+  per-job body (heartbeat lease, dispatch, settle) into a new exported
+  `runClaimedDeckJob(job)` — a pure refactor (same body, same single call site,
+  `void runClaimedDeckJob(job)` replacing the inline IIFE) — and tested that
+  directly with mocked settlement calls; no full-loop test needed. M5's exact
+  idempotency-key string (both the concrete-`resumePosition` and `?? "none"`
+  branches) and the `superseded` no-defer/no-Sentry case are covered via
+  `dispatchDeckJob` directly, since they don't touch settlement at all.
