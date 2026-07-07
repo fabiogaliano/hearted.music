@@ -3,10 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
+import { ConstraintError } from "@/lib/shared/errors/database";
 import {
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
+	fetchMaxPosition,
+	fetchQueuedPlaylistIds,
+	fetchQueuedSongIds,
 	fetchTargetPlaylistFilters,
+	insertQueueItems,
+	insertQueuePlaylistItems,
+	insertSessionSnapshot,
 } from "../queries";
 import { appendSessionsForAccountOrientation } from "../session-appender";
 import { computeVisibilityPolicyHash } from "../visibility-policy";
@@ -153,5 +160,198 @@ describe("appendSessionsForAccountOrientation", () => {
 			active_proposal_id: "prop-1",
 		});
 		expect(sessionUpdateEq).toHaveBeenCalledWith("id", "session-1");
+	});
+
+	/** Builds the `match_review_proposal` select chain (account/orientation/
+	 *  snapshot/hash eq's terminating in maybeSingle) shared by the P3.1 cases
+	 *  below — mirrors the replay test's chain above. */
+	function mockProposalLookupChain(row: { id: string; status: string } | null) {
+		const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
+		const proposalEqHash = vi.fn().mockReturnValue({ maybeSingle });
+		const proposalEqSnapshot = vi.fn().mockReturnValue({ eq: proposalEqHash });
+		const proposalEqOrientation = vi
+			.fn()
+			.mockReturnValue({ eq: proposalEqSnapshot });
+		const proposalEqAccount = vi
+			.fn()
+			.mockReturnValue({ eq: proposalEqOrientation });
+		const proposalSelect = vi.fn().mockReturnValue({ eq: proposalEqAccount });
+		return { select: proposalSelect };
+	}
+
+	describe("M3: constraint violation on insert must defer, not silently settle applied", () => {
+		beforeEach(() => {
+			vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
+				Result.ok(SNAPSHOT_ROW),
+			);
+			vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
+				Result.ok(new Map()),
+			);
+			vi.mocked(fetchAppliedSnapshotIds).mockResolvedValue(
+				Result.ok(new Set()),
+			);
+			vi.mocked(fetchMaxPosition).mockResolvedValue(Result.ok(0));
+		});
+
+		it("insertQueueItems ConstraintError propagates as Result.err (song orientation) instead of settling applied/0", async () => {
+			const proposalTable = mockProposalLookupChain({
+				id: "prop-1",
+				status: "ready",
+			});
+			const subjectsOrder = vi.fn().mockResolvedValue({
+				data: [
+					{
+						proposal_id: "prop-1",
+						position: 0,
+						orientation: "song",
+						song_id: "song-1",
+						playlist_id: null,
+						source_fit_score: 0.8,
+						was_new_at_enqueue: false,
+					},
+				],
+				error: null,
+			});
+			const subjectsEq = vi.fn().mockReturnValue({ order: subjectsOrder });
+			const subjectsSelect = vi.fn().mockReturnValue({ eq: subjectsEq });
+			const from = vi.fn((table: string) => {
+				switch (table) {
+					case "match_review_proposal":
+						return proposalTable;
+					case "match_review_proposal_subject":
+						return { select: subjectsSelect };
+					default:
+						throw new Error(`Unexpected table ${table}`);
+				}
+			});
+			vi.mocked(createAdminSupabaseClient).mockReturnValue({
+				from,
+			} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+			vi.mocked(fetchQueuedSongIds).mockResolvedValue(Result.ok(new Set()));
+
+			const constraintError = new ConstraintError(
+				"unique",
+				"(session_id, position) collision",
+			);
+			vi.mocked(insertQueueItems).mockResolvedValue(
+				Result.err(constraintError),
+			);
+
+			const result = await appendSessionsForAccountOrientation({
+				accountId: "acct-1",
+				orientation: "song",
+				snapshotId: "snap-1",
+			});
+
+			expect(Result.isError(result)).toBe(true);
+			if (Result.isError(result)) {
+				expect(result.error).toBe(constraintError);
+			}
+			// The ledger write (and thus `applied`/`appendedCount:0`) must never
+			// run when the insert itself failed — that would silently drop the batch.
+			expect(insertSessionSnapshot).not.toHaveBeenCalled();
+		});
+
+		it("insertQueuePlaylistItems ConstraintError propagates as Result.err (playlist orientation) instead of settling applied/0", async () => {
+			const proposalTable = mockProposalLookupChain({
+				id: "prop-1",
+				status: "ready",
+			});
+			const subjectsOrder = vi.fn().mockResolvedValue({
+				data: [
+					{
+						proposal_id: "prop-1",
+						position: 0,
+						orientation: "playlist",
+						song_id: null,
+						playlist_id: "pl-1",
+						source_fit_score: 0.8,
+						was_new_at_enqueue: false,
+					},
+				],
+				error: null,
+			});
+			const subjectsEq = vi.fn().mockReturnValue({ order: subjectsOrder });
+			const subjectsSelect = vi.fn().mockReturnValue({ eq: subjectsEq });
+			const from = vi.fn((table: string) => {
+				switch (table) {
+					case "match_review_proposal":
+						return proposalTable;
+					case "match_review_proposal_subject":
+						return { select: subjectsSelect };
+					default:
+						throw new Error(`Unexpected table ${table}`);
+				}
+			});
+			vi.mocked(createAdminSupabaseClient).mockReturnValue({
+				from,
+			} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+			vi.mocked(fetchQueuedPlaylistIds).mockResolvedValue(Result.ok(new Set()));
+
+			const constraintError = new ConstraintError(
+				"unique",
+				"(session_id, position) collision",
+			);
+			vi.mocked(insertQueuePlaylistItems).mockResolvedValue(
+				Result.err(constraintError),
+			);
+
+			const result = await appendSessionsForAccountOrientation({
+				accountId: "acct-1",
+				orientation: "playlist",
+				snapshotId: "snap-1",
+			});
+
+			expect(Result.isError(result)).toBe(true);
+			if (Result.isError(result)) {
+				expect(result.error).toBe(constraintError);
+			}
+			expect(insertSessionSnapshot).not.toHaveBeenCalled();
+		});
+	});
+
+	it("guard (b): settles superseded on a persisted `stale` proposal status even when getLatestMatchSnapshot still matches the job snapshot", async () => {
+		// Isolates the persisted-status guard (session-appender.ts:288-290) from
+		// the live-snapshot guard (:241-245): the live snapshot check is made to
+		// PASS here (still latest) so only the proposal's own `stale` status can
+		// be the reason for the supersede — a live-snapshot-driven "superseded"
+		// test already exists above and would not distinguish the two guards.
+		vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
+			Result.ok(SNAPSHOT_ROW),
+		);
+		vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(new Map()),
+		);
+		vi.mocked(fetchAppliedSnapshotIds).mockResolvedValue(Result.ok(new Set()));
+
+		const proposalTable = mockProposalLookupChain({
+			id: "prop-1",
+			status: "stale",
+		});
+		const from = vi.fn((table: string) => {
+			switch (table) {
+				case "match_review_proposal":
+					return proposalTable;
+				default:
+					throw new Error(`Unexpected table ${table}`);
+			}
+		});
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await appendSessionsForAccountOrientation({
+			accountId: "acct-1",
+			orientation: "song",
+			snapshotId: "snap-1",
+		});
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value).toEqual({ kind: "superseded" });
+		}
+		// The function must return immediately on the `stale` status read — it
+		// never reaches the subject fetch that a `ready` proposal would trigger.
+		expect(fetchQueuedSongIds).not.toHaveBeenCalled();
 	});
 });
