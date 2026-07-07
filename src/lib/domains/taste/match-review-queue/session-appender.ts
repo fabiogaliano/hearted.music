@@ -1,16 +1,17 @@
 /**
  * Worker-side append_sessions (plan §11, ruling R1). When a snapshot publishes,
  * newly-visible undecided proposal subjects are appended into each active
- * session's queue — WITHOUT the request-path appendSnapshotDelta.
+ * session's queue without reviving the old request-path append flow.
  *
- * R1 (Phase 5 must be able to delete appendSnapshotDelta): this reads the READY
- * proposal for the account+orientation+snapshot under the active session's
- * frozen-strictness visibility_config_hash, takes its ordered subjects, drops
- * those already in the session's queue, and inserts the rest via the EXISTING
- * insert_queue_song_items / insert_queue_playlist_items RPCs + the
- * match_review_session_snapshot ledger row. It shares the ./queries machinery
- * (insert RPCs + ledger + dedupe + idempotency) with appendSnapshotDelta but not
- * appendSnapshotDelta itself, so that function stays independently deletable.
+ * R1 (Phase 5 had to be able to delete appendSnapshotDelta): this reads the
+ * READY proposal for the account+orientation+snapshot under the active
+ * session's frozen-strictness visibility_config_hash, takes its ordered
+ * subjects, drops those already in the session's queue, and inserts the rest
+ * via the existing insert_queue_song_items / insert_queue_playlist_items RPCs +
+ * the match_review_session_snapshot ledger row. It shares the ./queries
+ * machinery (insert RPCs + ledger + dedupe + idempotency) that the retired
+ * appendSnapshotDelta used, but not the function itself, so deletion stayed
+ * straightforward.
  *
  * The proposal already excluded build-time-decided subjects; queue-membership
  * dedupe (which includes resolved rows) covers decisions on subjects ever
