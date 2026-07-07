@@ -72,8 +72,8 @@
  *      entry after a preset change is a hit. A failure here never fails the
  *      request — the snapshot is durable and the read path self-heals.
  *
- * No new plpgsql. The single load-bearing invariant (request hash ≡ worker
- * proposal hash) is deferred to the local-DB pass.
+ * The request-path hash must still match the builder hash; promotion integrity
+ * is guarded in SQL by start_or_resume_match_deck's subject-count predicate.
  */
 
 import { Result } from "better-result";
