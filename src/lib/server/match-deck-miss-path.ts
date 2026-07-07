@@ -61,7 +61,13 @@
  *      here that self-heals on the next entry (recorded in the decisions log).
  *      The re-check shrinks the promotion window from "the whole inline build
  *      duration" to "a job enqueued+claimed AND its upsert+DELETE completing
- *      entirely inside the flip→re-check gap (a few ms)".
+ *      entirely inside the flip→re-check gap (a few ms)". The residual class
+ *      the re-check can't reach — any OTHER concurrent reader, or a worker
+ *      crash, promoting mid-rewrite without passing through this handler — is
+ *      now closed DB-side: branch-2 promotion in start_or_resume_match_deck
+ *      gates on `total_subjects` equalling the live subject row count
+ *      (migration 20260707000019), so a `ready` proposal mid-rewrite is
+ *      rejected at the promotion site itself and falls into the same miss.
  *   3. Best-effort enqueue the full `build_proposals` (all presets) so the next
  *      entry after a preset change is a hit. A failure here never fails the
  *      request — the snapshot is durable and the read path self-heals.
