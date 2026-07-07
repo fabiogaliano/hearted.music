@@ -16,31 +16,26 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { dashboardKeys } from "@/features/dashboard/queries";
-import { bootstrapReadyMatchQueue } from "@/features/matching/bootstrap-ready-queue";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
 import { MatchModeToggle } from "@/features/matching/components/MatchModeToggle";
+import { isDeckActionSuccess } from "@/features/matching/deck-action-status";
+import {
+	matchDeckKeys,
+	matchDeckQueryOptions,
+	readMatchDeckCardQueryOptions,
+} from "@/features/matching/deck-queries";
 import { Matching } from "@/features/matching/Matching";
 import {
 	hasNonCanonicalMatchMode,
 	modeFromSearch,
 	validateMatchSearch,
 } from "@/features/matching/match-search";
-import {
-	matchReviewBootstrapQueryOptions,
-	matchReviewKeys,
-	matchReviewQueryOptions,
-	matchReviewSummaryKeys,
-	presentMatchReviewItemQueryOptions,
-} from "@/features/matching/queries";
+import { matchReviewSummaryKeys } from "@/features/matching/queries";
 import {
 	countAppendedFromTotal,
-	deriveCaughtUp,
 	deriveEmptyStateReason,
 	deriveProgressIndex,
-	deriveUnresolvedIds,
-	nextItemIdAfterResolved,
 	resolveCurrentItemId,
-	shouldBootstrapReadyQueue,
 	shouldOfferLoosenStrictness,
 } from "@/features/matching/queue-helpers";
 import type {
@@ -59,11 +54,10 @@ import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
-	addSongToPlaylistFromQueueItem,
-	dismissMatchReviewItem,
-	finishMatchReviewItem,
-	markMatchReviewItemPresented,
-} from "@/lib/server/match-review-queue.functions";
+	type MatchDeckView,
+	type StartOrResumeMatchDeckResult,
+	submitMatchDeckAction,
+} from "@/lib/server/match-deck.functions";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -80,28 +74,46 @@ export const Route = createFileRoute("/_authenticated/match")({
 			throw redirect({ to: "/match", replace: true });
 		}
 	},
-	// /_authenticated already resolved the session via resolveSession. Bootstrap
-	// (create/resume) and the queue read moved off the loader into a client-side
-	// Suspense boundary — see MatchPage → QueueMatchPage. Awaiting create/resume
-	// here blocked SSR on the page's slowest step (16s FCP while a large library
-	// enriches); now the shell + a spinner stream immediately and the queue
-	// resolves under the boundary. The loader stays only to short-circuit
-	// walkthrough modes, which have no queue (the DU guarantees song presence).
-	loader: ({ context }) => {
+	// The deck read is keyed per orientation, so the loader must depend on the
+	// URL mode — a mode switch re-runs the loader for the other orientation.
+	loaderDeps: ({ search }) => ({ mode: modeFromSearch(search) }),
+	// /_authenticated already resolved the session via resolveSession. The deck
+	// read model makes every start/resume path bounded (plan §8), so the loader
+	// awaits it again: it seeds `matchDeckQueryOptions` (and the two baked cards)
+	// so QueueMatchPage renders card #1 with no client-side bootstrap → queue →
+	// present waterfall (RB). Cold SSR + the rare miss-path build stream behind
+	// `pendingComponent: MatchLoading`. Walkthrough modes have no deck (the DU
+	// guarantees song presence), so they short-circuit before the read.
+	loader: async ({ context, deps }) => {
 		if (sessionMode(context.onboardingSession) === "walkthrough") return;
+
+		const { queryClient, session } = context;
+		const view = await queryClient.ensureQueryData(
+			matchDeckQueryOptions(session.accountId, deps.mode),
+		);
+
+		// Seed the current + next card reads so the first render (and a one-step
+		// advance) resolve from cache instead of re-fetching. The building state
+		// (`{status:"building"}`) has no `itemIds`/cards to seed.
+		if ("itemIds" in view) {
+			for (const card of [view.cards.current, view.cards.next]) {
+				if (card) {
+					queryClient.setQueryData(
+						readMatchDeckCardQueryOptions(card.itemId).queryKey,
+						card.presentation,
+					);
+				}
+			}
+		}
 	},
 	errorComponent: MatchErrorComponent,
-	pendingComponent: MatchPending,
+	pendingComponent: MatchLoading,
 	component: MatchPage,
 });
 
-function MatchPending() {
-	return <div className="mx-auto w-full max-w-[min(1600px,100%)]" />;
-}
-
-// Streamed while the client-side bootstrap + queue read resolve under the
-// Suspense boundary (B1). A slow/enriching-library bootstrap now shows this
-// spinner instead of blank HTML or a hard error.
+// Route pendingComponent (RB): streamed while the loader awaits the bounded deck
+// read on cold SSR or during the rare miss-path first-window build. Also the
+// inner Suspense fallback for a navigation that lands on a not-yet-seeded card.
 function MatchLoading() {
 	return (
 		<div className="mx-auto w-full max-w-[min(1600px,100%)]">
@@ -116,10 +128,10 @@ function MatchLoading() {
 	);
 }
 
-// Catches a failed bootstrap/queue read (thrown by the client Suspense queries)
-// so it renders a retry inside the app shell rather than bubbling to the
-// full-page _authenticated error fallback. resetQueries clears the errored
-// match-review caches so `reset()` re-mounts into a fresh fetch.
+// Catches a failed deck read (thrown by the loader or the client Suspense
+// queries) so it renders a retry inside the app shell rather than bubbling to
+// the full-page _authenticated error fallback. resetQueries clears the errored
+// deck caches so `reset()` re-mounts into a fresh fetch.
 function MatchErrorComponent({ error, reset }: ErrorComponentProps) {
 	const queryClient = useQueryClient();
 
@@ -128,7 +140,7 @@ function MatchErrorComponent({ error, reset }: ErrorComponentProps) {
 	}, [error]);
 
 	const handleRetry = () => {
-		queryClient.resetQueries({ queryKey: matchReviewKeys.all });
+		queryClient.resetQueries({ queryKey: matchDeckKeys.all });
 		reset();
 	};
 
@@ -175,6 +187,9 @@ function MatchPage() {
 		);
 	}
 
+	// The loader seeds the deck query, so QueueMatchPage's useSuspenseQuery
+	// resolves from cache; this boundary only re-engages when a Previous/Next
+	// navigation lands on a card the loader/action didn't bake in.
 	return (
 		<Suspense fallback={<MatchLoading />}>
 			<QueueMatchPage />
@@ -186,64 +201,18 @@ function QueueMatchPage() {
 	const { session } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	// Read mode from validated URL search. The bootstrap query below (not the
-	// loader) creates/resumes the correct orientation session.
+	// Read mode from validated URL search. The loader seeded the deck query under
+	// the matching (account, orientation) key.
 	const mode = modeFromSearch(Route.useSearch());
 
-	// Ensure the active session exists before reading the queue. Two suspense
-	// queries in one component sequence naturally: React halts the render at the
-	// first suspend, so bootstrap resolves before the queue query fires — no race
-	// between create and read. This is the create/resume round-trip the loader
-	// used to block SSR on; it now streams behind the Suspense spinner (B1).
-	const { data: bootstrap } = useSuspenseQuery(
-		matchReviewBootstrapQueryOptions(session.accountId, mode),
+	// ONE read: the whole page renders from the deck view (or the building state).
+	const { data: view } = useSuspenseQuery(
+		matchDeckQueryOptions(session.accountId, mode),
 	);
 
-	// Overlap the first card's authoritative present() capture with the queue read.
-	// Bootstrap already created the session and reports firstUnresolvedItemId — the
-	// exact card the stack lands on, computed server-side with the same predicate as
-	// deriveUnresolvedIds — so warming its present query here lets that POST run
-	// concurrently with the queue read instead of firing only once QueueCardContent
-	// mounts and suspends, cutting the queue → present leg of the
-	// bootstrap → queue → present waterfall. Seeding off firstUnresolvedItemId (not
-	// itemIds[0]) means a resumed session with a resolved head still warms the right
-	// card. Prefetch is fired during render (not an effect) on purpose: an effect runs
-	// only after this component commits, which is gated on the queue suspend below, so
-	// it would never overlap. Exactly one present is warmed — present captures visible
-	// pairs, so we never speculate past the card a first render lands on — and it is
-	// deduped by key with first-write-wins capture, so this component's re-renders
-	// under job polling re-issue a cheap no-op.
-	const firstItemId = bootstrap.firstUnresolvedItemId;
-	if (firstItemId) {
-		void queryClient.prefetchQuery(
-			presentMatchReviewItemQueryOptions(firstItemId),
-		);
-	}
-
-	const { data: queue } = useSuspenseQuery(
-		matchReviewQueryOptions(session.accountId, mode),
-	);
-
-	// Ordered unresolved item ids derived from queue state — never from null song.
-	// Shares deriveUnresolvedIds with the unit-tested helper so the route and its
-	// contract can't drift: resolved items (completed/skipped/unavailable) are
-	// excluded and the rest are position-sorted.
-	const unresolvedIds = useMemo(() => deriveUnresolvedIds(queue), [queue]);
-
-	// total reflects ALL queue items (append-only from the server).
-	const total = queue?.total ?? 0;
-	// caughtUp via the shared helper — authoritative server caughtUp OR an empty
-	// unresolved list, never from null song data.
-	const caughtUp = deriveCaughtUp(queue, unresolvedIds);
-	const hasQueue = !!queue?.sessionId;
-	// Review subjects whose only matches sit below the strictness bar — drives the
-	// "loosen strictness" empty state over the "nothing surfaced" one. Orientation-
-	// aware: songs in song mode, playlists in playlist mode.
-	const hiddenReviewItemCount = queue?.hiddenReviewItemCount ?? 0;
-
-	// Poll active jobs so the empty state can distinguish "still building" from
-	// "truly empty". Shares the query cache entry with the layout's completion
-	// effects hook — no extra fetches.
+	// Poll active jobs so the empty/building states can distinguish "still
+	// building" from "truly empty". Shares the cache entry with the layout's
+	// completion-effects hook — no extra fetches.
 	const {
 		isEnrichmentRunning,
 		isMatchSnapshotRefreshRunning,
@@ -251,14 +220,33 @@ function QueueMatchPage() {
 	} = useActiveJobs(session.accountId);
 	const isJobsActive = isEnrichmentRunning || isMatchSnapshotRefreshRunning;
 
-	// Latch: once this visit has had unresolved items to work, keep rendering the
-	// session UI for the rest of the visit. Completing the last card invalidates the
-	// queue query, and its refetch reports caughtUp — without this latch the parent
-	// would tear the just-rendered CompletionScreen back down to an empty state
-	// (the "quiet in here" flash). The session's own isComplete logic owns the
+	const isBuilding = !("itemIds" in view);
+
+	// Building-state recovery (RC): a first-run user who opened /match before any
+	// proposal existed gets `{status:"building"}` and no session. Once a first
+	// visible match becomes ready, re-run the bounded deck read — its miss path
+	// promotes the first window and returns an active view. Without this the user
+	// strands on "building". Replaces bootstrapReadyMatchQueue.
+	useEffect(() => {
+		if (!isBuilding || !firstVisibleMatchReady) return;
+		queryClient.invalidateQueries({
+			queryKey: matchDeckKeys.deck(session.accountId, mode),
+		});
+	}, [
+		isBuilding,
+		firstVisibleMatchReady,
+		session.accountId,
+		mode,
+		queryClient,
+	]);
+
+	// Latch: once this visit has had a current card to work, keep rendering the
+	// session UI for the rest of the visit. A completing action refetches the deck
+	// query, and its refetch reports caughtUp — without this latch the parent would
+	// tear the just-rendered CompletionScreen back down to an empty state (the
+	// "quiet in here" flash). QueueMatchContent's own isComplete owns the
 	// completion view; the empty state is only for arriving already caught up.
 	const sessionStartedRef = useRef(false);
-	if (!caughtUp) sessionStartedRef.current = true;
 
 	const handleExit = useCallback(() => navigate({ to: "/" }), [navigate]);
 
@@ -291,38 +279,18 @@ function QueueMatchPage() {
 		[navigate, queryClient, session.accountId],
 	);
 
-	// Recovery bootstrap: the loader creates the session only on entry. A user who
-	// opened /match before the first snapshot existed has no session, and once a
-	// first visible match becomes ready nothing else would create it (background
-	// refresh only syncs existing sessions). Re-run the one-shot bootstrap so the
-	// now-ready queue mounts instead of stranding on the empty state. The helper
-	// owns retry-with-backoff (a failed attempt must not dead-end on "building");
-	// the AbortController stops it on unmount or when the stranded condition clears.
-	useEffect(() => {
-		if (!shouldBootstrapReadyQueue({ hasQueue, firstVisibleMatchReady }))
-			return;
-		const controller = new AbortController();
-		void bootstrapReadyMatchQueue({
-			mode,
-			accountId: session.accountId,
-			queryClient,
-			signal: controller.signal,
-		});
-		return () => controller.abort();
-	}, [hasQueue, firstVisibleMatchReady, mode, session.accountId, queryClient]);
-
-	// No queue at all means no snapshot context yet. "no-context" (set a matching
-	// intent) shows only for genuinely-no-setup users; a still-running setup — or a
-	// ready match whose session the recovery effect above is creating — shows
-	// "building" instead of the wrong prompt.
-	if (!hasQueue) {
+	// Building: no deck yet. Route the state through deriveEmptyStateReason (RD)
+	// + useActiveJobs so a genuinely-no-setup user gets the "no-context" (set a
+	// matching intent) CTA, while a still-running setup — or a ready match the RC
+	// effect above is recovering — shows "building" instead of the wrong prompt.
+	if (!("itemIds" in view)) {
 		const reason = deriveEmptyStateReason({
-			hasQueue,
-			caughtUp,
+			hasQueue: false,
+			caughtUp: false,
 			isJobsActive,
 			firstVisibleMatchReady,
-			total,
-			hiddenReviewItemCount,
+			total: 0,
+			hiddenReviewItemCount: 0,
 		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
@@ -335,30 +303,29 @@ function QueueMatchPage() {
 		);
 	}
 
-	// Queue exists but every item is resolved (deriveCaughtUp folds in the
-	// empty-unresolved case). Three terminal states, in priority order:
-	//  - hidden songs exist     → "filtered": loosen strictness to recover them
-	//  - total === 0            → "none-yet": matching ran but surfaced nothing
-	//  - otherwise              → "caught-up": worked through a real pile
-	// Only show the empty state when arriving already caught up (no session worked
-	// this visit). Mid-session completion is handled by QueueMatchContent's own
-	// CompletionScreen, which the latch keeps mounted.
+	// Caught-up: the deck reports no current card (cards.current === null folds in
+	// the empty-unresolved case). Only show the empty state when arriving already
+	// caught up (no session worked this visit); mid-session completion is handled
+	// by QueueMatchContent's own CompletionScreen, which the latch keeps mounted.
+	const caughtUp = view.progress.caughtUp || view.cards.current === null;
+	if (!caughtUp) sessionStartedRef.current = true;
+
 	if (caughtUp && !sessionStartedRef.current) {
 		// Active-jobs states take priority — never show a terminal empty state
 		// while enrichment or match-refresh is still running.
 		const reason = deriveEmptyStateReason({
-			hasQueue,
-			caughtUp,
+			hasQueue: true,
+			caughtUp: true,
 			isJobsActive,
 			firstVisibleMatchReady,
-			total,
-			hiddenReviewItemCount,
+			total: view.progress.total,
+			hiddenReviewItemCount: view.progress.hiddenReviewItemCount,
 		});
 		return (
 			<div className="mx-auto w-full max-w-[min(1600px,100%)]">
 				<MatchingEmptyState
 					reason={reason}
-					hiddenCount={hiddenReviewItemCount}
+					hiddenCount={view.progress.hiddenReviewItemCount}
 					mode={mode}
 					onModeChange={handleModeChange}
 				/>
@@ -374,8 +341,7 @@ function QueueMatchPage() {
 				key={mode}
 				accountId={session.accountId}
 				mode={mode}
-				itemIds={unresolvedIds}
-				total={total}
+				view={view}
 				onExit={handleExit}
 				onModeChange={handleModeChange}
 				queryClient={queryClient}
@@ -388,8 +354,8 @@ interface QueueMatchContentProps {
 	accountId: string;
 	/** URL-backed orientation for this session — drives invalidation key scoping. */
 	mode: MatchViewMode;
-	itemIds: string[];
-	total: number;
+	/** The active deck view — its itemIds are the navigable timeline. */
+	view: MatchDeckView;
 	onExit: () => void;
 	/** Navigates to the canonical URL for the new mode and persists the preference. */
 	onModeChange: (mode: MatchViewMode) => void;
@@ -399,26 +365,26 @@ interface QueueMatchContentProps {
 function QueueMatchContent({
 	accountId,
 	mode,
-	itemIds,
-	total,
+	view,
 	onExit,
 	onModeChange,
 	queryClient,
 }: QueueMatchContentProps) {
 	const analytics = useAnalytics();
 
-	// Track the current card by id, not by numeric offset. When a refetch drops
-	// resolved items from the head of the list, indexOf(currentItemId) is still
-	// stable — the card never jumps. null means caught-up / complete.
+	// The deck view is the single source of truth for navigation: server-ordered
+	// unresolved item ids (append-only total for the progress denominator). No
+	// local locallyResolvedIds/effectiveItemIds reconciliation — a whole-card
+	// action returns the fresh view (applied to the deck cache) and moves the
+	// pointer, so the server is authoritative after every action.
+	const itemIds = view.itemIds;
+	const total = view.progress.total;
+
+	// Track the current card by id, not by numeric offset. When an action drops
+	// the resolved item from the head of the list, indexOf(currentItemId) is still
+	// stable — the card never jumps (RG). null means caught-up / complete.
 	const [currentItemId, setCurrentItemId] = useState<string | null>(
-		() => itemIds[0] ?? null,
-	);
-	// Items resolved during this session that the server's queue snapshot hasn't
-	// dropped yet. Removing them from navigation immediately (rather than waiting
-	// for a refetch) stops Previous/Next from revisiting a card whose mutations
-	// would now reject with already-resolved.
-	const [locallyResolvedIds, setLocallyResolvedIds] = useState<Set<string>>(
-		() => new Set(),
+		() => view.cards.current?.itemId ?? itemIds[0] ?? null,
 	);
 	const [addedTo, setAddedTo] = useState<string[]>([]);
 	const [navigationStatus, setNavigationStatus] = useState<"idle" | "pending">(
@@ -436,9 +402,9 @@ function QueueMatchContent({
 
 	const [pastItems, setPastItems] = useState<ReviewedItem[]>([]);
 
-	// Passive chip: fire when queue.total grows. Using total (append-only from the
-	// server) rather than itemIds.length means a head-drop + tail-append that nets
-	// zero on length still surfaces the new-items notification.
+	// Passive chip: fire when the deck total grows. Using total (append-only from
+	// the server) rather than itemIds.length means a head-drop + tail-append that
+	// nets zero on length still surfaces the new-items notification.
 	const prevTotalRef = useRef(total);
 	useEffect(() => {
 		const prev = prevTotalRef.current;
@@ -452,70 +418,27 @@ function QueueMatchContent({
 		}
 	}, [total]);
 
-	// The list the UI actually navigates over: server-unresolved minus the items
-	// resolved locally this session. This is the single source of truth for the
-	// current card, navigation bounds, and Previous/Next.
-	const effectiveItemIds = useMemo(
-		() => itemIds.filter((id) => !locallyResolvedIds.has(id)),
-		[itemIds, locallyResolvedIds],
-	);
-
-	// Prune locally-resolved ids the server has since dropped from its snapshot,
-	// so the set can't grow without bound across appends/refetches.
-	useEffect(() => {
-		setLocallyResolvedIds((prev) => {
-			if (prev.size === 0) return prev;
-			const serverIds = new Set(itemIds);
-			let changed = false;
-			const next = new Set<string>();
-			for (const id of prev) {
-				if (serverIds.has(id)) next.add(id);
-				else changed = true;
-			}
-			return changed ? next : prev;
-		});
-	}, [itemIds]);
-
-	// Advance off the just-resolved card without waiting for a network refetch:
-	// compute the next card from the current effective list, then mark the card
-	// resolved so it leaves navigation immediately.
-	const handleResolveCurrentItem = useCallback(
-		(resolvedId: string) => {
-			setCurrentItemId(nextItemIdAfterResolved(effectiveItemIds, resolvedId));
-			setLocallyResolvedIds((prev) => {
-				const next = new Set(prev);
-				next.add(resolvedId);
-				return next;
-			});
-		},
-		[effectiveItemIds],
-	);
-
-	// Resolve the stable current item: if the tracked id dropped from the unresolved
-	// list (resolved externally) fall back to the first unresolved rather than crash.
-	const resolvedCurrentId = resolveCurrentItemId(
-		effectiveItemIds,
-		currentItemId,
-	);
+	// Resolve the stable current item: if the tracked id dropped from the deck's
+	// unresolved list (resolved via an action) fall back to the first unresolved
+	// rather than crash.
+	const resolvedCurrentId = resolveCurrentItemId(itemIds, currentItemId);
 
 	// currentIndex drives the X-of-Y display and prev/next bounds — both in the
 	// unresolved domain so numerator and denominator are always consistent.
 	const currentIndex =
-		resolvedCurrentId !== null
-			? effectiveItemIds.indexOf(resolvedCurrentId)
-			: -1;
+		resolvedCurrentId !== null ? itemIds.indexOf(resolvedCurrentId) : -1;
 
 	const isComplete = resolvedCurrentId === null;
 
-	// Refresh sidebar badge + queue summary on session exit, whether the user
+	// Refresh sidebar badge + deck read on session exit, whether the user
 	// completes all cards or navigates away mid-session. Scoped to the current
 	// orientation so playlist-mode invalidation doesn't evict song-mode cache.
 	const invalidateSessionBoundary = useCallback(() => {
 		queryClient.invalidateQueries({
-			queryKey: matchReviewSummaryKeys.summary(accountId, mode),
+			queryKey: matchDeckKeys.deck(accountId, mode),
 		});
 		queryClient.invalidateQueries({
-			queryKey: matchReviewKeys.review(accountId, mode),
+			queryKey: matchReviewSummaryKeys.summary(accountId, mode),
 		});
 		queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 	}, [queryClient, accountId, mode]);
@@ -538,9 +461,8 @@ function QueueMatchContent({
 
 	// skippedCount is tracked explicitly (incremented when a card is finished with
 	// no adds, or an unavailable card is skipped) rather than derived from
-	// currentIndex. Once resolved cards are removed from effectiveItemIds, the
-	// position-based derivation went negative on the first action and undercounted
-	// skips.
+	// currentIndex. Once resolved cards leave itemIds, the position-based
+	// derivation went negative on the first action and undercounted skips.
 	const completionStats: CompletionStats = useMemo(
 		() => ({
 			totalItems: total,
@@ -571,7 +493,7 @@ function QueueMatchContent({
 				currentReviewItem={null}
 				currentSuggestions={[]}
 				totalSongs={total}
-				offset={effectiveItemIds.length}
+				offset={itemIds.length}
 				addedTo={[]}
 				isComplete={true}
 				completionStats={completionStats}
@@ -592,11 +514,12 @@ function QueueMatchContent({
 	// re-run on itemId change.
 	return (
 		<QueueCardContent
+			accountId={accountId}
 			itemId={resolvedCurrentId}
 			currentIndex={currentIndex}
 			total={total}
 			mode={mode}
-			unresolvedIds={effectiveItemIds}
+			unresolvedIds={itemIds}
 			addedTo={addedTo}
 			navigationStatus={navigationStatus}
 			pastItems={pastItems}
@@ -605,7 +528,6 @@ function QueueMatchContent({
 			onSessionStats={setSessionStats}
 			onPastItems={setPastItems}
 			onCurrentItemId={setCurrentItemId}
-			onResolveCurrentItem={handleResolveCurrentItem}
 			onLockNavigation={lockNavigation}
 			onReleaseNavigation={releaseNavigation}
 			onModeChange={onModeChange}
@@ -661,9 +583,11 @@ function NonReadyCardHeader({
 }
 
 interface QueueCardContentProps {
+	/** Deck orientation owner — scopes the deck cache key applied after actions. */
+	accountId: string;
 	itemId: string;
 	currentIndex: number;
-	// Full session size (queue.total, append-only). The progress header's
+	// Full session size (deck progress.total, append-only). The progress header's
 	// denominator, distinct from currentIndex/unresolvedIds which live in the
 	// shrinking navigable domain.
 	total: number;
@@ -685,10 +609,6 @@ interface QueueCardContentProps {
 	>;
 	onPastItems: React.Dispatch<React.SetStateAction<ReviewedItem[]>>;
 	onCurrentItemId: React.Dispatch<React.SetStateAction<string | null>>;
-	// Marks the current card resolved locally and advances to the next unresolved
-	// card. Use after a successful finish/dismiss/skip so a resolved card cannot be
-	// revisited via Previous before the server snapshot catches up.
-	onResolveCurrentItem: (resolvedId: string) => void;
 	onLockNavigation: () => boolean;
 	onReleaseNavigation: () => void;
 	/** Navigates to the canonical URL for the new mode and persists the preference. */
@@ -699,6 +619,7 @@ interface QueueCardContentProps {
 }
 
 function QueueCardContent({
+	accountId,
 	itemId,
 	currentIndex,
 	total,
@@ -712,7 +633,6 @@ function QueueCardContent({
 	onSessionStats,
 	onPastItems,
 	onCurrentItemId,
-	onResolveCurrentItem,
 	onLockNavigation,
 	onReleaseNavigation,
 	onModeChange,
@@ -720,43 +640,26 @@ function QueueCardContent({
 	analytics,
 	queryClient,
 }: QueueCardContentProps) {
-	// Authoritative card render: reads from captured pair rows (MSR-25) via the
-	// present (POST) capture path — the same query the first-card seed and the
-	// next-card prefetch warm, so an advance renders from cache instead of suspending.
+	// Authoritative card render: a pure read over captured pair rows (plan §7).
+	// The loader seeded current+next and a whole-card action seeds the promoted
+	// cards, so an advance renders from cache instead of suspending; a browse to a
+	// further card reads it on demand (no capture side effect — RE).
 	const { data: itemData } = useSuspenseQuery(
-		presentMatchReviewItemQueryOptions(itemId),
+		readMatchDeckCardQueryOptions(itemId),
 	);
 
-	// Durable presented tracking: fire once per item when it becomes current and
-	// the read resolved to a card the user actually sees. Both "ready" and
-	// "unavailable" render a card in front of the user, so both mark presented and
-	// clear newness; "error" is excluded because ownership/data integrity is
-	// unknown. Newness is cleared durably and immediately, not at unload. A ref-set
-	// ensures we fire at most once per item even under StrictMode.
-	const presentedIdsRef = useRef<Set<string>>(new Set());
-	useEffect(() => {
-		if (itemData.status !== "ready" && itemData.status !== "unavailable")
-			return;
-		if (presentedIdsRef.current.has(itemId)) return;
-		presentedIdsRef.current.add(itemId);
-		void markMatchReviewItemPresented({ data: { itemId } });
-	}, [itemId, itemData.status]);
-
-	// Prefetch the next card's authoritative present query so a forward advance
-	// renders from cache instead of suspending (B2). Warming must target the present
-	// key the card actually reads — warming any other key leaves present uncached and
-	// every advance suspends (worst in playlist mode). Only next1 is warmed: present
-	// captures visible pairs and marks the item active, so we speculate exactly one
-	// card ahead — the one a forward advance lands on — and re-warm the new next1 on
-	// each advance.
+	// Warm the next card's read query so a forward advance renders from cache
+	// instead of suspending. Only next1 is warmed — one card ahead, the card a
+	// forward Previous/Next lands on — and it dedupes with the cache the action
+	// seeding already populated.
 	useEffect(() => {
 		const next1 = unresolvedIds[currentIndex + 1];
 		if (next1) {
-			queryClient.prefetchQuery(presentMatchReviewItemQueryOptions(next1));
+			queryClient.prefetchQuery(readMatchDeckCardQueryOptions(next1));
 		}
 	}, [queryClient, currentIndex, unresolvedIds]);
 
-	// QueueCardContent now persists across cards (see the render site — it is not
+	// QueueCardContent persists across cards (see the render site — it is not
 	// keyed), so this no longer runs on a fresh mount per card. The previous card's
 	// successful action leaves navigation locked (status "pending"); re-running on
 	// itemId change clears the lock once we land on the next card. onReleaseNavigation
@@ -800,14 +703,41 @@ function QueueCardContent({
 	// total − remaining advances the numerator instead.
 	const progressIndex = deriveProgressIndex(total, unresolvedIds.length);
 
+	// Applies a whole-card action's returned deck view (RF): the server already
+	// advanced the deck in-txn, so the fresh view carries the promoted current +
+	// next cards. Seed both card reads (so the advance renders from cache), write
+	// the view into the deck cache (so the parent re-renders over the new itemIds),
+	// then move the id pointer to the promoted current — null when caught up.
+	const applyResolvedView = (nextView: StartOrResumeMatchDeckResult) => {
+		queryClient.setQueryData(
+			matchDeckQueryOptions(accountId, mode).queryKey,
+			nextView,
+		);
+		if (!("itemIds" in nextView)) {
+			onCurrentItemId(null);
+			return;
+		}
+		for (const card of [nextView.cards.current, nextView.cards.next]) {
+			if (card) {
+				queryClient.setQueryData(
+					readMatchDeckCardQueryOptions(card.itemId).queryKey,
+					card.presentation,
+				);
+			}
+		}
+		onCurrentItemId(
+			nextView.cards.current?.itemId ?? nextView.itemIds[0] ?? null,
+		);
+	};
+
 	// Unavailable card: the item cannot be shown. The body copy is the server's
 	// real `message` for the specific `reason` (not-entitled, missing-song,
 	// snapshot-not-owned, already-resolved, no-visible-suggestions) — the old
 	// code re-derived a "no longer available" string from the URL mode, which was
 	// wrong for the no-visible-suggestions reason (A1). Skip resolves the card via
-	// finishMatchReviewItem (marks it resolved/skipped). When the subject only has
-	// matches hidden under the strictness bar (no-visible-suggestions), a
-	// recoverable "loosen strictness" link is the primary affordance instead.
+	// finish-card. When the subject only has matches hidden under the strictness
+	// bar (no-visible-suggestions), a recoverable "loosen strictness" link is the
+	// primary affordance instead.
 	if (itemData.status === "unavailable") {
 		const loosenStrictness = shouldOfferLoosenStrictness(itemData.reason);
 		const skipLabel = mode === "playlist" ? "Skip Playlist" : "Skip Song";
@@ -815,9 +745,11 @@ function QueueCardContent({
 		const handleSkipUnavailable = async () => {
 			if (!onLockNavigation()) return;
 			try {
-				const result = await finishMatchReviewItem({ data: { itemId } });
+				const result = await submitMatchDeckAction({
+					data: { type: "finish-card", itemId },
+				});
 
-				if (!result.success) {
+				if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
 					// Server rejected the finish (e.g. no_captured_pairs) — do NOT
 					// advance. Releasing the lock lets the user retry rather than skipping
 					// past a card the server still considers unresolved.
@@ -830,8 +762,9 @@ function QueueCardContent({
 					...prev,
 					skippedCount: prev.skippedCount + 1,
 				}));
-				// Resolve locally + advance so the unavailable card leaves navigation.
-				onResolveCurrentItem(itemId);
+				// Advance to the deck's promoted next card; the unavailable card leaves
+				// navigation because the server dropped it from itemIds.
+				applyResolvedView(result.view);
 			} catch {
 				onReleaseNavigation();
 			}
@@ -894,12 +827,12 @@ function QueueCardContent({
 
 	// Retryable-error card: a transient fetch failure. H7 copy is generic (not
 	// mode-specific — the error is about loading the card, not the review item).
-	// "Try again" refetches the authoritative present query without resolving the
+	// "Try again" refetches the authoritative card read without resolving the
 	// item — retryable errors must never silently skip the card.
 	if (itemData.status === "retryable-error") {
 		const handleRetry = () => {
 			queryClient.invalidateQueries({
-				queryKey: presentMatchReviewItemQueryOptions(itemId).queryKey,
+				queryKey: readMatchDeckCardQueryOptions(itemId).queryKey,
 			});
 		};
 
@@ -990,11 +923,13 @@ function QueueCardContent({
 					if (outcome.status === "error") return;
 				}
 
-				const addResult = await addSongToPlaylistFromQueueItem({
-					data: { itemId, suggestionId },
+				const addResult = await submitMatchDeckAction({
+					data: { type: "add-suggestion", itemId, suggestionId },
 				});
 
-				if (!addResult.success) return;
+				if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
+					return;
+				}
 
 				analytics.capture("song_added_to_playlist", {
 					song_id: currentSong?.id,
@@ -1039,11 +974,13 @@ function QueueCardContent({
 					if (outcome.status === "error") return;
 				}
 
-				const addResult = await addSongToPlaylistFromQueueItem({
-					data: { itemId, suggestionId },
+				const addResult = await submitMatchDeckAction({
+					data: { type: "add-suggestion", itemId, suggestionId },
 				});
 
-				if (!addResult.success) return;
+				if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
+					return;
+				}
 
 				analytics.capture("song_added_to_playlist", {
 					song_id: suggestionId,
@@ -1094,11 +1031,14 @@ function QueueCardContent({
 				});
 			}
 
-			const result = await dismissMatchReviewItem({ data: { itemId } });
+			const result = await submitMatchDeckAction({
+				data: { type: "dismiss-card", itemId },
+			});
 
-			if (!result.success) {
-				// derive-failed or not-found: do NOT advance the card. Releasing the
-				// lock lets the user retry rather than silently swallowing the error.
+			if (!isDeckActionSuccess("dismiss-card", result.actionStatus)) {
+				// not_found / already_resolved / no_captured_pairs: do NOT advance the
+				// card. Releasing the lock lets the user retry rather than silently
+				// swallowing the error.
 				onReleaseNavigation();
 				return;
 			}
@@ -1108,9 +1048,9 @@ function QueueCardContent({
 				dismissedCount: prev.dismissedCount + 1,
 			}));
 			onAddedTo([]);
-			// Resolve locally + advance; the card leaves navigation immediately so
-			// Previous cannot return to it before the server snapshot catches up.
-			onResolveCurrentItem(itemId);
+			// Advance to the deck's promoted next card; the resolved card leaves
+			// navigation because the server dropped it from itemIds.
+			applyResolvedView(result.view);
 		} catch {
 			onReleaseNavigation();
 		}
@@ -1121,9 +1061,11 @@ function QueueCardContent({
 		try {
 			await waitForPendingDismisses();
 			recordCurrentItem();
-			const result = await finishMatchReviewItem({ data: { itemId } });
+			const result = await submitMatchDeckAction({
+				data: { type: "finish-card", itemId },
+			});
 
-			if (!result.success) {
+			if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
 				// Server rejected the finish (e.g. already resolved) — do NOT advance.
 				// Releasing the lock lets the user retry without losing their place.
 				onReleaseNavigation();
@@ -1139,9 +1081,9 @@ function QueueCardContent({
 				}));
 			}
 			onAddedTo([]);
-			// Resolve locally + advance; the card leaves navigation immediately so
-			// Previous cannot return to it before the server snapshot catches up.
-			onResolveCurrentItem(itemId);
+			// Advance to the deck's promoted next card; the resolved card leaves
+			// navigation because the server dropped it from itemIds.
+			applyResolvedView(result.view);
 		} catch {
 			onReleaseNavigation();
 		}

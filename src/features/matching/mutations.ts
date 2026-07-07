@@ -5,13 +5,16 @@ import {
 } from "@tanstack/react-query";
 import { captureRouteError } from "@/lib/observability/sentry";
 import {
-	type DismissSuggestionResult,
-	dismissMatchReviewItemSuggestion,
-	type ListMatchReviewItemSuggestionsPage,
-	type MatchReviewItemRead,
-	type MatchReviewItemSuggestionCursor,
+	type SubmitMatchDeckActionResult,
+	submitMatchDeckAction,
+} from "@/lib/server/match-deck.functions";
+import type {
+	ListMatchReviewItemSuggestionsPage,
+	MatchReviewItemRead,
+	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
-import { matchReviewKeys, presentMatchReviewItemQueryOptions } from "./queries";
+import { isDeckActionSuccess } from "./deck-action-status";
+import { matchDeckKeys, readMatchDeckCardQueryOptions } from "./deck-queries";
 
 type TailPagesData = InfiniteData<
 	ListMatchReviewItemSuggestionsPage,
@@ -80,8 +83,8 @@ export interface DismissSuggestionVariables {
 
 function itemKeys(itemId: string) {
 	return {
-		presentKey: presentMatchReviewItemQueryOptions(itemId).queryKey,
-		tailKey: [...matchReviewKeys.item(itemId), "suggestions"] as const,
+		presentKey: readMatchDeckCardQueryOptions(itemId).queryKey,
+		tailKey: [...matchDeckKeys.card(itemId), "suggestions"] as const,
 	};
 }
 
@@ -126,7 +129,7 @@ export function dismissSuggestionMutation(queryClient: QueryClient) {
 	};
 
 	return mutationOptions<
-		DismissSuggestionResult,
+		SubmitMatchDeckActionResult,
 		Error,
 		DismissSuggestionVariables,
 		DismissSuggestionMutationContext
@@ -136,8 +139,15 @@ export function dismissSuggestionMutation(queryClient: QueryClient) {
 		// resurrect a row a succeeded dismiss removed. That serialization lives in
 		// useMatchReviewCard (a per-card promise chain), NOT in a mutation `scope` —
 		// scope serializes only the mutationFn, and onMutate runs before it.
+		//
+		// RF: dismiss-suggestion keeps this optimistic surgery and deliberately does
+		// NOT apply the returned deck view — applying it would clobber loaded tail
+		// pages and lose the late-tail rollback nuance below. Only the actionStatus
+		// is read (via the classifier); the view is discarded.
 		mutationFn: ({ itemId, suggestionId }) =>
-			dismissMatchReviewItemSuggestion({ data: { itemId, suggestionId } }),
+			submitMatchDeckAction({
+				data: { type: "dismiss-suggestion", itemId, suggestionId },
+			}),
 
 		onMutate: async ({ itemId, suggestionId }) => {
 			const { presentKey, tailKey } = itemKeys(itemId);
@@ -175,7 +185,13 @@ export function dismissSuggestionMutation(queryClient: QueryClient) {
 		},
 
 		onSuccess: (result, { itemId }, context) => {
-			if (!result.success) rollback(itemId, context);
+			// The action RPC returns a raw TEXT status (never a bool); rejections
+			// (already_resolved, not_visible, invalid_target, …) come back as a
+			// non-"dismissed" token, so the classifier decides whether to undo the
+			// optimistic removal — onError alone would miss these (they don't throw).
+			if (!isDeckActionSuccess("dismiss-suggestion", result.actionStatus)) {
+				rollback(itemId, context);
+			}
 		},
 
 		onError: (error, { itemId }, context) => {

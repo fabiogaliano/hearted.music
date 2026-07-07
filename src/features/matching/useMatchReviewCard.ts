@@ -9,8 +9,9 @@ import type {
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
 import type { MatchingSongSuggestion } from "@/lib/server/matching.functions";
+import { isDeckActionSuccess } from "./deck-action-status";
+import { matchDeckCardSuggestionsInfiniteQueryOptions } from "./deck-queries";
 import { dismissSuggestionMutation } from "./mutations";
-import { matchReviewItemSuggestionsInfiniteQueryOptions } from "./queries";
 import type { MatchingReviewItem, MatchingSuggestion } from "./types";
 
 export interface UseMatchReviewCardParams {
@@ -61,7 +62,7 @@ export function useMatchReviewCard({
 			: null;
 
 	const tailQuery = useInfiniteQuery(
-		matchReviewItemSuggestionsInfiniteQueryOptions(itemId, initialCursor),
+		matchDeckCardSuggestionsInfiniteQueryOptions(itemId, initialCursor),
 	);
 
 	const dismissMutation = useMutation(dismissSuggestionMutation(queryClient));
@@ -225,7 +226,9 @@ export function useMatchReviewCard({
 
 			try {
 				const result = await run;
-				return result.success;
+				// submitMatchDeckAction returns a raw TEXT status, not a bool — the
+				// classifier maps it to success (dismiss-suggestion → "dismissed").
+				return isDeckActionSuccess("dismiss-suggestion", result.actionStatus);
 			} catch {
 				// dismissSuggestionMutation's onError already rolled back the caches
 				// and reported the failure — the caller only needs the boolean.
