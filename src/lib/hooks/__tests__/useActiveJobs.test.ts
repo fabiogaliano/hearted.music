@@ -61,34 +61,6 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		expect(calledKeys).not.toContainEqual(matchReviewKeys.reviewsRoot);
 	});
 
-	it("(b) never invalidates any key matching matchReviewKeys.item(...)", async () => {
-		const qc = makeFakeQueryClient();
-
-		await runMatchSnapshotRefreshEffects(
-			qc as unknown as QueryClient,
-			ACCOUNT_ID,
-		);
-
-		// matchReviewKeys.item(x) produces ["match-review", "item", x].
-		// The item prefix is the first two segments: ["match-review", "item"].
-		const itemPrefix = ["match-review", "item"];
-
-		const calledKeys = (
-			qc.invalidateQueries as ReturnType<typeof vi.fn>
-		).mock.calls.map(
-			(call: Array<{ queryKey?: unknown[] }>) => call[0]?.queryKey,
-		);
-
-		const hasItemKey = calledKeys.some(
-			(key) =>
-				Array.isArray(key) &&
-				key.length >= itemPrefix.length &&
-				itemPrefix.every((seg, i) => key[i] === seg),
-		);
-
-		expect(hasItemKey).toBe(false);
-	});
-
 	it("(c) invalidates exactly the deck, summary, and dashboard keys (5 total)", async () => {
 		// deckRoot + summariesRoot + dashboard stats/pageData/matchPreviews. No
 		// request-path sync and no legacy reviewsRoot invalidation remain.
