@@ -73,14 +73,16 @@ export async function heartbeatDeckJob(
  */
 export async function completeDeckJob(
 	jobId: string,
-): Promise<Result<void, DbError>> {
-	const { error } = await createAdminSupabaseClient()
+): Promise<Result<boolean, DbError>> {
+	const { data, error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ status: "completed" })
 		.eq("id", jobId)
-		.eq("status", "running");
+		.eq("status", "running")
+		.select("id")
+		.maybeSingle();
 	if (error) return Result.err(dbErr(error));
-	return Result.ok(undefined);
+	return Result.ok(data !== null);
 }
 
 /**
@@ -96,11 +98,11 @@ export async function completeDeckJob(
 export async function deferDeckJob(
 	jobId: string,
 	backoffSeconds: number,
-): Promise<Result<void, DbError>> {
+): Promise<Result<boolean, DbError>> {
 	const availableAt = new Date(
 		Date.now() + backoffSeconds * 1000,
 	).toISOString();
-	const { error } = await createAdminSupabaseClient()
+	const { data, error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({
 			status: "pending",
@@ -108,9 +110,11 @@ export async function deferDeckJob(
 			heartbeat_at: null,
 		})
 		.eq("id", jobId)
-		.eq("status", "running");
+		.eq("status", "running")
+		.select("id")
+		.maybeSingle();
 	if (error) return Result.err(dbErr(error));
-	return Result.ok(undefined);
+	return Result.ok(data !== null);
 }
 
 /** Reclaims running jobs whose heartbeat has gone stale (crashed worker). */
