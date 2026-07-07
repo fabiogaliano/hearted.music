@@ -585,10 +585,18 @@ constraint explicitly as a follow-up DB change.
 Pre-merge verification (replaces the flagged parallel-run):
 
 - parity vitest suites from commit 2 running in CI;
-- a read-only shadow-compare script in `scripts/` runnable against prod data:
-  for a sample of accounts, build a proposal in memory and diff subject order
-  and first-window pairs against the live `appendSnapshotDelta` +
-  `computeVisibleSuggestionList` outputs;
+- **Superseded:** a read-only shadow-compare script in `scripts/` diffing the
+  builder against the live `appendSnapshotDelta` output was planned here, but
+  `appendSnapshotDelta` was deleted in Phase 5 — there is nothing left to
+  shadow-compare against. Parity instead rests on the shared
+  `deriveEligibleSubjects` seam (`eligible-subjects.ts`): the proposal
+  builder's `deriveProposalSubjects` and the request-path append both call
+  that one pure derivation, so subject order agrees by construction, not by
+  a runtime comparison. The parity vitest suites above are the fixture-level
+  proof of this: `proposal-order-parity.test.ts` pins the entitlement/
+  ownership prefilter and drives `deriveProposalSubjects` end-to-end against
+  mocked queries to pin the emitted subject rows, and `proposal-builder.test.ts`
+  covers the write-time build (stale/ready flip) around it;
 - a staging/local end-to-end pass over: cold entry (hit), cold entry (miss),
   preset change, filter change, midnight-hash rollover, mid-session publish,
   hard reload after each action type.
