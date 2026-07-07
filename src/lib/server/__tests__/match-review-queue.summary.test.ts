@@ -94,7 +94,6 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
-	createOrResumeQueue: vi.fn(),
 	getQueueSummary: (...args: unknown[]) => mockGetQueueSummary(...args),
 	getOrderedUndecidedSongIds: (...args: unknown[]) =>
 		mockGetOrderedUndecidedSongIds(...args),
@@ -102,7 +101,6 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 		mockGetOrderedUndecidedPlaylistIds(...args),
 	markItemPresented: vi.fn(),
 	markItemResolved: vi.fn(),
-	syncActiveQueue: vi.fn(),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({

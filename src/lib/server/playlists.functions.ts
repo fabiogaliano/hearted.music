@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import type { Json } from "@/lib/data/database.types";
 import {
 	getLanguageColumnsForSongs,
 	getLikedAtAggregates,
@@ -34,11 +35,12 @@ import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
+import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import {
 	hasFirstVisibleReviewSubject,
 	resolveReadinessPermissive,
 } from "@/lib/domains/taste/match-review-queue/readiness";
-import { syncActiveQueue } from "@/lib/domains/taste/match-review-queue/service";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	canonicalizeGenre,
 	isGenre,
@@ -47,7 +49,6 @@ import {
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { emitQueueAppendEvents } from "@/lib/server/match-review-queue-events";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { FirstMatchSetupChanges } from "@/lib/workflows/library-processing/changes/first-match-setup";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
@@ -61,6 +62,62 @@ function parsePlaylistSpotifyId(uri: string): string | null {
 }
 
 const NoInputSchema = z.undefined();
+
+/**
+ * Enqueues a deck-proposal rebuild for both orientations after a read-time
+ * playlist-filter change. A filter change does not publish a snapshot, so there
+ * is no snapshotId in scope — target the account's latest snapshot (the same one
+ * the publish chain builds against). build_proposals rebuilds under the new
+ * filters and chains append_sessions, so an active session's deck reflects the
+ * change on the next read; the deck read path self-heals on a proposal miss.
+ *
+ * Best-effort: filters are already saved by the caller, so an enqueue failure is
+ * captured but never rolls back the save. No snapshot yet → nothing to rebuild.
+ */
+async function enqueueFilterProposalRebuild(
+	accountId: string,
+	operation: string,
+): Promise<void> {
+	const snapshotResult = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(snapshotResult)) {
+		// A genuine DB error resolving the latest snapshot (distinct from the
+		// no-rows → Result.ok(null) case below). The save already succeeded, so we
+		// still don't roll back — but capture it so a silently-skipped rebuild is
+		// visible in Sentry instead of being swallowed.
+		captureServerError(snapshotResult.error, {
+			area: "playlists",
+			operation,
+			accountId,
+			extra: {
+				stage: "post_save_invalidation",
+				step: "resolve_latest_snapshot",
+			},
+		});
+		return;
+	}
+	if (!snapshotResult.value) {
+		// No snapshot yet → nothing to rebuild. Clean skip, not an error.
+		return;
+	}
+	const snapshotId = snapshotResult.value.id;
+	for (const orientation of ["song", "playlist"] as const) {
+		const enqueued = await enqueueDeckJob({
+			accountId,
+			orientation,
+			kind: "build_proposals",
+			idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}`,
+			payload: { snapshotId } as Json,
+		});
+		if (Result.isError(enqueued)) {
+			captureServerError(enqueued.error, {
+				area: "playlists",
+				operation,
+				accountId,
+				extra: { stage: "post_save_invalidation", orientation, snapshotId },
+			});
+		}
+	}
+}
 
 // ============================================================================
 // Playlist management reads
@@ -828,31 +885,14 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					);
 				}
 			} else if (readTimeFilterChanged) {
-				// Filter-only change — sync all active sessions without a full recompute.
-				// Both orientations: filter predicates apply to song-mode and playlist-mode
-				// queues alike; a changed visibility hash allows newly visible subjects to
-				// be appended from the already-applied snapshot (MSR-37).
-				for (const orientation of ["song", "playlist"] as const) {
-					const syncResult = await syncActiveQueue(
-						session.accountId,
-						orientation,
-						{ onVisibleAppend: emitQueueAppendEvents },
-					);
-					if (Result.isError(syncResult)) {
-						// Non-fatal: filters are written; sync failure is logged but does
-						// not roll back the save. Sessions will re-sync on the next read.
-						captureServerError(syncResult.error, {
-							area: "playlists",
-							operation: "save_playlist_match_config",
-							accountId: session.accountId,
-							extra: { stage: "post_save_invalidation" },
-						});
-						console.error(
-							"[playlists] match filters saved but session sync failed:",
-							syncResult.error,
-						);
-					}
-				}
+				// Filter-only change — rebuild deck proposals under the new filters
+				// instead of a request-path snapshot append. Worker-driven now: the
+				// enqueued build_proposals jobs chain append_sessions so an active
+				// session's deck reflects the change on the next read (MSR-37).
+				await enqueueFilterProposalRebuild(
+					session.accountId,
+					"save_playlist_match_config",
+				);
 			}
 			// If neither changed (idempotent save) no invalidation is needed.
 
@@ -965,22 +1005,14 @@ export const flushPlaylistManagementSession = createServerFn({
 				);
 			}
 		} else {
-			// Filter-only flush — sync all active sessions without enqueueing a refresh.
-			// Both orientations share the same filter predicates; syncing both ensures
-			// newly visible subjects are appended to whichever session is active (MSR-37).
-			for (const orientation of ["song", "playlist"] as const) {
-				const syncResult = await syncActiveQueue(
-					session.accountId,
-					orientation,
-					{ onVisibleAppend: emitQueueAppendEvents },
-				);
-				if (Result.isError(syncResult)) {
-					console.error(
-						"[playlists] filter-only flush session sync failed:",
-						syncResult.error,
-					);
-				}
-			}
+			// Filter-only flush — rebuild deck proposals under the new filters instead
+			// of a request-path snapshot append. The enqueued build_proposals jobs
+			// chain append_sessions so newly visible subjects land in whichever session
+			// is active on its next deck read (MSR-37).
+			await enqueueFilterProposalRebuild(
+				session.accountId,
+				"flush_playlist_management_session",
+			);
 		}
 
 		return { flushed: true };

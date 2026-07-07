@@ -880,3 +880,209 @@ Supabase: `bun run gen:types` (regenerates away `deck-db-types.ts`), migration r
 007→010, full `bun run test` + e2e, and the §12 shadow-compare script (request
 visibility hash ≡ worker proposal hash is the load-bearing check). Do NOT merge / open a
 PR unless asked.
+
+## Phase 5 — Delete legacy
+
+Landed the plan §11/§12.5/§14 cleanup: TypeScript deletion + 2 behavior rewires
+ONLY. NO DB objects dropped — all legacy SQL/RPCs and the session-appender DB
+wrappers are physically retained for a later cleanup migration. Verified
+statically (no local Postgres): `bun run typecheck` (0), `typecheck:worker` (0),
+full `bun run test` (282 files / 3266 tests pass; 18 DB-gated integration suites
+skip), `bun run check` (0 — the 2 pre-existing `noNonNullAssertion` warnings in
+`match-review-queue.functions.ts` vanished with the deleted
+`readPlaylistCardFromCapture`/`presentMatchReviewItem` lines that carried them).
+
+### Deletion inventory
+
+Files deleted:
+- `src/features/matching/bootstrap-ready-queue.ts` (+ its test) — Step B.
+- `src/features/matching/__tests__/queries.test.ts` — only tested the deleted
+  `matchReviewBootstrapQueryOptions`.
+- `src/lib/domains/taste/match-review-queue/pass-advance.ts` (+ its test) —
+  Step E; sole consumers were the deleted `createOrResumeQueueLegacy`/`syncActiveQueue`.
+- `src/lib/server/match-review-queue-events.ts` — R3 (`emitQueueAppendEvents`
+  went dead once both import sites — start/resume and the playlist syncs — were
+  deleted/rewired).
+
+`src/features/matching/queries.ts` (Step A): deleted
+`matchReviewBootstrapQueryOptions`, `matchReviewQueryOptions`,
+`presentMatchReviewItemQueryOptions`,
+`matchReviewItemSuggestionsInfiniteQueryOptions`; pruned imports (`getMatchReview`,
+`listMatchReviewItemSuggestions`, `MatchReviewItemSuggestionCursor`,
+`presentMatchReviewItem`, `startOrResumeMatchReview`,
+`syncActiveMatchReviewSessions`, `infiniteQueryOptions`). Kept `matchReviewKeys`
+(TRAPS: all/reviewsRoot/review still ref'd by SettingsPage +
+PlaylistsCoverFlowScreen), the summary query families
+(`getMatchReviewSummary`/`getPreferredMatchReviewSummary`), `matchDeckKeys`,
+`dashboardKeys`. Updated the stale
+`matchReviewItemSuggestionsInfiniteQueryOptions` comment in `mutations.ts` to name
+the deck version (`matchDeckCardSuggestionsInfiniteQueryOptions`).
+
+`src/lib/server/match-review-queue.functions.ts` (Step C): deleted server fns
+`startOrResumeMatchReview`, `getMatchReview`, `getMatchReviewItem`,
+`presentMatchReviewItem`, `markMatchReviewItemPresented`,
+`syncActiveMatchReviewSessions`, and (R1) the 4 dead legacy mutation fns
+`addSongToPlaylistFromQueueItem`, `dismissMatchReviewItemSuggestion`,
+`dismissMatchReviewItem`, `finishMatchReviewItem`. Deleted orphaned privates
+`fetchOwnedQueueItem`, `filterDismissedActiveSuggestions`, `deriveCaughtUp`,
+`computeHiddenReviewItemCount`, `buildMatchReviewResult`,
+`readPlaylistCardFromCapture`, `readPlaylistCardFromCaptureLegacy`,
+`presentUnavailableOwnedItem`; dead types/consts/schemas
+`MatchReviewStartResult`, `MatchReviewItemPresentedResult`, `ActiveSuggestionEntry`,
+`EMPTY_MATCH_REVIEW_RESULT`, `StartMatchReviewSchema`, `GetMatchReviewSchema`,
+`GetMatchReviewItemSchema`, `PresentMatchReviewItemSchema`, `MarkPresentedSchema`,
+`AddFromQueueSchema`, `AddFromQueueResult`, `DismissSuggestionResult`,
+`DismissQueueSchema`, `DismissQueueResult`, `FinishQueueSchema`,
+`FinishQueueResult`, `SyncActiveMatchReviewSessionsResult`, `ALL_ORIENTATIONS`,
+and the private `PLAYLIST_CARD_FIRST_PAGE_SIZE`. KEPT the TRAPS survivors:
+`MatchReviewItemRead`, `readOwnedQueueItem`, `mapSuggestionRow`,
+`noVisibleSuggestionsMessage`, `MatchReviewItemSuggestionCursor`,
+`ListMatchReviewItemSuggestionsPage`, `listMatchReviewItemSuggestions`, and the
+whole queue-summary section (incl. `getMatchReviewSummary` per R2). Pruned imports
+to match (dropped `getPlaylistById`, `captureVisiblePairsAtomic`, the caps,
+`computeVisibleSuggestionList`, `fetchSongOrientationData`,
+`captureProductEventBestEffort`, `emitQueueAppendEvents`, `chunkedRead`,
+`fromSupabaseMany`, the atomic wrappers + resume/session query fns, and
+`createOrResumeQueue`/`markItemPresented`/`syncActiveQueue` from ./service).
+
+`src/lib/domains/taste/match-review-queue/service.ts` (Step D): deleted
+`appendSnapshotDelta`, `createOrResumeQueue`, `createOrResumeQueueLegacy`,
+`syncActiveQueue`, and privates `createQueueFromLatestSnapshot`,
+`appendLatestSnapshot`, `recordSnapshotApplied`, `isSnapshotAlreadyApplied`,
+`mapRpcSession`, `hasSessionBeenSeeded`, `AppendOpts`. KEPT the TRAPS survivors —
+esp. `fetchLatestSnapshotId` (still called by `hasFirstVisibleReviewSubject`) —
+plus `getQueueSummary`, `getOrderedUndecided*`, `markItemPresented`,
+`markItemResolved`. Pruned service.ts imports: dropped `advanceActiveSession`
+(./pass-advance), `computeVisibilityPolicyHash` (kept the `VisibilityPolicy` type),
+`DEFAULT_MATCH_STRICTNESS`/`STRICTNESS_MIN_SCORE`, `captureServerError`, and the
+now-unused ./queries wrappers FROM service.ts
+(`callResumeMatchReviewSession`/`completeSession`/`insertMatchReviewSession`/
+`insertQueue*`/`insertSessionSnapshot`/`fetchAppliedSnapshotIds`/`fetchMaxPosition`/
+`fetchQueued*Ids`/`mapItemToDto`) — the wrappers THEMSELVES stay in queries.ts for
+session-appender (R4). Also refreshed the module doc comment.
+
+### R1 helper check (fetchOwnedQueueItem)
+
+`fetchOwnedQueueItem` (and `filterDismissedActiveSuggestions`) were freed by the 4
+mutation-fn deletions and had ZERO remaining consumers → both deleted.
+`fetchOwnedQueueItem` is a *private* fn: `submitMatchDeckAction`
+(`match-deck.functions.ts`) does not and cannot import it; it resolves the owned
+item via its own `mapItemToDto` path and dispatches straight to the atomic wrappers
+(`addQueueItemDecisionAtomically`/`dismiss*`/`finish*`) it imports directly from
+`./queries`, so no atomic-wrapper imports remain in `functions.ts` (all removed).
+`readOwnedQueueItem` was KEPT — still used by the surviving
+`listMatchReviewItemSuggestions`. Typecheck confirmed the zero-consumer status.
+
+### Rewire #1 — playlist filter sync → deck-job enqueue
+
+`playlists.functions.ts`: both filter-only branches (`saveMatchConfig` and
+`flushPlaylistManagementSession`) stopped calling `syncActiveQueue(...)`. Extracted
+a private `enqueueFilterProposalRebuild(accountId, operation)` helper (avoids
+duplicating the block): a read-time filter change publishes no snapshot, so it
+resolves the account's LATEST snapshot via `getLatestMatchSnapshot`, then for
+song+playlist enqueues `build_proposals` keyed
+`build:{account}:{orientation}:{snapshot}` with payload `{snapshotId}`,
+best-effort (`captureServerError` on enqueue error; never rolls back the save;
+no-snapshot → no-op). Imports: removed `syncActiveQueue` + `emitQueueAppendEvents`;
+added `enqueueDeckJob`, `getLatestMatchSnapshot`, `Json`. Extracting the shared
+helper (vs. inlining twice) was chosen per the blueprint's sketch.
+
+### Rewire #2 — runMatchSnapshotRefreshEffects
+
+`features/matching/queries.ts`: dropped the `await syncActiveMatchReviewSessions()`
+call (appends are worker-driven now) and the dead `matchReviewKeys.reviewsRoot`
+invalidation. Kept the deck/summary/dashboard invalidations
+(`matchDeckKeys.deckRoot`, `matchReviewSummaryKeys.summariesRoot`,
+`dashboardKeys.stats/pageData/matchPreviews`) and the `async`/`Promise<void>`
+signature (`useActiveJobs.ts` `void`-calls it).
+
+### R2 / R3 / R5 as applied (R4 above)
+
+- R2 — LEFT `getMatchReviewSummary` + `matchReviewSummaryQueryOptions` untouched
+  (out of scope; reference-only survivor).
+- R3 — deleted `emitQueueAppendEvents`. ANALYTICS LOSS (Phase 6 follow-up): the
+  request-path `review_queue_appended` + `first_visible_match_ready` PostHog
+  events no longer fire on a queue append (there is no request-path append
+  anymore). If that signal is valued, re-add it worker-side (session-appender
+  append metrics). No new emission was added in Phase 5.
+- R5 — rewire-#1 idempotency/staleness residual (RECORDED): the build key
+  `build:{account}:{orientation}:{snapshot}` does NOT encode the filter hash, so
+  if a second filter change lands while a same-snapshot build is still in-flight
+  (not yet completed/dead), the enqueue dedupes (ON CONFLICT DO NOTHING) and the
+  second change rides the first build. Low severity: the in-flight build reads
+  live filters at execution time, and the deck read self-heals on a proposal miss.
+  Left as-is.
+
+### Surprise — MatchReviewResult kept (still referenced)
+
+The blueprint listed the `MatchReviewResult` interface among the Step C dead
+types, but it is STILL imported by `src/features/matching/queue-helpers.ts` (a
+live route module — `match.tsx` imports other helpers from it) for the
+now-route-unused `deriveUnresolvedIds`/`deriveCaughtUp` helpers. Per the
+"keep a still-referenced symbol and flag it" guidance I KEPT `MatchReviewResult`
+(deleting only its sibling `MatchReviewStartResult`, which was solely used by the
+deleted `startOrResumeMatchReview`). Follow-up candidate for a later pass: delete
+`queue-helpers.deriveUnresolvedIds`/`deriveCaughtUp` (dead outside their own tests;
+plan §14 lists `deriveUnresolvedIds` for deletion) and then `MatchReviewResult` —
+deferred here as it expands beyond the enumerated Phase-5 file set.
+
+### Tests
+
+- Deleted: `bootstrap-ready-queue.test.ts`,
+  `features/matching/__tests__/queries.test.ts`, `pass-advance.test.ts`.
+- Edited (removed deleted-fn describe blocks, survivors + assertions intact):
+  `service.test.ts` (removed the createOrResumeQueue/appendSnapshotDelta clusters +
+  their imports/consts; kept getQueueSummary/getOrderedUndecided*/
+  hasFirstVisibleReviewSubject/markItem*); `match-review-queue.functions.test.ts`
+  (removed all deleted-fn blocks incl. the 4 mutation fns; kept
+  listMatchReviewItemSuggestions — re-added the `mockItemOwnership` helper +
+  `BASE_PLAYLIST_ITEM` fixture the survivor uses but which lived inside a deleted
+  region, and re-added the `DatabaseError` import).
+- Rewritten to the new enqueue behavior (faithful, not weakened):
+  `useActiveJobs.test.ts` (dropped the syncActiveMatchReviewSessions mock + its 2
+  sync-specific tests; asserts deck/summary/dashboard invalidation = 5 calls,
+  `matchDeckKeys.deckRoot` present, `matchReviewKeys.reviewsRoot` NO LONGER
+  invalidated, item keys never invalidated); `playlists.match-config.test.ts` +
+  `playlists.management.test.ts` + the savePlaylistMatchConfig block in
+  `playlists.functions.test.ts` (mock `enqueueDeckJob` + `getLatestMatchSnapshot`;
+  the filter-only path asserts 2 `build_proposals` enqueues song+playlist with key
+  `build:acct-1:{orientation}:snap-1` + payload `{snapshotId:"snap-1"}`, instead of
+  2 `syncActiveQueue` calls).
+- Tidied stale vi.mock keys naming deleted symbols:
+  `match-review-queue.summary.test.ts` (dropped createOrResumeQueue/syncActiveQueue
+  service keys), `dashboard.functions.billing.test.ts` (dropped the 8 deleted-fn
+  keys, added a listMatchReviewItemSuggestions placeholder).
+
+### LOCAL VERIFICATION REQUIRED (Phase 5)
+
+Deferred to a machine with local Supabase (no Postgres in this cloud env; no DDL
+was written, so migration replay is unaffected):
+- Filter-change chain end-to-end: a `saveMatchConfig`/`flushPlaylistManagementSession`
+  filter-only change → `build_proposals` (both orientations, keyed to the latest
+  snapshot) → chained `append_sessions` → the active session's NEXT deck read
+  reflects the NEW filters (newly-visible subjects appended, newly-hidden ones
+  excluded). This replaces the old synchronous `syncActiveQueue` append; confirm the
+  worker drains it and the deck updates within acceptable lag.
+- Confirm no runtime import of a dropped symbol survives (static sweep is clean;
+  remaining name matches are historical/parity WHY-comments only).
+- Legacy SQL/RPCs intentionally retained (`resume_match_review_session`, the
+  `insert_queue_*`/capture/decision RPCs, the session-append wrappers) — a later
+  cleanup migration drops the ones the deck path no longer calls, once prod soak
+  confirms.
+- R5 residual: verify the in-flight-build-dedupe-during-a-second-filter-change case
+  self-heals (the build reads live filters; the deck read self-heals on miss).
+
+### Patch round (post-review, SHIP with no must-fix)
+
+Three cheap improvements to rewire #1 (the only new runtime behavior): (1)
+`enqueueFilterProposalRebuild` now captures a genuine snapshot-read DB error
+(`Result.isError`) via `captureServerError` (`step:"resolve_latest_snapshot"`)
+instead of swallowing it alongside the no-snapshot skip — the `Result.ok(null)`
+case stays a silent clean skip. (2) Added a best-effort-path test to
+`playlists.match-config.test.ts`: when `enqueueDeckJob` returns `Result.err`, the
+filter-only save still SUCCEEDS (no rollback) and `captureServerError` fires per
+orientation. (3) Dropped dead `mockSyncActiveQueue` scaffolding + the
+`createOrResumeQueue`/`syncActiveQueue` service-mock keys from
+`match-review-queue.functions.test.ts` (no surviving consumer). Accepted
+doc-drift NIT: some stale WHY-comments still name deleted symbols — parity notes
+only, no runtime impact, left as-is.

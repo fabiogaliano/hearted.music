@@ -23,7 +23,8 @@ const {
 	mockSetPlaylistTarget,
 	mockApplyLibraryProcessingChange,
 	mockUpdatePlaylistGenrePills,
-	mockSyncActiveQueue,
+	mockEnqueueDeckJob,
+	mockGetLatestMatchSnapshot,
 	mockHasFirstVisibleReviewSubject,
 	mockCaptureWithWaitUntil,
 } = vi.hoisted(() => ({
@@ -39,7 +40,8 @@ const {
 	mockSetPlaylistTarget: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockUpdatePlaylistGenrePills: vi.fn(),
-	mockSyncActiveQueue: vi.fn(),
+	mockEnqueueDeckJob: vi.fn(),
+	mockGetLatestMatchSnapshot: vi.fn(),
 	mockHasFirstVisibleReviewSubject: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 }));
@@ -92,9 +94,17 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
-	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
 	hasFirstVisibleReviewSubject: (...args: unknown[]) =>
 		mockHasFirstVisibleReviewSubject(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
+	enqueueDeckJob: (...args: unknown[]) => mockEnqueueDeckJob(...args),
+}));
+
+vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
+	getLatestMatchSnapshot: (...args: unknown[]) =>
+		mockGetLatestMatchSnapshot(...args),
 }));
 
 vi.mock("@/utils/posthog-server", () => ({
@@ -644,9 +654,8 @@ describe("flushPlaylistManagementSession", () => {
 		mockApplyLibraryProcessingChange.mockResolvedValue(
 			Result.ok(makeApplyOutcome()),
 		);
-		mockSyncActiveQueue.mockResolvedValue(
-			Result.ok({ appendedCount: 0, alreadyApplied: false }),
-		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
 	});
 
 	it("calls applyLibraryProcessingChange when membership changed", async () => {
@@ -667,7 +676,7 @@ describe("flushPlaylistManagementSession", () => {
 				readTimeFilterChanged: false,
 			}),
 		);
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	it("calls applyLibraryProcessingChange when scoring config changed", async () => {
@@ -688,7 +697,7 @@ describe("flushPlaylistManagementSession", () => {
 				readTimeFilterChanged: false,
 			}),
 		);
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	it("syncs active session for filter-only flush without calling applyLibraryProcessingChange", async () => {
@@ -701,21 +710,27 @@ describe("flushPlaylistManagementSession", () => {
 		});
 
 		expect(result.flushed).toBe(true);
-		// Filter-only: sync all active sessions, do NOT enqueue a snapshot refresh.
-		// Both orientations are synced so newly visible subjects are appended to
-		// whichever session is active (MSR-37).
+		// Filter-only: no snapshot recompute. A read-time filter change enqueues a
+		// build_proposals deck job for BOTH orientations against the account's latest
+		// snapshot; the worker rebuilds proposals and appends sessions so an active
+		// deck reflects the new filters on its next read (MSR-37).
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
-			"acct-1",
-			"song",
-			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
-		);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
-			"acct-1",
-			"playlist",
-			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
-		);
+		expect(mockGetLatestMatchSnapshot).toHaveBeenCalledWith("acct-1");
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(2);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
+			accountId: "acct-1",
+			orientation: "song",
+			kind: "build_proposals",
+			idempotencyKey: "build:acct-1:song:snap-1",
+			payload: { snapshotId: "snap-1" },
+		});
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
+			accountId: "acct-1",
+			orientation: "playlist",
+			kind: "build_proposals",
+			idempotencyKey: "build:acct-1:playlist:snap-1",
+			payload: { snapshotId: "snap-1" },
+		});
 	});
 
 	it("still calls applyLibraryProcessingChange for mixed scoring + filter change", async () => {
@@ -730,7 +745,7 @@ describe("flushPlaylistManagementSession", () => {
 		expect(result.flushed).toBe(true);
 		// Mixed: scoring change dominates — refresh path, no separate sync needed.
 		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledTimes(1);
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	it("skips processing when nothing changed", async () => {
@@ -744,7 +759,7 @@ describe("flushPlaylistManagementSession", () => {
 
 		expect(result.flushed).toBe(false);
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 });
 
