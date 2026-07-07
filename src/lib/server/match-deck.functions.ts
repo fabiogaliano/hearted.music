@@ -152,6 +152,49 @@ function reportDeckError(
 	});
 }
 
+/**
+ * P1.1/L3: statuses mapReadDeckCardToItemRead's fallback arms treat as
+ * "expected, self-heals" — everything else reaching those arms is a contract
+ * break. `not_captured` is deliberately included: the cold-after-R-E case is
+ * already tracked via the match_deck_materialize_on_read product event
+ * (resolveDeckCard), not a shape violation worth a Sentry capture.
+ */
+const KNOWN_CARD_STATUSES = new Set<ReadMatchDeckCardRpcResult["status"]>([
+	"ready",
+	"not_captured",
+	"not_found",
+	"playlist_gone",
+	"song_gone",
+	"no_visible_suggestions",
+]);
+
+/**
+ * P1.1: mapReadDeckCardToItemRead is a pure mapper by design (no accountId
+ * param — its own tests fabricate raw RPC shapes with zero side effects), so
+ * the two silent fallback arms (L3: unknown status; a `ready` payload with
+ * neither `song` nor `playlist`) can't capture themselves. Hoisted here to
+ * every call site instead, where accountId is in scope.
+ */
+function captureUnexpectedCardShape(
+	accountId: string,
+	itemId: string,
+	rpc: ReadMatchDeckCardRpcResult,
+): void {
+	const readyNoSubject = rpc.status === "ready" && !rpc.song && !rpc.playlist;
+	const unknownStatus = !KNOWN_CARD_STATUSES.has(rpc.status);
+	if (!readyNoSubject && !unknownStatus) return;
+	reportDeckError(
+		new Error(
+			`read_match_deck_card mapped to retryable-error: status=${rpc.status}${
+				readyNoSubject ? " (ready, no song/playlist subject)" : ""
+			}`,
+		),
+		"map_read_deck_card_to_item_read",
+		accountId,
+		{ itemId, status: rpc.status },
+	);
+}
+
 function narrowOrientation(value: unknown): MatchOrientation | null {
 	return value === "song" || value === "playlist" ? value : null;
 }
@@ -398,8 +441,10 @@ function mapCardEnvelope(
 	env: DeckCardEnvelope | null,
 	pageSize: number,
 	orientation: MatchOrientation,
+	accountId: string,
 ): MatchDeckCard | null {
 	if (!env) return null;
+	captureUnexpectedCardShape(accountId, env.itemId, env.presentation);
 	return {
 		itemId: env.itemId,
 		position: env.position,
@@ -469,8 +514,14 @@ export function mapStartOrResumeToView(
 				rpc.cards?.current ?? null,
 				pageSize,
 				orientation,
+				rpc.accountId ?? "",
 			),
-			next: mapCardEnvelope(rpc.cards?.next ?? null, pageSize, orientation),
+			next: mapCardEnvelope(
+				rpc.cards?.next ?? null,
+				pageSize,
+				orientation,
+				rpc.accountId ?? "",
+			),
 		},
 	};
 }
@@ -713,6 +764,7 @@ async function resolveDeckCard(
 	}
 
 	const first = firstResult.value;
+	captureUnexpectedCardShape(accountId, itemId, first);
 	if (first.status !== "not_captured") {
 		// Orientation is only carried on a `ready` payload; on no_visible_suggestions
 		// it's absent, so null → orientation-neutral copy (never a mislabel).
@@ -752,6 +804,7 @@ async function resolveDeckCard(
 				message: "Couldn't load this match card. Try again.",
 			};
 		} else {
+			captureUnexpectedCardShape(accountId, itemId, secondResult.value);
 			recovered = secondResult.value.status !== "not_captured";
 			// The re-read may now resolve to no_visible_suggestions; materialize gave
 			// us the real orientation, so the copy names the correct suggestion side.
