@@ -628,3 +628,108 @@ per decision + rationale.
   is private/unexported) to assert it receives the builder's shared `nowMs` as
   its third argument — pinning the M12 fix at the one seam observable from
   outside the module.
+
+### P3.4 — M1 hash-fail-skip regression tests (tests only, no new SQL/prod change)
+
+- **`execute.ts` / `playlists.functions.ts` (`enqueueFilterProposalRebuild`)**:
+  added one test each (`execute.test.ts`, `playlists.match-config.test.ts`)
+  that makes `resolveVisibilityConfigHash` fail for the `song` orientation
+  only, and asserts `enqueueDeckJob` is never called with `orientation:"song"`
+  (no hash-less pre-M1 key), IS called once for `playlist` with the exact
+  `build:{account}:{orientation}:{snapshot}:{hash}` key, the failure is
+  captured (Sentry / `captureServerError`), and the overall operation still
+  succeeds (`status:"published"` / the save's return value, not a throw).
+  `DatabaseError`/tagged errors implement `Symbol.iterator` (for
+  `Result.gen` yieldability), which trips `toHaveBeenCalledWith`'s deep-equality
+  iteration protocol into `better-result`'s "Err yielded in Result.gen but
+  generator continued" panic — worked around by extracting
+  `mock.calls[0]` and asserting `toBe`/`toMatchObject` on the pieces
+  separately, mirroring the existing `enqueueError` test in the same file that
+  already uses this pattern for the same reason.
+- **`playlists.match-config.test.ts` / `playlists.management.test.ts` already
+  had exact (non-`objectContaining`) `enqueueDeckJob` key assertions for the
+  SUCCESS path** ("takes filter-only path…", "syncs active session for
+  filter-only flush…") — the brief's "ALSO add the currently-missing EXACT
+  key assertions" requirement was already satisfied before this pass; no
+  duplicate added.
+- **`scripts/ops/warm-match-deck-proposals.ts` (`warmAccount`) — tested
+  directly, not via helper extraction.** Direct testing turned out
+  practical: `warmAccount` has no `supabase`-client dependency of its own
+  (only `main`/`iterateLatestSnapshotPerAccount` do), and Vitest's shared
+  config already seeds placeholder env vars for every node-project test
+  (`vite.config.ts`'s `env: isTest ? {...}` block), so importing the module
+  in a test is safe even though a real `bun scripts/ops/warm-match-deck-proposals.ts`
+  invocation needs real env vars. Verified via a throwaway spike test before
+  committing to this approach. The ONE production edit made: exported
+  `warmAccount` plus its `AccountLatestSnapshot`/`WarmCounts` param/return
+  types (previously unexported) — no behavior change, purely a visibility
+  change so the function is importable from `scripts/ops/__tests__/`. New
+  file `scripts/ops/__tests__/warm-match-deck-proposals.test.ts` covers
+  `parseArgs` (3 cases) plus `warmAccount`: dry-run counts without touching
+  hash/enqueue, exact hash-suffixed keys for both orientations on success,
+  null-result → deduped (not enqueued), the M1 hash-fail-skip case (song
+  fails, playlist still enqueues, `counts.failed`/`counts.enqueued` reflect
+  the split, no throw), and a plain enqueue failure counted without throwing.
+
+### P3.5 — client-side match.tsx tests (test-only; zero production edits)
+
+- **New file `src/routes/_authenticated/__tests__/match.card-actions.test.ts`**
+  covers M7, N1 (second half), M9, and M8 — all reached WITHOUT any
+  production edit to `match.tsx`, by extending match.test.ts's existing
+  trick one level further: `createFileRoute` is mocked to identity so
+  `Route.component` (`MatchPage`) is a plain callable function; every React
+  hook (`useState`/`useEffect`/`useCallback`/`useMemo`/`useRef`) is mocked to
+  an inert/synchronous shim, so calling `MatchPage()` → walking
+  `.props.children.type(...)` down through `QueueMatchPage` →
+  `QueueMatchContent` executes each real function body far enough to read
+  off the `.type` of the next JSX element in the tree — arriving at a real,
+  otherwise-unexported reference to `QueueCardContent` (and, separately, at
+  the real `refetchInterval` callback `QueueMatchPage` passes to the mocked
+  `useSuspenseQuery`, captured straight off the mock's call args). That walk
+  is one-time disposable scaffolding (memoized); every actual test then
+  invokes `QueueCardContent`/`refetchInterval` directly with hand-built
+  props/mocks, so assertions depend only on the real handler closures
+  (`handleNext`, `applyResolvedView`), never on the scaffolding's own props
+  or on `QueueMatchContent`'s internal `useState` call ordering. Sanity-checked
+  the harness isn't vacuous by temporarily reverting each of the three fixes
+  in a local, uncommitted edit and confirming the corresponding new test
+  fails, then restoring via `git checkout --`.
+  - **(a) M7**: two `handleNext` (finish-card) cases — `already_resolved`
+    applies `result.view` (`setQueryData` on the deck key + `onCurrentItemId`
+    advances) and does not bump `onSessionStats`, with no explicit
+    `onReleaseNavigation` call (matches the earlier M7 decision: the itemId
+    change is what releases navigation in production, via an effect this
+    harness mocks away); `no_captured_pairs` releases navigation via
+    `onReleaseNavigation` exactly once and applies nothing (`setQueryData`/
+    `onCurrentItemId`/`onSessionStats` all untouched).
+  - **(b) N1 second half**: a `finish-card` success whose promoted `view`
+    carries a `retryable-error` current card and a `ready` next card —
+    asserts the current card is routed through `queryClient.prefetchQuery`
+    (never `setQueryData`) while the next card is seeded normally via
+    `setQueryData`, mirroring the loader-side test at match.test.ts
+    ~303-343 (both delegate to the same shared `seedBakedDeckCardReads`).
+  - **(c) M9**: asserts `cancelQueries` is called with exactly the two
+    written card keys (not the deck key), and — via `mock.invocationCallOrder`
+    — that the last `cancelQueries` call's order index is strictly less than
+    the first `setQueryData` call's, i.e. cancellation is fully awaited
+    before any card-cache write.
+  - **M8: tested via the same harness, not skipped and not extracted.**
+    Captured the real `refetchInterval` callback off the mocked
+    `useSuspenseQuery`'s call args (no export needed — the callback is read
+    from the mock, not from `QueueMatchPage`'s return value) and drove it
+    directly across synthetic poll ticks: stays on the fixed interval while
+    still building + a first visible match is ready; stops once
+    `MAX_BUILDING_POLLS` is reached; never polls when
+    `firstVisibleMatchReady` is false; stops once the deck is no longer
+    building; and a later, distinct building spell (after the gate goes
+    false and back to true) gets its own fresh bounded window rather than
+    inheriting the earlier exhausted baseline. One early draft of the last
+    case encoded a wrong belief (that exhausting the bound alone clears the
+    baseline) — caught by re-reading the source closely before trusting the
+    test, since exceeding `MAX_BUILDING_POLLS` returns `false` without
+    resetting `buildingPollBaselineRef`; only the gate-false branch clears
+    it. Fixed before committing.
+- **Scope note**: no export was added to `match.tsx` for any of the above
+  (unlike the warm-script helper) — the walk-and-invoke technique only needs
+  `Route` (already exported) plus the mocked React/router shims, so the P3.4
+  warm-script export remains the only production edit in this whole pass.
