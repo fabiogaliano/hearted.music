@@ -565,6 +565,17 @@ correctness step.
 Rollback story: revert the merge commit. The additive schema tolerates old
 code; no data migration touched legacy tables.
 
+**Rollback note (review M13a):** reverting the merge commit does NOT undo
+`20260706000009_extend_deck_action_rpcs.sql`'s `CREATE OR REPLACE` of the four
+live action RPCs (`add_match_review_item_decision_atomic`,
+`dismiss_match_review_item_suggestion_atomic`, `finish_match_review_item_atomic`,
+`dismiss_match_review_item_atomic`) — SQL migrations are additive/forward-only
+and are not rolled back by a git revert. After reverting the app code, also run
+`claudedocs/rollback/restore-pre-deck-action-rpcs.sql` by hand (service-role,
+against the target database) to restore those four RPCs to their pre-branch
+bodies. That script is deliberately kept outside `supabase/migrations/` so it
+never auto-applies.
+
 Pre-merge verification (replaces the flagged parallel-run):
 
 - parity vitest suites from commit 2 running in CI;
