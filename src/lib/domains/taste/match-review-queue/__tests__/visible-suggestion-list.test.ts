@@ -1635,3 +1635,110 @@ describe("computeVisibleSuggestionList — filter-metadata retryable errors (MSR
 		expect(result.kind).toBe("db-error");
 	});
 });
+
+describe("computeVisibleSuggestionList — explicit nowMs threading (M12)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	// Fixture: the subject song was liked just after UTC midnight on 2024-06-02.
+	// The suggestion playlist's own liked-at filter is `{ kind: "range", end: {
+	// kind: "today" } }` (visibility-policy.ts / dates.ts resolve "today" purely
+	// from nowMs, never Date.now() when nowMs is supplied). Same fixture, two
+	// nowMs values straddling that exact midnight, must yield different visible
+	// results — proving computeVisibleSuggestionList actually threads its nowMs
+	// param through to the filter predicate rather than defaulting internally.
+	const LIKED_AT_JUST_AFTER_MIDNIGHT = Date.parse("2024-06-02T00:30:00Z");
+	const NOW_MS_BEFORE_MIDNIGHT = Date.parse("2024-06-01T23:59:00Z");
+	const NOW_MS_AFTER_MIDNIGHT = Date.parse("2024-06-02T00:05:00Z");
+
+	function mockLikedAtTodayFixture() {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				// fetchSongFilterMeta: song row (no language/etc — not under test)
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				// fetchSongFilterMeta: liked_song row
+				.mockReturnValueOnce(
+					makeMaybeChain({
+						data: {
+							liked_at: new Date(LIKED_AT_JUST_AFTER_MIDNIGHT).toISOString(),
+						},
+						error: null,
+					}),
+				)
+				// fetchPlaylistsMatchFilters: .in() terminal
+				.mockReturnValueOnce(
+					makeInTerminalChain({
+						data: [
+							{
+								id: "pl-1",
+								match_filters: {
+									version: 1,
+									likedAt: {
+										kind: "range",
+										startDate: "2024-01-01",
+										end: { kind: "today" },
+									},
+								},
+							},
+						],
+						error: null,
+					}),
+				)
+				// fetchOwnedPlaylistIds: .in() terminal
+				.mockReturnValue(
+					makeInTerminalChain({ data: [{ id: "pl-1" }], error: null }),
+				),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-1",
+					score: 0.9,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+	}
+
+	it("excludes the pair when the explicit nowMs is still the day before the liked-at date", async () => {
+		mockLikedAtTodayFixture();
+
+		const result = await computeVisibleSuggestionList(
+			makeSongItem(),
+			0.0,
+			NOW_MS_BEFORE_MIDNIGHT,
+		);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			expect(result.list.suggestions).toHaveLength(0);
+		}
+	});
+
+	it("includes the pair once the explicit nowMs crosses into the liked-at date — same fixture flips across midnight", async () => {
+		mockLikedAtTodayFixture();
+
+		const result = await computeVisibleSuggestionList(
+			makeSongItem(),
+			0.0,
+			NOW_MS_AFTER_MIDNIGHT,
+		);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			expect(result.list.suggestions).toHaveLength(1);
+			expect(result.list.suggestions[0].playlistId).toBe("pl-1");
+		}
+	});
+});
