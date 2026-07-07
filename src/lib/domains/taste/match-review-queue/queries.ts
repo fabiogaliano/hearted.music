@@ -1197,29 +1197,6 @@ export async function callPresentMatchReviewItemFast(
 }
 
 /**
- * Marks account_item_newness.is_new = false for a single song.
- * Called when an item is presented so newness is cleared durably, not on
- * unload. Best-effort: a failure here must not fail the presented transition.
- */
-export async function clearSongNewness(
-	accountId: string,
-	songId: string,
-	now: string,
-): Promise<void> {
-	const supabase = createAdminSupabaseClient();
-	await supabase.from("account_item_newness").upsert(
-		{
-			account_id: accountId,
-			item_id: songId,
-			item_type: "song" as const,
-			is_new: false,
-			viewed_at: now,
-		},
-		{ onConflict: "account_id,item_id,item_type" },
-	);
-}
-
-/**
  * Returns song IDs for the first N pending items in the session, in queue
  * order. Drives the dashboard CTA preview images without loading full rows.
  */

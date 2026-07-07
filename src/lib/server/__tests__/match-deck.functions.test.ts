@@ -735,4 +735,56 @@ describe("submitMatchDeckAction", () => {
 		).rejects.toThrow();
 		expect(mockCaptureException).toHaveBeenCalled();
 	});
+
+	// -------------------------------------------------------------------------
+	// M10: read-after-write probes with a null hash first, skipping the
+	// resolveMinMatchScore + fetchTargetPlaylistFilters round trips whenever the
+	// RPC reports an active session (the only branch a mid-action read can hit).
+	// -------------------------------------------------------------------------
+
+	it("read-after-write probes with a null hash and skips the hash trio on an active session (M10)", async () => {
+		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
+
+		await submitMatchDeckAction({
+			data: { type: "dismiss-card", itemId: "item-1" },
+		});
+
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledWith(
+			"acct-1",
+			"playlist",
+			null,
+			8,
+		);
+		expect(mockResolveMinMatchScore).not.toHaveBeenCalled();
+		expect(mockFetchTargetPlaylistFilters).not.toHaveBeenCalled();
+	});
+
+	it("falls back to computing the real hash when the read-after-write probe reports no active session", async () => {
+		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
+		mockCallStartOrResumeMatchDeck
+			.mockResolvedValueOnce(
+				Result.ok({ status: "miss", reason: "no_ready_proposal" }),
+			)
+			.mockResolvedValueOnce(Result.ok(activeStartRpc(playlistReadyRpc(2, 2))));
+
+		const result = await submitMatchDeckAction({
+			data: { type: "dismiss-card", itemId: "item-1" },
+		});
+
+		// The null-hash probe missed, so the fallback computes the real hash (the
+		// trio the skip mode otherwise avoids) and re-calls the RPC with it.
+		expect(mockResolveMinMatchScore).toHaveBeenCalledTimes(1);
+		expect(mockFetchTargetPlaylistFilters).toHaveBeenCalledTimes(1);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(2);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenNthCalledWith(
+			2,
+			"acct-1",
+			"playlist",
+			expect.stringMatching(/^vc_playlist_/),
+			8,
+		);
+		expect("version" in result.view).toBe(true);
+	});
 });

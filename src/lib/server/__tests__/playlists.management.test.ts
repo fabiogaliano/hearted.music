@@ -27,6 +27,7 @@ const {
 	mockGetLatestMatchSnapshot,
 	mockHasFirstVisibleReviewSubject,
 	mockCaptureWithWaitUntil,
+	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -44,6 +45,7 @@ const {
 	mockGetLatestMatchSnapshot: vi.fn(),
 	mockHasFirstVisibleReviewSubject: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+	mockResolveVisibilityConfigHash: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -106,6 +108,14 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...args: unknown[]) =>
 		mockGetLatestMatchSnapshot(...args),
 }));
+
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/visibility-config-hash",
+	() => ({
+		resolveVisibilityConfigHash: (...args: unknown[]) =>
+			mockResolveVisibilityConfigHash(...args),
+	}),
+);
 
 vi.mock("@/utils/posthog-server", () => ({
 	captureWithWaitUntil: (...args: unknown[]) =>
@@ -656,6 +666,16 @@ describe("flushPlaylistManagementSession", () => {
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
+		mockResolveVisibilityConfigHash.mockImplementation(
+			(_accountId: string, orientation: string) =>
+				Promise.resolve(
+					Result.ok({
+						hash: `vc_test_${orientation}`,
+						minScore: 0.5,
+						policy: {},
+					}),
+				),
+		);
 	});
 
 	it("calls applyLibraryProcessingChange when membership changed", async () => {
@@ -721,14 +741,14 @@ describe("flushPlaylistManagementSession", () => {
 			accountId: "acct-1",
 			orientation: "song",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:song:snap-1",
+			idempotencyKey: "build:acct-1:song:snap-1:vc_test_song",
 			payload: { snapshotId: "snap-1" },
 		});
 		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
 			accountId: "acct-1",
 			orientation: "playlist",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:playlist:snap-1",
+			idempotencyKey: "build:acct-1:playlist:snap-1:vc_test_playlist",
 			payload: { snapshotId: "snap-1" },
 		});
 	});

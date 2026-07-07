@@ -24,14 +24,12 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { deriveEligibleSubjects } from "./eligible-subjects";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
 import {
-	clearSongNewness,
 	countUnresolvedItems,
 	fetchActiveSession,
 	fetchOwnedPlaylistIds,
 	fetchPendingPlaylistIds,
 	fetchPendingSongIds,
 	fetchTargetPlaylistFilters,
-	updateQueueItemPresented,
 	updateQueueItemResolved,
 } from "./queries";
 import type {
@@ -405,41 +403,6 @@ export async function hasFirstVisibleReviewSubject(
 		songSubjectsResult.value.songIds.length > 0 ||
 			playlistSubjectsResult.value.playlistIds.length > 0,
 	);
-}
-
-/**
- * Marks a queue item as active: sets state=active, records presented_at,
- * and clears newness for the song durably.
- *
- * Newness clearing is best-effort — a failure must not fail the state
- * transition; the item is still marked active even if the newness write fails.
- */
-export async function markItemPresented(
-	itemId: string,
-	accountId: string,
-	songId: string,
-): Promise<Result<MatchReviewQueueItem | null, DbError>> {
-	const now = new Date().toISOString();
-	const itemResult = await updateQueueItemPresented(itemId, accountId, now);
-	if (Result.isError(itemResult)) return itemResult;
-
-	// null means no eligible row was updated: the item is already resolved or
-	// raced with finish/dismiss. The update is guarded by
-	// .in("state", ["pending", "active"]) so a resolved card can never be
-	// resurrected. Don't clear newness in that case — the card is not presented.
-	if (itemResult.value === null) return itemResult;
-
-	// Best-effort, but awaited: in a serverless handler a fire-and-forget promise
-	// can be dropped when the function returns before it settles. Awaiting inside a
-	// try/catch keeps the write reliable while still swallowing failures so a
-	// newness-clear error never fails the presented transition.
-	try {
-		await clearSongNewness(accountId, songId, now);
-	} catch {
-		// Swallow — the item is presented regardless of whether newness cleared.
-	}
-
-	return itemResult;
 }
 
 /**
