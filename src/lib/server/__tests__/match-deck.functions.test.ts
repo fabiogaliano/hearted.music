@@ -787,4 +787,35 @@ describe("submitMatchDeckAction", () => {
 		);
 		expect("version" in result.view).toBe(true);
 	});
+
+	it("falls back to computing the real hash when the null-hash probe hits a legacy active session with no visibility hash", async () => {
+		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
+		mockCallStartOrResumeMatchDeck
+			.mockResolvedValueOnce(
+				Result.ok({
+					...activeStartRpc(playlistReadyRpc(2, 2)),
+					visibilityConfigHash: undefined,
+				}),
+			)
+			.mockResolvedValueOnce(Result.ok(activeStartRpc(playlistReadyRpc(2, 2))));
+
+		const result = await submitMatchDeckAction({
+			data: { type: "dismiss-card", itemId: "item-1" },
+		});
+
+		expect(mockResolveMinMatchScore).toHaveBeenCalledTimes(1);
+		expect(mockFetchTargetPlaylistFilters).toHaveBeenCalledTimes(1);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(2);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenNthCalledWith(
+			2,
+			"acct-1",
+			"playlist",
+			expect.stringMatching(/^vc_playlist_/),
+			8,
+		);
+		expect("version" in result.view).toBe(true);
+		if (!("version" in result.view)) throw new Error("expected active view");
+		expect(result.view.visibilityConfigHash).toMatch(/^vc_playlist_/);
+	});
 });
