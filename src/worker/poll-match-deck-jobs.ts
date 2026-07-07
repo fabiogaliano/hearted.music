@@ -22,7 +22,6 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import type { DeckJob } from "@/lib/data/deck-db-types";
 import {
 	CAPTURE_AHEAD_WINDOW,
 	captureAheadForSession,
@@ -31,6 +30,7 @@ import {
 import {
 	claimDeckJob,
 	completeDeckJob,
+	type DeckJob,
 	deferDeckJob,
 	enqueueDeckJob,
 	heartbeatDeckJob,

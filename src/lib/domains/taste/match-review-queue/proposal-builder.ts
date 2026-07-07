@@ -12,12 +12,11 @@
  * a pure copy — so a sweep-resurrected double-run converges to the same rows.
  * `repair` reuses this function.
  *
- * All new-table access routes through deckDb() (the temporary escape hatch);
- * the seed derivation reuses the existing generated-type RPCs.
+ * The seed derivation reuses the existing generated-type RPCs.
  */
 
 import { Result } from "better-result";
-import { deckDb } from "@/lib/data/deck-db-types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	MATCH_STRICTNESS_VALUES,
@@ -230,7 +229,7 @@ export async function buildOneProposal(
 		nowMs,
 	);
 
-	const db = deckDb();
+	const db = createAdminSupabaseClient();
 	const upsertResult = await db
 		.from("match_review_proposal")
 		.upsert(
@@ -350,7 +349,7 @@ export async function buildProposalsForAccountOrientation(input: {
 	if (Result.isError(latestResult)) return latestResult;
 	const latest = latestResult.value;
 	if (latest && latest.id === snapshotId) {
-		const staleResult = await deckDb()
+		const staleResult = await createAdminSupabaseClient()
 			.from("match_review_proposal")
 			.update({ status: "stale" })
 			.eq("account_id", accountId)

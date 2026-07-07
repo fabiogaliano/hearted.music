@@ -1330,10 +1330,25 @@ Nothing below could run in the cloud env (no Postgres). All are pre-merge gates.
    `createAdminSupabaseClient()`. Verify the real generated Row/Insert shapes match
    what `deck-db-types.ts` declared (payload jsonb, nullable session_id/
    heartbeat_at/resume_position).
+   **DONE (local-DB pass, 2026-07-07):** `gen:types` regenerated `database.types.ts`
+   with all 4 tables + the session deck columns + the 6 deck RPCs; the generated
+   Row/Insert/Update shapes matched `deck-db-types.ts` byte-for-byte (payload `Json`,
+   nullable `session_id`/`heartbeat_at`/`resume_position`, subject `song_id`/
+   `playlist_id` nullable). `deck-db-types.ts` DELETED; all 6 call sites repointed to
+   `createAdminSupabaseClient()`. `DeckJob` re-homed to `Tables<"match_review_deck_job">`
+   (exported from `deck-jobs.ts`), `ProposalSubject` to a local `Tables<...>` alias in
+   `session-appender.ts`; the unused `Proposal` export was dropped. One shape delta the
+   swap absorbed: generated `mark_dead_match_review_deck_jobs` is `Args: never` (was
+   `Record<PropertyKey, never>`) → its `.rpc(..., {})` call dropped the `{}` arg.
+   `typecheck` + `typecheck:worker` + `check` all clean.
 2. **Migration replay** from scratch (`supabase db reset` / `migration up`):
    `20260706000003`→`0010` apply cleanly, incl. every `ON CONFLICT (idempotency_key)
    WHERE status NOT IN ('completed','dead')` binding to the partial unique index, and
    the `CREATE OR REPLACE` of the 4 action RPCs.
+   **PARTIAL (2026-07-07):** local DB had `0003`–`0006` already applied from a prior
+   pass; `supabase migration up` applied the pending `0007`–`0010` cleanly (read RPC,
+   start/resume RPC, extended action RPCs, enqueue). A full-from-scratch `supabase db
+   reset` replay is still the stricter gate and has NOT been run this pass.
 3. **Full `bun run test` + e2e** against the local stack, incl. the DB-gated
    integration suites that skip in cloud (`match-event-log.integration`, etc.), and
    a browser/e2e pass over `/match` (NO full-page RTL test exists): cold entry hit,
@@ -1341,6 +1356,11 @@ Nothing below could run in the cloud env (no Postgres). All are pre-merge gates.
    change, UTC-midnight hash rollover, mid-session publish, Previous/Next
    navigation, each action type incl. optimistic dismiss-suggestion, hard reload
    after each action, caught-up → CompletionScreen, building → no-context CTA.
+   **PARTIAL (2026-07-07):** with local Postgres up, full `bun run test` now runs the
+   DB-gated integration suites that were skipped in cloud — **3379 pass, 8 skip, 11
+   todo** (up from the cloud env's 3267 pass / 18 suites skipped). The browser/e2e pass
+   over `/match` (hash HIT vs miss, publish, navigation, actions, reload, completion)
+   is NOT yet done — still a pre-merge gate (see item 4, the load-bearing hash check).
 4. **The load-bearing hash check** (highest risk): confirm a normal cold entry is a
    branch-2 HIT, not a miss — i.e. the request path's `computeVisibilityPolicyHash`
    (from `resolveMinMatchScore` + `fetchTargetPlaylistFilters` + one `nowMs`)
