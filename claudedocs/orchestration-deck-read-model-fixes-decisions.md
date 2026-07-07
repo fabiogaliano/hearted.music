@@ -604,3 +604,27 @@ per decision + rationale.
   production emits an `["match-review", "item", ...]` key post-cutover for it
   to guard against. Kept `all`/`reviewsRoot`/`review` — confirmed still
   referenced by `SettingsPage.tsx` and `PlaylistsCoverFlowScreen.tsx`.
+- **P3.1 (`session-appender.test.ts`, tests only)**: added 3 cases — (a) two
+  M3 constraint-defer tests (song via `insertQueueItems`, playlist via
+  `insertQueuePlaylistItems`) asserting a `ConstraintError` propagates as
+  `Result.err` and `insertSessionSnapshot` is never called, so the batch can
+  never silently settle `applied`/`appendedCount:0`; (b) one guard-(b)
+  isolation test that sets `getLatestMatchSnapshot` to still match the job's
+  `snapshotId` (live-snapshot guard passes) while the proposal's persisted
+  `status` is `stale`, asserting `{kind:"superseded"}` and that the subject
+  fetch is never reached — isolating the persisted-status guard from the
+  existing live-snapshot `superseded` test, which only exercises the other guard.
+- **P3.3 (`visible-suggestion-list.test.ts` + `proposal-builder.test.ts`,
+  tests only)**: in `visible-suggestion-list.test.ts`, added a `{kind:"range",
+  end:{kind:"today"}}` liked-at fixture (subject song liked just after UTC
+  midnight) driven through `computeVisibleSuggestionList` twice with the same
+  DB fixture and two explicit `nowMs` values straddling that exact midnight —
+  0 suggestions before, 1 after — proving the async driver actually threads
+  its `nowMs` param into the filter predicate rather than defaulting to
+  `Date.now()`. In `proposal-builder.test.ts`, mocked `deriveProposalSubjects`
+  to return one subject (the existing suite's default of 0 subjects always
+  skips the seed branch) and spied on `computeVisibleSuggestionList` (mocking
+  `../visible-suggestion-list`, since the seed derivation's `buildSeedForSubject`
+  is private/unexported) to assert it receives the builder's shared `nowMs` as
+  its third argument — pinning the M12 fix at the one seam observable from
+  outside the module.
