@@ -107,7 +107,39 @@ function emitDeckJobLag(
 	});
 }
 
-async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
+/**
+ * P1.2: symmetric with the build_proposals/repair capture below — append_sessions
+ * and capture_ahead failures previously only surfaced via the generic
+ * dead-letter `captureMessage` once attempts were exhausted, invisible until
+ * then. Same tag shape (`area=match_deck, operation=<kind>, runtime=worker`).
+ */
+function captureDeckJobDispatchError(
+	operation: "append_sessions" | "capture_ahead",
+	job: DeckJob,
+	orientation: MatchOrientation,
+	error: DbError,
+	extra?: Record<string, unknown>,
+): void {
+	Sentry.captureException(error, {
+		tags: {
+			area: "match_deck",
+			operation,
+			runtime: "worker",
+			kind: job.kind,
+		},
+		extra: {
+			accountId: job.account_id,
+			jobId: job.id,
+			orientation,
+			...extra,
+		},
+	});
+}
+
+/** Exported for P3.2 dispatch-lifecycle tests; not called outside this loop. */
+export async function dispatchDeckJob(
+	job: DeckJob,
+): Promise<Result<void, DbError>> {
 	const orientation = toOrientation(job.orientation);
 	if (!orientation) {
 		return Result.err(
@@ -196,7 +228,16 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 				orientation,
 				snapshotId,
 			});
-			if (Result.isError(outcome)) return outcome;
+			if (Result.isError(outcome)) {
+				captureDeckJobDispatchError(
+					"append_sessions",
+					job,
+					orientation,
+					outcome.error,
+					{ snapshotId },
+				);
+				return outcome;
+			}
 			// Proposal missing (never built / raced ahead of its build): defer for a
 			// retry. A `superseded` outcome (a newer snapshot's publish marked this
 			// older snapshot's proposal stale) is a CORRECT skip — fall through to
@@ -271,7 +312,16 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 			// Sessionless capture jobs are a no-op (only session-scoped work here).
 			if (!job.session_id) return Result.ok(undefined);
 			const resumeResult = await readSessionResumePosition(job.session_id);
-			if (Result.isError(resumeResult)) return resumeResult;
+			if (Result.isError(resumeResult)) {
+				captureDeckJobDispatchError(
+					"capture_ahead",
+					job,
+					orientation,
+					resumeResult.error,
+					{ sessionId: job.session_id },
+				);
+				return resumeResult;
+			}
 			const captured = await captureAheadForSession({
 				accountId: job.account_id,
 				sessionId: job.session_id,
@@ -279,7 +329,16 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 				fromPosition: resumeResult.value ?? 0,
 				window: CAPTURE_AHEAD_WINDOW,
 			});
-			if (Result.isError(captured)) return captured;
+			if (Result.isError(captured)) {
+				captureDeckJobDispatchError(
+					"capture_ahead",
+					job,
+					orientation,
+					captured.error,
+					{ sessionId: job.session_id },
+				);
+				return captured;
+			}
 
 			// Lag metric: action → next-window captured.
 			emitDeckJobLag("match_deck_capture_lag", job, { orientation });
@@ -324,6 +383,60 @@ function logSettlementFailure(
 	}
 }
 
+/**
+ * Handles one claimed job end-to-end: heartbeat lease, dispatch, and settle
+ * (complete/defer). Extracted from the poll loop's fire-and-forget task
+ * (P3.2) so the claim → dispatch → settle lifecycle — including the N2
+ * settlement-guard warn — can be driven directly in tests without running the
+ * live while-loop, which idles on the global `Bun.sleep` the vitest node pool
+ * doesn't provide. Pure extraction: same body, same single call site below.
+ */
+export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
+	const heartbeat = setInterval(() => {
+		void heartbeatDeckJob(job.id).then((result) => {
+			if (Result.isError(result)) {
+				log.warn("match-deck-heartbeat-failed", {
+					jobId: job.id,
+					error: result.error.message,
+				});
+			}
+		});
+	}, workerConfig.heartbeatIntervalMs);
+
+	try {
+		const outcome = await dispatchDeckJob(job);
+		if (Result.isError(outcome)) {
+			log.warn("match-deck-job-deferred", {
+				jobId: job.id,
+				kind: job.kind,
+				error: outcome.error.message,
+			});
+			const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
+			logSettlementFailure("defer", job, deferred);
+		} else {
+			log.info("match-deck-job-settled", {
+				jobId: job.id,
+				kind: job.kind,
+				accountId: job.account_id,
+				orientation: job.orientation,
+			});
+			const completed = await completeDeckJob(job.id);
+			logSettlementFailure("complete", job, completed);
+		}
+	} catch (err) {
+		log.error("match-deck-job-threw", {
+			jobId: job.id,
+			error: errorMessage(err),
+		});
+		Sentry.captureException(err, { tags: { loop: "match-deck-jobs" } });
+		const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
+		logSettlementFailure("defer", job, deferred);
+	} finally {
+		clearInterval(heartbeat);
+		activeJobs.delete(job.id);
+	}
+}
+
 export async function startMatchDeckJobPolling(): Promise<void> {
 	shouldPoll = true;
 	log.info("match-deck-polling-start", {});
@@ -348,51 +461,7 @@ export async function startMatchDeckJobPolling(): Promise<void> {
 		}
 
 		activeJobs.add(job.id);
-		void (async () => {
-			const heartbeat = setInterval(() => {
-				void heartbeatDeckJob(job.id).then((result) => {
-					if (Result.isError(result)) {
-						log.warn("match-deck-heartbeat-failed", {
-							jobId: job.id,
-							error: result.error.message,
-						});
-					}
-				});
-			}, workerConfig.heartbeatIntervalMs);
-
-			try {
-				const outcome = await dispatchDeckJob(job);
-				if (Result.isError(outcome)) {
-					log.warn("match-deck-job-deferred", {
-						jobId: job.id,
-						kind: job.kind,
-						error: outcome.error.message,
-					});
-					const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
-					logSettlementFailure("defer", job, deferred);
-				} else {
-					log.info("match-deck-job-settled", {
-						jobId: job.id,
-						kind: job.kind,
-						accountId: job.account_id,
-						orientation: job.orientation,
-					});
-					const completed = await completeDeckJob(job.id);
-					logSettlementFailure("complete", job, completed);
-				}
-			} catch (err) {
-				log.error("match-deck-job-threw", {
-					jobId: job.id,
-					error: errorMessage(err),
-				});
-				Sentry.captureException(err, { tags: { loop: "match-deck-jobs" } });
-				const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
-				logSettlementFailure("defer", job, deferred);
-			} finally {
-				clearInterval(heartbeat);
-				activeJobs.delete(job.id);
-			}
-		})();
+		void runClaimedDeckJob(job);
 	}
 
 	log.info("match-deck-polling-stopped", {});
