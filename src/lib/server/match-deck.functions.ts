@@ -523,16 +523,20 @@ async function resolveMatchDeckView(
 				cause: probeResult.error,
 			});
 		}
-		if (probeResult.value.status === "active") {
+		if (
+			probeResult.value.status === "active" &&
+			probeResult.value.visibilityConfigHash != null
+		) {
 			const view = mapStartOrResumeToView(probeResult.value, window);
 			if (emitEntryMetrics) {
 				captureDeckEntryHit(accountId, orientation, "active", view);
 			}
 			return view;
 		}
-		// No active session: a null hash can never satisfy branch 2's exact-match
-		// filter, so this is a guaranteed miss regardless of the real hash — fall
-		// through to the normal path below, which computes it for real.
+		// No active session — or a legacy active session whose null-hash probe can't
+		// supply visibilityConfigHash — so fall through to the normal path below.
+		// A null hash can never satisfy branch 2's exact-match filter, and recomputing
+		// the real hash preserves the public contract for the legacy branch-1 case.
 	}
 
 	const nowMs = Date.now();
