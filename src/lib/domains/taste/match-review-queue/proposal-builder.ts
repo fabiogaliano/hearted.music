@@ -229,7 +229,7 @@ export async function buildOneProposal(
 		derivationResult.value;
 
 	// Hash from the exact filters the derivation read + the shared nowMs, so the
-	// proposal key matches appendSnapshotDelta's under the same policy.
+	// proposal key matches the request-path deck resolver's under the same policy.
 	const policy: VisibilityPolicy = {
 		orientation,
 		minScore,
