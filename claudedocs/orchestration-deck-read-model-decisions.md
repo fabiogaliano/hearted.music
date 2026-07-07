@@ -628,6 +628,177 @@ All live-DB verification is deferred (no Postgres in this cloud env):
 - **`total_active_count` bigint→number** for 845-suggestion cards (no precision
   surprise in `suggestionTotal` / cursor derivation).
 
+## Phase 4 — Route cutover
+
+Files edited: `src/routes/_authenticated/match.tsx` (full route/component rewrite),
+`src/features/matching/mutations.ts`, `src/features/matching/useMatchReviewCard.ts`,
+`src/features/matching/queries.ts` (`runMatchSnapshotRefreshEffects`),
+`src/lib/hooks/__tests__/useActiveJobs.test.ts` (invalidation-count update),
+`src/routes/_authenticated/__tests__/match.test.ts`,
+`src/features/matching/__tests__/mutations.test.ts`,
+`src/features/matching/__tests__/useMatchReviewCard.test.tsx`.
+New files: `src/features/matching/deck-action-status.ts` +
+`src/features/matching/__tests__/deck-action-status.test.ts`.
+
+Scope honored: route/component cutover ONLY. NO legacy code deleted — the three
+legacy query families (`matchReviewBootstrapQueryOptions`,
+`matchReviewQueryOptions`, `presentMatchReviewItemQueryOptions`), the legacy
+action server fns, `appendSnapshotDelta`, `presentMatchReviewItem`,
+`markMatchReviewItemPresented`, and `bootstrapReadyMatchQueue` all still exist and
+typecheck; the route just STOPS importing them (Phase 5 deletes them). Landed as
+one coherent change (plan §10).
+
+### Inherited-vs-applied
+
+Verified the interrupted run's partial work against the blueprint and found it
+correct — kept as-is: `deck-action-status.ts` classifier + test (tokens confirmed
+against the four atomic status sets in `queries.ts:628-952` and the RPC bodies in
+`20260706000009`); `mutations.ts` (`dismissSuggestionMutation` retargeted to the
+deck card/tail keys + `submitMatchDeckAction` + classifier, RF-correct: keeps the
+optimistic surgery, discards the returned view, rolls back on a non-`dismissed`
+status); `useMatchReviewCard.ts` (tail query → `matchDeckCardSuggestionsInfiniteQueryOptions`,
+dismiss boolean via the classifier); `queries.ts` (`runMatchSnapshotRefreshEffects`
+adds `matchDeckKeys.deckRoot` invalidation alongside the legacy `reviewsRoot`,
+keeps `syncActiveMatchReviewSessions`). Newly written this session: the whole
+`match.tsx` rewrite, all three retargeted test suites, the new loader-inversion
+tests, and the `useActiveJobs.test.ts` count fix (see below).
+
+### Rulings as applied
+
+- **RA — classifier** (`deck-action-status.ts`). `isDeckActionSuccess(type,
+  actionStatus)` with per-type success-token sets: add-suggestion→`{added}`;
+  dismiss-suggestion→`{dismissed}`; finish-card→`{completed_added, skipped}`;
+  dismiss-card→`{dismissed}`. Everything else (incl. `already_added`,
+  `not_visible`, `no_captured_pairs`, `already_resolved`, unknown/empty) is a
+  rejection: do not advance / roll back. The action RPCs kept `RETURNS TEXT`
+  (Phase 1b/3), so the route can't read a bool off the wire — the enumerated
+  classifier is the seam.
+- **RB — loader awaits + seeds.** `loaderDeps: ({search}) => ({mode})`; the loader
+  short-circuits walkthrough (`sessionMode(...)==="walkthrough"`), else `await
+  queryClient.ensureQueryData(matchDeckQueryOptions(accountId, deps.mode))` and, on
+  `"itemIds" in view`, seeds `readMatchDeckCardQueryOptions(card.itemId).queryKey`
+  from `view.cards.current/next.presentation`. `MatchLoading` is the route
+  `pendingComponent` (covers cold SSR + the rare miss-path build); `MatchPending`
+  deleted. The inner `<Suspense fallback={MatchLoading}>` stays — it re-engages
+  only when Previous/Next lands on a card the loader/action didn't bake in.
+- **RC — building recovery.** `QueueMatchPage` computes `isBuilding = !("itemIds"
+  in view)`; a `useEffect` invalidates `matchDeckKeys.deck(accountId, mode)` when
+  `isBuilding && firstVisibleMatchReady` (from `useActiveJobs`). Re-runs the bounded
+  deck read whose miss path promotes the first window. Replaces
+  `bootstrapReadyMatchQueue` (which the route no longer imports).
+- **RD — no-context vs building.** The `{status:"building"}` branch routes through
+  `deriveEmptyStateReason({hasQueue:false, caughtUp:false, isJobsActive,
+  firstVisibleMatchReady, total:0, hiddenReviewItemCount:0})` — genuinely-no-setup →
+  `no-context` ("set a matching intent"); jobs active or a first match ready →
+  `building`.
+- **RE — presented_at.** Deleted the client `markMatchReviewItemPresented` effect;
+  `start_or_resume_match_deck` stamps the current card server-side and
+  `read_match_deck_card` stamps on every real read. Residual recorded below.
+- **RF — dismiss-suggestion keeps optimistic surgery, does NOT apply the view**
+  (`dismissSuggestionMutation`, inherited). Whole-card actions (finish/dismiss-card)
+  DO apply `result.view`: `applyResolvedView` writes it into the deck cache and
+  advances the id pointer to `result.view.cards.current?.itemId ?? itemIds[0] ??
+  null`.
+- **RG — id-based Previous/Next preserved.** `resolveCurrentItemId(view.itemIds,
+  currentItemId)` + `currentIndex = view.itemIds.indexOf(resolved)`; only the id-list
+  SOURCE changed (deck view instead of `deriveUnresolvedIds(queue)`). Init pointer
+  `view.cards.current?.itemId ?? itemIds[0] ?? null`.
+
+### New loader/component shape
+
+- Loader: `loaderDeps.mode` → await `ensureQueryData(matchDeckQueryOptions)` → seed
+  the two baked card reads (skips the building state). Walkthrough returns void.
+- `QueueMatchPage`: ONE `useSuspenseQuery(matchDeckQueryOptions(accountId, mode))`.
+  Hooks (route context, navigate, queryClient, deck read, `useActiveJobs`, RC
+  effect, latch ref, handlers) run before any branch; then building → empty state
+  (RD), arrival-caught-up (`progress.caughtUp || cards.current===null`, gated by the
+  `sessionStartedRef` latch) → empty state, else `QueueMatchContent key={mode}`.
+- `QueueMatchContent`: navigates over `view.itemIds` (server authoritative — no
+  `locallyResolvedIds`/`effectiveItemIds`); single exit invalidation
+  (unmount + completion). `QueueCardContent`: `useSuspenseQuery(
+  readMatchDeckCardQueryOptions(itemId))`; warm-ahead prefetch of `itemIds[i+1]`;
+  actions dispatch `submitMatchDeckAction`.
+
+### Per-action mapping
+
+- **add-suggestion** (`handleAdd`): keeps the Spotify extension leg + `addedTo`/
+  `sessionStats`; DB call → `submitMatchDeckAction({type:"add-suggestion",itemId,
+  suggestionId})`; success gate `isDeckActionSuccess("add-suggestion", …)`. Does NOT
+  advance, does NOT apply the view.
+- **dismiss-suggestion** (`handleDismissSuggestion` → the hook's
+  `dismissSuggestion`): optimistic cache surgery via `dismissSuggestionMutation`
+  (RF); no navigation lock; analytics on confirmed dismiss.
+- **finish-card** (`handleNext`, unavailable-skip): `submitMatchDeckAction({type:
+  "finish-card",itemId})`; success `completed_added|skipped`; on rejection
+  `onReleaseNavigation()`; on success `applyResolvedView(result.view)`.
+- **dismiss-card** (`handleDismiss`): same shape, `type:"dismiss-card"`, success
+  `dismissed`; keeps `waitForPendingDismisses()` before dispatch.
+
+### Invalidation + building/caught-up wiring
+
+- Exit handler (`invalidateSessionBoundary`, unmount + completion) invalidates
+  `matchDeckKeys.deck(accountId, mode)` + `matchReviewSummaryKeys.summary(accountId,
+  mode)` + `dashboardKeys.all`; completion keeps `analytics.capture(
+  "matching_session_completed")`. `handleModeChange` keeps its preferredSummary +
+  `dashboardKeys.all` invalidation.
+- `runMatchSnapshotRefreshEffects` now also invalidates `matchDeckKeys.deckRoot`
+  (legacy `reviewsRoot` retained until Phase 5). `MatchErrorComponent` `resetQueries`
+  key `matchReviewKeys.all` → `matchDeckKeys.all`.
+
+### Decision beyond the literal blueprint (recorded)
+
+- **`applyResolvedView` seeds the promoted cards' read caches** (not only the deck
+  cache). After a whole-card action it writes `result.view.cards.current/next.
+  presentation` into `readMatchDeckCardQueryOptions(...).queryKey` — mirroring the
+  loader seed — so the advance to the promoted card renders from cache instead of
+  suspending. This realizes plan §9's "response carries the promoted next card …
+  the client needs no follow-up fetch to keep swiping." A caught-up returned view
+  (`cards.current===null`, or a `building` view) sets the pointer to `null` → the
+  latch keeps `CompletionScreen` (or, on building, `QueueMatchPage` re-renders the
+  RD empty state). The completion-effect refetch of `matchDeckKeys.deck` mirrors the
+  prior queue refetch and is background (active observer, no suspense flash).
+
+### Tests (DB-free)
+
+- `match.test.ts`: inverted the loader contract — mocks `@/features/matching/deck-queries`
+  + `@/lib/server/match-deck.functions`, drops the `markMatchReviewItemPresented`
+  mock, asserts the loader awaits `matchDeckQueryOptions` and seeds current+next
+  card caches (and seeds nothing for building / single-card). Kept beforeLoad
+  mode-normalisation + walkthrough short-circuit.
+- `mutations.test.ts`: pure `patch*` tests unchanged; `dismissSuggestionMutation`
+  repointed to `readMatchDeckCardQueryOptions`/`matchDeckKeys.card(...)+"suggestions"`,
+  mock `submitMatchDeckAction`, fixtures `{actionStatus:"dismissed"|"already_resolved",
+  view}`, rollback keyed off the classifier.
+- `useMatchReviewCard.test.tsx`: present key → `readMatchDeckCardQueryOptions`, dismiss
+  mock → `submitMatchDeckAction` returning `{actionStatus, view}`, call-arg assertions
+  gained `type:"dismiss-suggestion"`.
+- `useActiveJobs.test.ts` (d): invalidation count 5→6 + `toContainEqual(matchDeckKeys.
+  deckRoot)` — a faithful update reflecting the new deck invalidation, not a weakening.
+- `deck-action-status.test.ts` (new, inherited): success + rejection per action,
+  cross-type leakage, unknown/empty tokens.
+
+### LOCAL VERIFICATION REQUIRED (Phase 4)
+
+No full-page RTL render test exists for the route (the route composes Suspense +
+router + deck server fns), so a real browser (e2e / manual) pass must verify:
+
+- **RE presented_at residual** — a card browsed-to-but-not-acted-on purely from a
+  seeded/applied cache has a brief `presented_at` lag that self-heals on the next
+  real read/action/refresh (the dominant swipe path always applies a fresh view whose
+  new current was stamped server-side). Confirm newness clears correctly on browse.
+- **RC building-recovery trigger** — first-run user on `{status:"building"}`: once
+  `firstVisibleMatchReady` flips, the deck-key invalidation re-reads and the miss path
+  promotes the first window (no strand on "building").
+- **RB loader-await bounded latency** — cold hit renders card #1 in the first SSR
+  paint; the rare miss-path build streams behind `MatchLoading` (the slow tail the
+  pendingComponent covers), not a blank/hard-error.
+- **Manual/e2e checklist** — cold entry hit/miss; Previous/Next over `view.itemIds`
+  (no head-drop jump, RG); each action (add / finish / dismiss-card) advancing to the
+  promoted card from cache; optimistic dismiss-suggestion feel + rollback; mid-session
+  caught-up → `CompletionScreen` (latch, no "quiet in here" flash); building → the
+  `no-context` CTA vs `building` split (RD); mode switch re-runs the loader for the
+  other orientation and resets visit-local state (`key={mode}`).
+
 ---
 
 ## ORCHESTRATION RESUME STATE (paused for session reset)

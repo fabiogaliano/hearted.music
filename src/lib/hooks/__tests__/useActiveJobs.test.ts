@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dashboardKeys } from "@/features/dashboard/queries";
+import { matchDeckKeys } from "@/features/matching/deck-queries";
 import {
 	matchReviewKeys,
 	matchReviewSummaryKeys,
@@ -138,8 +139,9 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			runMatchSnapshotRefreshEffects(qc as unknown as QueryClient, ACCOUNT_ID),
 		).resolves.toBeUndefined();
 
-		// All five invalidation calls must still have run.
-		expect(qc.invalidateQueries).toHaveBeenCalledTimes(5);
+		// All six invalidation calls must still have run: the legacy reviewsRoot,
+		// the Phase 4 deck deckRoot, summariesRoot, and three dashboard keys.
+		expect(qc.invalidateQueries).toHaveBeenCalledTimes(6);
 
 		const calledKeys = (
 			qc.invalidateQueries as ReturnType<typeof vi.fn>
@@ -147,6 +149,9 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
 		expect(calledKeys).toContainEqual(matchReviewKeys.reviewsRoot);
+		// Deck read model (Phase 4): a mid-session snapshot refresh re-runs the
+		// bounded deck read across every (account, orientation) deck query.
+		expect(calledKeys).toContainEqual(matchDeckKeys.deckRoot);
 	});
 
 	it("(e) invalidates summariesRoot and dashboard stats/previews together", async () => {

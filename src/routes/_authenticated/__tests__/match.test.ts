@@ -4,24 +4,37 @@ const redirectMock = vi.fn((options: { to: string; replace?: boolean }) => ({
 	kind: "redirect" as const,
 	...options,
 }));
-const startOrResumeMatchReviewMock = vi.fn();
-const matchReviewBootstrapQueryOptionsMock = vi.fn();
-const matchReviewQueryOptionsMock = vi.fn();
 const sessionModeMock = vi.fn();
+// The deck query-option factories are mocked so the loader's key/seed contract
+// can be asserted without loading the real deck server-fn module graph.
+const matchDeckQueryOptionsMock = vi.fn(
+	(accountId: string, orientation: string) => ({
+		queryKey: ["match-deck", "deck", accountId, orientation],
+	}),
+);
+const readMatchDeckCardQueryOptionsMock = vi.fn((itemId: string) => ({
+	queryKey: ["match-deck", "card", itemId, "read"],
+}));
 
 type OnboardingSession = { status: string };
 
 type LoaderContext = {
 	session: { accountId: string };
-	queryClient: { prefetchQuery: (options: unknown) => Promise<void> };
+	queryClient: {
+		ensureQueryData: (options: unknown) => Promise<unknown>;
+		setQueryData: (key: unknown, value: unknown) => void;
+	};
 	onboardingSession: OnboardingSession;
 };
 
 type MatchRoute = {
 	beforeLoad: (args: { location: { searchStr: string } }) => void;
-	// Bootstrap + queue reads moved to the client (B1); the loader now only
-	// short-circuits walkthrough modes and returns void.
-	loader: (args: { context: LoaderContext }) => void;
+	// The loader now AWAITS the bounded deck read (RB) and seeds the deck +
+	// baked-card caches; walkthrough sessions short-circuit before the read.
+	loader: (args: {
+		context: LoaderContext;
+		deps: { mode: string };
+	}) => Promise<void>;
 };
 
 function isMatchRoute(value: unknown): value is MatchRoute {
@@ -45,34 +58,28 @@ async function loadRoute(): Promise<MatchRoute> {
 		useSuspenseQuery: vi.fn(),
 		queryOptions: vi.fn((opts: unknown) => opts),
 	}));
-	vi.doMock("@/lib/server/match-review-queue.functions", () => ({
-		markMatchReviewItemPresented: vi.fn(),
-		addSongToPlaylistFromQueueItem: vi.fn(),
-		dismissMatchReviewItem: vi.fn(),
-		dismissMatchReviewItemSuggestion: vi.fn(),
-		finishMatchReviewItem: vi.fn(),
+	// match.tsx + mutations.ts import submitMatchDeckAction as a value; mock the
+	// module so the heavy server-fn graph never loads for a loader/beforeLoad test.
+	vi.doMock("@/lib/server/match-deck.functions", () => ({
+		submitMatchDeckAction: vi.fn(),
+	}));
+	vi.doMock("@/features/matching/deck-queries", () => ({
+		matchDeckKeys: {
+			all: ["match-deck"],
+			deckRoot: ["match-deck", "deck"],
+			deck: (accountId: string, orientation: string) => [
+				"match-deck",
+				"deck",
+				accountId,
+				orientation,
+			],
+			card: (itemId: string) => ["match-deck", "card", itemId],
+		},
+		matchDeckQueryOptions: matchDeckQueryOptionsMock,
+		readMatchDeckCardQueryOptions: readMatchDeckCardQueryOptionsMock,
+		matchDeckCardSuggestionsInfiniteQueryOptions: vi.fn(),
 	}));
 	vi.doMock("@/features/matching/queries", () => ({
-		matchReviewBootstrapQueryOptions: matchReviewBootstrapQueryOptionsMock,
-		matchReviewQueryOptions: matchReviewQueryOptionsMock,
-		presentMatchReviewItemQueryOptions: vi.fn(),
-		matchReviewKeys: {
-			all: ["match-review"],
-			reviewsRoot: ["match-review", "review"],
-			review: (accountId: string, orientation: string) => [
-				"match-review",
-				"review",
-				accountId,
-				orientation,
-			],
-			bootstrap: (accountId: string, orientation: string) => [
-				"match-review",
-				"bootstrap",
-				accountId,
-				orientation,
-			],
-			item: (itemId: string) => ["match-review", "item", itemId],
-		},
 		matchReviewSummaryKeys: {
 			summariesRoot: ["match-review", "summary"],
 			summary: (accountId: string, orientation: string) => [
@@ -88,6 +95,7 @@ async function loadRoute(): Promise<MatchRoute> {
 				"preferred",
 			],
 		},
+		runMatchSnapshotRefreshEffects: vi.fn(),
 	}));
 	vi.doMock("@/lib/domains/library/accounts/onboarding-session", () => ({
 		sessionMode: sessionModeMock,
@@ -202,35 +210,122 @@ describe("/_authenticated/match route", () => {
 		});
 	});
 
-	describe("loader — client-suspense contract (B1)", () => {
+	describe("loader — deck read (RB)", () => {
 		const makeContext = (
 			onboardingSession: OnboardingSession,
+			ensureData: unknown,
 		): LoaderContext => ({
 			session: { accountId: "acct-1" },
-			queryClient: { prefetchQuery: vi.fn().mockResolvedValue(undefined) },
+			queryClient: {
+				ensureQueryData: vi.fn().mockResolvedValue(ensureData),
+				setQueryData: vi.fn(),
+			},
 			onboardingSession,
 		});
 
-		it("returns without any query work for walkthrough sessions", async () => {
+		it("short-circuits before any deck read for walkthrough sessions", async () => {
 			const route = await loadRoute();
 			sessionModeMock.mockReturnValue("walkthrough");
-			const context = makeContext({ status: "song-walkthrough" });
+			const context = makeContext({ status: "song-walkthrough" }, undefined);
 
-			expect(route.loader({ context })).toBeUndefined();
-			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
+			await expect(
+				route.loader({ context, deps: { mode: "playlist" } }),
+			).resolves.toBeUndefined();
+			expect(context.queryClient.ensureQueryData).not.toHaveBeenCalled();
+			expect(context.queryClient.setQueryData).not.toHaveBeenCalled();
 		});
 
-		it("does no bootstrap or prefetch for normal sessions — moved to the client Suspense boundary", async () => {
+		it("awaits the deck read and seeds the current + next card caches", async () => {
 			const route = await loadRoute();
 			sessionModeMock.mockReturnValue("complete");
-			const context = makeContext({ status: "complete" });
+			const view = {
+				itemIds: ["item-1", "item-2"],
+				cards: {
+					current: {
+						itemId: "item-1",
+						position: 0,
+						presentation: { status: "ready", itemId: "item-1" },
+					},
+					next: {
+						itemId: "item-2",
+						position: 1,
+						presentation: { status: "ready", itemId: "item-2" },
+					},
+				},
+				progress: {
+					total: 2,
+					remaining: 2,
+					caughtUp: false,
+					hiddenReviewItemCount: 0,
+				},
+			};
+			const context = makeContext({ status: "complete" }, view);
 
-			// The loader must not block SSR: create/resume + the queue read now run
-			// in QueueMatchPage via useSuspenseQuery under a Suspense fallback, so no
-			// prefetch or bootstrap call happens here.
-			expect(route.loader({ context })).toBeUndefined();
-			expect(context.queryClient.prefetchQuery).not.toHaveBeenCalled();
-			expect(startOrResumeMatchReviewMock).not.toHaveBeenCalled();
+			await route.loader({ context, deps: { mode: "playlist" } });
+
+			// The deck read is keyed per (account, orientation) from loaderDeps.mode.
+			expect(matchDeckQueryOptionsMock).toHaveBeenCalledWith(
+				"acct-1",
+				"playlist",
+			);
+			expect(context.queryClient.ensureQueryData).toHaveBeenCalledWith({
+				queryKey: ["match-deck", "deck", "acct-1", "playlist"],
+			});
+			// Both baked cards are seeded under their read keys.
+			expect(context.queryClient.setQueryData).toHaveBeenCalledWith(
+				["match-deck", "card", "item-1", "read"],
+				view.cards.current.presentation,
+			);
+			expect(context.queryClient.setQueryData).toHaveBeenCalledWith(
+				["match-deck", "card", "item-2", "read"],
+				view.cards.next.presentation,
+			);
+		});
+
+		it("awaits the deck read but seeds no card caches for the building state", async () => {
+			const route = await loadRoute();
+			sessionModeMock.mockReturnValue("complete");
+			const context = makeContext(
+				{ status: "complete" },
+				{ status: "building" },
+			);
+
+			await route.loader({ context, deps: { mode: "song" } });
+
+			expect(context.queryClient.ensureQueryData).toHaveBeenCalled();
+			// Building state carries no itemIds/cards, so nothing is seeded.
+			expect(context.queryClient.setQueryData).not.toHaveBeenCalled();
+		});
+
+		it("skips the next-card seed when the deck has only a current card", async () => {
+			const route = await loadRoute();
+			sessionModeMock.mockReturnValue("complete");
+			const view = {
+				itemIds: ["item-1"],
+				cards: {
+					current: {
+						itemId: "item-1",
+						position: 0,
+						presentation: { status: "ready", itemId: "item-1" },
+					},
+					next: null,
+				},
+				progress: {
+					total: 1,
+					remaining: 1,
+					caughtUp: false,
+					hiddenReviewItemCount: 0,
+				},
+			};
+			const context = makeContext({ status: "complete" }, view);
+
+			await route.loader({ context, deps: { mode: "playlist" } });
+
+			expect(context.queryClient.setQueryData).toHaveBeenCalledTimes(1);
+			expect(context.queryClient.setQueryData).toHaveBeenCalledWith(
+				["match-deck", "card", "item-1", "read"],
+				view.cards.current.presentation,
+			);
 		});
 	});
 });
