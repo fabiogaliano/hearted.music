@@ -504,3 +504,18 @@ per decision + rationale.
   next entry (this was already a known, accepted behavior, just misstated in
   the docstring). The header now describes this as the normal case, not a
   guarantee, and calls out the filter-change skew explicitly.
+- **P1.3 (`20260707000017`)**: dropped `idx_match_review_deck_job_pending_poll`
+  outright (no replacement) — `claim_pending_match_review_deck_job`'s ORDER BY
+  has led with the kind-priority CASE expression since M2, and
+  `idx_match_review_deck_job_pending_claim_priority` (20260707000016) is the
+  only index whose leading columns match that ORDER BY; confirmed via `EXPLAIN
+  (COSTS OFF)` against a seeded 5000-row table (3-row/tiny-table plans always
+  choose Seq Scan under the cost model regardless of which indexes exist) that
+  the claim query's plan uses `idx_match_review_deck_job_pending_claim_priority`
+  with no Seq Scan and no reference to the dropped index.
+- **P1.4 (`20260707000018`)**: consolidated `v_total`/`v_remaining`/`v_item_ids`
+  in `start_or_resume_match_deck` into one `SELECT ... FILTER (WHERE ...)`
+  pass over `match_review_queue_item` (single READ COMMITTED snapshot) instead
+  of three independent SELECTs, so the three can never disagree in one
+  response; diffed the new function body against 000013's verbatim and
+  confirmed the only hunk is that consolidation — no other line changed.
