@@ -1,4 +1,8 @@
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import {
 	createFileRoute,
 	type ErrorComponentProps,
@@ -54,6 +58,7 @@ import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
+	type MatchDeckCard,
 	type MatchDeckView,
 	type StartOrResumeMatchDeckResult,
 	submitMatchDeckAction,
@@ -93,17 +98,15 @@ export const Route = createFileRoute("/_authenticated/match")({
 		);
 
 		// Seed the current + next card reads so the first render (and a one-step
-		// advance) resolve from cache instead of re-fetching. The building state
+		// advance) resolve from cache instead of re-fetching. If a baked card is a
+		// transient retryable error, re-read it once here instead of pinning that
+		// error into the long-lived card cache. The building state
 		// (`{status:"building"}`) has no `itemIds`/cards to seed.
 		if ("itemIds" in view) {
-			for (const card of [view.cards.current, view.cards.next]) {
-				if (card) {
-					queryClient.setQueryData(
-						readMatchDeckCardQueryOptions(card.itemId).queryKey,
-						card.presentation,
-					);
-				}
-			}
+			await seedBakedDeckCardReads(queryClient, [
+				view.cards.current,
+				view.cards.next,
+			]);
 		}
 	},
 	errorComponent: MatchErrorComponent,
@@ -117,6 +120,31 @@ export const Route = createFileRoute("/_authenticated/match")({
 // back to refocus/manual retry is preferable to polling indefinitely.
 const BUILDING_POLL_INTERVAL_MS = 3_000;
 const MAX_BUILDING_POLLS = 5;
+
+async function seedBakedDeckCardReads(
+	queryClient: Pick<QueryClient, "setQueryData" | "prefetchQuery">,
+	cards: Array<MatchDeckCard | null>,
+): Promise<void> {
+	const retries: Promise<unknown>[] = [];
+
+	for (const card of cards) {
+		if (!card) continue;
+		if (card.presentation.status === "retryable-error") {
+			// Auto-retry once through the authoritative card read instead of
+			// pinning a transient baked error into the 30-minute card cache.
+			retries.push(
+				queryClient.prefetchQuery(readMatchDeckCardQueryOptions(card.itemId)),
+			);
+			continue;
+		}
+		queryClient.setQueryData(
+			readMatchDeckCardQueryOptions(card.itemId).queryKey,
+			card.presentation,
+		);
+	}
+
+	await Promise.all(retries);
+}
 
 // Rejection statuses (across finish-card/dismiss-card) that mean the
 // client's view is stale — the item already resolved via another tab/session
@@ -766,14 +794,10 @@ function QueueCardContent({
 			onCurrentItemId(null);
 			return;
 		}
-		for (const card of [nextView.cards.current, nextView.cards.next]) {
-			if (card) {
-				queryClient.setQueryData(
-					readMatchDeckCardQueryOptions(card.itemId).queryKey,
-					card.presentation,
-				);
-			}
-		}
+		await seedBakedDeckCardReads(queryClient, [
+			nextView.cards.current,
+			nextView.cards.next,
+		]);
 		onCurrentItemId(
 			nextView.cards.current?.itemId ?? nextView.itemIds[0] ?? null,
 		);
