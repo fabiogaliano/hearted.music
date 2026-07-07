@@ -4159,7 +4159,7 @@ export type Database = {
 				};
 			};
 			mark_dead_match_review_deck_jobs: {
-				Args: never;
+				Args: { p_lease_seconds?: number };
 				Returns: {
 					account_id: string;
 					attempts: number;

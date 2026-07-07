@@ -52,6 +52,12 @@ import { captureWorkerEvent } from "./posthog-capture";
 // claim, so mark_dead terminalizes after max_attempts regardless of this delay.
 const DEFER_BACKOFF_SECONDS = 30;
 
+// Shared with mark_dead (H1): a 'running' job only dead-letters once its
+// heartbeat is older than this same lease, so sweep's reclaim and mark_dead's
+// dead-letter agree on what "still running" means and a job on its final
+// attempt is never marked dead while still genuinely executing.
+const DECK_JOB_LEASE_SECONDS = 900;
+
 let shouldPoll = false;
 const activeJobs = new Set<string>();
 
@@ -343,7 +349,7 @@ export async function startMatchDeckJobPolling(): Promise<void> {
 }
 
 export async function runMatchDeckJobSweepTick(): Promise<void> {
-	const swept = await sweepStaleDeckJobs();
+	const swept = await sweepStaleDeckJobs(DECK_JOB_LEASE_SECONDS);
 	if (Result.isError(swept)) {
 		log.error("match-deck-sweep-error", { error: swept.error.message });
 	} else if (swept.value.length > 0) {
@@ -353,7 +359,7 @@ export async function runMatchDeckJobSweepTick(): Promise<void> {
 		});
 	}
 
-	const dead = await markDeadDeckJobs();
+	const dead = await markDeadDeckJobs(DECK_JOB_LEASE_SECONDS);
 	if (Result.isError(dead)) {
 		log.error("match-deck-mark-dead-error", { error: dead.error.message });
 		return;
