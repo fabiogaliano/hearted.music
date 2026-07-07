@@ -206,9 +206,11 @@ describe("buildFirstWindowAndPromote", () => {
 			code: "w",
 			message: "lookup boom",
 		});
-		mockFindInFlightBuildProposalsJob.mockResolvedValue(
-			Result.err(lookupError),
-		);
+		// Only the step-0 lookup errors; the post-build re-check returns null so it
+		// doesn't fire its own capture and this test stays scoped to step 0.
+		mockFindInFlightBuildProposalsJob
+			.mockResolvedValueOnce(Result.err(lookupError))
+			.mockResolvedValueOnce(Result.ok(null));
 
 		const active = activeRpc();
 		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
@@ -227,6 +229,63 @@ describe("buildFirstWindowAndPromote", () => {
 		expect(erroredArg).toBe(lookupError);
 		expect(contextArg).toMatchObject({
 			operation: "match_deck_miss_in_flight_check",
+		});
+	});
+
+	// -------------------------------------------------------------------------
+	// Post-build re-check (fix pass 3, should-fix 1): a worker can claim the SAME
+	// build_proposals key AFTER the step-0 check but DURING the inline build. If it
+	// did, the handler must NOT promote its own re-invoke over a possibly-truncated
+	// subject set — it defers to the worker instead. The check fails open like
+	// step 0. findInFlightBuildProposalsJob is now called twice on the happy path.
+	// -------------------------------------------------------------------------
+
+	it("defers to the worker when a build_proposals job appears AFTER step 0 but before the re-invoke (post-build re-check)", async () => {
+		mockFindInFlightBuildProposalsJob
+			.mockResolvedValueOnce(Result.ok(null))
+			.mockResolvedValueOnce(Result.ok({ id: "job-2", status: "running" }));
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		expect(result.value).toEqual({
+			status: "miss",
+			reason: "no_ready_proposal",
+		});
+		// The inline build already ran (step 0 was clear), but the worker claimed the
+		// same key mid-build, so we defer instead of promoting our own re-invoke.
+		expect(mockBuildOneProposal).toHaveBeenCalledTimes(1);
+		expect(mockFindInFlightBuildProposalsJob).toHaveBeenCalledTimes(2);
+		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		// The best-effort full-build enqueue still runs (the deferred-to worker path).
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+	});
+
+	it("fails open on a post-build lookup error: still re-invokes, returns the active result, and traces the post-build check", async () => {
+		mockFindInFlightBuildProposalsJob
+			.mockResolvedValueOnce(Result.ok(null))
+			.mockResolvedValueOnce(
+				Result.err(
+					new DatabaseError({ code: "w", message: "post-build lookup boom" }),
+				),
+			);
+
+		const active = activeRpc();
+		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		// A post-build lookup failure must not block the request: fall through to the
+		// re-invoke exactly like step 0's fail-open.
+		expect(result.value).toBe(active);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
+		// Asserted via mock.calls (not toHaveBeenCalledWith): better-result errors
+		// implement Symbol.iterator and panic under vitest deep-equal.
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
+		const [, contextArg] = mockCaptureServerError.mock.calls[0];
+		expect(contextArg).toMatchObject({
+			operation: "match_deck_miss_post_build_check",
 		});
 	});
 

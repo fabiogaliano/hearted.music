@@ -37,14 +37,31 @@
  *      interleaving against some other concurrent writer) degrades to the miss
  *      result instead of propagating: the request path must never surface a
  *      500 for losing this race.
- *   2. RE-INVOKE start_or_resume_match_deck with the SAME visibilityConfigHash.
+ *   2. POST-BUILD RE-CHECK, then RE-INVOKE start_or_resume_match_deck with the
+ *      SAME visibilityConfigHash. A worker `build_proposals` job for this
+ *      (account, orientation) can be enqueued+claimed AFTER the step-0 check but
+ *      DURING the inline `buildOneProposal` above, mid-run against the SAME key:
+ *      this request flips its proposal `ready` while the worker sits between its
+ *      subject DELETE and re-INSERT, so promoting our own re-invoke here could
+ *      publish a zero/partial subject set into a DURABLE session — and because
+ *      promotion writes the match_review_session_snapshot ledger row,
+ *      append_sessions for the same (snapshot, hash) short-circuits on the
+ *      already-applied key and never backfills, so the truncated session would
+ *      persist until the next snapshot publish. So re-run
+ *      `findInFlightBuildProposalsJob` FIRST: if a job now exists, defer to the
+ *      worker exactly like step 0 (keep the best-effort enqueue, return the miss
+ *      unchanged — the caller maps it to `{status:"building"}` and the client's
+ *      bounded poll re-reads once the worker finishes); a lookup failure fails
+ *      OPEN (captured, then falls through to the re-invoke). Otherwise re-invoke:
  *      buildOneProposal derives its own hash from the same target filters + the
- *      same `nowMs` the caller hashed with, so branch-2 promotion normally
- *      finds the just-built ready proposal within this request — but this is
- *      NOT guaranteed: a filter change racing between the request's hash read
- *      and the builder's own filters read can skew the hash, producing a
- *      transient miss here that self-heals on the next entry (recorded in the
- *      decisions log).
+ *      same `nowMs` the caller hashed with, so branch-2 promotion normally finds
+ *      the just-built ready proposal within this request — but this is NOT
+ *      guaranteed: a filter change racing between the request's hash read and the
+ *      builder's own filters read can skew the hash, producing a transient miss
+ *      here that self-heals on the next entry (recorded in the decisions log).
+ *      The re-check shrinks the promotion window from "the whole inline build
+ *      duration" to "a job enqueued+claimed AND its upsert+DELETE completing
+ *      entirely inside the flip→re-check gap (a few ms)".
  *   3. Best-effort enqueue the full `build_proposals` (all presets) so the next
  *      entry after a preset change is a hit. A failure here never fails the
  *      request — the snapshot is durable and the read path self-heals.
@@ -166,7 +183,33 @@ export async function buildFirstWindowAndPromote(input: {
 		return Result.ok(MISS_RESULT);
 	}
 
-	// 2. Re-invoke: a ready proposal now exists for this exact hash → branch-2
+	// 2a. Post-build re-check: a worker build_proposals job for this (account,
+	//     orientation) can be enqueued+claimed AFTER the step-0 check but DURING
+	//     the inline buildOneProposal above, mid-run against the SAME key. If one
+	//     appeared, do NOT promote our own re-invoke — it could publish a
+	//     zero/partial subject set into a durable session while the worker is
+	//     between its subject DELETE and re-INSERT, and the snapshot-applied ledger
+	//     would then short-circuit any later backfill for the same (snapshot, hash)
+	//     until the next publish. Defer to the worker exactly like step 0. Fails
+	//     OPEN identically: a lookup DB error is captured and falls through to the
+	//     re-invoke rather than failing the request over a best-effort check.
+	const postBuildInFlight = await findInFlightBuildProposalsJob(
+		accountId,
+		orientation,
+	);
+	if (Result.isError(postBuildInFlight)) {
+		captureServerError(postBuildInFlight.error, {
+			area: "match_review_queue",
+			operation: "match_deck_miss_post_build_check",
+			accountId,
+			extra: { orientation, snapshotId },
+		});
+	} else if (postBuildInFlight.value !== null) {
+		await enqueueFullBuild();
+		return Result.ok(MISS_RESULT);
+	}
+
+	// 2b. Re-invoke: a ready proposal now exists for this exact hash → branch-2
 	//    promotion returns the active view.
 	const reinvoked = await callStartOrResumeMatchDeck(
 		accountId,
