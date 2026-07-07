@@ -66,6 +66,10 @@ export async function heartbeatDeckJob(
  * Terminalizes a job as completed. 'completed' is outside the idempotency
  * partial index's non-terminal set, so this frees the idempotency_key for a
  * future re-enqueue.
+ *
+ * Scoped to `status = "running"` (H1 belt-and-suspenders): a job the sweep
+ * mark-dead pass already terminalized to `dead` must not be resurrected to
+ * `completed` by a late-finishing handler.
  */
 export async function completeDeckJob(
 	jobId: string,
@@ -73,7 +77,8 @@ export async function completeDeckJob(
 	const { error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ status: "completed" })
-		.eq("id", jobId);
+		.eq("id", jobId)
+		.eq("status", "running");
 	if (error) return Result.err(dbErr(error));
 	return Result.ok(undefined);
 }
@@ -83,6 +88,10 @@ export async function completeDeckJob(
  * this only re-pends with a future available_at and clears the heartbeat. If the
  * job has exhausted max_attempts the claim guard skips it and mark_dead
  * terminalizes it on the next sweep.
+ *
+ * Scoped to `status = "running"` (H1 belt-and-suspenders): a job already
+ * dead-lettered must not be resurrected to `pending` by a late-finishing
+ * handler.
  */
 export async function deferDeckJob(
 	jobId: string,
@@ -98,27 +107,37 @@ export async function deferDeckJob(
 			available_at: availableAt,
 			heartbeat_at: null,
 		})
-		.eq("id", jobId);
+		.eq("id", jobId)
+		.eq("status", "running");
 	if (error) return Result.err(dbErr(error));
 	return Result.ok(undefined);
 }
 
 /** Reclaims running jobs whose heartbeat has gone stale (crashed worker). */
-export async function sweepStaleDeckJobs(): Promise<
-	Result<DeckJob[], DbError>
-> {
+export async function sweepStaleDeckJobs(
+	leaseSeconds: number,
+): Promise<Result<DeckJob[], DbError>> {
 	const { data, error } = await createAdminSupabaseClient().rpc(
 		"sweep_stale_match_review_deck_jobs",
-		{},
+		{ p_lease_seconds: leaseSeconds },
 	);
 	if (error) return Result.err(dbErr(error));
 	return Result.ok((data ?? []) as DeckJob[]);
 }
 
-/** Dead-letters jobs that have exhausted max_attempts. */
-export async function markDeadDeckJobs(): Promise<Result<DeckJob[], DbError>> {
+/**
+ * Dead-letters jobs that have exhausted max_attempts. `leaseSeconds` must
+ * match the value passed to `sweepStaleDeckJobs` (H1): a 'running' job only
+ * dead-letters once its heartbeat is older than the same lease sweep uses to
+ * reclaim it — otherwise a job on its final attempt could be marked dead
+ * while still genuinely executing.
+ */
+export async function markDeadDeckJobs(
+	leaseSeconds: number,
+): Promise<Result<DeckJob[], DbError>> {
 	const { data, error } = await createAdminSupabaseClient().rpc(
 		"mark_dead_match_review_deck_jobs",
+		{ p_lease_seconds: leaseSeconds },
 	);
 	if (error) return Result.err(dbErr(error));
 	return Result.ok((data ?? []) as DeckJob[]);
