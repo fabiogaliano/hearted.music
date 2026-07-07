@@ -801,7 +801,12 @@ router + deck server fns), so a real browser (e2e / manual) pass must verify:
 
 ---
 
-## ORCHESTRATION RESUME STATE (paused for session reset)
+## ORCHESTRATION RESUME STATE (paused for session reset) — RESOLVED
+
+> RESOLVED: this pause was resumed and ALL phases (1a–6) are now complete,
+> committed, and pushed. See "ORCHESTRATION COMPLETE" at the end of this file for
+> the final state + the consolidated pre-merge checklist. The snapshot below is
+> kept for history.
 
 Paused mid-Phase-4 at a safe, fully-pushed boundary. Read this to resume.
 
@@ -1286,3 +1291,96 @@ in this cloud env):
 - **Lag-proxy sanity** — confirm `job.created_at`-based `lag_ms` tracks real
   publish→ready / action→captured latency closely enough to alert on; if the poll
   pickup delay dominates, consider a dedicated publish-time source in a later pass.
+
+---
+
+## ORCHESTRATION COMPLETE — all phases landed
+
+All six landing-sequence phases (plan §12) are implemented, reviewed, and pushed
+to `claude/match-deck-read-model-orchestrate-kzd5xs` (base `main`). Every phase
+passed `bun run typecheck` + `bun run typecheck:worker` + full `bun run test` +
+`bun run check` at push time (pre-push hook). Final suite: 3267 tests pass, 18
+DB-gated integration suites skipped (no local Postgres in the cloud env).
+
+Commits (newest first):
+- `443f42e` phase 6 — ops (warm script, Smart Placement, §13 metrics)
+- `69231e7` phase 5 — delete legacy queue machinery + 2 sync-trigger rewires
+- `9c4340f` phase 4 — /match route cutover to the deck read model
+- `71ec019` phase 3 — deck server contracts
+- `dad5871` docs — mid-run resume checkpoint (now resolved)
+- `f9c2d94` phase 2 — worker deck-job builders + poll loop
+- `2985319` phase 1b — deck read/start/action RPCs
+- `bc976ba` phase 1a — deck read-model storage schema (pre-existing)
+
+Migrations added: `20260706000003`–`20260706000010` (proposal tables, session deck
+columns, deck-job table + claim/sweep/dead functions, `read_match_deck_card`,
+`start_or_resume_match_deck`, extended action RPCs, `enqueue_match_review_deck_job`).
+All additive — no legacy SQL object was dropped (a later cleanup migration drops
+the now-dead legacy RPCs after prod soak).
+
+### CONSOLIDATED LOCAL VERIFICATION REQUIRED (run before merge, on a machine with local Supabase)
+
+Nothing below could run in the cloud env (no Postgres). All are pre-merge gates.
+
+1. **Regenerate types**: `bun run gen:types`. This must (a) add the 4 new tables +
+   the new RPCs to `src/lib/data/database.types.ts`, and (b) let you DELETE the
+   temporary escape hatch `src/lib/data/deck-db-types.ts` and repoint its call
+   sites (`deck-jobs.ts`, `proposal-builder.ts`, `session-appender.ts`,
+   `card-materializer.ts`, `deck-read-queries.ts`, the warm script) to the plain
+   `createAdminSupabaseClient()`. Verify the real generated Row/Insert shapes match
+   what `deck-db-types.ts` declared (payload jsonb, nullable session_id/
+   heartbeat_at/resume_position).
+2. **Migration replay** from scratch (`supabase db reset` / `migration up`):
+   `20260706000003`→`0010` apply cleanly, incl. every `ON CONFLICT (idempotency_key)
+   WHERE status NOT IN ('completed','dead')` binding to the partial unique index, and
+   the `CREATE OR REPLACE` of the 4 action RPCs.
+3. **Full `bun run test` + e2e** against the local stack, incl. the DB-gated
+   integration suites that skip in cloud (`match-event-log.integration`, etc.), and
+   a browser/e2e pass over `/match` (NO full-page RTL test exists): cold entry hit,
+   cold entry miss (bounded first-window build + enqueue), preset change, filter
+   change, UTC-midnight hash rollover, mid-session publish, Previous/Next
+   navigation, each action type incl. optimistic dismiss-suggestion, hard reload
+   after each action, caught-up → CompletionScreen, building → no-context CTA.
+4. **The load-bearing hash check** (highest risk): confirm a normal cold entry is a
+   branch-2 HIT, not a miss — i.e. the request path's `computeVisibilityPolicyHash`
+   (from `resolveMinMatchScore` + `fetchTargetPlaylistFilters` + one `nowMs`)
+   reproduces byte-for-byte the `visibility_config_hash` the worker's proposal
+   builder wrote. A silent mismatch makes every entry take the (correct but slow)
+   miss path.
+5. **Parity / shadow-compare** (§12): the Phase-2 fixture parity suites
+   (`proposal-order-parity`, `seed-pair-parity`) already run in CI and pin
+   proposal subject order + seed pairs by construction (both the builder and the
+   deleted `appendSnapshotDelta` used the shared `deriveEligibleSubjects` seam).
+   NOTE: the plan's original "shadow-compare vs live `appendSnapshotDelta`" is
+   SUPERSEDED — `appendSnapshotDelta` was deleted in Phase 5, and parity is now
+   guaranteed by the shared seam + fixture suites rather than a runtime diff. If a
+   live diff is still wanted, run it against the pre-Phase-5 tag or diff the
+   proposal builder against the deck read path outputs.
+6. **Deck-job worker drain** end-to-end on the local stack: publish a snapshot →
+   `build_proposals` → chained `append_sessions` → `capture_ahead`; the `--dry-run`
+   then real `bun run warm:match-deck` (spot-check `counts.accounts` vs total
+   accounts-with-snapshot); sweep/mark-dead on a killed worker; idempotent
+   double-run safety (no worker fence — relies on upsert / ON CONFLICT / first-write-
+   wins capture).
+7. **Ops**: confirm Cloudflare Smart Placement (`wrangler.jsonc`) deploys and
+   measure the Worker→VPS latency delta; verify the PostHog events fire —
+   dashboards must key on `match_deck_action.{revision,action_type}` (ONE event
+   with properties), not the plan's literal `match_deck_revision`/`match_deck_action_type`
+   event names; verify the 5 Sentry captures + worker lag events fire.
+
+### Accepted residuals / follow-ups (recorded across the per-phase sections above)
+- Action RPCs kept `RETURNS TEXT`; the single-RPC rich-return optimization can fold
+  in now that `submitMatchDeckAction` is their sole caller (post-Phase-5).
+- Dead helpers `deriveUnresolvedIds`/`deriveCaughtUp` + `MatchReviewResult` in
+  `queue-helpers.ts` (no non-test consumer) deferred to a later cleanup.
+- Request-path `first_visible_match_ready` analytics not re-homed (covered by
+  `match_deck_build_lag` + `match_deck_hit` + `matching_setup_completed`);
+  `review_queue_appended` WAS re-homed to the worker.
+- Warm-script page size (1000) == PostgREST `max_rows` (1000): safe today +
+  matches repo convention; would silently under-warm if `max_rows` is lowered.
+- Worker lag metrics use `job.created_at` as the publish/action-time proxy
+  (includes poll-pickup + retry-backoff tails).
+- Deck-job `claim` intra-batch race at `p_limit>1` (safe at the poller's `p_limit=1`);
+  no worker-fencing column (idempotent handlers make double-run safe).
+
+Do NOT merge and do NOT open a PR unless the maintainer asks.
