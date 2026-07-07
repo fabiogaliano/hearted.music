@@ -1086,3 +1086,203 @@ orientation. (3) Dropped dead `mockSyncActiveQueue` scaffolding + the
 `match-review-queue.functions.test.ts` (no surviving consumer). Accepted
 doc-drift NIT: some stale WHY-comments still name deleted symbols — parity notes
 only, no runtime impact, left as-is.
+
+## Phase 6 — Ops
+
+Final phase: the warm/backfill script, Cloudflare Smart Placement, and the
+Sentry + PostHog + worker-lag metrics (plan §12.6 + §13). No DB objects, no
+schema, no route/component changes — a script, one wrangler line, and metric
+call sites at existing seams. Verified STATICALLY (no local Postgres): `bun run
+typecheck` (0), `typecheck:worker` (0), full `bun run test` (282 files / 3267
+tests pass, 18 DB-gated suites skip), `bun run check` (0).
+
+### 1. Warm/backfill script (`scripts/ops/warm-match-deck-proposals.ts`)
+
+- **ENQUEUE, not direct build.** The script enqueues a `build_proposals` deck job
+  (both orientations) per account via `enqueueDeckJob`, keyed
+  `build:{account}:{orientation}:{snapshot}` with payload `{snapshotId}` — the
+  EXACT trigger every other build site uses (execute.ts R2, match-deck-miss-path,
+  the playlists filter rewire). Chosen over calling
+  `buildProposalsForAccountOrientation` directly because (a) that is the
+  established "trigger a build" pattern across the codebase, (b) the running
+  worker already chains `append_sessions` after each build (the script would have
+  to replicate that), and (c) enqueue is a fast metadata insert — the script
+  doesn't hold DB connections through the heavy per-preset derivation. Assumes the
+  prod worker is running (it is). Idempotent by construction: the enqueue RPC's
+  `ON CONFLICT (idempotency_key) WHERE status NOT IN ('completed','dead') DO
+  NOTHING` means a re-run — or a race with the worker's own publish-triggered
+  enqueue — is a benign no-op (counted as `deduped`).
+- **Account iteration avoids `.in()` on a DB-derived id set.** There is no
+  `published` flag on `match_snapshot` — a row IS a published snapshot — so
+  "accounts with a published snapshot" = accounts with ≥1 `match_snapshot` row,
+  latest = newest `created_at` (as `getLatestMatchSnapshot` does). The script
+  streams `match_snapshot` ordered `(account_id ASC, created_at DESC, id DESC)`
+  via `.range()` offset pages (`iterateLatestSnapshotPerAccount`, 1000/page,
+  selecting only `account_id,id,created_at`) and treats the FIRST row seen per
+  account as its latest, skipping the rest. It never collects an id set and feeds
+  it back as an `.in()` URL filter, and never touches a snapshotless account. No
+  `chunkedRead` (that is only for externally-sourced id lists). Residual: offset
+  pagination under concurrent snapshot writes could skip/dupe an account — a dupe
+  is a harmless idempotent no-op and a skip self-heals on the account's next deck
+  read; noted for the live pass.
+- **`--dry-run`** iterates + counts what WOULD be enqueued (accounts × 2
+  orientations) writing nothing; **per-account error isolation** — `warmAccount`
+  turns an `enqueueDeckJob` `Result.err` into a logged `failed` count and
+  continues, and an unexpected per-account throw is caught in `main`'s loop
+  (counts both orientations failed) so one bad account never aborts the run.
+  `--help` prints usage and exits. Conventions (colors, `success`/`error`/`info`,
+  `import.meta.main` guard, arg parse) mirror `grant-liked-song-access.ts`.
+- **package.json alias** `"warm:match-deck": "bun scripts/ops/warm-match-deck-proposals.ts"`,
+  sibling to `reset:onboarding` / `grant:liked-access`.
+- **Static-verification note:** the `--help`/`--dry-run` runtime path can't be
+  exercised in this cloud env — `@/env` validation throws at import when the
+  Supabase/auth env vars are unset (identical behavior for the existing
+  `grant-liked-song-access.ts --help`), before `parseArgs` runs. The script is
+  verified by `bun run typecheck` (tsconfig `include: **/*.ts` covers `scripts/`;
+  confirmed by injecting a temp type error, which typecheck caught).
+
+### 2. Smart Placement (`wrangler.jsonc`)
+
+Added top-level `"placement": { "mode": "smart" }` (with a WHY comment, JSONC
+valid) between `main` and `routes`. Moves the Worker's execution near the origin
+it talks to most — the self-hosted Postgres on the VPS — cutting deck-read
+round-trip latency (plan §1/§15). No other config touched.
+
+### 3. Metrics inventory (§13)
+
+All reuse the EXISTING helpers — no new metrics layer. Server (Cloudflare) uses
+`captureProductEventBestEffort` (`@/lib/observability/capture-product-event`,
+detached + Sentry-routed, never throws) for PostHog and `captureServerError` →
+`@sentry/cloudflare` for Sentry; the worker (Bun) uses `captureWorkerEvent`
+(`src/worker/posthog-capture.ts`, prod-only no-op otherwise) for PostHog and
+`@sentry/bun` for Sentry.
+
+**Sentry captures** (of the 5 enumerated points, 4 were ALREADY covered by the
+Phase-2/3 `reportDeckError`/dead-letter scaffolding; only (a) was genuinely
+missing and is newly added):
+
+- **(a) proposal build failure — NEWLY ADDED.** `poll-match-deck-jobs.ts:145`
+  `Sentry.captureException` (`@sentry/bun`) in the `build_proposals`/`repair` arm
+  when `buildProposalsForAccountOrientation` errors, tags
+  `area=match_deck, operation=build_proposals, runtime=worker`. **Placed at the
+  worker dispatch boundary, NOT inside `proposal-builder.ts`** (approximation,
+  recorded): the builder is shared domain code imported by BOTH the `@sentry/bun`
+  worker and the `@sentry/cloudflare` server (via the miss path), so it can't
+  import either SDK without cross-contaminating a bundle. The server-side
+  invocation (`buildOneProposal` in the miss path) is already captured by
+  `captureServerError` at `resolve_match_deck_view_miss` (below), so both call
+  sites are covered.
+- **(b) promotion / miss-path build failure — ALREADY COVERED.** The
+  `callStartOrResumeMatchDeck` error path is captured at
+  `match-deck.functions.ts:533` (`resolve_match_deck_view`); the
+  `buildFirstWindowAndPromote` error propagates to `resolveMatchDeckView` and is
+  captured at `:585` (`resolve_match_deck_view_miss`); the best-effort enqueue
+  failure inside `buildFirstWindowAndPromote` is captured at
+  `match-deck-miss-path.ts:91` (`match_deck_miss_build_enqueue`). No change.
+- **(c) deck action transaction failure — ALREADY COVERED.** Every arm of
+  `submitMatchDeckAction` already calls `reportDeckError(..., "submit_match_deck_action")`
+  (`match-deck.functions.ts:870/889/907/924`). No change.
+- **(d) on-demand materialize failure — ALREADY COVERED.** The materialize and
+  recapture DB errors are captured at `match-deck.functions.ts:649`
+  (`read_match_deck_card_materialize`) and `:712`
+  (`read_match_deck_card_recapture`). The "cold path fired / recovered?" SIGNAL is
+  the new PostHog `match_deck_materialize_on_read` (below), which is the right
+  channel for a non-error signal. No new Sentry.
+- **(e) deck job dead-lettering — ALREADY COVERED.** `poll-match-deck-jobs.ts:368`
+  `Sentry.captureMessage("match deck job dead-lettered: {kind}", "error")` in the
+  sweep tick where `markDeadDeckJobs` returns rows (Phase 2). No change.
+
+**PostHog events** (all server-side via `captureProductEventBestEffort`, distinct
+id = account id, matching the `playlists.functions.ts` precedent):
+
+- **`match_deck_hit`** — `match-deck.functions.ts:544` (`source:"active"`) and
+  `:596` (`source:"promoted"`), fired from `resolveMatchDeckView` ONLY on a genuine
+  entry. Props: `orientation, source, revision, remaining`.
+- **`match_deck_miss_reason`** — `:567` (`reason:"no_snapshot"`) and `:603`
+  (`reason:"promotion_incomplete"`). Props: `orientation, reason`.
+- **`match_deck_action`** (single event carrying BOTH signals the brief lists as
+  `match_deck_revision` + `match_deck_action_type`) — `:946`, in
+  `submitMatchDeckAction` after the read-after-write. Props: `orientation,
+  action_type, action_status, revision` (`revision` from the fresh view, `null`
+  when the view is caught-up/building). **Interpretation recorded:** the brief's
+  `match_deck_revision` + `match_deck_action_type` are wired as two PROPERTIES on
+  one per-action event rather than two separate events (one action → one event;
+  firing two events per action would double-count actions).
+- **`match_deck_materialize_on_read`** — `:739`, in `resolveDeckCard` when the
+  R-E cold path fires (`not_captured` → on-demand materialize). Props: `itemId,
+  recovered` (whether the single re-read cleared `not_captured`), `orientation`.
+  The `resolveDeckCard` tail was refactored to a single result variable so the
+  event fires exactly once with `recovered` known.
+- **Entry-metric gating:** `resolveMatchDeckView` gained an `emitEntryMetrics`
+  flag (default `false`); `startOrResumeMatchDeck` passes `true`,
+  `submitMatchDeckAction`'s read-after-write leaves it `false` — so its ~always-a-hit
+  internal read doesn't inflate `match_deck_hit`. The action path emits only
+  `match_deck_action`.
+
+**Worker lag metrics** (via `captureWorkerEvent`, distinct id = account id):
+
+- **`match_deck_build_lag`** — `poll-match-deck-jobs.ts:163`, emitted after a
+  successful `build_proposals`/`repair`. `lag_ms = now - job.created_at`.
+- **`match_deck_capture_lag`** — `:239`, emitted after a successful
+  `capture_ahead`. `lag_ms = now - job.created_at`.
+- **Lag-source approximation (recorded):** `job.created_at` is the PROXY for the
+  true anchors. A `build_proposals` job is enqueued immediately after publish
+  (execute.ts R2 / miss / filter rewire), so `created_at ≈ snapshot publish
+  time`; a `capture_ahead` job is enqueued in-txn by the deck action, so
+  `created_at ≈ action time`. This measures enqueue→ready and action→captured,
+  which include the poll pickup delay — the best cheap proxy without a new
+  timestamp column or a snapshot-publish-time read per job (`emitDeckJobLag`
+  computes it inline; both live in the worker, which has `job.created_at` +
+  `job.account_id`). `captureWorkerEvent` no-ops outside production, so these are
+  silent in dev/test.
+
+### Phase-5 analytics follow-up (emitQueueAppendEvents)
+
+Phase 5 (R3) deleted `emitQueueAppendEvents`, dropping the request-path
+`review_queue_appended` and `first_visible_match_ready` PostHog events (there is
+no request-path append anymore). Resolution:
+
+- **`review_queue_appended` — WIRED worker-side.** `poll-match-deck-jobs.ts:213`
+  emits it via `captureWorkerEvent` in the `append_sessions` arm when the outcome
+  is `applied` with `appendedCount > 0`. Props: `orientation, snapshot_id,
+  appended_count`. This is the direct analog (the worker now owns the append and
+  carries `appendedCount`), cheap, and restores the appended-count signal. The
+  semantics shift from request-scoped to publish-scoped, which is correct for the
+  new model.
+- **`first_visible_match_ready` — ACCEPTED CHANGE (not re-added).** Recomputing a
+  precise per-account "first-ever visible match ready" timestamp worker-side would
+  need new plumbing (a persistent "has this account ever had a non-empty
+  build/append" flag) — exactly the kind of new infra the brief says to avoid. Its
+  intent is now better served by existing/new signals: the `matching_setup_completed`
+  anchor still fires (`playlists.functions.ts`), and readiness is observable via
+  `match_deck_build_lag` (publish→proposals ready) + `match_deck_hit`
+  (source=active|promoted, the first successful entry). Recorded as an accepted
+  analytics change; re-add only if a north-star dashboard specifically needs the
+  standalone timestamp.
+
+### LOCAL VERIFICATION REQUIRED (Phase 6)
+
+Deferred to a machine with prod/staging access (no local Postgres / live worker
+in this cloud env):
+
+- **Run the warm script** against staging then prod: `bun run warm:match-deck
+  --dry-run` (confirm the account/enqueue counts look right and the snapshot
+  stream terminates), then `bun run warm:match-deck`; confirm the worker drains
+  the `build_proposals` jobs (both orientations), chains `append_sessions`, and a
+  cold account's first deck entry is now a HIT (no in-request miss build). Re-run
+  and confirm idempotent no-op (`deduped` count, no duplicate proposals). Confirm
+  the offset-pagination account stream covers the full base (spot-check total
+  accounts-with-snapshot vs `counts.accounts`).
+- **Smart Placement deploys** — `wrangler deploy` accepts `placement.mode:"smart"`
+  and the CF dashboard shows placement active; measure the deck-read latency delta
+  (the reason for the change) once traffic warms the placement.
+- **Metrics fire in a live pass** — in prod PostHog confirm `match_deck_hit`
+  (both sources), `match_deck_miss_reason`, `match_deck_action` (revision +
+  action_type populated), `match_deck_materialize_on_read` (recovered true/false),
+  `match_deck_build_lag` / `match_deck_capture_lag` (sane `lag_ms`), and
+  `review_queue_appended` (appended_count) all arrive with account distinct ids;
+  in Sentry confirm the new worker `build_proposals` capture fires on an induced
+  build failure and doesn't double-report against the miss-path capture.
+- **Lag-proxy sanity** — confirm `job.created_at`-based `lag_ms` tracks real
+  publish→ready / action→captured latency closely enough to alert on; if the poll
+  pickup delay dominates, consider a dedicated publish-time source in a later pass.

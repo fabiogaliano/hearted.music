@@ -46,6 +46,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
+import { captureWorkerEvent } from "./posthog-capture";
 
 // Bounded retry backoff for a deferred job; attempts were already consumed at
 // claim, so mark_dead terminalizes after max_attempts regardless of this delay.
@@ -72,6 +73,32 @@ function payloadSnapshotId(payload: Json): string | null {
 		if (typeof value === "string") return value;
 	}
 	return null;
+}
+
+/**
+ * Worker lag metric (§13). `job.created_at` is set when the job is enqueued —
+ * for build_proposals that is immediately after snapshot publish (execute.ts R2
+ * / miss / filter rewire), and for capture_ahead it is in-txn with the deck
+ * action — so `now - created_at` is a close proxy for publish→ready and
+ * action→captured latency. Best-effort: captureWorkerEvent already no-ops
+ * outside production, and a metric must never fail the settled job.
+ */
+function emitDeckJobLag(
+	event: string,
+	job: DeckJob,
+	properties: Record<string, unknown>,
+): void {
+	const createdMs = Date.parse(job.created_at);
+	if (Number.isNaN(createdMs)) return;
+	captureWorkerEvent({
+		distinctId: job.account_id,
+		event,
+		properties: {
+			lag_ms: Math.max(0, Date.now() - createdMs),
+			kind: job.kind,
+			...properties,
+		},
+	});
 }
 
 async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
@@ -109,7 +136,31 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 				orientation,
 				snapshotId,
 			});
-			if (Result.isError(built)) return built;
+			if (Result.isError(built)) {
+				// Explicit capture of a proposal-build failure. The builder is shared
+				// domain code that can't import a Sentry SDK without cross-contaminating
+				// the CF and worker bundles, so the capture lives here at the worker
+				// dispatch boundary; the request-path invocation (the miss handler) is
+				// already captured by captureServerError in resolveMatchDeckView.
+				Sentry.captureException(built.error, {
+					tags: {
+						area: "match_deck",
+						operation: "build_proposals",
+						runtime: "worker",
+						kind: job.kind,
+					},
+					extra: {
+						accountId: job.account_id,
+						jobId: job.id,
+						orientation,
+						snapshotId,
+					},
+				});
+				return built;
+			}
+
+			// Lag metric: publish → proposals ready.
+			emitDeckJobLag("match_deck_build_lag", job, { orientation, snapshotId });
 
 			// R2: chain append_sessions once proposals are ready. Idempotency key is
 			// per-snapshot so a rebuild re-enqueues the same append at most once.
@@ -152,6 +203,21 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 					}),
 				);
 			}
+			// Worker-side replacement for the deleted request-path
+			// `review_queue_appended` (Phase 5 removed emitQueueAppendEvents with the
+			// synchronous append). Emit only when items actually landed so the
+			// appended_count signal survives the move to the worker.
+			if (outcome.value.kind === "applied" && outcome.value.appendedCount > 0) {
+				captureWorkerEvent({
+					distinctId: job.account_id,
+					event: "review_queue_appended",
+					properties: {
+						orientation,
+						snapshot_id: snapshotId,
+						appended_count: outcome.value.appendedCount,
+					},
+				});
+			}
 			return Result.ok(undefined);
 		}
 
@@ -160,13 +226,18 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 			if (!job.session_id) return Result.ok(undefined);
 			const resumeResult = await readSessionResumePosition(job.session_id);
 			if (Result.isError(resumeResult)) return resumeResult;
-			return captureAheadForSession({
+			const captured = await captureAheadForSession({
 				accountId: job.account_id,
 				sessionId: job.session_id,
 				orientation,
 				fromPosition: resumeResult.value ?? 0,
 				window: CAPTURE_AHEAD_WINDOW,
 			});
+			if (Result.isError(captured)) return captured;
+
+			// Lag metric: action → next-window captured.
+			emitDeckJobLag("match_deck_capture_lag", job, { orientation });
+			return Result.ok(undefined);
 		}
 
 		default:
