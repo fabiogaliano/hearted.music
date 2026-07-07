@@ -1373,6 +1373,14 @@ Nothing below could run in the cloud env (no Postgres). All are pre-merge gates.
   in now that `submitMatchDeckAction` is their sole caller (post-Phase-5).
 - Dead helpers `deriveUnresolvedIds`/`deriveCaughtUp` + `MatchReviewResult` in
   `queue-helpers.ts` (no non-test consumer) deferred to a later cleanup.
+  RESOLVED (cleanup pass): removed the dead exports `deriveUnresolvedIds`,
+  `deriveCaughtUp`, `nextItemIdAfterResolved`, and `shouldBootstrapReadyQueue`
+  from `queue-helpers.ts` plus their `describe` blocks, and deleted the
+  now-orphaned `MatchReviewResult` interface (and its `MatchReviewSubject`
+  import) from `match-review-queue.functions.ts`. Kept `resolveCurrentItemId`,
+  `countAppendedFromTotal`, `deriveProgressIndex`, `deriveEmptyStateReason`,
+  `shouldOfferLoosenStrictness`, and the `Reason` type — all still consumed by
+  `match.tsx` / `MatchingEmptyState`.
 - Request-path `first_visible_match_ready` analytics not re-homed (covered by
   `match_deck_build_lag` + `match_deck_hit` + `matching_setup_completed`);
   `review_queue_appended` WAS re-homed to the worker.

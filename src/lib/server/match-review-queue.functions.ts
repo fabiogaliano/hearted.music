@@ -19,7 +19,6 @@ import { deriveSuggestionNextCursor } from "@/lib/domains/taste/match-review-que
 import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
-	MatchReviewSubject,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -114,29 +113,6 @@ export type MatchReviewItemRead =
 			itemId: string;
 			message: string;
 	  };
-
-export interface MatchReviewResult {
-	sessionId: string;
-	items: Array<{
-		id: string;
-		position: number;
-		state: string;
-		subject: MatchReviewSubject;
-		sourceSnapshotId: string;
-	}>;
-	total: number;
-	/** True when every item is resolved — derived from queue state, not null song. */
-	caughtUp: boolean;
-	/**
-	 * Entitled, undecided review subjects (songs in song mode, playlists in
-	 * playlist mode) whose only matches sit below the user's strictness bar. Only
-	 * computed on the caught-up path (where the empty state needs it to choose
-	 * between the "loosen strictness" nudge and "nothing surfaced"); 0 otherwise.
-	 * Orientation-aware so the playlist-mode empty state counts playlists, not
-	 * songs (A7, H9).
-	 */
-	hiddenReviewItemCount: number;
-}
 
 /**
  * Ownership read that preserves the miss-vs-error distinction. `Result.ok(null)`
