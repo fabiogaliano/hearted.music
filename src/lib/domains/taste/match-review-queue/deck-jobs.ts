@@ -147,6 +147,31 @@ export async function markDeadDeckJobs(
 	return Result.ok((data ?? []) as DeckJob[]);
 }
 
+/**
+ * Looks up an in-flight (pending or running) `build_proposals` job for this
+ * (account, orientation) — the request-path miss handler (match-deck-miss-path.ts,
+ * P0 race fix) uses this to defer to the worker instead of running the same
+ * five-call, non-transactional build concurrently with it. A plain `.eq()`/`.in()`
+ * lookup on the job table's own columns, not a DB-derived id set re-entering as
+ * an `.in()` filter.
+ */
+export async function findInFlightBuildProposalsJob(
+	accountId: string,
+	orientation: string,
+): Promise<Result<DeckJob | null, DbError>> {
+	const { data, error } = await createAdminSupabaseClient()
+		.from("match_review_deck_job")
+		.select("*")
+		.eq("account_id", accountId)
+		.eq("orientation", orientation)
+		.eq("kind", "build_proposals")
+		.in("status", ["pending", "running"])
+		.limit(1)
+		.maybeSingle();
+	if (error) return Result.err(dbErr(error));
+	return Result.ok(data);
+}
+
 export interface EnqueueDeckJobInput {
 	accountId: string;
 	orientation: string;

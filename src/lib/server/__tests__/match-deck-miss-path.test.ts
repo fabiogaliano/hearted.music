@@ -12,6 +12,7 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 const mockBuildOneProposal = vi.fn();
 const mockCallStartOrResumeMatchDeck = vi.fn();
 const mockEnqueueDeckJob = vi.fn();
+const mockFindInFlightBuildProposalsJob = vi.fn();
 const mockCaptureServerError = vi.fn();
 
 vi.mock("@/lib/domains/taste/match-review-queue/proposal-builder", () => ({
@@ -25,6 +26,8 @@ vi.mock("@/lib/domains/taste/match-review-queue/deck-read-queries", () => ({
 
 vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
 	enqueueDeckJob: (...a: unknown[]) => mockEnqueueDeckJob(...a),
+	findInFlightBuildProposalsJob: (...a: unknown[]) =>
+		mockFindInFlightBuildProposalsJob(...a),
 }));
 
 vi.mock("@/lib/observability/capture-server-error", () => ({
@@ -79,6 +82,7 @@ beforeEach(() => {
 	mockBuildOneProposal.mockResolvedValue(Result.ok(undefined));
 	mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(activeRpc()));
 	mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
+	mockFindInFlightBuildProposalsJob.mockResolvedValue(Result.ok(null));
 });
 
 describe("buildFirstWindowAndPromote", () => {
@@ -164,6 +168,102 @@ describe("buildFirstWindowAndPromote", () => {
 
 		if (!Result.isError(result)) throw new Error("expected err");
 		expect(result.error).toBe(rpcError);
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+	});
+
+	// -------------------------------------------------------------------------
+	// P0 race fix (verification pass 2): the miss handler must never run
+	// buildOneProposal concurrently with a worker already building the same
+	// (account, orientation) key, and must never surface a 500 for losing a
+	// residual race — both degrade to the RPC's own miss shape.
+	// -------------------------------------------------------------------------
+
+	it("defers to the worker and skips the inline build when a build_proposals job is already in flight", async () => {
+		mockFindInFlightBuildProposalsJob.mockResolvedValue(
+			Result.ok({ id: "job-1", status: "pending" }),
+		);
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		expect(result.value).toEqual({
+			status: "miss",
+			reason: "no_ready_proposal",
+		});
+		expect(mockFindInFlightBuildProposalsJob).toHaveBeenCalledWith(
+			"acct-1",
+			"playlist",
+		);
+		// No racing build, and no re-invoke (nothing changed to promote).
+		expect(mockBuildOneProposal).not.toHaveBeenCalled();
+		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		// The best-effort full-build enqueue still runs.
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+	});
+
+	it("builds inline when the in-flight lookup itself fails (fails open) and traces the lookup error", async () => {
+		const lookupError = new DatabaseError({
+			code: "w",
+			message: "lookup boom",
+		});
+		mockFindInFlightBuildProposalsJob.mockResolvedValue(
+			Result.err(lookupError),
+		);
+
+		const active = activeRpc();
+		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		expect(result.value).toBe(active);
+		expect(mockBuildOneProposal).toHaveBeenCalledTimes(1);
+		// Asserted via mock.calls (not toHaveBeenCalledWith): better-result's
+		// TaggedError/Err implement Symbol.iterator for Result.gen, which panics
+		// if vitest's deep-equal driving that iterator to completion when the
+		// error instance is passed straight into a matcher.
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
+		const [erroredArg, contextArg] = mockCaptureServerError.mock.calls[0];
+		expect(erroredArg).toBe(lookupError);
+		expect(contextArg).toMatchObject({
+			operation: "match_deck_miss_in_flight_check",
+		});
+	});
+
+	it("degrades a unique_violation from buildOneProposal to the miss result instead of throwing", async () => {
+		const raceError = new DatabaseError({
+			code: "23505",
+			message: "duplicate key value violates unique constraint",
+		});
+		mockBuildOneProposal.mockResolvedValue(Result.err(raceError));
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		expect(result.value).toEqual({
+			status: "miss",
+			reason: "no_ready_proposal",
+		});
+		// The loser never re-invokes (nothing new to promote) but still traces
+		// the race and keeps the best-effort full-build enqueue.
+		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
+		const [erroredArg, contextArg] = mockCaptureServerError.mock.calls[0];
+		expect(erroredArg).toBe(raceError);
+		expect(contextArg).toMatchObject({
+			operation: "match_deck_miss_build_race",
+		});
+	});
+
+	it("still propagates a non-unique_violation build error (root cause, not a race loss)", async () => {
+		const buildError = new DatabaseError({ code: "other", message: "boom" });
+		mockBuildOneProposal.mockResolvedValue(Result.err(buildError));
+
+		const result = await buildFirstWindowAndPromote(INPUT);
+
+		if (!Result.isError(result)) throw new Error("expected err");
+		expect(result.error).toBe(buildError);
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 });
