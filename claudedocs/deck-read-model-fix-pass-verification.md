@@ -274,9 +274,12 @@ Needs correction:
 - Follow-up 1's framing ("not a live deadlock … worth a dedicated SQL fix
   later") was too soft; the cold-entry defect in N1 was real, though it is now
   patched at HEAD.
-- The earlier "git status is clean" note was true at review time only; the
-  working tree is now intentionally dirty with the follow-up fixes and this doc
-  update, and the branch remains unpushed.
+- The earlier "git status is clean" note was true at review time only; by the
+  time this doc's follow-up fixes landed the tree was transiently dirty with
+  those changes. As of the subsequent fix pass (P2, 2026-07-07) the tree is
+  clean again (everything committed): the work through this doc's own commit
+  was pushed to `origin`, and a further round of fix-pass-2 commits (P2.1,
+  P2.3–P2.5) sits local and unpushed on top, per the no-push contract.
 
 ## 5. GPT review — what's real (validity at HEAD)
 
