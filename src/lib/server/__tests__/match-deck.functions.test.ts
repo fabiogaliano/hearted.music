@@ -474,6 +474,55 @@ describe("mapStartOrResumeToView", () => {
 });
 
 // ---------------------------------------------------------------------------
+// captureUnexpectedCardShape — driven through mapStartOrResumeToView's call site
+// (P1.1: the capture lives at the call site, not in the pure mapper). captureServerError
+// funnels to Sentry.captureException, so the mocked captureException is the seam.
+// ---------------------------------------------------------------------------
+
+describe("mapStartOrResumeToView drift capture (captureUnexpectedCardShape)", () => {
+	it("captures a ready card with no song/playlist subject and maps it to the retryable-error fallback", () => {
+		const rpc = activeStartRpc({
+			status: "ready",
+		} as ReadMatchDeckCardRpcResult);
+
+		const view = mapStartOrResumeToView(rpc, 8);
+
+		expect(view.cards.current?.presentation.status).toBe("retryable-error");
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		expect(mockCaptureException.mock.calls[0][1]).toMatchObject({
+			tags: { operation: "map_read_deck_card_to_item_read" },
+			extra: { itemId: "item-1", status: "ready" },
+		});
+	});
+
+	it("captures an unknown presentation status but the mapper still returns (retryable-error)", () => {
+		const rpc = activeStartRpc({
+			status: "renamed",
+		} as unknown as ReadMatchDeckCardRpcResult);
+
+		const view = mapStartOrResumeToView(rpc, 8);
+
+		expect(view.cards.current?.presentation.status).toBe("retryable-error");
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		expect(mockCaptureException.mock.calls[0][1]).toMatchObject({
+			tags: { operation: "map_read_deck_card_to_item_read" },
+			extra: { itemId: "item-1", status: "renamed" },
+		});
+	});
+
+	it("does NOT capture on not_captured (a known status the mapper handles as its cold path)", () => {
+		const rpc = activeStartRpc({
+			status: "not_captured",
+		} as ReadMatchDeckCardRpcResult);
+
+		const view = mapStartOrResumeToView(rpc, 8);
+
+		expect(view.cards.current?.presentation.status).toBe("retryable-error");
+		expect(mockCaptureException).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
 // startOrResumeMatchDeck — active / miss branches
 // ---------------------------------------------------------------------------
 
