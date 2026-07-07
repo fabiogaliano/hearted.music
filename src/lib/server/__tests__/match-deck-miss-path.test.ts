@@ -112,7 +112,7 @@ describe("buildFirstWindowAndPromote", () => {
 			accountId: "acct-1",
 			orientation: "playlist",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:playlist:snap-1",
+			idempotencyKey: "build:acct-1:playlist:snap-1:vc_playlist_0.5_rtf",
 			payload: { snapshotId: "snap-1" },
 		});
 	});

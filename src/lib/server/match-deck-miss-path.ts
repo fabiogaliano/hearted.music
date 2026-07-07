@@ -84,7 +84,7 @@ export async function buildFirstWindowAndPromote(input: {
 		accountId,
 		orientation,
 		kind: "build_proposals",
-		idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}`,
+		idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${visibilityConfigHash}`,
 		payload: { snapshotId },
 	});
 	if (Result.isError(enqueued)) {

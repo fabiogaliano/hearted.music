@@ -19,6 +19,7 @@ const {
 	mockGetLatestMatchSnapshot,
 	mockCaptureWithWaitUntil,
 	mockCaptureServerError,
+	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -32,6 +33,7 @@ const {
 	mockGetLatestMatchSnapshot: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 	mockCaptureServerError: vi.fn(),
+	mockResolveVisibilityConfigHash: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -101,6 +103,14 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 		mockGetLatestMatchSnapshot(...args),
 }));
 
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/visibility-config-hash",
+	() => ({
+		resolveVisibilityConfigHash: (...args: unknown[]) =>
+			mockResolveVisibilityConfigHash(...args),
+	}),
+);
+
 // parseSaveMatchFilters uses isLanguageCatalogCode; we do NOT mock schemas.ts
 // so the strict validator runs against real catalog logic. Language tests only
 // use known-good codes ("en") or omit the languages field entirely.
@@ -165,6 +175,16 @@ describe("savePlaylistMatchConfig", () => {
 		);
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
+		mockResolveVisibilityConfigHash.mockImplementation(
+			(_accountId: string, orientation: string) =>
+				Promise.resolve(
+					Result.ok({
+						hash: `vc_test_${orientation}`,
+						minScore: 0.5,
+						policy: {},
+					}),
+				),
+		);
 	});
 
 	// ── Ownership ────────────────────────────────────────────────────────────
@@ -421,14 +441,14 @@ describe("savePlaylistMatchConfig", () => {
 			accountId: "acct-1",
 			orientation: "song",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:song:snap-1",
+			idempotencyKey: "build:acct-1:song:snap-1:vc_test_song",
 			payload: { snapshotId: "snap-1" },
 		});
 		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
 			accountId: "acct-1",
 			orientation: "playlist",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:playlist:snap-1",
+			idempotencyKey: "build:acct-1:playlist:snap-1:vc_test_playlist",
 			payload: { snapshotId: "snap-1" },
 		});
 	});

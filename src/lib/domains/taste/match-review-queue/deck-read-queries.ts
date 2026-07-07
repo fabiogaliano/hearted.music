@@ -148,11 +148,18 @@ function rpcError(error: { code?: string; message: string }): DbError {
  * /match entry. `visibilityConfigHash` is computed in TS (as resume does today)
  * so a ready proposal for the exact policy is found; `window` bounds the current
  * and next card suggestion lists.
+ *
+ * `visibilityConfigHash` accepts `null` for the M10 skip-hash-computation probe:
+ * branch 1 (active session) never reads p_visibility_config_hash, so a null
+ * probe is safe there; branch 2's exact-match filter never matches a null hash,
+ * so a null probe is guaranteed to report `status: "miss"` when there is no
+ * active session, correctly forcing the caller to fall back to computing the
+ * real hash.
  */
 export async function callStartOrResumeMatchDeck(
 	accountId: string,
 	orientation: MatchOrientation,
-	visibilityConfigHash: string,
+	visibilityConfigHash: string | null,
 	window?: number,
 ): Promise<Result<StartOrResumeMatchDeckRpcResult, DbError>> {
 	const { data, error } = await createAdminSupabaseClient().rpc(
@@ -160,7 +167,11 @@ export async function callStartOrResumeMatchDeck(
 		{
 			p_account_id: accountId,
 			p_orientation: orientation,
-			p_visibility_config_hash: visibilityConfigHash,
+			// The generated Args type has no way to express "TEXT, nullable at the SQL
+			// level" (codegen types every function TEXT param as non-null `string`),
+			// but the RPC itself is happy to receive NULL here — cast to bridge that
+			// gap rather than widen the generated type.
+			p_visibility_config_hash: visibilityConfigHash as string,
 			p_window: window ?? undefined,
 		},
 	);

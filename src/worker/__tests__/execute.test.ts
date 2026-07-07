@@ -12,11 +12,13 @@ const {
 	mockCaptureWorkerEvent,
 	mockSentryCapture,
 	mockEnqueueDeckJob,
+	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
 	mockCaptureWorkerEvent: vi.fn(),
 	mockSentryCapture: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
+	mockResolveVisibilityConfigHash: vi.fn(),
 }));
 
 vi.mock("@sentry/bun", () => ({
@@ -26,6 +28,14 @@ vi.mock("@sentry/bun", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
 	enqueueDeckJob: (...args: unknown[]) => mockEnqueueDeckJob(...args),
 }));
+
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/visibility-config-hash",
+	() => ({
+		resolveVisibilityConfigHash: (...args: unknown[]) =>
+			mockResolveVisibilityConfigHash(...args),
+	}),
+);
 
 vi.mock("@/lib/workflows/match-snapshot-refresh/orchestrator", () => ({
 	executeMatchSnapshotRefresh: (...args: unknown[]) => mockExecute(...args),
@@ -86,6 +96,16 @@ describe("executeMatchSnapshotRefreshJob", () => {
 		// R2 chain: the post-publish build_proposals enqueue is best-effort; default
 		// it to success so unrelated assertions aren't perturbed by deck side effects.
 		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
+		mockResolveVisibilityConfigHash.mockImplementation(
+			(_accountId: string, orientation: string) =>
+				Promise.resolve(
+					Result.ok({
+						hash: `vc_test_${orientation}`,
+						minScore: 0.5,
+						policy: {},
+					}),
+				),
+		);
 	});
 
 	it("emits match_snapshot_published with the result counts", async () => {
@@ -166,7 +186,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 				accountId: "acct-1",
 				orientation: "song",
 				kind: "build_proposals",
-				idempotencyKey: "build:acct-1:song:snap-1",
+				idempotencyKey: "build:acct-1:song:snap-1:vc_test_song",
 			}),
 		);
 		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
@@ -174,7 +194,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 				accountId: "acct-1",
 				orientation: "playlist",
 				kind: "build_proposals",
-				idempotencyKey: "build:acct-1:playlist:snap-1",
+				idempotencyKey: "build:acct-1:playlist:snap-1:vc_test_playlist",
 			}),
 		);
 	});

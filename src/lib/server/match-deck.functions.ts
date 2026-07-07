@@ -21,7 +21,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { captureAheadForSession } from "@/lib/domains/taste/match-review-queue/card-materializer";
 import {
 	PLAYLIST_CARD_SUGGESTION_CAP,
@@ -40,7 +39,6 @@ import {
 	addQueueItemDecisionAtomically,
 	dismissQueueItemAtomically,
 	dismissQueueItemSuggestionAtomically,
-	fetchTargetPlaylistFilters,
 	finishQueueItemAtomically,
 	mapItemToDto,
 } from "@/lib/domains/taste/match-review-queue/queries";
@@ -49,10 +47,7 @@ import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
-import {
-	computeVisibilityPolicyHash,
-	type VisibilityPolicy,
-} from "@/lib/domains/taste/match-review-queue/visibility-policy";
+import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
@@ -492,6 +487,15 @@ export function mapStartOrResumeToView(
  *
  * One `nowMs` is threaded into the hash AND (on a miss) buildFirstWindowAndPromote
  * so the RPC's branch-2 search key is byte-identical to the built proposal's hash.
+ *
+ * `skipHashComputation` (M10): submitMatchDeckAction's read-after-write can only
+ * land on the RPC's branch 1 (active session — the action already ran in-txn),
+ * which never reads p_visibility_config_hash. In that mode, probe the RPC with a
+ * null hash first; branch 1 answers regardless (zero hash cost). Only when the
+ * probe reports no active session (the promotion/miss branches, which DO need
+ * the hash) do we fall back to computing it and re-calling the RPC properly —
+ * a branch that can't happen mid-action in practice, so it's a rare fallback,
+ * not the common path.
  */
 async function resolveMatchDeckView(
 	accountId: string,
@@ -500,28 +504,53 @@ async function resolveMatchDeckView(
 	// submitMatchDeckAction reuses this resolver for its read-after-write and must
 	// not double-count entries as hits.
 	emitEntryMetrics = false,
+	options?: { skipHashComputation?: boolean },
 ): Promise<StartOrResumeMatchDeckResult> {
-	const nowMs = Date.now();
-	const minScore = await resolveMinMatchScore(accountId);
-	const preset = presetForMinScore(minScore);
+	const window = deckWindow(orientation);
 
-	const filtersResult = await fetchTargetPlaylistFilters(accountId);
-	if (Result.isError(filtersResult)) {
-		reportDeckError(filtersResult.error, "resolve_match_deck_view", accountId, {
+	if (options?.skipHashComputation) {
+		const probeResult = await callStartOrResumeMatchDeck(
+			accountId,
+			orientation,
+			null,
+			window,
+		);
+		if (Result.isError(probeResult)) {
+			reportDeckError(probeResult.error, "resolve_match_deck_view", accountId, {
+				orientation,
+			});
+			throw new Error("Could not load your match deck. Please try again.", {
+				cause: probeResult.error,
+			});
+		}
+		if (probeResult.value.status === "active") {
+			const view = mapStartOrResumeToView(probeResult.value, window);
+			if (emitEntryMetrics) {
+				captureDeckEntryHit(accountId, orientation, "active", view);
+			}
+			return view;
+		}
+		// No active session: a null hash can never satisfy branch 2's exact-match
+		// filter, so this is a guaranteed miss regardless of the real hash — fall
+		// through to the normal path below, which computes it for real.
+	}
+
+	const nowMs = Date.now();
+	const hashResult = await resolveVisibilityConfigHash(
+		accountId,
+		orientation,
+		nowMs,
+	);
+	if (Result.isError(hashResult)) {
+		reportDeckError(hashResult.error, "resolve_match_deck_view", accountId, {
 			orientation,
 		});
 		throw new Error("Could not prepare your match deck. Please try again.", {
-			cause: filtersResult.error,
+			cause: hashResult.error,
 		});
 	}
-
-	const policy: VisibilityPolicy = {
-		orientation,
-		minScore,
-		filtersByPlaylistId: filtersResult.value,
-	};
-	const visibilityConfigHash = computeVisibilityPolicyHash(policy, nowMs);
-	const window = deckWindow(orientation);
+	const { hash: visibilityConfigHash, minScore } = hashResult.value;
+	const preset = presetForMinScore(minScore);
 
 	const rpcResult = await callStartOrResumeMatchDeck(
 		accountId,
@@ -935,8 +964,13 @@ export const submitMatchDeckAction = createServerFn({ method: "POST" })
 		}
 
 		// Read-after-write: the action already advanced the deck in-txn, so the
-		// fresh view reflects the promoted next card / caught-up state.
-		const view = await resolveMatchDeckView(accountId, orientation);
+		// fresh view reflects the promoted next card / caught-up state. skipHashComputation
+		// (M10): this can only land on branch 1 (active session) in practice, which
+		// never reads the hash — probe with a null hash first and skip the two-round-trip
+		// hash computation whenever that's confirmed.
+		const view = await resolveMatchDeckView(accountId, orientation, false, {
+			skipHashComputation: true,
+		});
 
 		// One event per deck action carrying the deck revision (from the fresh
 		// view) and the action type/status. Best-effort — never blocks the action.

@@ -3,6 +3,7 @@ import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
+import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { log } from "@/lib/observability/logger";
 import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
@@ -200,11 +201,29 @@ export async function executeMatchSnapshotRefreshJob(
 		const snapshotId = result.snapshotId;
 		const orientations: MatchOrientation[] = ["song", "playlist"];
 		for (const orientation of orientations) {
+			// Fold the current visibility hash into the idempotency key (M1) so a
+			// build enqueued here can't dedupe against an in-flight build of stale
+			// filters/strictness — the whole point of "matching the plan's key".
+			const hashResult = await resolveVisibilityConfigHash(
+				accountId,
+				orientation,
+			);
+			if (Result.isError(hashResult)) {
+				Sentry.captureException(hashResult.error, {
+					tags: {
+						area: "match_deck",
+						operation: "resolve_visibility_config_hash",
+						runtime: "worker",
+					},
+					extra: { accountId, jobId: job.id, orientation, snapshotId },
+				});
+				continue;
+			}
 			const enqueued = await enqueueDeckJob({
 				accountId,
 				orientation,
 				kind: "build_proposals",
-				idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}`,
+				idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${hashResult.value.hash}`,
 				payload: { snapshotId } as Json,
 			});
 			if (Result.isError(enqueued)) {
