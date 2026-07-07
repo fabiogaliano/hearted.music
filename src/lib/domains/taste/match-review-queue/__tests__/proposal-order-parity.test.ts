@@ -2,27 +2,57 @@
  * Proposal subject-order parity.
  *
  * A proposal's subject positions must equal the ordered subject list the
- * request-path append would have inserted. This is guaranteed by construction:
- * the proposal builder derives subjects via `deriveProposalSubjects`, which runs
- * the SAME pure `deriveEligibleSubjects` that service.appendSnapshotDelta runs,
- * then maps them with `orderedSubjectsToProposalSubjectRows` (position = index).
- * These tests drive the pure derivation + mapping on fixtures (no DB) and assert
- * the position order is the subject order, and that both derivation entrypoints
- * live in the one shared module — so parity is by construction, not convention.
+ * request-path append would have inserted. This is guaranteed BY CONSTRUCTION,
+ * not by comparing against a shadow implementation: the proposal builder's
+ * `deriveProposalSubjects` and the request-path append both call the same
+ * pure `deriveEligibleSubjects` (the shared seam in `eligible-subjects.ts`),
+ * so their subject order cannot diverge — there is only one derivation to
+ * agree with itself.
+ *
+ * Two levels of coverage below: a hand-computed prefilter test that pins the
+ * entitlement/ownership guard `deriveEligibleSubjects` applies before ordering
+ * (ties, exclusions), and a fixture test that drives `deriveProposalSubjects`
+ * end-to-end (its DB-facing queries mocked) and pins the exact
+ * `match_review_proposal_subject` rows the builder would insert — order and
+ * fields.
  */
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
+vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
+	getNewItemIds: vi.fn(),
+}));
+vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
+	getMatchDecisionsForSongs: vi.fn(),
+}));
+vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
+	getMatchResults: vi.fn(),
+}));
+vi.mock("../filter-metadata-queries", () => ({
+	fetchSongsFilterMeta: vi.fn(),
+}));
+vi.mock("../queries", () => ({
+	fetchOwnedPlaylistIds: vi.fn(),
+	fetchTargetPlaylistFilters: vi.fn(),
+}));
 
-import { describe, expect, it, vi } from "vitest";
-import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";
+import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
+import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
+import {
+	getMatchResults,
+	type MatchResultRow,
+} from "@/lib/domains/taste/song-matching/queries";
 import {
 	deriveEligibleSubjects,
 	deriveProposalSubjects,
 } from "../eligible-subjects";
+import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import { orderedSubjectsToProposalSubjectRows } from "../proposal-builder";
-import type { OrderedSubject } from "../types";
+import { fetchOwnedPlaylistIds, fetchTargetPlaylistFilters } from "../queries";
 import type { VisibilityPolicy } from "../visibility-policy";
 
 const NOW_MS = new Date("2024-06-01T00:00:00Z").getTime();
@@ -34,7 +64,7 @@ const mr = (
 	fused_score: number | null = null,
 ): MatchResultRow => ({ song_id, playlist_id, score, fused_score });
 
-describe("proposal subject order == derived subject order (song mode)", () => {
+describe("deriveEligibleSubjects — entitlement/ownership prefilter (hand-computed)", () => {
 	it("maps subjects to contiguous positions in derived order, dropping non-eligible pairs", () => {
 		const matchResults = [
 			mr("song-b", "pl-1", 0.9),
@@ -81,95 +111,140 @@ describe("proposal subject order == derived subject order (song mode)", () => {
 		expect(rows.every((r) => r.orientation === "song")).toBe(true);
 		expect(rows.every((r) => r.playlist_id === null)).toBe(true);
 	});
-
-	it("carries source_fit_score (max visible) and was_new_at_enqueue onto the rows", () => {
-		const matchResults = [mr("song-1", "pl-1", 0.9), mr("song-1", "pl-2", 0.6)];
-		const policy: VisibilityPolicy = {
-			orientation: "song",
-			minScore: 0.5,
-			filtersByPlaylistId: new Map(),
-		};
-		const { subjects } = deriveEligibleSubjects({
-			matchResults,
-			decidedPairs: new Set(),
-			policy,
-			entitledSongIds: new Set(["song-1"]),
-			ownedPlaylistIds: new Set(["pl-1", "pl-2"]),
-			newSongIds: new Set(["song-1"]),
-			songMetaBySongId: new Map(),
-			nowMs: NOW_MS,
-		});
-		const rows = orderedSubjectsToProposalSubjectRows(subjects, "prop-1");
-		expect(rows).toHaveLength(1);
-		expect(rows[0].source_fit_score).toBeCloseTo(0.9);
-		expect(rows[0].was_new_at_enqueue).toBe(true);
-	});
 });
 
-describe("proposal subject order == derived subject order (playlist mode)", () => {
-	it("emits playlist subjects with playlist_id set and song_id null", () => {
-		const matchResults = [
-			mr("song-1", "pl-high", 0.95),
-			mr("song-2", "pl-mid", 0.8),
-			mr("song-3", "pl-low", 0.6),
-		];
-		const policy: VisibilityPolicy = {
-			orientation: "playlist",
-			minScore: 0.5,
-			filtersByPlaylistId: new Map(),
-		};
-		const { subjects } = deriveEligibleSubjects({
-			matchResults,
-			decidedPairs: new Set(),
-			policy,
-			entitledSongIds: new Set(["song-1", "song-2", "song-3"]),
-			ownedPlaylistIds: new Set(["pl-high", "pl-mid", "pl-low"]),
-			newSongIds: new Set(),
-			songMetaBySongId: new Map(),
-			nowMs: NOW_MS,
-		});
-		const rows = orderedSubjectsToProposalSubjectRows(subjects, "prop-1");
-		const rowOrder = [...rows]
-			.sort((a, b) => a.position - b.position)
-			.map((r) => r.playlist_id);
-		expect(rowOrder).toEqual(["pl-high", "pl-mid", "pl-low"]);
-		expect(rows.every((r) => r.orientation === "playlist")).toBe(true);
-		expect(rows.every((r) => r.song_id === null)).toBe(true);
+describe("deriveProposalSubjects — fixture, end-to-end (mocked queries)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
 	});
-});
 
-describe("mapping preserves order for any subject sequence (construction guard)", () => {
-	it("position === index and never reorders", () => {
-		const subjects: OrderedSubject[] = [
+	it("derives ordered subjects from mocked queries and pins the exact proposal_subject rows", async () => {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				mr("song-b", "pl-1", 0.9),
+				mr("song-a", "pl-1", 0.9),
+				mr("song-c", "pl-2", 0.7),
+				// non-entitled song → must not appear as a subject
+				mr("song-x", "pl-1", 0.99),
+				// song-a's only high pair is on a non-owned playlist → must not reorder it
+				mr("song-a", "pl-unowned", 0.99),
+			]),
+		);
+		vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
+		vi.mocked(fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-1", "pl-2"])),
+		);
+		vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(new Map()),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({
+				data: [
+					{ song_id: "song-a" },
+					{ song_id: "song-b" },
+					{ song_id: "song-c" },
+				],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await deriveProposalSubjects(
+			"acct-1",
+			"song",
+			"snap-1",
+			0.5,
+			NOW_MS,
+		);
+
+		expect(result).toBeOk();
+		if (!Result.isOk(result)) return;
+
+		const rows = orderedSubjectsToProposalSubjectRows(
+			result.value.subjects,
+			"prop-1",
+		);
+
+		expect(rows).toEqual([
 			{
-				subject: { orientation: "song", songId: "z" },
-				maxScore: 0.9,
-				wasNewAtEnqueue: false,
+				proposal_id: "prop-1",
+				position: 0,
+				orientation: "song",
+				song_id: "song-a",
+				playlist_id: null,
+				source_fit_score: 0.9,
+				was_new_at_enqueue: false,
 			},
 			{
-				subject: { orientation: "song", songId: "a" },
-				maxScore: 0.8,
-				wasNewAtEnqueue: true,
+				proposal_id: "prop-1",
+				position: 1,
+				orientation: "song",
+				song_id: "song-b",
+				playlist_id: null,
+				source_fit_score: 0.9,
+				was_new_at_enqueue: false,
 			},
 			{
-				subject: { orientation: "song", songId: "m" },
-				maxScore: 0.7,
-				wasNewAtEnqueue: false,
+				proposal_id: "prop-1",
+				position: 2,
+				orientation: "song",
+				song_id: "song-c",
+				playlist_id: null,
+				source_fit_score: 0.7,
+				was_new_at_enqueue: false,
 			},
-		];
-		const rows = orderedSubjectsToProposalSubjectRows(subjects, "prop-1");
-		expect(rows.map((r) => [r.position, r.song_id])).toEqual([
-			[0, "z"],
-			[1, "a"],
-			[2, "m"],
 		]);
 	});
 
-	it("both derivation entrypoints are exported from the one shared module", () => {
-		// service.appendSnapshotDelta imports deriveEligibleSubjects; the proposal
-		// builder imports deriveProposalSubjects (which wraps deriveEligibleSubjects)
-		// — both from eligible-subjects.ts, so they cannot silently diverge.
-		expect(typeof deriveEligibleSubjects).toBe("function");
-		expect(typeof deriveProposalSubjects).toBe("function");
+	it("emits playlist-mode subjects with playlist_id set, song_id null, in score order", async () => {
+		vi.mocked(getMatchResults).mockResolvedValue(
+			Result.ok([
+				mr("song-1", "pl-high", 0.95),
+				mr("song-2", "pl-mid", 0.8),
+				mr("song-3", "pl-low", 0.6),
+			]),
+		);
+		vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
+		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
+		vi.mocked(fetchOwnedPlaylistIds).mockResolvedValue(
+			Result.ok(new Set(["pl-high", "pl-mid", "pl-low"])),
+		);
+		vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
+			Result.ok(new Map()),
+		);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			rpc: vi.fn().mockResolvedValue({
+				data: [
+					{ song_id: "song-1" },
+					{ song_id: "song-2" },
+					{ song_id: "song-3" },
+				],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		const result = await deriveProposalSubjects(
+			"acct-1",
+			"playlist",
+			"snap-1",
+			0.5,
+			NOW_MS,
+		);
+
+		expect(result).toBeOk();
+		if (!Result.isOk(result)) return;
+
+		const rows = orderedSubjectsToProposalSubjectRows(
+			result.value.subjects,
+			"prop-1",
+		);
+		expect(rows.map((r) => [r.position, r.playlist_id, r.song_id])).toEqual([
+			[0, "pl-high", null],
+			[1, "pl-mid", null],
+			[2, "pl-low", null],
+		]);
+		expect(rows.every((r) => r.orientation === "playlist")).toBe(true);
 	});
 });
