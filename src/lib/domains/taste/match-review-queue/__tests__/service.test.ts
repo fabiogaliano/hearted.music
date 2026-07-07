@@ -37,7 +37,6 @@ vi.mock("../queries", () => ({
 	countUnresolvedItems: vi.fn(),
 	fetchPendingSongIds: vi.fn(),
 	fetchPendingPlaylistIds: vi.fn(),
-	updateQueueItemPresented: vi.fn(),
 	updateQueueItemResolved: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
 	mapItemToDto: vi.fn(),
@@ -202,9 +201,6 @@ beforeEach(() => {
 	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
 	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
 	vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(Result.ok([]));
-	vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-		Result.ok(fakeQueueItem()),
-	);
 	vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
 		Result.ok(fakeQueueItem()),
 	);

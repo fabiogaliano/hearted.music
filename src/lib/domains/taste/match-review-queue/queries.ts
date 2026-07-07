@@ -545,45 +545,6 @@ export async function countUnresolvedItems(
 }
 
 /**
- * Advances a queue item to the 'active' lifecycle state and records presented_at.
- *
- * The `.in("state", ["pending", "active"])` guard makes the transition
- * conditional: only an unresolved card may become active. A resolved item —
- * or one that raced with finish/dismiss — is NOT updated, so a stale navigation
- * can never resurrect a decided card. 'active' is kept in the allowed set so
- * re-presenting an already-active item stays idempotent.
- *
- * Returns Result.ok(null) when no eligible row matched (resolved, raced, or
- * foreign): maybeSingle yields no row without erroring, so the caller can treat
- * "no-op" distinctly from a genuine DB failure without leaking ownership detail.
- *
- * accountId scopes the UPDATE so no pre-check bypass can write to a foreign item.
- */
-export async function updateQueueItemPresented(
-	itemId: string,
-	accountId: string,
-	now: string,
-): Promise<Result<MatchReviewQueueItem | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMaybe(
-		supabase
-			.from("match_review_queue_item")
-			.update({
-				state: "active",
-				presented_at: now,
-				updated_at: now,
-			})
-			.eq("id", itemId)
-			.eq("account_id", accountId)
-			.in("state", ["pending", "active"])
-			.select()
-			.maybeSingle(),
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(result.value ? mapItemRow(result.value) : null);
-}
-
-/**
  * Resolves a queue item and records the outcome in the resolution column.
  *
  * The state column always becomes 'resolved' (B9-C); the `_legacyState`
