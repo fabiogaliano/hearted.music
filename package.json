@@ -31,6 +31,7 @@
 		"voice-audit": "bun scripts/voice-audit/cli.ts",
 		"reset:onboarding": "bun scripts/ops/reset-onboarding.ts",
 		"grant:liked-access": "bun scripts/ops/grant-liked-song-access.ts",
+		"warm:match-deck": "bun scripts/ops/warm-match-deck-proposals.ts",
 		"prod:sql": "bun scripts/db/prod.ts sql",
 		"prod:rest": "bun scripts/db/prod.ts rest",
 		"ext:build": "bun extensions/scripts/build.ts",

@@ -4,6 +4,10 @@
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+  // Smart Placement moves the Worker's execution near the origin it talks to
+  // most (the self-hosted Postgres on the VPS), cutting deck-read round-trip
+  // latency (plan §1/§15).
+  "placement": { "mode": "smart" },
   "routes": [
     { "pattern": "hearted.music", "custom_domain": true }
   ],

@@ -58,6 +58,7 @@ import {
 	DEFAULT_MATCH_STRICTNESS,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
+import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { buildFirstWindowAndPromote } from "./match-deck-miss-path";
@@ -158,6 +159,50 @@ function reportDeckError(
 
 function narrowOrientation(value: unknown): MatchOrientation | null {
 	return value === "song" || value === "playlist" ? value : null;
+}
+
+/**
+ * Deck entry hit — start_or_resume resolved to a live view, either directly
+ * active or via the miss-path promotion. `source` distinguishes the two so the
+ * hit-rate dashboard can separate warm hits from self-heals. Best-effort.
+ */
+function captureDeckEntryHit(
+	accountId: string,
+	orientation: MatchOrientation,
+	source: "active" | "promoted",
+	view: MatchDeckView,
+): void {
+	captureProductEventBestEffort({
+		distinctId: accountId,
+		accountId,
+		event: "match_deck_hit",
+		operation: "capture_match_deck_hit",
+		properties: {
+			orientation,
+			source,
+			revision: view.revision,
+			remaining: view.progress.remaining,
+		},
+	});
+}
+
+/**
+ * Deck entry miss — start_or_resume could not resolve a live view this request.
+ * `reason` separates "no snapshot published yet" (genuinely nothing to show)
+ * from "built but still empty/racing" (self-heals on the next entry).
+ */
+function captureDeckEntryMiss(
+	accountId: string,
+	orientation: MatchOrientation,
+	reason: "no_snapshot" | "promotion_incomplete",
+): void {
+	captureProductEventBestEffort({
+		distinctId: accountId,
+		accountId,
+		event: "match_deck_miss_reason",
+		operation: "capture_match_deck_miss_reason",
+		properties: { orientation, reason },
+	});
 }
 
 /** Reverse the frozen preset↔minScore map (mirrors service.ts:152-154). */
@@ -451,6 +496,10 @@ export function mapStartOrResumeToView(
 async function resolveMatchDeckView(
 	accountId: string,
 	orientation: MatchOrientation,
+	// Only a genuine deck ENTRY (startOrResumeMatchDeck) emits hit/miss metrics;
+	// submitMatchDeckAction reuses this resolver for its read-after-write and must
+	// not double-count entries as hits.
+	emitEntryMetrics = false,
 ): Promise<StartOrResumeMatchDeckResult> {
 	const nowMs = Date.now();
 	const minScore = await resolveMinMatchScore(accountId);
@@ -490,7 +539,11 @@ async function resolveMatchDeckView(
 	}
 
 	if (rpcResult.value.status === "active") {
-		return mapStartOrResumeToView(rpcResult.value, window);
+		const view = mapStartOrResumeToView(rpcResult.value, window);
+		if (emitEntryMetrics) {
+			captureDeckEntryHit(accountId, orientation, "active", view);
+		}
+		return view;
 	}
 
 	// Miss. Distinguish "no snapshot at all" (building empty state) from
@@ -510,6 +563,9 @@ async function resolveMatchDeckView(
 		});
 	}
 	if (!snapshotResult.value) {
+		if (emitEntryMetrics) {
+			captureDeckEntryMiss(accountId, orientation, "no_snapshot");
+		}
 		return { status: "building" };
 	}
 
@@ -535,10 +591,17 @@ async function resolveMatchDeckView(
 		});
 	}
 	if (builtResult.value.status === "active") {
-		return mapStartOrResumeToView(builtResult.value, window);
+		const view = mapStartOrResumeToView(builtResult.value, window);
+		if (emitEntryMetrics) {
+			captureDeckEntryHit(accountId, orientation, "promoted", view);
+		}
+		return view;
 	}
 	// Still a miss right after building (empty subject set / hash race) → building.
 	// The enqueued full build makes the next entry a hit.
+	if (emitEntryMetrics) {
+		captureDeckEntryMiss(accountId, orientation, "promotion_incomplete");
+	}
 	return { status: "building" };
 }
 
@@ -631,37 +694,58 @@ async function resolveDeckCard(
 	// R-E cold path: worker hasn't captured ahead yet — materialize this one item
 	// and re-read ONCE. Still not_captured → the mapper's retryable fallback.
 	const materialized = await materializeOnDemand(accountId, itemId);
+
+	let coldResult: MatchReviewItemRead;
+	let recovered = false;
 	if (!materialized) {
-		return mapReadDeckCardToItemRead(first, itemId, window, null);
+		coldResult = mapReadDeckCardToItemRead(first, itemId, window, null);
+	} else {
+		const secondResult = await callReadMatchDeckCard(
+			itemId,
+			accountId,
+			window,
+			true,
+		);
+		if (Result.isError(secondResult)) {
+			reportDeckError(
+				secondResult.error,
+				"read_match_deck_card_recapture",
+				accountId,
+				{ itemId, orientation: materialized.orientation },
+			);
+			coldResult = {
+				status: "retryable-error",
+				itemId,
+				message: "Couldn't load this match card. Try again.",
+			};
+		} else {
+			recovered = secondResult.value.status !== "not_captured";
+			// The re-read may now resolve to no_visible_suggestions; materialize gave
+			// us the real orientation, so the copy names the correct suggestion side.
+			coldResult = mapReadDeckCardToItemRead(
+				secondResult.value,
+				itemId,
+				window,
+				materialized.orientation,
+			);
+		}
 	}
 
-	const secondResult = await callReadMatchDeckCard(
-		itemId,
+	// The on-demand materialize fired (the swiper outran capture-ahead). `recovered`
+	// separates a self-heal from a still-cold read. Best-effort.
+	captureProductEventBestEffort({
+		distinctId: accountId,
 		accountId,
-		window,
-		true,
-	);
-	if (Result.isError(secondResult)) {
-		reportDeckError(
-			secondResult.error,
-			"read_match_deck_card_recapture",
-			accountId,
-			{ itemId, orientation: materialized.orientation },
-		);
-		return {
-			status: "retryable-error",
+		event: "match_deck_materialize_on_read",
+		operation: "capture_match_deck_materialize_on_read",
+		properties: {
 			itemId,
-			message: "Couldn't load this match card. Try again.",
-		};
-	}
-	// The re-read may now resolve to no_visible_suggestions; materialize gave us
-	// the real orientation, so the copy names the correct suggestion side.
-	return mapReadDeckCardToItemRead(
-		secondResult.value,
-		itemId,
-		window,
-		materialized.orientation,
-	);
+			recovered,
+			orientation: materialized?.orientation ?? null,
+		},
+	});
+
+	return coldResult;
 }
 
 // ============================================================================
@@ -711,7 +795,11 @@ export const startOrResumeMatchDeck = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => StartMatchDeckSchema.parse(data))
 	.handler(async ({ data, context }): Promise<StartOrResumeMatchDeckResult> => {
-		return resolveMatchDeckView(context.session.accountId, data.orientation);
+		return resolveMatchDeckView(
+			context.session.accountId,
+			data.orientation,
+			true,
+		);
 	});
 
 const ReadMatchDeckCardSchema = z.object({ itemId: z.uuid() });
@@ -849,5 +937,21 @@ export const submitMatchDeckAction = createServerFn({ method: "POST" })
 		// Read-after-write: the action already advanced the deck in-txn, so the
 		// fresh view reflects the promoted next card / caught-up state.
 		const view = await resolveMatchDeckView(accountId, orientation);
+
+		// One event per deck action carrying the deck revision (from the fresh
+		// view) and the action type/status. Best-effort — never blocks the action.
+		captureProductEventBestEffort({
+			distinctId: accountId,
+			accountId,
+			event: "match_deck_action",
+			operation: "capture_match_deck_action",
+			properties: {
+				orientation,
+				action_type: action.type,
+				action_status: actionStatus,
+				revision: "revision" in view ? view.revision : null,
+			},
+		});
+
 		return { actionStatus, view };
 	});
