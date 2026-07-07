@@ -54,7 +54,7 @@ export function patchPresentCacheOnSuggestionDismiss(
 /**
  * Removes a dismissed suggestion from every loaded tail page. Playlist mode
  * only — song mode never populates this cache (its infinite query stays
- * disabled, see matchReviewItemSuggestionsInfiniteQueryOptions), so `data` is
+ * disabled, see matchDeckCardSuggestionsInfiniteQueryOptions), so `data` is
  * undefined there and this is a no-op.
  */
 export function patchTailCacheOnSuggestionDismiss(

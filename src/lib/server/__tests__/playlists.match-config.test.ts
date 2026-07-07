@@ -15,7 +15,8 @@ const {
 	mockUpdatePlaylistMatchConfig,
 	mockUpdatePlaylistMatchIntent,
 	mockApplyLibraryProcessingChange,
-	mockSyncActiveQueue,
+	mockEnqueueDeckJob,
+	mockGetLatestMatchSnapshot,
 	mockCaptureWithWaitUntil,
 	mockCaptureServerError,
 } = vi.hoisted(() => ({
@@ -27,7 +28,8 @@ const {
 	mockUpdatePlaylistMatchConfig: vi.fn(),
 	mockUpdatePlaylistMatchIntent: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
-	mockSyncActiveQueue: vi.fn(),
+	mockEnqueueDeckJob: vi.fn(),
+	mockGetLatestMatchSnapshot: vi.fn(),
 	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 	mockCaptureServerError: vi.fn(),
 }));
@@ -90,8 +92,13 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 		mockApplyLibraryProcessingChange(...args),
 }));
 
-vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
-	syncActiveQueue: (...args: unknown[]) => mockSyncActiveQueue(...args),
+vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
+	enqueueDeckJob: (...args: unknown[]) => mockEnqueueDeckJob(...args),
+}));
+
+vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
+	getLatestMatchSnapshot: (...args: unknown[]) =>
+		mockGetLatestMatchSnapshot(...args),
 }));
 
 // parseSaveMatchFilters uses isLanguageCatalogCode; we do NOT mock schemas.ts
@@ -156,9 +163,8 @@ describe("savePlaylistMatchConfig", () => {
 		mockApplyLibraryProcessingChange.mockResolvedValue(
 			Result.ok(makeApplyOutcome()),
 		);
-		mockSyncActiveQueue.mockResolvedValue(
-			Result.ok({ appendedCount: 0, alreadyApplied: false }),
-		);
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
 	});
 
 	// ── Ownership ────────────────────────────────────────────────────────────
@@ -380,7 +386,7 @@ describe("savePlaylistMatchConfig", () => {
 				readTimeFilterChanged: expect.any(Boolean),
 			}),
 		);
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	it("takes filter-only path when only match_filters changed", async () => {
@@ -404,21 +410,75 @@ describe("savePlaylistMatchConfig", () => {
 			},
 		});
 
-		// Filter-only: no applyLibraryProcessingChange, session sync instead.
-		// Both orientations are synced so newly visible subjects are appended to
-		// whichever session is active (MSR-37).
+		// Filter-only: no applyLibraryProcessingChange. A read-time filter change
+		// enqueues a build_proposals deck job for BOTH orientations against the
+		// account's latest snapshot; the worker rebuilds proposals and appends
+		// sessions so an active deck reflects the new filters on its next read (MSR-37).
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).toHaveBeenCalledTimes(2);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
-			"acct-1",
-			"song",
-			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
+		expect(mockGetLatestMatchSnapshot).toHaveBeenCalledWith("acct-1");
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(2);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
+			accountId: "acct-1",
+			orientation: "song",
+			kind: "build_proposals",
+			idempotencyKey: "build:acct-1:song:snap-1",
+			payload: { snapshotId: "snap-1" },
+		});
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
+			accountId: "acct-1",
+			orientation: "playlist",
+			kind: "build_proposals",
+			idempotencyKey: "build:acct-1:playlist:snap-1",
+			payload: { snapshotId: "snap-1" },
+		});
+	});
+
+	it("still succeeds and captures the error when a filter-path enqueue fails", async () => {
+		// Same scoring signals as BASE_INPUT but a different filter → filter-only
+		// path, which enqueues build_proposals jobs for both orientations.
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(
+				makePlaylist({
+					account_id: "acct-1",
+					match_intent: "chill evening vibes",
+					genre_pills: ["rock"],
+					match_filters: { version: 1 },
+				}),
+			),
 		);
-		expect(mockSyncActiveQueue).toHaveBeenCalledWith(
-			"acct-1",
-			"playlist",
-			expect.objectContaining({ onVisibleAppend: expect.any(Function) }),
-		);
+		// Enqueue fails for both orientations. Best-effort: the filters are already
+		// committed, so the handler must NOT roll back the save — it returns the
+		// normalized result and only reports the enqueue error to Sentry.
+		const enqueueError = new DatabaseError({
+			code: "42000",
+			message: "enqueue error",
+		});
+		mockEnqueueDeckJob.mockResolvedValue(Result.err(enqueueError));
+
+		const result = await savePlaylistMatchConfig({
+			data: {
+				...BASE_INPUT,
+				matchFilters: { version: 1 as const, vocalGender: "female" as const },
+			},
+		});
+
+		// The save's success result is unaffected by the enqueue failure.
+		expect(result).toEqual({
+			matchIntent: "chill evening vibes",
+			genrePills: ["rock"],
+			matchFilters: { version: 1, vocalGender: "female" },
+		});
+
+		// One capture per failed orientation (song + playlist).
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(2);
+		const [capturedError, context] = mockCaptureServerError.mock.calls[0] ?? [];
+		expect(capturedError).toBe(enqueueError);
+		expect(context).toMatchObject({
+			area: "playlists",
+			operation: "save_playlist_match_config",
+			accountId: "acct-1",
+			extra: { stage: "post_save_invalidation", snapshotId: "snap-1" },
+		});
 	});
 
 	it("takes scoring path when intent changed even if filters are the same", async () => {
@@ -442,7 +502,7 @@ describe("savePlaylistMatchConfig", () => {
 		});
 
 		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledTimes(1);
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	it("skips all invalidation when nothing actually changed (idempotent save)", async () => {
@@ -461,7 +521,7 @@ describe("savePlaylistMatchConfig", () => {
 		await savePlaylistMatchConfig({ data: BASE_INPUT });
 
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
-		expect(mockSyncActiveQueue).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
 	// ── Non-fatal invalidation failure ─────────────────────────────────────────
