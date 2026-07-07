@@ -463,3 +463,44 @@ per decision + rationale.
   pass's 5-file diff only) and confirmed those 3 failures persist independent
   of this change — same concurrent-WIP cause, not a regression from this
   pass. `bun run check` (biome) clean on all 5 touched files.
+
+## Post-verification fix pass 2
+
+- **P0 unserialized concurrent-build race (`match-deck-miss-path.ts`) — fixed
+  via option 2 (miss path defers to the queue), not option 1 (transactional
+  RPC).** Rationale: `buildOneProposal`'s subject list can be the full
+  current-preset scan (§8.3 deviation, already accepted) — worst observed
+  case in this codebase's own measurements is an 845-suggestion playlist —
+  which would have to marshal hundreds of subject rows + their promotion-seed
+  pairs as jsonb RPC arguments to make a single-transaction rebuild function
+  work; that payload size/shape is exactly the "large/fragile" case the task
+  said to fall back from. Option 2 instead adds
+  `findInFlightBuildProposalsJob(accountId, orientation)`
+  (`deck-jobs.ts`) and, in `buildFirstWindowAndPromote`, checks it before
+  building: if a `pending`/`running` `build_proposals` job already exists for
+  this key (the common case — the same snapshot publish that produced this
+  miss already enqueued it), skip the inline build, keep the best-effort full
+  enqueue, and return the RPC's own miss shape unchanged so the caller
+  degrades to `{status:"building"}`. The lookup itself fails OPEN (a lookup
+  DB error falls through to the inline build rather than blocking the
+  request) since it is a best-effort collision check, not a correctness
+  gate — the residual TOCTOU between the check and the build is accepted
+  explicitly, matching the task's stated trade-off. Belt-and-suspenders per
+  the hard requirement: `buildOneProposal`'s own `unique_violation`
+  (Postgres SQLSTATE `23505`) is now caught and degraded to the same miss
+  shape instead of propagating, so a request that still loses a residual
+  race (TOCTOU window, or some other concurrent writer) surfaces
+  `{status:"building"}`, never the "Could not prepare your match deck" 500.
+  Both branches trace via the existing `captureServerError` seam. No new
+  migration — this is a TypeScript-only change plus regression tests in the
+  existing `match-deck-miss-path.test.ts` scaffold (4 new cases: in-flight
+  job defers, lookup failure fails open, unique_violation degrades, a
+  non-unique_violation build error still propagates as a genuine failure).
+- **P2.2 docstring fix (`match-deck-miss-path.ts` header, step 2)** — reworded
+  the claim that branch-2 promotion is "guaranteed" to find the just-built
+  proposal. It is not: a target-filter change racing between the request's
+  hash read and the builder's own filters read can skew
+  `visibilityConfigHash`, producing a transient miss that self-heals on the
+  next entry (this was already a known, accepted behavior, just misstated in
+  the docstring). The header now describes this as the normal case, not a
+  guarantee, and calls out the filter-change skew explicitly.
