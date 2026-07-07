@@ -14,6 +14,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import type { MatchOrientation } from "./types";
@@ -144,6 +145,40 @@ function rpcError(error: { code?: string; message: string }): DbError {
 }
 
 /**
+ * P1.5: minimal runtime allowlist on the `status` discriminator only — not a
+ * full zod schema for the payload — mirroring the allowlist-validation
+ * precedent in ./queries.ts (`isDismissQueueItemAtomicStatus` and friends).
+ * That precedent turns an unknown status into a `Result.err`; these two RPCs
+ * deliberately do NOT — the read-side mappers (match-deck.functions.ts) have
+ * dedicated fallback arms for an unexpected status (retryable-error) and their
+ * own P1.1 capture, so the value is still returned. This capture is what makes
+ * the drift visible at the RPC boundary instead of silently flowing through.
+ */
+const START_OR_RESUME_MATCH_DECK_STATUSES = ["active", "miss"] as const;
+type StartOrResumeMatchDeckStatus =
+	(typeof START_OR_RESUME_MATCH_DECK_STATUSES)[number];
+function isStartOrResumeMatchDeckStatus(
+	value: unknown,
+): value is StartOrResumeMatchDeckStatus {
+	return START_OR_RESUME_MATCH_DECK_STATUSES.some((status) => status === value);
+}
+
+const READ_MATCH_DECK_CARD_STATUSES = [
+	"ready",
+	"not_captured",
+	"not_found",
+	"playlist_gone",
+	"song_gone",
+	"no_visible_suggestions",
+] as const;
+type ReadMatchDeckCardStatus = (typeof READ_MATCH_DECK_CARD_STATUSES)[number];
+function isReadMatchDeckCardStatus(
+	value: unknown,
+): value is ReadMatchDeckCardStatus {
+	return READ_MATCH_DECK_CARD_STATUSES.some((status) => status === value);
+}
+
+/**
  * Calls start_or_resume_match_deck (plan §8) — one bounded round trip for
  * /match entry. `visibilityConfigHash` is computed in TS (as resume does today)
  * so a ready proposal for the exact policy is found; `window` bounds the current
@@ -176,7 +211,21 @@ export async function callStartOrResumeMatchDeck(
 		},
 	);
 	if (error) return Result.err(rpcError(error));
-	return Result.ok(data as unknown as StartOrResumeMatchDeckRpcResult);
+	const result = data as unknown as StartOrResumeMatchDeckRpcResult;
+	if (!isStartOrResumeMatchDeckStatus(result.status)) {
+		captureServerError(
+			new Error(
+				`start_or_resume_match_deck returned an unknown status: ${result.status}`,
+			),
+			{
+				area: "match_review_queue",
+				operation: "call_start_or_resume_match_deck",
+				accountId,
+				extra: { orientation, status: result.status },
+			},
+		);
+	}
+	return Result.ok(result);
 }
 
 /**
@@ -200,5 +249,19 @@ export async function callReadMatchDeckCard(
 		},
 	);
 	if (error) return Result.err(rpcError(error));
-	return Result.ok(data as unknown as ReadMatchDeckCardRpcResult);
+	const result = data as unknown as ReadMatchDeckCardRpcResult;
+	if (!isReadMatchDeckCardStatus(result.status)) {
+		captureServerError(
+			new Error(
+				`read_match_deck_card returned an unknown status: ${result.status}`,
+			),
+			{
+				area: "match_review_queue",
+				operation: "call_read_match_deck_card",
+				accountId,
+				extra: { itemId, status: result.status },
+			},
+		);
+	}
+	return Result.ok(result);
 }
