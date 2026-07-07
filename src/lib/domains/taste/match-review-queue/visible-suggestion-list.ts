@@ -347,6 +347,12 @@ async function fetchEntitledSongIds(
  * not from a live preference re-read, so the bar cannot shift on a card the
  * user is already reviewing.
  *
+ * nowMs is optional and defaults to Date.now(); callers that already fixed a
+ * "now" for a broader operation (e.g. the proposal builder's shared nowMs used
+ * for the hash + subjects) should pass it through so a build straddling UTC
+ * midnight doesn't derive this list under a different "today" than the rest
+ * of that operation.
+ *
  * Returns:
  *  { kind: 'ok', list } — list may have an empty suggestions array when all
  *    pairs are decided or below the strictness threshold.
@@ -357,6 +363,7 @@ async function fetchEntitledSongIds(
 export async function computeVisibleSuggestionList(
 	item: MatchReviewQueueItemDto,
 	strictnessMinScore: number,
+	nowMs?: number,
 ): Promise<VisibleSuggestionListResult> {
 	const { subject, accountId, sourceSnapshotId } = item;
 
@@ -368,7 +375,7 @@ export async function computeVisibleSuggestionList(
 		if (!entitled.value)
 			return { kind: "not-entitled", reason: "song-not-entitled" };
 
-		const nowMs = Date.now();
+		const resolvedNowMs = nowMs ?? Date.now();
 		const [pairsResult, rankingsResult, decisionsResult, songMetaResult] =
 			await Promise.all([
 				getMatchPairsForSong(sourceSnapshotId, subject.songId),
@@ -433,7 +440,7 @@ export async function computeVisibleSuggestionList(
 			rankings,
 			decidedPairKeys,
 			strictnessMinScore,
-			nowMs,
+			resolvedNowMs,
 		);
 
 		return {
@@ -443,7 +450,7 @@ export async function computeVisibleSuggestionList(
 	}
 
 	// Playlist orientation: subject is a playlist, suggestions are songs.
-	const nowMs = Date.now();
+	const resolvedNowMs = nowMs ?? Date.now();
 	const owned = await checkPlaylistOwned(accountId, subject.playlistId);
 	if (Result.isError(owned)) return { kind: "db-error", error: owned.error };
 	if (!owned.value)
@@ -513,7 +520,7 @@ export async function computeVisibleSuggestionList(
 		rankings,
 		decidedPairKeys,
 		strictnessMinScore,
-		nowMs,
+		resolvedNowMs,
 	);
 
 	return {

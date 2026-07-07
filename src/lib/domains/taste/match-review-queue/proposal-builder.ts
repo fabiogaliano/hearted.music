@@ -12,6 +12,12 @@
  * a pure copy — so a sweep-resurrected double-run converges to the same rows.
  * `repair` reuses this function.
  *
+ * Never resurrects a superseded build to `ready`: buildOneProposal re-checks
+ * that its snapshot is still the account's latest immediately before the final
+ * status flip, finishing as `stale` instead when a newer snapshot was published
+ * mid-build (a deferred/sweep-retried/repair/warm-script build of a stale
+ * snapshot must not hand promotion a fresh-looking but superseded subject set).
+ *
  * The seed derivation reuses the existing generated-type RPCs.
  */
 
@@ -156,6 +162,11 @@ function dbErr(error: { code?: string; message: string }): DbError {
  * whose entity was revoked/deleted since build returns [] (no seed — it surfaces
  * as unavailable at promotion); a DB failure surfaces as an error so the job
  * defers rather than shipping a partial seed.
+ *
+ * nowMs is the builder's shared "now" (also used for subjects + the visibility
+ * hash) — it must be threaded into computeVisibleSuggestionList rather than
+ * left to default to Date.now(), or a build straddling UTC midnight can write
+ * seed pairs filtered under a different "today" than the proposal's hash claims.
  */
 async function buildSeedForSubject(
 	subject: MatchReviewSubject,
@@ -164,6 +175,7 @@ async function buildSeedForSubject(
 	minScore: number,
 	proposalId: string,
 	subjectPosition: number,
+	nowMs: number,
 ): Promise<Result<ProposalSeedPairInsert[], DbError>> {
 	const item = syntheticProposalItem(
 		subject,
@@ -171,7 +183,7 @@ async function buildSeedForSubject(
 		snapshotId,
 		subjectPosition,
 	);
-	const listResult = await computeVisibleSuggestionList(item, minScore);
+	const listResult = await computeVisibleSuggestionList(item, minScore, nowMs);
 	if (listResult.kind === "db-error") {
 		return Result.err(listResult.error);
 	}
@@ -230,6 +242,14 @@ export async function buildOneProposal(
 	);
 
 	const db = createAdminSupabaseClient();
+	// `status: "building"` in this payload is load-bearing on a REBUILD of an
+	// already-`ready` proposal: PostgREST's upsert-with-onConflict issues
+	// INSERT ... ON CONFLICT (the unique key below) DO UPDATE SET <every column
+	// here, including status>, so this call commits `building` BEFORE the
+	// delete-subjects call below runs. That closes the promotion race where a
+	// concurrent start_or_resume_match_deck could otherwise read `ready` with
+	// zero subjects during the delete-committed/insert-pending window — do not
+	// drop `status` from this payload.
 	const upsertResult = await db
 		.from("match_review_proposal")
 		.upsert(
@@ -282,6 +302,7 @@ export async function buildOneProposal(
 				minScore,
 				proposalId,
 				i,
+				nowMs,
 			);
 			if (Result.isError(seedResult)) return seedResult;
 			seedRows.push(...seedResult.value);
@@ -295,10 +316,23 @@ export async function buildOneProposal(
 		}
 	}
 
+	// Don't resurrect a superseded build to `ready`: a deferred/sweep-retried/
+	// repair/warm-script build can finish after a newer snapshot was published
+	// mid-build. Same latest-snapshot guard buildProposalsForAccountOrientation
+	// already uses to avoid staling a NEWER snapshot's proposals (below) — here
+	// it's the inverse direction, guarding THIS (older) build from flipping its
+	// own proposal to `ready`. If it's no longer latest, finish as `stale`
+	// instead; this is a successful, not an error, build — the newer snapshot's
+	// own build owns the real work and will supersede this one regardless.
+	const latestResult = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(latestResult)) return latestResult;
+	const latest = latestResult.value;
+	const isStillLatestSnapshot = latest !== null && latest.id === snapshotId;
+
 	const readyResult = await db
 		.from("match_review_proposal")
 		.update({
-			status: "ready",
+			status: isStillLatestSnapshot ? "ready" : "stale",
 			total_subjects: subjects.length,
 			hidden_review_item_count: hiddenReviewItemCount,
 		})

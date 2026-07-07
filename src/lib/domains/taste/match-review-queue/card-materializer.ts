@@ -60,9 +60,11 @@ export async function readSessionResumePosition(
 /**
  * Captures visible pairs for up to `window` unresolved cards at or after
  * `fromPosition` in the session. Best-effort per card: a subject whose entity
- * was revoked (not-entitled) or already resolved is skipped; a DB failure on any
- * card surfaces as an error so the job defers and retries (already-captured
- * cards are no-ops on the retry).
+ * was revoked (not-entitled) is captured as captured-empty (zero pairs) rather
+ * than skipped, so the card still resolves to unavailable instead of getting
+ * stuck (H4); an already-resolved item is a no-op via the atomic capture RPC. A
+ * DB failure on any card surfaces as an error so the job defers and retries
+ * (already-captured cards are no-ops on the retry).
  */
 export async function captureAheadForSession(input: {
 	accountId: string;
@@ -117,15 +119,25 @@ export async function captureAheadForSession(input: {
 			firstError ??= listResult.error;
 			continue;
 		}
-		// Entity revoked since enqueue — the card read surfaces it as unavailable;
-		// nothing to capture here.
-		if (listResult.kind === "not-entitled") continue;
-
-		const cap =
-			item.subject.orientation === "song"
-				? SONG_CARD_SUGGESTION_CAP
-				: PLAYLIST_CARD_SUGGESTION_CAP;
-		const suggestionsToCapture = listResult.list.suggestions.slice(0, cap);
+		// Entity revoked since enqueue — no pairs to derive, but the item still
+		// needs visible_pairs_captured_at stamped (with zero pairs), the same
+		// captured-empty shape buildSeedForSubject's promotion path produces for a
+		// not-entitled subject. Without this stamp the read RPC keeps returning
+		// not_captured forever (visible_pairs_captured_at stays NULL), the R-E
+		// on-demand materialize re-derives the same not-entitled result and skips
+		// again, and the card is stuck: unreadable, unfinishable, undismissable
+		// (H4). Stamping captured-empty makes the read return
+		// no_visible_suggestions/unavailable instead, which the existing
+		// resolve-empty-card flow already handles.
+		const suggestionsToCapture =
+			listResult.kind === "not-entitled"
+				? []
+				: listResult.list.suggestions.slice(
+						0,
+						item.subject.orientation === "song"
+							? SONG_CARD_SUGGESTION_CAP
+							: PLAYLIST_CARD_SUGGESTION_CAP,
+					);
 
 		const captureResult = await captureVisiblePairsAtomic(
 			item.id,
