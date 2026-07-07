@@ -15,6 +15,7 @@ import {
 	startOrResumeMatchReview,
 	syncActiveMatchReviewSessions,
 } from "@/lib/server/match-review-queue.functions";
+import { matchDeckKeys } from "./deck-queries";
 
 // matchReviewKeys.item is intentionally NOT in the snapshot-refresh invalidation
 // set so per-card data stays stable while the queue list grows.
@@ -217,6 +218,16 @@ export async function runMatchSnapshotRefreshEffects(
 	// matchReviewKeys.item is intentionally absent from this block.
 	queryClient.invalidateQueries({
 		queryKey: matchReviewKeys.reviewsRoot,
+	});
+
+	// Deck read model (Phase 4): a mid-session snapshot refresh must re-run the
+	// bounded deck read so newly appended subjects surface. deckRoot invalidates
+	// every (account, orientation) deck query; per-card read/suggestion keys hang
+	// off matchDeckKeys.card and are intentionally left alone, mirroring the
+	// reviewsRoot-not-item rule above. The legacy reviewsRoot invalidation stays
+	// until Phase 5 deletes the old families.
+	queryClient.invalidateQueries({
+		queryKey: matchDeckKeys.deckRoot,
 	});
 
 	// Queue-aware summary: drives sidebar badge + dashboard CTA count. Using

@@ -7,18 +7,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // dismissSuggestionMutation's mutationFn is never actually invoked by these
 // tests (onMutate/onSuccess/onError are called directly, matching the
-// queryFn-calling-convention used elsewhere in this feature's tests), so a
-// bare vi.fn() stub is enough — no real server-fn/DB wiring needed.
-const dismissMatchReviewItemSuggestionMock = vi.fn();
-vi.mock("@/lib/server/match-review-queue.functions", () => ({
-	dismissMatchReviewItemSuggestion: (...args: unknown[]) =>
-		dismissMatchReviewItemSuggestionMock(...args),
+// queryFn-calling-convention used elsewhere in this feature's tests), so a bare
+// vi.fn() stub is enough — no real server-fn/DB wiring needed. The deck-query
+// options the mutation keys off are real (see the deck-queries import below), so
+// the server-fn modules deck-queries pulls in are mocked instead.
+const submitMatchDeckActionMock = vi.fn();
+vi.mock("@/lib/server/match-deck.functions", () => ({
+	submitMatchDeckAction: (...args: unknown[]) =>
+		submitMatchDeckActionMock(...args),
+	startOrResumeMatchDeck: vi.fn(),
+	readMatchDeckCard: vi.fn(),
 }));
 
-// Pulled in transitively via ../queries; stubbed the same way queries.test.ts
-// does so importing that module doesn't require a real dashboard feature.
-vi.mock("@/features/dashboard/queries", () => ({
-	dashboardKeys: { all: ["dashboard"] },
+vi.mock("@/lib/server/match-review-queue.functions", () => ({
+	listMatchReviewItemSuggestions: vi.fn(),
 }));
 
 const captureRouteErrorMock = vi.fn();
@@ -27,21 +29,28 @@ vi.mock("@/lib/observability/sentry", () => ({
 }));
 
 import {
+	matchDeckKeys,
+	readMatchDeckCardQueryOptions,
+} from "@/features/matching/deck-queries";
+import {
 	dismissSuggestionMutation,
 	patchPresentCacheOnSuggestionDismiss,
 	patchTailCacheOnSuggestionDismiss,
 } from "@/features/matching/mutations";
-import {
-	matchReviewKeys,
-	presentMatchReviewItemQueryOptions,
-} from "@/features/matching/queries";
+import type { SubmitMatchDeckActionResult } from "@/lib/server/match-deck.functions";
 import type {
-	DismissSuggestionResult,
 	ListMatchReviewItemSuggestionsPage,
 	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
 import type { MatchingSong } from "@/lib/server/matching.functions";
+
+// submitMatchDeckAction returns a raw TEXT actionStatus + the fresh deck view;
+// dismiss-suggestion reads only the status (via the classifier) and discards the
+// view (RF), so the view here is an inert placeholder the mutation never applies.
+function actionResult(actionStatus: string): SubmitMatchDeckActionResult {
+	return { actionStatus, view: { status: "building" } };
+}
 
 function makeSong(id: string): MatchingSong {
 	return {
@@ -191,8 +200,10 @@ describe("patchTailCacheOnSuggestionDismiss (pure)", () => {
 describe("dismissSuggestionMutation", () => {
 	let queryClient: QueryClient;
 	const itemId = "item-1";
-	const presentKey = presentMatchReviewItemQueryOptions(itemId).queryKey;
-	const tailKey = [...matchReviewKeys.item(itemId), "suggestions"] as const;
+	// Keys retargeted to the deck caches (Phase 4): present → the deck card read,
+	// tail → the deck card suggestions infinite query.
+	const presentKey = readMatchDeckCardQueryOptions(itemId).queryKey;
+	const tailKey = [...matchDeckKeys.card(itemId), "suggestions"] as const;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -257,7 +268,7 @@ describe("dismissSuggestionMutation", () => {
 		expect(context?.previousTail).toEqual(tail);
 	});
 
-	it("onSuccess with success:false rolls back both caches to the pre-mutation snapshot", async () => {
+	it("onSuccess with a rejection status rolls back both caches to the pre-mutation snapshot", async () => {
 		const { present, tail } = seedCaches();
 		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate || !options.onSuccess) {
@@ -268,12 +279,9 @@ describe("dismissSuggestionMutation", () => {
 			{ itemId, suggestionId: "song-1" },
 			fakeMutationContext(),
 		);
-		const failure: DismissSuggestionResult = {
-			success: false,
-			reason: "already-resolved",
-		};
+		// A non-"dismissed" TEXT status is a rejection the classifier rolls back.
 		await options.onSuccess(
-			failure,
+			actionResult("already_resolved"),
 			{ itemId, suggestionId: "song-1" },
 			context,
 			fakeMutationContext(),
@@ -283,7 +291,7 @@ describe("dismissSuggestionMutation", () => {
 		expect(queryClient.getQueryData(tailKey)).toEqual(tail);
 	});
 
-	it("onSuccess with success:true leaves the optimistic patch in place", async () => {
+	it("onSuccess with the 'dismissed' status leaves the optimistic patch in place", async () => {
 		seedCaches();
 		const options = dismissSuggestionMutation(queryClient);
 		if (!options.onMutate || !options.onSuccess) {
@@ -294,9 +302,8 @@ describe("dismissSuggestionMutation", () => {
 			{ itemId, suggestionId: "song-1" },
 			fakeMutationContext(),
 		);
-		const success: DismissSuggestionResult = { success: true };
 		await options.onSuccess(
-			success,
+			actionResult("dismissed"),
 			{ itemId, suggestionId: "song-1" },
 			context,
 			fakeMutationContext(),

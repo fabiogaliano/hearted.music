@@ -7,8 +7,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SubmitMatchDeckActionResult } from "@/lib/server/match-deck.functions";
 import type {
-	DismissSuggestionResult,
 	ListMatchReviewItemSuggestionsPage,
 	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
@@ -16,21 +16,31 @@ import type {
 import type { MatchingSong } from "@/lib/server/matching.functions";
 
 const listMatchReviewItemSuggestionsMock = vi.fn();
-const dismissMatchReviewItemSuggestionMock = vi.fn();
+const submitMatchDeckActionMock = vi.fn();
 
 vi.mock("@/lib/server/match-review-queue.functions", () => ({
 	listMatchReviewItemSuggestions: (...args: unknown[]) =>
 		listMatchReviewItemSuggestionsMock(...args),
-	dismissMatchReviewItemSuggestion: (...args: unknown[]) =>
-		dismissMatchReviewItemSuggestionMock(...args),
 }));
 
-vi.mock("@/features/dashboard/queries", () => ({
-	dashboardKeys: { all: ["dashboard"] },
+// Dismiss now dispatches through the one deck-action command boundary; the tail
+// query still pages via listMatchReviewItemSuggestions (above).
+vi.mock("@/lib/server/match-deck.functions", () => ({
+	submitMatchDeckAction: (...args: unknown[]) =>
+		submitMatchDeckActionMock(...args),
+	startOrResumeMatchDeck: vi.fn(),
+	readMatchDeckCard: vi.fn(),
 }));
 
-import { presentMatchReviewItemQueryOptions } from "@/features/matching/queries";
+import { readMatchDeckCardQueryOptions } from "@/features/matching/deck-queries";
 import { useMatchReviewCard } from "@/features/matching/useMatchReviewCard";
+
+// submitMatchDeckAction returns a raw TEXT actionStatus + the fresh deck view.
+// dismiss-suggestion reads only the status via the classifier; the view is inert
+// here (RF: the dismiss path never applies it).
+function actionResult(actionStatus: string): SubmitMatchDeckActionResult {
+	return { actionStatus, view: { status: "building" } };
+}
 
 function makeSong(id: string): MatchingSong {
 	return {
@@ -164,11 +174,10 @@ describe("useMatchReviewCard", () => {
 	it("resolves true on a successful dismiss and patches the present cache", async () => {
 		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
 		queryClient.setQueryData(
-			presentMatchReviewItemQueryOptions(ITEM_ID).queryKey,
+			readMatchDeckCardQueryOptions(ITEM_ID).queryKey,
 			itemData,
 		);
-		const successResult: DismissSuggestionResult = { success: true };
-		dismissMatchReviewItemSuggestionMock.mockResolvedValue(successResult);
+		submitMatchDeckActionMock.mockResolvedValue(actionResult("dismissed"));
 
 		const { result } = renderHook(
 			() => useMatchReviewCard({ itemId: ITEM_ID, itemData, queryClient }),
@@ -182,7 +191,7 @@ describe("useMatchReviewCard", () => {
 
 		expect(dismissed).toBe(true);
 		const patched = queryClient.getQueryData<MatchReviewItemRead>(
-			presentMatchReviewItemQueryOptions(ITEM_ID).queryKey,
+			readMatchDeckCardQueryOptions(ITEM_ID).queryKey,
 		);
 		if (patched?.status !== "ready" || patched.mode !== "playlist") {
 			throw new Error("expected a ready playlist card");
@@ -193,14 +202,13 @@ describe("useMatchReviewCard", () => {
 	it("resolves false and rolls back the present cache on a rejected dismiss", async () => {
 		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
 		queryClient.setQueryData(
-			presentMatchReviewItemQueryOptions(ITEM_ID).queryKey,
+			readMatchDeckCardQueryOptions(ITEM_ID).queryKey,
 			itemData,
 		);
-		const failureResult: DismissSuggestionResult = {
-			success: false,
-			reason: "already-resolved",
-		};
-		dismissMatchReviewItemSuggestionMock.mockResolvedValue(failureResult);
+		// A non-"dismissed" TEXT status is a rejection the classifier rolls back.
+		submitMatchDeckActionMock.mockResolvedValue(
+			actionResult("already_resolved"),
+		);
 
 		const { result } = renderHook(
 			() => useMatchReviewCard({ itemId: ITEM_ID, itemData, queryClient }),
@@ -214,7 +222,7 @@ describe("useMatchReviewCard", () => {
 
 		expect(dismissed).toBe(false);
 		const patched = queryClient.getQueryData<MatchReviewItemRead>(
-			presentMatchReviewItemQueryOptions(ITEM_ID).queryKey,
+			readMatchDeckCardQueryOptions(ITEM_ID).queryKey,
 		);
 		if (patched?.status !== "ready" || patched.mode !== "playlist") {
 			throw new Error("expected a ready playlist card");
@@ -227,7 +235,7 @@ describe("useMatchReviewCard", () => {
 	});
 
 	it("serializes overlapping dismisses so a failed one can't resurrect a concurrent one", async () => {
-		const presentKey = presentMatchReviewItemQueryOptions(ITEM_ID).queryKey;
+		const presentKey = readMatchDeckCardQueryOptions(ITEM_ID).queryKey;
 		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
 		queryClient.setQueryData(presentKey, itemData);
 
@@ -235,15 +243,15 @@ describe("useMatchReviewCard", () => {
 		// B (song-2) succeeds. Without serialization, B would snapshot the cache
 		// while A's row is already optimistically gone, and A's later whole-snapshot
 		// rollback would resurrect BOTH rows (final ["song-1","song-2"]).
-		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
-		dismissMatchReviewItemSuggestionMock.mockImplementation(
+		let resolveA: ((value: SubmitMatchDeckActionResult) => void) | undefined;
+		submitMatchDeckActionMock.mockImplementation(
 			(arg: { data: { suggestionId: string } }) => {
 				if (arg.data.suggestionId === "song-1") {
-					return new Promise<DismissSuggestionResult>((resolve) => {
+					return new Promise<SubmitMatchDeckActionResult>((resolve) => {
 						resolveA = resolve;
 					});
 				}
-				return Promise.resolve<DismissSuggestionResult>({ success: true });
+				return Promise.resolve(actionResult("dismissed"));
 			},
 		);
 
@@ -258,20 +266,24 @@ describe("useMatchReviewCard", () => {
 		});
 
 		// B is queued behind A: only A's request has been issued so far.
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledWith({
-			data: { itemId: ITEM_ID, suggestionId: "song-1" },
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(1);
+		expect(submitMatchDeckActionMock).toHaveBeenCalledWith({
+			data: {
+				type: "dismiss-suggestion",
+				itemId: ITEM_ID,
+				suggestionId: "song-1",
+			},
 		});
 
 		if (!resolveA) throw new Error("dismiss A was never issued");
 		const settleA = resolveA;
 		await act(async () => {
-			settleA({ success: false, reason: "already-resolved" });
+			settleA(actionResult("already_resolved"));
 		});
 
 		// A settled (and rolled back) before B ran, so B is issued only now.
 		await waitFor(() =>
-			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+			expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(2),
 		);
 
 		await waitFor(() => {
@@ -288,15 +300,15 @@ describe("useMatchReviewCard", () => {
 		// QueueCardContent stays mounted as itemId changes, so the dismiss chain
 		// must be per-card: a pending dismiss on the card the user left must never
 		// stall the new card's dismiss (their caches are disjoint by itemId).
-		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
-		dismissMatchReviewItemSuggestionMock.mockImplementation(
+		let resolveA: ((value: SubmitMatchDeckActionResult) => void) | undefined;
+		submitMatchDeckActionMock.mockImplementation(
 			(arg: { data: { itemId: string; suggestionId: string } }) => {
 				if (arg.data.itemId === "item-a") {
-					return new Promise<DismissSuggestionResult>((resolve) => {
+					return new Promise<SubmitMatchDeckActionResult>((resolve) => {
 						resolveA = resolve;
 					});
 				}
-				return Promise.resolve<DismissSuggestionResult>({ success: true });
+				return Promise.resolve(actionResult("dismissed"));
 			},
 		);
 
@@ -321,7 +333,7 @@ describe("useMatchReviewCard", () => {
 		await act(async () => {
 			void result.current.dismissSuggestion("song-1");
 		});
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(1);
 
 		// Navigate to card B without resolving A. B's dismiss must fire and settle
 		// on its own; a shared chain would leave it queued behind A forever.
@@ -334,9 +346,13 @@ describe("useMatchReviewCard", () => {
 			expect(dismissed).toBe(true);
 		});
 
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2);
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenLastCalledWith({
-			data: { itemId: "item-b", suggestionId: "song-9" },
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(2);
+		expect(submitMatchDeckActionMock).toHaveBeenLastCalledWith({
+			data: {
+				type: "dismiss-suggestion",
+				itemId: "item-b",
+				suggestionId: "song-9",
+			},
 		});
 
 		// A is still pending — B did not wait on it.
@@ -348,8 +364,8 @@ describe("useMatchReviewCard", () => {
 		// card A even if it dequeues after the user navigated to card B — itemId
 		// is carried in the mutation variables, not the (per-render) observer
 		// options, so it can't bind to whatever card happens to be mounted.
-		const presentKeyA = presentMatchReviewItemQueryOptions("item-a").queryKey;
-		const presentKeyB = presentMatchReviewItemQueryOptions("item-b").queryKey;
+		const presentKeyA = readMatchDeckCardQueryOptions("item-a").queryKey;
+		const presentKeyB = readMatchDeckCardQueryOptions("item-b").queryKey;
 		queryClient.setQueryData(
 			presentKeyA,
 			makePlaylistReadyItem(["song-1", "song-2"], null),
@@ -359,15 +375,15 @@ describe("useMatchReviewCard", () => {
 			makePlaylistReadyItem(["song-9"], null),
 		);
 
-		let resolveRow1: ((value: DismissSuggestionResult) => void) | undefined;
-		dismissMatchReviewItemSuggestionMock.mockImplementation(
+		let resolveRow1: ((value: SubmitMatchDeckActionResult) => void) | undefined;
+		submitMatchDeckActionMock.mockImplementation(
 			(arg: { data: { itemId: string; suggestionId: string } }) => {
 				if (arg.data.suggestionId === "song-1") {
-					return new Promise<DismissSuggestionResult>((resolve) => {
+					return new Promise<SubmitMatchDeckActionResult>((resolve) => {
 						resolveRow1 = resolve;
 					});
 				}
-				return Promise.resolve<DismissSuggestionResult>({ success: true });
+				return Promise.resolve(actionResult("dismissed"));
 			},
 		);
 
@@ -394,7 +410,7 @@ describe("useMatchReviewCard", () => {
 			void result.current.dismissSuggestion("song-1");
 			void result.current.dismissSuggestion("song-2");
 		});
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(1);
 
 		// Navigate to card B, THEN let row 1 settle so the queued row 2 dequeues
 		// while card B is the mounted card.
@@ -405,14 +421,18 @@ describe("useMatchReviewCard", () => {
 		if (!resolveRow1) throw new Error("row 1 was never issued");
 		const settleRow1 = resolveRow1;
 		await act(async () => {
-			settleRow1({ success: true });
+			settleRow1(actionResult("dismissed"));
 		});
 
 		await waitFor(() =>
-			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+			expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(2),
 		);
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenLastCalledWith({
-			data: { itemId: "item-a", suggestionId: "song-2" },
+		expect(submitMatchDeckActionMock).toHaveBeenLastCalledWith({
+			data: {
+				type: "dismiss-suggestion",
+				itemId: "item-a",
+				suggestionId: "song-2",
+			},
 		});
 
 		// Card A drained both rows; card B is untouched by A's queued dismiss.
@@ -435,15 +455,15 @@ describe("useMatchReviewCard", () => {
 		// chains behind A and replaces the map entry the drain first snapshotted —
 		// so awaiting only that snapshot would return while B is still mid-onMutate.
 		// The drain must loop until the chain is truly quiescent.
-		const presentKey = presentMatchReviewItemQueryOptions(ITEM_ID).queryKey;
+		const presentKey = readMatchDeckCardQueryOptions(ITEM_ID).queryKey;
 		const itemData = makePlaylistReadyItem(["song-1", "song-2"], null);
 		queryClient.setQueryData(presentKey, itemData);
 
-		let resolveA: ((value: DismissSuggestionResult) => void) | undefined;
-		let resolveB: ((value: DismissSuggestionResult) => void) | undefined;
-		dismissMatchReviewItemSuggestionMock.mockImplementation(
+		let resolveA: ((value: SubmitMatchDeckActionResult) => void) | undefined;
+		let resolveB: ((value: SubmitMatchDeckActionResult) => void) | undefined;
+		submitMatchDeckActionMock.mockImplementation(
 			(arg: { data: { suggestionId: string } }) =>
-				new Promise<DismissSuggestionResult>((resolve) => {
+				new Promise<SubmitMatchDeckActionResult>((resolve) => {
 					if (arg.data.suggestionId === "song-1") resolveA = resolve;
 					else resolveB = resolve;
 				}),
@@ -457,7 +477,7 @@ describe("useMatchReviewCard", () => {
 		await act(async () => {
 			void result.current.dismissSuggestion("song-1");
 		});
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(1);
 
 		let drained = false;
 		let drainPromise: Promise<void> | undefined;
@@ -469,17 +489,17 @@ describe("useMatchReviewCard", () => {
 			// the map entry, reproducing the narrow real-world click window.
 			void result.current.dismissSuggestion("song-2");
 		});
-		expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(1);
+		expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(1);
 
 		// A settles → B is issued, but B is still pending, so the drain must NOT
 		// have resolved yet. The pre-fix single-read would have resolved here.
 		if (!resolveA) throw new Error("dismiss A was never issued");
 		const settleA = resolveA;
 		await act(async () => {
-			settleA({ success: true });
+			settleA(actionResult("dismissed"));
 		});
 		await waitFor(() =>
-			expect(dismissMatchReviewItemSuggestionMock).toHaveBeenCalledTimes(2),
+			expect(submitMatchDeckActionMock).toHaveBeenCalledTimes(2),
 		);
 		expect(drained).toBe(false);
 
@@ -487,7 +507,7 @@ describe("useMatchReviewCard", () => {
 		if (!resolveB) throw new Error("dismiss B was never issued");
 		const settleB = resolveB;
 		await act(async () => {
-			settleB({ success: true });
+			settleB(actionResult("dismissed"));
 		});
 		await waitFor(() => expect(drained).toBe(true));
 		await drainPromise;
