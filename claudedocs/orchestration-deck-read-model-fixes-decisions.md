@@ -805,3 +805,15 @@ per decision + rationale.
   escapes the `Result` contract. Unreachable today — both SQL functions always
   return a `jsonb_build_object(...)`, never NULL — so deliberately not guarded;
   a defensive null check would be dead code against the current SQL.
+- **Amendment (post-pass-3 review): the Task-1 residual wording understates the
+  remaining exposure.** The "flip→re-check gap (a few ms)" residual describes
+  only the handler's OWN re-invoke path. Two variants of the same class remain
+  open because they never pass through the miss handler: (a) any OTHER
+  concurrent `start_or_resume_match_deck` reader landing inside the writer's
+  DELETE→re-INSERT window promotes at the RPC level (branch 2 gates only on
+  `p.status = 'ready'`); (b) the worker crashing inside that window leaves the
+  proposal `ready` with zero/partial subjects for a full lease period, during
+  which any reader promotes it durably. Both are pre-existing (this branch
+  strictly narrowed the class) and both are closed by the promotion-side
+  subject-count guard deferred to the local-DB pass — handoff written at
+  `docs/architecture/matching/deck-promotion-count-guard-handoff.md`.
