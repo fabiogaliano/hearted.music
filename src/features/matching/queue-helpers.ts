@@ -1,37 +1,3 @@
-import type { MatchReviewResult } from "@/lib/server/match-review-queue.functions";
-
-/**
- * Derives ordered unresolved item ids from the queue summary.
- *
- * Only pending and active items need a card — resolved items are already
- * decided. Sorting by position preserves the server-assigned enqueue order
- * (new songs first, then score-descending).
- *
- * This pure function is extracted from the route component so it can be unit-
- * tested without a DOM or query client.
- */
-export function deriveUnresolvedIds(queue: MatchReviewResult | null): string[] {
-	if (!queue) return [];
-	return queue.items
-		.filter((item) => item.state === "pending" || item.state === "active")
-		.sort((a, b) => a.position - b.position)
-		.map((item) => item.id);
-}
-
-/**
- * Derives whether the queue is caught up from queue state.
- *
- * Caught-up is true when caughtUp is true OR there are no unresolved items.
- * This is always derived from server state — never from null song data.
- */
-export function deriveCaughtUp(
-	queue: MatchReviewResult | null,
-	unresolvedIds: string[],
-): boolean {
-	if (!queue) return true;
-	return queue.caughtUp || unresolvedIds.length === 0;
-}
-
 /**
  * Resolves the stable current item id given the id-based pointer and the
  * current unresolved list.
@@ -68,27 +34,6 @@ export function countAppendedFromTotal(
 	nextTotal: number,
 ): number {
 	return Math.max(0, nextTotal - prevTotal);
-}
-
-/**
- * Picks the next current item after the user resolves `resolvedId`.
- *
- * `effectiveItemIds` is the still-unresolved list at the moment of the action —
- * it still contains `resolvedId` because the resolution hasn't been applied to
- * local state yet. We return the item immediately after it (forward advance),
- * or null when it was the last card (caught-up).
- *
- * Returning null when `resolvedId` is missing is intentional: the caller pairs
- * this with resolveCurrentItemId, whose own fallback re-selects the first
- * unresolved item, so a stale id degrades gracefully rather than crashing.
- */
-export function nextItemIdAfterResolved(
-	effectiveItemIds: string[],
-	resolvedId: string,
-): string | null {
-	const index = effectiveItemIds.indexOf(resolvedId);
-	if (index === -1) return null;
-	return effectiveItemIds[index + 1] ?? null;
 }
 
 /**
@@ -149,7 +94,7 @@ export type Reason =
  *   "no-context" is correct ONLY when no processing is running and no visible
  *   match is ready — i.e., genuinely no setup. Everything else is transient
  *   ("building"), including when a first match IS ready but the recovery effect
- *   is still creating the session (shouldBootstrapReadyQueue).
+ *   is still creating the session.
  *
  * Caught-up branch (hasQueue=true, caughtUp=true):
  *   Active-jobs states take priority; terminal states ("filtered", "none-yet",
@@ -178,24 +123,4 @@ export function deriveEmptyStateReason(signals: {
 	if (signals.hiddenReviewItemCount > 0) return "filtered";
 	if (signals.total === 0) return "none-yet";
 	return "caught-up";
-}
-
-/**
- * Whether the route should re-run the one-shot queue bootstrap.
- *
- * The loader creates the review session only on entry. A user who opens /match
- * before the first snapshot exists gets no session, and background refresh only
- * syncs EXISTING sessions — so once a first visible match becomes ready nothing
- * ever creates the queue and the page would strand on the empty state. When we
- * have no session but a visible match is ready, the component re-runs the
- * bootstrap to create the session and refetch.
- */
-export function shouldBootstrapReadyQueue({
-	hasQueue,
-	firstVisibleMatchReady,
-}: {
-	hasQueue: boolean;
-	firstVisibleMatchReady: boolean;
-}): boolean {
-	return !hasQueue && firstVisibleMatchReady;
 }
