@@ -223,6 +223,46 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 						appended_count: outcome.value.appendedCount,
 					},
 				});
+
+				// M5: the newly-appended region is uncaptured; the baked deck view has
+				// no on-demand materialize fallback (H4/L2 residual), so a session
+				// resumed there renders `retryable-error` until capture_ahead runs.
+				// Key scheme mirrors the capture_ahead arm below / the action RPCs'
+				// v_idem_key (20260706000009_extend_deck_action_rpcs.sql):
+				// `capture:{account}:{orientation}:{session}:{resumePosition|'none'}`.
+				//
+				// Best-effort, NOT propagated as a job failure: recordSnapshotApplied
+				// already committed inside appendSessionsForAccountOrientation above,
+				// so a retry of THIS job would see the (snapshot, hash) pair as already
+				// applied and return appendedCount: 0 — it would never re-attempt this
+				// enqueue. Losing the chain here is recoverable via the next
+				// mid-session publish, an action-triggered capture_ahead, or M2's
+				// priority queueing; failing the already-durable append is not.
+				const affectedSessionId = outcome.value.sessionId;
+				const resumeResult = await readSessionResumePosition(affectedSessionId);
+				if (Result.isError(resumeResult)) {
+					log.warn("match-deck-capture-chain-resume-read-failed", {
+						jobId: job.id,
+						sessionId: affectedSessionId,
+						error: resumeResult.error.message,
+					});
+				} else {
+					const captureIdemKey = `capture:${job.account_id}:${orientation}:${affectedSessionId}:${resumeResult.value ?? "none"}`;
+					const chainedCapture = await enqueueDeckJob({
+						accountId: job.account_id,
+						orientation,
+						kind: "capture_ahead",
+						sessionId: affectedSessionId,
+						idempotencyKey: captureIdemKey,
+					});
+					if (Result.isError(chainedCapture)) {
+						log.warn("match-deck-capture-chain-enqueue-failed", {
+							jobId: job.id,
+							sessionId: affectedSessionId,
+							error: chainedCapture.error.message,
+						});
+					}
+				}
 			}
 			return Result.ok(undefined);
 		}

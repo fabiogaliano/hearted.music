@@ -23,6 +23,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
@@ -50,11 +51,19 @@ export type AppendSessionsOutcome =
 	 *  this (account, orientation, snapshot, hash). Retry later (may still be
 	 *  building), and eventual dead-letter is acceptable. */
 	| { kind: "no_ready_proposal" }
-	/** A proposal row exists for the frozen hash but a NEWER snapshot's publish
-	 *  already marked it `stale` before this (older) append ran. The skip is
-	 *  CORRECT — settle as done, not a retry/dead-letter (M2). */
+	/** The job's snapshot is no longer the account's latest (H2b) — caught
+	 *  directly against getLatestMatchSnapshot, or via the proposal's own
+	 *  `stale` flag already flipped by a concurrent newer-snapshot build. The
+	 *  skip is CORRECT — settle as done, not a retry/dead-letter. */
 	| { kind: "superseded" }
-	| { kind: "applied"; appendedCount: number };
+	| {
+			kind: "applied";
+			appendedCount: number;
+			/** The session the append ran against, so the poll loop can chain a
+			 *  capture_ahead job for this session's resume region when
+			 *  appendedCount > 0 (M5). */
+			sessionId: string;
+	  };
 
 /** insertSessionSnapshot treating a duplicate-key ConstraintError as a benign
  *  idempotency no-op — a concurrent append already recorded this (snapshot, hash). */
@@ -76,10 +85,138 @@ async function recordSnapshotApplied(
 	return Result.ok(undefined);
 }
 
-/** A concurrent append can collide on (session_id, position) — the per-subject
- *  upsert doesn't cover it. Treat that one case as a no-op; else propagate. */
-function treatPositionRaceAsNoop(error: DbError): Result<number, DbError> {
-	return error._tag === "ConstraintError" ? Result.ok(0) : Result.err(error);
+/**
+ * Records the ledger row and, only when subjects actually landed, advances the
+ * session's `active_proposal_id` to the just-applied proposal (M11): branch 1
+ * of start_or_resume_match_deck reads snapshot/hash/hidden-review-count through
+ * that FK, so leaving it pointed at a pre-append proposal leaks superseded
+ * metadata into the view once a newer snapshot has appended into the session.
+ * Gated on appendedCount > 0 — a zero-count replay changes nothing the FK needs
+ * to reflect, the same gate the poll loop uses to chain capture_ahead (M5).
+ */
+async function finalizeAppliedAppend(
+	session: MatchReviewSession,
+	proposalId: string,
+	snapshotId: string,
+	visibilityConfigHash: string,
+	appendedCount: number,
+): Promise<Result<AppendSessionsOutcome, DbError>> {
+	const recorded = await recordSnapshotApplied(
+		session.id,
+		snapshotId,
+		appendedCount,
+		visibilityConfigHash,
+	);
+	if (Result.isError(recorded)) return recorded;
+
+	if (appendedCount > 0) {
+		const { error } = await createAdminSupabaseClient()
+			.from("match_review_session")
+			.update({ active_proposal_id: proposalId })
+			.eq("id", session.id);
+		if (error) {
+			return Result.err(
+				new DatabaseError({ code: error.code, message: error.message }),
+			);
+		}
+	}
+
+	return Result.ok({ kind: "applied", appendedCount, sessionId: session.id });
+}
+
+/** Row shape read by fetchProposalForSnapshotHash — just enough to route the
+ *  ready/stale/building/missing branches shared by the apply and replay paths. */
+type ProposalStatusLookup = { id: string; status: string };
+
+/**
+ * Looks up the proposal for this exact (account, orientation, snapshot,
+ * visibility hash) key — the same match_review_proposal row both the apply
+ * path (below) and the idempotency-replay self-heal
+ * (advanceActiveProposalOnReplay) resolve `active_proposal_id` from. Scoping on
+ * all four columns means the row returned can never belong to another account
+ * or a different snapshot/hash than the one this job is running for.
+ */
+async function fetchProposalForSnapshotHash(
+	accountId: string,
+	orientation: MatchOrientation,
+	snapshotId: string,
+	visibilityHash: string,
+): Promise<Result<ProposalStatusLookup | null, DbError>> {
+	const proposalResult = await createAdminSupabaseClient()
+		.from("match_review_proposal")
+		.select("id, status")
+		.eq("account_id", accountId)
+		.eq("orientation", orientation)
+		.eq("snapshot_id", snapshotId)
+		.eq("visibility_config_hash", visibilityHash)
+		.maybeSingle();
+	if (proposalResult.error) {
+		return Result.err(
+			new DatabaseError({
+				code: proposalResult.error.code,
+				message: proposalResult.error.message,
+			}),
+		);
+	}
+	return Result.ok(proposalResult.data);
+}
+
+/**
+ * Self-heals a stranded `active_proposal_id` on the idempotency-replay path
+ * (M11 follow-up): finalizeAppliedAppend's ledger INSERT and its
+ * `active_proposal_id` UPDATE are two separate non-transactional calls. If the
+ * INSERT commits but the UPDATE then errors (transient blip), the function
+ * returns Result.err and the job defers/retries — but on retry the appliedKey
+ * short-circuit above fires (the ledger row already exists) and returns before
+ * finalizeAppliedAppend, and thus the UPDATE, ever runs again. Without this,
+ * `active_proposal_id` would stay pointed at the pre-append proposal forever.
+ *
+ * Re-derives the exact ready proposal the original apply would have advanced
+ * to (same (account, orientation, snapshot, hash) lookup as the apply path) and
+ * re-issues the same UPDATE, scoped to this session's id. The UPDATE is
+ * idempotent — setting `active_proposal_id` to the value it should already
+ * hold is a no-op — so replaying it on every already-applied hit is safe.
+ *
+ * Failure handling mirrors finalizeAppliedAppend's own UPDATE: a query or
+ * update error is propagated (Result.err) so the job defers and retries on the
+ * normal job retry/dead-letter policy — the ledger row is already durable, so
+ * this can't loop forever, and retrying is exactly what re-attempts the FK
+ * write. A proposal that isn't `ready` (still building, gone stale, or not
+ * found under this hash) is NOT an error: the advance is simply deferred to
+ * whichever future append job first finds a ready proposal for this key.
+ */
+async function advanceActiveProposalOnReplay(
+	session: MatchReviewSession,
+	accountId: string,
+	orientation: MatchOrientation,
+	snapshotId: string,
+	visibilityHash: string,
+): Promise<Result<AppendSessionsOutcome, DbError>> {
+	const proposalResult = await fetchProposalForSnapshotHash(
+		accountId,
+		orientation,
+		snapshotId,
+		visibilityHash,
+	);
+	if (Result.isError(proposalResult)) return proposalResult;
+
+	if (proposalResult.value?.status === "ready") {
+		const { error } = await createAdminSupabaseClient()
+			.from("match_review_session")
+			.update({ active_proposal_id: proposalResult.value.id })
+			.eq("id", session.id);
+		if (error) {
+			return Result.err(
+				new DatabaseError({ code: error.code, message: error.message }),
+			);
+		}
+	}
+
+	return Result.ok({
+		kind: "applied",
+		appendedCount: 0,
+		sessionId: session.id,
+	});
 }
 
 export async function appendSessionsForAccountOrientation(input: {
@@ -93,6 +230,18 @@ export async function appendSessionsForAccountOrientation(input: {
 	if (Result.isError(sessionResult)) return sessionResult;
 	const session: MatchReviewSession | null = sessionResult.value;
 	if (!session) return Result.ok({ kind: "no_active_session" });
+
+	// H2(b): a delayed/retried append must never re-apply a SUPERSEDED
+	// snapshot's subjects into the active session — the subject set may now be
+	// ineligible (unowned playlist, revoked entitlement) since a newer snapshot
+	// published. Check directly against the account's latest snapshot rather
+	// than relying solely on the proposal's own `stale` flag (flipped by
+	// buildProposalsForAccountOrientation) having already landed.
+	const latestSnapshotResult = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(latestSnapshotResult)) return latestSnapshotResult;
+	if (latestSnapshotResult.value?.id !== snapshotId) {
+		return Result.ok({ kind: "superseded" });
+	}
 
 	const filtersResult = await fetchTargetPlaylistFilters(accountId);
 	if (Result.isError(filtersResult)) return filtersResult;
@@ -111,37 +260,38 @@ export async function appendSessionsForAccountOrientation(input: {
 	const appliedResult = await fetchAppliedSnapshotIds(session.id);
 	if (Result.isError(appliedResult)) return appliedResult;
 	if (appliedResult.value.has(appliedKey)) {
-		return Result.ok({ kind: "applied", appendedCount: 0 });
+		// Fix (M11 follow-up): don't just short-circuit — self-heal a possibly
+		// stranded active_proposal_id from a prior partial failure (ledger
+		// INSERT committed, FK UPDATE didn't) before returning. See
+		// advanceActiveProposalOnReplay for why this can't loop forever.
+		return advanceActiveProposalOnReplay(
+			session,
+			accountId,
+			orientation,
+			snapshotId,
+			visibilityHash,
+		);
 	}
 
 	// Read status (not `.eq("status","ready")`) so a proposal that a newer
 	// snapshot marked `stale` is distinguishable from one that never existed:
 	// the former is a correct skip, the latter a genuine miss (M2).
-	const proposalResult = await createAdminSupabaseClient()
-		.from("match_review_proposal")
-		.select("id, status")
-		.eq("account_id", accountId)
-		.eq("orientation", orientation)
-		.eq("snapshot_id", snapshotId)
-		.eq("visibility_config_hash", visibilityHash)
-		.maybeSingle();
-	if (proposalResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: proposalResult.error.code,
-				message: proposalResult.error.message,
-			}),
-		);
-	}
-	if (!proposalResult.data) return Result.ok({ kind: "no_ready_proposal" });
-	if (proposalResult.data.status === "stale") {
+	const proposalResult = await fetchProposalForSnapshotHash(
+		accountId,
+		orientation,
+		snapshotId,
+		visibilityHash,
+	);
+	if (Result.isError(proposalResult)) return proposalResult;
+	if (!proposalResult.value) return Result.ok({ kind: "no_ready_proposal" });
+	if (proposalResult.value.status === "stale") {
 		return Result.ok({ kind: "superseded" });
 	}
 	// Still `building` (or `failed`): raced ahead of its build — retry later.
-	if (proposalResult.data.status !== "ready") {
+	if (proposalResult.value.status !== "ready") {
 		return Result.ok({ kind: "no_ready_proposal" });
 	}
-	const proposalId = proposalResult.data.id;
+	const proposalId = proposalResult.value.id;
 
 	const subjectsResult = await createAdminSupabaseClient()
 		.from("match_review_proposal_subject")
@@ -179,14 +329,13 @@ export async function appendSessionsForAccountOrientation(input: {
 		);
 
 		if (candidates.length === 0) {
-			const recorded = await recordSnapshotApplied(
-				session.id,
+			return finalizeAppliedAppend(
+				session,
+				proposalId,
 				snapshotId,
-				0,
 				visibilityHash,
+				0,
 			);
-			if (Result.isError(recorded)) return recorded;
-			return Result.ok({ kind: "applied", appendedCount: 0 });
 		}
 
 		const maxPosResult = await fetchMaxPosition(session.id);
@@ -203,21 +352,26 @@ export async function appendSessionsForAccountOrientation(input: {
 			wasNewAtEnqueue: c.wasNew,
 		}));
 
+		// M3: queries.ts collapses every postgres constraint violation (23505,
+		// 23503, 23514) into ConstraintError, so ANY constraint hit here — not
+		// just a (session_id, position) collision from a concurrent append —
+		// is treated as a genuine race, not a safe no-op: swallowing it would
+		// mean the ledger row below never gets written and the batch silently
+		// vanishes with no retry. Propagate the error so the job DEFERS; the
+		// common/expected case is the position race, and positions are
+		// recomputed fresh (fetchMaxPosition re-reads current state) on the
+		// retry, with the insert RPC's `ON CONFLICT DO NOTHING` making
+		// re-inserting the already-landed subjects idempotent.
 		const insertResult = await insertQueueItems(items);
-		if (Result.isError(insertResult)) {
-			const noop = treatPositionRaceAsNoop(insertResult.error);
-			if (Result.isError(noop)) return noop;
-			return Result.ok({ kind: "applied", appendedCount: 0 });
-		}
+		if (Result.isError(insertResult)) return insertResult;
 
-		const recorded = await recordSnapshotApplied(
-			session.id,
+		return finalizeAppliedAppend(
+			session,
+			proposalId,
 			snapshotId,
-			items.length,
 			visibilityHash,
+			items.length,
 		);
-		if (Result.isError(recorded)) return recorded;
-		return Result.ok({ kind: "applied", appendedCount: items.length });
 	}
 
 	const candidates = proposalSubjects.flatMap((s) =>
@@ -227,14 +381,13 @@ export async function appendSessionsForAccountOrientation(input: {
 	);
 
 	if (candidates.length === 0) {
-		const recorded = await recordSnapshotApplied(
-			session.id,
+		return finalizeAppliedAppend(
+			session,
+			proposalId,
 			snapshotId,
-			0,
 			visibilityHash,
+			0,
 		);
-		if (Result.isError(recorded)) return recorded;
-		return Result.ok({ kind: "applied", appendedCount: 0 });
 	}
 
 	const maxPosResult = await fetchMaxPosition(session.id);
@@ -252,19 +405,17 @@ export async function appendSessionsForAccountOrientation(input: {
 		wasNewAtEnqueue: false,
 	}));
 
+	// M3: see the song-arm comment above — any ConstraintError from the insert
+	// (the common/expected case being the position race, not the only one) must
+	// defer-and-retry, not silently no-op past the ledger write.
 	const insertResult = await insertQueuePlaylistItems(items);
-	if (Result.isError(insertResult)) {
-		const noop = treatPositionRaceAsNoop(insertResult.error);
-		if (Result.isError(noop)) return noop;
-		return Result.ok({ kind: "applied", appendedCount: 0 });
-	}
+	if (Result.isError(insertResult)) return insertResult;
 
-	const recorded = await recordSnapshotApplied(
-		session.id,
+	return finalizeAppliedAppend(
+		session,
+		proposalId,
 		snapshotId,
-		items.length,
 		visibilityHash,
+		items.length,
 	);
-	if (Result.isError(recorded)) return recorded;
-	return Result.ok({ kind: "applied", appendedCount: items.length });
 }
