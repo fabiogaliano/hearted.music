@@ -296,13 +296,14 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 	}
 }
 
-// A settlement UPDATE (complete/defer) can itself fail. Control flow is
-// unchanged — the stale-lease sweep still reclaims the job — but log it so a
-// job that lingers until its lease is diagnosable rather than silent.
+// A settlement UPDATE (complete/defer) can itself fail — or match zero rows
+// when the status guard fires after a concurrent sweep/dead-letter. Control
+// flow is unchanged — the stale-lease sweep still reclaims the job — but log
+// both cases so a lingering job is diagnosable rather than silent.
 function logSettlementFailure(
 	settlement: "complete" | "defer",
 	job: DeckJob,
-	result: Result<void, DbError>,
+	result: Result<boolean, DbError>,
 ): void {
 	if (Result.isError(result)) {
 		log.error("match-deck-settlement-write-failed", {
@@ -310,6 +311,15 @@ function logSettlementFailure(
 			jobId: job.id,
 			kind: job.kind,
 			error: result.error.message,
+		});
+		return;
+	}
+
+	if (!result.value) {
+		log.warn("match-deck-settlement-guard-hit", {
+			settlement,
+			jobId: job.id,
+			kind: job.kind,
 		});
 	}
 }
