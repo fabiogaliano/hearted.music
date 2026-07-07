@@ -817,3 +817,28 @@ per decision + rationale.
   strictly narrowed the class) and both are closed by the promotion-side
   subject-count guard deferred to the local-DB pass — handoff written at
   `docs/architecture/matching/deck-promotion-count-guard-handoff.md`.
+- **Fix (local-DB pass): promotion-side subject-count guard closes the
+  concurrent-reader/worker-crash residual.** Migration
+  `20260707000019_start_or_resume_deck_guard_subject_count.sql` supersedes
+  `20260707000018`, a full-body copy with exactly two edits: the header comment
+  and one predicate on the branch-2 proposal SELECT —
+  `AND p.total_subjects = (SELECT count(*) FROM match_review_proposal_subject ps
+  WHERE ps.proposal_id = p.id)`. This rejects any `ready` proposal whose subject
+  rows are mid-rewrite (a racing `buildOneProposal` sitting between its DELETE
+  and re-INSERT), so a concurrent `start_or_resume_match_deck` reader — or a
+  reader landing after a worker crash inside that window — can no longer promote
+  a zero/partial subject set into a durable session; the mismatch falls into the
+  existing BRANCH 3 miss, whose step-0 `findInFlightBuildProposalsJob` check
+  defers to the running worker and the client's bounded poll re-reads. Sound
+  because `ready` and `total_subjects` are written in the same UPDATE
+  (`proposal-builder.ts:335-336`), so a `ready` row always carries its count
+  atomically, and the single SELECT sees one READ COMMITTED snapshot, so the
+  (status, count, rows) triple is internally consistent. Residual: a reader that
+  promotes a COMPLETE set just before the other writer's DELETE yields a correct
+  full session — harmless. A legitimately empty proposal (`total_subjects=0`,
+  zero rows) still passes (0 = 0), pre-existing behavior left intact. No
+  TypeScript behavior change; `match-deck-miss-path.ts`'s step-2 docstring notes
+  the DB-side guard now covers the residual the re-check couldn't reach. This is
+  the guard the post-pass-3 amendment (above) and
+  `docs/architecture/matching/deck-promotion-count-guard-handoff.md` deferred to
+  this pass.
