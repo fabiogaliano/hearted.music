@@ -733,3 +733,75 @@ per decision + rationale.
   (unlike the warm-script helper) — the walk-and-invoke technique only needs
   `Route` (already exported) plus the mocked React/router shims, so the P3.4
   warm-script export remains the only production edit in this whole pass.
+
+## Post-verification fix pass 3
+
+- **Task 1 — post-build promotion window closed (`match-deck-miss-path.ts`,
+  should-fix 1).** The step-0 in-flight check only guards the moment BEFORE the
+  inline `buildOneProposal`; a worker `build_proposals` job enqueued+claimed
+  after step 0 but DURING the inline build could still interleave — the request
+  flips its proposal `ready` while the worker sits between its subject DELETE
+  and re-INSERT, so the handler's own step-2 re-invoke would promote a
+  zero/partial subject set into a DURABLE session. Because promotion writes the
+  `match_review_session_snapshot` ledger row, `append_sessions` for the same
+  `(snapshot, hash)` short-circuits on the already-applied key and never
+  backfills, so the truncated session would persist until the next snapshot
+  publish. Fix: re-run `findInFlightBuildProposalsJob(accountId, orientation)`
+  after the build succeeds (after the 23505 degrade block, before the re-invoke)
+  — a job now present → defer to the worker (`enqueueFullBuild()` + return
+  `MISS_RESULT`, mapped to `{status:"building"}` so the client's bounded poll
+  re-reads once the worker finishes); a lookup error fails OPEN exactly like
+  step 0 (`captureServerError` op `match_deck_miss_post_build_check`, then fall
+  through to the re-invoke). Residual shrinks from "the whole inline build
+  duration" to "a job enqueued+claimed AND its upsert+DELETE completing entirely
+  inside the flip→re-check gap (a few ms)". TypeScript-only; the file-header
+  step-2 docstring was rewritten to describe the re-check and the tightened
+  residual. Tests: extended `match-deck-miss-path.test.ts` — a post-build job
+  appearing defers (no re-invoke, one enqueue, `findInFlightBuildProposalsJob`
+  called twice); a post-build lookup error fails open (re-invoke still happens,
+  active returned, capture fired with the post-build operation, asserted via
+  `mock.calls` destructuring per the file's Symbol.iterator caution). The
+  pre-existing step-0 fail-open test was switched from `mockResolvedValue` to
+  `mockResolvedValueOnce(err).mockResolvedValueOnce(ok(null))` so the new
+  second lookup doesn't double-fire its capture and the test stays scoped to
+  step 0; all other existing `findInFlightBuildProposalsJob`/enqueue call-count
+  assertions still hold (the defer/degrade/propagate paths all return before the
+  post-build check).
+- **Task 2a — drift-capture paths pinned (`deck-read-queries.test.ts`, new
+  file, should-fix 2).** P1.5's `status`-allowlist captures had no coverage.
+  Mocked `@/lib/data/client`'s `createAdminSupabaseClient` (rpc → `{data, error:
+  null}`) and `capture-server-error`. Four cases: an unknown status from each
+  RPC wrapper (`renamed`) fires `captureServerError` exactly once with the
+  right operation (`call_start_or_resume_match_deck` /
+  `call_read_match_deck_card`) and `extra` (`{orientation,status}` /
+  `{itemId,status}`) AND still returns `Result.ok` carrying the raw value
+  (returned, not rejected — the mappers' fallback arms own the recovery); plus
+  a negative per wrapper (`miss` / `ready`) firing no capture.
+- **Task 2b — `captureUnexpectedCardShape` pinned (`match-deck.functions.test.ts`,
+  extended).** Driven through the exported `mapStartOrResumeToView` call site
+  (the mapper stays pure; the capture is at the call site). `captureServerError`
+  funnels to the already-mocked `Sentry.captureException`, so that mock is the
+  seam. Three cases: a `cards.current` presentation of `{status:"ready"}` with
+  neither song nor playlist → capture fires (op
+  `map_read_deck_card_to_item_read`) and the mapped card is the retryable-error
+  fallback; an unknown `status` → capture fires, mapper still returns
+  retryable-error; `not_captured` → NO capture (it is in `KNOWN_CARD_STATUSES`,
+  tracked via the `match_deck_materialize_on_read` product event instead) while
+  the mapper still yields retryable-error.
+- **Recorded, not fixed (1): SQLSTATE 40P01 (deadlock) is a plausible loser
+  signature the 23505 degrade doesn't cover.** `buildOneProposal`'s five
+  non-transactional writes racing another writer could surface a deadlock
+  (`40P01`) rather than a `unique_violation` (`23505`); today only 23505
+  degrades to the miss shape, so a 40P01 would propagate as a 500. Deliberately
+  NOT added to the degrade set pre-emptively — add `40P01` to `isUniqueViolation`
+  (rename/broaden it) only if it actually appears in Sentry for this path;
+  broadening the degrade set speculatively risks masking a genuine deadlock bug
+  that isn't a benign race loss.
+- **Recorded, not fixed (2): the RPC wrappers dereference `.status`, so a
+  SQL-NULL payload would throw outside the Result channel.**
+  `callStartOrResumeMatchDeck`/`callReadMatchDeckCard` read `result.status`
+  directly after the `as unknown as` cast; if the RPC ever returned a JSON
+  `null` (or a non-object), `result.status` would throw a `TypeError` that
+  escapes the `Result` contract. Unreachable today — both SQL functions always
+  return a `jsonb_build_object(...)`, never NULL — so deliberately not guarded;
+  a defensive null check would be dead code against the current SQL.
