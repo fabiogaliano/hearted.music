@@ -20,6 +20,7 @@ const {
 	mockApplyLibraryProcessingChange,
 	mockEnqueueDeckJob,
 	mockGetLatestMatchSnapshot,
+	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -34,6 +35,7 @@ const {
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
 	mockGetLatestMatchSnapshot: vi.fn(),
+	mockResolveVisibilityConfigHash: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -92,6 +94,14 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...args: unknown[]) =>
 		mockGetLatestMatchSnapshot(...args),
 }));
+
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/visibility-config-hash",
+	() => ({
+		resolveVisibilityConfigHash: (...args: unknown[]) =>
+			mockResolveVisibilityConfigHash(...args),
+	}),
+);
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {
@@ -284,6 +294,9 @@ describe("savePlaylistMatchConfig", () => {
 		mockApplyLibraryProcessingChange.mockResolvedValue(Result.ok(null));
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
+		mockResolveVisibilityConfigHash.mockResolvedValue(
+			Result.ok({ hash: "vc_test_hash", minScore: 0.5, policy: {} }),
+		);
 	});
 
 	it("normalizes duplicate language codes before persisting and returning", async () => {

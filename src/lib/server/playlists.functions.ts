@@ -40,6 +40,7 @@ import {
 	hasFirstVisibleReviewSubject,
 	resolveReadinessPermissive,
 } from "@/lib/domains/taste/match-review-queue/readiness";
+import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	canonicalizeGenre,
@@ -101,11 +102,33 @@ async function enqueueFilterProposalRebuild(
 	}
 	const snapshotId = snapshotResult.value.id;
 	for (const orientation of ["song", "playlist"] as const) {
+		// The filter change that triggered this rebuild already landed, so the hash
+		// computed here is the NEW one — folding it into the idempotency key (M1)
+		// lets this enqueue win against an in-flight build of the stale filters
+		// instead of deduping away and leaving an active session stuck on them.
+		const hashResult = await resolveVisibilityConfigHash(
+			accountId,
+			orientation,
+		);
+		if (Result.isError(hashResult)) {
+			captureServerError(hashResult.error, {
+				area: "playlists",
+				operation,
+				accountId,
+				extra: {
+					stage: "post_save_invalidation",
+					step: "resolve_visibility_config_hash",
+					orientation,
+					snapshotId,
+				},
+			});
+			continue;
+		}
 		const enqueued = await enqueueDeckJob({
 			accountId,
 			orientation,
 			kind: "build_proposals",
-			idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}`,
+			idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${hashResult.value.hash}`,
 			payload: { snapshotId } as Json,
 		});
 		if (Result.isError(enqueued)) {

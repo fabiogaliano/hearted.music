@@ -111,6 +111,22 @@ export const Route = createFileRoute("/_authenticated/match")({
 	component: MatchPage,
 });
 
+// Building-recovery poll tuning (M8): fixed interval rather than exponential
+// backoff — the miss-path promotion either lands within a couple of attempts
+// or the build genuinely needs longer, in which case stopping and falling
+// back to refocus/manual retry is preferable to polling indefinitely.
+const BUILDING_POLL_INTERVAL_MS = 3_000;
+const MAX_BUILDING_POLLS = 5;
+
+// Rejection statuses (across finish-card/dismiss-card) that mean the
+// client's view is stale — the item already resolved via another tab/session
+// or no longer exists. The server's `result.view` returned alongside the
+// rejection is authoritative, so these reconcile to it instead of retrying
+// into the same rejection forever (M7). `no_captured_pairs` is deliberately
+// excluded: it is a transient not-yet-captured case, root-caused elsewhere
+// (H4), and stays a plain retry.
+const STALE_REJECTION_STATUSES = new Set(["already_resolved", "not_found"]);
+
 // Route pendingComponent (RB): streamed while the loader awaits the bounded deck
 // read on cold SSR or during the rare miss-path first-window build. Also the
 // inner Suspense fallback for a navigation that lands on a not-yet-seeded card.
@@ -205,14 +221,10 @@ function QueueMatchPage() {
 	// the matching (account, orientation) key.
 	const mode = modeFromSearch(Route.useSearch());
 
-	// ONE read: the whole page renders from the deck view (or the building state).
-	const { data: view } = useSuspenseQuery(
-		matchDeckQueryOptions(session.accountId, mode),
-	);
-
 	// Poll active jobs so the empty/building states can distinguish "still
-	// building" from "truly empty". Shares the cache entry with the layout's
-	// completion-effects hook — no extra fetches.
+	// building" from "truly empty", and so the deck query below knows whether a
+	// building-recovery poll is worth attempting. Shares the cache entry with
+	// the layout's completion-effects hook — no extra fetches.
 	const {
 		isEnrichmentRunning,
 		isMatchSnapshotRefreshRunning,
@@ -220,25 +232,45 @@ function QueueMatchPage() {
 	} = useActiveJobs(session.accountId);
 	const isJobsActive = isEnrichmentRunning || isMatchSnapshotRefreshRunning;
 
-	const isBuilding = !("itemIds" in view);
+	// Building-recovery poll baseline (M8): the refetchInterval below counts
+	// polls via the query's dataUpdateCount relative to this baseline, captured
+	// the moment the gating condition (still building AND a first visible match
+	// ready) turns true, and cleared the moment it turns false — so a later
+	// building spell gets its own fresh bounded window.
+	const buildingPollBaselineRef = useRef<number | null>(null);
 
+	// ONE read: the whole page renders from the deck view (or the building state).
+	//
 	// Building-state recovery (RC): a first-run user who opened /match before any
 	// proposal existed gets `{status:"building"}` and no session. Once a first
-	// visible match becomes ready, re-run the bounded deck read — its miss path
-	// promotes the first window and returns an active view. Without this the user
-	// strands on "building". Replaces bootstrapReadyMatchQueue.
-	useEffect(() => {
-		if (!isBuilding || !firstVisibleMatchReady) return;
-		queryClient.invalidateQueries({
-			queryKey: matchDeckKeys.deck(session.accountId, mode),
-		});
-	}, [
-		isBuilding,
-		firstVisibleMatchReady,
-		session.accountId,
-		mode,
-		queryClient,
-	]);
+	// visible match becomes ready, `refetchInterval` re-runs the bounded deck
+	// read every few seconds — its miss path promotes the first window and
+	// returns an active view. A single retry is not enough: the miss-path
+	// promotion can itself report `{status:"building"}` again
+	// (`promotion_incomplete`), so this polls a bounded number of times instead
+	// of firing once (the old one-shot effect could strand the user on
+	// "building" until an incidental refocus refetch), and stops as soon as the
+	// view is no longer building or firstVisibleMatchReady goes false. Replaces
+	// bootstrapReadyMatchQueue.
+	const { data: view } = useSuspenseQuery({
+		...matchDeckQueryOptions(session.accountId, mode),
+		refetchInterval: (query) => {
+			const data = query.state.data;
+			const stillBuilding = data !== undefined && !("itemIds" in data);
+			if (!stillBuilding || !firstVisibleMatchReady) {
+				buildingPollBaselineRef.current = null;
+				return false;
+			}
+			if (buildingPollBaselineRef.current === null) {
+				buildingPollBaselineRef.current = query.state.dataUpdateCount;
+			}
+			const pollsSoFar =
+				query.state.dataUpdateCount - buildingPollBaselineRef.current;
+			return pollsSoFar >= MAX_BUILDING_POLLS
+				? false
+				: BUILDING_POLL_INTERVAL_MS;
+		},
+	});
 
 	// Latch: once this visit has had a current card to work, keep rendering the
 	// session UI for the rest of the visit. A completing action refetches the deck
@@ -708,7 +740,24 @@ function QueueCardContent({
 	// next cards. Seed both card reads (so the advance renders from cache), write
 	// the view into the deck cache (so the parent re-renders over the new itemIds),
 	// then move the id pointer to the promoted current — null when caught up.
-	const applyResolvedView = (nextView: StartOrResumeMatchDeckResult) => {
+	//
+	// M9: cancels any in-flight reads for the cards we are about to seed before
+	// writing. The warm-ahead prefetch effect above fetches the next card ahead
+	// of time; without cancelling first, that fetch can settle AFTER this write
+	// and clobber the fresher server-provided payload with a stale one.
+	// Mirrors dismissSuggestionMutation's onMutate cancel (mutations.ts).
+	const applyResolvedView = async (nextView: StartOrResumeMatchDeckResult) => {
+		const cardKeys =
+			"itemIds" in nextView
+				? [nextView.cards.current, nextView.cards.next]
+						.filter((card): card is NonNullable<typeof card> => card !== null)
+						.map((card) => readMatchDeckCardQueryOptions(card.itemId).queryKey)
+				: [];
+
+		await Promise.all(
+			cardKeys.map((queryKey) => queryClient.cancelQueries({ queryKey })),
+		);
+
 		queryClient.setQueryData(
 			matchDeckQueryOptions(accountId, mode).queryKey,
 			nextView,
@@ -750,9 +799,18 @@ function QueueCardContent({
 				});
 
 				if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
-					// Server rejected the finish (e.g. no_captured_pairs) — do NOT
-					// advance. Releasing the lock lets the user retry rather than skipping
-					// past a card the server still considers unresolved.
+					if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
+						// already_resolved/not_found: this client is stale (e.g. a second
+						// tab resolved the card first). The server's fresh view is
+						// authoritative — reconcile to it (M7) instead of leaving the
+						// user to retry into the same rejection forever. Not a real skip,
+						// so no stats bump.
+						await applyResolvedView(result.view);
+						return;
+					}
+					// no_captured_pairs: transient, not-yet-captured — do NOT advance.
+					// Releasing the lock lets the user retry rather than skipping past a
+					// card the server still considers unresolved.
 					onReleaseNavigation();
 					return;
 				}
@@ -764,7 +822,7 @@ function QueueCardContent({
 				}));
 				// Advance to the deck's promoted next card; the unavailable card leaves
 				// navigation because the server dropped it from itemIds.
-				applyResolvedView(result.view);
+				await applyResolvedView(result.view);
 			} catch {
 				onReleaseNavigation();
 			}
@@ -1036,9 +1094,15 @@ function QueueCardContent({
 			});
 
 			if (!isDeckActionSuccess("dismiss-card", result.actionStatus)) {
-				// not_found / already_resolved / no_captured_pairs: do NOT advance the
-				// card. Releasing the lock lets the user retry rather than silently
-				// swallowing the error.
+				if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
+					// already_resolved/not_found: this client is stale. Reconcile to the
+					// server's fresh view (M7) instead of looping on the same rejection.
+					// Not a real dismiss, so no stats bump.
+					await applyResolvedView(result.view);
+					return;
+				}
+				// no_captured_pairs: do NOT advance the card. Releasing the lock lets
+				// the user retry rather than silently swallowing the error.
 				onReleaseNavigation();
 				return;
 			}
@@ -1050,7 +1114,7 @@ function QueueCardContent({
 			onAddedTo([]);
 			// Advance to the deck's promoted next card; the resolved card leaves
 			// navigation because the server dropped it from itemIds.
-			applyResolvedView(result.view);
+			await applyResolvedView(result.view);
 		} catch {
 			onReleaseNavigation();
 		}
@@ -1066,8 +1130,15 @@ function QueueCardContent({
 			});
 
 			if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
-				// Server rejected the finish (e.g. already resolved) — do NOT advance.
-				// Releasing the lock lets the user retry without losing their place.
+				if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
+					// already_resolved/not_found: this client is stale. Reconcile to the
+					// server's fresh view (M7) instead of looping on the same rejection.
+					// Not a real finish, so no stats bump.
+					await applyResolvedView(result.view);
+					return;
+				}
+				// no_captured_pairs: do NOT advance. Releasing the lock lets the user
+				// retry without losing their place.
 				onReleaseNavigation();
 				return;
 			}
@@ -1083,7 +1154,7 @@ function QueueCardContent({
 			onAddedTo([]);
 			// Advance to the deck's promoted next card; the resolved card leaves
 			// navigation because the server dropped it from itemIds.
-			applyResolvedView(result.view);
+			await applyResolvedView(result.view);
 		} catch {
 			onReleaseNavigation();
 		}

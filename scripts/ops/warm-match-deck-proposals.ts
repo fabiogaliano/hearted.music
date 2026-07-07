@@ -11,12 +11,15 @@
  *
  * Mechanism: for each account's LATEST snapshot, enqueue a `build_proposals`
  * deck job for BOTH orientations via `enqueueDeckJob` (key
- * `build:{account}:{orientation}:{snapshot}`, payload `{snapshotId}`) — the SAME
- * trigger every other publish/miss/filter-change site uses (execute.ts R2,
- * match-deck-miss-path, the playlists filter rewire). The running worker drains
- * the jobs and chains `append_sessions`. Enqueue is idempotent (the RPC's
- * ON CONFLICT DO NOTHING on the active-idempotency index), so a re-run — or a
- * race with the worker's own publish-triggered enqueue — is a benign no-op.
+ * `build:{account}:{orientation}:{snapshot}:{visibilityConfigHash}`, payload
+ * `{snapshotId}`) — the SAME trigger every other publish/miss/filter-change site
+ * uses (execute.ts R2, match-deck-miss-path, the playlists filter rewire). The
+ * hash is resolved once per account-orientation via resolveVisibilityConfigHash
+ * so a warm enqueue can't dedupe against an in-flight build of stale filters/
+ * strictness (M1). The running worker drains the jobs and chains
+ * `append_sessions`. Enqueue is idempotent (the RPC's ON CONFLICT DO NOTHING on
+ * the active-idempotency index), so a re-run — or a race with the worker's own
+ * publish-triggered enqueue — is a benign no-op.
  *
  * Account iteration streams `match_snapshot` rows ordered (account_id ASC,
  * created_at DESC) and treats the first row seen per account as its latest —
@@ -33,6 +36,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
+import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
 const colors = {
@@ -164,11 +168,27 @@ async function warmAccount(
 			continue;
 		}
 
+		// Computed once per account-orientation (not inside any preset loop — the
+		// build job itself handles all 3 presets). Folded into the idempotency key
+		// (M1) so a warm enqueue can't dedupe against an in-flight build of stale
+		// filters/strictness.
+		const hashResult = await resolveVisibilityConfigHash(
+			target.accountId,
+			orientation,
+		);
+		if (Result.isError(hashResult)) {
+			counts.failed += 1;
+			error(
+				`hash resolution failed (account=${target.accountId} orientation=${orientation}): ${hashResult.error.message}`,
+			);
+			continue;
+		}
+
 		const result = await enqueueDeckJob({
 			accountId: target.accountId,
 			orientation,
 			kind: "build_proposals",
-			idempotencyKey: `build:${target.accountId}:${orientation}:${target.snapshotId}`,
+			idempotencyKey: `build:${target.accountId}:${orientation}:${target.snapshotId}:${hashResult.value.hash}`,
 			payload: { snapshotId: target.snapshotId },
 		});
 

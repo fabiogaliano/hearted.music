@@ -39,7 +39,6 @@ vi.mock("../queries", () => ({
 	fetchPendingPlaylistIds: vi.fn(),
 	updateQueueItemPresented: vi.fn(),
 	updateQueueItemResolved: vi.fn(),
-	clearSongNewness: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
 	mapItemToDto: vi.fn(),
 }));
@@ -104,7 +103,6 @@ import {
 	getOrderedUndecidedSongIds,
 	getQueueSummary,
 	hasFirstVisibleReviewSubject,
-	markItemPresented,
 	markItemResolved,
 } from "../service";
 
@@ -210,7 +208,6 @@ beforeEach(() => {
 	vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
 		Result.ok(fakeQueueItem()),
 	);
-	vi.mocked(queries.clearSongNewness).mockResolvedValue(undefined);
 	vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
 		Result.ok(new Map()),
 	);
@@ -287,80 +284,6 @@ describe("getQueueSummary", () => {
 		}
 		// Song preview path is never used for a playlist session.
 		expect(queries.fetchPendingSongIds).not.toHaveBeenCalled();
-	});
-});
-
-// ============================================================================
-// markItemPresented
-// ============================================================================
-
-describe("markItemPresented", () => {
-	it("updates state to active and records presented_at", async () => {
-		const presentedItem = fakeQueueItem({
-			state: "active",
-			presentedAt: "2026-06-15T00:00:00Z",
-		});
-		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(presentedItem),
-		);
-
-		const result = await markItemPresented("item-001", ACCOUNT_ID, "song-001");
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("active");
-		}
-	});
-
-	it("clears newness with the account id, song id, and a timestamp on success", async () => {
-		// The positive path: a successful presented transition must durably clear the
-		// song's newness so it never re-flags after the user has seen the card.
-		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "active" })),
-		);
-
-		await markItemPresented("item-001", ACCOUNT_ID, "song-001");
-
-		expect(queries.clearSongNewness).toHaveBeenCalledWith(
-			ACCOUNT_ID,
-			"song-001",
-			expect.any(String),
-		);
-	});
-
-	it("still resolves the presented transition when clearSongNewness rejects", async () => {
-		// Newness clearing is best-effort: a failure there must not fail the presented
-		// transition (the item is presented regardless). The await-in-try/catch keeps
-		// the write reliable in serverless while still swallowing the error.
-		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "active" })),
-		);
-		vi.mocked(queries.clearSongNewness).mockRejectedValue(
-			new Error("newness write failed"),
-		);
-
-		const result = await markItemPresented("item-001", ACCOUNT_ID, "song-001");
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("active");
-		}
-	});
-
-	it("returns ok(null) and does NOT clear newness when no eligible row was updated", async () => {
-		// The conditional update matched no row (item already resolved/raced), so a
-		// resolved card is not resurrected and its song's newness must be left alone.
-		vi.mocked(queries.updateQueueItemPresented).mockResolvedValue(
-			Result.ok(null),
-		);
-
-		const result = await markItemPresented("item-001", ACCOUNT_ID, "song-001");
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toBeNull();
-		}
-		expect(queries.clearSongNewness).not.toHaveBeenCalled();
 	});
 });
 
