@@ -13,17 +13,11 @@ import { playlistKeys } from "@/features/playlists/queries";
 import type { ActiveJobs } from "@/lib/server/jobs.functions";
 import { useActiveJobs } from "../useActiveJobs";
 
-vi.mock("@/lib/server/match-review-queue.functions", () => ({
-	syncActiveMatchReviewSessions: vi.fn(),
-}));
-
 vi.mock("@/lib/server/jobs.functions", () => ({
 	getActiveJobs: vi.fn(),
 }));
 
 import { getActiveJobs } from "@/lib/server/jobs.functions";
-// Import mocks after vi.mock so references are the hoisted spies.
-import { syncActiveMatchReviewSessions } from "@/lib/server/match-review-queue.functions";
 
 const ACCOUNT_ID = "test-account-123";
 
@@ -47,39 +41,7 @@ afterEach(() => {
 });
 
 describe("runMatchSnapshotRefreshEffects", () => {
-	it("(a) awaits syncActiveMatchReviewSessions BEFORE any invalidation runs", async () => {
-		// Use a deferred promise so we can observe that no invalidation fires
-		// while the sync is still pending.
-		let resolveSync!: () => void;
-		const syncPromise = new Promise<void>((res) => {
-			resolveSync = res;
-		});
-		vi.mocked(syncActiveMatchReviewSessions).mockReturnValue(
-			syncPromise as never,
-		);
-
-		const qc = makeFakeQueryClient();
-
-		const effectPromise = runMatchSnapshotRefreshEffects(
-			qc as unknown as QueryClient,
-			ACCOUNT_ID,
-		);
-
-		// Sync is still pending — no invalidation should have fired yet.
-		expect(qc.invalidateQueries).not.toHaveBeenCalled();
-
-		// Let the sync settle, then wait for the full effect to finish.
-		resolveSync();
-		await effectPromise;
-
-		// Now invalidations must have run.
-		expect(qc.invalidateQueries).toHaveBeenCalled();
-	});
-
-	it("(b) invalidates matchReviewKeys.reviewsRoot after sync resolves", async () => {
-		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
-			undefined as never,
-		);
+	it("(a) invalidates matchDeckKeys.deckRoot and no longer invalidates matchReviewKeys.reviewsRoot", async () => {
 		const qc = makeFakeQueryClient();
 
 		await runMatchSnapshotRefreshEffects(
@@ -92,15 +54,14 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
-		// reviewsRoot invalidates all orientation review queries at once so
-		// song and playlist queues both update without an accountId needed here.
-		expect(calledKeys).toContainEqual(matchReviewKeys.reviewsRoot);
+		// Deck read model: the bounded deck read re-runs across every
+		// (account, orientation) deck query. Appends are worker-driven now, and the
+		// legacy reviewsRoot review-list family is gone.
+		expect(calledKeys).toContainEqual(matchDeckKeys.deckRoot);
+		expect(calledKeys).not.toContainEqual(matchReviewKeys.reviewsRoot);
 	});
 
-	it("(c) never invalidates any key matching matchReviewKeys.item(...)", async () => {
-		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
-			undefined as never,
-		);
+	it("(b) never invalidates any key matching matchReviewKeys.item(...)", async () => {
 		const qc = makeFakeQueryClient();
 
 		await runMatchSnapshotRefreshEffects(
@@ -128,40 +89,9 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		expect(hasItemKey).toBe(false);
 	});
 
-	it("(d) runs all invalidations even when syncActiveMatchReviewSessions rejects", async () => {
-		vi.mocked(syncActiveMatchReviewSessions).mockRejectedValue(
-			new Error("network failure"),
-		);
-		const qc = makeFakeQueryClient();
-
-		// Must not throw.
-		await expect(
-			runMatchSnapshotRefreshEffects(qc as unknown as QueryClient, ACCOUNT_ID),
-		).resolves.toBeUndefined();
-
-		// All six invalidation calls must still have run: the legacy reviewsRoot,
-		// the Phase 4 deck deckRoot, summariesRoot, and three dashboard keys.
-		expect(qc.invalidateQueries).toHaveBeenCalledTimes(6);
-
-		const calledKeys = (
-			qc.invalidateQueries as ReturnType<typeof vi.fn>
-		).mock.calls.map(
-			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
-		);
-		expect(calledKeys).toContainEqual(matchReviewKeys.reviewsRoot);
-		// Deck read model (Phase 4): a mid-session snapshot refresh re-runs the
-		// bounded deck read across every (account, orientation) deck query.
-		expect(calledKeys).toContainEqual(matchDeckKeys.deckRoot);
-	});
-
-	it("(e) invalidates summariesRoot and dashboard stats/previews together", async () => {
-		// summariesRoot invalidates all orientation summary queries so sidebar badge
-		// and dashboard CTA count stay consistent; stats backs the dashboard
-		// reviewCount. All must be invalidated after sync so no consumer shows a
-		// stale count while another surface has already refreshed.
-		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
-			undefined as never,
-		);
+	it("(c) invalidates exactly the deck, summary, and dashboard keys (5 total)", async () => {
+		// deckRoot + summariesRoot + dashboard stats/pageData/matchPreviews. No
+		// request-path sync and no legacy reviewsRoot invalidation remain.
 		const qc = makeFakeQueryClient();
 
 		await runMatchSnapshotRefreshEffects(
@@ -169,24 +99,24 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			ACCOUNT_ID,
 		);
 
+		expect(qc.invalidateQueries).toHaveBeenCalledTimes(5);
+
 		const calledKeys = (
 			qc.invalidateQueries as ReturnType<typeof vi.fn>
 		).mock.calls.map(
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
 
+		expect(calledKeys).toContainEqual(matchDeckKeys.deckRoot);
 		expect(calledKeys).toContainEqual(matchReviewSummaryKeys.summariesRoot);
 		expect(calledKeys).toContainEqual(dashboardKeys.stats(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.matchPreviews(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.pageData(ACCOUNT_ID));
 	});
 
-	it("(f) does not invalidate playlist data (outside the plan's Phase 6 set)", async () => {
+	it("(d) does not invalidate playlist data (outside the plan's Phase 6 set)", async () => {
 		// playlistKeys.all was a carry-over from enrichment invalidation; a match
 		// snapshot refresh does not change playlist rows, so refetching them is waste.
-		vi.mocked(syncActiveMatchReviewSessions).mockResolvedValue(
-			undefined as never,
-		);
 		const qc = makeFakeQueryClient();
 
 		await runMatchSnapshotRefreshEffects(

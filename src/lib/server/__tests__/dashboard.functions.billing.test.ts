@@ -79,14 +79,7 @@ vi.mock("@/lib/server/match-review-queue.functions", () => ({
 		mockResolvePreferredMatchReviewSummary(...args),
 	// Other exports from the module are not exercised by these tests.
 	getMatchReviewSummary: vi.fn(),
-	syncActiveMatchReviewSessions: vi.fn(),
-	startOrResumeMatchReview: vi.fn(),
-	getMatchReview: vi.fn(),
-	getMatchReviewItem: vi.fn(),
-	markMatchReviewItemPresented: vi.fn(),
-	addSongToPlaylistFromQueueItem: vi.fn(),
-	dismissMatchReviewItem: vi.fn(),
-	finishMatchReviewItem: vi.fn(),
+	listMatchReviewItemSuggestions: vi.fn(),
 }));
 
 describe("getDashboardStats (queue-aware)", () => {
