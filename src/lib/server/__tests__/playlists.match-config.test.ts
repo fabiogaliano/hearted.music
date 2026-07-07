@@ -453,6 +453,82 @@ describe("savePlaylistMatchConfig", () => {
 		});
 	});
 
+	it("skips the enqueue for an orientation whose hash resolution fails, still enqueues the other, and still succeeds (M1/P3.4)", async () => {
+		// Same filter-only setup as "takes filter-only path when only match_filters changed".
+		mockGetPlaylistById.mockResolvedValue(
+			Result.ok(
+				makePlaylist({
+					account_id: "acct-1",
+					match_intent: "chill evening vibes",
+					genre_pills: ["rock"],
+					match_filters: { version: 1 },
+				}),
+			),
+		);
+		const hashError = new DatabaseError({
+			code: "42000",
+			message: "hash resolution failed",
+		});
+		mockResolveVisibilityConfigHash.mockImplementation(
+			(_accountId: string, orientation: string) => {
+				if (orientation === "song") {
+					return Promise.resolve(Result.err(hashError));
+				}
+				return Promise.resolve(
+					Result.ok({
+						hash: `vc_test_${orientation}`,
+						minScore: 0.5,
+						policy: {},
+					}),
+				);
+			},
+		);
+
+		const result = await savePlaylistMatchConfig({
+			data: {
+				...BASE_INPUT,
+				matchFilters: { version: 1 as const, vocalGender: "female" as const },
+			},
+		});
+
+		// The failed orientation must never enqueue a hash-less (pre-M1) key — it
+		// is skipped entirely rather than degrading to the old dedupe-prone key.
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalledWith(
+			expect.objectContaining({ orientation: "song" }),
+		);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith({
+			accountId: "acct-1",
+			orientation: "playlist",
+			kind: "build_proposals",
+			idempotencyKey: "build:acct-1:playlist:snap-1:vc_test_playlist",
+			payload: { snapshotId: "snap-1" },
+		});
+		// The already-saved config must not be rolled back or thrown away over a
+		// best-effort rebuild-enqueue failure.
+		expect(result).toEqual({
+			matchIntent: "chill evening vibes",
+			genrePills: ["rock"],
+			matchFilters: { version: 1, vocalGender: "female" },
+		});
+		// DatabaseError implements Symbol.iterator (Result.gen yieldability), which
+		// trips up toHaveBeenCalledWith's deep-equality iteration protocol — assert
+		// identity + shape separately instead (mirrors the existing enqueue-failure
+		// test above, which uses the same `.toBe()` pattern for the same reason).
+		const [capturedError, context] = mockCaptureServerError.mock.calls[0] ?? [];
+		expect(capturedError).toBe(hashError);
+		expect(context).toMatchObject({
+			area: "playlists",
+			operation: "save_playlist_match_config",
+			accountId: "acct-1",
+			extra: {
+				stage: "post_save_invalidation",
+				step: "resolve_visibility_config_hash",
+				orientation: "song",
+			},
+		});
+	});
+
 	it("still succeeds and captures the error when a filter-path enqueue fails", async () => {
 		// Same scoring signals as BASE_INPUT but a different filter → filter-only
 		// path, which enqueues build_proposals jobs for both orientations.
