@@ -16,7 +16,6 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { deckDb } from "@/lib/data/deck-db-types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -45,9 +44,7 @@ const QUEUE_ITEM_DTO_COLUMNS =
 export async function readSessionResumePosition(
 	sessionId: string,
 ): Promise<Result<number | null, DbError>> {
-	// resume_position is a Phase-1a column not yet in the generated types, so this
-	// read routes through the deck escape hatch (deckDb) until gen:types runs.
-	const { data, error } = await deckDb()
+	const { data, error } = await createAdminSupabaseClient()
 		.from("match_review_session")
 		.select("resume_position")
 		.eq("id", sessionId)

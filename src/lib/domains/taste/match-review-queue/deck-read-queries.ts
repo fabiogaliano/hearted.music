@@ -7,15 +7,13 @@
  * to the public MatchDeckView / MatchReviewItemRead contract happens one layer
  * up in the server-fn file.
  *
- * Both RPCs return JSONB (typed Json through the deck escape hatch), so — like
- * the existing resume/fast wrappers — the payload is narrowed with an
- * `as unknown as` cast; the SQL functions' status unions guarantee the shape.
- * Routed through deckDb() until `bun run gen:types` folds the deck RPCs into the
- * generated Database.
+ * Both RPCs return JSONB (typed Json), so — like the existing resume/fast
+ * wrappers — the payload is narrowed with an `as unknown as` cast; the SQL
+ * functions' status unions guarantee the shape.
  */
 
 import { Result } from "better-result";
-import { deckDb } from "@/lib/data/deck-db-types";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import type { MatchOrientation } from "./types";
@@ -157,12 +155,15 @@ export async function callStartOrResumeMatchDeck(
 	visibilityConfigHash: string,
 	window?: number,
 ): Promise<Result<StartOrResumeMatchDeckRpcResult, DbError>> {
-	const { data, error } = await deckDb().rpc("start_or_resume_match_deck", {
-		p_account_id: accountId,
-		p_orientation: orientation,
-		p_visibility_config_hash: visibilityConfigHash,
-		p_window: window ?? undefined,
-	});
+	const { data, error } = await createAdminSupabaseClient().rpc(
+		"start_or_resume_match_deck",
+		{
+			p_account_id: accountId,
+			p_orientation: orientation,
+			p_visibility_config_hash: visibilityConfigHash,
+			p_window: window ?? undefined,
+		},
+	);
 	if (error) return Result.err(rpcError(error));
 	return Result.ok(data as unknown as StartOrResumeMatchDeckRpcResult);
 }
@@ -178,12 +179,15 @@ export async function callReadMatchDeckCard(
 	limit?: number,
 	markPresented = true,
 ): Promise<Result<ReadMatchDeckCardRpcResult, DbError>> {
-	const { data, error } = await deckDb().rpc("read_match_deck_card", {
-		p_item_id: itemId,
-		p_account_id: accountId,
-		p_limit: limit ?? undefined,
-		p_mark_presented: markPresented,
-	});
+	const { data, error } = await createAdminSupabaseClient().rpc(
+		"read_match_deck_card",
+		{
+			p_item_id: itemId,
+			p_account_id: accountId,
+			p_limit: limit ?? undefined,
+			p_mark_presented: markPresented,
+		},
+	);
 	if (error) return Result.err(rpcError(error));
 	return Result.ok(data as unknown as ReadMatchDeckCardRpcResult);
 }
