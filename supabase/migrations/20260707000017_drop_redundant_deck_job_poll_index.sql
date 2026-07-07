@@ -1,0 +1,14 @@
+-- Deck read-model post-verification fix pass 2, P1.3: drop the now-redundant
+-- pending-poll index.
+--
+-- idx_match_review_deck_job_pending_poll ((available_at, created_at) WHERE
+-- status='pending', from 20260706000005) was the index the claim query's
+-- ORDER BY used before M2 added kind-priority ordering. Once
+-- idx_match_review_deck_job_pending_claim_priority (20260707000016) landed —
+-- a partial expression index matching claim_pending_match_review_deck_job's
+-- exact ORDER BY (kind-priority CASE, available_at, created_at) — the older
+-- index no longer has a leading-column match for that ORDER BY and the
+-- planner has no other reason to pick it (the WHERE clause it serves is a
+-- subset of the newer index's). Keeping it around only pays write-amplification
+-- cost on every insert/update of a pending row for no read benefit.
+DROP INDEX IF EXISTS idx_match_review_deck_job_pending_poll;
