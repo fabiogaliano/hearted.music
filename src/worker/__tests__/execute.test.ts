@@ -215,6 +215,59 @@ describe("executeMatchSnapshotRefreshJob", () => {
 		expect(mockSentryCapture).toHaveBeenCalledTimes(2);
 	});
 
+	it("skips the enqueue for an orientation whose hash resolution fails, still enqueues the other, and still returns published (M1/P3.4)", async () => {
+		mockExecute.mockResolvedValue({
+			status: "published",
+			result: makeResult(),
+		} satisfies MatchSnapshotRefreshOutcome);
+		const hashError = new Error("hash resolution failed");
+		mockResolveVisibilityConfigHash.mockImplementation(
+			(_accountId: string, orientation: string) => {
+				if (orientation === "song") {
+					return Promise.resolve(Result.err(hashError));
+				}
+				return Promise.resolve(
+					Result.ok({
+						hash: `vc_test_${orientation}`,
+						minScore: 0.5,
+						policy: {},
+					}),
+				);
+			},
+		);
+
+		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+
+		// The failed orientation must never enqueue a hash-less (pre-M1) key —
+		// it is skipped entirely, not degraded to the old dedupe-prone key.
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalledWith(
+			expect.objectContaining({ orientation: "song" }),
+		);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				accountId: "acct-1",
+				orientation: "playlist",
+				kind: "build_proposals",
+				idempotencyKey: "build:acct-1:playlist:snap-1:vc_test_playlist",
+			}),
+		);
+		// The hash-resolution failure is captured...
+		expect(mockSentryCapture).toHaveBeenCalledWith(
+			hashError,
+			expect.objectContaining({
+				tags: {
+					area: "match_deck",
+					operation: "resolve_visibility_config_hash",
+					runtime: "worker",
+				},
+			}),
+		);
+		// ...but the overall job still succeeds — a skipped best-effort enqueue
+		// must never fail an already-completed match snapshot refresh.
+		expect(result.status).toBe("published");
+	});
+
 	it("does not enqueue deck jobs when nothing published (no-op refresh)", async () => {
 		mockExecute.mockResolvedValue({
 			status: "published",
