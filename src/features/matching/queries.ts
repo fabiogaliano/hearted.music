@@ -7,8 +7,6 @@ import {
 } from "@/lib/server/match-review-queue.functions";
 import { matchDeckKeys } from "./deck-queries";
 
-// matchReviewKeys.item is intentionally NOT in the snapshot-refresh invalidation
-// set so per-card data stays stable while the queue list grows.
 export const matchReviewKeys = {
 	all: ["match-review"] as const,
 	// Prefix for all review (queue list) keys — useful for broad invalidation
@@ -16,13 +14,6 @@ export const matchReviewKeys = {
 	reviewsRoot: ["match-review", "review"] as const,
 	review: (accountId: string, orientation: MatchOrientation) =>
 		["match-review", "review", accountId, orientation] as const,
-	// Bootstrap key is deliberately kept OUT of the reviewsRoot/summary/dashboard
-	// invalidation sets: create/resume is expensive (it appends the latest
-	// snapshot), so it must run once per (account, orientation) mount and never
-	// re-fire when a mid-session snapshot refresh invalidates the queue list.
-	bootstrap: (accountId: string, orientation: MatchOrientation) =>
-		["match-review", "bootstrap", accountId, orientation] as const,
-	item: (itemId: string) => ["match-review", "item", itemId] as const,
 };
 
 // Queue-aware summary keys. Drive sidebar badge and dashboard CTA.
