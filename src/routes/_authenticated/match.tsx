@@ -121,6 +121,16 @@ export const Route = createFileRoute("/_authenticated/match")({
 const BUILDING_POLL_INTERVAL_MS = 3_000;
 const MAX_BUILDING_POLLS = 5;
 
+// Post-refresh append poll tuning (M13): same fixed-interval, bounded-count
+// shape as the building poll. A completed matchSnapshotRefresh invalidates the
+// deck once (useActiveJobCompletionEffects), but the append itself is a
+// separate append_sessions worker write that can land AFTER that invalidation,
+// so a single refetch can miss it. On the refresh running->idle falling edge we
+// re-poll the deck a bounded number of times to surface the lagging append; if
+// it never arrives within the window we stop rather than poll indefinitely.
+const APPEND_POLL_INTERVAL_MS = 3_000;
+const MAX_APPEND_POLLS = 5;
+
 async function seedBakedDeckCardReads(
 	queryClient: Pick<QueryClient, "setQueryData" | "prefetchQuery">,
 	cards: Array<MatchDeckCard | null>,
@@ -267,6 +277,24 @@ function QueueMatchPage() {
 	// building spell gets its own fresh bounded window.
 	const buildingPollBaselineRef = useRef<number | null>(null);
 
+	// Post-refresh append poll (M13): armed on the isMatchSnapshotRefreshRunning
+	// running->idle falling edge and cleared once the bounded window elapses.
+	// baseline captures dataUpdateCount at the first armed poll so polls are
+	// counted the same way the building poll counts them.
+	const appendPollActiveRef = useRef(false);
+	const appendPollBaselineRef = useRef<number | null>(null);
+	const prevSnapshotRefreshRunningRef = useRef(false);
+
+	// Render-phase falling-edge detection (store-previous-value pattern): arming
+	// the ref here — before useSuspenseQuery reads refetchInterval below — starts
+	// the poll on the same render the refresh finishes, with no throwaway state
+	// bump. Idempotent, so Strict Mode's double render can't double-arm.
+	if (prevSnapshotRefreshRunningRef.current && !isMatchSnapshotRefreshRunning) {
+		appendPollActiveRef.current = true;
+		appendPollBaselineRef.current = null;
+	}
+	prevSnapshotRefreshRunningRef.current = isMatchSnapshotRefreshRunning;
+
 	// ONE read: the whole page renders from the deck view (or the building state).
 	//
 	// Building-state recovery (RC): a first-run user who opened /match before any
@@ -285,18 +313,39 @@ function QueueMatchPage() {
 		refetchInterval: (query) => {
 			const data = query.state.data;
 			const stillBuilding = data !== undefined && !("itemIds" in data);
-			if (!stillBuilding || !firstVisibleMatchReady) {
-				buildingPollBaselineRef.current = null;
-				return false;
+
+			if (stillBuilding && firstVisibleMatchReady) {
+				if (buildingPollBaselineRef.current === null) {
+					buildingPollBaselineRef.current = query.state.dataUpdateCount;
+				}
+				const pollsSoFar =
+					query.state.dataUpdateCount - buildingPollBaselineRef.current;
+				return pollsSoFar >= MAX_BUILDING_POLLS
+					? false
+					: BUILDING_POLL_INTERVAL_MS;
 			}
-			if (buildingPollBaselineRef.current === null) {
-				buildingPollBaselineRef.current = query.state.dataUpdateCount;
+			buildingPollBaselineRef.current = null;
+
+			// Post-refresh append poll (M13): re-read an active deck a bounded
+			// number of times after a snapshot refresh completes, so a lagging
+			// append_sessions worker write surfaces without the user interacting.
+			// Only runs for a non-building deck — a still-building one is handled
+			// above and its promotion already brings in the first window.
+			if (appendPollActiveRef.current && !stillBuilding) {
+				if (appendPollBaselineRef.current === null) {
+					appendPollBaselineRef.current = query.state.dataUpdateCount;
+				}
+				const pollsSoFar =
+					query.state.dataUpdateCount - appendPollBaselineRef.current;
+				if (pollsSoFar >= MAX_APPEND_POLLS) {
+					appendPollActiveRef.current = false;
+					appendPollBaselineRef.current = null;
+					return false;
+				}
+				return APPEND_POLL_INTERVAL_MS;
 			}
-			const pollsSoFar =
-				query.state.dataUpdateCount - buildingPollBaselineRef.current;
-			return pollsSoFar >= MAX_BUILDING_POLLS
-				? false
-				: BUILDING_POLL_INTERVAL_MS;
+
+			return false;
 		},
 	});
 
