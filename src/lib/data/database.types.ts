@@ -154,6 +154,44 @@ export type Database = {
 					},
 				];
 			};
+			account_event: {
+				Row: {
+					account_id: string;
+					created_at: string;
+					id: number;
+					payload: Json;
+					publish_id: number | null;
+					published_at: string | null;
+					type: string;
+				};
+				Insert: {
+					account_id: string;
+					created_at?: string;
+					id?: number;
+					payload?: Json;
+					publish_id?: number | null;
+					published_at?: string | null;
+					type: string;
+				};
+				Update: {
+					account_id?: string;
+					created_at?: string;
+					id?: number;
+					payload?: Json;
+					publish_id?: number | null;
+					published_at?: string | null;
+					type?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_event_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			account_item_newness: {
 				Row: {
 					account_id: string;

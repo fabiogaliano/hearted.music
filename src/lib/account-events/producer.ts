@@ -19,7 +19,7 @@ export interface WriteAccountEventInput<T extends AccountEventType> {
  * If the transaction rolls back, neither the row nor the NOTIFY are committed.
  */
 export async function writeAccountEvent<T extends AccountEventType>(
-	tx: postgres.TransactionSql<{}>,
+	tx: postgres.TransactionSql<Record<string, never>>,
 	input: WriteAccountEventInput<T>,
 ): Promise<void> {
 	await tx`
@@ -28,5 +28,5 @@ export async function writeAccountEvent<T extends AccountEventType>(
 	`;
 
 	// Emit empty NOTIFY to wake the publisher. Transactional: only sent on commit.
-	await tx`NOTIFY account_event_inserted, ''`;
+	await tx`SELECT pg_notify(${NOTIFY_CHANNEL_INSERTED}, '')`;
 }

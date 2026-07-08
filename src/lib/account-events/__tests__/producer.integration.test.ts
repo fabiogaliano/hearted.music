@@ -11,7 +11,7 @@ const IS_LOCAL =
 
 const sql = IS_LOCAL
 	? postgres(DATABASE_URL, { prepare: false, max: 5, fetch_types: false })
-	: (null as unknown as postgres.Sql<{}>);
+	: (null as unknown as postgres.Sql<Record<string, never>>);
 
 const describeLocal = IS_LOCAL ? describe : describe.skip;
 
@@ -40,7 +40,7 @@ describeLocal("writeAccountEvent", () => {
 
 		await sqlListen.listen(
 			NOTIFY_CHANNEL_INSERTED,
-			(payload) => {
+			(_payload) => {
 				notified = true;
 			},
 			() => {},
@@ -84,7 +84,7 @@ describeLocal("writeAccountEvent", () => {
 
 		await sqlListen.listen(
 			NOTIFY_CHANNEL_INSERTED,
-			(payload) => {
+			(_payload) => {
 				notified = true;
 			},
 			() => {},
