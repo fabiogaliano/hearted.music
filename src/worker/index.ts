@@ -8,6 +8,10 @@ import { startKeepAlive } from "./keep-alive";
 import { startJobCreatedListener } from "./notify-listener";
 import { getActiveJobCount, startPolling, stopPolling } from "./poll";
 import {
+	startAccountEventPublisher,
+	stopAccountEventPublisher,
+} from "./poll-account-events";
+import {
 	getActiveAudioFeatureBackfillJobCount,
 	runAudioFeatureBackfillSweepTick,
 	startAudioFeatureBackfillPolling,
@@ -79,6 +83,7 @@ async function main() {
 		stopExtensionSyncPolling();
 		stopAudioFeatureBackfillPolling();
 		stopMatchDeckJobPolling();
+		stopAccountEventPublisher();
 		await notifyListener.stop();
 		keepAlive.stop();
 		dbBackup.stop();
@@ -159,6 +164,16 @@ async function main() {
 	await extensionSyncLoop;
 	await audioBackfillLoop;
 	await matchDeckLoop;
+
+	// The publisher loop handles LISTEN/NOTIFY and polling internally,
+	// keeping it simple as it's a singleton pattern.
+	const publisherLoop = startAccountEventPublisher().catch((err) => {
+		log.error("account-events-publisher-error", { error: String(err) });
+		Sentry.captureException(err, {
+			tags: { loop: "account-events-publisher" },
+		});
+	});
+	await publisherLoop;
 
 	if (!draining) {
 		log.error("poll-loop-exited-unexpectedly");

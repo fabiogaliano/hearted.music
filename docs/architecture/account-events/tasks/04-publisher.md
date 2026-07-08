@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: done
 updated: 2026-07-08
 depends_on: ["02"]
 ---
@@ -12,33 +12,33 @@ Proposal §5.1 publisher behavior, §11.2.
 
 ## Steps
 
-- [ ] New worker-family module (sibling of `src/worker/*` loops) with a
+- [x] New worker-family module (sibling of `src/worker/*` loops) with a
       `LISTEN account_event_inserted` connection plus a short fallback poll
       (missed notifications only add latency)
-- [ ] Publish batch, all on **one** connection in **one** transaction:
+- [x] Publish batch, all on **one** connection in **one** transaction:
       `pg_try_advisory_xact_lock(...)` (skip the cycle if not acquired), claim
       `WHERE publish_id IS NULL` with `FOR UPDATE SKIP LOCKED ORDER BY id`,
       assign `publish_id = nextval('account_event_publish_seq')` and
       `published_at = clock_timestamp()`, commit
-- [ ] After commit, emit coalesced `NOTIFY account_event_wake`: at most one per
+- [x] After commit, emit coalesced `NOTIFY account_event_wake`: at most one per
       100–250 ms window regardless of dirty account count; payload empty or a
       tiny `{minPublishId,maxPublishId}` hint
-- [ ] Restart safety: on boot, any candidate simply resumes from
+- [x] Restart safety: on boot, any candidate simply resumes from
       `publish_id IS NULL` rows — no state handoff
-- [ ] Wire the publisher's connections (LISTEN + publish txn) as direct or
+- [x] Wire the publisher's connections (LISTEN + publish txn) as direct or
       session-pooled, never transaction-pooled
-- [ ] Tests: two staged out-of-order commits get monotonically increasing
+- [x] Tests: two staged out-of-order commits get monotonically increasing
       `publish_id`s with no skips; two concurrent publisher candidates produce
       no duplicate or missing `publish_id`; wake NOTIFYs coalesce
 
 ## Acceptance gate
 
-- [ ] `bun run test` passes, including the out-of-order-commit scenario
-- [ ] `publish_id` order matches producer `id` order within a batch and is
+- [x] `bun run test` passes, including the out-of-order-commit scenario
+- [x] `publish_id` order matches producer `id` order within a batch and is
       gapless per assignment run
-- [ ] Killing a publisher mid-batch leaves rows claimable by another candidate
+- [x] Killing a publisher mid-batch leaves rows claimable by another candidate
       (verified in test via txn abort)
-- [ ] Wake channel emits ≤ 1 NOTIFY per debounce window under a burst of inserts
+- [x] Wake channel emits ≤ 1 NOTIFY per debounce window under a burst of inserts
 
 ## Guardrails
 
