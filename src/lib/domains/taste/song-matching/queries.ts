@@ -223,44 +223,46 @@ export type MatchPairRow = Pick<
 >;
 
 /**
- * Fetches all (song, playlist) pairs for a song subject in a snapshot.
- * Ordered by score desc with playlist_id tiebreaker for determinism.
- * This is the read path for song-orientation suggestion derivation.
+ * Fetches all (song, playlist) pairs for a song subject in a snapshot, EXCLUDING
+ * playlists that already contain the song. Ordered by score desc with
+ * playlist_id tiebreaker for determinism. This is the read path for
+ * song-orientation suggestion derivation.
+ *
+ * The membership exclusion is a playlist_song anti-join inside the RPC, so
+ * Postgres probes only the actual candidate pairs (via UNIQUE(playlist_id,
+ * song_id)) instead of the app fetching a whole membership set to filter. The
+ * invariant "never return a pair whose song is already in the playlist" holds
+ * for every caller, not just the deck-card read path.
  */
 export function getMatchPairsForSong(
 	snapshotId: string,
 	songId: string,
 ): Promise<Result<MatchPairRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("match_result")
-			.select("song_id, playlist_id, score, fused_score")
-			.eq("snapshot_id", snapshotId)
-			.eq("song_id", songId)
-			.order("score", { ascending: false })
-			.order("playlist_id", { ascending: true }),
+	return fromSupabaseMany<MatchPairRow>(
+		supabase.rpc("get_match_pairs_for_song", {
+			p_snapshot_id: snapshotId,
+			p_song_id: songId,
+		}),
 	);
 }
 
 /**
- * Fetches all (song, playlist) pairs for a playlist subject in a snapshot.
- * Ordered by score desc with song_id tiebreaker for determinism.
- * This is the read path for playlist-orientation suggestion derivation.
+ * Fetches all (song, playlist) pairs for a playlist subject in a snapshot,
+ * EXCLUDING songs already in the playlist. Ordered by score desc with song_id
+ * tiebreaker for determinism. This is the read path for playlist-orientation
+ * suggestion derivation. See getMatchPairsForSong for the anti-join rationale.
  */
 export function getMatchPairsForPlaylist(
 	snapshotId: string,
 	playlistId: string,
 ): Promise<Result<MatchPairRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("match_result")
-			.select("song_id, playlist_id, score, fused_score")
-			.eq("snapshot_id", snapshotId)
-			.eq("playlist_id", playlistId)
-			.order("score", { ascending: false })
-			.order("song_id", { ascending: true }),
+	return fromSupabaseMany<MatchPairRow>(
+		supabase.rpc("get_match_pairs_for_playlist", {
+			p_snapshot_id: snapshotId,
+			p_playlist_id: playlistId,
+		}),
 	);
 }
 

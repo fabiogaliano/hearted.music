@@ -4000,6 +4000,24 @@ export type Database = {
 					total: number;
 				}[];
 			};
+			get_match_pairs_for_playlist: {
+				Args: { p_playlist_id: string; p_snapshot_id: string };
+				Returns: {
+					fused_score: number;
+					playlist_id: string;
+					score: number;
+					song_id: string;
+				}[];
+			};
+			get_match_pairs_for_song: {
+				Args: { p_snapshot_id: string; p_song_id: string };
+				Returns: {
+					fused_score: number;
+					playlist_id: string;
+					score: number;
+					song_id: string;
+				}[];
+			};
 			grant_analysis_failure_replacement_credit: {
 				Args: {
 					p_account_id: string;
