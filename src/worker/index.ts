@@ -10,8 +10,13 @@ import { startDatabaseBackupScheduler } from "./db-backup";
 import { setWorkerFatalObserver } from "./fatal-handlers";
 import { setShuttingDown, setUnhealthy, startHealthServer } from "./health";
 import { startKeepAlive } from "./keep-alive";
-import { startJobCreatedListener } from "./notify-listener";
-import { getActiveJobCount, startPolling, stopPolling } from "./poll";
+import { startNotifyListener } from "./notify-listener";
+import {
+	claimAndDispatchLibraryProcessingJobs,
+	getActiveJobCount,
+	startPolling,
+	stopPolling,
+} from "./poll";
 import {
 	startAccountEventPublisher,
 	stopAccountEventPublisher,
@@ -30,6 +35,7 @@ import {
 	stopExtensionSyncPolling,
 } from "./poll-extension-sync";
 import {
+	claimAndDispatchMatchDeckJobs,
 	getActiveMatchDeckJobCount,
 	runMatchDeckJobSweepTick,
 	startMatchDeckJobPolling,
@@ -72,10 +78,18 @@ async function main() {
 	const audioBackfillSweep = startAudioFeatureBackfillSweep();
 	const matchDeckSweep = startMatchDeckJobSweep();
 
-	// Primary wake-up for extension sync: a job_created NOTIFY drains the queue
-	// immediately; the poll loop is the at-most-once-delivery safety net.
-	const notifyListener = startJobCreatedListener(() => {
-		void claimAndDispatchExtensionSyncJobs();
+	// Primary wake-up for enqueued jobs: a NOTIFY drains the queue immediately;
+	// the poll loop is the at-most-once-delivery safety net.
+	const notifyListener = startNotifyListener({
+		job_created: () => {
+			void claimAndDispatchExtensionSyncJobs();
+		},
+		library_processing_job_created: () => {
+			void claimAndDispatchLibraryProcessingJobs();
+		},
+		match_deck_job_created: () => {
+			void claimAndDispatchMatchDeckJobs();
+		},
 	});
 
 	const shutdown = async (signal: string) => {

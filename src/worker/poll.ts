@@ -28,31 +28,16 @@ export function getActiveJobCount() {
 	return activeJobs.size;
 }
 
-export async function startPolling(): Promise<void> {
-	shouldPoll = true;
-	log.info("polling-start", {
-		concurrency: workerConfig.concurrency,
-		intervalMs: workerConfig.pollIntervalMs,
-	});
-
-	while (shouldPoll) {
-		if (activeJobs.size >= workerConfig.concurrency) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
+export async function claimAndDispatchLibraryProcessingJobs(): Promise<void> {
+	while (shouldPoll && activeJobs.size < workerConfig.concurrency) {
 		const claimResult = await claimLibraryProcessingJob();
 		if (Result.isError(claimResult)) {
 			log.error("claim-error", { error: claimResult.error.message });
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
+			return;
 		}
 
 		const job = claimResult.value;
-		if (!job) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
+		if (!job) return;
 
 		activeJobs.add(job.id);
 		const actor = await resolveAccountLabel(job.account_id);
@@ -82,6 +67,19 @@ export async function startPolling(): Promise<void> {
 				activeJobs.delete(job.id);
 			}
 		})();
+	}
+}
+
+export async function startPolling(): Promise<void> {
+	shouldPoll = true;
+	log.info("polling-start", {
+		concurrency: workerConfig.concurrency,
+		intervalMs: workerConfig.pollIntervalMs,
+	});
+
+	while (shouldPoll) {
+		await claimAndDispatchLibraryProcessingJobs();
+		await Bun.sleep(workerConfig.pollIntervalMs);
 	}
 
 	log.info("polling-stopped");

@@ -1,10 +1,9 @@
 /**
- * Postgres LISTEN/NOTIFY wake-up for the extension_sync worker loop.
+ * Postgres LISTEN/NOTIFY wake-up for worker loops.
  *
- * begin_extension_sync fires `pg_notify('job_created', ...)` the instant a sync
- * is enqueued; this listener turns that into a sub-second worker pickup instead
- * of waiting out the (deliberately relaxed) poll interval. The poll loop stays
- * as the at-most-once-delivery safety net.
+ * Turns enqueues into sub-second worker pickups instead of waiting out the
+ * (deliberately relaxed) poll intervals. The poll loop stays as the
+ * at-most-once-delivery safety net.
  *
  * Connection requirements (verified): LISTEN works over a direct connection or
  * the Supabase session-mode pooler (port 5432), never the transaction-mode
@@ -22,19 +21,32 @@ export interface NotifyListener {
 	stop: () => Promise<void>;
 }
 
-const LISTEN_CHANNEL = "job_created";
 const CLOSE_TIMEOUT_SECONDS = 5;
 
+function coalesce(fn: () => void, windowMs: number): () => void {
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	return () => {
+		if (timer !== null) return;
+		timer = setTimeout(() => {
+			timer = null;
+			fn();
+		}, windowMs);
+	};
+}
+
 /**
- * Starts listening for job_created notifications. `onWake` is invoked on every
- * notification and on every (re)connection; it should be idempotent and cheap
- * (claims go through SKIP LOCKED, so a spurious wake just finds nothing).
+ * Starts listening for notifications on the given channels. `handlers` maps
+ * channel names to wake functions. Wakes are coalesced to at most one per
+ * windowMs (default 200ms) per channel.
  *
  * No-op (returns a stop that resolves immediately) when DATABASE_URL points at
  * the transaction-mode pooler, which cannot carry LISTEN — the poll loop then
  * covers pickup on its own.
  */
-export function startJobCreatedListener(onWake: () => void): NotifyListener {
+export function startNotifyListener(
+	handlers: Record<string, () => void>,
+	windowMs = 200,
+): NotifyListener {
 	let parsedUrl: URL | null = null;
 	try {
 		parsedUrl = new URL(env.DATABASE_URL);
@@ -48,7 +60,7 @@ export function startJobCreatedListener(onWake: () => void): NotifyListener {
 	) {
 		log.warn("notify-listener-disabled", {
 			reason:
-				"DATABASE_URL is the transaction-mode pooler (6543), which cannot LISTEN; relying on poll fallback. Use a direct connection or the session pooler (5432).",
+				"DATABASE_URL is the transaction-mode pooler (6543), which cannot LISTEN; relying on poll fallback.",
 		});
 		return { stop: async () => {} };
 	}
@@ -63,30 +75,30 @@ export function startJobCreatedListener(onWake: () => void): NotifyListener {
 	});
 
 	let stopped = false;
+	const channels = Object.keys(handlers);
+	const coalescedHandlers = Object.fromEntries(
+		Object.entries(handlers).map(([ch, fn]) => [ch, coalesce(fn, windowMs)]),
+	);
 
-	void sql
-		.listen(
-			LISTEN_CHANNEL,
-			() => {
-				// Payload is just {id, type}; any notification means "go claim". We
-				// don't branch on type — extension_sync is the only producer, and the
-				// claim RPC is a no-op when the queue is empty.
-				onWake();
-			},
-			() => {
-				// Fired on first subscribe and after each reconnect. Run a catch-up
-				// cycle so notifications dropped while disconnected aren't stranded
-				// (NOTIFY is at-most-once).
-				log.info("notify-listener-connected", { channel: LISTEN_CHANNEL });
-				onWake();
-			},
-		)
-		.catch((error) => {
-			if (stopped) return;
-			log.error("notify-listen-failed", { error: String(error) });
-		});
+	for (const channel of channels) {
+		void sql
+			.listen(
+				channel,
+				() => coalescedHandlers[channel](),
+				() => {
+					// Fired on first subscribe and after each reconnect. Run a catch-up
+					// cycle so notifications dropped while disconnected aren't stranded.
+					log.info("notify-listener-connected", { channel });
+					coalescedHandlers[channel]();
+				},
+			)
+			.catch((error) => {
+				if (stopped) return;
+				log.error("notify-listen-failed", { channel, error: String(error) });
+			});
+	}
 
-	log.info("notify-listener-start", { channel: LISTEN_CHANNEL });
+	log.info("notify-listener-start", { channels });
 
 	return {
 		stop: async () => {
