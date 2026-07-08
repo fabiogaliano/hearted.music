@@ -35,48 +35,50 @@ export interface ActiveJobs {
 	firstVisibleMatchReady: boolean;
 }
 
+export async function buildActiveJobsSnapshot(
+	accountId: string,
+): Promise<ActiveJobs> {
+	const [stateResult, firstVisibleResult] = await Promise.all([
+		loadLibraryProcessingState(accountId),
+		hasFirstVisibleReviewSubject(accountId),
+	]);
+
+	// Conservative: error → false so a transient DB failure must not
+	// surface as a permanent false-empty state on the UI.
+	const firstVisibleMatchReady =
+		resolveReadinessConservative(firstVisibleResult);
+
+	let enrichment: ActiveJobInfo | null = null;
+	let matchSnapshotRefresh: ActiveJobInfo | null = null;
+
+	if (Result.isOk(stateResult) && stateResult.value) {
+		const state = stateResult.value;
+
+		const [enrichmentResult, matchRefreshResult] = await Promise.all([
+			state.enrichment.activeJobId
+				? resolveJobInfo(state.enrichment.activeJobId, accountId)
+				: null,
+			state.matchSnapshotRefresh.activeJobId
+				? resolveJobInfo(state.matchSnapshotRefresh.activeJobId, accountId)
+				: null,
+		]);
+		enrichment = enrichmentResult;
+		matchSnapshotRefresh = matchRefreshResult;
+	}
+
+	return {
+		enrichment,
+		matchSnapshotRefresh,
+		firstMatchReady: firstVisibleMatchReady,
+		firstVisibleMatchReady,
+	};
+}
+
 export const getActiveJobs = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.handler(async ({ context }): Promise<ActiveJobs> => {
 		const { session } = context;
-
-		const [stateResult, firstVisibleResult] = await Promise.all([
-			loadLibraryProcessingState(session.accountId),
-			hasFirstVisibleReviewSubject(session.accountId),
-		]);
-
-		// Conservative: error → false so a transient DB failure must not
-		// surface as a permanent false-empty state on the UI.
-		const firstVisibleMatchReady =
-			resolveReadinessConservative(firstVisibleResult);
-
-		let enrichment: ActiveJobInfo | null = null;
-		let matchSnapshotRefresh: ActiveJobInfo | null = null;
-
-		if (Result.isOk(stateResult) && stateResult.value) {
-			const state = stateResult.value;
-
-			const [enrichmentResult, matchRefreshResult] = await Promise.all([
-				state.enrichment.activeJobId
-					? resolveJobInfo(state.enrichment.activeJobId, session.accountId)
-					: null,
-				state.matchSnapshotRefresh.activeJobId
-					? resolveJobInfo(
-							state.matchSnapshotRefresh.activeJobId,
-							session.accountId,
-						)
-					: null,
-			]);
-			enrichment = enrichmentResult;
-			matchSnapshotRefresh = matchRefreshResult;
-		}
-
-		return {
-			enrichment,
-			matchSnapshotRefresh,
-			firstMatchReady: firstVisibleMatchReady,
-			firstVisibleMatchReady,
-		};
+		return buildActiveJobsSnapshot(session.accountId);
 	});
 
 async function resolveJobInfo(

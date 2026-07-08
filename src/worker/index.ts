@@ -1,5 +1,10 @@
 import * as Sentry from "@sentry/bun";
 import { log } from "@/lib/observability/logger";
+import {
+	setAccountEventsGatewayDraining,
+	startAccountEventsGateway,
+	stopAccountEventsGateway,
+} from "./account-events-gateway";
 import { workerConfig } from "./config";
 import { startDatabaseBackupScheduler } from "./db-backup";
 import { setWorkerFatalObserver } from "./fatal-handlers";
@@ -79,11 +84,13 @@ async function main() {
 		log.info("shutdown-initiated", { signal });
 
 		setShuttingDown();
+		setAccountEventsGatewayDraining(true);
 		stopPolling();
 		stopExtensionSyncPolling();
 		stopAudioFeatureBackfillPolling();
 		stopMatchDeckJobPolling();
 		stopAccountEventPublisher();
+		await stopAccountEventsGateway();
 		await notifyListener.stop();
 		keepAlive.stop();
 		dbBackup.stop();
@@ -168,6 +175,8 @@ async function main() {
 			tags: { loop: "account-events-publisher" },
 		});
 	});
+
+	startAccountEventsGateway();
 
 	await startPolling();
 	await extensionSyncLoop;
