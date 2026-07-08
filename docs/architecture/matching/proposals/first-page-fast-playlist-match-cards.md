@@ -12,7 +12,7 @@ This plan now deliberately pairs the fast-card fix with the newest 2026-07-02 ar
 - **Patterns #3 (`fromSupabaseRpc`)**: the validated-RPC wrapper is created here and adopted for this one RPC (first of ~12 sites; rest are follow-up). Zod 4 (`^4.3.6`) is in place — `z.looseObject`, `z.uuid()` available.
 - **Phase 5 guardrail**: dev/test-only URL-length throw on the admin Supabase client + a `CLAUDE.md` rule, so the 414 class fails locally instead of in prod.
 
-This is **not** the progressive match-feed architecture. `docs/architecture/matching/proposals/progressive-match-feed-plan.md` now says that refactor is future/gated; this plan fixes a concrete per-card read/render bottleneck without changing snapshot or queue publication semantics.
+This is **not** the progressive match-feed architecture. `docs/architecture/matching/proposals/progressive-match-feed.md` now says that refactor is future/gated; this plan fixes a concrete per-card read/render bottleneck without changing snapshot or queue publication semantics.
 
 ## Design decisions already validated
 

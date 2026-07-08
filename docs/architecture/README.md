@@ -23,7 +23,7 @@ opening it:
 
 | Path | Purpose |
 | --- | --- |
-| [`proposals/account-events-and-browser-push-plan.md`](./proposals/account-events-and-browser-push-plan.md) | Proposed portable push architecture replacing browser polling for background-job freshness |
+| [`proposals/account-events-and-browser-push.md`](./proposals/account-events-and-browser-push.md) | Proposed portable push architecture replacing browser polling for background-job freshness |
 
 ## Audits & reviews (dated)
 
@@ -39,14 +39,14 @@ opening it:
 | --- | --- |
 | [`matching/score-normalization.md`](./matching/score-normalization.md) | Why fusion normalizes signals across the full candidate matrix |
 | [`matching/reranker.md`](./matching/reranker.md) | Cross-encoder reranking and offline replay evaluation |
-| [`matching/lyrics-matching-findings.md`](./matching/lyrics-matching-findings.md) | Genius→LRCLIB lyric-matching research and eval-harness findings |
+| [`matching/research/lyrics-matching.md`](./matching/research/lyrics-matching.md) | Genius→LRCLIB lyric-matching research and eval-harness methodology |
 | [`matching/roadmap.md`](./matching/roadmap.md) | Consolidated matching research and prioritized roadmap |
 
 ## Matching proposals (future work)
 
 | Path | Purpose |
 | --- | --- |
-| [`matching/proposals/progressive-match-feed-plan.md`](./matching/proposals/progressive-match-feed-plan.md) | Future incremental-feed architecture and measurement gate for deciding if the refactor is worth it |
-| [`matching/proposals/immutable-proposal-versions-plan.md`](./matching/proposals/immutable-proposal-versions-plan.md) | Follow-up plan to make match-deck proposal builds immutable/versioned and remove rebuild races at the root |
-| [`matching/proposals/deck-read-model-plan.md`](./matching/proposals/deck-read-model-plan.md) | Long-term `/match` read-model refactor plan |
-| [`matching/proposals/first-page-fast-playlist-match-cards-plan.md`](./matching/proposals/first-page-fast-playlist-match-cards-plan.md) | First-page-fast match cards + match-review client seam |
+| [`matching/proposals/progressive-match-feed.md`](./matching/proposals/progressive-match-feed.md) | Future incremental-feed architecture and measurement gate for deciding if the refactor is worth it |
+| [`matching/proposals/immutable-proposal-versions.md`](./matching/proposals/immutable-proposal-versions.md) | Follow-up plan to make match-deck proposal builds immutable/versioned and remove rebuild races at the root |
+| [`matching/proposals/deck-read-model.md`](./matching/proposals/deck-read-model.md) | Long-term `/match` read-model refactor plan |
+| [`matching/proposals/first-page-fast-playlist-match-cards.md`](./matching/proposals/first-page-fast-playlist-match-cards.md) | First-page-fast match cards + match-review client seam |
