@@ -160,11 +160,6 @@ async function main() {
 		});
 	});
 
-	await startPolling();
-	await extensionSyncLoop;
-	await audioBackfillLoop;
-	await matchDeckLoop;
-
 	// The publisher loop handles LISTEN/NOTIFY and polling internally,
 	// keeping it simple as it's a singleton pattern.
 	const publisherLoop = startAccountEventPublisher().catch((err) => {
@@ -173,6 +168,11 @@ async function main() {
 			tags: { loop: "account-events-publisher" },
 		});
 	});
+
+	await startPolling();
+	await extensionSyncLoop;
+	await audioBackfillLoop;
+	await matchDeckLoop;
 	await publisherLoop;
 
 	if (!draining) {

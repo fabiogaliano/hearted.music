@@ -1,5 +1,5 @@
 ---
-status: done
+status: proposed
 updated: 2026-07-08
 depends_on: ["01"]
 ---
@@ -17,7 +17,7 @@ authenticated session's account. Contract §4.2, proposal §6.2.
 - [x] New `createServerFn({ method: "GET" })` in
       `src/lib/server/account-events.functions.ts` returning a signed token for
       the authenticated session
-- [x] Claims exactly per `EventTokenClaims`: `sub` = accountId from the session
+- [ ] Claims exactly per `EventTokenClaims`: `sub` = accountId from the session
       (never from input), `sid`, `ver` (session/token version for revoke-all),
       `iat`, `exp = iat + 5 min`, `jti`
 - [x] Sign with WebCrypto-compatible HMAC (must run on Cloudflare Workers);
@@ -30,7 +30,7 @@ authenticated session's account. Contract §4.2, proposal §6.2.
 ## Acceptance gate
 
 - [x] `bun run test` passes
-- [x] An authenticated call returns a token the shared verifier accepts, with
+- [ ] An authenticated call returns a token the shared verifier accepts, with
       all six claims populated
 - [x] Unauthenticated calls are rejected; `sub` can never be caller-chosen
 - [x] Signing/verifying works in a Workers-compatible runtime (no Node-only

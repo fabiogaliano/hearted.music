@@ -5,12 +5,11 @@ import {
 	NOTIFY_CHANNEL_WAKE,
 } from "@/lib/account-events/contract";
 import { log } from "@/lib/observability/logger";
-import { workerConfig } from "./config";
 import { classifyDatabaseConnection } from "./db-backup";
 
 let shouldPoll = true;
-let listenSql: postgres.Sql<{}> | null = null;
-let txSql: postgres.Sql<{}> | null = null;
+let listenSql: postgres.Sql<Record<string, never>> | null = null;
+let txSql: postgres.Sql<Record<string, never>> | null = null;
 let wakeTimeout: ReturnType<typeof setTimeout> | null = null;
 let isPublishing = false;
 let needsAnotherPublish = false;
@@ -30,7 +29,9 @@ export function stopAccountEventPublisher() {
 /**
  * Attempts to publish unassigned events.
  */
-export async function publishAccountEvents(sql: postgres.Sql<{}>) {
+export async function publishAccountEvents(
+	sql: postgres.Sql<Record<string, never>>,
+) {
 	if (isPublishing) {
 		needsAnotherPublish = true;
 		return;
@@ -55,13 +56,18 @@ export async function publishAccountEvents(sql: postgres.Sql<{}>) {
 					WHERE publish_id IS NULL
 					ORDER BY id ASC
 					FOR UPDATE SKIP LOCKED
+				),
+				assigned AS (
+					SELECT id, nextval('account_event_publish_seq') as seq
+					FROM claimed
+					ORDER BY id ASC
 				)
 				UPDATE account_event
 				SET 
-					publish_id = nextval('account_event_publish_seq'),
+					publish_id = assigned.seq,
 					published_at = clock_timestamp()
-				FROM claimed
-				WHERE account_event.id = claimed.id
+				FROM assigned
+				WHERE account_event.id = assigned.id
 				RETURNING account_event.id, account_event.publish_id
 			`;
 
@@ -92,7 +98,7 @@ export async function publishAccountEvents(sql: postgres.Sql<{}>) {
 	}
 }
 
-function schedulePublish(sql: postgres.Sql<{}>) {
+function schedulePublish(sql: postgres.Sql<Record<string, never>>) {
 	if (wakeTimeout) return;
 	wakeTimeout = setTimeout(() => {
 		wakeTimeout = null;
@@ -135,15 +141,19 @@ export async function startAccountEventPublisher() {
 	try {
 		await listenSql.listen(
 			NOTIFY_CHANNEL_INSERTED,
-			() => schedulePublish(txSql!),
-			() => schedulePublish(txSql!), // on subscribe/reconnect
+			() => {
+				if (txSql) schedulePublish(txSql);
+			},
+			() => {
+				if (txSql) schedulePublish(txSql);
+			},
 		);
 
 		log.info("account-events-publisher-started");
 
 		fallbackInterval = setInterval(() => {
-			if (shouldPoll) {
-				schedulePublish(txSql!);
+			if (shouldPoll && txSql) {
+				schedulePublish(txSql);
 			}
 		}, FALLBACK_POLL_MS);
 
