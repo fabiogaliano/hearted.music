@@ -4058,6 +4058,13 @@ export type Database = {
 				Args: { p_checkout_session_id: string; p_conversion_id: string };
 				Returns: undefined;
 			};
+			list_account_match_exclusion_pairs: {
+				Args: { p_account_id: string };
+				Returns: {
+					playlist_id: string;
+					song_id: string;
+				}[];
+			};
 			mark_audio_feature_backfill_manual_needed: {
 				Args: {
 					p_candidates?: Json;
