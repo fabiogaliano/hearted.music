@@ -2,12 +2,13 @@
 
 Start here for the fastest mental model.
 
-Docs are bucketed by status so you can tell at a glance what a file is without
-opening it:
+Docs are organized topic-first; status lives in each file's frontmatter
+(`status: proposed | accepted | ...`), not in the folder name. See the
+repo-wide conventions in [`../README.md`](../README.md).
 
 - **root of a topic folder** = current-state canonical reference
-- **`proposals/`** = future work / not-yet-built plans
-- **`audits/`** = dated point-in-time reviews
+- **an initiative folder** (e.g. [`account-events/`](./account-events/)) = one body of work with its whole lifecycle (research → proposal → decision) in one place
+- **`proposals/`**, **`audits/`** under a long-lived domain = future work / dated reviews for that domain
 
 ## Core reference
 
@@ -19,11 +20,11 @@ opening it:
 | [`module-boundaries.md`](./module-boundaries.md) | Ownership rules for `src/lib/*` modules |
 | [`onboarding.md`](./onboarding.md) | Walkthrough onboarding system: steps, modules, step→route mapping |
 
-## Proposals (future work)
+## Initiatives (topic folders with their own lifecycle)
 
 | Path | Purpose |
 | --- | --- |
-| [`proposals/account-events-and-browser-push.md`](./proposals/account-events-and-browser-push.md) | Proposed portable push architecture replacing browser polling for background-job freshness |
+| [`account-events/`](./account-events/) | Portable account-scoped browser-push system (research spike + proposal) replacing browser polling for background-job freshness |
 
 ## Audits & reviews (dated)
 

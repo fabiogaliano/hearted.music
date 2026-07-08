@@ -1,6 +1,11 @@
+---
+status: proposed
+updated: 2026-07-08
+---
+
 # Account events and browser push
 
-Status: **proposed major follow-up refactor**.
+Status: **proposed major follow-up refactor, confirmed by transport/host spike and hardened for build**.
 
 Goal: replace browser polling for background-job freshness with a **portable, account-scoped push system** that keeps PostgreSQL as the source of truth and does **not** make Supabase Realtime part of the core app contract.
 
@@ -13,10 +18,11 @@ Goal: replace browser polling for background-job freshness with a **portable, ac
 Build a new **account-events subsystem** with these pieces:
 
 1. a durable Postgres `account_event` outbox for semantic account events
-2. `LISTEN` / `NOTIFY` as the low-latency wake-up path, not the durable source of truth
-3. a Bun-hosted **SSE gateway** in the worker runtime family (same VPS-side world as the job worker, not the Cloudflare app tier)
-4. a browser subscription hook that updates React Query caches and route-specific read models
-5. existing polling retained only as a fallback when the stream is unavailable
+2. a single-writer publish-order step that assigns the SSE replay cursor after rows are visible, avoiding BIGSERIAL out-of-order commit skips [spike Q5][spike S17]
+3. `LISTEN` / `NOTIFY` as a coalesced low-latency wake-up path, not the durable source of truth [spike Q4][spike S12]
+4. a Bun-hosted **fetch-based SSE gateway** in the worker runtime family (same VPS-side world as the job worker, not the Cloudflare app tier) [spike S8]
+5. a browser subscription hook that updates React Query caches and route-specific read models
+6. existing polling retained only as a fallback when the stream is unavailable
 
 ### Why this, not Supabase Realtime
 
@@ -139,35 +145,42 @@ flowchart LR
   end
 
   subgraph PG[Postgres]
-    Outbox[(account_event)]
-    Notify{{NOTIFY\naccount_event_wake}}
+    Outbox[(account_event\nunpublished rows)]
+    Notify{{coalesced NOTIFY\naccount_event_wake}}
     Jobs[(job + domain tables)]
   end
 
   subgraph BW[Bun worker runtime family]
     Worker[job runners]
+    Publisher[single account-event\npublisher]
     Gateway[account-events SSE gateway]
   end
 
   UI -->|GET server fn| Token
   Hook -->|Authorization: Bearer token| Gateway
   Worker -->|write durable event in txn| Outbox
-  Worker -->|wake listeners| Notify
   CF -->|write durable event in txn\nfor app-owned events| Outbox
-  CF -->|wake listeners| Notify
-  Gateway -->|LISTEN + catch-up query| PG
+  Worker -->|NOTIFY\naccount_event_inserted| Publisher
+  CF -->|NOTIFY\naccount_event_inserted| Publisher
+  Publisher -->|assign publish_id\nafter commit visibility| Outbox
+  Publisher -->|debounced wake hint| Notify
+  Gateway -->|LISTEN + catch-up query\nby publish_id| PG
   Gateway -->|SSE stream| Hook
   Worker --> Jobs
 ```
+
+The publisher is the chosen mitigation for BIGSERIAL replay gaps: producers may allocate insert ids before commit, but only the single publisher assigns the externally visible SSE cursor after rows are committed and visible [spike Q5][spike S17].
 
 ### High-level rules
 
 1. **Postgres stays the source of truth.**
 2. **Durable semantic events are stored in `account_event`.**
-3. **`NOTIFY` is only a wake-up hint.** If it is missed, the gateway must recover from the outbox.
-4. **Browser push is one-way.** Use SSE, not WebSockets.
-5. **Cloudflare app tier mints auth tokens, but does not own connection fanout.**
-6. **Polling remains as fallback, not the primary freshness path.**
+3. **The SSE cursor is `publish_id`, not insertion-time `id`.** `publish_id` is assigned by one publisher after commit visibility so `WHERE publish_id > :last_seen` cannot skip a later-committing lower insert id [spike Q5][spike S17].
+4. **`NOTIFY` is only a wake-up hint.** If it is missed, the gateway must recover from the outbox.
+5. **`NOTIFY` is coalesced.** The publisher batches wake-ups and relies on cursor catch-up to deliver all rows [spike Q4][spike S12].
+6. **Browser push is one-way.** Use fetch-based SSE, not native `EventSource` or WebSockets [spike S8].
+7. **Cloudflare app tier mints auth tokens, but does not own connection fanout.**
+8. **Polling remains as fallback, not the primary freshness path.**
 
 ---
 
@@ -180,29 +193,55 @@ This plan adds a new first-class subsystem:
 Proposed shape:
 
 ```sql
+CREATE SEQUENCE public.account_event_publish_seq;
+
 CREATE TABLE public.account_event (
   id BIGSERIAL PRIMARY KEY,
+  publish_id BIGINT UNIQUE,
   account_id UUID NOT NULL REFERENCES account(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
   payload JSONB NOT NULL DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  published_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_account_event_account_id_id
-  ON public.account_event (account_id, id);
+CREATE INDEX idx_account_event_account_id_publish_id
+  ON public.account_event (account_id, publish_id)
+  WHERE publish_id IS NOT NULL;
+
+CREATE INDEX idx_account_event_unpublished_id
+  ON public.account_event (id)
+  WHERE publish_id IS NULL;
 ```
 
-Why `BIGSERIAL` instead of UUID:
+`id` is the producer-side insertion identity. It is **not** the SSE replay cursor.
 
-- gives a simple monotonic replay cursor
-- maps cleanly to SSE `id:` fields
-- makes reconnect replay (`id > last_seen_id`) cheap
+The SSE replay cursor is `publish_id`, assigned by a single account-event publisher after rows are committed and visible. This is the default mitigation for the BIGSERIAL out-of-order commit gap: `nextval()` happens at insert time, so two transactions can commit out of id order and a plain `WHERE id > last_seen_id` reader can permanently skip the lower id [spike Q5][spike S17].
 
-Retention can be short (for example 24–72 h) because the table exists to bridge reconnect gaps, not to become a permanent analytics log.
+Why choose the single-writer publish-order mitigation by default:
+
+- it preserves immediate durable writes from worker / app transactions
+- it does not require guessing a safe delay window for every transaction shape
+- it keeps reconnect replay deterministic with `WHERE publish_id > :last_seen_publish_id ORDER BY publish_id`
+- it avoids the advisory-lock visibility-ceiling complexity unless later profiling proves the publisher is the bottleneck [spike Q5][spike S17]
+
+The rejected default is a pure safety-lag window. It is acceptable only as a deliberate simplification if the implementation also proves a conservative upper bound for out-of-order commit delay; otherwise it turns a correctness requirement into a timing assumption [spike S17].
+
+Publisher behavior:
+
+- every publish batch is serialized by a transaction-scoped advisory lock (`pg_try_advisory_xact_lock(...)` so idle candidates skip the cycle instead of queueing behind the active batch) inside the same database transaction and session that claims rows, assigns `publish_id`, and commits; do not rely on a session lock held on a different connection, because concurrent publish transactions could commit out of order and move the skip bug from producer `id` to `publish_id` [spike Q5][spike S17]
+- multiple publisher candidates may run, but only the transaction holding the advisory lock may publish a batch
+- claim unpublished rows with `FOR UPDATE SKIP LOCKED`, ordered by producer `id`
+- assign `publish_id = nextval('public.account_event_publish_seq')` and `published_at = clock_timestamp()`
+- producers wake the publisher with an empty `NOTIFY account_event_inserted` in the same transaction that inserts durable events; the publisher `LISTEN`s to that channel and also runs a short fallback poll so missed notifications only add latency [spike Q4][spike S11][spike S12]
+- emit coalesced browser wake-up notifications after publishing
+- if a publisher candidate restarts, another candidate can acquire the transaction-scoped advisory lock and continue from rows where `publish_id IS NULL`
+
+Retention can be short (for example 24–72 h for published rows) because the table exists to bridge reconnect gaps, not to become a permanent analytics log. Unpublished rows must not be pruned.
 
 ### 5.2 Account-events gateway
 
-Run a dedicated HTTP SSE handler on the Bun side.
+Run a dedicated HTTP fetch-SSE handler on the Bun side.
 
 Preferred deployment shape:
 
@@ -215,19 +254,47 @@ The crucial requirement is architectural, not process-count-specific:
 
 > the gateway must live in the **always-on Bun world**, not in the stateless Cloudflare request world.
 
+The gateway sends heartbeat comment frames every 20 s by default (`: ping\n\n`), with the allowed range kept around 15–25 s. This stays below the nginx 60 s idle default and the Cloudflare ~100 s / 524 idle chain noted by the spike; verify the exact gateway proxy path before tightening the value [spike Q7][spike S35][spike S36].
+
+The gateway disables response buffering at the proxy layer where applicable so heartbeat and event frames flush promptly [spike S35].
+
 ### 5.3 Browser subscription hook
 
 Add a new client hook, likely mounted once from `src/routes/_authenticated/route.tsx`:
 
-- opens the SSE stream
-- reconnects with backoff
-- carries the last seen event id
+- opens the fetch-based SSE stream
+- reconnects with jittered exponential backoff, not fixed-delay retries
+- carries the last seen `publish_id` as the event cursor
+- dedupes by event id because delivery is at-least-once
 - updates React Query caches and triggers invalidations
 - tears down cleanly on logout / route shell unmount
+
+Default reconnect policy:
+
+- start around 500 ms–1 s
+- use full jitter so many clients do not reconnect in lockstep
+- cap around 30 s while preserving the slow polling fallback
+- reset the backoff after a stable connection
+
+This is operationally important during deploys and restarts, where many streams may drop together [spike Q7][spike S38].
 
 ### 5.4 Event-writing boundary
 
 Worker and app code that currently only mutates tables or invalidates local caches will need explicit event writes at the boundary where cross-process freshness changes become visible.
+
+Those producers write durable `account_event` rows in their own transactions and leave `publish_id` null. They do **not** publish directly to connected browsers and do **not** rely on their insertion-time `id` as a cursor [spike Q5][spike S17].
+
+The single publisher owns `publish_id` assignment and coalesced `NOTIFY` emission. That keeps wake-up rate bounded while the gateway catch-up query batches all published rows for each account [spike Q4][spike S12].
+
+### 5.5 Operational constraints
+
+These are part of the architecture, not post-build tuning:
+
+- provision file descriptors in the service definition, for example `LimitNOFILE=65535` or higher in the systemd unit / container spec; a shell `ulimit -n` does not persist for the gateway service [spike Q7][spike S22]
+- keep the gateway's `LISTEN` connection on a direct Postgres connection or PgBouncer session pool; never route it through transaction pooling [spike Q7][spike S25][spike S26]
+- keep the publisher's `LISTEN account_event_inserted` connection and publish transaction connection direct or session-pooled as well; transaction pooling breaks `LISTEN` semantics, and publish locking must not depend on a session that can be swapped underneath it [spike Q7][spike S25][spike S26]
+- budget one long-lived gateway `LISTEN` connection per gateway instance plus the publisher candidate connections against Postgres `max_connections`, alongside worker and app pools [spike Q7][spike S27]
+- run a load test on the target droplet before assuming the spike's 10k-connection / ~16 KB-per-connection estimate is real for this Bun implementation [spike S23][spike S28]
 
 ---
 
@@ -235,7 +302,7 @@ Worker and app code that currently only mutates tables or invalidates local cach
 
 ### 6.1 Use **fetch-based SSE**, not native `EventSource`
 
-Native `EventSource` is attractive, but it cannot attach custom auth headers. In this topology, the browser should not send Better Auth cookies directly to the Bun gateway.
+Native `EventSource` is attractive, but it cannot attach custom auth headers. In this topology, the browser should not send Better Auth cookies directly to the Bun gateway, and event tokens must not be placed in the URL query string [spike S8][spike S16].
 
 Use a fetch-based SSE client instead:
 
@@ -243,7 +310,7 @@ Use a fetch-based SSE client instead:
 - `Accept: text/event-stream`
 - `Authorization: Bearer <short-lived-event-token>`
 - custom reconnect logic in the hook
-- optional `Last-Event-ID` or custom cursor header on reconnect
+- `Last-Event-ID` or a custom cursor header carrying the last seen `publish_id` on reconnect
 
 ### 6.2 Short-lived event token
 
@@ -255,17 +322,31 @@ Recommended claims:
 - `exp` (for example 5 minutes)
 - `iat`
 - `jti`
-- optional session identifier if revocation-by-session becomes necessary later
+- `sid` or equivalent session identifier
+- `sessionVersion` / `tokenVersion` for revoke-all semantics
 
-The Bun gateway validates this token locally. No DB round-trip is required just to open the stream.
+The Bun gateway validates the token signature and `exp` locally, then checks the session/version claim at connect time. There should be no per-event auth DB lookup, but a connect-time version check is the chosen revoke-all mechanism for stateless tokens [spike Q6][spike S20][spike S21].
+
+Mid-stream expiry is enforced. When `exp` is reached, the gateway closes the stream and the client re-mints a token through the Cloudflare app tier, then reconnects with its last seen `publish_id`. This is the default over connect-time-only validation because expiry remains a security boundary during long streams [spike Q6][spike S16].
+
+Revocation path:
+
+- bump the account/session token version in the app database
+- send an internal revoke signal to gateway instances, for example a small Postgres `NOTIFY` on a separate revoke channel or an authenticated internal admin call
+- each gateway closes local connections whose account/session/version matches the revoked scope
+- clients reconnect, receive a fresh token only if the app tier still authorizes the session, and replay from `Last-Event-ID`
 
 ### 6.3 Reconnect flow
 
-1. browser notices disconnect
-2. browser fetches a fresh event token from the app tier if needed
-3. browser reconnects with the last seen event id
-4. gateway replays durable events after that id from `account_event`
-5. gateway also sends a fresh active-jobs snapshot to repair any missed non-durable progress ticks
+1. browser notices disconnect, server-initiated expiry close, or revoke close
+2. browser uses jittered exponential backoff before reconnecting
+3. browser fetches a fresh event token from the app tier if needed
+4. browser reconnects with the last seen `publish_id`
+5. gateway validates the token and session/version claim
+6. gateway replays durable events after that cursor with `WHERE account_id = :account_id AND publish_id > :last_seen_publish_id ORDER BY publish_id`
+7. gateway also sends a fresh active-jobs snapshot to repair any missed non-durable progress ticks
+
+The replay cursor must be `publish_id`, not producer `id`, because producer ids can commit out of order [spike Q5][spike S17].
 
 ---
 
@@ -275,7 +356,7 @@ Separate **durable semantic events** from **repairable live snapshots**.
 
 ### 7.1 Durable semantic events
 
-These go into `account_event` and are replayable.
+These go into `account_event` and are replayable after the publisher assigns `publish_id`. SSE `id:` uses `publish_id`; clients treat delivery as at-least-once and dedupe by that id [spike Q5][spike S17].
 
 Initial set:
 
@@ -302,6 +383,7 @@ Rule:
 
 - on initial connect and every reconnect, the gateway sends `active_jobs_snapshot`
 - if an intermediate progress tick is missed, the next snapshot repairs the cache
+- if a connection's bounded buffer overflows, close or force snapshot repair rather than accumulating unbounded per-client deltas [spike Q7][spike S37]
 
 ### 7.3 Why keep `firstVisibleMatchReady` derived
 
@@ -494,8 +576,20 @@ This plan should also unify worker wake-up around the same **Postgres notify + p
 
 Rule:
 
-- the poll loops stay in place as the at-most-once-delivery safety net
+- the poll loops stay in place as the at-least-once repair path for missed notifications
 - the notify path is the low-latency fast path
+- wake-up notifications are debounced / coalesced before commit rates can approach the cluster-wide lock-convoy zone observed at sustained high NOTIFY write rates [spike Q4][spike S12]
+
+Coalescing policy:
+
+- producer-to-publisher wake-ups use an empty `account_event_inserted` `NOTIFY` from the producer transaction, with the publisher fallback poll as repair; this channel may run at durable-event write rate, so monitor it against the same cluster-wide NOTIFY ceiling [spike Q4][spike S11][spike S12]
+- browser account events: coalesce by `account_event_wake` channel and flush at most one `NOTIFY` per 100–250 ms publisher window, regardless of how many account ids became dirty; this keeps the nominal browser-event wake rate around 4–10/sec per publisher, far below the spike's lock-convoy zone [spike Q4][spike S12]
+- the browser wake payload should be empty or a tiny range hint such as `{minPublishId,maxPublishId}`; gateways use their local subscribed account ids plus cursor catch-up queries to find the rows they need [spike S11][spike S12]
+- worker job wake-ups: at most one wake per queue/channel per 100–250 ms window, with the existing poll loop as the repair path
+- never put event bodies in the `NOTIFY` payload; keep payloads below the hard 8000-byte limit and rely on database catch-up queries [spike S11]
+- if sustained coalesced NOTIFY volume still approaches the spike's **hundreds–1k/sec cluster-wide** estimate, replace or supplement the wake path before changing the durable outbox or browser transport [spike S12][spike S14]
+
+The exact debounce window is an operational knob. Start at 100 ms for low perceived latency, widen toward 250 ms if the database shows notification lock contention or elevated commit latency.
 
 ---
 
@@ -518,13 +612,15 @@ If two instances both receive the same wake-up:
 - each instance only pushes to its own local subscribers
 - replay is cursor-based per client connection, so duplicate fanout across instances is not a correctness issue
 
-### 11.2 Workers
+### 11.2 Workers and publisher
 
-Worker and gateway can be the same process family or separate sibling processes, as long as both can:
+Worker, publisher, and gateway can be the same process family or separate sibling processes, as long as they can:
 
-- validate event tokens
+- validate event tokens where they serve streams
 - reach Postgres directly
 - survive restarts independently
+
+Only one publisher batch should be active at a time. Horizontal deployments may start a publisher candidate in each instance, but the transaction-scoped Postgres advisory lock makes exactly one publish transaction assign `publish_id` and emit account-event wake-ups [spike Q5][spike S17].
 
 ### 11.3 Why this avoids sticky routing requirements
 
@@ -532,7 +628,19 @@ Open streams do not need sticky routing to one globally unique coordinator becau
 
 - Postgres is the durable event source
 - client cursors are per-connection
-- reconnect to any healthy gateway instance can replay from the last seen durable event id
+- reconnect to any healthy gateway instance can replay from the last seen `publish_id`
+
+### 11.4 When to reconsider the host
+
+There is no pure-cost switch trigger. Under the fixed constraints, Durable Objects and managed pub/sub do not beat the VPS on cost; Durable Objects are only cost-viable with the Hibernation API and still fail the portability constraint, while managed pub/sub fails portability except self-hosted Centrifugo / NATS, which are another VPS-side binary [spike S5][spike S6][spike S31][spike S32][spike S33][spike S34].
+
+Reconsider the host only for these triggers:
+
+1. **More than ~50k–100k concurrent connections on one box.** First add more gateway instances, which this design supports. If the Bun implementation becomes the bottleneck after that, escalate to a portable self-hosted fanout tier such as Centrifugo or NATS, not Durable Objects or managed pub/sub by default [spike S23][spike S28].
+2. **Sustained coalesced NOTIFY volume approaching ~hundreds–1k/sec cluster-wide.** Coalesce more aggressively or replace the wake path; do not switch browser transport or abandon the Postgres outbox for this reason [spike S12][spike S14].
+3. **Multi-region edge-local latency becomes a product requirement.** This is the one scenario where Durable Objects could be justified, and only with Hibernation plus an explicit acceptance of the portability trade-off [spike S6].
+
+The 50k–100k and NOTIFY-rate numbers are spike thresholds, not promises. Validate them with load tests on the actual droplet and database before treating them as capacity commitments [spike S23][spike S28].
 
 ---
 
@@ -540,11 +648,12 @@ Open streams do not need sticky routing to one globally unique coordinator becau
 
 ### Phase 1 — foundation
 
-1. create `account_event`
-2. add an event-write helper in the Bun / server layers
-3. add a Bun SSE gateway module
-4. add short-lived event token minting in the app tier
-5. add a client `useAccountEvents()` hook with reconnect and cursor support
+1. create `account_event` with `publish_id` and the publisher sequence
+2. add an event-write helper in the Bun / server layers that writes unpublished durable rows
+3. add the single account-event publisher with advisory-lock ownership, `publish_id` assignment, and coalesced `NOTIFY` emission [spike Q5][spike S17]
+4. add a Bun fetch-SSE gateway module with heartbeat, bounded buffers, direct/session-mode `LISTEN`, and `LimitNOFILE` provisioning [spike Q7][spike S22][spike S25]
+5. add short-lived event token minting in the app tier with session/token-version claims [spike Q6][spike S20][spike S21]
+6. add a client `useAccountEvents()` hook with jittered reconnect and `publish_id` cursor support [spike Q7][spike S38]
 
 ### Phase 2 — replace global polling first
 
@@ -606,9 +715,21 @@ Those docs currently describe polling / invalidation as the refresh mechanism an
 
 ## 15. External references
 
+- Backing research spike for this revision: `./research.md`
 - Cloudflare Workers Streams API — Workers can stream HTTP responses, including SSE: <https://developers.cloudflare.com/workers/runtime-apis/streams/>
 - Cloudflare Durable Objects overview — stateful coordination and real-time fanout in Cloudflare’s model: <https://developers.cloudflare.com/durable-objects/>
 - Cloudflare Durable Objects WebSocket guidance: <https://developers.cloudflare.com/durable-objects/best-practices/websockets/>
 - PostgreSQL `NOTIFY`: <https://www.postgresql.org/docs/current/sql-notify.html>
 - PostgreSQL asynchronous notifications (`LISTEN` / `NOTIFY`): <https://www.postgresql.org/docs/current/libpq-notify.html>
 - Transactional outbox pattern overview: <https://microservices.io/patterns/data/transactional-outbox.html>
+
+---
+
+## Revision notes
+
+- Added the single-writer `publish_id` mitigation for BIGSERIAL out-of-order commit replay gaps; replay now uses `publish_id`, not insertion `id` [spike Q5][spike S17].
+- Added explicit NOTIFY coalescing policy and break-even thresholds for lock-convoy risk [spike Q4][spike S12][spike S14].
+- Hardened auth around close-on-expiry, token re-mint + reconnect, session/token-version revocation, and server-side connection closes [spike Q6][spike S20][spike S21].
+- Added operational defaults for heartbeat interval, jittered reconnect, fd provisioning, PgBouncer topology, and load-test caveats [spike Q7][spike S22][spike S25][spike S35][spike S36][spike S38].
+- Added explicit host-reconsideration triggers and clarified that there is no pure-cost switch to Durable Objects or managed pub/sub under the fixed constraints [spike S5][spike S6][spike S31][spike S32][spike S33][spike S34].
+- Tightened publisher mechanics after review: publish batches now require transaction-scoped advisory locking on the same connection, an unpublished-row index, producer-to-publisher wake-up, and publisher connection budgeting [spike Q5][spike S17][spike S25][spike S26].
