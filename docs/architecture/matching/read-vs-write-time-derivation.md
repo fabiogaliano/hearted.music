@@ -1,7 +1,7 @@
 # Why the Match screen is slow — explained in plain words
 
 > A "what's actually going on" doc. The implementation plan is
-> `proposals/deck-read-model-plan.md` (which supersedes the request-path tiers in
+> `proposals/deck-read-model.md` (which supersedes the request-path tiers in
 > `claudedocs/match-perf-root-cause-refactor.md`). This one is for understanding, not doing.
 
 ---
@@ -192,4 +192,4 @@ one extra copy fresh.** Worth it, because the copy can always be rebuilt.
 > on the warming shelf is the whole idea.
 
 ---
-*See also: `proposals/progressive-match-feed-plan.md`, `architecture.md` · Build plan: `claudedocs/match-perf-root-cause-refactor.md`*
+*See also: `proposals/progressive-match-feed.md`, `architecture.md` · Build plan: `claudedocs/match-perf-root-cause-refactor.md`*
