@@ -1,17 +1,13 @@
-import { PlayIcon, XIcon } from "@phosphor-icons/react";
 import {
 	AnimatePresence,
 	motion,
 	useIsPresent,
 	useReducedMotion,
 } from "framer-motion";
-import { memo, type ReactNode, useEffect, useRef, useState } from "react";
-import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { memo, type ReactNode } from "react";
+import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { fonts } from "@/lib/theme/fonts";
-import {
-	preloadSpotifyEmbedAPI,
-	SpotifyEmbedIframe,
-} from "./SpotifyEmbedIframe";
 
 // The dvh term caps the art by viewport height so the whole card (art + title +
 // matches + controls) stays reachable without scrolling on short viewports; on
@@ -45,6 +41,10 @@ export const SongSection = memo(function SongSection({
 	suppressTransition,
 }: SongSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
+	// Single review subject, so there's just one cover — but route it through the
+	// shared coordinator keyed by songKey so the preview stops when the song swaps.
+	const { activePlaybackId, activatePlayback, deactivatePlayback } =
+		useSingleActivePlayback(songKey);
 
 	return (
 		<div className="flex h-full flex-col">
@@ -57,10 +57,21 @@ export const SongSection = memo(function SongSection({
 					prefersReducedMotion={prefersReducedMotion ?? false}
 					instant={suppressTransition ?? false}
 				>
-					<AlbumWithPlayer
-						album={song.album}
-						albumArtUrl={albumArtUrl}
-						spotifyId={spotifyId}
+					<SpotifyPlaybackCover
+						playbackId="song"
+						spotifyTrackId={spotifyId}
+						imageUrl={albumArtUrl}
+						imageAlt={song.album}
+						playLabel="Play preview"
+						size={ALBUM_SIZE}
+						isPlaybackActive={activePlaybackId === "song"}
+						onActivate={activatePlayback}
+						onDeactivate={deactivatePlayback}
+						playButtonSize={64}
+						playIconSize={22}
+						closeIconSize={28}
+						closeInset="1.5rem"
+						className="origin-top"
 					/>
 
 					{/* mt-auto pins the title block to the column bottom so it aligns
@@ -146,132 +157,5 @@ function AnimatedSongPanel({
 		>
 			{children}
 		</motion.div>
-	);
-}
-
-interface AlbumWithPlayerProps {
-	album: string;
-	albumArtUrl?: string;
-	spotifyId?: string;
-}
-
-function AlbumWithPlayer({
-	album,
-	albumArtUrl,
-	spotifyId,
-}: AlbumWithPlayerProps) {
-	const [activated, setActivated] = useState(false);
-	const [premounted, setPremounted] = useState(false);
-	const premountTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const canPreview = Boolean(spotifyId);
-
-	useEffect(() => {
-		return () => {
-			if (premountTimeoutRef.current) clearTimeout(premountTimeoutRef.current);
-		};
-	}, []);
-
-	const cancelPremount = () => {
-		if (premountTimeoutRef.current) {
-			clearTimeout(premountTimeoutRef.current);
-			premountTimeoutRef.current = null;
-		}
-	};
-
-	const warmPreview = (delayMs: 0 | 50) => {
-		preloadSpotifyEmbedAPI();
-		if (premounted) return;
-		cancelPremount();
-		if (delayMs === 0) {
-			setPremounted(true);
-			return;
-		}
-		// Avoid iframe work for drive-by pointer movement while keeping deliberate
-		// hover/focus effectively instant.
-		premountTimeoutRef.current = setTimeout(() => {
-			setPremounted(true);
-			premountTimeoutRef.current = null;
-		}, delayMs);
-	};
-
-	const handlePreviewIntent = () => warmPreview(50);
-
-	const handlePreviewLeave = () => cancelPremount();
-
-	const handleActivate = () => {
-		warmPreview(0);
-		setActivated(true);
-	};
-
-	const showIframe = canPreview && spotifyId && (premounted || activated);
-
-	return (
-		<div
-			className="relative aspect-square shrink-0 origin-top overflow-hidden"
-			style={{
-				maxWidth: ALBUM_SIZE,
-				width: ALBUM_SIZE,
-			}}
-		>
-			{!activated &&
-				(albumArtUrl ? (
-					<img
-						src={albumArtUrl}
-						alt={album}
-						className="absolute inset-0 h-full w-full object-cover"
-					/>
-				) : (
-					<div className="absolute inset-0">
-						<AlbumPlaceholder />
-					</div>
-				))}
-
-			{canPreview && !activated && (
-				<button
-					type="button"
-					onClick={handleActivate}
-					onPointerEnter={handlePreviewIntent}
-					onPointerDown={() => warmPreview(0)}
-					onPointerLeave={handlePreviewLeave}
-					onFocus={handlePreviewIntent}
-					onBlur={handlePreviewLeave}
-					className="group absolute inset-0 z-10 flex cursor-pointer items-center justify-center bg-black/10 transition-colors duration-200 hover:bg-black/35 focus-visible:bg-black/35 focus-visible:outline-none motion-safe:active:scale-[0.96]"
-					aria-label="Play preview"
-				>
-					<span className="theme-primary flex size-16 items-center justify-center rounded-full bg-white/70 shadow-md [transition:transform_200ms_cubic-bezier(0.165,0.84,0.44,1),background-color_500ms_ease-out] group-hover:scale-110 group-hover:bg-white group-focus-visible:scale-110 group-focus-visible:bg-white group-focus-visible:ring-2 group-focus-visible:ring-[var(--ring)] group-focus-visible:ring-inset">
-						<PlayIcon size={22} weight="fill" style={{ marginLeft: 2 }} />
-					</span>
-				</button>
-			)}
-
-			{showIframe && spotifyId && (
-				<motion.div
-					className="absolute inset-0"
-					initial={{ opacity: 0 }}
-					animate={{
-						opacity: activated ? 1 : 0,
-						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-					}}
-					style={{ pointerEvents: activated ? "auto" : "none" }}
-				>
-					<SpotifyEmbedIframe spotifyId={spotifyId} playWhenReady={activated} />
-					{activated && (
-						<button
-							type="button"
-							onClick={() => setActivated(false)}
-							aria-label="Close preview"
-							className="absolute top-6 left-6 z-10 cursor-pointer text-white opacity-90 drop-shadow-md transition-opacity duration-200 hover:opacity-100 motion-safe:active:scale-[0.96]"
-						>
-							<XIcon size={28} weight="bold" />
-						</button>
-					)}
-				</motion.div>
-			)}
-
-			<div
-				className="pointer-events-none absolute inset-0 z-20"
-				style={{ boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.16)" }}
-			/>
-		</div>
 	);
 }

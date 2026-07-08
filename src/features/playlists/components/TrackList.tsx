@@ -1,3 +1,5 @@
+import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
@@ -23,6 +25,10 @@ interface TrackListProps {
 	/** Stagger the rows in on mount. The preview card sets this false on re-opens
 	 *  so a repeated hover-sweep doesn't replay the whole ripple every time. */
 	animateIn?: boolean;
+	/** Opt in to an inline Spotify play button on each track's cover so a song can
+	 *  be previewed without leaving the list. Off by default — only the /match
+	 *  playlist flip enables it; other TrackList uses stay plain covers. */
+	enableTrackPlayback?: boolean;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
@@ -37,11 +43,16 @@ export function TrackList({
 	hideEmptyState = false,
 	hideAlbum = false,
 	animateIn = true,
+	enableTrackPlayback = false,
 }: TrackListProps) {
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
 		hasMore,
 	});
+	// One preview at a time across the list. Harmless when playback is disabled —
+	// no cover activates it — but the hook must run unconditionally regardless.
+	const { activePlaybackId, activatePlayback, deactivatePlayback } =
+		useSingleActivePlayback();
 	if (!tracks.length) {
 		if (hideEmptyState) return null;
 		return (
@@ -64,45 +75,67 @@ export function TrackList({
 					Tracks <span className="tabular-nums">{songCount}</span>
 				</span>
 			</div>
-			{tracks.map((track, i) => (
-				<div
-					key={`${track.position}-${track.name}`}
-					className={`theme-border-color flex items-center gap-3.5 border-b py-2.5 last:border-b-0 ${
-						animateIn ? "xpl-track-enter" : ""
-					}`}
-					style={animateIn ? { animationDelay: `${i * 26}ms` } : undefined}
-				>
-					<span
-						className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"
-						style={{ fontFamily: fonts.body }}
+			{tracks.map((track, i) => {
+				const rowId = `${track.position}-${track.name}`;
+				return (
+					<div
+						key={rowId}
+						className={`theme-border-color flex items-center gap-3.5 border-b py-2.5 last:border-b-0 ${
+							animateIn ? "xpl-track-enter" : ""
+						}`}
+						style={animateIn ? { animationDelay: `${i * 26}ms` } : undefined}
 					>
-						{i + 1}
-					</span>
-					<Cover src={track.imageUrl} size={40} className="flex-none" />
-					<div className="min-w-0 flex-1">
-						<div
-							className="theme-text truncate text-sm leading-tight"
-							style={{ fontFamily: fonts.body }}
-						>
-							{track.name}
-						</div>
-						<div
-							className="theme-text-muted truncate text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							{track.artists.join(", ")}
-						</div>
-					</div>
-					{!hideAlbum && track.albumName && (
 						<span
-							className="theme-text-muted max-w-[34%] flex-none truncate text-right text-xs"
+							className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"
 							style={{ fontFamily: fonts.body }}
 						>
-							{track.albumName}
+							{i + 1}
 						</span>
-					)}
-				</div>
-			))}
+						{enableTrackPlayback && track.spotifyId ? (
+							<SpotifyPlaybackCover
+								playbackId={rowId}
+								spotifyTrackId={track.spotifyId}
+								imageUrl={track.imageUrl}
+								imageAlt={track.name}
+								playLabel={`Play preview for ${track.name}`}
+								size={40}
+								isPlaybackActive={activePlaybackId === rowId}
+								onActivate={activatePlayback}
+								onDeactivate={deactivatePlayback}
+								playButtonSize={26}
+								playIconSize={12}
+								closeIconSize={12}
+								closeInset="0.125rem"
+								className="flex-none"
+							/>
+						) : (
+							<Cover src={track.imageUrl} size={40} className="flex-none" />
+						)}
+						<div className="min-w-0 flex-1">
+							<div
+								className="theme-text truncate text-sm leading-tight"
+								style={{ fontFamily: fonts.body }}
+							>
+								{track.name}
+							</div>
+							<div
+								className="theme-text-muted truncate text-xs"
+								style={{ fontFamily: fonts.body }}
+							>
+								{track.artists.join(", ")}
+							</div>
+						</div>
+						{!hideAlbum && track.albumName && (
+							<span
+								className="theme-text-muted max-w-[34%] flex-none truncate text-right text-xs"
+								style={{ fontFamily: fonts.body }}
+							>
+								{track.albumName}
+							</span>
+						)}
+					</div>
+				);
+			})}
 			{hasMore ? (
 				<div
 					ref={sentinelRef}

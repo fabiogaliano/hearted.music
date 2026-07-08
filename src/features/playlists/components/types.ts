@@ -60,6 +60,9 @@ export interface PlaylistTrackVM {
 	artists: string[];
 	albumName: string | null;
 	imageUrl: string | null;
+	/** Spotify track id for the inline preview player. Optional so hand-built
+	 *  fixtures/stories can omit it — those rows just render a plain cover. */
+	spotifyId?: string | null;
 }
 
 /** What a playlist "is for": only the user's own matching intent — never the

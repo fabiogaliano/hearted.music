@@ -182,6 +182,8 @@ export const getPlaylistManagementData = createServerFn({
 export interface PlaylistTrack {
 	position: number;
 	songId: string;
+	/** Spotify track id — powers the inline preview player in the track list. */
+	spotifyId: string | null;
 	name: string;
 	artists: string[];
 	albumName: string | null;
@@ -294,12 +296,13 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 
 			const songMap = new Map(songsDataResult.value.map((s) => [s.id, s]));
 			const tracks = playlistSongs
-				.map((ps) => {
+				.map((ps): PlaylistTrack | null => {
 					const song = songMap.get(ps.song_id);
 					if (!song) return null;
 					return {
 						position: ps.position,
 						songId: song.id,
+						spotifyId: song.spotify_id ?? null,
 						name: song.name,
 						artists: song.artists ?? [],
 						albumName: song.album_name,

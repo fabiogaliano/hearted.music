@@ -107,6 +107,7 @@ function PlaylistCoverAndName({
 					artists: t.artists,
 					albumName: t.albumName,
 					imageUrl: t.imageUrl,
+					spotifyId: t.spotifyId,
 				}),
 			),
 		[tracksQuery.data],
@@ -230,6 +231,7 @@ function PlaylistCoverAndName({
 										animateIn={animateRows}
 										hideAlbum
 										hideEmptyState
+										enableTrackPlayback
 									/>
 								) : (
 									<p

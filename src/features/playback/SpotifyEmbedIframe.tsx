@@ -57,7 +57,7 @@ function loadIFrameAPI(): Promise<IFrameAPI> {
  * before the click — by the time the user activates the embed, the module-level
  * `apiPromise` is already resolved and controller setup runs immediately.
  */
-export function preloadSpotifyEmbedAPI(): void {
+export function prepareSpotifyEmbed(): void {
 	void loadIFrameAPI().catch(() => {});
 }
 
