@@ -65,8 +65,8 @@ describe("computeReadTimeFiltersHash", () => {
 
 	// Finding 3: a liked-at "today" range resolves against the current UTC date,
 	// so the same stored config must hash differently across midnight — otherwise
-	// appendSnapshotDelta short-circuits on the already-applied key and never
-	// re-evaluates a snapshot whose visible set widened overnight.
+	// the queue short-circuits on the already-applied key and never re-evaluates
+	// a snapshot whose visible set widened overnight.
 	it("changes across UTC dates when a liked-at 'today' filter is active", () => {
 		const todayFilter = new Map<string, PlaylistMatchFiltersV1 | null>([
 			[

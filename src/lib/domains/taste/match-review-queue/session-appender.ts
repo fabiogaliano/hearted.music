@@ -3,15 +3,13 @@
  * newly-visible undecided proposal subjects are appended into each active
  * session's queue without reviving the old request-path append flow.
  *
- * R1 (Phase 5 had to be able to delete appendSnapshotDelta): this reads the
- * READY proposal for the account+orientation+snapshot under the active
- * session's frozen-strictness visibility_config_hash, takes its ordered
- * subjects, drops those already in the session's queue, and inserts the rest
- * via the existing insert_queue_song_items / insert_queue_playlist_items RPCs +
- * the match_review_session_snapshot ledger row. It shares the ./queries
- * machinery (insert RPCs + ledger + dedupe + idempotency) that the retired
- * appendSnapshotDelta used, but not the function itself, so deletion stayed
- * straightforward.
+ * R1 (plan §11): this reads the READY proposal for the
+ * account+orientation+snapshot under the active session's frozen-strictness
+ * visibility_config_hash, takes its ordered subjects, drops those already in the
+ * session's queue, and inserts the rest via the existing insert_queue_song_items /
+ * insert_queue_playlist_items RPCs + the match_review_session_snapshot ledger row.
+ * It reuses the ./queries machinery (insert RPCs + ledger + dedupe + idempotency)
+ * directly.
  *
  * The proposal already excluded build-time-decided subjects; queue-membership
  * dedupe (which includes resolved rows) covers decisions on subjects ever

@@ -268,15 +268,15 @@ function deckWindow(orientation: MatchOrientation): number {
 
 /**
  * Maps one read_match_deck_card JSONB payload to the shared MatchReviewItemRead
- * union. The playlist arm reuses the exact readPlaylistCardFromCapture mapping
+ * union. The playlist arm reuses the shared suggestion-row mapping
  * (song suggestion rows → MatchingSongSuggestion, suggestionTotal capped, cursor
  * derived); the song arm mirrors it (playlist suggestion rows → MatchingPlaylistMatch,
  * nextCursor always null per R-D). `not_captured` maps to retryable-error — the
  * readMatchDeckCard server fn recovers it on-demand (R-E) before the map runs.
  *
- * `orientation` sources the no_visible_suggestions copy (legacy parity with
- * readPlaylistCardFromCapture, which must name the suggestion side, not the
- * subject). The read_match_deck_card payload doesn't carry orientation on that
+ * `orientation` sources the no_visible_suggestions copy, which must name the
+ * suggestion side, not the subject. The read_match_deck_card payload doesn't
+ * carry orientation on that
  * status, so the caller passes it: the deck view threads the single deck
  * orientation; the standalone card GET passes null when it can't derive one and
  * falls back to the orientation-neutral copy rather than risk mislabeling.

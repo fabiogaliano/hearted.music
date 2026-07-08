@@ -136,8 +136,8 @@ function filtersResolveAgainstToday(
  *
  * When `nowMs` is supplied and a liked-at "today" filter is active, the resolved
  * UTC date is folded into the hashed content so the same stored config yields a
- * different hash after midnight — letting appendSnapshotDelta re-evaluate a
- * snapshot whose visibility widened overnight instead of short-circuiting on the
+ * different hash after midnight — letting the queue re-evaluate a snapshot whose
+ * visibility widened overnight instead of short-circuiting on the
  * already-applied key (Finding 3). Configs without a "today" filter keep their
  * existing hashes, since the date is only appended when it can change visibility.
  */

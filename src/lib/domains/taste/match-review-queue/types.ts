@@ -29,20 +29,6 @@ export type MatchReviewSubject =
 	| { orientation: "playlist"; playlistId: string };
 
 /**
- * Legacy DB-mirrored state from before the B9-C lifecycle split. The DB now
- * only stores `pending | active | resolved`; the terminal value is encoded in
- * `QueueItemResolution`. Kept only for the `_legacyState` parameter in
- * `updateQueueItemResolved` / `markItemResolved` until those callers are
- * removed in a later story (tracked in the orchestration deviation log).
- */
-export type QueueItemState =
-	| "pending"
-	| "presented"
-	| "completed"
-	| "skipped"
-	| "unavailable";
-
-/**
  * New split lifecycle state (B9-C). Resolution outcome is captured separately
  * in QueueItemResolution. `active` replaces `presented`; `resolved` replaces
  * `completed | skipped | unavailable`.
@@ -56,28 +42,6 @@ export type QueueItemResolution =
 	| "unavailable";
 
 export type SessionStatus = "active" | "completed" | "abandoned";
-
-/**
- * Legacy domain object used by existing service/server code that reads the
- * song-only DB schema. New cross-orientation code should use
- * MatchReviewQueueItemDto instead.
- */
-export interface MatchReviewQueueItem {
-	id: string;
-	sessionId: string;
-	accountId: string;
-	songId: string;
-	sourceSnapshotId: string;
-	position: number;
-	state: QueueItemLifecycleState;
-	resolution: QueueItemResolution | null;
-	sourceScore: number;
-	wasNewAtEnqueue: boolean;
-	presentedAt: string | null;
-	resolvedAt: string | null;
-	createdAt: string;
-	updatedAt: string;
-}
 
 /**
  * Exported queue item DTO that uses MatchReviewSubject so orientation is

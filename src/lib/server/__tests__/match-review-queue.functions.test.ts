@@ -23,7 +23,6 @@ const {
 	mockGetServedRanksForSong,
 	mockUpsertMatchDecision,
 	mockUpsertMatchDecisions,
-	mockMarkItemResolved,
 	mockAddQueueItemDecisionAtomically,
 	mockDismissQueueItemAtomically,
 	mockDismissQueueItemSuggestionAtomically,
@@ -35,7 +34,6 @@ const {
 	mockCaptureVisiblePairsAtomic,
 	mockReadQueueItemSongSuggestions,
 	mockCountCapturedVisiblePairs,
-	mockCallPresentMatchReviewItemFast,
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
 	mockGetPlaylistById,
@@ -55,7 +53,6 @@ const {
 		mockGetServedRanksForSong: vi.fn(),
 		mockUpsertMatchDecision: vi.fn(),
 		mockUpsertMatchDecisions: vi.fn(),
-		mockMarkItemResolved: vi.fn(),
 		mockAddQueueItemDecisionAtomically: vi.fn(),
 		mockDismissQueueItemAtomically: vi.fn(),
 		mockDismissQueueItemSuggestionAtomically: vi.fn(),
@@ -67,7 +64,6 @@ const {
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockReadQueueItemSongSuggestions: vi.fn(),
 		mockCountCapturedVisiblePairs: vi.fn(),
-		mockCallPresentMatchReviewItemFast: vi.fn(),
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 		mockGetPlaylistById: vi.fn(),
@@ -159,14 +155,11 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 	getQueueSummary: vi.fn(),
 	getOrderedUndecidedSongIds: (...args: unknown[]) =>
 		mockGetOrderedUndecidedSongIds(...args),
-	markItemResolved: (...args: unknown[]) => mockMarkItemResolved(...args),
 }));
 
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	addQueueItemDecisionAtomically: (...args: unknown[]) =>
 		mockAddQueueItemDecisionAtomically(...args),
-	callPresentMatchReviewItemFast: (...args: unknown[]) =>
-		mockCallPresentMatchReviewItemFast(...args),
 	countCapturedVisiblePairs: (...args: unknown[]) =>
 		mockCountCapturedVisiblePairs(...args),
 	readQueueItemSongSuggestions: (...args: unknown[]) =>

@@ -99,7 +99,6 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 		mockGetOrderedUndecidedSongIds(...args),
 	getOrderedUndecidedPlaylistIds: (...args: unknown[]) =>
 		mockGetOrderedUndecidedPlaylistIds(...args),
-	markItemResolved: vi.fn(),
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({

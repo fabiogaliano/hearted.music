@@ -149,8 +149,8 @@ async function seed() {
 		position += 1;
 	}
 
-	// Uncaptured item: visible_pairs_captured_at IS NULL (presentMatchReviewItem
-	// never ran). finish/dismiss must return no_captured_pairs and not resolve it.
+	// Uncaptured item: visible_pairs_captured_at IS NULL (pairs never captured).
+	// finish/dismiss must return no_captured_pairs and not resolve it.
 	await client`
     INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state)
     VALUES (${ITEM_UNCAP}, ${SESSION}, ${ACCOUNT}, ${SONG_UNCAP}, ${SNAPSHOT}, ${position}, ${"active"})

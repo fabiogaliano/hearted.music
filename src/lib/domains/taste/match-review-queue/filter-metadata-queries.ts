@@ -3,8 +3,8 @@
  *
  * Reads the song metadata and playlist filter config that the visibility policy
  * evaluates. Extracted so both card presentation (visible-suggestion-list) and
- * queue derivation (service.appendSnapshotDelta) fetch them the same way instead
- * of duplicating the query logic.
+ * queue derivation fetch them the same way instead of duplicating the query
+ * logic.
  *
  * All helpers use the service-role client (custom auth bypasses RLS) and return
  * Result<..., DbError> for composable error handling.

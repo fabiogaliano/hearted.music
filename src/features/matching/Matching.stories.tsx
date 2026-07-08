@@ -392,5 +392,5 @@ export const PlaylistMode: Story = () => (
 );
 PlaylistMode.meta = {
 	description:
-		"Playlist-mode review card: a playlist is the review subject; songs are suggestions with fitScore. The authoritative server path is presentMatchReviewItem — getMatchReviewItem returns unavailable for playlist items (known warming limitation, MSR-39).",
+		"Playlist-mode review card: a playlist is the review subject; songs are suggestions with fitScore.",
 };

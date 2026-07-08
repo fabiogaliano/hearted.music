@@ -22,7 +22,6 @@ import {
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type {
 	MatchOrientation,
-	MatchReviewQueueItem,
 	MatchReviewQueueItemDto,
 	MatchReviewQueueItemRow,
 	MatchReviewSession,
@@ -31,7 +30,6 @@ import type {
 	MatchReviewSubject,
 	QueueItemLifecycleState,
 	QueueItemResolution,
-	QueueItemState,
 	SessionStatus,
 } from "./types";
 
@@ -121,28 +119,6 @@ function mapSessionRow(row: MatchReviewSessionRow): MatchReviewSession {
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 		completedAt: row.completed_at,
-	};
-}
-
-function mapItemRow(row: MatchReviewQueueItemRow): MatchReviewQueueItem {
-	return {
-		id: row.id,
-		sessionId: row.session_id,
-		accountId: row.account_id,
-		// song_id is always set for song-orientation items (enforced by the
-		// exactly-one-subject CHECK); playlist items use this mapper only on
-		// the song-mode path today.
-		songId: row.song_id as string,
-		sourceSnapshotId: row.source_snapshot_id,
-		position: row.position,
-		state: toLifecycleState(row.state),
-		resolution: row.resolution as QueueItemResolution | null,
-		sourceScore: row.source_fit_score,
-		wasNewAtEnqueue: row.was_new_at_enqueue,
-		presentedAt: row.presented_at,
-		resolvedAt: row.resolved_at,
-		createdAt: row.created_at,
-		updatedAt: row.updated_at,
 	};
 }
 
@@ -544,48 +520,6 @@ export async function countUnresolvedItems(
 	return Result.ok(count ?? 0);
 }
 
-/**
- * Resolves a queue item and records the outcome in the resolution column.
- *
- * The state column always becomes 'resolved' (B9-C); the `_legacyState`
- * parameter is kept for caller compatibility until a later story removes it.
- *
- * The `.in("state", ["pending", "active"])` guard makes the transition
- * conditional: the first concurrent writer wins and the second writer matches
- * no row without erroring. The caller can treat Result.ok(null) as a lost race.
- *
- * accountId scopes the UPDATE so no pre-check bypass can write to a foreign item.
- */
-export async function updateQueueItemResolved(
-	itemId: string,
-	accountId: string,
-	_legacyState: Extract<
-		QueueItemState,
-		"completed" | "skipped" | "unavailable"
-	>,
-	resolution: QueueItemResolution,
-	now: string,
-): Promise<Result<MatchReviewQueueItem | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMaybe(
-		supabase
-			.from("match_review_queue_item")
-			.update({
-				state: "resolved",
-				resolution,
-				resolved_at: now,
-				updated_at: now,
-			})
-			.eq("id", itemId)
-			.eq("account_id", accountId)
-			.in("state", ["pending", "active"])
-			.select()
-			.maybeSingle(),
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(result.value ? mapItemRow(result.value) : null);
-}
-
 const ADD_QUEUE_ITEM_DECISION_ATOMIC_STATUSES = [
 	"added",
 	"not_found",
@@ -786,7 +720,7 @@ const DISMISS_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"not_found",
 	"already_resolved",
 	// Returned when match_review_item_visible_pair has no rows for the item —
-	// presentMatchReviewItem must capture pairs before dismiss can proceed (MSR-27).
+	// pairs must be captured before dismiss can proceed (MSR-27).
 	"no_captured_pairs",
 ] as const;
 
@@ -826,9 +760,9 @@ function isDismissQueueItemAtomicStatus(
  * transaction. Decisions are derived from captured visible pair rows in
  * match_review_item_visible_pair — the caller no longer supplies decisions.
  *
- * Returns no_captured_pairs if presentMatchReviewItem has not yet run for the
- * item; the TypeScript caller maps this to derive-failed so the item stays
- * pending and the dismiss can be retried after presentation.
+ * Returns no_captured_pairs if the item's visible pairs haven't been captured
+ * yet; the TypeScript caller maps this to derive-failed so the item stays
+ * pending and the dismiss can be retried after capture.
  */
 export async function dismissQueueItemAtomically(
 	itemId: string,
@@ -908,7 +842,7 @@ const FINISH_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"not_found",
 	"already_resolved",
 	// Returned when match_review_item_visible_pair has no rows for the item —
-	// presentMatchReviewItem must capture pairs before finish can proceed (MSR-28).
+	// pairs must be captured before finish can proceed (MSR-28).
 	"no_captured_pairs",
 ] as const;
 
@@ -925,8 +859,8 @@ function isFinishQueueItemAtomicStatus(
  * Resolves a queue item under the row lock. Because add also takes this lock
  * before writing, finish's add-count and resolution are serialized with add.
  *
- * Returns no_captured_pairs if presentMatchReviewItem has not yet run for the
- * item; the TypeScript caller maps this to derive-failed so the item stays
+ * Returns no_captured_pairs if the item's visible pairs haven't been captured
+ * yet; the TypeScript caller maps this to derive-failed so the item stays
  * pending and finish can be retried after presentation (MSR-28).
  */
 export async function finishQueueItemAtomically(
@@ -1016,148 +950,6 @@ export async function insertSessionSnapshot(
 }
 
 /**
- * Raw payload returned by the resume_match_review_session RPC. The RPC
- * consolidates 6 serial PostgREST reads into one database call; TypeScript
- * maps these raw shapes to domain types before the service layer sees them.
- */
-export interface ResumeMatchReviewSessionRpcResult {
-	status: "found" | "no_session";
-	session?: {
-		id: string;
-		account_id: string;
-		orientation: string;
-		status: string;
-		strictness_preset: string;
-		strictness_min_score: number;
-		created_at: string;
-		updated_at: string;
-		completed_at: string | null;
-	};
-	unresolved_count?: number;
-	latest_snapshot_id?: string | null;
-	applied_snapshots?: Array<{
-		snapshot_id: string;
-		visibility_config_hash: string;
-	}>;
-	items?: Array<{
-		id: string;
-		session_id: string;
-		account_id: string;
-		orientation: string;
-		song_id: string | null;
-		playlist_id: string | null;
-		source_snapshot_id: string;
-		position: number;
-		state: string;
-		resolution: string | null;
-		source_fit_score: number;
-		was_new_at_enqueue: boolean;
-		presented_at: string | null;
-		resolved_at: string | null;
-		visible_pairs_captured_at: string | null;
-		created_at: string;
-		updated_at: string;
-	}>;
-}
-
-/**
- * Calls the resume_match_review_session RPC which consolidates the 6 serial
- * reads of the common resume path into one database round trip. Returns the
- * raw JSONB payload; the service layer maps it to domain types.
- */
-export async function callResumeMatchReviewSession(
-	accountId: string,
-	orientation: MatchOrientation,
-): Promise<Result<ResumeMatchReviewSessionRpcResult, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("resume_match_review_session", {
-		p_account_id: accountId,
-		p_orientation: orientation,
-	});
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	// The RPC returns JSONB (typed as Json); narrow to the raw payload shape the
-	// service layer maps. The SQL function's status union guarantees the shape.
-	return Result.ok(data as unknown as ResumeMatchReviewSessionRpcResult);
-}
-
-/**
- * Raw payload returned by the present_match_review_item_fast RPC. Collapses
- * the 3-round-trip playlist card fast path (ownership check + playlist row +
- * suggestion read) into one database call.
- */
-export interface PresentMatchReviewItemFastRpcResult {
-	status:
-		| "ready"
-		| "not_found"
-		| "not_playlist"
-		| "not_captured"
-		| "playlist_gone"
-		| "no_visible_suggestions";
-	item?: {
-		id: string;
-		session_id: string;
-		orientation: string;
-		playlist_id: string;
-		state: string;
-		visible_pairs_captured_at: string | null;
-	};
-	playlist?: {
-		id: string;
-		spotify_id: string;
-		name: string;
-		match_intent: string | null;
-		image_url: string | null;
-		song_count: number;
-	};
-	suggestions?: Array<{
-		song_id: string;
-		name: string;
-		artists: string[];
-		album_name: string | null;
-		image_url: string | null;
-		spotify_id: string;
-		genres: string[];
-		fit_score: number;
-		visible_rank: number;
-		model_rank: number;
-	}>;
-	total_active_count?: number;
-}
-
-/**
- * Calls the present_match_review_item_fast RPC which collapses the 3 serial
- * reads of the captured playlist card path into one database round trip.
- */
-export async function callPresentMatchReviewItemFast(
-	itemId: string,
-	accountId: string,
-	limit?: number,
-): Promise<Result<PresentMatchReviewItemFastRpcResult, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("present_match_review_item_fast", {
-		p_item_id: itemId,
-		p_account_id: accountId,
-		p_limit: limit ?? undefined,
-	});
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	// The RPC returns JSONB (typed as Json); narrow to the raw payload shape the
-	// server layer maps. The SQL function's status union guarantees the shape.
-	return Result.ok(data as unknown as PresentMatchReviewItemFastRpcResult);
-}
-
-/**
  * Returns song IDs for the first N pending items in the session, in queue
  * order. Drives the dashboard CTA preview images without loading full rows.
  */
@@ -1212,7 +1004,7 @@ export async function fetchPendingPlaylistIds(
 
 /**
  * Fetches match_filters for all target playlists owned by the account.
- * Used by appendSnapshotDelta to compute the read-time filter hash component
+ * Used to compute the read-time filter hash component
  * of the visibility config hash (MSR-36). Returns a Map from playlist ID to
  * parsed filter config; null means the playlist has no filter set.
  */

@@ -66,8 +66,8 @@ export function deriveProgressIndex(
  * Whether an unavailable card should offer the "loosen strictness" affordance
  * instead of reading as permanently gone.
  *
- * `presentMatchReviewItem` can return an `unavailable` card for several distinct
- * reasons; only `no-visible-suggestions` means the review subject DOES have
+ * An `unavailable` card can be returned for several distinct reasons; only
+ * `no-visible-suggestions` means the review subject DOES have
  * matches that are simply hidden under the current strictness bar. That case
  * gets a link to the strictness setting (recoverable), while entitlement/data
  * reasons (`not-entitled`, `missing-song`, `snapshot-not-owned`,

@@ -2,8 +2,8 @@
  * Worker-side capture_ahead (plan §7). Runs the standard materialize flow —
  * derive the visible suggestion list, cap it, capture it first-write-wins — for
  * the next window of unresolved cards, OFF the request path. This is the same
- * capture the request path used to do inline in presentMatchReviewItem, moved
- * ahead of the swiper so a card read is a pure join over captured pairs.
+ * capture the request path used to do inline, moved ahead of the swiper so a
+ * card read is a pure join over captured pairs.
  *
  * Idempotent: captureVisiblePairsAtomic is first-write-wins, so a re-run (sweep
  * resurrection, retry) returns the original ranks and captures nothing new. A

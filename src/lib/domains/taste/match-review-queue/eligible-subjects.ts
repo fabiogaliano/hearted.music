@@ -1,12 +1,11 @@
 /**
- * Eligible-subject derivation — the parity seam shared by the request-path
- * append (service.appendSnapshotDelta) and the worker-side proposal builder.
+ * Eligible-subject derivation — the shared seam so the dashboard preview
+ * (service.ts) and the worker proposal builder order subjects identically.
  *
  * `deriveEligibleSubjects` is the pure entitlement/ownership prefilter + ordered
- * derivation (moved out of service.ts so both paths call ONE symbol → subject
- * order agrees by construction, not convention). `deriveProposalSubjects` loads
- * exactly the inputs appendSnapshotDelta loads and runs that same pure fn, so a
- * proposal's subject order is byte-for-byte what an append would have inserted.
+ * derivation; routing both callers through one symbol makes subject order agree
+ * by construction, not convention. `deriveProposalSubjects` loads the inputs and
+ * runs it, so a proposal's subject order matches what the preview derives.
  */
 
 import { Result } from "better-result";
@@ -64,19 +63,18 @@ export interface ProposalSubjectsDerivation {
 	hiddenReviewItemCount: number;
 	/** The target-playlist filters this derivation read — returned so the caller
 	 *  hashes the same map (with the same nowMs) it derived against, keeping the
-	 *  proposal's visibility_config_hash identical to appendSnapshotDelta's. */
+	 *  proposal's visibility_config_hash stable. */
 	filtersByPlaylistId: ReadonlyMap<string, PlaylistMatchFiltersV1 | null>;
 }
 
 /**
- * Loads the same inputs appendSnapshotDelta loads (match results, decisions,
- * newness, the entitlement RPC, song filter metadata, owned playlists, target
- * filters) and derives ordered eligible subjects under a policy frozen to
- * `minScore`. Sessionless — the already-queued exclusion is the appender's job.
+ * Loads the inputs (match results, decisions, newness, the entitlement RPC, song
+ * filter metadata, owned playlists, target filters) and derives ordered eligible
+ * subjects under a policy frozen to `minScore`. Sessionless — the already-queued
+ * exclusion is the appender's job.
  *
  * The entitlement/ownership prefilters are REQUIRED: getOrderedUndecidedSubjects
- * alone does not apply them, so omitting them here would diverge subject order
- * from the request-path append.
+ * alone does not apply them, so omitting them here would diverge subject order.
  *
  * One `nowMs` is threaded in by the caller so the caller's hash and this
  * derivation's filter evaluation fold the same UTC date (liked-at "today").

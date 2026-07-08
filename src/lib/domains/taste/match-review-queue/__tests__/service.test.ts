@@ -10,7 +10,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import type { MatchReviewQueueItem } from "../types";
 
 // ============================================================================
 // Orchestration tests — mock the queries layer directly
@@ -22,7 +21,6 @@ import type { MatchReviewQueueItem } from "../types";
 // ============================================================================
 
 vi.mock("../queries", () => ({
-	callResumeMatchReviewSession: vi.fn(),
 	fetchActiveSession: vi.fn(),
 	insertMatchReviewSession: vi.fn(),
 	completeSession: vi.fn(),
@@ -37,7 +35,6 @@ vi.mock("../queries", () => ({
 	countUnresolvedItems: vi.fn(),
 	fetchPendingSongIds: vi.fn(),
 	fetchPendingPlaylistIds: vi.fn(),
-	updateQueueItemResolved: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
 	mapItemToDto: vi.fn(),
 }));
@@ -79,14 +76,6 @@ vi.mock("@/lib/observability/capture-product-event", () => ({
 	captureProductEventBestEffort: vi.fn(),
 }));
 
-// createOrResumeQueue reports a resume-RPC failure through captureServerError
-// before falling back to the legacy path (Finding 5). Mock it so the fallback
-// tests (which drive the RPC to error by default) don't hit real Sentry and so
-// the report can be asserted.
-vi.mock("@/lib/observability/capture-server-error", () => ({
-	captureServerError: vi.fn(),
-}));
-
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
@@ -102,7 +91,6 @@ import {
 	getOrderedUndecidedSongIds,
 	getQueueSummary,
 	hasFirstVisibleReviewSubject,
-	markItemResolved,
 } from "../service";
 
 const ACCOUNT_ID = "account-test-001";
@@ -119,28 +107,6 @@ function fakeSession() {
 		createdAt: "2026-06-15T00:00:00Z",
 		updatedAt: "2026-06-15T00:00:00Z",
 		completedAt: null,
-	};
-}
-
-function fakeQueueItem(
-	overrides: Partial<MatchReviewQueueItem> = {},
-): MatchReviewQueueItem {
-	return {
-		id: "item-001",
-		sessionId: SESSION_ID,
-		accountId: ACCOUNT_ID,
-		songId: "song-001",
-		sourceSnapshotId: SNAPSHOT_ID,
-		position: 0,
-		state: "pending",
-		resolution: null,
-		sourceScore: 0.8,
-		wasNewAtEnqueue: false,
-		presentedAt: null,
-		resolvedAt: null,
-		createdAt: "2026-06-15T00:00:00Z",
-		updatedAt: "2026-06-15T00:00:00Z",
-		...overrides,
 	};
 }
 
@@ -164,11 +130,6 @@ beforeEach(() => {
 	vi.mocked(getMatchResults).mockResolvedValue(Result.ok([]));
 
 	// Default query mocks — safe no-op defaults
-	// Resume RPC defaults to error so tests fall through to the legacy multi-hop
-	// path (the RPC is an optimization; existing tests exercise the legacy logic).
-	vi.mocked(queries.callResumeMatchReviewSession).mockResolvedValue(
-		Result.err(new DatabaseError({ code: "mock", message: "not wired" })),
-	);
 	vi.mocked(queries.fetchActiveSession).mockResolvedValue(Result.ok(null));
 	vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
 		Result.ok(fakeSession()),
@@ -201,9 +162,6 @@ beforeEach(() => {
 	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
 	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
 	vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(Result.ok([]));
-	vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-		Result.ok(fakeQueueItem()),
-	);
 	vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
 		Result.ok(new Map()),
 	);
@@ -280,89 +238,6 @@ describe("getQueueSummary", () => {
 		}
 		// Song preview path is never used for a playlist session.
 		expect(queries.fetchPendingSongIds).not.toHaveBeenCalled();
-	});
-});
-
-// ============================================================================
-// markItemResolved
-// ============================================================================
-
-describe("markItemResolved", () => {
-	it("marks an item skipped with resolution=skipped", async () => {
-		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "resolved", resolution: "skipped" })),
-		);
-
-		const result = await markItemResolved(
-			"item-001",
-			ACCOUNT_ID,
-			"skipped",
-			"skipped",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("resolved");
-			expect(result.value?.resolution).toBe("skipped");
-		}
-	});
-
-	it("marks an item completed with resolution=added after one or more adds", async () => {
-		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "resolved", resolution: "added" })),
-		);
-
-		const result = await markItemResolved(
-			"item-001",
-			ACCOUNT_ID,
-			"completed",
-			"added",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value?.state).toBe("resolved");
-			expect(result.value?.resolution).toBe("added");
-		}
-	});
-
-	it("marks an item completed with resolution=dismissed", async () => {
-		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(fakeQueueItem({ state: "resolved", resolution: "dismissed" })),
-		);
-
-		const result = await markItemResolved(
-			"item-001",
-			ACCOUNT_ID,
-			"completed",
-			"dismissed",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value?.resolution).toBe("dismissed");
-		}
-	});
-
-	it("returns ok(null) when the conditional resolve matched no row (already resolved)", async () => {
-		// updateQueueItemResolved is guarded by .in("state", ["pending", "active"])
-		// so a concurrent finish/dismiss that already resolved the item leaves this
-		// stale call matching nothing — it must surface as ok(null), not a fake success.
-		vi.mocked(queries.updateQueueItemResolved).mockResolvedValue(
-			Result.ok(null),
-		);
-
-		const result = await markItemResolved(
-			"item-001",
-			ACCOUNT_ID,
-			"completed",
-			"dismissed",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toBeNull();
-		}
 	});
 });
 

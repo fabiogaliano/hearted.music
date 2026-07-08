@@ -2,10 +2,9 @@
  * Match review queue service.
  *
  * Owns: queue summary, the no-active-queue snapshot ordering fallback
- * (getOrderedUndecided*), first-visible-match readiness, and item lifecycle
- * transitions (presented / resolved). Request-path queue creation/resume and
- * snapshot append moved to the deck read model (worker-driven proposals +
- * append_sessions jobs).
+ * (getOrderedUndecided*), and first-visible-match readiness. Request-path queue
+ * creation/resume, snapshot append, and item resolution moved to the deck read
+ * model (worker-driven proposals + append_sessions jobs, atomic action RPCs).
  *
  * Subject ordering delegates to the shared visibility-policy layer
  * (deriveEligibleSubjects + visibility-policy), the same logic card presentation
@@ -30,15 +29,8 @@ import {
 	fetchPendingPlaylistIds,
 	fetchPendingSongIds,
 	fetchTargetPlaylistFilters,
-	updateQueueItemResolved,
 } from "./queries";
-import type {
-	MatchOrientation,
-	MatchReviewQueueItem,
-	MatchReviewSummary,
-	QueueItemResolution,
-	QueueItemState,
-} from "./types";
+import type { MatchOrientation, MatchReviewSummary } from "./types";
 import type { VisibilityPolicy } from "./visibility-policy";
 
 async function fetchLatestSnapshotId(
@@ -73,7 +65,7 @@ async function fetchLatestSnapshotId(
  * dashboard CTA, sidebar badge, and the match page empty/caught-up state.
  *
  * Falls back to empty/no-queue when no active session exists for the
- * orientation — the match page creates one on entry via createOrResumeQueue.
+ * orientation — the match page creates one on entry via startOrResumeMatchDeck.
  *
  * Defaults to 'song' for backward compat with callers that pre-date MSR-18;
  * new callers should pass orientation explicitly.
@@ -121,10 +113,9 @@ export async function getQueueSummary(
  * matching.functions: that path ignored read-time playlist filters and playlist
  * ownership, so the song-mode dashboard preview and caught-up hidden count could
  * advertise songs the queue would never enqueue and the card would never render
- * (Finding 1). This derives song subjects the same way appendSnapshotDelta's song
- * path does — entitled song + owned suggestion playlist + visible undecided pair
- * under the live strictness bar and target filters — so the preview matches the
- * queue.
+ * (Finding 1). This derives song subjects the same way the queue does — entitled
+ * song + owned suggestion playlist + visible undecided pair under the live
+ * strictness bar and target filters — so the preview matches the queue.
  *
  * hiddenReviewItemCount is the eligible-but-policy-hidden count: songs with at
  * least one entitled, owned-playlist, undecided pair whose only such pairs sit
@@ -318,7 +309,7 @@ export async function getOrderedUndecidedPlaylistIds(
 	// Eligibility-aware derivation: only entitled-song + owned-playlist pairs drive
 	// ordering, sourceScore, and the hidden count — closing the gap where a
 	// non-entitled pair's score could reorder a playlist preview relative to the
-	// queue (which prefilters the same way in appendSnapshotDelta).
+	// queue (which prefilters the same way).
 	const { subjects, hiddenReviewItemCount } = deriveEligibleSubjects({
 		matchResults,
 		decidedPairs,
@@ -402,41 +393,5 @@ export async function hasFirstVisibleReviewSubject(
 	return Result.ok(
 		songSubjectsResult.value.songIds.length > 0 ||
 			playlistSubjectsResult.value.playlistIds.length > 0,
-	);
-}
-
-/**
- * Marks a queue item as resolved. The DB state is always 'resolved' (B9-C);
- * the outcome is captured by `resolution`:
- *
- * - After one or more adds + finish: resolution=added
- * - After dismiss: resolution=dismissed
- * - Skip (next song with no adds): resolution=skipped
- * - Song became unavailable: resolution=unavailable
- *
- * `_legacyState` is accepted for backward-compatible call sites but is ignored
- * internally — `updateQueueItemResolved` always writes `state='resolved'`.
- *
- * Returns Result.ok(null) when the item was already resolved (the conditional
- * update in updateQueueItemResolved matched no unresolved row): a concurrent
- * finish/dismiss won the race, and the caller must not treat that as having
- * resolved the item itself.
- */
-export async function markItemResolved(
-	itemId: string,
-	accountId: string,
-	_legacyState: Extract<
-		QueueItemState,
-		"completed" | "skipped" | "unavailable"
-	>,
-	resolution: QueueItemResolution,
-): Promise<Result<MatchReviewQueueItem | null, DbError>> {
-	const now = new Date().toISOString();
-	return updateQueueItemResolved(
-		itemId,
-		accountId,
-		_legacyState,
-		resolution,
-		now,
 	);
 }

@@ -156,8 +156,8 @@ async function readOwnedQueueItem(
 
 /**
  * Maps one read-model row to the client-facing MatchingSongSuggestion shape.
- * Shared by readPlaylistCardFromCapture's first page and
- * listMatchReviewItemSuggestions' tail pages so the two can't drift.
+ * Shared by the deck card's first page and listMatchReviewItemSuggestions' tail
+ * pages so the two can't drift.
  */
 function mapSuggestionRow(
 	row: QueueItemSongSuggestionRow,
@@ -217,7 +217,7 @@ const ListMatchReviewItemSuggestionsSchema = z.object({
 
 /**
  * Tail page for a playlist card's suggestion list (P3, first-page-fast): pages
- * in the rows readPlaylistCardFromCapture didn't include in the first
+ * in the rows the deck card's first page didn't include in the first
  * PLAYLIST_CARD_FIRST_PAGE_SIZE-row response. Shares readQueueItemSongSuggestions
  * and mapSuggestionRow with the first-page path so first page and tail pages
  * can never render suggestions differently.
@@ -319,7 +319,7 @@ export interface ServerMatchReviewSummaryResult {
  * the latest snapshot using the orientation's ordering authority
  * (getOrderedUndecidedSongIds / getOrderedUndecidedPlaylistIds) — the same
  * derivation the /match walk uses — without creating a queue. Queue creation
- * happens only on /match entry via startOrResumeMatchReview.
+ * happens only on /match entry via startOrResumeMatchDeck.
  *
  * Exported so dashboard.functions.ts can call it once and share the result
  * across both the CTA count and the preview fan.

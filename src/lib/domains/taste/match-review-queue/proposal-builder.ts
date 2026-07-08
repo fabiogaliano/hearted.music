@@ -1,8 +1,8 @@
 /**
  * Write-time proposal builder (plan §6). For one (account, orientation,
  * snapshot) it builds a proposal per strictness preset: ordered review subjects
- * (deriveProposalSubjects — the SAME pure derivation the request-path append
- * uses, so subject order agrees by construction) plus a window-bounded promotion
+ * (deriveProposalSubjects — the SAME eligible-subject derivation the dashboard
+ * preview uses, so subject order agrees by construction) plus a window-bounded promotion
  * seed for the first few subjects (computeVisibleSuggestionList — the SAME
  * derivation capture uses). A proposal never creates sessions, queue items, or
  * visible-pair rows.

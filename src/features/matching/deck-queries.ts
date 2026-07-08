@@ -28,9 +28,8 @@ export const matchDeckKeys = {
 /**
  * The single deck query the route renders from (plan §8/§10): one bounded
  * start/resume call returning the exact MatchDeckView (or the building state).
- * 60s staleTime mirrors matchReviewQueryOptions — short enough that a
- * snapshot-refresh invalidation refetches promptly, long enough that rapid card
- * navigation doesn't hammer the server.
+ * 60s staleTime is short enough that a snapshot-refresh invalidation refetches
+ * promptly, long enough that rapid card navigation doesn't hammer the server.
  */
 export function matchDeckQueryOptions(
 	accountId: string,
@@ -46,9 +45,8 @@ export function matchDeckQueryOptions(
 /**
  * Per-card read for cards the deck view didn't bake in (plan §10 point 3): a pure
  * read over captured pairs, with the on-demand materialize fallback inside the
- * server fn. High staleTime matches presentMatchReviewItemQueryOptions — a card
- * read is keyed off an immutable captured suggestion order, so no refetch is
- * needed within one review visit.
+ * server fn. High staleTime because a card read is keyed off an immutable
+ * captured suggestion order, so no refetch is needed within one review visit.
  */
 export function readMatchDeckCardQueryOptions(itemId: string) {
 	return queryOptions({

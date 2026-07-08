@@ -16,94 +16,11 @@ import {
 	fetchOwnedPlaylistIds,
 	finishQueueItemAtomically,
 	readQueueItemSongSuggestions,
-	updateQueueItemResolved,
 } from "../queries";
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
-
-const ROW = {
-	id: "item-1",
-	session_id: "session-1",
-	account_id: "acct-1",
-	song_id: "song-1",
-	source_snapshot_id: "snap-1",
-	position: 0,
-	state: "active",
-	resolution: null,
-	source_fit_score: 0.85,
-	was_new_at_enqueue: false,
-	presented_at: "2026-06-16T00:00:00Z",
-	resolved_at: null,
-	created_at: "2026-06-16T00:00:00Z",
-	updated_at: "2026-06-16T00:00:00Z",
-	orientation: "song",
-	playlist_id: null,
-	visible_pairs_captured_at: null,
-};
-
-/**
- * Wires the full update chain
- *   from().update().eq("id").eq("account_id").in("state", …).select().maybeSingle()
- * and returns the .in() spy so tests can assert the conditional state guard.
- */
-function mockResolvedUpdate(row: typeof ROW | null) {
-	const maybeSingle = vi.fn().mockResolvedValue({ data: row, error: null });
-	const select = vi.fn().mockReturnValue({ maybeSingle });
-	const inSpy = vi.fn().mockReturnValue({ select });
-	const eqAccount = vi.fn().mockReturnValue({ in: inSpy });
-	const eqId = vi.fn().mockReturnValue({ eq: eqAccount });
-	const update = vi.fn().mockReturnValue({ eq: eqId });
-	const from = vi.fn().mockReturnValue({ update });
-
-	vi.mocked(createAdminSupabaseClient).mockReturnValue({
-		from,
-	} as unknown as ReturnType<typeof createAdminSupabaseClient>);
-
-	return { inSpy, update };
-}
-
-describe("updateQueueItemResolved", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("guards the resolution to only pending/active rows", async () => {
-		// Same conditional-update shape as the active transition, so two
-		// concurrent finish/dismiss flows can't clobber each other's resolution.
-		const { inSpy } = mockResolvedUpdate(ROW);
-
-		await updateQueueItemResolved(
-			"item-1",
-			"acct-1",
-			"completed",
-			"dismissed",
-			"2026-06-16T00:00:00Z",
-		);
-
-		expect(inSpy).toHaveBeenCalledWith("state", ["pending", "active"]);
-	});
-
-	it("returns ok(null) when the item was already resolved (no eligible row)", async () => {
-		// The conditional update matched nothing — a concurrent action won the race.
-		// The lost flow must see null rather than overwriting the winner's row.
-		mockResolvedUpdate(null);
-
-		const result = await updateQueueItemResolved(
-			"item-resolved",
-			"acct-1",
-			"skipped",
-			"skipped",
-			"2026-06-16T00:00:00Z",
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toBeNull();
-		}
-	});
-});
 
 describe("addQueueItemDecisionAtomically", () => {
 	beforeEach(() => {

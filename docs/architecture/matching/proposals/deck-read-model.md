@@ -555,10 +555,10 @@ correctness step.
 5. **Delete legacy.** `appendSnapshotDelta` + its playlist-sync call sites,
    `createOrResumeQueueLegacy`, `presentMatchReviewItem` +
    `getMatchReviewItem` + `markMatchReviewItemPresented`, the three legacy
-   query families, `readPlaylistCardFromCapture*` duplication. Legacy SQL
-   objects (`resume_match_review_session`, old insert-path helpers still used
-   by jobs are kept) get dropped only in a later cleanup migration once prod
-   soak confirms.
+   query families, `readPlaylistCardFromCapture*` duplication. Legacy read-path
+   SQL objects (`resume_match_review_session`, `present_match_review_item_fast`)
+   dropped in `20260708000021_drop_legacy_read_path_rpcs.sql` after prod soak;
+   insert-path helpers still used by jobs are kept.
 6. **Ops.** `scripts/` warm/backfill script (build proposals for all accounts),
    Smart Placement in `wrangler.jsonc`, metrics wiring (§13).
 

@@ -1,15 +1,13 @@
 /**
  * DB layer for the two deck READ RPCs — thin Result wrappers over
- * start_or_resume_match_deck (plan §8) and read_match_deck_card (plan §7).
- * Mirrors callResumeMatchReviewSession / callPresentMatchReviewItemFast in
- * ./queries: fire the RPC, translate a PostgREST error to a DbError, and hand
- * back the raw JSONB payload narrowed to the exported result shape. All mapping
- * to the public MatchDeckView / MatchReviewItemRead contract happens one layer
- * up in the server-fn file.
+ * start_or_resume_match_deck (plan §8) and read_match_deck_card (plan §7). Each
+ * fires the RPC, translates a PostgREST error to a DbError, and hands back the
+ * raw JSONB payload narrowed to the exported result shape. All mapping to the
+ * public MatchDeckView / MatchReviewItemRead contract happens one layer up in
+ * the server-fn file.
  *
- * Both RPCs return JSONB (typed Json), so — like the existing resume/fast
- * wrappers — the payload is narrowed with an `as unknown as` cast; the SQL
- * functions' status unions guarantee the shape.
+ * Both RPCs return JSONB (typed Json), so the payload is narrowed with an
+ * `as unknown as` cast; the SQL functions' status unions guarantee the shape.
  */
 
 import { Result } from "better-result";
