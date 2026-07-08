@@ -1,3 +1,5 @@
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
+
 /**
  * UI/route-layer toggle mode (B2). Distinct from MatchOrientation (domain/server).
  * Canonical URL: `/match` = playlist mode; `/match?mode=song` = song mode.
@@ -80,6 +82,10 @@ export interface PlaylistReviewItemSectionProps {
 	/** False in the canned demo/walkthrough where playlist ids aren't real rows. */
 	canLoadTracks?: boolean;
 	suppressTransition?: boolean;
+	/** Shared "one preview at a time" coordinator so the track-list previews and the
+	 *  suggestions previews in the adjacent column stop each other. Omitted where the
+	 *  section renders standalone (the track list then falls back to a local one). */
+	playback?: SingleActivePlayback;
 }
 
 // Song candidate row in playlist-mode: song data + fitScore for match percent display.
@@ -102,6 +108,9 @@ export interface SongSuggestionsSectionProps {
 	onDismiss: () => void | Promise<void>;
 	onNext: () => void;
 	onPrevious?: () => void;
+	/** Shared "one preview at a time" coordinator (see PlaylistReviewItemSectionProps).
+	 *  Omitted in Ladle stories, where the section owns a local one. */
+	playback?: SingleActivePlayback;
 	/**
 	 * Playlist-mode tail-paging state from useMatchReviewCard (first-page-fast,
 	 * P3). Optional — undefined in song mode and in Ladle stories, both of which

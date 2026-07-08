@@ -1,5 +1,11 @@
 import { useCallback, useState } from "react";
 
+export interface SingleActivePlayback {
+	activePlaybackId: string | null;
+	activatePlayback: (playbackId: string) => void;
+	deactivatePlayback: () => void;
+}
+
 /**
  * "One preview at a time" coordination for a list of playable covers. The list
  * owns which row is currently playing; activating a new row flips the previous
@@ -11,7 +17,9 @@ import { useCallback, useState } from "react";
  * active preview during render — React's recommended alternative to a reset
  * effect, applied before the children repaint.
  */
-export function useSingleActivePlayback(resetKey?: unknown) {
+export function useSingleActivePlayback(
+	resetKey?: unknown,
+): SingleActivePlayback {
 	const [activePlaybackId, setActivePlaybackId] = useState<string | null>(null);
 
 	const [prevResetKey, setPrevResetKey] = useState(resetKey);

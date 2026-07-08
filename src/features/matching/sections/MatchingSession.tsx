@@ -1,6 +1,7 @@
 import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { MatchesSection } from "../components/MatchesSection";
 import { PlaylistReviewItemSection } from "../components/PlaylistReviewItemSection";
 import { SongSection } from "../components/SongSection";
@@ -51,6 +52,14 @@ export function MatchingSession(props: MatchingSessionProps) {
 		props.mode === "song" ? props.currentSong.spotifyId : undefined;
 	const playlists = props.mode === "song" ? props.playlists : [];
 	const songSuggestions = props.mode === "playlist" ? props.suggestions : [];
+
+	// One preview at a time across *both* playlist-mode columns: the track list on
+	// the left and the suggestions on the right share this coordinator, so playing a
+	// track pauses a suggestion's iframe and vice versa. Keyed by the review subject
+	// so navigating to a new item drops the active preview before the columns repaint.
+	const reviewSubjectId =
+		props.mode === "playlist" ? props.reviewItem.id : songId;
+	const playback = useSingleActivePlayback(reviewSubjectId);
 
 	const song = useMemo(
 		() => ({
@@ -187,10 +196,12 @@ export function MatchingSession(props: MatchingSessionProps) {
 								reviewItem={props.reviewItem}
 								canLoadTracks={!isDemo}
 								suppressTransition={rejecting}
+								playback={playback}
 							/>
 							<SongSuggestionsSection
 								itemKey={props.reviewItem.id}
 								suggestions={songSuggestions}
+								playback={playback}
 								addedTo={addedTo}
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}

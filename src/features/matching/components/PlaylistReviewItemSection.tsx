@@ -17,6 +17,7 @@ import {
 	useState,
 } from "react";
 import { CoverPeekBadge } from "@/components/ui/CoverPeekBadge";
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { Cover } from "@/features/playlists/components/Cover";
 import { TrackList } from "@/features/playlists/components/TrackList";
 import type { PlaylistTrackVM } from "@/features/playlists/components/types";
@@ -37,6 +38,7 @@ export const PlaylistReviewItemSection = memo(
 		reviewItem,
 		canLoadTracks = true,
 		suppressTransition,
+		playback,
 	}: PlaylistReviewItemSectionProps) {
 		const prefersReducedMotion = useReducedMotion();
 
@@ -58,6 +60,7 @@ export const PlaylistReviewItemSection = memo(
 						<PlaylistCoverAndName
 							reviewItem={reviewItem}
 							canLoadTracks={canLoadTracks}
+							playback={playback}
 						/>
 					</AnimatedPlaylistPanel>
 				</AnimatePresence>
@@ -69,6 +72,8 @@ export const PlaylistReviewItemSection = memo(
 interface PlaylistCoverAndNameProps {
 	reviewItem: PlaylistForMatching;
 	canLoadTracks: boolean;
+	/** Shared preview coordinator threaded to TrackList; see PlaylistReviewItemSectionProps. */
+	playback?: SingleActivePlayback;
 }
 
 // Separated so the hook is called exactly once per review item, matching how
@@ -76,6 +81,7 @@ interface PlaylistCoverAndNameProps {
 function PlaylistCoverAndName({
 	reviewItem,
 	canLoadTracks,
+	playback,
 }: PlaylistCoverAndNameProps) {
 	const prefersReducedMotion = useReducedMotion();
 	const panelId = useId();
@@ -126,8 +132,12 @@ function PlaylistCoverAndName({
 	}, []);
 	const collapse = useCallback(() => {
 		interacted.current = true;
+		// Closing the list unmounts its iframes; clear the shared active id too so a
+		// track that was playing doesn't auto-resume when the list is reopened, and so
+		// the suggestions column isn't left pointing at a now-gone track row.
+		playback?.deactivatePlayback();
 		setShowTracks(false);
-	}, []);
+	}, [playback]);
 
 	useEffect(() => {
 		if (!interacted.current) return;
@@ -232,6 +242,7 @@ function PlaylistCoverAndName({
 										hideAlbum
 										hideEmptyState
 										enableTrackPlayback
+										playback={playback}
 									/>
 								) : (
 									<p

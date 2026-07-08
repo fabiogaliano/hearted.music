@@ -1,5 +1,8 @@
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
-import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
+import {
+	type SingleActivePlayback,
+	useSingleActivePlayback,
+} from "@/features/playback/useSingleActivePlayback";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import { Cover } from "./Cover";
@@ -29,6 +32,10 @@ interface TrackListProps {
 	 *  be previewed without leaving the list. Off by default — only the /match
 	 *  playlist flip enables it; other TrackList uses stay plain covers. */
 	enableTrackPlayback?: boolean;
+	/** Shared "one preview at a time" coordinator. When supplied (the /match playlist
+	 *  flip), previews here and in the adjacent suggestions column stop each other.
+	 *  Omitted elsewhere, where the list falls back to a local coordinator. */
+	playback?: SingleActivePlayback;
 }
 
 /** Presentational track list with a staggered enter. Tracks come in as props so
@@ -44,15 +51,19 @@ export function TrackList({
 	hideAlbum = false,
 	animateIn = true,
 	enableTrackPlayback = false,
+	playback,
 }: TrackListProps) {
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
 		hasMore,
 	});
-	// One preview at a time across the list. Harmless when playback is disabled —
-	// no cover activates it — but the hook must run unconditionally regardless.
+	// One preview at a time. Prefer the coordinator shared with the suggestions
+	// column when it's passed in, so playing a track pauses a suggestion's iframe and
+	// vice versa; otherwise fall back to a list-local one. The hook must run
+	// unconditionally (rules of hooks) even when the shared coordinator wins.
+	const localPlayback = useSingleActivePlayback();
 	const { activePlaybackId, activatePlayback, deactivatePlayback } =
-		useSingleActivePlayback();
+		playback ?? localPlayback;
 	if (!tracks.length) {
 		if (hideEmptyState) return null;
 		return (

@@ -22,6 +22,7 @@ const MIN_HEIGHT = "min(clamp(300px, 34vw, 620px), calc(56dvh - 40px))";
 export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	itemKey,
 	suggestions,
+	playback,
 	addedTo,
 	navigationDisabled,
 	isLastItem,
@@ -81,12 +82,13 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	) : null;
 
 	// One active preview at a time. Each row owns its play affordance but not the
-	// decision of *which* row plays — that lives here so activating one row flips
-	// the previously-active row's isActive to false, pausing its iframe. Keyed by
-	// itemKey so navigating to a new review item drops the active id before the
-	// next suggestion set paints (the exiting panel also unmounts, stopping audio).
+	// decision of *which* row plays. Normally that decision is shared with the
+	// track-list column via the `playback` coordinator passed from MatchingSession,
+	// so playing a track there pauses a suggestion here. The local fallback (keyed by
+	// itemKey to reset on navigation) only runs in standalone/Ladle use.
+	const localPlayback = useSingleActivePlayback(itemKey);
 	const { activePlaybackId, activatePlayback, deactivatePlayback } =
-		useSingleActivePlayback(itemKey);
+		playback ?? localPlayback;
 
 	return (
 		<div
