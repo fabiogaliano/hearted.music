@@ -39,6 +39,7 @@ export type MatchSnapshotRefreshExecuteResult =
 			jobId: string;
 			published: boolean;
 			isEmpty: boolean;
+			snapshotId: string | null;
 	  }
 	| { status: "superseded"; accountId: string; jobId: string };
 
@@ -245,5 +246,6 @@ export async function executeMatchSnapshotRefreshJob(
 		jobId: job.id,
 		published: result.published,
 		isEmpty: result.isEmpty,
+		snapshotId: result.snapshotId,
 	};
 }

@@ -21,7 +21,10 @@ vi.mock("@/lib/account-events/producer", () => ({
 
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import type { Job } from "@/lib/platform/jobs/repository";
-import { settleEnrichmentJobTerminal } from "../settlement";
+import {
+	settleEnrichmentJobTerminal,
+	settleMatchSnapshotRefreshJobTerminal,
+} from "../settlement";
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {
@@ -115,5 +118,59 @@ describe("settleEnrichmentJobTerminal", () => {
 			}
 		}
 		expect(writeAccountEvent).not.toHaveBeenCalled();
+	});
+});
+
+describe("settleMatchSnapshotRefreshJobTerminal", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		txMock.mockResolvedValue([]);
+		beginMock.mockImplementation(async (cb) => cb(txMock));
+	});
+
+	it("writes published events for both orientations with the snapshot id", async () => {
+		const job = makeJob({ type: "match_snapshot_refresh" });
+
+		const result = await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"completed",
+			"published",
+			"snap-1",
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(writeAccountEvent).toHaveBeenNthCalledWith(1, txMock, {
+			accountId: "acct-1",
+			type: "match_snapshot_published",
+			payload: { orientation: "song", snapshotId: "snap-1" },
+		});
+		expect(writeAccountEvent).toHaveBeenNthCalledWith(2, txMock, {
+			accountId: "acct-1",
+			type: "match_snapshot_published",
+			payload: { orientation: "playlist", snapshotId: "snap-1" },
+		});
+	});
+
+	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
+		const job = makeJob({ type: "match_snapshot_refresh" });
+
+		const result = await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"failed",
+			"failed",
+			null,
+			"match snapshot refresh crashed during publish",
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
+			accountId: "acct-1",
+			type: "match_snapshot_failed",
+			payload: {
+				orientation: null,
+				snapshotId: null,
+				reason: "match snapshot refresh crashed during publish",
+			},
+		});
 	});
 });

@@ -21,6 +21,9 @@
 
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
+import postgres from "postgres";
+import { env } from "@/env";
+import { writeAccountEvent } from "@/lib/account-events/producer";
 import type { Json } from "@/lib/data/database.types";
 import {
 	CAPTURE_AHEAD_WINDOW,
@@ -47,6 +50,12 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
 import { captureWorkerEvent } from "./posthog-capture";
+
+const sql = postgres(env.DATABASE_URL, {
+	max: 1,
+	prepare: false,
+	fetch_types: false,
+});
 
 // Bounded retry backoff for a deferred job; attempts were already consumed at
 // claim, so mark_dead terminalizes after max_attempts regardless of this delay.
@@ -255,15 +264,38 @@ export async function dispatchDeckJob(
 			// synchronous append). Emit only when items actually landed so the
 			// appended_count signal survives the move to the worker.
 			if (outcome.value.kind === "applied" && outcome.value.appendedCount > 0) {
+				const appendedCount = outcome.value.appendedCount;
+				const sessionId = outcome.value.sessionId;
 				captureWorkerEvent({
 					distinctId: job.account_id,
 					event: "review_queue_appended",
 					properties: {
 						orientation,
 						snapshot_id: snapshotId,
-						appended_count: outcome.value.appendedCount,
+						appended_count: appendedCount,
 					},
 				});
+
+				try {
+					await sql.begin(async (tx) => {
+						await writeAccountEvent(tx, {
+							accountId: job.account_id,
+							type: "match_deck_appended",
+							payload: {
+								orientation,
+								sessionId,
+								snapshotId: snapshotId,
+								appendedCount: appendedCount,
+							},
+						});
+					});
+				} catch (err) {
+					log.warn("match-deck-append-outbox-failed", {
+						jobId: job.id,
+						accountId: job.account_id,
+						error: errorMessage(err),
+					});
+				}
 
 				// M5: the newly-appended region is uncaptured; the baked deck view has
 				// no on-demand materialize fallback (H4/L2 residual), so a session
@@ -437,31 +469,29 @@ export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
 	}
 }
 
+export async function claimAndDispatchMatchDeckJobs(): Promise<void> {
+	while (shouldPoll && activeJobs.size < 1) {
+		const claimResult = await claimDeckJob();
+		if (Result.isError(claimResult)) {
+			log.error("match-deck-claim-error", { error: claimResult.error.message });
+			return;
+		}
+
+		const job = claimResult.value;
+		if (!job) return;
+
+		activeJobs.add(job.id);
+		void runClaimedDeckJob(job);
+	}
+}
+
 export async function startMatchDeckJobPolling(): Promise<void> {
 	shouldPoll = true;
 	log.info("match-deck-polling-start", {});
 
 	while (shouldPoll) {
-		if (activeJobs.size >= 1) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		const claimResult = await claimDeckJob();
-		if (Result.isError(claimResult)) {
-			log.error("match-deck-claim-error", { error: claimResult.error.message });
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		const job = claimResult.value;
-		if (!job) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		activeJobs.add(job.id);
-		void runClaimedDeckJob(job);
+		await claimAndDispatchMatchDeckJobs();
+		await Bun.sleep(workerConfig.pollIntervalMs);
 	}
 
 	log.info("match-deck-polling-stopped", {});

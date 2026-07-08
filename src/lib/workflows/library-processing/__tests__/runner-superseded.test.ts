@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: vi.fn(),
 	markJobFailed: vi.fn(),
+	heartbeatJob: vi.fn(),
 }));
 
 const recordJobExecutionMeasurementMock = vi
@@ -37,10 +38,14 @@ vi.mock("../service", () => ({
 
 import { captureException } from "@sentry/bun";
 import type { Job } from "@/lib/platform/jobs/repository";
-import {
-	markJobCompleted,
-	markJobFailed,
-} from "@/lib/platform/jobs/repository";
+
+import { settleMatchSnapshotRefreshJobTerminal } from "../settlement";
+
+vi.mock("../settlement", () => ({
+	settleMatchSnapshotRefreshJobTerminal: vi.fn(),
+	settleEnrichmentJobTerminal: vi.fn(),
+}));
+
 import { executeMatchSnapshotRefreshJob } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import { runClaimedJob } from "../runner";
@@ -106,22 +111,26 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
 
-		expect(markJobCompleted).toHaveBeenCalledWith("job-2");
-		expect(markJobFailed).not.toHaveBeenCalled();
+		expect(settleMatchSnapshotRefreshJobTerminal).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-2" }),
+			"completed",
+			"superseded",
+			null,
+		);
 	});
 
 	it("applies match_snapshot_superseded change (not published) when superseded", async () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
@@ -142,8 +151,8 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
@@ -157,8 +166,8 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
@@ -171,8 +180,8 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
@@ -192,8 +201,8 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
