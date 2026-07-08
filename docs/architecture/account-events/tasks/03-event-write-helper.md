@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: done
 updated: 2026-07-08
 depends_on: ["01", "02"]
 ---
@@ -12,22 +12,22 @@ Proposal §5.4.
 
 ## Steps
 
-- [ ] `writeAccountEvent(tx, { accountId, type, payload })`, generic over
+- [x] `writeAccountEvent(tx, { accountId, type, payload })`, generic over
       `AccountEventType` so `payload` typechecks against `AccountEventPayloadMap`
-- [ ] Insert the row with `publish_id = NULL` inside the caller's transaction
-- [ ] Emit empty `NOTIFY account_event_inserted` in the **same** transaction
+- [x] Insert the row with `publish_id = NULL` inside the caller's transaction
+- [x] Emit empty `NOTIFY account_event_inserted` in the **same** transaction
       (channel name constant from task 01)
-- [ ] Make it callable from both the Bun worker and app-tier DB paths (billing
+- [x] Make it callable from both the Bun worker and app-tier DB paths (billing
       later writes from the app tier); keep it dependency-light
-- [ ] Unit/integration test in `tests/` covering insert-within-txn and rollback
+- [x] Unit/integration test in `tests/` covering insert-within-txn and rollback
       (rolled-back txn leaves no row and no notify)
 
 ## Acceptance gate
 
-- [ ] `bun run test` passes with the new tests
-- [ ] A wrong payload shape for a given `type` is a compile error
-- [ ] Row lands with `publish_id IS NULL` and `payload` matching the contract
-- [ ] Rollback of the caller's transaction emits no notification (NOTIFY is
+- [x] `bun run test` passes with the new tests
+- [x] A wrong payload shape for a given `type` is a compile error
+- [x] Row lands with `publish_id IS NULL` and `payload` matching the contract
+- [x] Rollback of the caller's transaction emits no notification (NOTIFY is
       transactional)
 
 ## Guardrails
