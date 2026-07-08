@@ -39,6 +39,26 @@ That is a bad trade if leaving Supabase should stay practical later. This plan d
 - plain HTTP SSE
 - app-issued auth tokens
 
+**"Realtime" is a Supabase server, not a Postgres feature.** Postgres itself has
+no browser-push product — it has the *ingredients*: `LISTEN` / `NOTIFY` for
+wake-ups and logical replication / logical decoding for change-data-capture.
+Supabase Realtime is a separate Elixir/Phoenix service that reads the WAL via
+logical replication, authorizes channels through Supabase RLS, and fans out to
+browsers over its own WebSocket protocol. Self-hosting Supabase means that server
+is already running on the box — but using it re-couples the core push path to
+Supabase's WAL publications, RLS model, and client library. This plan instead
+builds the browser-facing tier directly on the portable Postgres primitives
+(the same CDC ingredients Realtime uses internally, minus the coupling), so the
+push path survives a move off the Supabase stack.
+
+**Load-bearing premise (firm as of 2026-07-08):** portability off the Supabase
+stack is a hard product requirement, which is the sole reason Supabase Realtime
+is rejected here. If that ever softens — if self-hosted Postgres is the permanent
+home — Realtime (already running under self-hosted Supabase) is dramatically less
+work than this subsystem, and this initiative should be reopened rather than
+continued. Every task below inherits this premise; it is the single assumption
+that, if it flips, invalidates the plan.
+
 ### Why this, not a Cloudflare-owned SSE/WS fanout layer
 
 Cloudflare Workers can stream SSE responses, but the app tier is intentionally **stateless** and separate from the Bun worker process. If the Cloudflare tier owned long-lived browser connections, it would also need to own **connection coordination** across instances. In practice that means introducing another stateful subsystem such as Durable Objects or another external bus.
@@ -99,6 +119,31 @@ This doc is primarily about **browser push**, but the same design review found o
 Notable existing constraint:
 
 - `supabase/migrations/20260706000010_enqueue_match_review_deck_job.sql` explicitly skipped `pg_notify` for deck jobs to keep scope tight.
+
+### 2.5 Timers considered and intentionally left as timers
+
+A full codebase sweep (not just the tables above) surfaced these timer-driven
+mechanisms. They are deliberately **not** in scope — listed here so the inventory
+is provably complete rather than silently omitting them:
+
+| Path | Timer | Why it stays a timer |
+| --- | --- | --- |
+| `src/worker/sweep.ts` | 60 s | Stale-lease reclaim / dead-letter / idle-enrichment recovery — a wall-clock repair path; `NOTIFY` is the wrong tool for "a lease went stale". |
+| `src/worker/poll-match-deck-jobs.ts` (`startMatchDeckJobSweep`) | 60 s | Deck-job stale-lease sweep, same rationale. |
+| `src/worker/poll-audio-feature-backfill.ts` (sweep) | 60 s | Audio-backfill stale-lease sweep, same rationale. |
+| `src/worker/execute.ts` (`startHeartbeat`) | 30 s | Per-job lease renewal while a job runs — liveness, not freshness. |
+| `src/worker/keep-alive.ts` | 4 d | DB keep-warm ping; not freshness. |
+| `src/worker/db-backup.ts` | 24 h | Backup scheduler; not freshness. |
+| `src/features/dashboard/hooks/useDashboardSync.ts` | 4 s (second loop) | Extension-installed / Spotify-connected detection, separate from the `GET_STATUS` poll; extension-owned truth (§2.3). |
+| `src/routes/_authenticated/checkout/success.tsx` | 35 s one-shot | UI "taking longer" affordance, not a data poll (billing switch is §2.2 / phase 6). |
+
+The worker sweeps in particular are the **repair path by design** — the same
+role the browser fallback polls keep after the switch. They stay as timers.
+
+Housekeeping noticed during the sweep (not part of this plan): a stale doc
+comment in `src/features/onboarding/hooks/useOnboardingNavigation.ts` references
+a `usePolledPhaseJobIds()` hook that no longer exists — worth deleting whenever
+that file is next touched.
 
 ---
 
@@ -226,6 +271,18 @@ Why choose the single-writer publish-order mitigation by default:
 - it avoids the advisory-lock visibility-ceiling complexity unless later profiling proves the publisher is the bottleneck [spike Q5][spike S17]
 
 The rejected default is a pure safety-lag window. It is acceptable only as a deliberate simplification if the implementation also proves a conservative upper bound for out-of-order commit delay; otherwise it turns a correctness requirement into a timing assumption [spike S17].
+
+The other real alternative is a **transaction-id watermark**: add an `xid8` column
+and let readers take only rows whose inserting transaction has left the in-flight
+set (`WHERE xmin_col < pg_snapshot_xmin(pg_current_snapshot())`). This is the
+modern form of the "advisory-lock visibility ceiling" and needs no publisher
+process. It is rejected here for one concrete reason: it makes the *reconnect
+cursor* awkward — a client would resume from an xid watermark plus the set of ids
+that were skipped-but-are-now-visible, instead of a single monotonic integer. The
+single-writer publisher's whole value is that it collapses replay to
+`WHERE publish_id > :cursor ORDER BY publish_id`, trivial to persist, compare, and
+reason about across reconnects. Keep the publisher; the xmin watermark is the
+fallback only if the publisher ever proves to be the bottleneck [spike S17].
 
 Publisher behavior:
 
@@ -590,6 +647,18 @@ Coalescing policy:
 - if sustained coalesced NOTIFY volume still approaches the spike's **hundreds–1k/sec cluster-wide** estimate, replace or supplement the wake path before changing the durable outbox or browser transport [spike S12][spike S14]
 
 The exact debounce window is an operational knob. Start at 100 ms for low perceived latency, widen toward 250 ms if the database shows notification lock contention or elevated commit latency.
+
+**PostgreSQL 19 largely dissolves the lock-convoy ceiling.** The global
+commit-serialization lock behind the convoy is removed in PG19 (core commit
+282b1cde); PG19 reached Beta 1 on 2026-06-04, GA expected ~September 2026. Because
+the database is self-hosted Supabase Postgres, that fix is an in-house upgrade
+away, not a vendor roadmap item. This does **not** change the design — the outbox
++ coalesced wake path stays correct and cheap on every version — but it means the
+`account_event_inserted` producer→publisher channel (which may run at
+durable-event write rate) and task 14's worker-parity NOTIFYs carry far less risk
+than the spike's worst case implies. Do not over-engineer coalescing for a ceiling
+that is about to move; keep the debounce simple and revisit only if a pre-PG19
+window shows real contention [spike S12][spike S14].
 
 ---
 

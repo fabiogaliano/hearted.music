@@ -13,6 +13,7 @@ not yet implemented.
 | --- | --- | --- |
 | [`research.md`](./research.md) | research | Transport (SSE vs WS) + gateway-host (Bun-on-VPS vs Durable Objects vs managed pub/sub) decision spike, with cited cost/scale thresholds |
 | [`proposal.md`](./proposal.md) | proposed | The build-ready design: `account_event` outbox, single-writer `publish_id` cursor, coalesced `NOTIFY`, Bun fetch-SSE gateway, rollout plan |
+| [`tasks/`](./tasks/README.md) | proposed | Build breakdown: 16 ordered tasks with per-task acceptance gates, guardrails, and a parallelization/wave map |
 
 ## Reading order
 
