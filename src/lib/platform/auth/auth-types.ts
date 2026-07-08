@@ -2,6 +2,7 @@ import type { Account } from "@/lib/domains/library/accounts/queries";
 
 export interface AppSession {
 	accountId: string;
+	id: string;
 }
 
 export interface AuthIdentity {

@@ -21,6 +21,7 @@ export const env = createEnv({
 		SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 		// Better Auth
 		BETTER_AUTH_SECRET: z.string().min(32),
+		ACCOUNT_EVENTS_TOKEN_SECRET: z.string().min(32),
 		BETTER_AUTH_URL: z.url(),
 		DATABASE_URL: z.string().min(1),
 		GOOGLE_CLIENT_ID: z.string().min(1).optional(),
@@ -93,6 +94,7 @@ export const env = createEnv({
 		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
 		SUPABASE_SERVICE_ROLE_KEY: serverEnv.SUPABASE_SERVICE_ROLE_KEY,
 		BETTER_AUTH_SECRET: serverEnv.BETTER_AUTH_SECRET,
+		ACCOUNT_EVENTS_TOKEN_SECRET: serverEnv.ACCOUNT_EVENTS_TOKEN_SECRET,
 		BETTER_AUTH_URL: serverEnv.BETTER_AUTH_URL,
 		DATABASE_URL: serverEnv.DATABASE_URL,
 		GOOGLE_CLIENT_ID: serverEnv.GOOGLE_CLIENT_ID,

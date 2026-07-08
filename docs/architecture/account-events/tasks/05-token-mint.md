@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: done
 updated: 2026-07-08
 depends_on: ["01"]
 ---
@@ -11,29 +11,29 @@ authenticated session's account. Contract §4.2, proposal §6.2.
 
 ## Steps
 
-- [ ] Add `ACCOUNT_EVENTS_TOKEN_SECRET` (min 32 chars) to the env schema/config
+- [x] Add `ACCOUNT_EVENTS_TOKEN_SECRET` (min 32 chars) to the env schema/config
       for both the app tier and the Bun runtime — dedicated secret, not
       `BETTER_AUTH_SECRET`
-- [ ] New `createServerFn({ method: "GET" })` in
+- [x] New `createServerFn({ method: "GET" })` in
       `src/lib/server/account-events.functions.ts` returning a signed token for
       the authenticated session
-- [ ] Claims exactly per `EventTokenClaims`: `sub` = accountId from the session
+- [x] Claims exactly per `EventTokenClaims`: `sub` = accountId from the session
       (never from input), `sid`, `ver` (session/token version for revoke-all),
       `iat`, `exp = iat + 5 min`, `jti`
-- [ ] Sign with WebCrypto-compatible HMAC (must run on Cloudflare Workers);
+- [x] Sign with WebCrypto-compatible HMAC (must run on Cloudflare Workers);
       share the verify helper with the gateway via a small common module
-- [ ] Rate-limit minting per session (healthy cadence ≈ once per `exp` window
+- [x] Rate-limit minting per session (healthy cadence ≈ once per `exp` window
       plus reconnects)
-- [ ] Tests: claims round-trip, expiry math, unauthenticated rejection, rate
+- [x] Tests: claims round-trip, expiry math, unauthenticated rejection, rate
       limit trips
 
 ## Acceptance gate
 
-- [ ] `bun run test` passes
-- [ ] An authenticated call returns a token the shared verifier accepts, with
+- [x] `bun run test` passes
+- [x] An authenticated call returns a token the shared verifier accepts, with
       all six claims populated
-- [ ] Unauthenticated calls are rejected; `sub` can never be caller-chosen
-- [ ] Signing/verifying works in a Workers-compatible runtime (no Node-only
+- [x] Unauthenticated calls are rejected; `sub` can never be caller-chosen
+- [x] Signing/verifying works in a Workers-compatible runtime (no Node-only
       crypto APIs)
 
 ## Guardrails
