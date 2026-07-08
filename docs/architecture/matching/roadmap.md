@@ -1,7 +1,7 @@
 # Matching System — Consolidated Research & Roadmap
 
 **Date:** 2026-06-10 (consolidates research passes from 2026-06-06 and 2026-06-09; priorities revised same day after a data audit)
-**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (plan: `claudedocs/genre-pills-implementation-plan.md`, execution record: `claudedocs/genre-pills-phase1/`). **#7's dead-field cleanup implemented 2026-06-11** (dropped the `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, and the unused `ProfileKind.context_v1` variant). The pills UI (Phase 2) remains. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
+**Status:** Research findings + prioritized plan. **Pre-prod #1 (fusion normalization), #3 (Qwen3 re-embed + instruct-format fix), #6 (decision-log enrichment), #2 (slim replay runner), and #4 (reranker fixes) implemented 2026-06-10** — see the findings below and `reranker.md`. **#5 Phase 1 (genre-pills backend/matching) + #7's genre-substring fix implemented 2026-06-11** (see git history). **#7's dead-field cleanup implemented 2026-06-11** (dropped the `emotion_distribution` column + `emotionEnabled` flag, `MatchingPlaylistProfile.method`, and the unused `ProfileKind.context_v1` variant). The pills UI (Phase 2) remains. **Priorities revised 2026-06-10:** a data audit found `match_decision` holds **10 decisions on 1 playlist from 1 account** — far below what recall@k/MRR/temporal-split can use. So #6 (decision-log enrichment, the time-sensitive item) was pulled to the front (now shipped), #2 is slimmed to a config-diff replay runner, and the full metrics harness is deferred to post-prod, gated on decision volume (see finding #6).
 **Scope:** Cheap, modern (2025–2026) improvements to the song→playlist matching pipeline, plus the genre-pills feature. Hard constraint: no self-hosted GPU infra, no expensive per-request LLM calls.
 
 
@@ -285,9 +285,7 @@ is worse than knowing you're unmeasured. So the remedy splits in three:
 User-selected genres at playlist creation/edit time, conditioning matching directly alongside
 the free-text description.
 
-**Phase 1 (backend/matching) shipped 2026-06-11** — plan in
-`claudedocs/genre-pills-implementation-plan.md`, per-task deviation logs in
-`claudedocs/genre-pills-phase1/`. Three design points below were revised in flight:
+**Phase 1 (backend/matching) shipped 2026-06-11** (see git history: `feat(matching): blend genre pills through profiling and fusion`, `feat(playlists): store match intent and genre pills server-side`). Three design points below were revised in flight:
 
 - **Pills are persistent, not decaying** (product decision): they hold a fixed 50% of the
   genre distribution until the user edits them, instead of pseudo-counts decaying like

@@ -150,3 +150,4 @@ The `matching` stage is the point where songs are scored against target playlist
 
 - [`matching/overview.md`](./matching/overview.md) — the actual matching algorithm
 - [`library-processing.md`](./library-processing.md) — why jobs get scheduled when they do
+- [`proposals/account-events-and-browser-push-plan.md`](./proposals/account-events-and-browser-push-plan.md) — proposed portable push architecture for replacing browser polling
