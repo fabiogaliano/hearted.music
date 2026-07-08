@@ -654,6 +654,30 @@ function makeIsTerminalChain(
 	return chain;
 }
 
+/**
+ * Builds a chain where `.eq()` is the terminal (returns a resolved Promise).
+ * Used for the membership reads `from("playlist_song").select(...).eq(...)`.
+ */
+function makeEqTerminalChain(
+	result: { data: unknown; error: null } = { data: [], error: null },
+) {
+	const chain = {
+		select: vi.fn(),
+		eq: vi.fn().mockResolvedValue(result),
+		in: vi.fn(),
+		is: vi.fn(),
+		order: vi.fn(),
+		limit: vi.fn(),
+		maybeSingle: vi.fn().mockResolvedValue(result),
+	};
+	chain.select.mockReturnValue(chain);
+	chain.in.mockReturnValue(chain);
+	chain.is.mockReturnValue(chain);
+	chain.order.mockReturnValue(chain);
+	chain.limit.mockReturnValue(chain);
+	return chain;
+}
+
 describe("computeVisibleSuggestionList — async driver", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -853,6 +877,123 @@ describe("computeVisibleSuggestionList — async driver", () => {
 			expect(result.list.suggestions[0].songId).toBe("song-x");
 			expect(result.list.suggestions[0].visibleRank).toBe(1);
 			expect(result.list.suggestions[1].visibleRank).toBe(2);
+		}
+	});
+
+	it("playlist orientation: a song already in the playlist is excluded before ranking", async () => {
+		// from call order: 1 ownership, 2 filters, 3 song meta, 4 liked_song,
+		// 5 playlist_song membership (song-x is already in the playlist).
+		const from = vi
+			.fn()
+			.mockReturnValueOnce(
+				makeMaybeChain({ data: { id: "pl-d1" }, error: null }),
+			)
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+			.mockReturnValueOnce(makeIsTerminalChain({ data: [], error: null }))
+			.mockReturnValue(
+				makeEqTerminalChain({ data: [{ song_id: "song-x" }], error: null }),
+			);
+
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			from,
+			// Both songs entitled — so song-x is dropped by membership, not entitlement.
+			rpc: vi.fn().mockResolvedValue({
+				data: [{ song_id: "song-x" }, { song_id: "song-y" }],
+				error: null,
+			}),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForPlaylist).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-x",
+					playlist_id: "pl-d1",
+					score: 0.85,
+					fused_score: null,
+				},
+				{
+					song_id: "song-y",
+					playlist_id: "pl-d1",
+					score: 0.65,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForPlaylist).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makePlaylistItem(), 0.0);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			// song-x is a current member → excluded; only song-y remains, densely ranked.
+			expect(result.list.suggestions).toHaveLength(1);
+			expect(result.list.suggestions[0].songId).toBe("song-y");
+			expect(result.list.suggestions[0].visibleRank).toBe(1);
+		}
+	});
+
+	it("song orientation: a playlist already containing the song is excluded before ranking", async () => {
+		// from call order: 1 song meta, 2 liked_song, 3 filters, 4 owned playlists,
+		// 5 playlist_song membership (the song is already in pl-a).
+		vi.mocked(createAdminSupabaseClient).mockReturnValue({
+			// checkSongEntitled: entitled.
+			rpc: vi.fn().mockResolvedValue({ data: true, error: null }),
+			from: vi
+				.fn()
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeMaybeChain({ data: null, error: null }))
+				.mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+				.mockReturnValueOnce(
+					makeInTerminalChain({
+						data: [{ id: "pl-a" }, { id: "pl-b" }],
+						error: null,
+					}),
+				)
+				.mockReturnValue(
+					makeEqTerminalChain({
+						data: [{ playlist_id: "pl-a" }],
+						error: null,
+					}),
+				),
+		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+
+		vi.mocked(getMatchPairsForSong).mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-a",
+					score: 0.9,
+					fused_score: null,
+				},
+				{
+					song_id: "song-d1",
+					playlist_id: "pl-b",
+					score: 0.7,
+					fused_score: null,
+				},
+			]),
+		);
+		vi.mocked(getMatchRankingsForSong).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
+			Result.ok<never[], never>([]),
+		);
+
+		const result = await computeVisibleSuggestionList(makeSongItem(), 0.0);
+
+		expect(result.kind).toBe("ok");
+		if (result.kind === "ok") {
+			// pl-a already contains the song → excluded; only pl-b remains.
+			expect(result.list.suggestions).toHaveLength(1);
+			expect(result.list.suggestions[0].playlistId).toBe("pl-b");
+			expect(result.list.suggestions[0].visibleRank).toBe(1);
 		}
 	});
 

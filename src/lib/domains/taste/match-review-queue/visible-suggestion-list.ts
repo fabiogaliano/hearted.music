@@ -336,6 +336,55 @@ async function fetchEntitledSongIds(
 }
 
 /**
+ * Song ids already in the given playlist. Used by the playlist-orientation path
+ * to drop suggestion songs the playlist already contains BEFORE ranks are
+ * assigned and pairs are captured — so a captured card stays full of real
+ * suggestions instead of carrying members that the read-time filter then hides,
+ * leaving a hole. Scoped by a single playlist id (eq), not a DB-derived .in()
+ * set. Under-exclusion (e.g. a truncated read of a very large playlist) fails
+ * safe: the read-time NOT EXISTS(playlist_song) predicate still hides any leak.
+ */
+async function fetchPlaylistMemberSongIds(
+	playlistId: string,
+): Promise<Result<Set<string>, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist_song")
+		.select("song_id")
+		.eq("playlist_id", playlistId);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(new Set((data ?? []).map((r) => r.song_id)));
+}
+
+/**
+ * Playlist ids that already contain the given song. Mirror of
+ * fetchPlaylistMemberSongIds for the song-orientation path: drops suggestion
+ * playlists the song is already in before ranks/capture. Scoped by a single
+ * song id (eq); the cross-account rows are harmless (they never match an owned
+ * candidate playlist), and under-exclusion fails safe behind the read-time
+ * membership filter.
+ */
+async function fetchPlaylistIdsContainingSong(
+	songId: string,
+): Promise<Result<Set<string>, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase
+		.from("playlist_song")
+		.select("playlist_id")
+		.eq("song_id", songId);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(new Set((data ?? []).map((r) => r.playlist_id)));
+}
+
+/**
  * Derives the visible suggestion list for a queue item.
  *
  * The item must already have passed the ownership check (loaded via
@@ -396,19 +445,26 @@ export async function computeVisibleSuggestionList(
 		const playlistIds = [
 			...new Set(pairsResult.value.map((r) => r.playlist_id)),
 		];
-		// Fetch suggestion-playlist filters and account ownership together. Foreign/
-		// deleted suggestion playlists are excluded here, before visible ranks are
-		// assigned, so they are never shown only to be rejected at add time.
-		const [playlistFiltersResult, ownedPlaylistsResult] = await Promise.all([
-			fetchPlaylistsMatchFilters(playlistIds),
-			fetchOwnedPlaylistIds(accountId, playlistIds),
-		]);
+		// Fetch suggestion-playlist filters, account ownership, and current
+		// membership together. Foreign/deleted playlists are excluded via ownership;
+		// playlists the song is already in are excluded via membership — both before
+		// visible ranks are assigned, so neither is shown only to be rejected (or
+		// read-time filtered) at display.
+		const [playlistFiltersResult, ownedPlaylistsResult, memberPlaylistsResult] =
+			await Promise.all([
+				fetchPlaylistsMatchFilters(playlistIds),
+				fetchOwnedPlaylistIds(accountId, playlistIds),
+				fetchPlaylistIdsContainingSong(subject.songId),
+			]);
 		if (Result.isError(playlistFiltersResult))
 			return { kind: "db-error", error: playlistFiltersResult.error };
 		if (Result.isError(ownedPlaylistsResult))
 			return { kind: "db-error", error: ownedPlaylistsResult.error };
+		if (Result.isError(memberPlaylistsResult))
+			return { kind: "db-error", error: memberPlaylistsResult.error };
 
 		const ownedPlaylists = ownedPlaylistsResult.value;
+		const memberPlaylists = memberPlaylistsResult.value;
 
 		const decidedPairKeys = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
@@ -417,7 +473,11 @@ export async function computeVisibleSuggestionList(
 		const songMeta = songMetaResult.value;
 
 		const pairs: MatchPairInput[] = pairsResult.value
-			.filter((r) => ownedPlaylists.has(r.playlist_id))
+			.filter(
+				(r) =>
+					ownedPlaylists.has(r.playlist_id) &&
+					!memberPlaylists.has(r.playlist_id),
+			)
 			.map((r) => ({
 				songId: r.song_id,
 				playlistId: r.playlist_id,
@@ -474,19 +534,26 @@ export async function computeVisibleSuggestionList(
 		return { kind: "db-error", error: playlistFiltersResult.error };
 
 	const songIds = [...new Set(pairsResult.value.map((r) => r.song_id))];
-	// Fetch suggestion-song filter metadata and account entitlement together.
-	// Non-entitled suggestion songs are excluded here, before visible ranks are
-	// assigned, so a revoked song is never shown only to be rejected at add time.
-	const [songsMetaResult, entitledSongsResult] = await Promise.all([
-		fetchSongsFilterMeta(accountId, songIds),
-		fetchEntitledSongIds(accountId, songIds),
-	]);
+	// Fetch suggestion-song filter metadata, account entitlement, and current
+	// playlist membership together. Non-entitled songs are excluded via
+	// entitlement; songs already in this playlist are excluded via membership —
+	// both before visible ranks are assigned, so neither is shown only to be
+	// rejected (or read-time filtered) at display.
+	const [songsMetaResult, entitledSongsResult, memberSongsResult] =
+		await Promise.all([
+			fetchSongsFilterMeta(accountId, songIds),
+			fetchEntitledSongIds(accountId, songIds),
+			fetchPlaylistMemberSongIds(subject.playlistId),
+		]);
 	if (Result.isError(songsMetaResult))
 		return { kind: "db-error", error: songsMetaResult.error };
 	if (Result.isError(entitledSongsResult))
 		return { kind: "db-error", error: entitledSongsResult.error };
+	if (Result.isError(memberSongsResult))
+		return { kind: "db-error", error: memberSongsResult.error };
 
 	const entitledSongs = entitledSongsResult.value;
+	const memberSongs = memberSongsResult.value;
 
 	const reviewPlaylistFilters =
 		playlistFiltersResult.value.get(subject.playlistId) ?? null;
@@ -496,7 +563,7 @@ export async function computeVisibleSuggestionList(
 	);
 
 	const pairs: MatchPairInput[] = pairsResult.value
-		.filter((r) => entitledSongs.has(r.song_id))
+		.filter((r) => entitledSongs.has(r.song_id) && !memberSongs.has(r.song_id))
 		.map((r) => ({
 			songId: r.song_id,
 			playlistId: r.playlist_id,
