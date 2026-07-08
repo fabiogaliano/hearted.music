@@ -32,3 +32,4 @@
 ## Task 10 - Producers: Match Events
 - **Match Snapshot Publish Orientation**: `match_snapshot_published` is emitted twice (once for `song`, once for `playlist`) in the `match_snapshot_refresh` settlement transaction, since the snapshot covers both orientations but the contract requires a specific `MatchOrientation`.
 - **Match Deck Appended Transaction**: `match_deck_appended` is emitted inside a standalone `sql.begin()` transaction block in `poll-match-deck-jobs.ts` immediately after `appendSessionsForAccountOrientation` returns, since the append state change itself commits non-transactionally inside that handler.
+- **Type Narrowing in Async Closures**: Extracted `appendedCount` and `sessionId` from `outcome.value` into local constants before the `sql.begin()` callback in `poll-match-deck-jobs.ts` to preserve TypeScript's discriminated union narrowing across the async boundary.

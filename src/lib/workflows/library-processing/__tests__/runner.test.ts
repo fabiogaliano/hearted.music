@@ -2,6 +2,10 @@ import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import {
+	settleEnrichmentJobTerminal,
+	settleMatchSnapshotRefreshJobTerminal,
+} from "../settlement";
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: vi.fn(),
@@ -15,6 +19,13 @@ const recordJobExecutionMeasurementMock = vi
 vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 	recordJobExecutionMeasurement: (...args: unknown[]) =>
 		recordJobExecutionMeasurementMock(...args),
+}));
+
+vi.mock("../settlement", () => ({
+	settleEnrichmentJobTerminal: vi.fn().mockResolvedValue({ isError: false }),
+	settleMatchSnapshotRefreshJobTerminal: vi
+		.fn()
+		.mockResolvedValue({ isError: false }),
 }));
 
 vi.mock("@/worker/execute", () => ({
@@ -116,6 +127,12 @@ describe("runClaimedJob", () => {
 		vi.clearAllMocks();
 		recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
+		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
+		);
+		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
+		);
 	});
 
 	afterEach(() => {
@@ -143,6 +160,7 @@ describe("runClaimedJob", () => {
 			jobId: "job-2",
 			published: true,
 			isEmpty: false,
+			snapshotId: "snap-1",
 		};
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(execResult);
 		vi.mocked(markJobCompleted).mockResolvedValue(
@@ -173,7 +191,12 @@ describe("runClaimedJob", () => {
 		if (outcome.status === "failed") {
 			expect(outcome.error).toBe("provider down");
 		}
-		expect(markJobFailed).toHaveBeenCalledWith("job-1", "provider down");
+		expect(settleEnrichmentJobTerminal).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-1" }),
+			"failed",
+			"failed",
+			"provider down",
+		);
 		expect(captureException).toHaveBeenCalledWith(
 			thrown,
 			expect.objectContaining({
@@ -281,6 +304,7 @@ describe("runClaimedJob", () => {
 				jobId: "job-2",
 				published: true,
 				isEmpty: false,
+				snapshotId: "snap-1",
 			});
 			vi.mocked(markJobCompleted).mockResolvedValue(
 				Result.ok(makeJob({ status: "completed" })),
@@ -408,6 +432,7 @@ describe("runClaimedJob", () => {
 				jobId: "job-2",
 				published: true,
 				isEmpty: false,
+				snapshotId: "snap-1",
 			};
 			vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(execResult);
 			vi.mocked(markJobCompleted).mockResolvedValue(
@@ -606,8 +631,8 @@ describe("runClaimedJob", () => {
 
 	it("propagates newCandidateSongIds into the enrichment_completed change", async () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
+		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+			Result.ok(undefined),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
@@ -625,8 +650,8 @@ describe("runClaimedJob", () => {
 			vi.clearAllMocks();
 			recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 			applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
+			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+				Result.ok(undefined),
 			);
 		});
 

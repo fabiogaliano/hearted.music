@@ -3,11 +3,7 @@ import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
 import { log } from "@/lib/observability/logger";
 import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
-import {
-	type Job,
-	markJobCompleted,
-	markJobFailed,
-} from "@/lib/platform/jobs/repository";
+import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
@@ -25,6 +21,10 @@ import { captureWorkerEvent } from "@/worker/posthog-capture";
 import { EnrichmentChanges } from "./changes/enrichment";
 import { MatchSnapshotChanges } from "./changes/match-snapshot";
 import { applyLibraryProcessingChange } from "./service";
+import {
+	settleEnrichmentJobTerminal,
+	settleMatchSnapshotRefreshJobTerminal,
+} from "./settlement";
 import type {
 	LibraryProcessingApplyError,
 	LibraryProcessingChange,
@@ -71,7 +71,14 @@ async function runEnrichmentJob(
 	try {
 		const result = await executeEnrichmentJob(job, actor);
 
-		const completedResult = await markJobCompleted(job.id);
+		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
+		const eventReason = isBlocked ? "failed" : "completed";
+
+		const completedResult = await settleEnrichmentJobTerminal(
+			job,
+			"completed",
+			eventReason,
+		);
 		if (Result.isError(completedResult)) {
 			log.error("mark-completed-failed", {
 				actor,
@@ -86,7 +93,6 @@ async function runEnrichmentJob(
 		// report stopped(blocked) so the reconciler leaves the workflow stale
 		// without immediately re-ensuring another job, preventing a no-progress
 		// hot loop.
-		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
 
 		if (isBlocked) {
 			await writeMeasurement(job, actor, "enrichment", startedAt, "blocked", {
@@ -192,7 +198,18 @@ async function runEnrichmentJob(
 			jobId: job.id,
 			accountId: job.account_id,
 		});
-		await markJobFailedSafe(job, actor, message);
+
+		await settleEnrichmentJobTerminal(job, "failed", "failed", message).catch(
+			(markError) => {
+				log.error("mark-failed-error", {
+					actor,
+					jobId: job.id,
+					accountId: job.account_id,
+					error: errorMessage(markError),
+				});
+			},
+		);
+
 		await writeMeasurement(job, actor, "enrichment", startedAt, "error");
 
 		const change = EnrichmentChanges.stopped({
@@ -226,7 +243,12 @@ async function runMatchSnapshotRefreshJob(
 		const result = await executeMatchSnapshotRefreshJob(job, actor);
 
 		if (result.status === "superseded") {
-			const completedResult = await markJobCompleted(job.id);
+			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
+				job,
+				"completed",
+				"superseded",
+				null,
+			);
 			if (Result.isError(completedResult)) {
 				log.error("mark-completed-failed", {
 					actor,
@@ -265,7 +287,12 @@ async function runMatchSnapshotRefreshJob(
 			};
 		}
 
-		const completedResult = await markJobCompleted(job.id);
+		const completedResult = await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"completed",
+			"published",
+			result.snapshotId,
+		);
 		if (Result.isError(completedResult)) {
 			log.error("mark-completed-failed", {
 				actor,
@@ -310,7 +337,20 @@ async function runMatchSnapshotRefreshJob(
 			jobId: job.id,
 			accountId: job.account_id,
 		});
-		await markJobFailedSafe(job, actor, message);
+		await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"failed",
+			"failed",
+			null,
+			message,
+		).catch((markError) => {
+			log.error("mark-failed-error", {
+				actor,
+				jobId: job.id,
+				accountId: job.account_id,
+				error: errorMessage(markError),
+			});
+		});
 		await writeMeasurement(
 			job,
 			actor,
@@ -441,31 +481,6 @@ async function writeMeasurement(
 			jobId: job.id,
 			accountId: job.account_id,
 			error: errorMessage(err),
-		});
-	}
-}
-
-async function markJobFailedSafe(
-	job: Job,
-	actor: string,
-	message: string,
-): Promise<void> {
-	try {
-		const failResult = await markJobFailed(job.id, message);
-		if (Result.isError(failResult)) {
-			log.error("mark-failed-error", {
-				actor,
-				jobId: job.id,
-				accountId: job.account_id,
-				error: failResult.error.message,
-			});
-		}
-	} catch (markError) {
-		log.error("mark-failed-error", {
-			actor,
-			jobId: job.id,
-			accountId: job.account_id,
-			error: errorMessage(markError),
 		});
 	}
 }
