@@ -3,7 +3,7 @@
 Every decision made on-the-spot that was **not** explicit in the plan or task files.
 Terse. Append-only. Each entry: `[task NN | stage] decision — rationale`.
 
-The plan (`docs/social/proposals/handle-identity/handle-identity-implementation-plan.md`) wins over task files
+The plan (`docs/social/handle-identity/handle-identity-implementation-plan.md`) wins over task files
 on disagreement; §15 is the decision index.
 
 ---

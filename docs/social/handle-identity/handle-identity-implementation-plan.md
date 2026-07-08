@@ -1,3 +1,8 @@
+---
+status: proposed
+updated: 2026-07-08
+---
+
 # Implementation Plan: handle identity
 
 > Future-state plan. `account.handle`, the `claim-handle` onboarding step, handle validation/server contracts, and read-only handle display in settings do not exist yet.
