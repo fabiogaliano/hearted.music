@@ -68,6 +68,7 @@ export const env = createEnv({
 		VITE_CHROME_EXTENSION_ID: z.string().min(1).optional(),
 		// UserJot project ID for the feedback widget. Public — safe in the bundle.
 		VITE_USERJOT_PROJECT_ID: z.string().min(1).optional(),
+		VITE_ACCOUNT_EVENTS_GATEWAY_URL: z.url().optional(),
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: z.string().min(1).optional(),
 		VITE_PUBLIC_POSTHOG_HOST: z.string().min(1).optional(),
 		// Sentry DSN is bundled at build time. Server-side DSN comes from the
@@ -123,6 +124,8 @@ export const env = createEnv({
 		VITE_APP_TITLE: import.meta.env.VITE_APP_TITLE,
 		VITE_CHROME_EXTENSION_ID: import.meta.env.VITE_CHROME_EXTENSION_ID,
 		VITE_USERJOT_PROJECT_ID: import.meta.env.VITE_USERJOT_PROJECT_ID,
+		VITE_ACCOUNT_EVENTS_GATEWAY_URL: import.meta.env
+			.VITE_ACCOUNT_EVENTS_GATEWAY_URL,
 		VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: import.meta.env
 			.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN,
 		VITE_PUBLIC_POSTHOG_HOST: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
