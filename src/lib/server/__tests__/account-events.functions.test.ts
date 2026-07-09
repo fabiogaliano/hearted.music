@@ -8,7 +8,7 @@ const SECRET = "a-very-long-and-secure-test-secret-32-chars!!";
 const { mockWithinRateLimit, mockAuthContext } = vi.hoisted(() => ({
 	mockWithinRateLimit: vi.fn(),
 	mockAuthContext: {
-		session: { accountId: "acc-123", id: "sess-456" },
+		session: { accountId: "acc-123", id: "sess-456", createdAt: new Date(1) },
 	},
 }));
 
