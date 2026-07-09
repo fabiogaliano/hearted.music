@@ -49,16 +49,13 @@ AS $$
     ON CONFLICT (idempotency_key) WHERE status NOT IN ('completed', 'dead')
     DO NOTHING
     RETURNING *
-  ), notified AS (
-    SELECT inserted.*, pg_notify(
+  )
+  SELECT inserted.*
+  FROM inserted
+  CROSS JOIN LATERAL (
+    SELECT pg_notify(
       'match_deck_job_created',
       json_build_object('id', inserted.id, 'kind', inserted.kind)::text
     )
-    FROM inserted
-  )
-  SELECT
-    id, account_id, orientation, session_id, kind, payload,
-    status, attempts, idempotency_key,
-    created_at, updated_at, started_at, heartbeat_at, completed_at
-  FROM notified;
+  ) AS _;
 $$;

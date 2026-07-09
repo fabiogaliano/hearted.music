@@ -151,6 +151,42 @@ describe("settleMatchSnapshotRefreshJobTerminal", () => {
 		});
 	});
 
+	it("writes active_jobs_changed when a published refresh no-ops", async () => {
+		const job = makeJob({ type: "match_snapshot_refresh" });
+
+		const result = await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"completed",
+			"published",
+			null,
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
+			accountId: "acct-1",
+			type: "active_jobs_changed",
+			payload: {},
+		});
+	});
+
+	it("writes active_jobs_changed when a refresh is superseded", async () => {
+		const job = makeJob({ type: "match_snapshot_refresh" });
+
+		const result = await settleMatchSnapshotRefreshJobTerminal(
+			job,
+			"completed",
+			"superseded",
+			null,
+		);
+
+		expect(result.isOk()).toBe(true);
+		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
+			accountId: "acct-1",
+			type: "active_jobs_changed",
+			payload: {},
+		});
+	});
+
 	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 

@@ -10,6 +10,7 @@ import type {
 	AnyAccountEventEnvelope,
 } from "@/lib/account-events/contract";
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
+import { activeJobsKeys } from "./active-jobs-keys";
 
 export type ConnectionState =
 	| "connecting"
@@ -30,7 +31,7 @@ function setActiveJobsSnapshot(
 	snapshot: ActiveJobsSnapshot,
 ) {
 	queryClient.setQueryData<ActiveJobsSnapshot>(
-		["active-jobs", accountId],
+		activeJobsKeys.byAccount(accountId),
 		snapshot,
 	);
 }
@@ -193,7 +194,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					break;
 				case "job_progress_changed":
 					queryClient.setQueryData<ActiveJobsSnapshot | undefined>(
-						["active-jobs", accountId],
+						activeJobsKeys.byAccount(accountId),
 						(old) => applyJobProgressChanged(old, envelope.data),
 					);
 					break;
@@ -204,7 +205,13 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				case "match_snapshot_published":
 					queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot });
 					queryClient.invalidateQueries({
-						queryKey: ["active-jobs", accountId],
+						queryKey: activeJobsKeys.byAccount(accountId),
+					});
+					break;
+				case "match_snapshot_failed":
+				case "active_jobs_changed":
+					queryClient.invalidateQueries({
+						queryKey: activeJobsKeys.byAccount(accountId),
 					});
 					break;
 				case "match_deck_appended":

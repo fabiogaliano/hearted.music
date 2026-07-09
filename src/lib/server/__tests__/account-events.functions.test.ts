@@ -101,7 +101,7 @@ describe("getAccountEventsToken", () => {
 		expect(verified).not.toBeNull();
 		expect(verified?.sub).toBe("acc-123");
 		expect(verified?.sid).toBe("sess-456");
-		expect(verified?.ver).toBe(1);
+		expect(verified?.ver).toBe(mockAuthContext.session.createdAt.getTime());
 	});
 
 	it("throws when rate limited", async () => {

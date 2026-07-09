@@ -28,8 +28,8 @@ describeLocal("publishAccountEvents", () => {
 		await sql.end();
 	});
 
-	it("assigns publish_ids sequentially without gaps and emits NOTIFY", async () => {
-		let wakes = 0;
+	it("assigns publish_ids sequentially without gaps and emits targeted NOTIFY", async () => {
+		const wakePayloads: string[] = [];
 		const sqlListen = postgres(DATABASE_URL, {
 			prepare: false,
 			max: 1,
@@ -40,8 +40,8 @@ describeLocal("publishAccountEvents", () => {
 
 		await sqlListen.listen(
 			NOTIFY_CHANNEL_WAKE,
-			() => {
-				wakes++;
+			(payload) => {
+				wakePayloads.push(payload);
 			},
 			() => {},
 		);
@@ -73,7 +73,11 @@ describeLocal("publishAccountEvents", () => {
 		await new Promise((r) => setTimeout(r, 100));
 
 		// It should emit 1 coalesce NOTIFY since we called publishAccountEvents once
-		expect(wakes).toBe(1);
+		expect(wakePayloads).toHaveLength(1);
+		const wakePayload: unknown = JSON.parse(wakePayloads[0] ?? "{}");
+		expect(wakePayload).toMatchObject({
+			accountIds: [accountId],
+		});
 
 		// Verify rows
 		const rows = await sql<{ id: number; publish_id: number }[]>`

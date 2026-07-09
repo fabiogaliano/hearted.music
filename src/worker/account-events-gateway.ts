@@ -36,6 +36,8 @@ interface StreamEnvelope {
 	data: unknown;
 }
 
+const REPLAY_BATCH_SIZE = 500;
+
 // Connected clients grouped by accountId
 const clients = new Map<string, Set<AccountEventClient>>();
 
@@ -54,7 +56,11 @@ function getOrCreateAccountClients(accountId: string) {
 	return nextClients;
 }
 
-function sendEnvelope(client: AccountEventClient, envelope: StreamEnvelope) {
+function sendEnvelope(
+	client: AccountEventClient,
+	envelope: StreamEnvelope,
+	options?: { ignoreBackpressure?: boolean },
+) {
 	try {
 		const isDurable = "publishId" in envelope && envelope.publishId != null;
 		let frame = "";
@@ -65,6 +71,7 @@ function sendEnvelope(client: AccountEventClient, envelope: StreamEnvelope) {
 		frame += `data: ${JSON.stringify(envelope)}\n\n`;
 
 		if (
+			!options?.ignoreBackpressure &&
 			client.controller.desiredSize !== null &&
 			client.controller.desiredSize <= 0
 		) {
@@ -83,8 +90,9 @@ function sendEnvelope(client: AccountEventClient, envelope: StreamEnvelope) {
 function sendEvent<T extends AllFrameType>(
 	client: AccountEventClient,
 	envelope: AccountEventEnvelope<T>,
+	options?: { ignoreBackpressure?: boolean },
 ) {
-	return sendEnvelope(client, envelope);
+	return sendEnvelope(client, envelope, options);
 }
 
 function sendReplayRow(client: AccountEventClient, row: ReplayRow) {
@@ -97,6 +105,29 @@ function sendReplayRow(client: AccountEventClient, row: ReplayRow) {
 	});
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function parseWakeAccountIds(payload: string): string[] | null {
+	try {
+		const parsed: unknown = JSON.parse(payload);
+		if (!isRecord(parsed)) return null;
+
+		const accountIds = parsed.accountIds;
+		if (!Array.isArray(accountIds)) return null;
+
+		const validAccountIds = accountIds.filter(
+			(accountId): accountId is string => typeof accountId === "string",
+		);
+		if (validAccountIds.length === 0) return null;
+
+		return Array.from(new Set(validAccountIds));
+	} catch {
+		return null;
+	}
+}
+
 async function initializeClientStream(
 	controller: StreamController,
 	accountClients: Set<AccountEventClient>,
@@ -104,7 +135,7 @@ async function initializeClientStream(
 	requestSignal: AbortSignal,
 	cursor: number,
 	expiresAtSeconds: number,
-) {
+): Promise<AccountEventClient> {
 	let closed = false;
 	let expTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -135,12 +166,16 @@ async function initializeClientStream(
 	const timeUntilExp = expiresAtSeconds * 1000 - Date.now();
 	expTimer = setTimeout(() => {
 		try {
-			sendEvent(clientState, {
-				type: "token_expiring",
-				v: 1,
-				ts: Date.now(),
-				data: { reason: "token_expired" },
-			});
+			sendEvent(
+				clientState,
+				{
+					type: "token_expiring",
+					v: 1,
+					ts: Date.now(),
+					data: { reason: "token_expired" },
+				},
+				{ ignoreBackpressure: true },
+			);
 		} catch {
 			// ignore
 		}
@@ -148,6 +183,7 @@ async function initializeClientStream(
 	}, timeUntilExp);
 
 	await fetchAndSendReplay(accountId, clientState);
+	return clientState;
 }
 
 async function fetchAndSendReplay(
@@ -157,17 +193,24 @@ async function fetchAndSendReplay(
 	if (!querySql) return;
 
 	try {
-		const rows = await querySql<ReplayRow[]>`
-			SELECT publish_id, type, payload, extract(epoch from created_at) * 1000 as created_at
-			FROM account_event
-			WHERE account_id = ${accountId} AND publish_id > ${client.cursor}
-			ORDER BY publish_id ASC
-		`;
+		while (true) {
+			const rows = await querySql<ReplayRow[]>`
+				SELECT publish_id, type, payload, extract(epoch from created_at) * 1000 as created_at
+				FROM account_event
+				WHERE account_id = ${accountId} AND publish_id > ${client.cursor}
+				ORDER BY publish_id ASC
+				LIMIT ${REPLAY_BATCH_SIZE}
+			`;
 
-		for (const row of rows) {
-			const success = sendReplayRow(client, row);
-			if (!success) return;
-			client.cursor = row.publish_id;
+			for (const row of rows) {
+				const success = sendReplayRow(client, row);
+				if (!success) return;
+				client.cursor = row.publish_id;
+			}
+
+			if (rows.length < REPLAY_BATCH_SIZE) {
+				break;
+			}
 		}
 
 		// Always send snapshot after connect and replay
@@ -196,13 +239,15 @@ async function catchUpAccount(accountId: string) {
 	}
 }
 
-function handleWake() {
-	// payload could be tiny min/max hint, but we just want to wake everyone
-	// connected who might have new events.
-	// We can't know which account just had an event from the empty payload,
-	// so we'd have to check all. But wait, `account_event_wake` doesn't include accountId.
-	// The contract says: "LISTEN account_event_wake -> per-account catch-up query for connected local clients".
-	// Since we don't know the accountId, we must check for all active clients.
+function handleWake(payload: string) {
+	const accountIds = parseWakeAccountIds(payload);
+	if (accountIds) {
+		for (const accountId of accountIds) {
+			void catchUpAccount(accountId);
+		}
+		return;
+	}
+
 	for (const accountId of clients.keys()) {
 		void catchUpAccount(accountId);
 	}
@@ -217,6 +262,12 @@ export function setAccountEventsGatewayDraining(isDraining: boolean) {
 }
 
 export function startAccountEventsGateway() {
+	if (querySql || listenSql || heartbeatInterval || server) {
+		throw new Error(
+			"account-events gateway already started; call stopAccountEventsGateway() first",
+		);
+	}
+
 	querySql = postgres(env.DATABASE_URL, {
 		max: 10,
 	});
@@ -259,7 +310,9 @@ export function startAccountEventsGateway() {
 				clients.delete(accountId);
 			}
 		})
-		.catch(() => {});
+		.catch((error) => {
+			log.error("gateway-revoke-listen-error", { error: String(error) });
+		});
 
 	// Heartbeat loop
 	heartbeatInterval = setInterval(() => {
@@ -402,10 +455,11 @@ export function startAccountEventsGateway() {
 				"X-Accel-Buffering": "no",
 			};
 
+			let streamClient: AccountEventClient | null = null;
 			return new Response(
 				new ReadableStream({
 					start: async (controller) => {
-						await initializeClientStream(
+						streamClient = await initializeClientStream(
 							controller,
 							accountClients,
 							claims.sub,
@@ -415,7 +469,7 @@ export function startAccountEventsGateway() {
 						);
 					},
 					cancel() {
-						// Cleaned up via abort listener
+						streamClient?.close();
 					},
 				}),
 				{ headers: responseHeaders },
@@ -428,12 +482,15 @@ export function startAccountEventsGateway() {
 export async function stopAccountEventsGateway() {
 	if (heartbeatInterval) {
 		clearInterval(heartbeatInterval);
+		heartbeatInterval = null;
 	}
 	if (listenSql) {
 		await listenSql.end();
+		listenSql = null;
 	}
 	if (querySql) {
 		await querySql.end();
+		querySql = null;
 	}
 	for (const accountClients of clients.values()) {
 		// iterate over a copy since close() mutates the set
@@ -446,5 +503,6 @@ export async function stopAccountEventsGateway() {
 	clients.clear();
 	if (server) {
 		server.stop(true);
+		server = undefined;
 	}
 }

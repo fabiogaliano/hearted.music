@@ -17,6 +17,7 @@ let needsAnotherPublish = false;
 // Debounce window (e.g. 100ms) for coalesce NOTIFY wakes.
 const DEBOUNCE_MS = 100;
 const FALLBACK_POLL_MS = 1000;
+const MAX_NOTIFY_PAYLOAD_CHARS = 7900;
 
 export function stopAccountEventPublisher() {
 	shouldPoll = false;
@@ -50,7 +51,9 @@ export async function publishAccountEvents(
 			}
 
 			// Claim unpublished events and update them
-			const rows = await tx<{ id: number; publish_id: number }[]>`
+			const rows = await tx<
+				{ id: number; publish_id: number; account_id: string }[]
+			>`
 				WITH claimed AS (
 					SELECT id FROM account_event
 					WHERE publish_id IS NULL
@@ -68,7 +71,7 @@ export async function publishAccountEvents(
 					published_at = clock_timestamp()
 				FROM assigned
 				WHERE account_event.id = assigned.id
-				RETURNING account_event.id, account_event.publish_id
+				RETURNING account_event.id, account_event.publish_id, account_event.account_id
 			`;
 
 			if (rows.length > 0) {
@@ -81,10 +84,18 @@ export async function publishAccountEvents(
 					maxPublishId,
 				});
 
-				// Coalesce NOTIFY
-				// Payload is empty or hint as per spec: "payload empty or a tiny {minPublishId,maxPublishId} hint"
-				// Let's just send the hint.
-				const payload = JSON.stringify({ minPublishId, maxPublishId });
+				const accountIds = Array.from(
+					new Set(rows.map((row) => row.account_id)),
+				);
+				const targetedPayload = JSON.stringify({
+					accountIds,
+					minPublishId,
+					maxPublishId,
+				});
+				const payload =
+					targetedPayload.length <= MAX_NOTIFY_PAYLOAD_CHARS
+						? targetedPayload
+						: JSON.stringify({ minPublishId, maxPublishId });
 				await tx`SELECT pg_notify(${NOTIFY_CHANNEL_WAKE}, ${payload})`;
 			}
 		});
@@ -113,11 +124,9 @@ export async function startAccountEventPublisher() {
 
 	const parsedUrl = new URL(env.DATABASE_URL);
 	if (classifyDatabaseConnection(parsedUrl) === "transaction-pooler") {
-		log.warn("account-events-publisher-disabled", {
-			reason:
-				"DATABASE_URL is the transaction-mode pooler (6543), which cannot LISTEN or hold advisory xact locks safely.",
-		});
-		return;
+		throw new Error(
+			"DATABASE_URL points at the transaction-mode pooler (6543). Account-event publishing requires a direct connection or the session pooler on port 5432.",
+		);
 	}
 
 	// Connection for the publish transaction

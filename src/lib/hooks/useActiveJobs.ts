@@ -2,6 +2,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { runMatchSnapshotRefreshEffects } from "@/features/matching/queries";
 import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
+import { activeJobsKeys } from "./active-jobs-keys";
 import {
 	accountEventsConnectionKey,
 	type ConnectionState,
@@ -9,11 +10,6 @@ import {
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
-
-const activeJobsKeys = {
-	all: ["active-jobs"] as const,
-	byAccount: (accountId: string) => ["active-jobs", accountId] as const,
-};
 
 function hasActiveJob(data: ActiveJobs | undefined): boolean {
 	return !!(data?.enrichment || data?.matchSnapshotRefresh);

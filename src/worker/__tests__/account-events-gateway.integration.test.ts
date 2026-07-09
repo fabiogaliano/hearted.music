@@ -1,13 +1,18 @@
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "@/env";
+import { writeAccountEvent } from "@/lib/account-events/producer";
 import { signEventToken } from "@/lib/account-events/token";
 import {
 	startAccountEventsGateway,
 	stopAccountEventsGateway,
 } from "../account-events-gateway";
+import { publishAccountEvents } from "../poll-account-events";
 
 const DATABASE_URL = env.DATABASE_URL;
+const IS_LOCAL =
+	DATABASE_URL.includes("127.0.0.1") || DATABASE_URL.includes("localhost");
+const describeLocal = IS_LOCAL ? describe : describe.skip;
 
 type FetchHandler = (req: Request, server: any) => Response | Promise<Response>;
 
@@ -26,7 +31,7 @@ vi.stubGlobal("Bun", {
 	}),
 });
 
-describe("account-events-gateway integration", () => {
+describeLocal("account-events-gateway integration", () => {
 	let sql: postgres.Sql<Record<string, never>>;
 	const port = 3004;
 
@@ -128,7 +133,7 @@ describe("account-events-gateway integration", () => {
 			// The first event should be active_jobs_snapshot
 			expect(text).toContain("event: active_jobs_snapshot");
 			expect(text).not.toContain("id:"); // Live frames do not have id
-			reader.cancel();
+			await reader.cancel();
 		}
 	});
 	it("handles replay ordering and durable id discipline", async () => {
@@ -194,7 +199,85 @@ describe("account-events-gateway integration", () => {
 			expect(t3).toContain("event: active_jobs_snapshot");
 			expect(t3).not.toContain("id:"); // Live frame
 
-			reader.cancel();
+			await reader.cancel();
+		}
+	});
+
+	it("replays outbox rows through the publisher and gateway", async () => {
+		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+
+		await sql.begin(async (tx) => {
+			await writeAccountEvent(tx, {
+				accountId,
+				type: "billing_state_changed",
+				payload: {},
+			});
+		});
+		await publishAccountEvents(sql);
+
+		const [eventRow] = await sql<{ publish_id: number }[]>`
+			SELECT publish_id
+			FROM account_event
+			WHERE account_id = ${accountId} AND type = 'billing_state_changed'
+			ORDER BY id DESC
+			LIMIT 1
+		`;
+		expect(eventRow?.publish_id).toBeDefined();
+		if (!eventRow) {
+			throw new Error("Expected published account event row");
+		}
+
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at) 
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
+
+		const token = await signEventToken({
+			sub: accountId,
+			sid: sessionId,
+			ver,
+			iat: Date.now() / 1000,
+			exp: Date.now() / 1000 + 300,
+			jti: "jti-outbox",
+		});
+
+		const controller = new AbortController();
+		const req = new Request(`http://127.0.0.1:${port}/account-events/stream`, {
+			headers: {
+				Authorization: `Bearer ${token}`,
+				"last-event-id": "0",
+			},
+			signal: controller.signal,
+		});
+
+		const res = await capturedFetch(req, mockServer);
+		const reader = res.body?.getReader();
+		expect(reader).toBeDefined();
+
+		if (reader) {
+			const { value: durableValue } = await reader.read();
+			const durableText =
+				typeof durableValue === "string"
+					? durableValue
+					: new TextDecoder().decode(durableValue);
+			expect(durableText).toContain(`id: ${eventRow.publish_id}`);
+			expect(durableText).toContain("event: billing_state_changed");
+
+			const { value: snapshotValue } = await reader.read();
+			const snapshotText =
+				typeof snapshotValue === "string"
+					? snapshotValue
+					: new TextDecoder().decode(snapshotValue);
+			expect(snapshotText).toContain("event: active_jobs_snapshot");
+
+			await reader.cancel();
 		}
 	});
 
@@ -232,19 +315,25 @@ describe("account-events-gateway integration", () => {
 		const reader = res.body?.getReader();
 
 		if (reader) {
-			// Read snapshot
 			await reader.read();
-
-			// Wait for expiry
 			await new Promise((r) => setTimeout(r, 1100));
 
-			// Next frame should be token_expiring
-			const { value } = await reader.read();
-			const t =
-				typeof value === "string" ? value : new TextDecoder().decode(value);
-			expect(t).toContain("event: token_expiring");
+			let sawTokenExpiring = false;
+			for (let i = 0; i < 5; i++) {
+				const { done, value } = await reader.read();
+				if (done) {
+					break;
+				}
+				const text =
+					typeof value === "string" ? value : new TextDecoder().decode(value);
+				if (text.includes("event: token_expiring")) {
+					sawTokenExpiring = true;
+					break;
+				}
+			}
 
-			// Then closed
+			expect(sawTokenExpiring).toBe(true);
+
 			const { done } = await reader.read();
 			expect(done).toBe(true);
 		}

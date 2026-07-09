@@ -86,6 +86,12 @@ export async function settleMatchSnapshotRefreshJobTerminal(
 						reason: errorMsg ?? "unknown_error",
 					},
 				});
+			} else {
+				await writeAccountEvent(tx, {
+					accountId: job.account_id,
+					type: "active_jobs_changed",
+					payload: {},
+				});
 			}
 		});
 		return Result.ok(undefined);

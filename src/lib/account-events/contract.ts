@@ -34,6 +34,7 @@ export type AccountEventType =
 	| "match_snapshot_published"
 	| "match_snapshot_failed"
 	| "match_deck_appended"
+	| "active_jobs_changed"
 	| "enrichment_completed"
 	| "enrichment_stopped"
 	| "billing_state_changed";
@@ -84,6 +85,9 @@ export interface AccountEventPayloadMap {
 		snapshotId: string;
 		appendedCount: number;
 	};
+
+	/** Wake connected clients when active-job state changed without a richer durable event. */
+	active_jobs_changed: Record<string, never>;
 
 	/** Counts mirror ProgressCounts from jobs.functions.ts. */
 	enrichment_completed: {

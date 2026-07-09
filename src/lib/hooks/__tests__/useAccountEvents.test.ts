@@ -282,6 +282,43 @@ describe("useAccountEvents", () => {
 		});
 	});
 
+	it("invalidates active jobs when a refresh settles without a snapshot", async () => {
+		setupMockFetch();
+		const { result } = renderHook(() => useAccountEvents(ACCOUNT_ID), {
+			wrapper,
+		});
+
+		await waitFor(() => {
+			expect(result.current.connectionState).toBe("connected");
+		});
+
+		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+		act(() => {
+			for (const stream of createdStreams) {
+				stream.push(buildFrame("active_jobs_changed", {}, 302));
+				stream.push(
+					buildFrame(
+						"match_snapshot_failed",
+						{
+							orientation: null,
+							snapshotId: null,
+							reason: "worker_error",
+						},
+						303,
+					),
+				);
+			}
+		});
+
+		await waitFor(() => {
+			expect(invalidateSpy).toHaveBeenCalledWith({
+				queryKey: ["active-jobs", ACCOUNT_ID],
+			});
+		});
+		expect(invalidateSpy).toHaveBeenCalledTimes(2);
+	});
+
 	it("does not promote Last-Event-ID from live frames across reconnects", async () => {
 		setupMockFetch();
 		const snapshot = {
