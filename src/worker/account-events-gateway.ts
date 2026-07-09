@@ -289,6 +289,10 @@ export function startAccountEventsGateway() {
 		async fetch(req, bunServer) {
 			const url = new URL(req.url);
 
+			if (url.pathname === "/health") {
+				return new Response("OK", { status: 200 });
+			}
+
 			if (url.pathname !== "/account-events/stream") {
 				return new Response("Not Found", { status: 404 });
 			}

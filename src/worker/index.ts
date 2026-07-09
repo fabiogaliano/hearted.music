@@ -2,7 +2,6 @@ import * as Sentry from "@sentry/bun";
 import { log } from "@/lib/observability/logger";
 import {
 	setAccountEventsGatewayDraining,
-	startAccountEventsGateway,
 	stopAccountEventsGateway,
 } from "./account-events-gateway";
 import { workerConfig } from "./config";
@@ -189,8 +188,6 @@ async function main() {
 			tags: { loop: "account-events-publisher" },
 		});
 	});
-
-	startAccountEventsGateway();
 
 	await startPolling();
 	await extensionSyncLoop;

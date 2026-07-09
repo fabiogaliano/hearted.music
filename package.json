@@ -7,6 +7,8 @@
 		"prepare": "lefthook install",
 		"dev": "ML_PROVIDER=local vite dev",
 		"dev:worker": "bun --preload ./src/worker/instrument.ts src/worker/index.ts",
+		"dev:gateway": "bun --preload ./src/worker/instrument.ts src/worker/gateway-entry.ts",
+		"start:gateway": "bun --preload ./src/worker/instrument.ts src/worker/gateway-entry.ts",
 		"dev:embeddings": "bun scripts/dev/dev-embedding-sidecar.ts",
 		"dev:brand": "cd ../v1_hearted_brand && bun run dev",
 		"dev:stripe": "stripe listen --forward-to localhost:3100/webhooks/stripe",
