@@ -58,7 +58,11 @@ async function loadAuthSession(): Promise<AuthContext | null> {
 		recordLastSeen(account.id, lastSeenAt);
 
 		return {
-			session: { accountId: account.id, id: betterAuthSession.session.id },
+			session: {
+				accountId: account.id,
+				id: betterAuthSession.session.id,
+				createdAt: betterAuthSession.session.createdAt,
+			},
 			account,
 			identity: {
 				email: betterAuthSession.user.email,

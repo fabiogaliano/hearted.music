@@ -313,9 +313,26 @@ export function startAccountEventsGateway() {
 				return new Response("Unauthorized", { status: 401 });
 			}
 
-			// §4.3 Invariant 2: connect-time ver check
-			if (claims.ver !== 1) {
-				return new Response("Forbidden", { status: 403 });
+			if (!querySql) {
+				return new Response("Service Unavailable", { status: 503 });
+			}
+
+			try {
+				const [sessionRow] = await querySql<{ created_at: string }[]>`
+					SELECT created_at FROM session WHERE id = ${claims.sid}
+				`;
+
+				if (!sessionRow) {
+					return new Response("Unauthorized", { status: 401 });
+				}
+
+				const currentVer = new Date(sessionRow.created_at).getTime();
+				if (claims.ver !== currentVer) {
+					return new Response("Forbidden", { status: 403 });
+				}
+			} catch (err) {
+				log.error("gateway-session-check-error", { error: String(err) });
+				return new Response("Internal Server Error", { status: 500 });
 			}
 
 			const cursorStr =

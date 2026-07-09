@@ -50,10 +50,24 @@ describe("account-events-gateway integration", () => {
 	});
 
 	it("returns 403 on version mismatch", async () => {
+		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at) 
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
+
 		const token = await signEventToken({
-			sub: "acct-1",
-			sid: "sess-1",
-			ver: 2, // Mismatch (gateway currently expects 1)
+			sub: accountId,
+			sid: sessionId,
+			ver: ver + 1000, // Mismatch
 			iat: Date.now() / 1000,
 			exp: Date.now() / 1000 + 300,
 			jti: "jti-1",
@@ -70,12 +84,23 @@ describe("account-events-gateway integration", () => {
 
 	it("connects and receives snapshot on valid token", async () => {
 		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
 		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at) 
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
 
 		const token = await signEventToken({
 			sub: accountId,
-			sid: "sess-1",
-			ver: 1,
+			sid: sessionId,
+			ver,
 			iat: Date.now() / 1000,
 			exp: Date.now() / 1000 + 300,
 			jti: "jti-1",
@@ -108,6 +133,8 @@ describe("account-events-gateway integration", () => {
 	});
 	it("handles replay ordering and durable id discipline", async () => {
 		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
 		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
 
 		// Insert some events
@@ -120,10 +147,19 @@ describe("account-events-gateway integration", () => {
 		const id1 = events[0].publish_id;
 		const id2 = events[1].publish_id;
 
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at) 
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
+
 		const token = await signEventToken({
 			sub: accountId,
-			sid: "sess-2",
-			ver: 1,
+			sid: sessionId,
+			ver,
 			iat: Date.now() / 1000,
 			exp: Date.now() / 1000 + 300,
 			jti: "jti-2",
@@ -164,12 +200,23 @@ describe("account-events-gateway integration", () => {
 
 	it("closes on token expiry mid-stream", async () => {
 		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
 		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at) 
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
 
 		const token = await signEventToken({
 			sub: accountId,
-			sid: "sess-3",
-			ver: 1,
+			sid: sessionId,
+			ver,
 			iat: Date.now() / 1000,
 			exp: Date.now() / 1000 + 1, // 1 second expiry
 			jti: "jti-3",

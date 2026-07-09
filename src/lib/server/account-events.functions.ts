@@ -23,7 +23,7 @@ export const getAccountEventsToken = createServerFn({ method: "GET" })
 		const claims: EventTokenClaims = {
 			sub: session.accountId,
 			sid: session.id,
-			ver: 1, // Static for now until a revocation version exists
+			ver: session.createdAt.getTime(),
 			iat,
 			exp,
 			jti: crypto.randomUUID(),
