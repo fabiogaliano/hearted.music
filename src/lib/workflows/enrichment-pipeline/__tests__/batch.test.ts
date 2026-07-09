@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 let rpcResponse: { data: unknown; error: unknown };
+// Per-RPC overrides let a test feed the ungated Phase-1 selector and the gated
+// selector distinct rows; unset names fall back to the shared rpcResponse.
+let rpcResponseByName: Record<string, { data: unknown; error: unknown }>;
 let lastCalledRpcName: string | null = null;
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(() => ({
 		rpc: vi.fn((name: string) => {
 			lastCalledRpcName = name;
-			return rpcResponse;
+			return rpcResponseByName[name] ?? rpcResponse;
 		}),
 	})),
 }));
@@ -17,8 +20,12 @@ import {
 	selectEnrichmentWorkPlan,
 } from "../batch";
 
+const PHASE1_RPC = "select_phase1_song_ids_needing_enrichment_work";
+const GATED_RPC = "select_liked_song_ids_needing_enrichment_work";
+
 beforeEach(() => {
 	rpcResponse = { data: [], error: null };
+	rpcResponseByName = {};
 	lastCalledRpcName = null;
 });
 
@@ -235,5 +242,134 @@ describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
 		expect(plan.allSongIds).toEqual(["song-bootstrap"]);
 		expect(plan.needEmbedding).toEqual(["song-bootstrap"]);
 		expect(plan.needAudioFeatures).toEqual([]);
+	});
+});
+
+describe("selectEnrichmentWorkPlan — Phase-1 / gated selector merge", () => {
+	it("takes audio/genre flags from the ungated Phase-1 selector, not the gated one", async () => {
+		// Free-user shape: the gated selector returns this song with its Phase-1
+		// flags FALSE (not entitled), while the ungated Phase-1 selector reports
+		// the real pending work. The merged plan must reflect Phase-1's flags.
+		rpcResponseByName = {
+			[PHASE1_RPC]: {
+				data: [
+					{
+						song_id: "free-song",
+						needs_audio_features: true,
+						needs_genre_tagging: true,
+					},
+				],
+				error: null,
+			},
+			[GATED_RPC]: {
+				data: [
+					{
+						song_id: "free-song",
+						needs_audio_features: false,
+						needs_genre_tagging: false,
+						needs_analysis: false,
+						needs_embedding: false,
+						needs_content_activation: false,
+					},
+				],
+				error: null,
+			},
+		};
+
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
+
+		expect(plan.needAudioFeatures).toEqual(["free-song"]);
+		expect(plan.needGenreTagging).toEqual(["free-song"]);
+		expect(plan.needAnalysis).toEqual([]);
+	});
+
+	it("includes a Phase-1-only song the gated selector never returns", async () => {
+		rpcResponseByName = {
+			[PHASE1_RPC]: {
+				data: [
+					{
+						song_id: "phase1-only",
+						needs_audio_features: true,
+						needs_genre_tagging: false,
+					},
+				],
+				error: null,
+			},
+			[GATED_RPC]: { data: [], error: null },
+		};
+
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
+
+		expect(plan.allSongIds).toEqual(["phase1-only"]);
+		expect(plan.needAudioFeatures).toEqual(["phase1-only"]);
+		expect(plan.flags[0]).toEqual({
+			songId: "phase1-only",
+			needsAudioFeatures: true,
+			needsGenreTagging: false,
+			needsAnalysis: false,
+			needsEmbedding: false,
+			needsContentActivation: false,
+		});
+	});
+
+	it("unions songs across both selectors with Phase-1 order first", async () => {
+		rpcResponseByName = {
+			[PHASE1_RPC]: {
+				data: [
+					{
+						song_id: "shared",
+						needs_audio_features: true,
+						needs_genre_tagging: false,
+					},
+					{
+						song_id: "phase1-only",
+						needs_audio_features: true,
+						needs_genre_tagging: false,
+					},
+				],
+				error: null,
+			},
+			[GATED_RPC]: {
+				data: [
+					{
+						song_id: "shared",
+						needs_audio_features: false,
+						needs_genre_tagging: false,
+						needs_analysis: true,
+						needs_embedding: false,
+						needs_content_activation: false,
+					},
+					{
+						song_id: "gated-only",
+						needs_audio_features: false,
+						needs_genre_tagging: false,
+						needs_analysis: false,
+						needs_embedding: true,
+						needs_content_activation: false,
+					},
+				],
+				error: null,
+			},
+		};
+
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
+
+		expect(plan.allSongIds).toEqual(["shared", "phase1-only", "gated-only"]);
+		expect(plan.needAudioFeatures).toEqual(["shared", "phase1-only"]);
+		expect(plan.needAnalysis).toEqual(["shared"]);
+		expect(plan.needEmbedding).toEqual(["gated-only"]);
+	});
+
+	it("throws the Phase-1 message when only the Phase-1 selector errors", async () => {
+		rpcResponseByName = {
+			[PHASE1_RPC]: { data: null, error: { message: "phase1 down" } },
+			[GATED_RPC]: { data: [], error: null },
+		};
+
+		await expect(
+			selectEnrichmentWorkPlan("account-1", 10, "normal"),
+		).rejects.toThrow(
+			"Failed to select Phase-1 enrichment work plan: phase1 down",
+		);
 	});
 });

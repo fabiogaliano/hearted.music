@@ -1,11 +1,17 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Database } from "@/lib/data/database.types";
 import {
 	getByIds as getSongsByIds,
 	type Song,
 } from "@/lib/domains/library/songs/queries";
 import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import type { EnrichmentWorkPlan, SongStageFlags } from "./types";
+
+type Phase1SelectorRow =
+	Database["public"]["Functions"]["select_phase1_song_ids_needing_enrichment_work"]["Returns"][number];
+type GatedSelectorRow =
+	Database["public"]["Functions"]["select_liked_song_ids_needing_enrichment_work"]["Returns"][number];
 
 export interface PipelineBatch {
 	readonly songIds: string[];
@@ -47,18 +53,23 @@ export async function getEntitledDataEnrichedSongIds(
 }
 
 /**
- * Selects the next batch using the billing-aware selector RPC.
+ * Selects the next batch by unioning two selector RPCs and merging their flags.
  * Returns a typed work plan with per-song stage flags and pre-partitioned sub-batches.
  *
- * All stage flags (audio_features, genre_tagging, analysis, embedding,
- * content_activation) are entitlement-gated. Optional Phase A signals with a
- * recorded source_not_found marker are masked off so they aren't retried.
+ * Phase-1 (audio_features, genre_tagging) comes from an ungated selector that
+ * runs for every actively-liked song, so free users get the deterministic
+ * signals the playlist-creation preview engine needs across their whole library.
+ * Phase-2/3 (song_analysis, song_embedding, content_activation) come from the
+ * entitlement-gated selector so those expensive ML/AI stages stay restricted to
+ * entitled songs. `mode` only swaps which gated selector is used:
+ * first_match_bootstrap orders by readiness_rank (fewest stages remaining first)
+ * before liked_at to front-load near-ready songs; both gated RPCs share the
+ * normal selector's signature and return shape, so the cast below is accurate.
  *
- * In first_match_bootstrap mode the bootstrap RPC is used, which orders songs by
- * readiness_rank (fewest stages remaining first) before liked_at so the pipeline
- * front-loads near-ready songs. The bootstrap RPC has an identical signature and
- * return type to the normal one, so the cast below is accurate — types will be
- * updated automatically once the migration is applied and gen:types is run.
+ * The merge is additive and idempotent for entitled users: the ungated Phase-1
+ * selector returns the same audio_features/genre_tagging candidates the gated
+ * one would (it is a superset minus the is_entitled conjunct), so taking those
+ * two flags from Phase-1 only never drops or double-counts an entitled song.
  */
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
@@ -67,72 +78,127 @@ export async function selectEnrichmentWorkPlan(
 ): Promise<EnrichmentWorkPlan> {
 	const supabase = createAdminSupabaseClient();
 
-	// The bootstrap RPC is not yet in database.types.ts (migration file-only);
-	// cast to the existing function name which has the same signature shape.
-	const rpcName = (
+	// The bootstrap RPC shares the normal selector's signature and return shape;
+	// cast the union down to the normal name to satisfy the rpc() overload.
+	const gatedRpcName = (
 		mode === "first_match_bootstrap"
 			? "select_liked_song_ids_needing_first_match_enrichment_work"
 			: "select_liked_song_ids_needing_enrichment_work"
 	) as "select_liked_song_ids_needing_enrichment_work";
 
-	const { data, error } = await supabase.rpc(rpcName, {
-		p_account_id: accountId,
-		p_limit: maxSongs,
-	});
+	// Gated selector is issued second so a name-tracking mock sees it last; its
+	// error is checked first so the thrown message matches the pre-merge contract.
+	const [phase1Result, gatedResult] = await Promise.all([
+		supabase.rpc("select_phase1_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: maxSongs,
+		}),
+		supabase.rpc(gatedRpcName, {
+			p_account_id: accountId,
+			p_limit: maxSongs,
+		}),
+	]);
 
-	if (error) {
-		throw new Error(`Failed to select enrichment work plan: ${error.message}`);
+	if (gatedResult.error) {
+		throw new Error(
+			`Failed to select enrichment work plan: ${gatedResult.error.message}`,
+		);
+	}
+	if (phase1Result.error) {
+		throw new Error(
+			`Failed to select Phase-1 enrichment work plan: ${phase1Result.error.message}`,
+		);
 	}
 
-	const rows = data ?? [];
+	// Explicit row types: the two selectors have different return shapes, so
+	// Promise.all's tuple inference widens the destructured results to any.
+	const phase1Rows: Phase1SelectorRow[] = phase1Result.data ?? [];
+	const gatedRows: GatedSelectorRow[] = gatedResult.data ?? [];
 
-	const flags: SongStageFlags[] = rows.map((row) => ({
-		songId: row.song_id,
-		needsAudioFeatures: row.needs_audio_features,
-		needsGenreTagging: row.needs_genre_tagging,
-		needsAnalysis: row.needs_analysis,
-		needsEmbedding: row.needs_embedding,
-		needsContentActivation: row.needs_content_activation,
+	// Phase-1 flags: ungated selector only.
+	const audioFeaturesNeeded = new Set(
+		phase1Rows.filter((r) => r.needs_audio_features).map((r) => r.song_id),
+	);
+	const genreTaggingNeeded = new Set(
+		phase1Rows.filter((r) => r.needs_genre_tagging).map((r) => r.song_id),
+	);
+
+	// Phase-2/3 flags: entitlement-gated selector only.
+	const analysisNeeded = new Set(
+		gatedRows.filter((r) => r.needs_analysis).map((r) => r.song_id),
+	);
+	const embeddingNeeded = new Set(
+		gatedRows.filter((r) => r.needs_embedding).map((r) => r.song_id),
+	);
+	const contentActivationNeeded = new Set(
+		gatedRows.filter((r) => r.needs_content_activation).map((r) => r.song_id),
+	);
+
+	// Union all song IDs across both selectors; Phase-1 order first.
+	const allIds = new Set<string>();
+	for (const r of phase1Rows) allIds.add(r.song_id);
+	for (const r of gatedRows) allIds.add(r.song_id);
+	const allSongIds = [...allIds];
+
+	const flags: SongStageFlags[] = allSongIds.map((songId) => ({
+		songId,
+		needsAudioFeatures: audioFeaturesNeeded.has(songId),
+		needsGenreTagging: genreTaggingNeeded.has(songId),
+		needsAnalysis: analysisNeeded.has(songId),
+		needsEmbedding: embeddingNeeded.has(songId),
+		needsContentActivation: contentActivationNeeded.has(songId),
 	}));
 
 	return {
-		allSongIds: flags.map((f) => f.songId),
+		allSongIds,
 		flags,
-		needAudioFeatures: flags
-			.filter((f) => f.needsAudioFeatures)
-			.map((f) => f.songId),
-		needGenreTagging: flags
-			.filter((f) => f.needsGenreTagging)
-			.map((f) => f.songId),
-		needAnalysis: flags.filter((f) => f.needsAnalysis).map((f) => f.songId),
-		needEmbedding: flags.filter((f) => f.needsEmbedding).map((f) => f.songId),
-		needContentActivation: flags
-			.filter((f) => f.needsContentActivation)
-			.map((f) => f.songId),
+		needAudioFeatures: [...audioFeaturesNeeded],
+		needGenreTagging: [...genreTaggingNeeded],
+		needAnalysis: [...analysisNeeded],
+		needEmbedding: [...embeddingNeeded],
+		needContentActivation: [...contentActivationNeeded],
 	};
 }
 
 /**
- * Probes whether more songs still need enrichment work (billing-aware).
+ * Probes whether more songs still need enrichment work (Phase-1 or Phase-2/3).
  * Used to determine requestSatisfied after a chunk completes.
+ *
+ * Checks the ungated Phase-1 selector alongside the entitlement-gated one so a
+ * free account with pending audio_features/genre_tagging still reports work —
+ * otherwise the reconciler would mark enrichment satisfied and never drain the
+ * Phase-1 backlog the playlist preview depends on.
  */
 export async function hasMoreSongsNeedingEnrichmentWork(
 	accountId: string,
 ): Promise<boolean> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"select_liked_song_ids_needing_enrichment_work",
-		{ p_account_id: accountId, p_limit: 1 },
-	);
+	const [phase1Result, gatedResult] = await Promise.all([
+		supabase.rpc("select_phase1_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: 1,
+		}),
+		supabase.rpc("select_liked_song_ids_needing_enrichment_work", {
+			p_account_id: accountId,
+			p_limit: 1,
+		}),
+	]);
 
-	if (error) {
+	if (gatedResult.error) {
 		throw new Error(
-			`Failed to probe songs needing enrichment work: ${error.message}`,
+			`Failed to probe songs needing enrichment work: ${gatedResult.error.message}`,
+		);
+	}
+	if (phase1Result.error) {
+		throw new Error(
+			`Failed to probe songs needing enrichment work: ${phase1Result.error.message}`,
 		);
 	}
 
-	return (data ?? []).length > 0;
+	return (
+		(phase1Result.data ?? []).length > 0 || (gatedResult.data ?? []).length > 0
+	);
 }
 
 export async function loadBatchSongs(
