@@ -53,13 +53,13 @@ export type LibraryProcessingChange =
 			kind: "match_snapshot_published";
 			accountId: string;
 			jobId: string;
-			snapshotId: string;
+			snapshotId?: string;
 	  }
 	| {
 			kind: "match_snapshot_failed";
 			accountId: string;
 			jobId: string;
-			snapshotId: string | null;
+			snapshotId?: string | null;
 	  }
 	| {
 			kind: "match_snapshot_superseded";

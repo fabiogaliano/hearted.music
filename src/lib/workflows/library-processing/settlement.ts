@@ -32,8 +32,40 @@ export async function settleMatchSnapshotRefreshJobTerminal(
 				WHERE id = ${job.id}
 			`;
 
+			await tx`
+				INSERT INTO library_processing_state (account_id)
+				VALUES (${job.account_id})
+				ON CONFLICT (account_id) DO NOTHING
+			`;
+
+			if (reason === "published") {
+				const marker = job.satisfies_requested_at;
+				await tx`
+					UPDATE library_processing_state
+					SET match_snapshot_refresh_settled_at = CASE
+							WHEN match_snapshot_refresh_settled_at IS NOT NULL
+								AND match_snapshot_refresh_settled_at > COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
+							THEN match_snapshot_refresh_settled_at
+							ELSE COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
+						END,
+						match_snapshot_refresh_active_job_id = CASE
+							WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
+							ELSE match_snapshot_refresh_active_job_id
+						END
+					WHERE account_id = ${job.account_id}
+				`;
+			} else {
+				await tx`
+					UPDATE library_processing_state
+					SET match_snapshot_refresh_active_job_id = CASE
+						WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
+						ELSE match_snapshot_refresh_active_job_id
+					END
+					WHERE account_id = ${job.account_id}
+				`;
+			}
+
 			if (reason === "published" && snapshotId) {
-				// Emit for both orientations
 				await writeAccountEvent(tx, {
 					accountId: job.account_id,
 					type: "match_snapshot_published",
@@ -45,8 +77,6 @@ export async function settleMatchSnapshotRefreshJobTerminal(
 					payload: { orientation: "playlist", snapshotId },
 				});
 			} else if (reason === "failed") {
-				// Failed might not have a snapshotId. Emit for both if orientation is conceptually "both".
-				// Contract allows orientation | null, so we can just emit one event with null.
 				await writeAccountEvent(tx, {
 					accountId: job.account_id,
 					type: "match_snapshot_failed",

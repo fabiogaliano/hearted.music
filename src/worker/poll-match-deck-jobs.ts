@@ -21,9 +21,6 @@
 
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
-import postgres from "postgres";
-import { env } from "@/env";
-import { writeAccountEvent } from "@/lib/account-events/producer";
 import type { Json } from "@/lib/data/database.types";
 import {
 	CAPTURE_AHEAD_WINDOW,
@@ -50,12 +47,6 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
 import { captureWorkerEvent } from "./posthog-capture";
-
-const sql = postgres(env.DATABASE_URL, {
-	max: 1,
-	prepare: false,
-	fetch_types: false,
-});
 
 // Bounded retry backoff for a deferred job; attempts were already consumed at
 // claim, so mark_dead terminalizes after max_attempts regardless of this delay.
@@ -265,7 +256,6 @@ export async function dispatchDeckJob(
 			// appended_count signal survives the move to the worker.
 			if (outcome.value.kind === "applied" && outcome.value.appendedCount > 0) {
 				const appendedCount = outcome.value.appendedCount;
-				const sessionId = outcome.value.sessionId;
 				captureWorkerEvent({
 					distinctId: job.account_id,
 					event: "review_queue_appended",
@@ -274,19 +264,6 @@ export async function dispatchDeckJob(
 						snapshot_id: snapshotId,
 						appended_count: appendedCount,
 					},
-				});
-
-				await sql.begin(async (tx) => {
-					await writeAccountEvent(tx, {
-						accountId: job.account_id,
-						type: "match_deck_appended",
-						payload: {
-							orientation,
-							sessionId,
-							snapshotId: snapshotId,
-							appendedCount: appendedCount,
-						},
-					});
 				});
 
 				// M5: the newly-appended region is uncaptured; the baked deck view has

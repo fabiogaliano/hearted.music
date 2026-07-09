@@ -25,6 +25,7 @@ import type { Tables } from "@/lib/data/database.types";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { finalizeAppliedAppend } from "./append-finalizer";
 import {
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
@@ -34,7 +35,6 @@ import {
 	fetchTargetPlaylistFilters,
 	insertQueueItems,
 	insertQueuePlaylistItems,
-	insertSessionSnapshot,
 } from "./queries";
 import type { MatchOrientation, MatchReviewSession } from "./types";
 import {
@@ -63,65 +63,6 @@ export type AppendSessionsOutcome =
 			 *  appendedCount > 0 (M5). */
 			sessionId: string;
 	  };
-
-/** insertSessionSnapshot treating a duplicate-key ConstraintError as a benign
- *  idempotency no-op — a concurrent append already recorded this (snapshot, hash). */
-async function recordSnapshotApplied(
-	sessionId: string,
-	snapshotId: string,
-	appendedItemCount: number,
-	visibilityConfigHash: string,
-): Promise<Result<void, DbError>> {
-	const result = await insertSessionSnapshot(
-		sessionId,
-		snapshotId,
-		appendedItemCount,
-		visibilityConfigHash,
-	);
-	if (Result.isError(result) && result.error._tag !== "ConstraintError") {
-		return result;
-	}
-	return Result.ok(undefined);
-}
-
-/**
- * Records the ledger row and, only when subjects actually landed, advances the
- * session's `active_proposal_id` to the just-applied proposal (M11): branch 1
- * of start_or_resume_match_deck reads snapshot/hash/hidden-review-count through
- * that FK, so leaving it pointed at a pre-append proposal leaks superseded
- * metadata into the view once a newer snapshot has appended into the session.
- * Gated on appendedCount > 0 — a zero-count replay changes nothing the FK needs
- * to reflect, the same gate the poll loop uses to chain capture_ahead (M5).
- */
-async function finalizeAppliedAppend(
-	session: MatchReviewSession,
-	proposalId: string,
-	snapshotId: string,
-	visibilityConfigHash: string,
-	appendedCount: number,
-): Promise<Result<AppendSessionsOutcome, DbError>> {
-	const recorded = await recordSnapshotApplied(
-		session.id,
-		snapshotId,
-		appendedCount,
-		visibilityConfigHash,
-	);
-	if (Result.isError(recorded)) return recorded;
-
-	if (appendedCount > 0) {
-		const { error } = await createAdminSupabaseClient()
-			.from("match_review_session")
-			.update({ active_proposal_id: proposalId })
-			.eq("id", session.id);
-		if (error) {
-			return Result.err(
-				new DatabaseError({ code: error.code, message: error.message }),
-			);
-		}
-	}
-
-	return Result.ok({ kind: "applied", appendedCount, sessionId: session.id });
-}
 
 /** Row shape read by fetchProposalForSnapshotHash — just enough to route the
  *  ready/stale/building/missing branches shared by the apply and replay paths. */
@@ -328,13 +269,15 @@ export async function appendSessionsForAccountOrientation(input: {
 		);
 
 		if (candidates.length === 0) {
-			return finalizeAppliedAppend(
+			return finalizeAppliedAppend({
+				accountId,
+				orientation,
 				session,
 				proposalId,
 				snapshotId,
-				visibilityHash,
-				0,
-			);
+				visibilityConfigHash: visibilityHash,
+				appendedCount: 0,
+			});
 		}
 
 		const maxPosResult = await fetchMaxPosition(session.id);
@@ -364,13 +307,15 @@ export async function appendSessionsForAccountOrientation(input: {
 		const insertResult = await insertQueueItems(items);
 		if (Result.isError(insertResult)) return insertResult;
 
-		return finalizeAppliedAppend(
+		return finalizeAppliedAppend({
+			accountId,
+			orientation,
 			session,
 			proposalId,
 			snapshotId,
-			visibilityHash,
-			items.length,
-		);
+			visibilityConfigHash: visibilityHash,
+			appendedCount: items.length,
+		});
 	}
 
 	const candidates = proposalSubjects.flatMap((s) =>
@@ -380,13 +325,15 @@ export async function appendSessionsForAccountOrientation(input: {
 	);
 
 	if (candidates.length === 0) {
-		return finalizeAppliedAppend(
+		return finalizeAppliedAppend({
+			accountId,
+			orientation,
 			session,
 			proposalId,
 			snapshotId,
-			visibilityHash,
-			0,
-		);
+			visibilityConfigHash: visibilityHash,
+			appendedCount: 0,
+		});
 	}
 
 	const maxPosResult = await fetchMaxPosition(session.id);
@@ -410,11 +357,13 @@ export async function appendSessionsForAccountOrientation(input: {
 	const insertResult = await insertQueuePlaylistItems(items);
 	if (Result.isError(insertResult)) return insertResult;
 
-	return finalizeAppliedAppend(
+	return finalizeAppliedAppend({
+		accountId,
+		orientation,
 		session,
 		proposalId,
 		snapshotId,
-		visibilityHash,
-		items.length,
-	);
+		visibilityConfigHash: visibilityHash,
+		appendedCount: items.length,
+	});
 }

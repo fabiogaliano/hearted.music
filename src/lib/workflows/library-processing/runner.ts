@@ -251,21 +251,7 @@ async function runMatchSnapshotRefreshJob(
 				"superseded",
 			);
 
-			const change = MatchSnapshotChanges.superseded({
-				accountId: result.accountId,
-				jobId: result.jobId,
-			});
-			const settlement = await settleLibraryProcessing(change, {
-				actor,
-				jobId: job.id,
-				accountId: result.accountId,
-				workflow: "match_snapshot_refresh",
-				changeKind: change.kind,
-			});
-
-			if (settlement === "settlement_failed") {
-				throw new Error("Library processing settlement failed");
-			}
+			let settlement: SettlementStatus = "settled";
 
 			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
 				job,
@@ -282,6 +268,18 @@ async function runMatchSnapshotRefreshJob(
 				});
 				throw new Error(completedResult.error.message);
 			}
+
+			const change = MatchSnapshotChanges.superseded({
+				accountId: result.accountId,
+				jobId: result.jobId,
+			});
+			settlement = await settleLibraryProcessing(change, {
+				actor,
+				jobId: job.id,
+				accountId: result.accountId,
+				workflow: "match_snapshot_refresh",
+				changeKind: change.kind,
+			});
 
 			return {
 				status: "completed",
@@ -300,22 +298,7 @@ async function runMatchSnapshotRefreshJob(
 			{ published: result.published, isEmpty: result.isEmpty },
 		);
 
-		const change = MatchSnapshotChanges.published({
-			accountId: result.accountId,
-			jobId: result.jobId,
-			snapshotId: result.snapshotId,
-		});
-		const settlement = await settleLibraryProcessing(change, {
-			actor,
-			jobId: job.id,
-			accountId: result.accountId,
-			workflow: "match_snapshot_refresh",
-			changeKind: change.kind,
-		});
-
-		if (settlement === "settlement_failed") {
-			throw new Error("Library processing settlement failed");
-		}
+		let settlement: SettlementStatus = "settled";
 
 		const completedResult = await settleMatchSnapshotRefreshJobTerminal(
 			job,
@@ -332,6 +315,19 @@ async function runMatchSnapshotRefreshJob(
 			});
 			throw new Error(completedResult.error.message);
 		}
+
+		const change = MatchSnapshotChanges.published({
+			accountId: result.accountId,
+			jobId: result.jobId,
+			snapshotId: result.snapshotId ?? undefined,
+		});
+		settlement = await settleLibraryProcessing(change, {
+			actor,
+			jobId: job.id,
+			accountId: result.accountId,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
+		});
 
 		return {
 			status: "completed",
@@ -354,24 +350,6 @@ async function runMatchSnapshotRefreshJob(
 			"error",
 		);
 
-		const change = MatchSnapshotChanges.failed({
-			accountId: job.account_id,
-			jobId: job.id,
-			snapshotId: null,
-		});
-		const settlement = await settleLibraryProcessing(change, {
-			actor,
-			jobId: job.id,
-			accountId: job.account_id,
-			workflow: "match_snapshot_refresh",
-			changeKind: change.kind,
-		});
-
-		if (settlement === "settlement_failed") {
-			// Do not log here, let the catch handle it or we just throw and defer terminalisation
-			throw new Error("Library processing settlement failed");
-		}
-
 		await settleMatchSnapshotRefreshJobTerminal(
 			job,
 			"failed",
@@ -385,6 +363,19 @@ async function runMatchSnapshotRefreshJob(
 				accountId: job.account_id,
 				error: errorMessage(markError),
 			});
+		});
+
+		const change = MatchSnapshotChanges.failed({
+			accountId: job.account_id,
+			jobId: job.id,
+			snapshotId: null,
+		});
+		const settlement = await settleLibraryProcessing(change, {
+			actor,
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
 		});
 
 		return {

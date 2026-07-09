@@ -13,11 +13,26 @@ import {
 	fetchTargetPlaylistFilters,
 	insertQueueItems,
 	insertQueuePlaylistItems,
-	insertSessionSnapshot,
 } from "../queries";
 import { appendSessionsForAccountOrientation } from "../session-appender";
 import { computeVisibilityPolicyHash } from "../visibility-policy";
 
+const { txMock, beginMock } = vi.hoisted(() => {
+	const txMock = vi.fn().mockResolvedValue([{ session_id: "session-1" }]);
+	return {
+		txMock,
+		beginMock: vi.fn(async (cb: (tx: typeof txMock) => Promise<unknown>) =>
+			cb(txMock),
+		),
+	};
+});
+
+vi.mock("postgres", () => ({
+	default: () => ({ begin: beginMock }),
+}));
+vi.mock("@/lib/account-events/producer", () => ({
+	writeAccountEvent: vi.fn(),
+}));
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
@@ -33,7 +48,6 @@ vi.mock("../queries", () => ({
 	fetchTargetPlaylistFilters: vi.fn(),
 	insertQueueItems: vi.fn(),
 	insertQueuePlaylistItems: vi.fn(),
-	insertSessionSnapshot: vi.fn(),
 }));
 vi.mock("../visibility-policy", async () => {
 	const actual = await vi.importActual<typeof import("../visibility-policy")>(
@@ -78,6 +92,7 @@ const SESSION = {
 describe("appendSessionsForAccountOrientation", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		txMock.mockResolvedValue([{ session_id: "session-1" }]);
 		vi.mocked(fetchActiveSession).mockResolvedValue(Result.ok(SESSION));
 		vi.mocked(computeVisibilityPolicyHash).mockReturnValue("vh-1");
 	});
@@ -247,9 +262,9 @@ describe("appendSessionsForAccountOrientation", () => {
 			if (Result.isError(result)) {
 				expect(result.error).toBe(constraintError);
 			}
-			// The ledger write (and thus `applied`/`appendedCount:0`) must never
-			// run when the insert itself failed — that would silently drop the batch.
-			expect(insertSessionSnapshot).not.toHaveBeenCalled();
+			// The finalize transaction must never run when the insert itself failed —
+			// that would silently drop the batch.
+			expect(txMock).not.toHaveBeenCalled();
 		});
 
 		it("insertQueuePlaylistItems ConstraintError propagates as Result.err (playlist orientation) instead of settling applied/0", async () => {
@@ -306,7 +321,7 @@ describe("appendSessionsForAccountOrientation", () => {
 			if (Result.isError(result)) {
 				expect(result.error).toBe(constraintError);
 			}
-			expect(insertSessionSnapshot).not.toHaveBeenCalled();
+			expect(txMock).not.toHaveBeenCalled();
 		});
 	});
 

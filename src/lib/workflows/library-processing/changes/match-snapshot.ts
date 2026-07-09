@@ -4,7 +4,7 @@ export const MatchSnapshotChanges = {
 	published(opts: {
 		accountId: string;
 		jobId: string;
-		snapshotId: string;
+		snapshotId?: string;
 	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_published" }> {
 		return { kind: "match_snapshot_published", ...opts };
 	},
@@ -12,7 +12,7 @@ export const MatchSnapshotChanges = {
 	failed(opts: {
 		accountId: string;
 		jobId: string;
-		snapshotId: string | null;
+		snapshotId?: string | null;
 	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_failed" }> {
 		return { kind: "match_snapshot_failed", ...opts };
 	},

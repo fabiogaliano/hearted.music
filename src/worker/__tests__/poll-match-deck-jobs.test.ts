@@ -1,7 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { writeAccountEvent } from "@/lib/account-events/producer";
 import {
 	captureAheadForSession,
 	readSessionResumePosition,
@@ -24,24 +23,6 @@ import {
 	runMatchDeckJobSweepTick,
 } from "../poll-match-deck-jobs";
 
-const { txMock, beginMock } = vi.hoisted(() => {
-	const txMock = vi.fn();
-	return {
-		txMock,
-		beginMock: vi.fn(async (cb: (tx: typeof txMock) => Promise<unknown>) =>
-			cb(txMock),
-		),
-	};
-});
-
-vi.mock("postgres", () => ({
-	default: () => ({
-		begin: beginMock,
-	}),
-}));
-vi.mock("@/lib/account-events/producer", () => ({
-	writeAccountEvent: vi.fn(),
-}));
 vi.mock("@sentry/bun", () => ({
 	captureException: vi.fn(),
 	captureMessage: vi.fn(),
@@ -161,7 +142,6 @@ describe("runMatchDeckJobSweepTick", () => {
 describe("dispatchDeckJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		beginMock.mockImplementation(async (cb) => cb(txMock));
 	});
 
 	it("build_proposals: builds, chains append_sessions, and settles ok (happy path)", async () => {
@@ -216,7 +196,7 @@ describe("dispatchDeckJob", () => {
 		expect(Sentry.captureException).not.toHaveBeenCalled();
 	});
 
-	it("M5: applied append with appendedCount > 0 writes match_deck_appended and chains capture_ahead with the exact idempotency key", async () => {
+	it("M5: applied append with appendedCount > 0 chains capture_ahead with the exact idempotency key", async () => {
 		vi.mocked(appendSessionsForAccountOrientation).mockResolvedValue(
 			Result.ok({ kind: "applied", appendedCount: 3, sessionId: "sess-1" }),
 		);
@@ -232,16 +212,6 @@ describe("dispatchDeckJob", () => {
 			}),
 		);
 
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
-			accountId: "acct-9",
-			type: "match_deck_appended",
-			payload: {
-				orientation: "playlist",
-				sessionId: "sess-1",
-				snapshotId: "snap-1",
-				appendedCount: 3,
-			},
-		});
 		expect(enqueueDeckJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: "capture_ahead",
@@ -291,7 +261,6 @@ describe("dispatchDeckJob", () => {
 		);
 
 		expect(Result.isError(result)).toBe(false);
-		expect(writeAccountEvent).not.toHaveBeenCalled();
 		expect(enqueueDeckJob).not.toHaveBeenCalled();
 	});
 
@@ -310,7 +279,6 @@ describe("dispatchDeckJob", () => {
 		);
 
 		expect(Result.isError(result)).toBe(false);
-		expect(writeAccountEvent).not.toHaveBeenCalled();
 	});
 
 	it("capture_ahead: happy path captures the window from the session's resume position", async () => {

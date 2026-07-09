@@ -250,8 +250,13 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					headers["Last-Event-ID"] = lastSeenPublishIdRef.current.toString();
 				}
 
-				const streamUrl = import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL
-					? `${import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL}/account-events/stream`
+				const gatewayUrl = import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL;
+				if (!gatewayUrl && import.meta.env.PROD) {
+					setConnectionState("error");
+					return;
+				}
+				const streamUrl = gatewayUrl
+					? `${gatewayUrl}/account-events/stream`
 					: "/account-events/stream";
 
 				const response = await fetch(streamUrl, {
