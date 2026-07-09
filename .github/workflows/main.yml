@@ -307,7 +307,7 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - name: Trigger Coolify deploy
+      - name: Trigger Coolify deploy (Worker)
         run: >-
           curl
           --fail
@@ -318,3 +318,15 @@ jobs:
           --max-time 30
           -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
           "${{ secrets.COOLIFY_WORKER_DEPLOY_HOOK }}"
+
+      - name: Trigger Coolify deploy (Gateway)
+        run: >-
+          curl
+          --fail
+          --show-error
+          --retry 3
+          --retry-delay 2
+          --retry-all-errors
+          --max-time 30
+          -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+          "${{ secrets.COOLIFY_GATEWAY_DEPLOY_HOOK }}"
