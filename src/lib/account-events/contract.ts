@@ -147,6 +147,10 @@ export interface AccountEventEnvelope<T extends AllFrameType = AllFrameType> {
 	data: AccountEventPayloadMap[T];
 }
 
+export type AnyAccountEventEnvelope = {
+	[T in AllFrameType]: AccountEventEnvelope<T>;
+}[AllFrameType];
+
 // ── Event token claims (§4.2) ──────────────────────────────────────────────
 
 /**

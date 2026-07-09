@@ -5,9 +5,9 @@ import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
 import { matchDeckKeys } from "@/features/matching/deck-queries";
 import type {
-	AccountEventEnvelope,
 	AccountEventPayloadMap,
 	ActiveJobsSnapshot,
+	AnyAccountEventEnvelope,
 } from "@/lib/account-events/contract";
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
 
@@ -29,7 +29,10 @@ function setActiveJobsSnapshot(
 	accountId: string,
 	snapshot: ActiveJobsSnapshot,
 ) {
-	queryClient.setQueryData(["active-jobs", accountId], snapshot);
+	queryClient.setQueryData<ActiveJobsSnapshot>(
+		["active-jobs", accountId],
+		snapshot,
+	);
 }
 
 function applyJobProgressChanged(
@@ -177,7 +180,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				}
 			}
 
-			let envelope: AccountEventEnvelope;
+			let envelope: AnyAccountEventEnvelope;
 			try {
 				envelope = JSON.parse(dataStr);
 			} catch {

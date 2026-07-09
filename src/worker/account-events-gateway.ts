@@ -1,7 +1,9 @@
 import postgres from "postgres";
 import { env } from "@/env";
 import {
-	type AccountEventEnvelope,
+	type AccountEventPayloadMap,
+	type AccountEventType,
+	type AnyAccountEventEnvelope,
 	CURSOR_HEADER,
 	HEARTBEAT_INTERVAL_MS,
 	NOTIFY_CHANNEL_WAKE,
@@ -10,23 +12,52 @@ import { verifyEventToken } from "@/lib/account-events/token";
 import { log } from "@/lib/observability/logger";
 import { buildActiveJobsSnapshot } from "@/lib/server/jobs.functions";
 
+type StreamController =
+	| ReadableStreamDefaultController<string>
+	| ReadableStreamDirectController;
+
+interface AccountEventClient {
+	controller: StreamController;
+	cursor: number;
+	lastActivity: number;
+}
+
+type ReplayRow = {
+	[T in AccountEventType]: {
+		publish_id: number;
+		type: T;
+		payload: AccountEventPayloadMap[T];
+		created_at: string;
+	};
+}[AccountEventType];
+
 // Connected clients grouped by accountId
-const clients = new Map<
-	string,
-	Set<{
-		controller: any;
-		cursor: number;
-		lastActivity: number;
-	}>
->();
+const clients = new Map<string, Set<AccountEventClient>>();
 
 let listenSql: postgres.Sql<Record<string, never>> | null = null;
 let querySql: postgres.Sql<Record<string, never>> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
+function isDirectController(
+	controller: StreamController,
+): controller is ReadableStreamDirectController {
+	return "write" in controller;
+}
+
+function getOrCreateAccountClients(accountId: string) {
+	const existingClients = clients.get(accountId);
+	if (existingClients) {
+		return existingClients;
+	}
+
+	const nextClients = new Set<AccountEventClient>();
+	clients.set(accountId, nextClients);
+	return nextClients;
+}
+
 function sendEvent(
-	client: { controller: any; cursor: number },
-	envelope: AccountEventEnvelope | Omit<AccountEventEnvelope, "publishId">,
+	client: AccountEventClient,
+	envelope: AnyAccountEventEnvelope,
 ) {
 	try {
 		const isDurable = "publishId" in envelope && envelope.publishId != null;
@@ -37,14 +68,14 @@ function sendEvent(
 		frame += `event: ${envelope.type}\n`;
 		frame += `data: ${JSON.stringify(envelope)}\n\n`;
 
-		if (typeof client.controller.write === "function") {
+		if (isDirectController(client.controller)) {
 			const written = client.controller.write(frame);
-			if (written === 0) {
+			if (typeof written === "number" && written === 0) {
 				log.warn("gateway-buffer-overflow", { cursor: client.cursor });
 				client.controller.close();
 				return false;
 			}
-			client.controller.flush();
+			void client.controller.flush();
 		} else {
 			if (
 				client.controller.desiredSize !== null &&
@@ -65,14 +96,12 @@ function sendEvent(
 
 async function fetchAndSendReplay(
 	accountId: string,
-	client: { controller: any; cursor: number },
+	client: AccountEventClient,
 ) {
 	if (!querySql) return;
 
 	try {
-		const rows = await querySql<
-			{ publish_id: number; type: string; payload: any; created_at: string }[]
-		>`
+		const rows = await querySql<ReplayRow[]>`
 			SELECT publish_id, type, payload, extract(epoch from created_at) * 1000 as created_at
 			FROM account_event
 			WHERE account_id = ${accountId} AND publish_id > ${client.cursor}
@@ -81,7 +110,7 @@ async function fetchAndSendReplay(
 
 		for (const row of rows) {
 			const success = sendEvent(client, {
-				type: row.type as any,
+				type: row.type,
 				v: 1,
 				ts: Number(row.created_at),
 				publishId: row.publish_id,
@@ -171,7 +200,7 @@ export function startAccountEventsGateway() {
 							v: 1,
 							ts: Date.now(),
 							data: { code: "revoked" },
-						} as any);
+						});
 						client.controller.close();
 					} catch {
 						// Ignore
@@ -187,12 +216,12 @@ export function startAccountEventsGateway() {
 		for (const accountClients of clients.values()) {
 			for (const client of accountClients) {
 				try {
-					if (typeof client.controller.write === "function") {
+					if (isDirectController(client.controller)) {
 						const written = client.controller.write(": ping\n\n");
-						if (written === 0) {
+						if (typeof written === "number" && written === 0) {
 							client.controller.close();
 						} else {
-							client.controller.flush();
+							void client.controller.flush();
 						}
 					} else {
 						if (
@@ -254,11 +283,7 @@ export function startAccountEventsGateway() {
 				cursorStr && cursorStr !== "?" ? parseInt(cursorStr, 10) : 0;
 
 			// Cap concurrent streams per account
-			let accountClients = clients.get(claims.sub);
-			if (!accountClients) {
-				accountClients = new Set();
-				clients.set(claims.sub, accountClients);
-			}
+			const accountClients = getOrCreateAccountClients(claims.sub);
 
 			if (accountClients.size >= 5) {
 				// Too many concurrent streams
@@ -268,22 +293,22 @@ export function startAccountEventsGateway() {
 			// Disable Bun's idle timeout for this connection
 			bunServer.timeout(req, 0);
 
-			const isBun = !!(process.versions && process.versions.bun);
+			const isBun = !!process.versions?.bun;
 
 			return new Response(
 				new ReadableStream({
 					type: isBun ? "direct" : undefined,
-					start: async (controller: any) => {
+					start: async (controller: StreamController) => {
 						const clientState = {
 							controller,
 							cursor,
 							lastActivity: Date.now(),
 						};
-						accountClients!.add(clientState);
+						accountClients.add(clientState);
 
 						req.signal.addEventListener("abort", () => {
-							accountClients!.delete(clientState);
-							if (accountClients!.size === 0) {
+							accountClients.delete(clientState);
+							if (accountClients.size === 0) {
 								clients.delete(claims.sub);
 							}
 						});

@@ -108,7 +108,7 @@ describe("account-events-gateway integration", () => {
 	});
 	it("handles replay ordering and durable id discipline", async () => {
 		const accountId = crypto.randomUUID();
-		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${"pub-" + accountId}, ${accountId + "@test.com"})`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
 
 		// Insert some events
 		const events =
@@ -164,7 +164,7 @@ describe("account-events-gateway integration", () => {
 
 	it("closes on token expiry mid-stream", async () => {
 		const accountId = crypto.randomUUID();
-		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${"pub-" + accountId}, ${accountId + "@test.com"})`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
 
 		const token = await signEventToken({
 			sub: accountId,

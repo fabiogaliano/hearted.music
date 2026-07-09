@@ -226,8 +226,8 @@ describe("useAccountEvents", () => {
 			expect(invalidateSpy).toHaveBeenCalledTimes(5);
 		});
 
-		const calledKeys = invalidateSpy.mock.calls.map(
-			([options]) => options.queryKey,
+		const calledKeys = invalidateSpy.mock.calls.flatMap(([options]) =>
+			options ? [options.queryKey] : [],
 		);
 		expect(calledKeys).toContainEqual(dashboardKeys.pageData(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(dashboardKeys.stats(ACCOUNT_ID));
