@@ -1,5 +1,6 @@
 import {
 	type QueryClient,
+	useQuery,
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
@@ -54,6 +55,10 @@ import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
+import {
+	accountEventsConnectionKey,
+	type ConnectionState,
+} from "@/lib/hooks/useAccountEvents";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
@@ -268,7 +273,14 @@ function QueueMatchPage() {
 		isMatchSnapshotRefreshRunning,
 		firstVisibleMatchReady,
 	} = useActiveJobs(session.accountId);
+	const { data: accountEventsConnectionState } = useQuery<ConnectionState>({
+		queryKey: accountEventsConnectionKey(session.accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
 	const isJobsActive = isEnrichmentRunning || isMatchSnapshotRefreshRunning;
+	const isStreamConnected = accountEventsConnectionState === "connected";
 
 	// Building-recovery poll baseline (M8): the refetchInterval below counts
 	// polls via the query's dataUpdateCount relative to this baseline, captured
@@ -289,7 +301,11 @@ function QueueMatchPage() {
 	// the ref here — before useSuspenseQuery reads refetchInterval below — starts
 	// the poll on the same render the refresh finishes, with no throwaway state
 	// bump. Idempotent, so Strict Mode's double render can't double-arm.
-	if (prevSnapshotRefreshRunningRef.current && !isMatchSnapshotRefreshRunning) {
+	if (
+		prevSnapshotRefreshRunningRef.current &&
+		!isMatchSnapshotRefreshRunning &&
+		!isStreamConnected
+	) {
 		appendPollActiveRef.current = true;
 		appendPollBaselineRef.current = null;
 	}
@@ -314,6 +330,13 @@ function QueueMatchPage() {
 			const data = query.state.data;
 			const stillBuilding = data !== undefined && !("itemIds" in data);
 
+			if (isStreamConnected) {
+				buildingPollBaselineRef.current = null;
+				appendPollActiveRef.current = false;
+				appendPollBaselineRef.current = null;
+				return false;
+			}
+
 			if (stillBuilding && firstVisibleMatchReady) {
 				if (buildingPollBaselineRef.current === null) {
 					buildingPollBaselineRef.current = query.state.dataUpdateCount;
@@ -326,11 +349,10 @@ function QueueMatchPage() {
 			}
 			buildingPollBaselineRef.current = null;
 
-			// Post-refresh append poll (M13): re-read an active deck a bounded
-			// number of times after a snapshot refresh completes, so a lagging
-			// append_sessions worker write surfaces without the user interacting.
-			// Only runs for a non-building deck — a still-building one is handled
-			// above and its promotion already brings in the first window.
+			// Post-refresh append poll (M13): when the stream is unavailable, keep a
+			// bounded self-heal for a lagging append_sessions write after the refresh
+			// completes. With a live stream, match_deck_appended invalidates the deck
+			// directly so this fallback must stay quiet.
 			if (appendPollActiveRef.current && !stillBuilding) {
 				if (appendPollBaselineRef.current === null) {
 					appendPollBaselineRef.current = query.state.dataUpdateCount;

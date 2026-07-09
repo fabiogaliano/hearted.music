@@ -25,6 +25,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  */
 
 const {
+	mockUseQuery,
 	mockUseQueryClient,
 	mockUseSuspenseQuery,
 	mockUseActiveJobs,
@@ -32,6 +33,7 @@ const {
 	mockUseSpotifyReconnectState,
 	mockSubmitMatchDeckAction,
 } = vi.hoisted(() => ({
+	mockUseQuery: vi.fn(),
 	mockUseQueryClient: vi.fn(),
 	mockUseSuspenseQuery: vi.fn(),
 	mockUseActiveJobs: vi.fn(),
@@ -41,6 +43,7 @@ const {
 }));
 
 vi.mock("@tanstack/react-query", () => ({
+	useQuery: mockUseQuery,
 	useQueryClient: mockUseQueryClient,
 	useSuspenseQuery: mockUseSuspenseQuery,
 }));
@@ -236,6 +239,7 @@ let queueCardContentFn:
 async function getQueueCardContent() {
 	if (queueCardContentFn) return queueCardContentFn;
 
+	mockUseQuery.mockReturnValue({ data: "disconnected" });
 	mockUseQueryClient.mockReturnValue(makeQueryClient());
 	mockUseActiveJobs.mockReturnValue({
 		isEnrichmentRunning: false,
@@ -285,6 +289,7 @@ async function getQueueCardContent() {
  */
 async function captureRefetchInterval(
 	firstVisibleMatchReady: boolean,
+	connectionState: "connected" | "disconnected" = "disconnected",
 ): Promise<
 	(query: {
 		state: { data: unknown; dataUpdateCount: number };
@@ -297,6 +302,7 @@ async function captureRefetchInterval(
 		enrichmentProgress: null,
 		matchSnapshotRefreshProgress: null,
 	});
+	mockUseQuery.mockReturnValue({ data: connectionState });
 	// The initial data value only needs to satisfy useSuspenseQuery's mocked
 	// return during this one QueueMatchPage invocation; refetchInterval reads
 	// its OWN `query.state.data` argument on each call, not this value.
@@ -436,6 +442,7 @@ async function renderCard(itemId = "item-1"): Promise<CardTestHarness> {
 
 describe("QueueCardContent whole-card action handlers", () => {
 	beforeEach(() => {
+		mockUseQuery.mockReset();
 		mockUseQueryClient.mockReset();
 		mockUseActiveJobs.mockReset();
 		mockUseSuspenseQuery.mockReset();
@@ -694,6 +701,12 @@ describe("QueueCardContent whole-card action handlers", () => {
 
 		it("does not poll when firstVisibleMatchReady is false, even while still building", async () => {
 			const refetchInterval = await captureRefetchInterval(false);
+
+			expect(refetchInterval(buildingQuery(0))).toBe(false);
+		});
+
+		it("quiets the building fallback once the stream is connected", async () => {
+			const refetchInterval = await captureRefetchInterval(true, "connected");
 
 			expect(refetchInterval(buildingQuery(0))).toBe(false);
 		});

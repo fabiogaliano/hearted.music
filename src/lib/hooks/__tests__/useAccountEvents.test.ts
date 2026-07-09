@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { billingKeys } from "@/features/billing/query-keys";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
+import { matchDeckKeys } from "@/features/matching/deck-queries";
 import type {
 	AccountEventPayloadMap,
 	AllFrameType,
@@ -233,6 +234,52 @@ describe("useAccountEvents", () => {
 		expect(calledKeys).toContainEqual(dashboardKeys.recentActivity(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(likedSongsKeys.stats(ACCOUNT_ID));
 		expect(calledKeys).toContainEqual(likedSongsKeys.all);
+	});
+
+	it("invalidates the deck view from match publish and append events", async () => {
+		setupMockFetch();
+		const { result } = renderHook(() => useAccountEvents(ACCOUNT_ID), {
+			wrapper,
+		});
+
+		await waitFor(() => {
+			expect(result.current.connectionState).toBe("connected");
+		});
+
+		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+		act(() => {
+			for (const stream of createdStreams) {
+				stream.push(
+					buildFrame(
+						"match_snapshot_published",
+						{ orientation: "song", snapshotId: "snap-1" },
+						300,
+					),
+				);
+				stream.push(
+					buildFrame(
+						"match_deck_appended",
+						{
+							orientation: "playlist",
+							sessionId: "sess-1",
+							snapshotId: "snap-1",
+							appendedCount: 2,
+						},
+						301,
+					),
+				);
+			}
+		});
+
+		await waitFor(() => {
+			expect(invalidateSpy).toHaveBeenCalledWith({
+				queryKey: matchDeckKeys.deckRoot,
+			});
+			expect(invalidateSpy).toHaveBeenCalledWith({
+				queryKey: matchDeckKeys.deck(ACCOUNT_ID, "playlist"),
+			});
+		});
 	});
 
 	it("does not promote Last-Event-ID from live frames across reconnects", async () => {
