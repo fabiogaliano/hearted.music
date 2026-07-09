@@ -100,6 +100,38 @@ export default defineConfig({
 					),
 				),
 			},
+			// Playlist draft preview engine + commit path: pulls drizzle/postgres/supabase
+			// via the auth chain. Stubbed so create-flow stories render with fixture data.
+			{
+				find: /^@\/lib\/server\/playlist-draft\.functions$/,
+				replacement: fileURLToPath(
+					new URL(
+						"./src/__mocks__/playlist-draft.functions.stub.ts",
+						import.meta.url,
+					),
+				),
+			},
+			// Intent eligibility server function pulls auth + billing tables.
+			// Stub exposes a controllable boolean (premium vs free).
+			{
+				find: /^@\/features\/playlists\/create\/intentEligibility$/,
+				replacement: fileURLToPath(
+					new URL(
+						"./src/__mocks__/intentEligibility.stub.ts",
+						import.meta.url,
+					),
+				),
+			},
+			// The extension orchestrator calls the real Spotify extension — no-op in Ladle.
+			{
+				find: /^@\/lib\/extension\/create-playlist-from-draft$/,
+				replacement: fileURLToPath(
+					new URL(
+						"./src/__mocks__/create-playlist-from-draft.stub.ts",
+						import.meta.url,
+					),
+				),
+			},
 			{
 				find: "@",
 				replacement: fileURLToPath(new URL("./src", import.meta.url)),

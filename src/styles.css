@@ -1152,6 +1152,89 @@ code {
   }
 }
 
+/* ── MaxSongsSlider ───────────────────────────────────────────────────── */
+/* Native range input styled to match the flat/bordered hearted materiality.
+   --pct (set via inline style) drives the filled-track gradient so no JS
+   measurement is needed. Thumb hit area is ≥40px via padding + line-height. */
+
+.max-songs-slider {
+  /* 40px total touch target via line-height; visible track is thinner via
+     clip/border in the vendor pseudo-elements below. */
+  height: 40px;
+  padding: 0;
+}
+
+.max-songs-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    var(--t-primary) 0%,
+    var(--t-primary) var(--pct, 0%),
+    color-mix(in oklch, var(--t-text) 20%, transparent) var(--pct, 0%),
+    color-mix(in oklch, var(--t-text) 20%, transparent) 100%
+  );
+}
+
+.max-songs-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 0;
+  background: color-mix(in oklch, var(--t-text) 20%, transparent);
+}
+
+.max-songs-slider::-moz-range-progress {
+  height: 2px;
+  background: var(--t-primary);
+}
+
+.max-songs-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--t-primary);
+  border: 2px solid var(--t-bg);
+  outline: 1.5px solid var(--t-primary);
+  margin-top: -6px;
+  transition: transform 150ms var(--ease-out-quart);
+  cursor: pointer;
+}
+
+.max-songs-slider::-moz-range-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--t-primary);
+  border: 2px solid var(--t-bg);
+  outline: 1.5px solid var(--t-primary);
+  cursor: pointer;
+  transition: transform 150ms var(--ease-out-quart);
+}
+
+.max-songs-slider:hover::-webkit-slider-thumb,
+.max-songs-slider:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.max-songs-slider:hover::-moz-range-thumb,
+.max-songs-slider:focus-visible::-moz-range-thumb {
+  transform: scale(1.2);
+}
+
+.max-songs-slider:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .max-songs-slider::-webkit-slider-thumb,
+  .max-songs-slider::-moz-range-thumb {
+    transition: none;
+  }
+}
+
 /* ── Animated checking ellipsis ───────────────────────────────────────── */
 /* Cycles the trailing dots . / .. / ... / (blank) so a pending lookup reads
    as actively working. The dots live in ::after, so they never enter the DOM

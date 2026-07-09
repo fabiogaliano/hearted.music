@@ -303,11 +303,19 @@ async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
 	}
 
 	const who = account.display_name || account.email || account.id;
-	const { data, error } = await prodSupabase()
-		.from("account_billing")
-		.select("unlimited_access_source, subscription_status")
-		.eq("account_id", account.id)
-		.maybeSingle();
+	// Count active likes so the success copy can state the full-library
+	// denominator. The pass grants unlimited access to ALL liked songs via the
+	// billing flag; unlockedSongCount only reflects the analyzed-so-far subset
+	// that has materialized unlock rows. Without the total, that number reads as
+	// a cap (it isn't) and looks like the gift under-delivered.
+	const [{ data, error }, activeLikedSongs] = await Promise.all([
+		prodSupabase()
+			.from("account_billing")
+			.select("unlimited_access_source, subscription_status")
+			.eq("account_id", account.id)
+			.maybeSingle(),
+		countActiveLiked(account.id),
+	]);
 	if (error) throw new Error(`Failed to read billing: ${error.message}`);
 
 	const billing = data as {
@@ -330,6 +338,7 @@ async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
 		displayName: account.display_name,
 		plan: "yearly",
 		subscriptionPeriodEnd: periodEnd,
+		activeLikedSongs,
 		...(input.reason ? { reason: input.reason } : {}),
 		...(input.requestedBy ? { requestedBy: input.requestedBy } : {}),
 	};
@@ -362,7 +371,7 @@ async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
 	return {
 		ok: true,
 		status: "gifted",
-		message: `Gifted ${who} a 1-year Backstage Pass — ${payload.unlockedSongCount} songs unlocked, valid through ${payload.subscriptionPeriodEnd}. Enrichment + match refresh queued. Does not auto-expire; revoke manually at expiry.`,
+		message: `Gifted ${who} a 1-year Backstage Pass — unlimited access to all ${activeLikedSongs.toLocaleString("en-US")} liked songs, effective now. ${payload.unlockedSongCount.toLocaleString("en-US")} content-activated so far; the rest unlock automatically as enrichment completes. Enrichment + match refresh queued. Does not auto-expire; revoke manually at expiry.`,
 		details: {
 			...base,
 			subscriptionPeriodEnd: payload.subscriptionPeriodEnd,
