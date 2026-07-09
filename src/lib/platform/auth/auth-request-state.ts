@@ -23,10 +23,21 @@ export const authRequestMiddleware = createMiddleware().server(
 	},
 );
 
-export function getAuthRequestState(): AuthRequestState {
-	const context = getGlobalStartContext();
+function hasAuthRequestContext(
+	context: unknown,
+): context is { authRequest: AuthRequestState } {
+	return (
+		typeof context === "object" &&
+		context !== null &&
+		"authRequest" in context &&
+		context.authRequest !== undefined
+	);
+}
 
-	if (!context?.authRequest) {
+export function getAuthRequestState(): AuthRequestState {
+	const context: unknown = getGlobalStartContext();
+
+	if (!hasAuthRequestContext(context)) {
 		throw new Error(
 			"Auth request context unavailable. Add authRequestMiddleware to src/start.ts and call auth helpers only within the TanStack Start request lifecycle.",
 		);

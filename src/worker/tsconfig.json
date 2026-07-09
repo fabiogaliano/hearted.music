@@ -1,6 +1,10 @@
 {
 	"extends": "../../tsconfig.json",
-	"include": ["./**/*.ts", "../../src/test/vitest.d.ts"],
+	"include": [
+		"./**/*.ts",
+		"../../src/cloudflare-workers.d.ts",
+		"../../src/test/vitest.d.ts"
+	],
 	"exclude": ["../../old_app", "../../node_modules", "../../extension"],
 	"compilerOptions": {
 		"types": ["@types/bun", "vitest"],

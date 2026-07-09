@@ -1,9 +1,8 @@
 import postgres from "postgres";
 import { env } from "@/env";
 import {
-	type AccountEventPayloadMap,
-	type AccountEventType,
-	type AnyAccountEventEnvelope,
+	type AccountEventEnvelope,
+	type AllFrameType,
 	CURSOR_HEADER,
 	HEARTBEAT_INTERVAL_MS,
 	NOTIFY_CHANNEL_WAKE,
@@ -12,9 +11,7 @@ import { verifyEventToken } from "@/lib/account-events/token";
 import { log } from "@/lib/observability/logger";
 import { buildActiveJobsSnapshot } from "@/lib/server/jobs.functions";
 
-type StreamController =
-	| ReadableStreamDefaultController<string>
-	| ReadableStreamDirectController;
+type StreamController = ReadableStreamDefaultController<string>;
 
 interface AccountEventClient {
 	controller: StreamController;
@@ -22,14 +19,20 @@ interface AccountEventClient {
 	lastActivity: number;
 }
 
-type ReplayRow = {
-	[T in AccountEventType]: {
-		publish_id: number;
-		type: T;
-		payload: AccountEventPayloadMap[T];
-		created_at: string;
-	};
-}[AccountEventType];
+interface ReplayRow {
+	publish_id: number;
+	type: string;
+	payload: unknown;
+	created_at: string;
+}
+
+interface StreamEnvelope {
+	type: string;
+	v: 1;
+	ts: number;
+	publishId?: number;
+	data: unknown;
+}
 
 // Connected clients grouped by accountId
 const clients = new Map<string, Set<AccountEventClient>>();
@@ -37,12 +40,6 @@ const clients = new Map<string, Set<AccountEventClient>>();
 let listenSql: postgres.Sql<Record<string, never>> | null = null;
 let querySql: postgres.Sql<Record<string, never>> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
-
-function isDirectController(
-	controller: StreamController,
-): controller is ReadableStreamDirectController {
-	return "write" in controller;
-}
 
 function getOrCreateAccountClients(accountId: string) {
 	const existingClients = clients.get(accountId);
@@ -55,10 +52,7 @@ function getOrCreateAccountClients(accountId: string) {
 	return nextClients;
 }
 
-function sendEvent(
-	client: AccountEventClient,
-	envelope: AnyAccountEventEnvelope,
-) {
+function sendEnvelope(client: AccountEventClient, envelope: StreamEnvelope) {
 	try {
 		const isDurable = "publishId" in envelope && envelope.publishId != null;
 		let frame = "";
@@ -68,30 +62,81 @@ function sendEvent(
 		frame += `event: ${envelope.type}\n`;
 		frame += `data: ${JSON.stringify(envelope)}\n\n`;
 
-		if (isDirectController(client.controller)) {
-			const written = client.controller.write(frame);
-			if (typeof written === "number" && written === 0) {
-				log.warn("gateway-buffer-overflow", { cursor: client.cursor });
-				client.controller.close();
-				return false;
-			}
-			void client.controller.flush();
-		} else {
-			if (
-				client.controller.desiredSize !== null &&
-				client.controller.desiredSize <= 0
-			) {
-				log.warn("gateway-buffer-overflow", { cursor: client.cursor });
-				client.controller.close();
-				return false;
-			}
-			client.controller.enqueue(frame);
+		if (
+			client.controller.desiredSize !== null &&
+			client.controller.desiredSize <= 0
+		) {
+			log.warn("gateway-buffer-overflow", { cursor: client.cursor });
+			client.controller.close();
+			return false;
 		}
+		client.controller.enqueue(frame);
 		return true;
 	} catch (error) {
 		log.error("gateway-send-error", { error: String(error) });
 		return false;
 	}
+}
+
+function sendEvent<T extends AllFrameType>(
+	client: AccountEventClient,
+	envelope: AccountEventEnvelope<T>,
+) {
+	return sendEnvelope(client, envelope);
+}
+
+function sendReplayRow(client: AccountEventClient, row: ReplayRow) {
+	return sendEnvelope(client, {
+		type: row.type,
+		v: 1,
+		ts: Number(row.created_at),
+		publishId: row.publish_id,
+		data: row.payload,
+	});
+}
+
+async function initializeClientStream(
+	controller: StreamController,
+	accountClients: Set<AccountEventClient>,
+	accountId: string,
+	requestSignal: AbortSignal,
+	cursor: number,
+	expiresAtSeconds: number,
+) {
+	const clientState: AccountEventClient = {
+		controller,
+		cursor,
+		lastActivity: Date.now(),
+	};
+	accountClients.add(clientState);
+
+	requestSignal.addEventListener("abort", () => {
+		accountClients.delete(clientState);
+		if (accountClients.size === 0) {
+			clients.delete(accountId);
+		}
+	});
+
+	const timeUntilExp = expiresAtSeconds * 1000 - Date.now();
+	const expTimer = setTimeout(() => {
+		try {
+			sendEvent(clientState, {
+				type: "token_expiring",
+				v: 1,
+				ts: Date.now(),
+				data: { reason: "token_expired" },
+			});
+			controller.close();
+		} catch {
+			// ignore
+		}
+	}, timeUntilExp);
+
+	requestSignal.addEventListener("abort", () => {
+		clearTimeout(expTimer);
+	});
+
+	await fetchAndSendReplay(accountId, clientState);
 }
 
 async function fetchAndSendReplay(
@@ -109,13 +154,7 @@ async function fetchAndSendReplay(
 		`;
 
 		for (const row of rows) {
-			const success = sendEvent(client, {
-				type: row.type,
-				v: 1,
-				ts: Number(row.created_at),
-				publishId: row.publish_id,
-				data: row.payload,
-			});
+			const success = sendReplayRow(client, row);
 			if (!success) return;
 			client.cursor = row.publish_id;
 		}
@@ -216,22 +255,13 @@ export function startAccountEventsGateway() {
 		for (const accountClients of clients.values()) {
 			for (const client of accountClients) {
 				try {
-					if (isDirectController(client.controller)) {
-						const written = client.controller.write(": ping\n\n");
-						if (typeof written === "number" && written === 0) {
-							client.controller.close();
-						} else {
-							void client.controller.flush();
-						}
+					if (
+						client.controller.desiredSize !== null &&
+						client.controller.desiredSize <= 0
+					) {
+						client.controller.close();
 					} else {
-						if (
-							client.controller.desiredSize !== null &&
-							client.controller.desiredSize <= 0
-						) {
-							client.controller.close();
-						} else {
-							client.controller.enqueue(": ping\n\n");
-						}
+						client.controller.enqueue(": ping\n\n");
 					}
 				} catch {
 					// Ignore, client might be closed
@@ -293,60 +323,29 @@ export function startAccountEventsGateway() {
 			// Disable Bun's idle timeout for this connection
 			bunServer.timeout(req, 0);
 
-			const isBun = !!process.versions?.bun;
+			const responseHeaders = {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
+				"X-Accel-Buffering": "no",
+			};
 
 			return new Response(
 				new ReadableStream({
-					type: isBun ? "direct" : undefined,
-					start: async (controller: StreamController) => {
-						const clientState = {
+					start: async (controller) => {
+						await initializeClientStream(
 							controller,
+							accountClients,
+							claims.sub,
+							req.signal,
 							cursor,
-							lastActivity: Date.now(),
-						};
-						accountClients.add(clientState);
-
-						req.signal.addEventListener("abort", () => {
-							accountClients.delete(clientState);
-							if (accountClients.size === 0) {
-								clients.delete(claims.sub);
-							}
-						});
-
-						// Exp timer
-						const timeUntilExp = claims.exp * 1000 - Date.now();
-						const expTimer = setTimeout(() => {
-							try {
-								sendEvent(clientState, {
-									type: "token_expiring",
-									v: 1,
-									ts: Date.now(),
-									data: { reason: "token_expired" },
-								});
-								controller.close();
-							} catch {
-								// ignore
-							}
-						}, timeUntilExp);
-
-						req.signal.addEventListener("abort", () => {
-							clearTimeout(expTimer);
-						});
-
-						// Initial replay + snapshot
-						await fetchAndSendReplay(claims.sub, clientState);
+							claims.exp,
+						);
 					},
 					cancel() {
 						// Cleaned up via abort listener
 					},
 				}),
-				{
-					headers: {
-						"Content-Type": "text/event-stream",
-						"Cache-Control": "no-cache",
-						"X-Accel-Buffering": "no",
-					},
-				},
+				{ headers: responseHeaders },
 			);
 		},
 	});

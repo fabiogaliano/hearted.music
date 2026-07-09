@@ -145,7 +145,7 @@ function createBetterAuth(sql: AuthSqlClient) {
 			},
 		},
 		rateLimit: {
-			enabled: import.meta.env.PROD,
+			enabled: Boolean(import.meta.env.PROD),
 			storage: "database",
 			window: 60,
 			max: 100,
