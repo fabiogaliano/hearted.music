@@ -39,7 +39,9 @@ function infiniteData(
 
 describe("likedSongsCollectionRefetchInterval", () => {
 	it("does not poll before any data has loaded", () => {
-		expect(likedSongsCollectionRefetchInterval(undefined)).toBe(false);
+		expect(likedSongsCollectionRefetchInterval(undefined, "disconnected")).toBe(
+			false,
+		);
 	});
 
 	it("does not poll once every loaded row is settled", () => {
@@ -50,19 +52,25 @@ describe("likedSongsCollectionRefetchInterval", () => {
 				createSong("c", "locked"),
 			],
 		]);
-		expect(likedSongsCollectionRefetchInterval(data)).toBe(false);
+		expect(likedSongsCollectionRefetchInterval(data, "disconnected")).toBe(
+			false,
+		);
 	});
 
 	it("polls at ~5s while a loaded row is still pending", () => {
 		const data = infiniteData([
 			[createSong("a", "analyzed"), createSong("b", "pending")],
 		]);
-		expect(likedSongsCollectionRefetchInterval(data)).toBe(5_000);
+		expect(likedSongsCollectionRefetchInterval(data, "disconnected")).toBe(
+			5_000,
+		);
 	});
 
 	it("polls while a loaded row is still analyzing", () => {
 		const data = infiniteData([[createSong("a", "analyzing")]]);
-		expect(likedSongsCollectionRefetchInterval(data)).toBe(5_000);
+		expect(likedSongsCollectionRefetchInterval(data, "disconnected")).toBe(
+			5_000,
+		);
 	});
 
 	it("polls when the unsettled row is on a later loaded page", () => {
@@ -70,6 +78,13 @@ describe("likedSongsCollectionRefetchInterval", () => {
 			[createSong("a", "analyzed")],
 			[createSong("b", "analyzed"), createSong("c", "pending")],
 		]);
-		expect(likedSongsCollectionRefetchInterval(data)).toBe(5_000);
+		expect(likedSongsCollectionRefetchInterval(data, "disconnected")).toBe(
+			5_000,
+		);
+	});
+
+	it("stays quiet while the stream is connected, even with unsettled rows", () => {
+		const data = infiniteData([[createSong("a", "pending")]]);
+		expect(likedSongsCollectionRefetchInterval(data, "connected")).toBe(false);
 	});
 });

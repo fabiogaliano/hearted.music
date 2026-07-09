@@ -1,12 +1,21 @@
-import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
+import {
+	type InfiniteData,
+	useInfiniteQuery,
+	useQuery,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
+import {
+	accountEventsConnectionKey,
+	type ConnectionState,
+} from "@/lib/hooks/useAccountEvents";
 import type { LikedSongsPageResult } from "@/lib/server/liked-songs.functions";
 import { type FilterOption, likedSongsInfiniteQueryOptions } from "../queries";
 import type { LikedSong } from "../types";
 
 interface UseLikedSongsCollectionOptions {
+	accountId: string;
 	filter: FilterOption;
 	search?: string;
 	isWalkthrough: boolean;
@@ -50,7 +59,9 @@ function hasUnsettledLoadedSong(
  */
 export function likedSongsCollectionRefetchInterval(
 	data: InfiniteData<LikedSongsPageResult> | undefined,
+	connectionState: ConnectionState,
 ): number | false {
+	if (connectionState === "connected") return false;
 	return hasUnsettledLoadedSong(data) ? UNSETTLED_POLL_MS : false;
 }
 
@@ -85,23 +96,27 @@ function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
 }
 
 export function useLikedSongsCollection({
+	accountId,
 	filter,
 	search,
 	isWalkthrough,
 	walkthroughSong,
 	companionSongs = NO_COMPANIONS,
 }: UseLikedSongsCollectionOptions) {
+	const { data: connectionState } = useQuery<ConnectionState>({
+		queryKey: accountEventsConnectionKey(accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
 	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
 		useInfiniteQuery({
 			...likedSongsInfiniteQueryOptions(filter, search),
-			// Robustness layer on top of useActiveJobCompletionEffects: while any
-			// loaded row is still mid-analysis, poll the collection itself so the
-			// row converges to its analyzed read even when the active-jobs
-			// true -> false completion transition is missed (backgrounded tab, or
-			// the job finishing between active-jobs polls). Stops the moment every
-			// loaded row is settled, so a fully-analyzed list never polls.
+			// Stream-first: while connected, enrichment terminal events invalidate the
+			// liked-songs cache directly from the shell. The old unsettled-row poll is
+			// retained only as a disconnected self-heal.
 			refetchInterval: (query) =>
-				likedSongsCollectionRefetchInterval(query.state.data),
+				likedSongsCollectionRefetchInterval(query.state.data, connectionState),
 		});
 
 	const songs = useMemo(
