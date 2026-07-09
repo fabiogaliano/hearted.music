@@ -1,6 +1,6 @@
 ---
 status: proposed
-updated: 2026-07-08
+updated: 2026-07-09
 ---
 
 # Account events — task index
@@ -12,20 +12,20 @@ the task files.
 
 ## All tasks
 
-- [ ] [01 — Shared contract module](./01-contract-module.md)
-- [ ] [02 — `account_event` outbox migration](./02-outbox-migration.md)
-- [ ] [03 — Event-write helper](./03-event-write-helper.md) *(needs 01, 02)*
-- [ ] [04 — Single-writer publisher](./04-publisher.md) *(needs 02)*
-- [ ] [05 — Event-token mint](./05-token-mint.md) *(needs 01)*
-- [ ] [06 — Bun fetch-SSE gateway](./06-sse-gateway.md) *(needs 01, 02, 04, 05)*
-- [ ] [07 — Gateway ops provisioning](./07-ops-provisioning.md) *(needs 06)*
-- [ ] [08 — `useAccountEvents` client hook](./08-client-hook.md) *(needs 01, 05; integrates against 06)*
-- [ ] [09 — Producers: enrichment events](./09-producers-enrichment.md) *(needs 03)*
-- [ ] [10 — Producers: match snapshot + deck append](./10-producers-match.md) *(needs 03)*
-- [ ] [11 — Shell switch: `useActiveJobs` + completion effects](./11-shell-switch.md) *(needs 06, 08, 09)*
-- [ ] [12 — Match route switch](./12-match-route-switch.md) *(needs 10, 11)*
-- [ ] [13 — Liked songs switch](./13-liked-songs-switch.md) *(needs 11)*
-- [ ] [14 — Worker NOTIFY wake-up parity](./14-worker-notify-parity.md) *(independent — any time)*
+- [x] [01 — Shared contract module](./01-contract-module.md)
+- [x] [02 — `account_event` outbox migration](./02-outbox-migration.md)
+- [x] [03 — Event-write helper](./03-event-write-helper.md) *(needs 01, 02)*
+- [x] [04 — Single-writer publisher](./04-publisher.md) *(needs 02)*
+- [x] [05 — Event-token mint](./05-token-mint.md) *(needs 01)*
+- [x] [06 — Bun fetch-SSE gateway](./06-sse-gateway.md) *(needs 01, 02, 04, 05)*
+- [x] [07 — Gateway ops provisioning](./07-ops-provisioning.md) *(needs 06)*
+- [x] [08 — `useAccountEvents` client hook](./08-client-hook.md) *(needs 01, 05; integrates against 06)*
+- [x] [09 — Producers: enrichment events](./09-producers-enrichment.md) *(needs 03)*
+- [x] [10 — Producers: match snapshot + deck append](./10-producers-match.md) *(needs 03)*
+- [x] [11 — Shell switch: `useActiveJobs` + completion effects](./11-shell-switch.md) *(needs 06, 08, 09)*
+- [x] [12 — Match route switch](./12-match-route-switch.md) *(needs 10, 11)*
+- [x] [13 — Liked songs switch](./13-liked-songs-switch.md) *(needs 11)*
+- [x] [14 — Worker NOTIFY wake-up parity](./14-worker-notify-parity.md) *(independent — any time)*
 - [ ] [15 — Load test + capacity anchor](./15-load-test.md) *(needs 06, 07)*
 - [ ] [16 — Billing events](./16-billing-events.md) *(later phase — after 01–13 are stable)*
 
