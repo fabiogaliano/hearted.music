@@ -30,18 +30,21 @@ vi.mock("@/env", () => ({
 
 // Mock the lyrics service module while preserving real Genius error classes
 // re-exported through it.
-vi.mock("@/lib/domains/enrichment/lyrics/service", async (importOriginal) => {
-	const actual =
-		await importOriginal<
-			typeof import("@/lib/domains/enrichment/lyrics/service")
-		>();
-	return {
-		...actual,
-		LyricsService: vi.fn().mockImplementation(function () {
-			return { fetchAndStoreOutcome: vi.fn() };
-		}),
-	};
-});
+vi.mock(
+	"@/lib/domains/enrichment/lyrics/service",
+	async (importOriginal: <T>() => Promise<T>) => {
+		const actual =
+			await importOriginal<
+				typeof import("@/lib/domains/enrichment/lyrics/service")
+			>();
+		return {
+			...actual,
+			LyricsService: vi.fn().mockImplementation(function () {
+				return { fetchAndStoreOutcome: vi.fn() };
+			}),
+		};
+	},
+);
 
 // Prevent LrclibProvider from making real network calls in pipeline tests.
 vi.mock("@/lib/domains/enrichment/lyrics/providers/lrclib", () => ({

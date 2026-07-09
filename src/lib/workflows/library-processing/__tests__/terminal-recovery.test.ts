@@ -13,7 +13,7 @@ vi.mock("../service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
 }));
 
-vi.mock("../queries", async (importOriginal) => {
+vi.mock("../queries", async (importOriginal: <T>() => Promise<T>) => {
 	const original = await importOriginal<typeof import("../queries")>();
 	return {
 		...original,
@@ -23,7 +23,7 @@ vi.mock("../queries", async (importOriginal) => {
 
 vi.mock(
 	"@/lib/platform/jobs/execution-measurements",
-	async (importOriginal) => {
+	async (importOriginal: <T>() => Promise<T>) => {
 		const original =
 			await importOriginal<
 				typeof import("@/lib/platform/jobs/execution-measurements")

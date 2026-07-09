@@ -5,12 +5,15 @@ import { FfmpegError } from "@/lib/shared/errors/external/youtube-audio";
 vi.mock("@/lib/integrations/youtube-audio/service");
 // Keep the real summarizeYtDlpFailure (a pure helper the settle path uses to
 // enrich stored error messages); only checkYtDlpAvailable needs stubbing.
-vi.mock("@/lib/integrations/youtube-audio/yt-dlp", async (importOriginal) => ({
-	...(await importOriginal<
-		typeof import("@/lib/integrations/youtube-audio/yt-dlp")
-	>()),
-	checkYtDlpAvailable: vi.fn(),
-}));
+vi.mock(
+	"@/lib/integrations/youtube-audio/yt-dlp",
+	async (importOriginal: <T>() => Promise<T>) => ({
+		...(await importOriginal<
+			typeof import("@/lib/integrations/youtube-audio/yt-dlp")
+		>()),
+		checkYtDlpAvailable: vi.fn(),
+	}),
+);
 vi.mock("@/lib/integrations/reccobeats/file-analysis");
 vi.mock("@/lib/data/client");
 vi.mock("../jobs");

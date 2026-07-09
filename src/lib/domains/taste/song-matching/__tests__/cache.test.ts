@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock(
 	"@/lib/domains/enrichment/embeddings/versioning",
-	async (importOriginal) => {
+	async (importOriginal: <T>() => Promise<T>) => {
 		const actual =
 			await importOriginal<
 				typeof import("@/lib/domains/enrichment/embeddings/versioning")

@@ -6,7 +6,7 @@ import { LlmService } from "./service";
 
 // Mock only the two generation entry points; keep the rest of the SDK (error
 // classes used by normalizeError) real.
-vi.mock("ai", async (importOriginal) => {
+vi.mock("ai", async (importOriginal: <T>() => Promise<T>) => {
 	const actual = await importOriginal<typeof import("ai")>();
 	return { ...actual, generateText: vi.fn(), generateObject: vi.fn() };
 });

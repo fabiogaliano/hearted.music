@@ -7,7 +7,7 @@ import type {
 	LibraryProcessingState,
 } from "../types";
 
-vi.mock("../queries", async (importOriginal) => {
+vi.mock("../queries", async (importOriginal: <T>() => Promise<T>) => {
 	const original = await importOriginal<typeof import("../queries")>();
 	return {
 		...original,
@@ -19,14 +19,17 @@ vi.mock("@/lib/platform/jobs/library-processing-queue", () => ({
 	getActiveEnrichmentJob: vi.fn(),
 }));
 
-vi.mock("@/lib/platform/jobs/repository", async (importOriginal) => {
-	const original =
-		await importOriginal<typeof import("@/lib/platform/jobs/repository")>();
-	return {
-		...original,
-		getLatestJob: vi.fn(),
-	};
-});
+vi.mock(
+	"@/lib/platform/jobs/repository",
+	async (importOriginal: <T>() => Promise<T>) => {
+		const original =
+			await importOriginal<typeof import("@/lib/platform/jobs/repository")>();
+		return {
+			...original,
+			getLatestJob: vi.fn(),
+		};
+	},
+);
 
 vi.mock("@/lib/workflows/enrichment-pipeline/batch", () => ({
 	hasMoreSongsNeedingEnrichmentWork: vi.fn(),

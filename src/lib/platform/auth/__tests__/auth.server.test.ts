@@ -77,6 +77,7 @@ describe("getAuthSession", () => {
 		};
 
 		mockGetSession.mockResolvedValue({
+			session: { id: "session-1" },
 			user: {
 				id: "user-1",
 				email: "hello@hearted.music",
@@ -98,7 +99,7 @@ describe("getAuthSession", () => {
 		expect(mockTouchAccountLastSeen).toHaveBeenCalledWith("acct-1");
 		expect(first).toEqual(second);
 		expect(first).toEqual({
-			session: { accountId: "acct-1" },
+			session: { accountId: "acct-1", id: "session-1" },
 			account,
 			identity: {
 				email: "hello@hearted.music",

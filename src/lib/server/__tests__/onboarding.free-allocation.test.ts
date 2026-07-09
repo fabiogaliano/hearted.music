@@ -69,7 +69,7 @@ vi.mock("@/lib/data/client", () => ({
 
 vi.mock(
 	"@/lib/domains/library/liked-songs/queries",
-	async (importOriginal) => ({
+	async (importOriginal: <T>() => Promise<T>) => ({
 		...(await importOriginal<
 			typeof import("@/lib/domains/library/liked-songs/queries")
 		>()),
