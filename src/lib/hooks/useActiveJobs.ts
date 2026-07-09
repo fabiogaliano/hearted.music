@@ -1,9 +1,11 @@
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { dashboardKeys } from "@/features/dashboard/queries";
-import { likedSongsKeys } from "@/features/liked-songs/queries";
 import { runMatchSnapshotRefreshEffects } from "@/features/matching/queries";
 import { type ActiveJobs, getActiveJobs } from "@/lib/server/jobs.functions";
+import {
+	accountEventsConnectionKey,
+	type ConnectionState,
+} from "./useAccountEvents";
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
@@ -17,18 +19,32 @@ function hasActiveJob(data: ActiveJobs | undefined): boolean {
 	return !!(data?.enrichment || data?.matchSnapshotRefresh);
 }
 
-function activeJobsQueryOptions(accountId: string, enabled = true) {
+function activeJobsQueryOptions(
+	accountId: string,
+	connectionState: ConnectionState,
+	enabled = true,
+) {
 	return queryOptions({
 		queryKey: activeJobsKeys.byAccount(accountId),
 		queryFn: () => getActiveJobs(),
 		enabled,
-		refetchInterval: (query) =>
-			hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS,
+		refetchInterval: (query) => {
+			if (connectionState === "connected") return false;
+			return hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS;
+		},
 	});
 }
 
 export function useActiveJobs(accountId: string, enabled = true) {
-	const { data } = useQuery(activeJobsQueryOptions(accountId, enabled));
+	const { data: connectionState } = useQuery<ConnectionState>({
+		queryKey: accountEventsConnectionKey(accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	const { data } = useQuery(
+		activeJobsQueryOptions(accountId, connectionState, enabled),
+	);
 
 	return {
 		isEnrichmentRunning: !!data?.enrichment,
@@ -54,8 +70,14 @@ export function useActiveJobCompletionEffects(
 	accountId: string,
 	enabled = true,
 ) {
+	const { data: connectionState } = useQuery<ConnectionState>({
+		queryKey: accountEventsConnectionKey(accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
 	const { data } = useQuery({
-		...activeJobsQueryOptions(accountId, enabled),
+		...activeJobsQueryOptions(accountId, connectionState, enabled),
 		select: selectRunningJobs,
 	});
 	const queryClient = useQueryClient();
@@ -66,24 +88,6 @@ export function useActiveJobCompletionEffects(
 		prevRef.current = data;
 
 		if (!prev || !data) return;
-
-		if (prev.enrichment && !data.enrichment) {
-			queryClient.invalidateQueries({
-				queryKey: dashboardKeys.pageData(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: dashboardKeys.stats(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: dashboardKeys.recentActivity(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: likedSongsKeys.stats(accountId),
-			});
-			queryClient.invalidateQueries({
-				queryKey: likedSongsKeys.all,
-			});
-		}
 
 		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
 			void runMatchSnapshotRefreshEffects(queryClient, accountId);

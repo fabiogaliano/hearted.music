@@ -44,6 +44,7 @@ import { getDisplayBalance, getPlanLabel } from "@/lib/domains/billing/display";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
+import { useAccountEvents } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
@@ -192,6 +193,7 @@ function AuthenticatedLayout() {
 	const showShell =
 		isComplete || mode === "walkthrough" || mode === "playlist-preview";
 
+	useAccountEvents(session.accountId, isComplete);
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	// Post-purchase return must observe the *real* billing state — it handles
 	// real Stripe redirects, not display.

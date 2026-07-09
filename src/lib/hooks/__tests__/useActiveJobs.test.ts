@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dashboardKeys } from "@/features/dashboard/queries";
@@ -11,6 +11,7 @@ import {
 } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
 import type { ActiveJobs } from "@/lib/server/jobs.functions";
+import { accountEventsConnectionKey } from "../useAccountEvents";
 import { useActiveJobs } from "../useActiveJobs";
 
 vi.mock("@/lib/server/jobs.functions", () => ({
@@ -137,6 +138,10 @@ describe("useActiveJobs return shape", () => {
 		});
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it("exposes firstVisibleMatchReady from server response", async () => {
 		vi.mocked(getActiveJobs).mockResolvedValue(
 			makeActiveJobs({ firstVisibleMatchReady: true }),
@@ -196,5 +201,50 @@ describe("useActiveJobs return shape", () => {
 		await waitFor(() => {
 			expect(result.current.matchSnapshotRefreshProgress).toBeNull();
 		});
+	});
+
+	it("quiesces periodic polling while the account-events stream is connected", async () => {
+		vi.useFakeTimers();
+		queryClient.setQueryData(
+			accountEventsConnectionKey(ACCOUNT_ID),
+			"connected",
+		);
+		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
+
+		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await act(async () => {
+			await Promise.resolve();
+		});
+		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(20_000);
+		});
+
+		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+	});
+
+	it("resumes fallback polling while the stream is disconnected", async () => {
+		vi.useFakeTimers();
+		queryClient.setQueryData(
+			accountEventsConnectionKey(ACCOUNT_ID),
+			"disconnected",
+		);
+		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
+
+		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await act(async () => {
+			await Promise.resolve();
+		});
+		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(15_000);
+			await Promise.resolve();
+		});
+
+		expect(getActiveJobs).toHaveBeenCalledTimes(2);
 	});
 });

@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { billingKeys } from "@/features/billing/query-keys";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
@@ -7,6 +7,7 @@ import { matchDeckKeys } from "@/features/matching/deck-queries";
 import type {
 	AccountEventEnvelope,
 	AccountEventPayloadMap,
+	ActiveJobsSnapshot,
 } from "@/lib/account-events/contract";
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
 
@@ -20,10 +21,77 @@ export type ConnectionState =
 const BACKOFF_BASE_MS = 500;
 const BACKOFF_CAP_MS = 30000;
 
+export const accountEventsConnectionKey = (accountId: string) =>
+	["account-events-connection", accountId] as const;
+
+function setActiveJobsSnapshot(
+	queryClient: ReturnType<typeof useQueryClient>,
+	accountId: string,
+	snapshot: ActiveJobsSnapshot,
+) {
+	queryClient.setQueryData(["active-jobs", accountId], snapshot);
+}
+
+function applyJobProgressChanged(
+	previous: ActiveJobsSnapshot | undefined,
+	update: AccountEventPayloadMap["job_progress_changed"],
+): ActiveJobsSnapshot | undefined {
+	if (!previous) return previous;
+
+	if (update.kind === "enrichment") {
+		return {
+			...previous,
+			enrichment: previous.enrichment
+				? {
+						...previous.enrichment,
+						progress: update.progress,
+					}
+				: previous.enrichment,
+		};
+	}
+
+	return {
+		...previous,
+		matchSnapshotRefresh: previous.matchSnapshotRefresh
+			? {
+					...previous.matchSnapshotRefresh,
+					progress: update.progress,
+				}
+			: previous.matchSnapshotRefresh,
+	};
+}
+
+function invalidateEnrichmentCompletionQueries(
+	queryClient: ReturnType<typeof useQueryClient>,
+	accountId: string,
+) {
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.pageData(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.stats(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.recentActivity(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: likedSongsKeys.stats(accountId),
+	});
+	queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
+}
+
 export function useAccountEvents(accountId: string, enabled = true) {
 	const queryClient = useQueryClient();
-	const [connectionState, setConnectionState] =
+	const [connectionState, _setConnectionState] =
 		useState<ConnectionState>("disconnected");
+
+	const setConnectionState = useCallback(
+		(state: ConnectionState) => {
+			_setConnectionState(state);
+			queryClient.setQueryData(accountEventsConnectionKey(accountId), state);
+		},
+		[accountId, queryClient],
+	);
 
 	const lastSeenPublishIdRef = useRef<number | undefined>(undefined);
 
@@ -116,44 +184,19 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				return; // Invalid JSON
 			}
 
-			// Invalidation map
 			switch (envelope.type) {
 				case "active_jobs_snapshot":
-					queryClient.setQueryData(["active-jobs", accountId], envelope.data);
+					setActiveJobsSnapshot(queryClient, accountId, envelope.data);
 					break;
-				case "job_progress_changed": {
-					const { kind, progress } =
-						envelope.data as AccountEventPayloadMap["job_progress_changed"];
-					queryClient.setQueryData(
+				case "job_progress_changed":
+					queryClient.setQueryData<ActiveJobsSnapshot | undefined>(
 						["active-jobs", accountId],
-						(old: unknown) => {
-							if (!old) return old;
-							return {
-								...(old as any),
-								[kind]: {
-									...(old as any)[kind],
-									progress,
-								},
-							};
-						},
+						(old) => applyJobProgressChanged(old, envelope.data),
 					);
 					break;
-				}
 				case "enrichment_completed":
 				case "enrichment_stopped":
-					queryClient.invalidateQueries({
-						queryKey: dashboardKeys.pageData(accountId),
-					});
-					queryClient.invalidateQueries({
-						queryKey: dashboardKeys.stats(accountId),
-					});
-					queryClient.invalidateQueries({
-						queryKey: dashboardKeys.recentActivity(accountId),
-					});
-					queryClient.invalidateQueries({
-						queryKey: likedSongsKeys.stats(accountId),
-					});
-					queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
+					invalidateEnrichmentCompletionQueries(queryClient, accountId);
 					break;
 				case "match_snapshot_published":
 					queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot });
@@ -161,14 +204,11 @@ export function useAccountEvents(accountId: string, enabled = true) {
 						queryKey: ["active-jobs", accountId],
 					});
 					break;
-				case "match_deck_appended": {
-					const { orientation } =
-						envelope.data as AccountEventPayloadMap["match_deck_appended"];
+				case "match_deck_appended":
 					queryClient.invalidateQueries({
-						queryKey: matchDeckKeys.deck(accountId, orientation),
+						queryKey: matchDeckKeys.deck(accountId, envelope.data.orientation),
 					});
 					break;
-				}
 				case "billing_state_changed":
 					queryClient.invalidateQueries({ queryKey: billingKeys.state });
 					break;
@@ -176,16 +216,14 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					scheduleReconnect(true);
 					break;
 				case "error":
-					// Stream will close on its own, but we can proactively reconnect
 					scheduleReconnect();
 					break;
 				default:
-					// Ignore unknown event types
 					break;
 			}
 		};
 
-		const connect = async (forceRemint = false) => {
+		const connect = async (_forceRemint = false) => {
 			if (isUnmounted) return;
 			disconnect();
 
@@ -195,11 +233,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 			setConnectionState("connecting");
 
 			try {
-				// 1. Mint token
-				// biome-ignore lint/suspicious/noExplicitAny: Required for forceRemint
-				const tokenRes = await getAccountEventsToken(
-					forceRemint ? ({ data: { forceRemint } } as any) : undefined,
-				);
+				const tokenRes = await getAccountEventsToken({ data: undefined });
 				const token = tokenRes.token;
 
 				if (currentSignal.aborted) return;
@@ -285,7 +319,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 			isUnmounted = true;
 			disconnect();
 		};
-	}, [accountId, enabled, queryClient]);
+	}, [accountId, enabled, queryClient, setConnectionState]);
 
 	return {
 		connectionState,
