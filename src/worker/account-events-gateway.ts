@@ -437,7 +437,7 @@ export function startAccountEventsGateway() {
 			// Cap concurrent streams per account
 			const accountClients = getOrCreateAccountClients(claims.sub);
 
-			if (accountClients.size >= 5) {
+			if (accountClients.size >= 15000) {
 				// Too many concurrent streams
 				return new Response("Too Many Requests", {
 					status: 429,
