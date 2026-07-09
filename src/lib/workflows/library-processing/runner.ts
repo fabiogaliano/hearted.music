@@ -243,22 +243,6 @@ async function runMatchSnapshotRefreshJob(
 		const result = await executeMatchSnapshotRefreshJob(job, actor);
 
 		if (result.status === "superseded") {
-			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
-				job,
-				"completed",
-				"superseded",
-				null,
-			);
-			if (Result.isError(completedResult)) {
-				log.error("mark-completed-failed", {
-					actor,
-					jobId: job.id,
-					accountId: job.account_id,
-					error: completedResult.error.message,
-				});
-				throw new Error(completedResult.error.message);
-			}
-
 			await writeMeasurement(
 				job,
 				actor,
@@ -279,12 +263,58 @@ async function runMatchSnapshotRefreshJob(
 				changeKind: change.kind,
 			});
 
+			if (settlement === "settlement_failed") {
+				throw new Error("Library processing settlement failed");
+			}
+
+			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
+				job,
+				"completed",
+				"superseded",
+				null,
+			);
+			if (Result.isError(completedResult)) {
+				log.error("mark-completed-failed", {
+					actor,
+					jobId: job.id,
+					accountId: job.account_id,
+					error: completedResult.error.message,
+				});
+				throw new Error(completedResult.error.message);
+			}
+
 			return {
 				status: "completed",
 				workflow: "match_snapshot_refresh",
 				result,
 				settlement,
 			};
+		}
+
+		await writeMeasurement(
+			job,
+			actor,
+			"match_snapshot_refresh",
+			startedAt,
+			"completed",
+			{ published: result.published, isEmpty: result.isEmpty },
+		);
+
+		const change = MatchSnapshotChanges.published({
+			accountId: result.accountId,
+			jobId: result.jobId,
+			snapshotId: result.snapshotId,
+		});
+		const settlement = await settleLibraryProcessing(change, {
+			actor,
+			jobId: job.id,
+			accountId: result.accountId,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
+		});
+
+		if (settlement === "settlement_failed") {
+			throw new Error("Library processing settlement failed");
 		}
 
 		const completedResult = await settleMatchSnapshotRefreshJobTerminal(
@@ -303,27 +333,6 @@ async function runMatchSnapshotRefreshJob(
 			throw new Error(completedResult.error.message);
 		}
 
-		await writeMeasurement(
-			job,
-			actor,
-			"match_snapshot_refresh",
-			startedAt,
-			"completed",
-			{ published: result.published, isEmpty: result.isEmpty },
-		);
-
-		const change = MatchSnapshotChanges.published({
-			accountId: result.accountId,
-			jobId: result.jobId,
-		});
-		const settlement = await settleLibraryProcessing(change, {
-			actor,
-			jobId: job.id,
-			accountId: result.accountId,
-			workflow: "match_snapshot_refresh",
-			changeKind: change.kind,
-		});
-
 		return {
 			status: "completed",
 			workflow: "match_snapshot_refresh",
@@ -337,6 +346,32 @@ async function runMatchSnapshotRefreshJob(
 			jobId: job.id,
 			accountId: job.account_id,
 		});
+		await writeMeasurement(
+			job,
+			actor,
+			"match_snapshot_refresh",
+			startedAt,
+			"error",
+		);
+
+		const change = MatchSnapshotChanges.failed({
+			accountId: job.account_id,
+			jobId: job.id,
+			snapshotId: null,
+		});
+		const settlement = await settleLibraryProcessing(change, {
+			actor,
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow: "match_snapshot_refresh",
+			changeKind: change.kind,
+		});
+
+		if (settlement === "settlement_failed") {
+			// Do not log here, let the catch handle it or we just throw and defer terminalisation
+			throw new Error("Library processing settlement failed");
+		}
+
 		await settleMatchSnapshotRefreshJobTerminal(
 			job,
 			"failed",
@@ -350,25 +385,6 @@ async function runMatchSnapshotRefreshJob(
 				accountId: job.account_id,
 				error: errorMessage(markError),
 			});
-		});
-		await writeMeasurement(
-			job,
-			actor,
-			"match_snapshot_refresh",
-			startedAt,
-			"error",
-		);
-
-		const change = MatchSnapshotChanges.failed({
-			accountId: job.account_id,
-			jobId: job.id,
-		});
-		const settlement = await settleLibraryProcessing(change, {
-			actor,
-			jobId: job.id,
-			accountId: job.account_id,
-			workflow: "match_snapshot_refresh",
-			changeKind: change.kind,
 		});
 
 		return {

@@ -276,26 +276,18 @@ export async function dispatchDeckJob(
 					},
 				});
 
-				try {
-					await sql.begin(async (tx) => {
-						await writeAccountEvent(tx, {
-							accountId: job.account_id,
-							type: "match_deck_appended",
-							payload: {
-								orientation,
-								sessionId,
-								snapshotId: snapshotId,
-								appendedCount: appendedCount,
-							},
-						});
-					});
-				} catch (err) {
-					log.warn("match-deck-append-outbox-failed", {
-						jobId: job.id,
+				await sql.begin(async (tx) => {
+					await writeAccountEvent(tx, {
 						accountId: job.account_id,
-						error: errorMessage(err),
+						type: "match_deck_appended",
+						payload: {
+							orientation,
+							sessionId,
+							snapshotId: snapshotId,
+							appendedCount: appendedCount,
+						},
 					});
-				}
+				});
 
 				// M5: the newly-appended region is uncaptured; the baked deck view has
 				// no on-demand materialize fallback (H4/L2 residual), so a session
