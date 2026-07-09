@@ -17,6 +17,8 @@ interface AccountEventClient {
 	controller: StreamController;
 	cursor: number;
 	lastActivity: number;
+	accountId: string;
+	close: () => void;
 }
 
 interface ReplayRow {
@@ -67,7 +69,7 @@ function sendEnvelope(client: AccountEventClient, envelope: StreamEnvelope) {
 			client.controller.desiredSize <= 0
 		) {
 			log.warn("gateway-buffer-overflow", { cursor: client.cursor });
-			client.controller.close();
+			client.close();
 			return false;
 		}
 		client.controller.enqueue(frame);
@@ -103,22 +105,35 @@ async function initializeClientStream(
 	cursor: number,
 	expiresAtSeconds: number,
 ) {
-	const clientState: AccountEventClient = {
-		controller,
-		cursor,
-		lastActivity: Date.now(),
-	};
-	accountClients.add(clientState);
+	let closed = false;
+	let expTimer: ReturnType<typeof setTimeout> | null = null;
 
-	requestSignal.addEventListener("abort", () => {
+	const cleanup = () => {
+		if (closed) return;
+		closed = true;
+		if (expTimer) clearTimeout(expTimer);
 		accountClients.delete(clientState);
 		if (accountClients.size === 0) {
 			clients.delete(accountId);
 		}
-	});
+		try {
+			controller.close();
+		} catch {}
+	};
+
+	const clientState: AccountEventClient = {
+		controller,
+		cursor,
+		lastActivity: Date.now(),
+		accountId,
+		close: cleanup,
+	};
+	accountClients.add(clientState);
+
+	requestSignal.addEventListener("abort", cleanup);
 
 	const timeUntilExp = expiresAtSeconds * 1000 - Date.now();
-	const expTimer = setTimeout(() => {
+	expTimer = setTimeout(() => {
 		try {
 			sendEvent(clientState, {
 				type: "token_expiring",
@@ -126,15 +141,11 @@ async function initializeClientStream(
 				ts: Date.now(),
 				data: { reason: "token_expired" },
 			});
-			controller.close();
 		} catch {
 			// ignore
 		}
+		cleanup();
 	}, timeUntilExp);
-
-	requestSignal.addEventListener("abort", () => {
-		clearTimeout(expTimer);
-	});
 
 	await fetchAndSendReplay(accountId, clientState);
 }
@@ -240,7 +251,7 @@ export function startAccountEventsGateway() {
 							ts: Date.now(),
 							data: { code: "revoked" },
 						});
-						client.controller.close();
+						client.close();
 					} catch {
 						// Ignore
 					}
@@ -259,7 +270,7 @@ export function startAccountEventsGateway() {
 						client.controller.desiredSize !== null &&
 						client.controller.desiredSize <= 0
 					) {
-						client.controller.close();
+						client.close();
 					} else {
 						client.controller.enqueue(": ping\n\n");
 					}
@@ -363,9 +374,10 @@ export async function stopAccountEventsGateway() {
 		await querySql.end();
 	}
 	for (const accountClients of clients.values()) {
-		for (const client of accountClients) {
+		// iterate over a copy since close() mutates the set
+		for (const client of Array.from(accountClients)) {
 			try {
-				client.controller.close();
+				client.close();
 			} catch {}
 		}
 	}
