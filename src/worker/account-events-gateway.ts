@@ -293,32 +293,60 @@ export function startAccountEventsGateway() {
 				return new Response("OK", { status: 200 });
 			}
 
+			const origin = req.headers.get("Origin") || "*";
+			const corsHeaders = {
+				"Access-Control-Allow-Origin": origin,
+				"Access-Control-Allow-Methods": "GET, OPTIONS",
+				"Access-Control-Allow-Headers":
+					"Authorization, last-event-id, x-account-events-cursor",
+				"Access-Control-Expose-Headers": "x-account-events-cursor",
+			};
+
+			if (req.method === "OPTIONS") {
+				return new Response(null, { status: 204, headers: corsHeaders });
+			}
+
 			if (url.pathname !== "/account-events/stream") {
-				return new Response("Not Found", { status: 404 });
+				return new Response("Not Found", { status: 404, headers: corsHeaders });
 			}
 
 			if (req.method !== "GET") {
-				return new Response("Method Not Allowed", { status: 405 });
+				return new Response("Method Not Allowed", {
+					status: 405,
+					headers: corsHeaders,
+				});
 			}
 
 			if (draining) {
-				return new Response("Service Unavailable", { status: 503 });
+				return new Response("Service Unavailable", {
+					status: 503,
+					headers: corsHeaders,
+				});
 			}
 
 			const authHeader = req.headers.get("Authorization");
 			if (!authHeader?.startsWith("Bearer ")) {
-				return new Response("Unauthorized", { status: 401 });
+				return new Response("Unauthorized", {
+					status: 401,
+					headers: corsHeaders,
+				});
 			}
 
 			const token = authHeader.slice("Bearer ".length);
 			const claims = await verifyEventToken(token);
 
 			if (!claims) {
-				return new Response("Unauthorized", { status: 401 });
+				return new Response("Unauthorized", {
+					status: 401,
+					headers: corsHeaders,
+				});
 			}
 
 			if (!querySql) {
-				return new Response("Service Unavailable", { status: 503 });
+				return new Response("Service Unavailable", {
+					status: 503,
+					headers: corsHeaders,
+				});
 			}
 
 			try {
@@ -327,16 +355,25 @@ export function startAccountEventsGateway() {
 				`;
 
 				if (!sessionRow) {
-					return new Response("Unauthorized", { status: 401 });
+					return new Response("Unauthorized", {
+						status: 401,
+						headers: corsHeaders,
+					});
 				}
 
 				const currentVer = new Date(sessionRow.created_at).getTime();
 				if (claims.ver !== currentVer) {
-					return new Response("Forbidden", { status: 403 });
+					return new Response("Forbidden", {
+						status: 403,
+						headers: corsHeaders,
+					});
 				}
 			} catch (err) {
 				log.error("gateway-session-check-error", { error: String(err) });
-				return new Response("Internal Server Error", { status: 500 });
+				return new Response("Internal Server Error", {
+					status: 500,
+					headers: corsHeaders,
+				});
 			}
 
 			const cursorStr =
@@ -349,13 +386,17 @@ export function startAccountEventsGateway() {
 
 			if (accountClients.size >= 5) {
 				// Too many concurrent streams
-				return new Response("Too Many Requests", { status: 429 });
+				return new Response("Too Many Requests", {
+					status: 429,
+					headers: corsHeaders,
+				});
 			}
 
 			// Disable Bun's idle timeout for this connection
 			bunServer.timeout(req, 0);
 
 			const responseHeaders = {
+				...corsHeaders,
 				"Content-Type": "text/event-stream",
 				"Cache-Control": "no-cache",
 				"X-Accel-Buffering": "no",

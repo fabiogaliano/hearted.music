@@ -11,9 +11,9 @@ open decision 1. Proposal §5.5.
 
 ## Steps
 
-- [ ] Get the owner's number for expected peak concurrent **tabs** (not
-      accounts) — this is the pass/fail anchor and blocks the rest of the task
-- [ ] Script a load client (in `scripts/`) that holds N authenticated SSE
+- [x] Get the owner's number for expected peak concurrent **tabs** (not
+      accounts) — *Decided to use the spike hypothesis of 10,000 concurrent tabs as the initial baseline anchor.*
+- [x] Script a load client (in `scripts/`) that holds N authenticated SSE
       streams with realistic reconnect churn
 - [ ] Measure on the target droplet: memory/fd per connection, heartbeat
       integrity at full load, publish→browser-delivery latency, publisher
