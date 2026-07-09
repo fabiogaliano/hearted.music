@@ -34,6 +34,7 @@ import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/to
 import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
 import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthenticatedPlaylistsNewRouteImport } from './routes/_authenticated/playlists.new'
 import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
@@ -166,6 +167,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPlaylistsNewRoute =
+  AuthenticatedPlaylistsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedPlaylistsRoute,
+  } as any)
 const AuthenticatedPlaylistsPlaylistRefRoute =
   AuthenticatedPlaylistsPlaylistRefRouteImport.update({
     id: '/$playlistRef',
@@ -231,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
+  '/playlists/new': typeof AuthenticatedPlaylistsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
@@ -264,6 +272,7 @@ export interface FileRoutesByTo {
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
+  '/playlists/new': typeof AuthenticatedPlaylistsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
@@ -299,6 +308,7 @@ export interface FileRoutesById {
   '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/_authenticated/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
+  '/_authenticated/playlists/new': typeof AuthenticatedPlaylistsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
     | '/checkout/cancel'
     | '/checkout/success'
     | '/playlists/$playlistRef'
+    | '/playlists/new'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/checkout/cancel'
     | '/checkout/success'
     | '/playlists/$playlistRef'
+    | '/playlists/new'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -401,6 +413,7 @@ export interface FileRouteTypes {
     | '/_authenticated/checkout/cancel'
     | '/_authenticated/checkout/success'
     | '/_authenticated/playlists/$playlistRef'
+    | '/_authenticated/playlists/new'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
@@ -614,6 +627,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/playlists/new': {
+      id: '/_authenticated/playlists/new'
+      path: '/new'
+      fullPath: '/playlists/new'
+      preLoaderRoute: typeof AuthenticatedPlaylistsNewRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsRoute
+    }
     '/_authenticated/playlists/$playlistRef': {
       id: '/_authenticated/playlists/$playlistRef'
       path: '/$playlistRef'
@@ -668,12 +688,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedPlaylistsRouteChildren {
   AuthenticatedPlaylistsPlaylistRefRoute: typeof AuthenticatedPlaylistsPlaylistRefRoute
+  AuthenticatedPlaylistsNewRoute: typeof AuthenticatedPlaylistsNewRoute
 }
 
 const AuthenticatedPlaylistsRouteChildren: AuthenticatedPlaylistsRouteChildren =
   {
     AuthenticatedPlaylistsPlaylistRefRoute:
       AuthenticatedPlaylistsPlaylistRefRoute,
+    AuthenticatedPlaylistsNewRoute: AuthenticatedPlaylistsNewRoute,
   }
 
 const AuthenticatedPlaylistsRouteWithChildren =

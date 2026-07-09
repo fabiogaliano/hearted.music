@@ -4484,6 +4484,14 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			select_phase1_song_ids_needing_enrichment_work: {
+				Args: { p_account_id: string; p_limit: number };
+				Returns: {
+					needs_audio_features: boolean;
+					needs_genre_tagging: boolean;
+					song_id: string;
+				}[];
+			};
 			select_songs_needing_language_detection: {
 				Args: { p_song_ids: string[] };
 				Returns: {
