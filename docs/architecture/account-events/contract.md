@@ -300,9 +300,9 @@ Owned by the shell; this is the concrete form of `proposal.md` §9.
 
 ## 7. Open contract decisions
 
-1. **Capacity anchor.** The connection budget needs a real number: expected peak
-   concurrent *tabs* (not accounts). Owner input required before the load test
-   can have a pass/fail target.
+1. **Capacity validation.** The owner anchor is now **10,000 concurrent tabs**
+   for the initial pass/fail target, but the real capacity result is still open
+   until Task 15 records measured load-test evidence on the target environment.
 2. **`job_progress_changed` in phase 1?** Ship snapshot-only first; add the
    progress delta only if snapshot cadence feels coarse in practice.
 3. **Shared contract module location.** Proposed `src/lib/account-events/contract.ts`;

@@ -351,6 +351,7 @@ describeLocal("account-events-gateway integration", () => {
 			mockServer,
 		);
 		expect(res503.status).toBe(503);
+		expect(res503.headers.get("Retry-After")).toBe("10");
 
 		setAccountEventsGatewayDraining(false);
 	});

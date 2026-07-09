@@ -12,12 +12,16 @@ const DURATION_SECONDS = process.env.DURATION_SECONDS
 	? parseInt(process.env.DURATION_SECONDS, 10)
 	: 60;
 const RECONNECT_CHURN_PERCENT = 0.05;
+const MASS_RECONNECT_AT_SECONDS = process.env.MASS_RECONNECT_AT_SECONDS
+	? parseInt(process.env.MASS_RECONNECT_AT_SECONDS, 10)
+	: null;
 const TOKENS_FILE = process.env.ACCOUNT_EVENTS_TOKENS_FILE;
 const TOKENS_INLINE = process.env.ACCOUNT_EVENTS_TOKENS;
 
 let activeConnections = 0;
 let totalMessages = 0;
 let errors = 0;
+let reconnects = 0;
 
 interface LoadTestClient {
 	disconnect: () => void;
@@ -83,27 +87,50 @@ function classifyError(error: unknown): string {
 
 async function createClient(token: string): Promise<LoadTestClient> {
 	let abortController = new AbortController();
+	let shouldRun = true;
+	let suppressReconnectOnAbort = false;
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function clearReconnectTimer() {
+		if (!reconnectTimer) return;
+		clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+	}
+
+	function scheduleReconnect() {
+		if (!shouldRun || reconnectTimer) return;
+		reconnects++;
+		const delayMs = Math.floor(Math.random() * 5000);
+		reconnectTimer = setTimeout(() => {
+			reconnectTimer = null;
+			abortController = new AbortController();
+			void connect();
+		}, delayMs);
+	}
 
 	async function connect() {
 		activeConnections++;
+		const currentAbortController = abortController;
 		try {
 			const response = await fetch(GATEWAY_URL, {
 				headers: {
 					Accept: "text/event-stream",
 					Authorization: `Bearer ${token}`,
 				},
-				signal: abortController.signal,
+				signal: currentAbortController.signal,
 			});
 
 			if (!response.ok) {
 				console.error(`HTTP Error: ${response.status} ${response.statusText}`);
 				errors++;
+				scheduleReconnect();
 				return;
 			}
 
 			if (!response.body) {
 				console.error("HTTP Error: stream body missing");
 				errors++;
+				scheduleReconnect();
 				return;
 			}
 
@@ -117,14 +144,22 @@ async function createClient(token: string): Promise<LoadTestClient> {
 					totalMessages++;
 				}
 			}
+			if (shouldRun && !currentAbortController.signal.aborted) {
+				scheduleReconnect();
+			}
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
+				if (shouldRun && !suppressReconnectOnAbort) {
+					scheduleReconnect();
+				}
 				return;
 			}
 			console.error("Connection error:", classifyError(error));
 			errors++;
+			scheduleReconnect();
 		} finally {
 			activeConnections--;
+			suppressReconnectOnAbort = false;
 		}
 	}
 
@@ -132,9 +167,16 @@ async function createClient(token: string): Promise<LoadTestClient> {
 
 	return {
 		disconnect: () => {
+			shouldRun = false;
+			suppressReconnectOnAbort = true;
+			clearReconnectTimer();
 			abortController.abort();
 		},
 		reconnect: () => {
+			if (!shouldRun) return;
+			reconnects++;
+			suppressReconnectOnAbort = true;
+			clearReconnectTimer();
 			abortController.abort();
 			abortController = new AbortController();
 			void connect();
@@ -173,10 +215,24 @@ async function runTest() {
 	console.log(`Ramp up complete. ${activeConnections} connections active.`);
 
 	const startTime = Date.now();
+	let massReconnectTriggered = false;
 	while ((Date.now() - startTime) / 1000 < DURATION_SECONDS) {
+		const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
 		console.log(
-			`[Status] Active: ${activeConnections} | Errors: ${errors} | Msgs Rx: ${totalMessages}`,
+			`[Status] Elapsed: ${elapsedSeconds}s | Active: ${activeConnections} | Errors: ${errors} | Reconnects: ${reconnects} | Msgs Rx: ${totalMessages}`,
 		);
+
+		if (
+			MASS_RECONNECT_AT_SECONDS !== null &&
+			!massReconnectTriggered &&
+			elapsedSeconds >= MASS_RECONNECT_AT_SECONDS
+		) {
+			massReconnectTriggered = true;
+			console.log("Triggering mass reconnect storm...");
+			for (const client of clients) {
+				client.reconnect();
+			}
+		}
 
 		const churnCount = Math.floor(
 			(TARGET_TABS * RECONNECT_CHURN_PERCENT * 5) / 60,
@@ -198,6 +254,7 @@ async function runTest() {
 	console.log(`Target Tabs: ${TARGET_TABS}`);
 	console.log(`Duration: ${DURATION_SECONDS}s`);
 	console.log(`Total Errors: ${errors}`);
+	console.log(`Total Reconnects: ${reconnects}`);
 	console.log(`Total Messages Received: ${totalMessages}`);
 	process.exit(0);
 }

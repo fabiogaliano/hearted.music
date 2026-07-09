@@ -37,6 +37,8 @@ interface StreamEnvelope {
 }
 
 const REPLAY_BATCH_SIZE = 500;
+const DRAIN_RETRY_AFTER_SECONDS = 10;
+const BUSY_RETRY_AFTER_SECONDS = 5;
 
 // Connected clients grouped by accountId
 const clients = new Map<string, Set<AccountEventClient>>();
@@ -373,7 +375,10 @@ export function startAccountEventsGateway() {
 			if (draining) {
 				return new Response("Service Unavailable", {
 					status: 503,
-					headers: corsHeaders,
+					headers: {
+						...corsHeaders,
+						"Retry-After": String(DRAIN_RETRY_AFTER_SECONDS),
+					},
 				});
 			}
 
@@ -398,7 +403,10 @@ export function startAccountEventsGateway() {
 			if (!querySql) {
 				return new Response("Service Unavailable", {
 					status: 503,
-					headers: corsHeaders,
+					headers: {
+						...corsHeaders,
+						"Retry-After": String(BUSY_RETRY_AFTER_SECONDS),
+					},
 				});
 			}
 
@@ -437,11 +445,14 @@ export function startAccountEventsGateway() {
 			// Cap concurrent streams per account
 			const accountClients = getOrCreateAccountClients(claims.sub);
 
-			if (accountClients.size >= 15000) {
+			if (accountClients.size >= 5) {
 				// Too many concurrent streams
 				return new Response("Too Many Requests", {
 					status: 429,
-					headers: corsHeaders,
+					headers: {
+						...corsHeaders,
+						"Retry-After": String(BUSY_RETRY_AFTER_SECONDS),
+					},
 				});
 			}
 

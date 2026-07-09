@@ -339,9 +339,12 @@ describe("useAccountEvents", () => {
 			createdStreams[0]?.close();
 		});
 
-		await waitFor(() => {
-			expect(mockFetch).toHaveBeenCalledTimes(2);
-		});
+		await waitFor(
+			() => {
+				expect(mockFetch).toHaveBeenCalledTimes(2);
+			},
+			{ timeout: 2500 },
+		);
 
 		const reconnectHeaders = mockFetch.mock.calls[1]?.[1]?.headers as
 			| Record<string, string>

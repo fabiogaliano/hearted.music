@@ -19,8 +19,30 @@ export type ConnectionState =
 	| "error"
 	| "forbidden";
 
-const BACKOFF_BASE_MS = 500;
-const BACKOFF_CAP_MS = 30000;
+const BACKOFF_BASE_MS = 1_000;
+const BACKOFF_CAP_MS = 30_000;
+const STREAM_CLOSE_RECONNECT_FLOOR_MS = 2_000;
+const RETRY_AFTER_JITTER_CAP_MS = 5_000;
+
+interface ReconnectOptions {
+	forceRemint?: boolean;
+	retryAfterMs?: number;
+	minimumDelayMs?: number;
+}
+
+function parseRetryAfterMs(value: string | null): number | undefined {
+	if (!value) return undefined;
+
+	const seconds = Number(value);
+	if (Number.isFinite(seconds) && seconds >= 0) {
+		return seconds * 1000;
+	}
+
+	const dateMs = Date.parse(value);
+	if (Number.isNaN(dateMs)) return undefined;
+
+	return Math.max(0, dateMs - Date.now());
+}
 
 export const accountEventsConnectionKey = (accountId: string) =>
 	["account-events-connection", accountId] as const;
@@ -125,12 +147,12 @@ export function useAccountEvents(accountId: string, enabled = true) {
 			clearTimers();
 		};
 
-		const scheduleReconnect = (forceRemint = false) => {
+		const scheduleReconnect = (options: ReconnectOptions = {}) => {
 			if (isUnmounted) return;
 			disconnect();
 			setConnectionState("error");
 
-			if (forceRemint) {
+			if (options.forceRemint) {
 				void connect(true);
 				return;
 			}
@@ -140,11 +162,19 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				BACKOFF_CAP_MS,
 				BACKOFF_BASE_MS * 2 ** attempt,
 			);
-			const jitteredDelay = Math.random() * baseDelay;
+			const minimumDelay = options.minimumDelayMs ?? 0;
+			const backoffDelay = Math.max(minimumDelay, Math.random() * baseDelay);
+			const retryAfterMs = options.retryAfterMs;
+			const retryAfterDelay =
+				retryAfterMs === undefined
+					? undefined
+					: retryAfterMs +
+						Math.random() * Math.min(RETRY_AFTER_JITTER_CAP_MS, retryAfterMs);
+			const reconnectDelay = retryAfterDelay ?? backoffDelay;
 
 			reconnectTimer = setTimeout(() => {
 				void connect();
-			}, jitteredDelay);
+			}, reconnectDelay);
 		};
 
 		const processFrame = (frameStr: string) => {
@@ -223,10 +253,12 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					queryClient.invalidateQueries({ queryKey: billingKeys.state });
 					break;
 				case "token_expiring":
-					scheduleReconnect(true);
+					scheduleReconnect({ forceRemint: true });
 					break;
 				case "error":
-					scheduleReconnect();
+					scheduleReconnect({
+						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
+					});
 					break;
 				default:
 					break;
@@ -275,7 +307,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 
 				// Handle HTTP statuses
 				if (response.status === 401) {
-					scheduleReconnect(true); // force remint
+					scheduleReconnect({ forceRemint: true });
 					return;
 				}
 				if (response.status === 403) {
@@ -287,7 +319,12 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					response.status === 503 ||
 					!response.ok
 				) {
-					scheduleReconnect();
+					scheduleReconnect({
+						retryAfterMs: parseRetryAfterMs(
+							response.headers.get("Retry-After"),
+						),
+						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
+					});
 					return;
 				}
 
@@ -296,7 +333,9 @@ export function useAccountEvents(accountId: string, enabled = true) {
 
 				// 3. Parse stream
 				if (!response.body) {
-					scheduleReconnect();
+					scheduleReconnect({
+						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
+					});
 					return;
 				}
 
@@ -321,14 +360,18 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				}
 
 				// Stream closed normally
-				scheduleReconnect();
+				scheduleReconnect({
+					minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
+				});
 			} catch (err: unknown) {
 				if (
 					err instanceof Error &&
 					(err.name === "AbortError" || currentSignal.aborted)
 				)
 					return;
-				scheduleReconnect();
+				scheduleReconnect({
+					minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
+				});
 			}
 		};
 

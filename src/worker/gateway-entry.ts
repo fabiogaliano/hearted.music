@@ -12,7 +12,13 @@ setWorkerFatalObserver((error, phase) => {
 	// We don't have a specific unhealthy state for the gateway, but we'll let it exit
 });
 
+const DRAIN_GRACE_MS = 10_000;
+
 let draining = false;
+
+function sleep(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function main() {
 	log.info("gateway-starting");
@@ -23,6 +29,8 @@ async function main() {
 		log.info("gateway-shutdown-initiated", { signal });
 
 		setAccountEventsGatewayDraining(true);
+		log.info("gateway-drain-grace-started", { durationMs: DRAIN_GRACE_MS });
+		await sleep(DRAIN_GRACE_MS);
 		await stopAccountEventsGateway();
 
 		// Flush queued events
