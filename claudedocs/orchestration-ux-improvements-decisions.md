@@ -10,6 +10,39 @@ avoid concurrent-write races).
 
 ---
 
+## U1 — Reject suggestions + refresh the tray
+
+Status: implemented, reviewed (SHIP), committed.
+
+### Decisions
+
+- **Refresh mechanism = option (a):** added a `suggestionsOffset` int (default 0) to the
+  `previewPlaylistDraft` input, consumed by `assembleDraft` to page the suggestions slice deeper
+  into the already-scored `rankedCandidates` array (after pinning/exclusion filtering). Chosen over
+  "exclude nothing, page deeper" because it's the smallest honest server change — no extra scoring
+  pass, no client dedup — and it guarantees genuinely new, never-excluded songs per refresh.
+- **Undo toast on dismiss = yes**, reusing `restoreSong`. Dismiss and preview-remove are the same
+  underlying exclusion mechanism; giving one undo but not the other would be an arbitrary
+  inconsistency.
+- **`suggestionsOffset` resets on config change, NOT on selection (add/dismiss) change** — resetting
+  on every dismiss would snap the tray back to the top-ranked batch and discard the user's
+  "page deeper" progress; only a real config change invalidates the ranking enough to justify it.
+- **`ROTATION_THRESHOLD = 2` heuristic** added in `SuggestionsTray` to distinguish "one row changed"
+  (let per-row `AnimatePresence` handle exit) from "whole batch rotated" (run the existing whole-tray
+  fade). Needed once dismiss/refresh could both change the fingerprint; without it every single
+  dismiss double-animates (row exit + tray fade).
+- Server input caps `suggestionsOffset` at 1000 (generous ceiling), mirroring how other count fields
+  in that schema are bounded.
+- **`dismissSuggestion` collapsed to an alias of `removeSong`** (post-review dedup) — the transition
+  is identical today, so a byte-for-byte copy was a silent-drift risk; aliasing keeps the distinct
+  semantic name the plan asked for while guaranteeing the two can't diverge.
+
+### Known nit (accepted, not fixed)
+
+- The tray "Refresh" button has no disabled/exhausted state: after repeated refreshes exhaust the
+  entire ranked pool, a further refresh clamps to the last window and visually no-ops. Not a
+  correctness bug and out of the plan's scope; left as future polish.
+
 ## U3 — Ladle-only prototypes: match-reason hints + starting presets
 
 Status: implemented, reviewed (SHIP), committed. Ladle-only, zero prod wiring.

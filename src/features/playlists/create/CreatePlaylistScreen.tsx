@@ -102,6 +102,25 @@ export function CreatePlaylistScreen({
 		[draft.addSong],
 	);
 
+	// Undo mirrors PreviewList's remove-undo: dismissing a suggestion and
+	// removing a preview song are both exclusions under the hood, so a user who
+	// dismisses by mistake gets the same one-tap recovery either way. restoreSong
+	// un-excludes without force-pinning, so the song only reappears in the tray
+	// if the current ranking would still put it there.
+	const handleDismissSuggestion = useCallback(
+		(id: string) => {
+			const song = draft.suggestions.find((s) => s.id === id);
+			draft.dismissSuggestion(id);
+			toast(`Dismissed ${song?.name ?? "song"}`, {
+				action: {
+					label: "Undo",
+					onClick: () => draft.restoreSong(id),
+				},
+			});
+		},
+		[draft.suggestions, draft.dismissSuggestion, draft.restoreSong],
+	);
+
 	// Intent eligibility was seeded by the route loader; this read is synchronous
 	// from cache. Defaults to false (locked) so the teaser renders first-paint
 	// even if the loader somehow didn't pre-warm (defensive).
@@ -349,6 +368,8 @@ export function CreatePlaylistScreen({
 				<SuggestionsTray
 					suggestions={draft.suggestions}
 					onAddSong={handleAddSong}
+					onDismissSong={handleDismissSuggestion}
+					onRefresh={draft.refreshSuggestions}
 				/>
 			</section>
 

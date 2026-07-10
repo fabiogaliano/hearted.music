@@ -26,6 +26,12 @@ import {
 
 const DEBOUNCE_MS = 600;
 
+// Mirrors draft-engine.ts's SUGGESTIONS_COUNT (the server's per-batch size).
+// Not imported directly to keep this client hook decoupled from the scoring
+// engine module; a mismatch here only affects how far one refresh advances,
+// never correctness (assembleDraft clamps out-of-range offsets).
+const SUGGESTIONS_PAGE_SIZE = 12;
+
 export interface CreatePlaylistDraftConfig {
 	intent?: string;
 	genrePills: string[];
@@ -54,6 +60,14 @@ export interface CreatePlaylistDraftActions {
 	 * scoring would still put it in range.
 	 */
 	restoreSong: (id: string) => void;
+	/** Dismiss a suggestion: excludes it, same mechanism as removeSong. */
+	dismissSuggestion: (id: string) => void;
+	/**
+	 * Page the suggestions window deeper into the ranked candidate pool without
+	 * touching config, pins, or exclusions — pulls a genuinely new batch since
+	 * the ranking itself doesn't change.
+	 */
+	refreshSuggestions: () => void;
 	reset: () => void;
 }
 
@@ -114,6 +128,13 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		excludedSongIds: DEFAULT_DRAFT_CONFIG.excludedSongIds,
 	});
 
+	// Pages the suggestions window deeper (see DraftConfig.suggestionsOffset).
+	// Reset to 0 whenever config changes — the ranking itself shifted, so an old
+	// offset would point at an arbitrary, no-longer-meaningful slice. Selection
+	// changes (add/dismiss) do NOT reset it: dismissing one suggestion at a time
+	// shouldn't repeatedly snap the tray back to the top of the ranking.
+	const [suggestionsOffset, setSuggestionsOffset] = useState(0);
+
 	// Debounce only the config portion of the query key. Typing an intent or
 	// sliding maxSongs fires a fresh debounce window rather than a fetch per
 	// keystroke. Selection changes (add/remove) are not debounced — they bypass
@@ -125,6 +146,14 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 	// debouncedConfig holds precisely while a debounce is in flight.
 	const isConfigStale = config !== debouncedConfig;
 
+	// debouncedConfig is the trigger for this reset, not a value read in the
+	// body — removing it from the deps (biome's autofix) would make this run
+	// only once on mount instead of on every config change.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: trigger-only dependency, see comment above
+	useEffect(() => {
+		setSuggestionsOffset(0);
+	}, [debouncedConfig]);
+
 	// The query key is the debounced config + live selection. Selection changes
 	// (add/remove) bypass the config debounce by depending directly on selection,
 	// giving instant visual feedback when the user pins or excludes songs.
@@ -135,6 +164,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		maxSongs: debouncedConfig.maxSongs,
 		pinnedSongIds: selection.pinnedSongIds,
 		excludedSongIds: selection.excludedSongIds,
+		suggestionsOffset,
 	};
 
 	const { data, isLoading, isError } = useQuery(
@@ -189,6 +219,15 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		}));
 	}, []);
 
+	// Dismissing a suggestion is semantically "reject a suggestion" rather than
+	// "undo a pin", but the underlying state transition is identical to
+	// removeSong. Aliased (not reimplemented) so the two can never drift apart.
+	const dismissSuggestion = removeSong;
+
+	const refreshSuggestions = useCallback(() => {
+		setSuggestionsOffset((prev) => prev + SUGGESTIONS_PAGE_SIZE);
+	}, []);
+
 	const reset = useCallback(() => {
 		setConfig({
 			intent: DEFAULT_DRAFT_CONFIG.intent,
@@ -200,6 +239,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 			pinnedSongIds: [],
 			excludedSongIds: [],
 		});
+		setSuggestionsOffset(0);
 	}, []);
 
 	return {
@@ -220,6 +260,8 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		removeSong,
 		addSong,
 		restoreSong,
+		dismissSuggestion,
+		refreshSuggestions,
 		reset,
 	};
 }

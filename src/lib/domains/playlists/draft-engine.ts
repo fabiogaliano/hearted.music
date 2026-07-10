@@ -260,7 +260,12 @@ export interface DraftResult {
 	intentApplied: boolean;
 }
 
-const SUGGESTIONS_COUNT = 12;
+/**
+ * Exported so client-side "refresh suggestions" can page by exactly one
+ * suggestions-page's worth of candidates — keeping the offset step in sync
+ * with how big a "batch" is on the server.
+ */
+export const SUGGESTIONS_COUNT = 12;
 
 /**
  * Assemble the full draft result from scored candidates.
@@ -269,6 +274,12 @@ const SUGGESTIONS_COUNT = 12;
  * Excluded songs are dropped from both preview and suggestions.
  * After reserving pinned slots, remaining preview slots are filled by
  * the top-ranked non-pinned candidates. Suggestions follow immediately after.
+ *
+ * suggestionsOffset pages the suggestions window deeper into the ranked
+ * (non-pinned, non-excluded) candidates without touching config or scoring —
+ * this is what "Refresh suggestions" uses to rotate in a genuinely new batch.
+ * It does not shift the preview window: the preview always starts at the top
+ * of the ranking so a refresh never changes which songs are already picked.
  */
 export function assembleDraft(
 	scored: Array<{ candidate: Phase1Candidate; score: number }>,
@@ -277,6 +288,7 @@ export function assembleDraft(
 	maxSongs: number,
 	intentApplied: boolean,
 	allCandidates: Phase1Candidate[],
+	suggestionsOffset = 0,
 ): DraftResult {
 	const excludedSet = new Set(excludedSongIds);
 	const pinnedSet = new Set(pinnedSongIds);
@@ -309,9 +321,20 @@ export function assembleDraft(
 
 	const remainingSlots = Math.max(0, maxSongs - pinnedCandidates.length);
 	const previewRanked = rankedCandidates.slice(0, remainingSlots);
+
+	// Clamp so a stale/out-of-range offset (e.g. after an exclusion shrinks the
+	// ranked pool, or the user keeps clicking refresh past the end) degrades to
+	// the last available window rather than returning nothing.
+	const suggestionsPoolSize = Math.max(
+		0,
+		rankedCandidates.length - remainingSlots,
+	);
+	const maxOffset = Math.max(0, suggestionsPoolSize - SUGGESTIONS_COUNT);
+	const safeOffset = Math.max(0, Math.min(suggestionsOffset, maxOffset));
+	const suggestionsStart = remainingSlots + safeOffset;
 	const suggestionRanked = rankedCandidates.slice(
-		remainingSlots,
-		remainingSlots + SUGGESTIONS_COUNT,
+		suggestionsStart,
+		suggestionsStart + SUGGESTIONS_COUNT,
 	);
 
 	const preview = [

@@ -2,7 +2,8 @@
  * Tests for SuggestionRow.
  *
  * Covers: render song name/artist, aria-label on add button,
- * onClick fires onAdd with the correct song id, keyboard activation.
+ * onClick fires onAdd with the correct song id, keyboard activation,
+ * dismiss button parity (aria-label, onDismiss firing).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -25,13 +26,13 @@ const SONG: SongVM = {
 
 describe("SuggestionRow", () => {
 	it("renders the song name and artist", () => {
-		render(<SuggestionRow song={SONG} onAdd={vi.fn()} />);
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={vi.fn()} />);
 		expect(screen.getByText("Hilarity Duff")).toBeInTheDocument();
 		expect(screen.getByText("KAYTRANADA")).toBeInTheDocument();
 	});
 
 	it("add button has correct aria-label", () => {
-		render(<SuggestionRow song={SONG} onAdd={vi.fn()} />);
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={vi.fn()} />);
 		const btn = screen.getByRole("button", {
 			name: "Add Hilarity Duff to playlist",
 		});
@@ -41,7 +42,7 @@ describe("SuggestionRow", () => {
 	it("fires onAdd with the song id when the add button is clicked", async () => {
 		const user = userEvent.setup();
 		const onAdd = vi.fn();
-		render(<SuggestionRow song={SONG} onAdd={onAdd} />);
+		render(<SuggestionRow song={SONG} onAdd={onAdd} onDismiss={vi.fn()} />);
 
 		const btn = screen.getByRole("button", {
 			name: "Add Hilarity Duff to playlist",
@@ -55,7 +56,7 @@ describe("SuggestionRow", () => {
 	it("add button is keyboard-activatable via Enter", async () => {
 		const user = userEvent.setup();
 		const onAdd = vi.fn();
-		render(<SuggestionRow song={SONG} onAdd={onAdd} />);
+		render(<SuggestionRow song={SONG} onAdd={onAdd} onDismiss={vi.fn()} />);
 
 		const btn = screen.getByRole("button", {
 			name: "Add Hilarity Duff to playlist",
@@ -67,7 +68,9 @@ describe("SuggestionRow", () => {
 	});
 
 	it("renders album art when imageUrl is present", () => {
-		const { container } = render(<SuggestionRow song={SONG} onAdd={vi.fn()} />);
+		const { container } = render(
+			<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={vi.fn()} />,
+		);
 		// Image is aria-hidden so we query the DOM directly
 		const img = container.querySelector("img");
 		expect(img).toHaveAttribute("src", SONG.imageUrl);
@@ -75,8 +78,62 @@ describe("SuggestionRow", () => {
 
 	it("renders AlbumPlaceholder when imageUrl is null", () => {
 		const { container } = render(
-			<SuggestionRow song={{ ...SONG, imageUrl: null }} onAdd={vi.fn()} />,
+			<SuggestionRow
+				song={{ ...SONG, imageUrl: null }}
+				onAdd={vi.fn()}
+				onDismiss={vi.fn()}
+			/>,
 		);
 		expect(container.querySelector("img")).not.toBeInTheDocument();
+	});
+
+	it("dismiss button has correct aria-label", () => {
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={vi.fn()} />);
+		const btn = screen.getByRole("button", {
+			name: "Dismiss Hilarity Duff",
+		});
+		expect(btn).toBeInTheDocument();
+	});
+
+	it("fires onDismiss with the song id when the dismiss button is clicked", async () => {
+		const user = userEvent.setup();
+		const onDismiss = vi.fn();
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={onDismiss} />);
+
+		const btn = screen.getByRole("button", { name: "Dismiss Hilarity Duff" });
+		await user.click(btn);
+
+		expect(onDismiss).toHaveBeenCalledOnce();
+		expect(onDismiss).toHaveBeenCalledWith("song-05");
+	});
+
+	it("dismiss button is keyboard-activatable via Enter", async () => {
+		const user = userEvent.setup();
+		const onDismiss = vi.fn();
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={onDismiss} />);
+
+		const btn = screen.getByRole("button", { name: "Dismiss Hilarity Duff" });
+		btn.focus();
+		await user.keyboard("{Enter}");
+
+		expect(onDismiss).toHaveBeenCalledOnce();
+	});
+
+	it("dismiss does not fire onAdd, and add does not fire onDismiss", async () => {
+		const user = userEvent.setup();
+		const onAdd = vi.fn();
+		const onDismiss = vi.fn();
+		render(<SuggestionRow song={SONG} onAdd={onAdd} onDismiss={onDismiss} />);
+
+		await user.click(
+			screen.getByRole("button", { name: "Dismiss Hilarity Duff" }),
+		);
+		expect(onAdd).not.toHaveBeenCalled();
+
+		await user.click(
+			screen.getByRole("button", { name: "Add Hilarity Duff to playlist" }),
+		);
+		expect(onDismiss).toHaveBeenCalledOnce();
+		expect(onAdd).toHaveBeenCalledOnce();
 	});
 });

@@ -17,6 +17,8 @@ export interface DraftConfig {
 	maxSongs: number;
 	pinnedSongIds: string[];
 	excludedSongIds: string[];
+	/** Pages the suggestions window deeper; bumped by "Refresh suggestions". */
+	suggestionsOffset: number;
 }
 
 export const DEFAULT_DRAFT_CONFIG: DraftConfig = {
@@ -26,6 +28,7 @@ export const DEFAULT_DRAFT_CONFIG: DraftConfig = {
 	maxSongs: 15,
 	pinnedSongIds: [],
 	excludedSongIds: [],
+	suggestionsOffset: 0,
 };
 
 // Keys are stable and derived from the full config so any parameter change
@@ -41,6 +44,7 @@ export const draftPreviewKeys = {
 			config.matchFilters,
 			config.pinnedSongIds,
 			config.excludedSongIds,
+			config.suggestionsOffset,
 		] as const,
 };
 
@@ -63,6 +67,7 @@ export function playlistDraftPreviewQueryOptions(config: DraftConfig) {
 					maxSongs: config.maxSongs,
 					pinnedSongIds: config.pinnedSongIds,
 					excludedSongIds: config.excludedSongIds,
+					suggestionsOffset: config.suggestionsOffset,
 				},
 			}),
 		staleTime: 30_000,

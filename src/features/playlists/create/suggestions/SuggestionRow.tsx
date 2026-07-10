@@ -6,10 +6,14 @@
  * The flat bordered materiality is preserved — no gradients, no elevation.
  *
  * The add (+) button is a real focusable button with aria-label and a ≥40px
- * hit area. Keyboard: Enter/Space activate via native button behaviour.
+ * hit area. Keyboard: Enter/Space activate via native button behaviour. The
+ * dismiss (×) button is visual/interaction parity with PreviewSongRow's remove
+ * button (same size, hit target, icon) but stays secondary to add: lower
+ * opacity at rest, add keeps the primary (less muted) treatment.
  */
 
-import { PlusIcon } from "@phosphor-icons/react";
+import { PlusIcon, XIcon } from "@phosphor-icons/react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { cn } from "@/lib/shared/utils/utils";
@@ -18,11 +22,21 @@ import { fonts } from "@/lib/theme/fonts";
 interface SuggestionRowProps {
 	song: SongVM;
 	onAdd: (id: string) => void;
+	onDismiss: (id: string) => void;
 }
 
-export function SuggestionRow({ song, onAdd }: SuggestionRowProps) {
+export function SuggestionRow({ song, onAdd, onDismiss }: SuggestionRowProps) {
+	const prefersReducedMotion = useReducedMotion();
+
 	return (
-		<div
+		<motion.div
+			initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+			animate={{ opacity: 1, y: 0 }}
+			exit={
+				prefersReducedMotion
+					? { opacity: 0 }
+					: { opacity: 0, y: 4, transition: { duration: 0.15, ease: "easeIn" } }
+			}
 			className={cn(
 				// Bleed row idiom — same negative margin pattern as other rows
 				"-mx-3 flex items-center gap-4 border-b px-3 py-2.5 last:border-b-0",
@@ -86,7 +100,32 @@ export function SuggestionRow({ song, onAdd }: SuggestionRowProps) {
 				</span>
 			)}
 
-			{/* Add button — ≥40px hit area */}
+			{/* Dismiss button — secondary to add: lower resting opacity, same hit
+			    target/size as PreviewSongRow's remove button. Placed before add so
+			    add stays the visually terminal, primary action in reading order. */}
+			<button
+				type="button"
+				onClick={() => onDismiss(song.id)}
+				aria-label={`Dismiss ${song.name}`}
+				className={cn(
+					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
+					"transition-opacity duration-150 hover:opacity-70 active:scale-[0.96]",
+					"focus-visible:outline-2 focus-visible:outline-offset-2",
+					"[outline-color:var(--t-primary)]",
+				)}
+				style={{
+					minWidth: 40,
+					minHeight: 40,
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					opacity: 0.5,
+				}}
+			>
+				<XIcon size={14} weight="regular" aria-hidden />
+			</button>
+
+			{/* Add button — ≥40px hit area, the primary affordance */}
 			<button
 				type="button"
 				onClick={() => onAdd(song.id)}
@@ -107,6 +146,6 @@ export function SuggestionRow({ song, onAdd }: SuggestionRowProps) {
 			>
 				<PlusIcon size={14} weight="regular" aria-hidden />
 			</button>
-		</div>
+		</motion.div>
 	);
 }

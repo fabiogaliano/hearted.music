@@ -516,4 +516,104 @@ describe("assembleDraft", () => {
 		expect(result.preview[1].id).toBe("b");
 		expect(result.preview[1].matchScore).toBeCloseTo(0.55);
 	});
+
+	// ── suggestionsOffset — "Refresh suggestions" paging ──────────────────────
+
+	it("defaults to the top-ranked window when suggestionsOffset is omitted", () => {
+		const candidates = Array.from({ length: 30 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const scored = makeScored(candidates);
+		const withoutOffset = assembleDraft(scored, [], [], 10, false, candidates);
+		const withZeroOffset = assembleDraft(
+			scored,
+			[],
+			[],
+			10,
+			false,
+			candidates,
+			0,
+		);
+		expect(withoutOffset.suggestions.map((s) => s.id)).toEqual(
+			withZeroOffset.suggestions.map((s) => s.id),
+		);
+	});
+
+	it("suggestionsOffset pages the suggestions window deeper into the ranked pool", () => {
+		const candidates = Array.from({ length: 40 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const scored = makeScored(candidates);
+		const firstBatch = assembleDraft(scored, [], [], 10, false, candidates, 0);
+		const secondBatch = assembleDraft(
+			scored,
+			[],
+			[],
+			10,
+			false,
+			candidates,
+			12,
+		);
+
+		expect(firstBatch.suggestions).toHaveLength(12);
+		expect(secondBatch.suggestions).toHaveLength(12);
+		// Genuinely new songs — no overlap between the two pages.
+		const firstIds = new Set(firstBatch.suggestions.map((s) => s.id));
+		for (const song of secondBatch.suggestions) {
+			expect(firstIds.has(song.id)).toBe(false);
+		}
+	});
+
+	it("suggestionsOffset never changes the preview window", () => {
+		const candidates = Array.from({ length: 40 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const scored = makeScored(candidates);
+		const withoutOffset = assembleDraft(
+			scored,
+			[],
+			[],
+			10,
+			false,
+			candidates,
+			0,
+		);
+		const withOffset = assembleDraft(scored, [], [], 10, false, candidates, 12);
+		expect(withOffset.preview.map((s) => s.id)).toEqual(
+			withoutOffset.preview.map((s) => s.id),
+		);
+	});
+
+	it("clamps an out-of-range suggestionsOffset instead of returning nothing", () => {
+		const candidates = Array.from({ length: 20 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const scored = makeScored(candidates);
+		// Way past the end of the ranked pool
+		const result = assembleDraft(scored, [], [], 10, false, candidates, 1000);
+		expect(result.suggestions.length).toBeGreaterThan(0);
+	});
+
+	it("suggestionsOffset still respects excluded songs", () => {
+		const candidates = Array.from({ length: 30 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const scored = makeScored(candidates);
+		const excluded = ["song-15", "song-16"];
+		const result = assembleDraft(
+			scored,
+			[],
+			excluded,
+			10,
+			false,
+			candidates,
+			5,
+		);
+		const allIds = [
+			...result.preview.map((s) => s.id),
+			...result.suggestions.map((s) => s.id),
+		];
+		expect(allIds).not.toContain("song-15");
+		expect(allIds).not.toContain("song-16");
+	});
 });

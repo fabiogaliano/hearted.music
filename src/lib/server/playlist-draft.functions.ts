@@ -93,6 +93,12 @@ const PreviewPlaylistDraftSchema = z.object({
 	pinnedSongIds: z.array(z.uuid()).max(50),
 	/** Song IDs the user explicitly removed — never appear in results. */
 	excludedSongIds: z.array(z.uuid()).max(500),
+	/**
+	 * Pages the suggestions window deeper into the ranked candidate pool.
+	 * "Refresh suggestions" increments this client-side without changing any
+	 * other config, so the same scored ranking yields a genuinely new batch.
+	 */
+	suggestionsOffset: z.number().int().min(0).max(1000).default(0),
 });
 
 // ============================================================================
@@ -248,6 +254,7 @@ export const previewPlaylistDraft = createServerFn({ method: "POST" })
 			data.maxSongs,
 			effectiveIntentApplied,
 			filteredCandidates,
+			data.suggestionsOffset,
 		);
 	});
 

@@ -335,6 +335,16 @@ function FullScreenHarness({
 		setPreview((prev) => [...prev, song]);
 	}
 
+	function handleDismissSuggestion(id: string) {
+		setSuggestions((prev) => prev.filter((s) => s.id !== id));
+	}
+
+	function handleRefreshSuggestions() {
+		// Story-only stand-in for "page deeper": reverse order so the batch
+		// visibly rotates without needing a real server round-trip.
+		setSuggestions((prev) => [...prev].reverse());
+	}
+
 	return (
 		// Nest a story-local QueryClientProvider so the pre-seeded filter options
 		// and top genres are available to ConfigSurface → GenreConfig/FiltersConfig
@@ -445,6 +455,8 @@ function FullScreenHarness({
 					<SuggestionsTray
 						suggestions={suggestions}
 						onAddSong={handleAddSuggestion}
+						onDismissSong={handleDismissSuggestion}
+						onRefresh={handleRefreshSuggestions}
 					/>
 				</section>
 

@@ -222,7 +222,11 @@ export const SuggestionRowStory: Story = () => (
 	<div className="mx-auto max-w-lg p-8">
 		<ul>
 			<li style={{ listStyle: "none" }}>
-				<SuggestionRow song={SUGGESTION_ROW_SONG} onAdd={() => {}} />
+				<SuggestionRow
+					song={SUGGESTION_ROW_SONG}
+					onAdd={() => {}}
+					onDismiss={() => {}}
+				/>
 			</li>
 		</ul>
 	</div>
@@ -240,6 +244,10 @@ export const SuggestionsTrayStory: Story = () => {
 				onAddSong={(id) =>
 					setSuggestions((prev) => prev.filter((s) => s.id !== id))
 				}
+				onDismissSong={(id) =>
+					setSuggestions((prev) => prev.filter((s) => s.id !== id))
+				}
+				onRefresh={() => setSuggestions((prev) => [...prev].reverse())}
 			/>
 		</div>
 	);
@@ -248,7 +256,12 @@ SuggestionsTrayStory.storyName = "Suggestions Tray";
 
 export const SuggestionsTrayEmpty: Story = () => (
 	<div className="mx-auto max-w-lg p-8">
-		<SuggestionsTray suggestions={[]} onAddSong={() => {}} />
+		<SuggestionsTray
+			suggestions={[]}
+			onAddSong={() => {}}
+			onDismissSong={() => {}}
+			onRefresh={() => {}}
+		/>
 	</div>
 );
 SuggestionsTrayEmpty.storyName = "Suggestions Tray — empty";

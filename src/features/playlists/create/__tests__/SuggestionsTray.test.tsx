@@ -1,7 +1,8 @@
 /**
  * Tests for SuggestionsTray.
  *
- * Covers: renders suggestions, empty state, calls onAddSong with correct id.
+ * Covers: renders suggestions, empty state, calls onAddSong with correct id,
+ * calls onDismissSong with correct id, refresh button triggers onRefresh.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -30,26 +31,54 @@ const SUGGESTIONS: SongVM[] = [
 
 describe("SuggestionsTray", () => {
 	it("shows empty state when no suggestions", () => {
-		render(<SuggestionsTray suggestions={[]} onAddSong={vi.fn()} />);
+		render(
+			<SuggestionsTray
+				suggestions={[]}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
 		expect(screen.getByText(/no suggestions yet/i)).toBeInTheDocument();
 	});
 
 	it("renders all suggestion rows", () => {
-		render(<SuggestionsTray suggestions={SUGGESTIONS} onAddSong={vi.fn()} />);
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
 		expect(screen.getByText("Sunday")).toBeInTheDocument();
 		expect(screen.getByText("Jaded")).toBeInTheDocument();
 		expect(screen.getByText("Fair")).toBeInTheDocument();
 	});
 
 	it("renders the suggestion count in the header", () => {
-		render(<SuggestionsTray suggestions={SUGGESTIONS} onAddSong={vi.fn()} />);
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
 		expect(screen.getByText(/3 suggestions/i)).toBeInTheDocument();
 	});
 
 	it("calls onAddSong with the correct id when an add button is clicked", async () => {
 		const user = userEvent.setup();
 		const onAddSong = vi.fn();
-		render(<SuggestionsTray suggestions={SUGGESTIONS} onAddSong={onAddSong} />);
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={onAddSong}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
 
 		const btn = screen.getByRole("button", { name: "Add Sunday to playlist" });
 		await user.click(btn);
@@ -58,15 +87,72 @@ describe("SuggestionsTray", () => {
 		expect(onAddSong).toHaveBeenCalledWith("sg1");
 	});
 
+	it("calls onDismissSong with the correct id when a dismiss button is clicked", async () => {
+		const user = userEvent.setup();
+		const onDismissSong = vi.fn();
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={onDismissSong}
+				onRefresh={vi.fn()}
+			/>,
+		);
+
+		const btn = screen.getByRole("button", { name: "Dismiss Sunday" });
+		await user.click(btn);
+
+		expect(onDismissSong).toHaveBeenCalledOnce();
+		expect(onDismissSong).toHaveBeenCalledWith("sg1");
+	});
+
 	it("caps visible suggestions at 10", () => {
 		const manySongs = Array.from({ length: 15 }, (_, i) =>
 			makeSong(`s${i}`, `Song ${i}`),
 		);
-		render(<SuggestionsTray suggestions={manySongs} onAddSong={vi.fn()} />);
+		render(
+			<SuggestionsTray
+				suggestions={manySongs}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
 		// Only 10 add buttons should be rendered
 		const buttons = screen.getAllByRole("button", {
 			name: /add .+ to playlist/i,
 		});
 		expect(buttons).toHaveLength(10);
+	});
+
+	it("renders a refresh affordance in the header", () => {
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: /refresh/i }),
+		).toBeInTheDocument();
+	});
+
+	it("calls onRefresh when the refresh button is clicked", async () => {
+		const user = userEvent.setup();
+		const onRefresh = vi.fn();
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={onRefresh}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: /refresh/i }));
+
+		expect(onRefresh).toHaveBeenCalledOnce();
 	});
 });

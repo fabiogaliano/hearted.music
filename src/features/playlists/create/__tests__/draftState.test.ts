@@ -42,6 +42,11 @@ function restoreSong(state: SelectionState, id: string): SelectionState {
 	};
 }
 
+// dismissSuggestion in useCreatePlaylistDraft is the identical transition to
+// removeSong (see plan U1: "wire it to the existing exclusion mechanism") —
+// mirrored here as its own name so the intent-level test reads clearly.
+const dismissSuggestion = removeSong;
+
 const emptyState: SelectionState = {
 	pinnedSongIds: [],
 	excludedSongIds: [],
@@ -193,5 +198,27 @@ describe("remove → restore round-trip (undo flow)", () => {
 		// After undo: not excluded (engine can include it), not force-pinned
 		expect(state.excludedSongIds).not.toContain("song-01");
 		expect(state.pinnedSongIds).not.toContain("song-01");
+	});
+});
+
+describe("dismissSuggestion", () => {
+	it("adds the dismissed song id to excludedSongIds", () => {
+		const next = dismissSuggestion(emptyState, "song-05");
+		expect(next.excludedSongIds).toContain("song-05");
+	});
+
+	it("does not add the dismissed song to pinnedSongIds", () => {
+		const next = dismissSuggestion(emptyState, "song-05");
+		expect(next.pinnedSongIds).not.toContain("song-05");
+	});
+
+	it("dismiss → restore round-trip: song ends up neither pinned nor excluded", () => {
+		let state = emptyState;
+		state = dismissSuggestion(state, "song-05");
+		expect(state.excludedSongIds).toContain("song-05");
+		state = restoreSong(state, "song-05");
+
+		expect(state.excludedSongIds).not.toContain("song-05");
+		expect(state.pinnedSongIds).not.toContain("song-05");
 	});
 });
