@@ -16,7 +16,8 @@
  *
  * Gated by the Spotify gate state already computed by the parent screen — if
  * reconnect or extension is needed, the CTA is replaced by the appropriate
- * inline affordance instead of a broken submit.
+ * inline affordance instead of a broken submit. Those affordances get the
+ * gate's recheck so the user can recover in place without a page reload.
  */
 
 import { useState } from "react";
@@ -30,17 +31,12 @@ import type {
 import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
+import type { SpotifyGateState } from "../useSpotifyGate";
 import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
 import { ReconnectPrompt } from "./ReconnectPrompt";
 
 const MAX_NAME_LENGTH = 100;
 const DEFAULT_NAME = "New playlist";
-
-type SpotifyGateState =
-	| "checking"
-	| "ok"
-	| "extension-unavailable"
-	| "reconnect-required";
 
 export interface CreateBarProps {
 	/** Ordered song UUIDs to include in the playlist. */
@@ -61,6 +57,8 @@ export interface CreateBarProps {
 	isPreviewStale: boolean;
 	/** Gate state computed by the parent — avoids re-checking on every render. */
 	gateState: SpotifyGateState;
+	/** Re-runs the gate detection; wired to the gate-failure affordances. */
+	recheck: () => Promise<void>;
 	/**
 	 * Called with the trimmed playlist name just before the orchestrator runs.
 	 * Lets the parent capture the name for the success state before this bar
@@ -85,6 +83,7 @@ export function CreateBar({
 	intent,
 	isPreviewStale,
 	gateState,
+	recheck,
 	onNameCommit,
 	onSubmitInput,
 	onResult,
@@ -134,10 +133,10 @@ export function CreateBar({
 
 	// Show the relevant inline affordance for gate failures instead of the CTA.
 	if (gateState === "extension-unavailable") {
-		return <ExtensionUnavailablePrompt />;
+		return <ExtensionUnavailablePrompt onRecheck={recheck} />;
 	}
 	if (gateState === "reconnect-required") {
-		return <ReconnectPrompt entityKey="create-bar" />;
+		return <ReconnectPrompt onRecheck={recheck} />;
 	}
 
 	const songCount = songIds.length;

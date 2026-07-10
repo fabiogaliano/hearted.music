@@ -275,6 +275,7 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 					intent={null}
 					isPreviewStale={false}
 					gateState="ok"
+					recheck={async () => {}}
 					onNameCommit={() => {}}
 					onResult={() => {}}
 				/>
@@ -306,6 +307,7 @@ export const CreateBarReconnect: Story = () => (
 				intent={null}
 				isPreviewStale={false}
 				gateState="reconnect-required"
+				recheck={async () => {}}
 				onNameCommit={() => {}}
 				onResult={() => {}}
 			/>
@@ -330,6 +332,7 @@ export const CreateBarExtensionMissing: Story = () => (
 				intent={null}
 				isPreviewStale={false}
 				gateState="extension-unavailable"
+				recheck={async () => {}}
 				onNameCommit={() => {}}
 				onResult={() => {}}
 			/>
@@ -413,7 +416,7 @@ export const ReconnectPromptStory: Story = () => (
 					Create
 				</span>
 			</div>
-			<ReconnectPrompt entityKey="story-reconnect" />
+			<ReconnectPrompt onRecheck={async () => {}} />
 		</div>
 	</div>
 );
@@ -429,7 +432,7 @@ export const ExtensionMissingStory: Story = () => (
 					Create
 				</span>
 			</div>
-			<ExtensionUnavailablePrompt />
+			<ExtensionUnavailablePrompt onRecheck={async () => {}} />
 		</div>
 	</div>
 );

@@ -69,6 +69,7 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 		intent: null,
 		isPreviewStale: false,
 		gateState: "ok" as const,
+		recheck: vi.fn(async () => {}),
 		onNameCommit: vi.fn(),
 		onResult: vi.fn(),
 		...overrides,

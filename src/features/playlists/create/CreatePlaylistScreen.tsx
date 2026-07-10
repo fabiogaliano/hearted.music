@@ -26,10 +26,6 @@ import type {
 	CreatePlaylistFromDraftResult,
 } from "@/lib/extension/create-playlist-from-draft";
 import { resumePlaylistCreateFromDraft } from "@/lib/extension/create-playlist-from-draft";
-import {
-	getSpotifyConnectionStatus,
-	isExtensionInstalled,
-} from "@/lib/extension/detect";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import { ConfigSurface } from "./config/ConfigSurface";
@@ -43,12 +39,7 @@ import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { PreviewList } from "./preview/PreviewList";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
-
-type SpotifyGateState =
-	| "checking"
-	| "ok"
-	| "extension-unavailable"
-	| "reconnect-required";
+import { useSpotifyGate } from "./useSpotifyGate";
 
 /**
  * Result state held by the screen after the orchestrator returns.
@@ -125,27 +116,9 @@ export function CreatePlaylistScreen({
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
-	// CreateBar re-checks via the same gate state on submit.
-	const [gateState, setGateState] = useState<SpotifyGateState>("checking");
-
-	useEffect(() => {
-		let cancelled = false;
-		async function checkGate() {
-			const installed = await isExtensionInstalled();
-			if (cancelled) return;
-			if (!installed) {
-				setGateState("extension-unavailable");
-				return;
-			}
-			const connected = await getSpotifyConnectionStatus();
-			if (cancelled) return;
-			setGateState(connected ? "ok" : "reconnect-required");
-		}
-		void checkGate();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+	// The gate keeps re-checking while unhealthy (focus/visibility + a manual
+	// "Check again" in the prompts) so recovering in another tab isn't a dead end.
+	const { gateState, recheck, reportGateFailure } = useSpotifyGate();
 
 	// Holds the name committed just before the orchestrator runs. A ref avoids
 	// the stale-closure risk: handleCreateResult fires after an async boundary,
@@ -203,10 +176,10 @@ export function CreatePlaylistScreen({
 			});
 		} else if (result.status === "reconnect-required") {
 			// The gate was "ok" when submit started but auth expired mid-flight.
-			// Update gate so the create section swaps to the reconnect affordance.
-			setGateState("reconnect-required");
+			// Force the gate so the create section swaps to the reconnect affordance.
+			reportGateFailure("reconnect-required");
 		} else if (result.status === "extension-unavailable") {
-			setGateState("extension-unavailable");
+			reportGateFailure("extension-unavailable");
 		}
 		// error: handled in CreateBar via toast; no flow result change needed.
 	}
@@ -440,6 +413,7 @@ export function CreatePlaylistScreen({
 						intent={draft.committedConfig.intent ?? null}
 						isPreviewStale={draft.isConfigStale}
 						gateState={gateState}
+						recheck={recheck}
 						onNameCommit={onNameCommit}
 						onSubmitInput={onSubmitInput}
 						onResult={handleCreateResult}

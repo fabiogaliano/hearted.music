@@ -466,6 +466,7 @@ function FullScreenHarness({
 						intent={intent ?? null}
 						isPreviewStale={false}
 						gateState={gateState}
+						recheck={async () => {}}
 						onNameCommit={() => {}}
 						onResult={() => {}}
 					/>
