@@ -3,7 +3,10 @@
  *
  * Covers: header count/duration formatting, empty and loading states,
  * aria-live region presence, onRemoveSong called with correct id,
- * sonner toast fired with Undo action, Undo invokes onRestoreSong.
+ * sonner toast fired with Undo action, Undo invokes onRestoreSong, playback
+ * coordinator threading (rows get a play affordance, removing an
+ * actively-previewing row deactivates it first so orphaned audio state can't
+ * linger past the row's removal).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -186,5 +189,71 @@ describe("PreviewList", () => {
 		await user.click(removeBtn);
 
 		expect(onRestoreSong).toHaveBeenCalledWith("s1");
+	});
+
+	it("renders a play affordance on rows when a playback coordinator is supplied", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				playback={playback}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "Play preview for Song Alpha" }),
+		).toBeInTheDocument();
+	});
+
+	it("deactivates playback before removing a row that's currently previewing", async () => {
+		const user = userEvent.setup();
+		const onRemoveSong = vi.fn();
+		const playback = {
+			activePlaybackId: "s1",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={onRemoveSong}
+				onRestoreSong={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Remove Song Alpha" }));
+
+		expect(playback.deactivatePlayback).toHaveBeenCalledOnce();
+		expect(onRemoveSong).toHaveBeenCalledWith("s1");
+	});
+
+	it("does not deactivate playback when removing a row that isn't the active one", async () => {
+		const user = userEvent.setup();
+		const playback = {
+			activePlaybackId: "s2",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Remove Song Alpha" }));
+
+		expect(playback.deactivatePlayback).not.toHaveBeenCalled();
 	});
 });

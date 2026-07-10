@@ -6,11 +6,17 @@
  * A transient "just added" highlight pulse can be triggered by the parent via
  * the `isNew` prop (respects useReducedMotion — collapses to instant opacity
  * when motion is disabled).
+ *
+ * The cover doubles as an in-row Spotify preview (SpotifyPlaybackCover) when
+ * `playback` is supplied and the song has a `spotifyId` — otherwise it falls
+ * back to a plain static cover so a broken play affordance never renders.
  */
 
 import { XIcon } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
@@ -20,12 +26,16 @@ interface PreviewSongRowProps {
 	onRemove: (id: string) => void;
 	/** Briefly highlight the row when it first enters the preview. */
 	isNew?: boolean;
+	/** Shared "one preview at a time" coordinator; see PreviewList/CreatePlaylistScreen.
+	 *  Omitted → cover renders as a plain static image (no play affordance). */
+	playback?: SingleActivePlayback;
 }
 
 export function PreviewSongRow({
 	song,
 	onRemove,
 	isNew = false,
+	playback,
 }: PreviewSongRowProps) {
 	const prefersReducedMotion = useReducedMotion();
 
@@ -53,22 +63,42 @@ export function PreviewSongRow({
 			}
 			className="theme-border-color -mx-3 flex items-center gap-4 border-b px-3 py-2.5 last:border-b-0"
 		>
-			{/* Album art */}
-			<div
-				className="image-outline h-9 w-9 flex-none overflow-hidden"
-				style={{ flexShrink: 0 }}
-			>
-				{song.imageUrl ? (
-					<img
-						src={song.imageUrl}
-						alt=""
-						aria-hidden="true"
-						className="h-full w-full object-cover"
-					/>
-				) : (
-					<AlbumPlaceholder />
-				)}
-			</div>
+			{/* Album art — plays an inline Spotify preview when a coordinator and
+			spotifyId are both present; otherwise a plain static cover. */}
+			{playback && song.spotifyId ? (
+				<SpotifyPlaybackCover
+					playbackId={song.id}
+					spotifyTrackId={song.spotifyId}
+					imageUrl={song.imageUrl}
+					imageAlt={song.name}
+					playLabel={`Play preview for ${song.name}`}
+					size={36}
+					isPlaybackActive={playback.activePlaybackId === song.id}
+					onActivate={playback.activatePlayback}
+					onDeactivate={playback.deactivatePlayback}
+					playButtonSize={24}
+					playIconSize={11}
+					closeIconSize={11}
+					closeInset="0.125rem"
+					className="image-outline"
+				/>
+			) : (
+				<div
+					className="image-outline h-9 w-9 flex-none overflow-hidden"
+					style={{ flexShrink: 0 }}
+				>
+					{song.imageUrl ? (
+						<img
+							src={song.imageUrl}
+							alt=""
+							aria-hidden="true"
+							className="h-full w-full object-cover"
+						/>
+					) : (
+						<AlbumPlaceholder />
+					)}
+				</div>
+			)}
 
 			{/* Title + artist */}
 			<div className="min-w-0 flex-1">

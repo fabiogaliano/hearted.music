@@ -20,6 +20,7 @@ import type { Story } from "@ladle/react";
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { MOCK_FILTER_OPTIONS } from "@/features/playlists/components/match-filters/mock-filter-options";
 import { playlistKeys } from "@/features/playlists/queries";
 import { SONG_FIXTURES } from "@/lib/domains/playlists/fixtures";
@@ -323,6 +324,10 @@ function FullScreenHarness({
 	const [preview, setPreview] = useState(initialPreview);
 	const [suggestions, setSuggestions] = useState(initialSuggestions);
 	const [newSongIds] = useState<ReadonlySet<string>>(new Set());
+	// One instance shared with both PreviewList and SuggestionsTray below,
+	// mirroring CreatePlaylistScreen, so the story demonstrates cross-list
+	// "one preview at a time" the same way the real screen does.
+	const playback = useSingleActivePlayback();
 
 	function handleRemoveSong(id: string) {
 		setPreview((prev) => prev.filter((s) => s.id !== id));
@@ -431,6 +436,7 @@ function FullScreenHarness({
 							onRemoveSong={handleRemoveSong}
 							onRestoreSong={() => {}}
 							newSongIds={newSongIds}
+							playback={playback}
 						/>
 					)}
 
@@ -457,6 +463,7 @@ function FullScreenHarness({
 						onAddSong={handleAddSuggestion}
 						onDismissSong={handleDismissSuggestion}
 						onRefresh={handleRefreshSuggestions}
+						playback={playback}
 					/>
 				</section>
 

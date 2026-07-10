@@ -20,11 +20,19 @@
  * same shape via excludedSongIds (see useCreatePlaylistDraft.dismissSuggestion).
  *
  * Cap at MAX_VISIBLE suggestions to keep the tray calm.
+ *
+ * `playback`, when supplied, is the coordinator shared with the preview list
+ * (see CreatePlaylistScreen) so only one preview plays across the whole
+ * screen. Adding or dismissing the row that's currently playing deactivates
+ * it first — the embed unmounts either way, but this also frees the
+ * coordinator's active id immediately rather than leaving it pointed at a
+ * gone row.
  */
 
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
@@ -44,6 +52,9 @@ interface SuggestionsTrayProps {
 	onDismissSong: (id: string) => void;
 	/** Pulls a new batch (pages deeper) without changing config. */
 	onRefresh: () => void;
+	/** Shared "one preview at a time" coordinator; see CreatePlaylistScreen.
+	 *  Omitted → rows fall back to plain static covers (no play affordance). */
+	playback?: SingleActivePlayback;
 }
 
 export function SuggestionsTray({
@@ -51,8 +62,21 @@ export function SuggestionsTray({
 	onAddSong,
 	onDismissSong,
 	onRefresh,
+	playback,
 }: SuggestionsTrayProps) {
 	const prefersReducedMotion = useReducedMotion();
+
+	// A song that's actively previewing and then gets added/dismissed would
+	// otherwise leave the coordinator pointing at a playbackId that no longer
+	// exists — deactivate first so a stale active id can't block the next row.
+	const handleAdd = (id: string) => {
+		if (playback?.activePlaybackId === id) playback.deactivatePlayback();
+		onAddSong(id);
+	};
+	const handleDismiss = (id: string) => {
+		if (playback?.activePlaybackId === id) playback.deactivatePlayback();
+		onDismissSong(id);
+	};
 
 	// Fingerprint the current suggestion set so we can detect a full refresh.
 	// We compare the joined IDs of the first MAX_VISIBLE items; a change means
@@ -149,8 +173,9 @@ export function SuggestionsTray({
 						<li key={song.id} style={{ listStyle: "none" }}>
 							<SuggestionRow
 								song={song}
-								onAdd={onAddSong}
-								onDismiss={onDismissSong}
+								onAdd={handleAdd}
+								onDismiss={handleDismiss}
+								playback={playback}
 							/>
 						</li>
 					))}

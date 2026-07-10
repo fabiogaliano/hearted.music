@@ -10,11 +10,17 @@
  * dismiss (×) button is visual/interaction parity with PreviewSongRow's remove
  * button (same size, hit target, icon) but stays secondary to add: lower
  * opacity at rest, add keeps the primary (less muted) treatment.
+ *
+ * The cover doubles as an in-row Spotify preview (SpotifyPlaybackCover) when
+ * `playback` is supplied and the song has a `spotifyId` — otherwise it falls
+ * back to a plain static cover so a broken play affordance never renders.
  */
 
 import { PlusIcon, XIcon } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
+import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
@@ -23,9 +29,17 @@ interface SuggestionRowProps {
 	song: SongVM;
 	onAdd: (id: string) => void;
 	onDismiss: (id: string) => void;
+	/** Shared "one preview at a time" coordinator; see SuggestionsTray/CreatePlaylistScreen.
+	 *  Omitted → cover renders as a plain static image (no play affordance). */
+	playback?: SingleActivePlayback;
 }
 
-export function SuggestionRow({ song, onAdd, onDismiss }: SuggestionRowProps) {
+export function SuggestionRow({
+	song,
+	onAdd,
+	onDismiss,
+	playback,
+}: SuggestionRowProps) {
 	const prefersReducedMotion = useReducedMotion();
 
 	return (
@@ -46,22 +60,46 @@ export function SuggestionRow({ song, onAdd, onDismiss }: SuggestionRowProps) {
 			// Left accent: dashed left border signals "suggested, not pinned"
 			style={{ borderLeft: "2px dashed var(--t-border)" }}
 		>
-			{/* Album art — dimmed vs. preview rows to reinforce secondary status */}
-			<div
-				className="image-outline h-9 w-9 flex-none overflow-hidden"
-				style={{ flexShrink: 0, opacity: 0.75 }}
-			>
-				{song.imageUrl ? (
-					<img
-						src={song.imageUrl}
-						alt=""
-						aria-hidden="true"
-						className="h-full w-full object-cover"
-					/>
-				) : (
-					<AlbumPlaceholder />
-				)}
-			</div>
+			{/* Album art — dimmed vs. preview rows to reinforce secondary status.
+			The dimming only applies at rest (not while actively playing), so an
+			active preview here reads at full strength like a picked row's cover. */}
+			{playback && song.spotifyId ? (
+				<SpotifyPlaybackCover
+					playbackId={song.id}
+					spotifyTrackId={song.spotifyId}
+					imageUrl={song.imageUrl}
+					imageAlt={song.name}
+					playLabel={`Play preview for ${song.name}`}
+					size={36}
+					isPlaybackActive={playback.activePlaybackId === song.id}
+					onActivate={playback.activatePlayback}
+					onDeactivate={playback.deactivatePlayback}
+					playButtonSize={24}
+					playIconSize={11}
+					closeIconSize={11}
+					closeInset="0.125rem"
+					className={cn(
+						"image-outline",
+						playback.activePlaybackId !== song.id && "opacity-75",
+					)}
+				/>
+			) : (
+				<div
+					className="image-outline h-9 w-9 flex-none overflow-hidden"
+					style={{ flexShrink: 0, opacity: 0.75 }}
+				>
+					{song.imageUrl ? (
+						<img
+							src={song.imageUrl}
+							alt=""
+							aria-hidden="true"
+							className="h-full w-full object-cover"
+						/>
+					) : (
+						<AlbumPlaceholder />
+					)}
+				</div>
+			)}
 
 			{/* Title + artist — muted tone vs. picked rows */}
 			<div className="min-w-0 flex-1">

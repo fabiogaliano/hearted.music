@@ -10,11 +10,18 @@
  * Remove triggers a sonner toast with an Undo action. The `restoreSong`
  * callback (from the draft hook) reverses the exclusion without force-pinning,
  * so the song re-enters only if the current config still selects it.
+ *
+ * `playback`, when supplied, is the coordinator shared with the suggestions
+ * tray (see CreatePlaylistScreen) so only one preview plays across the whole
+ * screen. Removing the row that's currently playing deactivates it first —
+ * the embed unmounts either way, but this also frees the coordinator's active
+ * id immediately rather than leaving it pointed at a gone row.
  */
 
 import { AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { fonts } from "@/lib/theme/fonts";
 import { approximateDuration } from "../MaxSongsSlider";
@@ -28,6 +35,9 @@ interface PreviewListProps {
 	onRestoreSong: (id: string) => void;
 	/** IDs of songs that just entered the preview (recently added). */
 	newSongIds?: ReadonlySet<string>;
+	/** Shared "one preview at a time" coordinator; see CreatePlaylistScreen.
+	 *  Omitted → rows fall back to plain static covers (no play affordance). */
+	playback?: SingleActivePlayback;
 }
 
 export function PreviewList({
@@ -36,6 +46,7 @@ export function PreviewList({
 	onRemoveSong,
 	onRestoreSong,
 	newSongIds,
+	playback,
 }: PreviewListProps) {
 	const songCount = songs.length;
 	const durationHint = approximateDuration(songCount);
@@ -62,6 +73,12 @@ export function PreviewList({
 	}, [songCount]);
 
 	function handleRemove(song: SongVM) {
+		// A removed row that's mid-preview would otherwise leave the coordinator
+		// pointing at a playbackId that no longer exists — deactivate first so a
+		// stale active id can't block the next row from taking over.
+		if (playback?.activePlaybackId === song.id) {
+			playback.deactivatePlayback();
+		}
 		onRemoveSong(song.id);
 		toast(`Removed ${song.name}`, {
 			action: {
@@ -132,6 +149,7 @@ export function PreviewList({
 								song={song}
 								onRemove={() => handleRemove(song)}
 								isNew={newSongIds?.has(song.id) ?? false}
+								playback={playback}
 							/>
 						</li>
 					))}

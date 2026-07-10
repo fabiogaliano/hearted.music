@@ -14,6 +14,7 @@
 import type { Story } from "@ladle/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { MOCK_FILTER_OPTIONS } from "@/features/playlists/components/match-filters/mock-filter-options";
 import { playlistKeys } from "@/features/playlists/queries";
 import {
@@ -143,30 +144,44 @@ IntentEditorLocked.storyName = "Intent Editor — Locked (free)";
 const PREVIEW_ROW_SONG = SONG_FIXTURES.at(0) ?? SONG_FIXTURES[0];
 const PREVIEW_ROW_NEW_SONG = SONG_FIXTURES.at(3) ?? SONG_FIXTURES[0];
 
-export const PreviewRowStory: Story = () => (
-	<div className="mx-auto max-w-lg p-8">
-		<ul>
-			<li style={{ listStyle: "none" }}>
-				<PreviewSongRow song={PREVIEW_ROW_SONG} onRemove={() => {}} />
-			</li>
-		</ul>
-	</div>
-);
+// Row stories create their own useSingleActivePlayback instance (a hook can
+// only run inside a component) so the cover renders the real play affordance
+// instead of the static fallback — mirrors how CreatePlaylistScreen wires it.
+export const PreviewRowStory: Story = () => {
+	const playback = useSingleActivePlayback();
+	return (
+		<div className="mx-auto max-w-lg p-8">
+			<ul>
+				<li style={{ listStyle: "none" }}>
+					<PreviewSongRow
+						song={PREVIEW_ROW_SONG}
+						onRemove={() => {}}
+						playback={playback}
+					/>
+				</li>
+			</ul>
+		</div>
+	);
+};
 PreviewRowStory.storyName = "Preview Row";
 
-export const PreviewRowNew: Story = () => (
-	<div className="mx-auto max-w-lg p-8">
-		<ul>
-			<li style={{ listStyle: "none" }}>
-				<PreviewSongRow
-					song={PREVIEW_ROW_NEW_SONG}
-					onRemove={() => {}}
-					isNew={true}
-				/>
-			</li>
-		</ul>
-	</div>
-);
+export const PreviewRowNew: Story = () => {
+	const playback = useSingleActivePlayback();
+	return (
+		<div className="mx-auto max-w-lg p-8">
+			<ul>
+				<li style={{ listStyle: "none" }}>
+					<PreviewSongRow
+						song={PREVIEW_ROW_NEW_SONG}
+						onRemove={() => {}}
+						isNew={true}
+						playback={playback}
+					/>
+				</li>
+			</ul>
+		</div>
+	);
+};
 PreviewRowNew.storyName = "Preview Row — just added (highlight)";
 
 // ─── PreviewList ──────────────────────────────────────────────────────────────
@@ -174,6 +189,7 @@ PreviewRowNew.storyName = "Preview Row — just added (highlight)";
 export const PreviewListStory: Story = () => {
 	const [songs, setSongs] = useState(SONG_FIXTURES.slice(0, 15));
 	const [newIds] = useState<ReadonlySet<string>>(new Set());
+	const playback = useSingleActivePlayback();
 	return (
 		<div className="mx-auto max-w-lg p-8">
 			<PreviewList
@@ -184,6 +200,7 @@ export const PreviewListStory: Story = () => {
 				}
 				onRestoreSong={() => {}}
 				newSongIds={newIds}
+				playback={playback}
 			/>
 		</div>
 	);
@@ -218,25 +235,30 @@ PreviewListEmpty.storyName = "Preview List — empty";
 
 const SUGGESTION_ROW_SONG = FIXTURE_SUGGESTIONS.at(0) ?? FIXTURE_SUGGESTIONS[0];
 
-export const SuggestionRowStory: Story = () => (
-	<div className="mx-auto max-w-lg p-8">
-		<ul>
-			<li style={{ listStyle: "none" }}>
-				<SuggestionRow
-					song={SUGGESTION_ROW_SONG}
-					onAdd={() => {}}
-					onDismiss={() => {}}
-				/>
-			</li>
-		</ul>
-	</div>
-);
+export const SuggestionRowStory: Story = () => {
+	const playback = useSingleActivePlayback();
+	return (
+		<div className="mx-auto max-w-lg p-8">
+			<ul>
+				<li style={{ listStyle: "none" }}>
+					<SuggestionRow
+						song={SUGGESTION_ROW_SONG}
+						onAdd={() => {}}
+						onDismiss={() => {}}
+						playback={playback}
+					/>
+				</li>
+			</ul>
+		</div>
+	);
+};
 SuggestionRowStory.storyName = "Suggestion Row";
 
 // ─── SuggestionsTray ─────────────────────────────────────────────────────────
 
 export const SuggestionsTrayStory: Story = () => {
 	const [suggestions, setSuggestions] = useState([...FIXTURE_SUGGESTIONS]);
+	const playback = useSingleActivePlayback();
 	return (
 		<div className="mx-auto max-w-lg p-8">
 			<SuggestionsTray
@@ -248,6 +270,7 @@ export const SuggestionsTrayStory: Story = () => {
 					setSuggestions((prev) => prev.filter((s) => s.id !== id))
 				}
 				onRefresh={() => setSuggestions((prev) => [...prev].reverse())}
+				playback={playback}
 			/>
 		</div>
 	);

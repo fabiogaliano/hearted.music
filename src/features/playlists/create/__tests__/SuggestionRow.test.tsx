@@ -3,7 +3,9 @@
  *
  * Covers: render song name/artist, aria-label on add button,
  * onClick fires onAdd with the correct song id, keyboard activation,
- * dismiss button parity (aria-label, onDismiss firing).
+ * dismiss button parity (aria-label, onDismiss firing), Spotify in-row
+ * playback affordance (present only with both a `playback` coordinator and a
+ * spotifyId; activating calls the coordinator).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -135,5 +137,77 @@ describe("SuggestionRow", () => {
 		);
 		expect(onDismiss).toHaveBeenCalledOnce();
 		expect(onAdd).toHaveBeenCalledOnce();
+	});
+
+	it("renders no play affordance without a playback coordinator", () => {
+		render(<SuggestionRow song={SONG} onAdd={vi.fn()} onDismiss={vi.fn()} />);
+		expect(
+			screen.queryByRole("button", {
+				name: "Play preview for Hilarity Duff",
+			}),
+		).not.toBeInTheDocument();
+	});
+
+	it("renders no play affordance when spotifyId is missing, even with a coordinator", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionRow
+				song={{ ...SONG, spotifyId: "" }}
+				onAdd={vi.fn()}
+				onDismiss={vi.fn()}
+				playback={playback}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", {
+				name: "Play preview for Hilarity Duff",
+			}),
+		).not.toBeInTheDocument();
+	});
+
+	it("renders a play affordance when spotifyId and a coordinator are both present", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionRow
+				song={SONG}
+				onAdd={vi.fn()}
+				onDismiss={vi.fn()}
+				playback={playback}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "Play preview for Hilarity Duff" }),
+		).toBeInTheDocument();
+	});
+
+	it("activating the cover calls the coordinator's activatePlayback with this row's id", async () => {
+		const user = userEvent.setup();
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionRow
+				song={SONG}
+				onAdd={vi.fn()}
+				onDismiss={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(
+			screen.getByRole("button", { name: "Play preview for Hilarity Duff" }),
+		);
+
+		expect(playback.activatePlayback).toHaveBeenCalledWith(SONG.id);
 	});
 });

@@ -16,6 +16,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
+import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	getBrowserTarget,
@@ -74,6 +75,16 @@ export function CreatePlaylistScreen({
 	const draft = useCreatePlaylistDraft();
 	const [showPaywall, setShowPaywall] = useState(false);
 	const [flowResult, setFlowResult] = useState<FlowResult>(null);
+
+	// Shared across the preview list AND the suggestions tray so only one
+	// in-row Spotify preview plays at a time across the whole screen (U2).
+	// resetKey: PreviewList and SuggestionsTray stay mounted regardless of
+	// flowResult — only the footer swaps to SuccessState/PartialState/
+	// UnsyncedState. Keying on flowResult?.status instead stops any in-flight
+	// preview the moment a create result lands (and again on later status
+	// transitions, e.g. a created-unsynced retry), rather than leaving an
+	// iframe playing behind a footer that no longer matches it.
+	const playback = useSingleActivePlayback(flowResult?.status ?? null);
 
 	// Track IDs of songs added to the preview this session so PreviewList can
 	// briefly highlight them on entry. Cleared after the pulse animation plays out
@@ -357,6 +368,7 @@ export function CreatePlaylistScreen({
 						onRemoveSong={draft.removeSong}
 						onRestoreSong={draft.restoreSong}
 						newSongIds={newSongIds}
+						playback={playback}
 					/>
 				)}
 
@@ -382,6 +394,7 @@ export function CreatePlaylistScreen({
 					onAddSong={handleAddSong}
 					onDismissSong={handleDismissSuggestion}
 					onRefresh={draft.refreshSuggestions}
+					playback={playback}
 				/>
 			</section>
 

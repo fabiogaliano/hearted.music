@@ -2,7 +2,9 @@
  * Tests for PreviewSongRow.
  *
  * Covers: render with/without album art, aria-label on remove button,
- * onClick fires onRemove with the correct song id, genre pill presence.
+ * onClick fires onRemove with the correct song id, genre pill presence,
+ * Spotify in-row playback affordance (present only with both a `playback`
+ * coordinator and a spotifyId; activating calls the coordinator).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -88,5 +90,62 @@ describe("PreviewSongRow", () => {
 		await user.keyboard("{Enter}");
 
 		expect(onRemove).toHaveBeenCalledOnce();
+	});
+
+	it("renders no play affordance without a playback coordinator", () => {
+		render(<PreviewSongRow song={SONG} onRemove={vi.fn()} />);
+		expect(
+			screen.queryByRole("button", { name: "Play preview for Last Nite" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("renders no play affordance when spotifyId is missing, even with a coordinator", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewSongRow
+				song={{ ...SONG, spotifyId: "" }}
+				onRemove={vi.fn()}
+				playback={playback}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: "Play preview for Last Nite" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("renders a play affordance when spotifyId and a coordinator are both present", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewSongRow song={SONG} onRemove={vi.fn()} playback={playback} />,
+		);
+		expect(
+			screen.getByRole("button", { name: "Play preview for Last Nite" }),
+		).toBeInTheDocument();
+	});
+
+	it("activating the cover calls the coordinator's activatePlayback with this row's id", async () => {
+		const user = userEvent.setup();
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<PreviewSongRow song={SONG} onRemove={vi.fn()} playback={playback} />,
+		);
+
+		await user.click(
+			screen.getByRole("button", { name: "Play preview for Last Nite" }),
+		);
+
+		expect(playback.activatePlayback).toHaveBeenCalledWith(SONG.id);
 	});
 });

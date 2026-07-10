@@ -10,6 +10,52 @@ avoid concurrent-write races).
 
 ---
 
+## U2 — Let users hear the songs (in-row Spotify playback)
+
+Status: implemented, reviewed (SHIP), patched (2 should-fix items), committed.
+
+### Decisions
+
+- **One `useSingleActivePlayback` instance** created in `CreatePlaylistScreen` and threaded via a
+  `playback` prop to both `PreviewList` and `SuggestionsTray` (which forward it to each row),
+  mirroring `TrackList`'s shared-instance pattern. `SongVM.id` (internal DB UUID, unique across the
+  whole candidate list) is the `playbackId` id space, so preview-row and suggestion-row ids can't
+  collide — the "only one preview plays screen-wide" contract holds across both lists.
+- **`resetKey` = `flowResult?.status ?? null`.** Stops any in-flight preview the moment a create
+  result lands (and on later status transitions, e.g. a created-unsynced retry). NOTE: the lists stay
+  mounted after a result — only the footer swaps to Success/Partial/Unsynced; the resetKey stops
+  stale audio, it does not unmount the lists. (The original comment overstated this and was corrected
+  during the patch round.)
+- **Deactivation before mutate:** `PreviewList` (remove) and `SuggestionsTray` (add/dismiss) check
+  `playback?.activePlaybackId === song.id` and call `deactivatePlayback()` before the row leaves the
+  array, so an actively-playing row that animates out (150ms AnimatePresence exit) doesn't orphan
+  audio. `SpotifyEmbedIframe` also self-destructs (`controller.destroy()`) on unmount as
+  belt-and-suspenders.
+- **Missing-`spotifyId` (or absent `playback` prop) falls back to the original static artwork** — no
+  dead/broken play affordance is ever rendered (e.g. empty-list stories).
+- **Cover sized 36px** (matching the rows' prior `h-9 w-9`), with play glyph/button sizes scaled down
+  from `TrackList`'s 40px reference. `SuggestionRow`'s dimmed-at-rest look preserved via a conditional
+  `opacity-75` that lifts to full strength while that row is actively playing.
+- **`SpotifyPlaybackCover` provides a11y + reduced-motion + keyboard** — reused as-is (verified via
+  `playLabel` wiring), not rebuilt.
+
+### Testing note
+
+- Screen-level cross-list coordination is proven by a new `__tests__/PlaybackCoordination.test.tsx`
+  that mounts real `PreviewList` + `SuggestionsTray` sharing one real `useSingleActivePlayback()`
+  instance (rather than the full `CreatePlaylistScreen`, which would drag in router/query/extension
+  dependencies with no existing harness) — faithfully covers the contract per the plan's "if cheap"
+  allowance. No mock of `SpotifyEmbedIframe` needed: its `loadIFrameAPI()` promise never resolves in
+  jsdom, so activation is inert/safe in tests.
+
+### Patch round (post-review should-fix)
+
+- Corrected the overstated `resetKey` comment (lists stay mounted; only footer swaps).
+- Wired a real `useSingleActivePlayback()` into the Ladle stories (atoms row/list stories +
+  composable full-screen harness sharing ONE instance across both lists), so the play cover and
+  cross-list coordination are actually visible in Ladle — `ladle:build` alone only proved compile
+  safety. `fixtures.ts` already carried real `spotifyId`s, so it was left untouched.
+
 ## U4 — Route success into the managed-playlist loop
 
 Status: implemented, reviewed (SHIP), committed.

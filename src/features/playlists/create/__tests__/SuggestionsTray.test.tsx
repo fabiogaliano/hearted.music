@@ -2,7 +2,10 @@
  * Tests for SuggestionsTray.
  *
  * Covers: renders suggestions, empty state, calls onAddSong with correct id,
- * calls onDismissSong with correct id, refresh button triggers onRefresh.
+ * calls onDismissSong with correct id, refresh button triggers onRefresh,
+ * playback coordinator threading (rows get a play affordance, add/dismiss on
+ * an actively-previewing row deactivates it first so orphaned audio state
+ * can't linger past the row's removal).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -154,5 +157,99 @@ describe("SuggestionsTray", () => {
 		await user.click(screen.getByRole("button", { name: /refresh/i }));
 
 		expect(onRefresh).toHaveBeenCalledOnce();
+	});
+
+	it("renders a play affordance on rows when a playback coordinator is supplied", () => {
+		const playback = {
+			activePlaybackId: null,
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+				playback={playback}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "Play preview for Sunday" }),
+		).toBeInTheDocument();
+	});
+
+	it("deactivates playback before adding a row that's currently previewing", async () => {
+		const user = userEvent.setup();
+		const onAddSong = vi.fn();
+		const playback = {
+			activePlaybackId: "sg1",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={onAddSong}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(
+			screen.getByRole("button", { name: "Add Sunday to playlist" }),
+		);
+
+		expect(playback.deactivatePlayback).toHaveBeenCalledOnce();
+		expect(onAddSong).toHaveBeenCalledWith("sg1");
+	});
+
+	it("deactivates playback before dismissing a row that's currently previewing", async () => {
+		const user = userEvent.setup();
+		const onDismissSong = vi.fn();
+		const playback = {
+			activePlaybackId: "sg1",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={onDismissSong}
+				onRefresh={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Dismiss Sunday" }));
+
+		expect(playback.deactivatePlayback).toHaveBeenCalledOnce();
+		expect(onDismissSong).toHaveBeenCalledWith("sg1");
+	});
+
+	it("does not deactivate playback when acting on a row that isn't the active one", async () => {
+		const user = userEvent.setup();
+		const playback = {
+			activePlaybackId: "sg2",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
+		render(
+			<SuggestionsTray
+				suggestions={SUGGESTIONS}
+				onAddSong={vi.fn()}
+				onDismissSong={vi.fn()}
+				onRefresh={vi.fn()}
+				playback={playback}
+			/>,
+		);
+
+		await user.click(
+			screen.getByRole("button", { name: "Add Sunday to playlist" }),
+		);
+
+		expect(playback.deactivatePlayback).not.toHaveBeenCalled();
 	});
 });
