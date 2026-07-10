@@ -92,6 +92,7 @@ function setupHappyPath() {
 	mockCreatePlaylistAcknowledged.mockResolvedValue(SUCCESS_CREATE_RESULT);
 	mockPersistNewPlaylistConfig.mockResolvedValue({
 		trackUris: ["spotify:track:track1", "spotify:track:track2"],
+		playlistId: "playlist-db-id-1",
 	});
 	mockAddToPlaylist.mockResolvedValue(SUCCESS_ADD_RESULT);
 	mockRecordPlaylistMatchDecisions.mockResolvedValue({ recorded: 2 });
@@ -113,6 +114,7 @@ describe("success path", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 		});
 	});
 
@@ -163,7 +165,10 @@ describe("success path", () => {
 
 	it("succeeds even when there are no songs to add", async () => {
 		setupHappyPath();
-		mockPersistNewPlaylistConfig.mockResolvedValue({ trackUris: [] });
+		mockPersistNewPlaylistConfig.mockResolvedValue({
+			trackUris: [],
+			playlistId: "playlist-db-id-1",
+		});
 
 		const result = await createPlaylistFromDraft({
 			...BASE_INPUT,
@@ -174,6 +179,7 @@ describe("success path", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 		});
 		expect(mockAddToPlaylist).not.toHaveBeenCalled();
 	});
@@ -276,6 +282,7 @@ describe("partial add failure", () => {
 			status: "partial",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 			failedTrackCount: 2,
 		});
 	});
@@ -286,6 +293,9 @@ describe("partial add failure", () => {
 
 		const result = await createPlaylistFromDraft({ ...BASE_INPUT });
 
+		// persistNewPlaylistConfig threw before returning a playlistId, so this
+		// partial result carries none — the row exists but we don't have its id
+		// in hand (see the type comment on CreatePlaylistFromDraftResult).
 		expect(result).toEqual({
 			status: "partial",
 			playlistUri: "spotify:playlist:abc123",
@@ -372,6 +382,7 @@ describe("match_decision recording", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 		});
 	});
 });
@@ -427,6 +438,7 @@ describe("created-unsynced (acknowledge exhausted retries)", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 		});
 		expect(mockPersistNewPlaylistConfig).toHaveBeenCalledTimes(1);
 	});
@@ -449,6 +461,7 @@ describe("resumePlaylistCreateFromDraft", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 		});
 		// Resume must never re-create the Spotify playlist.
 		expect(mockCreatePlaylistAcknowledged).not.toHaveBeenCalled();
@@ -503,6 +516,7 @@ describe("resumePlaylistCreateFromDraft", () => {
 			status: "partial",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			playlistId: "playlist-db-id-1",
 			failedTrackCount: 2,
 		});
 	});

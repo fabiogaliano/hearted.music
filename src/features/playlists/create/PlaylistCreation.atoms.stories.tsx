@@ -367,6 +367,7 @@ export const Success: Story = () => (
 			<SuccessState
 				playlistName="Late Night Drives"
 				spotifyId="3cEYpjA9oz9GiPac4AsH4n"
+				playlistId="a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7"
 			/>
 		</div>
 	</div>
@@ -387,6 +388,7 @@ export const Partial: Story<{ failedTrackCount: number }> = ({
 			</div>
 			<PartialState
 				spotifyId="3cEYpjA9oz9GiPac4AsH4n"
+				playlistId="a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7"
 				failedTrackCount={failedTrackCount}
 			/>
 		</div>

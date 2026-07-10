@@ -47,8 +47,18 @@ import { useSpotifyGate } from "./useSpotifyGate";
  */
 type FlowResult =
 	| null
-	| { status: "success"; playlistName: string; spotifyId: string }
-	| { status: "partial"; spotifyId: string; failedTrackCount: number }
+	| {
+			status: "success";
+			playlistName: string;
+			spotifyId: string;
+			playlistId: string;
+	  }
+	| {
+			status: "partial";
+			spotifyId: string;
+			playlistId?: string;
+			failedTrackCount: number;
+	  }
 	| { status: "created-unsynced"; spotifyId: string; playlistUri: string };
 
 interface CreatePlaylistScreenProps {
@@ -168,11 +178,13 @@ export function CreatePlaylistScreen({
 				status: "success",
 				playlistName: submittedNameRef.current,
 				spotifyId: result.spotifyId,
+				playlistId: result.playlistId,
 			});
 		} else if (result.status === "partial") {
 			setFlowResult({
 				status: "partial",
 				spotifyId: result.spotifyId,
+				playlistId: result.playlistId,
 				failedTrackCount: result.failedTrackCount,
 			});
 		} else if (result.status === "created-unsynced") {
@@ -392,12 +404,14 @@ export function CreatePlaylistScreen({
 						<SuccessState
 							playlistName={flowResult.playlistName}
 							spotifyId={flowResult.spotifyId}
+							playlistId={flowResult.playlistId}
 						/>
 					</div>
 				) : flowResult?.status === "partial" ? (
 					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
 						<PartialState
 							spotifyId={flowResult.spotifyId}
+							playlistId={flowResult.playlistId}
 							failedTrackCount={flowResult.failedTrackCount}
 						/>
 					</div>

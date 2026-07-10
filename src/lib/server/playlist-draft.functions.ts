@@ -308,6 +308,13 @@ const PersistNewPlaylistConfigSchema = z.object({
 export interface PersistNewPlaylistConfigResult {
 	/** Ordered Spotify track URIs for the bulk-add step, in the same order as songIds. */
 	trackUris: string[];
+	/**
+	 * Internal DB playlist id (the `playlist` table's UUID primary key, distinct
+	 * from spotifyId). The create-flow result needs this to link into the
+	 * managed-playlist detail route (/playlists/$playlistRef), which resolves
+	 * against this id, never the Spotify id.
+	 */
+	playlistId: string;
 }
 
 /**
@@ -420,7 +427,7 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 					"[persistNewPlaylistConfig] song lookup failed:",
 					songsResult.error,
 				);
-				return { trackUris: [] };
+				return { trackUris: [], playlistId };
 			}
 
 			// Fail closed if ownership can't be verified: without a trusted owned-set
@@ -431,7 +438,7 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 					"[persistNewPlaylistConfig] ownership lookup failed:",
 					ownedResult.error,
 				);
-				return { trackUris: [] };
+				return { trackUris: [], playlistId };
 			}
 			const ownedIds = ownedResult.value;
 
@@ -447,7 +454,7 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 				}
 			}
 
-			return { trackUris };
+			return { trackUris, playlistId };
 		},
 	);
 

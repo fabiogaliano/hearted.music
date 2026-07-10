@@ -10,6 +10,47 @@ avoid concurrent-write races).
 
 ---
 
+## U4 — Route success into the managed-playlist loop
+
+Status: implemented, reviewed (SHIP), committed.
+
+### Verified fact
+
+- `$playlistRef` resolves to the **internal DB playlist id** (`playlist.id` UUID), NOT the Spotify
+  id. Evidence: `buildPlaylistRouteRef(playlist)` builds the ref from `playlist.id` + `playlist.name`
+  (`src/features/playlists/playlistRouteRef.ts`); the list keys detail links by internal `p.id`
+  (`PlaylistsCoverFlowScreen.tsx`); the route parses it back via `resolvePlaylistIdFromRouteRef`,
+  matching on the id-prefix. Reviewer independently confirmed the round-trip.
+
+### Decisions
+
+- **Threaded a new `playlistId` field** from `persistNewPlaylistConfig` (which already had the DB row
+  in hand but discarded its id) through `finalizePlaylistCreate` → `CreatePlaylistFromDraftResult`
+  → `FlowResult` → `SuccessState`/`PartialState`. Minimal honest change; no fabricated ids, no new
+  lookups.
+- **`CreatePlaylistFromDraftResult.partial.playlistId` is optional** (required on `success`), because
+  the one branch where `persistNewPlaylistConfig` throws before returning genuinely lacks the id and
+  recovering it was judged out of scope.
+- **SuccessState primary action** → `/playlists/$playlistRef` with retention copy ("We'll keep
+  suggesting songs that fit — see them here."); "Open in Spotify" demoted to secondary; the bare
+  "Done" action dropped entirely (a second no-op exit alongside the primary "go see it" reads as
+  clutter; sidebar nav remains the escape hatch).
+- **PartialState** gained a low-emphasis secondary "View playlist" link, rendered only when
+  `playlistId` is present. Spotify stays visually primary there because fixing the failed adds is the
+  more urgent action.
+- Used TanStack Router's `Link` (not `navigate()`) for both new links, matching the existing
+  "Open in Spotify" `<a>` pattern and the codebase's convention of `Link` for navigational
+  affordances.
+
+### Known limitation (accepted, comment made honest post-review)
+
+- PartialState's link uses a placeholder name slug (`"playlist"`) because the playlist name isn't
+  threaded into that state. This resolves in the common case (id-prefix match); only if two of the
+  account's playlists share a 12-hex id prefix does it fall back to slug-matching, miss, and safely
+  **redirect** to `/playlists` (no crash). This is a pre-existing structural risk of the id-prefix
+  routing scheme, not introduced here. Follow-up if it ever matters: thread the real name into the
+  partial result. The in-code comment was reworded to state this caveat accurately.
+
 ## U1 — Reject suggestions + refresh the tray
 
 Status: implemented, reviewed (SHIP), committed.

@@ -11,25 +11,44 @@
  * Spotify's side, so it needs the duplicate-tracks handling designed in the
  * partial-retry proposal before it can ship. Until then we surface the link
  * and an honest message so the user can finish in Spotify.
+ *
+ * The playlist row exists (config-persist-threw is the one branch where we
+ * don't have its id in hand — see create-playlist-from-draft.ts), and it's
+ * where a user could later finish curating, so a secondary link to the
+ * detail page is offered whenever playlistId is available.
  */
 
 import { ArrowSquareOutIcon, WarningIcon } from "@phosphor-icons/react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/Button";
+import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
+import { buildPlaylistRouteRef } from "../../playlistRouteRef";
 
 interface PartialStateProps {
 	spotifyId: string;
+	/** Internal DB playlist id, when persistNewPlaylistConfig returned one. */
+	playlistId?: string;
 	failedTrackCount: number;
 }
 
 export function PartialState({
 	spotifyId,
+	playlistId,
 	failedTrackCount,
 }: PartialStateProps) {
 	const navigate = useNavigate();
 	const spotifyUrl = `https://open.spotify.com/playlist/${spotifyId}`;
 	const songNoun = failedTrackCount === 1 ? "song" : "songs";
+	// Name isn't available in this state (only spotifyId/playlistId are
+	// carried through), so the slug falls back to a stable placeholder.
+	// resolvePlaylistIdFromRouteRef matches on the id prefix first, so this
+	// resolves in the common case; only if two of the account's playlists
+	// share a 12-hex id prefix does it fall back to the slug, where the
+	// placeholder won't match and the route safely redirects to /playlists.
+	const playlistRef = playlistId
+		? buildPlaylistRouteRef({ id: playlistId, name: "playlist" } as Playlist)
+		: null;
 
 	return (
 		<div
@@ -80,6 +99,17 @@ export function PartialState({
 								style={{ opacity: 0.45 }}
 							/>
 						</a>
+
+						{playlistRef && (
+							<Link
+								to="/playlists/$playlistRef"
+								params={{ playlistRef }}
+								className="theme-text-muted text-xs tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+								style={{ fontFamily: fonts.body }}
+							>
+								View playlist
+							</Link>
+						)}
 
 						<Button
 							variant="ghost"

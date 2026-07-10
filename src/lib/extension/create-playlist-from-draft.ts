@@ -70,6 +70,8 @@ export type CreatePlaylistFromDraftResult =
 			playlistUri: string;
 			/** Spotify playlist ID extracted from the URI. */
 			spotifyId: string;
+			/** Internal DB playlist id — needed to link into /playlists/$playlistRef. */
+			playlistId: string;
 	  }
 	| { status: "reconnect-required" }
 	| { status: "extension-unavailable" }
@@ -90,6 +92,13 @@ export type CreatePlaylistFromDraftResult =
 			status: "partial";
 			playlistUri: string;
 			spotifyId: string;
+			/**
+			 * Internal DB playlist id — the row exists even though tracks didn't
+			 * land. Undefined only when persistNewPlaylistConfig itself threw
+			 * before returning it (config-persist failure branch below); the row
+			 * still exists in that case, we just don't have its id in hand.
+			 */
+			playlistId?: string;
 			/** Number of tracks that failed to add. */
 			failedTrackCount: number;
 	  }
@@ -208,6 +217,7 @@ async function finalizePlaylistCreate(
 	//   - writes match_intent (only if eligible) / genre_pills / match_filters
 	//   - returns the ordered spotify:track:... URIs for the previewed songs
 	let trackUris: string[];
+	let playlistId: string;
 	try {
 		const configResult = await persistNewPlaylistConfig({
 			data: {
@@ -220,6 +230,7 @@ async function finalizePlaylistCreate(
 			},
 		});
 		trackUris = configResult.trackUris;
+		playlistId = configResult.playlistId;
 	} catch (err) {
 		// Config persist failed — playlist exists but has no config or tracks.
 		// Report partial so the user can see the playlist and retry.
@@ -257,6 +268,7 @@ async function finalizePlaylistCreate(
 				status: "partial",
 				playlistUri,
 				spotifyId,
+				playlistId,
 				failedTrackCount: trackUris.length,
 			};
 		}
@@ -274,5 +286,5 @@ async function finalizePlaylistCreate(
 		);
 	});
 
-	return { status: "success", playlistUri, spotifyId };
+	return { status: "success", playlistUri, spotifyId, playlistId };
 }

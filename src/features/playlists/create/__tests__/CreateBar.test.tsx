@@ -48,8 +48,33 @@ vi.mock("sonner", () => ({
 }));
 
 // PartialState and SuccessState use useNavigate for the "Done" → /playlists button.
+// SuccessState's primary action and PartialState's secondary "View playlist" link
+// use Link — mocked as a plain <a> so tests can assert the resolved href, mirroring
+// how "Open in Spotify" is asserted via getByRole("link", ...).toHaveAttribute("href").
 vi.mock("@tanstack/react-router", () => ({
 	useNavigate: () => vi.fn(),
+	Link: ({
+		to,
+		params,
+		children,
+		...rest
+	}: {
+		to: string;
+		params?: Record<string, string>;
+		children?: React.ReactNode;
+	}) => {
+		const href = params
+			? Object.entries(params).reduce(
+					(path, [key, value]) => path.replace(`$${key}`, value),
+					to,
+				)
+			: to;
+		return (
+			<a href={href} {...rest}>
+				{children}
+			</a>
+		);
+	},
 }));
 
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
@@ -138,6 +163,7 @@ describe("CreateBar — submit payload", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc",
 			spotifyId: "abc",
+			playlistId: "playlist-abc",
 		});
 
 		const props = makeProps({
@@ -173,6 +199,7 @@ describe("CreateBar — submit payload", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc",
 			spotifyId: "abc",
+			playlistId: "playlist-abc",
 		});
 
 		render(
@@ -198,6 +225,7 @@ describe("CreateBar — submit payload", () => {
 				status: "success",
 				playlistUri: "spotify:playlist:x",
 				spotifyId: "x",
+				playlistId: "playlist-x",
 			};
 		});
 
@@ -220,6 +248,7 @@ describe("CreateBar — result mapping", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc",
 			spotifyId: "abc",
+			playlistId: "playlist-abc",
 		});
 
 		render(<CreateBar {...makeProps({ onResult })} />);
@@ -340,6 +369,7 @@ describe("CreateBar — aria-busy while submitting", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:x",
 			spotifyId: "x",
+			playlistId: "playlist-x",
 		});
 		await waitFor(() => {
 			// After result, the bar is kept inert (success unmounts it via parent)
@@ -354,6 +384,7 @@ describe("CreateBar — duplicate-create guard", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc",
 			spotifyId: "abc",
+			playlistId: "playlist-abc",
 		});
 
 		render(<CreateBar {...makeProps()} />);
@@ -473,6 +504,25 @@ describe("PartialState — no duplicate-create path", () => {
 			screen.getByText(/your 1 song couldn't be added/i),
 		).toBeInTheDocument();
 	});
+
+	it("does not render a 'View playlist' link when playlistId is absent (config-persist-threw branch)", () => {
+		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
+		expect(
+			screen.queryByRole("link", { name: /view playlist/i }),
+		).not.toBeInTheDocument();
+	});
+
+	it("renders a secondary 'View playlist' link to the detail route when playlistId is present", () => {
+		render(
+			<PartialState
+				spotifyId="abc123"
+				playlistId="a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7"
+				failedTrackCount={2}
+			/>,
+		);
+		const link = screen.getByRole("link", { name: /view playlist/i });
+		expect(link).toHaveAttribute("href", "/playlists/playlist--a1b2c3d4e5f6");
+	});
 });
 
 describe("UnsyncedState — safe retry path", () => {
@@ -516,20 +566,53 @@ describe("UnsyncedState — safe retry path", () => {
 	});
 });
 
-describe("SuccessState — no re-create path", () => {
-	it("renders 'Open in Spotify' and 'Done' only", () => {
-		render(<SuccessState playlistName="Night Mix" spotifyId="xyz789" />);
+describe("SuccessState — routes into the managed-playlist loop", () => {
+	const PLAYLIST_ID = "a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7";
+
+	it("renders a primary 'View playlist' link and a secondary 'Open in Spotify' link, no bare 'Done'", () => {
+		render(
+			<SuccessState
+				playlistName="Night Mix"
+				spotifyId="xyz789"
+				playlistId={PLAYLIST_ID}
+			/>,
+		);
+		expect(
+			screen.getByRole("link", { name: /view playlist/i }),
+		).toBeInTheDocument();
 		expect(
 			screen.getByRole("link", { name: /open in spotify/i }),
 		).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /done/i })).toBeInTheDocument();
+		// The bare "back to playlists" action is dropped: the primary action
+		// now IS the way forward, so a second no-op exit reads as clutter.
+		expect(
+			screen.queryByRole("button", { name: /done/i }),
+		).not.toBeInTheDocument();
 		expect(
 			screen.queryByRole("button", { name: /create/i }),
 		).not.toBeInTheDocument();
 	});
 
+	it("the primary action navigates to the new playlist's detail route", () => {
+		render(
+			<SuccessState
+				playlistName="Night Mix"
+				spotifyId="xyz789"
+				playlistId={PLAYLIST_ID}
+			/>,
+		);
+		const link = screen.getByRole("link", { name: /view playlist/i });
+		expect(link).toHaveAttribute("href", "/playlists/night-mix--a1b2c3d4e5f6");
+	});
+
 	it("links to the correct Spotify playlist URL", () => {
-		render(<SuccessState playlistName="Night Mix" spotifyId="xyz789" />);
+		render(
+			<SuccessState
+				playlistName="Night Mix"
+				spotifyId="xyz789"
+				playlistId={PLAYLIST_ID}
+			/>,
+		);
 		const link = screen.getByRole("link", { name: /open in spotify/i });
 		expect(link).toHaveAttribute(
 			"href",
@@ -538,7 +621,26 @@ describe("SuccessState — no re-create path", () => {
 	});
 
 	it("displays the playlist name", () => {
-		render(<SuccessState playlistName="Night Mix" spotifyId="xyz789" />);
+		render(
+			<SuccessState
+				playlistName="Night Mix"
+				spotifyId="xyz789"
+				playlistId={PLAYLIST_ID}
+			/>,
+		);
 		expect(screen.getByText("Night Mix")).toBeInTheDocument();
+	});
+
+	it("uses retention-oriented copy about ongoing suggestions", () => {
+		render(
+			<SuccessState
+				playlistName="Night Mix"
+				spotifyId="xyz789"
+				playlistId={PLAYLIST_ID}
+			/>,
+		);
+		expect(
+			screen.getByText(/we'll keep suggesting songs that fit/i),
+		).toBeInTheDocument();
 	});
 });
