@@ -220,9 +220,16 @@ async function finalizePlaylistCreate(
 			},
 		});
 		trackUris = configResult.trackUris;
-	} catch {
+	} catch (err) {
 		// Config persist failed — playlist exists but has no config or tracks.
 		// Report partial so the user can see the playlist and retry.
+		// Logged with the failing step so we can measure how often each partial
+		// branch fires before committing to the partial-retry work.
+		console.error(
+			"[createPlaylistFromDraft] partial: config persist failed",
+			{ spotifyId, songCount: input.songIds.length },
+			err,
+		);
 		return {
 			status: "partial",
 			playlistUri,
@@ -239,6 +246,13 @@ async function finalizePlaylistCreate(
 
 		if (addOutcome.status !== "success") {
 			// Playlist was created and config is persisted; only the track-add failed.
+			// Logged with the failing step so we can measure how often each partial
+			// branch fires before committing to the partial-retry work.
+			console.error("[createPlaylistFromDraft] partial: track add failed", {
+				spotifyId,
+				trackCount: trackUris.length,
+				outcome: addOutcome.status,
+			});
 			return {
 				status: "partial",
 				playlistUri,

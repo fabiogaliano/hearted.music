@@ -436,29 +436,9 @@ describe("Library state helpers", () => {
 	});
 });
 
-describe("PartialState — complete failure detection", () => {
-	it("isCompleteFailure when failedTrackCount >= totalSongCount", () => {
-		const failedTrackCount = 5;
-		const totalSongCount = 5;
-		expect(failedTrackCount >= totalSongCount).toBe(true);
-	});
-
-	it("is NOT a complete failure when some tracks added", () => {
-		const failedTrackCount = 2;
-		const totalSongCount = 5;
-		expect(failedTrackCount >= totalSongCount).toBe(false);
-	});
-});
-
 describe("PartialState — no duplicate-create path", () => {
 	it("renders 'Open in Spotify' and 'Done' but no 'Retry' affordance", () => {
-		render(
-			<PartialState
-				spotifyId="abc123"
-				failedTrackCount={2}
-				totalSongCount={5}
-			/>,
-		);
+		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
 		expect(
 			screen.getByRole("link", { name: /open in spotify/i }),
 		).toBeInTheDocument();
@@ -469,13 +449,7 @@ describe("PartialState — no duplicate-create path", () => {
 	});
 
 	it("links to the correct Spotify playlist URL", () => {
-		render(
-			<PartialState
-				spotifyId="abc123"
-				failedTrackCount={2}
-				totalSongCount={5}
-			/>,
-		);
+		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
 		const link = screen.getByRole("link", { name: /open in spotify/i });
 		expect(link).toHaveAttribute(
 			"href",
@@ -483,15 +457,21 @@ describe("PartialState — no duplicate-create path", () => {
 		);
 	});
 
-	it("shows complete-failure message when all tracks failed", () => {
-		render(
-			<PartialState
-				spotifyId="abc123"
-				failedTrackCount={5}
-				totalSongCount={5}
-			/>,
-		);
-		expect(screen.getByText(/tracks couldn't be added/i)).toBeInTheDocument();
+	it("states no songs were added, without implying partial success", () => {
+		render(<PartialState spotifyId="abc123" failedTrackCount={5} />);
+		expect(screen.getByText(/couldn't be added to it/i)).toBeInTheDocument();
+		// The old copy claimed "the rest are in your Spotify playlist" — that
+		// never happens for a partial result, so it must not appear.
+		expect(
+			screen.queryByText(/the rest are in your spotify playlist/i),
+		).not.toBeInTheDocument();
+	});
+
+	it("uses singular phrasing for a single failed song", () => {
+		render(<PartialState spotifyId="abc123" failedTrackCount={1} />);
+		expect(
+			screen.getByText(/your 1 song couldn't be added/i),
+		).toBeInTheDocument();
 	});
 });
 

@@ -1,17 +1,16 @@
 /**
- * PartialState — shown when the playlist was created but not all tracks
- * were added (or config/tracks couldn't be persisted at all).
+ * PartialState — shown when the playlist row exists locally but the commit
+ * couldn't finish adding the songs: either the config persist threw, or the
+ * bulk track-add failed. In both cases no tracks landed on the Spotify
+ * playlist (the add is a single atomic command), so the copy says exactly
+ * that rather than implying a partial success that never happens.
  *
- * Two distinct messages:
- *  - failedTrackCount === totalSongCount → config/track persist failed entirely
- *    (playlist exists but has nothing in it).
- *  - otherwise → some tracks couldn't be added; the rest are there.
- *
- * No "Retry" is offered because re-submitting would call createPlaylistFromDraft
- * again and create a second duplicate Spotify playlist. The correct resolution
- * is to open the existing playlist on Spotify, or navigate away and start a
- * new draft. A track-only retry would require a separate add-tracks-only path
- * that doesn't exist; until it does, we surface the link and a clear message.
+ * No "Retry" is offered here yet. A safe retry is possible in principle
+ * (re-run config + track-add against the existing playlist, like UnsyncedState
+ * does for the unsynced case), but re-adding tracks is not idempotent on
+ * Spotify's side, so it needs the duplicate-tracks handling designed in the
+ * partial-retry proposal before it can ship. Until then we surface the link
+ * and an honest message so the user can finish in Spotify.
  */
 
 import { ArrowSquareOutIcon, WarningIcon } from "@phosphor-icons/react";
@@ -22,17 +21,15 @@ import { fonts } from "@/lib/theme/fonts";
 interface PartialStateProps {
 	spotifyId: string;
 	failedTrackCount: number;
-	totalSongCount: number;
 }
 
 export function PartialState({
 	spotifyId,
 	failedTrackCount,
-	totalSongCount,
 }: PartialStateProps) {
 	const navigate = useNavigate();
 	const spotifyUrl = `https://open.spotify.com/playlist/${spotifyId}`;
-	const isCompleteFailure = failedTrackCount >= totalSongCount;
+	const songNoun = failedTrackCount === 1 ? "song" : "songs";
 
 	return (
 		<div
@@ -55,17 +52,15 @@ export function PartialState({
 							className="theme-text-muted mb-1 text-[11px] tracking-widest uppercase"
 							style={{ fontFamily: fonts.body }}
 						>
-							{isCompleteFailure
-								? "Playlist created — tracks couldn't be added"
-								: "Playlist created — partially"}
+							Playlist created — songs couldn't be added
 						</p>
 						<p
 							className="theme-text-muted text-xs"
 							style={{ fontFamily: fonts.body }}
 						>
-							{isCompleteFailure
-								? "The playlist was created on Spotify but none of the tracks could be saved. Open it in Spotify to add tracks manually."
-								: `${failedTrackCount} ${failedTrackCount === 1 ? "track" : "tracks"} couldn't be added. The rest are in your Spotify playlist.`}
+							The playlist was created on Spotify, but your {failedTrackCount}{" "}
+							{songNoun} couldn't be added to it. Open it in Spotify to add{" "}
+							{failedTrackCount === 1 ? "it" : "them"} manually.
 						</p>
 					</div>
 

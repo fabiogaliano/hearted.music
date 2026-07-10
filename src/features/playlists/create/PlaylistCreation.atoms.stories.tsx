@@ -362,7 +362,7 @@ Success.storyName = "Success State";
 
 // ─── PartialState ─────────────────────────────────────────────────────────────
 
-export const PartialSomeFailed: Story<{ failedTrackCount: number }> = ({
+export const Partial: Story<{ failedTrackCount: number }> = ({
 	failedTrackCount,
 }) => (
 	<div className="mx-auto max-w-2xl">
@@ -375,36 +375,17 @@ export const PartialSomeFailed: Story<{ failedTrackCount: number }> = ({
 			<PartialState
 				spotifyId="3cEYpjA9oz9GiPac4AsH4n"
 				failedTrackCount={failedTrackCount}
-				totalSongCount={15}
 			/>
 		</div>
 	</div>
 );
-PartialSomeFailed.storyName = "Partial — some failed";
-PartialSomeFailed.args = { failedTrackCount: 3 };
-PartialSomeFailed.argTypes = {
+Partial.storyName = "Partial — songs couldn't be added";
+Partial.args = { failedTrackCount: 15 };
+Partial.argTypes = {
 	failedTrackCount: {
-		control: { type: "range", min: 1, max: 14, step: 1 },
+		control: { type: "range", min: 1, max: 30, step: 1 },
 	},
 };
-
-export const PartialAllFailed: Story = () => (
-	<div className="mx-auto max-w-2xl">
-		<div className="theme-border-color border border-t-0">
-			<div className="theme-border-color border-b px-6 py-3">
-				<span className="theme-text-muted text-[11px] tracking-[0.2em] uppercase">
-					Create
-				</span>
-			</div>
-			<PartialState
-				spotifyId="3cEYpjA9oz9GiPac4AsH4n"
-				failedTrackCount={15}
-				totalSongCount={15}
-			/>
-		</div>
-	</div>
-);
-PartialAllFailed.storyName = "Partial — all failed";
 
 // ─── ReconnectPrompt ─────────────────────────────────────────────────────────
 

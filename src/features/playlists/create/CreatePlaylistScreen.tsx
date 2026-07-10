@@ -48,12 +48,7 @@ import { useSpotifyGate } from "./useSpotifyGate";
 type FlowResult =
 	| null
 	| { status: "success"; playlistName: string; spotifyId: string }
-	| {
-			status: "partial";
-			spotifyId: string;
-			failedTrackCount: number;
-			totalSongCount: number;
-	  }
+	| { status: "partial"; spotifyId: string; failedTrackCount: number }
 	| { status: "created-unsynced"; spotifyId: string; playlistUri: string };
 
 interface CreatePlaylistScreenProps {
@@ -160,11 +155,6 @@ export function CreatePlaylistScreen({
 				status: "partial",
 				spotifyId: result.spotifyId,
 				failedTrackCount: result.failedTrackCount,
-				// Denominator is the snapshot the attempt actually ran against, not
-				// live preview state — the preview can drift while a result sits on
-				// screen (e.g. between a failed create and a resume retry).
-				totalSongCount:
-					submittedInputRef.current?.songIds.length ?? draft.preview.length,
 			});
 		} else if (result.status === "created-unsynced") {
 			// Spotify has the playlist but the local row never landed. Hold the
@@ -388,7 +378,6 @@ export function CreatePlaylistScreen({
 						<PartialState
 							spotifyId={flowResult.spotifyId}
 							failedTrackCount={flowResult.failedTrackCount}
-							totalSongCount={flowResult.totalSongCount}
 						/>
 					</div>
 				) : flowResult?.status === "created-unsynced" ? (
