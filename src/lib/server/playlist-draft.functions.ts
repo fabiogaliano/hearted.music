@@ -17,6 +17,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { getSongEmbeddingsBatch } from "@/lib/domains/enrichment/embeddings/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import { selectOwnedSongIds } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistBySpotifyId,
 	updatePlaylistMatchConfig,
@@ -292,7 +293,7 @@ const PersistNewPlaylistConfigSchema = z.object({
 	/** Genre pills from the draft config. */
 	genrePills: z.array(z.string()).max(10),
 	/** Match filters from the draft config. */
-	matchFilters: z.unknown(),
+	matchFilters: MatchFiltersV1Schema,
 	/** Whether the client reports intent was applied in the preview. */
 	intentApplied: z.boolean(),
 });
@@ -341,12 +342,18 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 			const playlistId = playlistResult.value.id;
 
 			// Server-side intent eligibility re-check: billing state + unlock count
-			// resolved in parallel with song lookup to avoid serial waits.
-			const [billingResult, unlockedCount, songsResult] = await Promise.all([
-				readBillingState(supabase, accountId),
-				getUnlockedSongCount(accountId),
-				getSongsByIds(data.songIds),
-			]);
+			// resolved in parallel with the song lookup and the ownership guard to
+			// avoid serial waits. ownedResult constrains data.songIds to the
+			// account's active liked_song rows — getSongsByIds hits the global song
+			// table via the service-role client, so without this a tampered request
+			// could resolve URIs for songs the account never liked.
+			const [billingResult, unlockedCount, songsResult, ownedResult] =
+				await Promise.all([
+					readBillingState(supabase, accountId),
+					getUnlockedSongCount(accountId),
+					getSongsByIds(data.songIds),
+					selectOwnedSongIds(accountId, data.songIds),
+				]);
 
 			const billingState = Result.isOk(billingResult)
 				? billingResult.value
@@ -409,9 +416,24 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 				return { trackUris: [] };
 			}
 
+			// Fail closed if ownership can't be verified: without a trusted owned-set
+			// we can't safely resolve URIs, so skip the add step rather than trust the
+			// caller-supplied id list.
+			if (Result.isError(ownedResult)) {
+				console.error(
+					"[persistNewPlaylistConfig] ownership lookup failed:",
+					ownedResult.error,
+				);
+				return { trackUris: [] };
+			}
+			const ownedIds = ownedResult.value;
+
 			const songById = new Map(songsResult.value.map((s) => [s.id, s]));
 			const trackUris: string[] = [];
 			for (const id of data.songIds) {
+				// Skip any id the account doesn't actively like — never resolve URIs
+				// for songs outside the caller's own liked library.
+				if (!ownedIds.has(id)) continue;
 				const song = songById.get(id);
 				if (song?.spotify_id) {
 					trackUris.push(`spotify:track:${song.spotify_id}`);
@@ -455,17 +477,30 @@ export const recordPlaylistMatchDecisions = createServerFn({ method: "POST" })
 
 		if (data.songIds.length === 0) return { recorded: 0 };
 
-		// Look up the internal playlist UUID — match_decision FK references playlist.id.
-		const playlistResult = await getPlaylistBySpotifyId(
-			accountId,
-			data.spotifyId,
-		);
+		// Look up the internal playlist UUID (match_decision FK references
+		// playlist.id) and verify song ownership in parallel. Ownership must be
+		// re-checked here: this is a separate entry point from
+		// persistNewPlaylistConfig, so it can't rely on that function's guard.
+		const [playlistResult, ownedResult] = await Promise.all([
+			getPlaylistBySpotifyId(accountId, data.spotifyId),
+			selectOwnedSongIds(accountId, data.songIds),
+		]);
 		if (Result.isError(playlistResult) || playlistResult.value === null) {
 			throw new Error("Playlist not found for match decision recording");
 		}
+		if (Result.isError(ownedResult)) {
+			throw new Error(
+				"Failed to verify song ownership for match decision recording",
+			);
+		}
 		const playlistId = playlistResult.value.id;
 
-		const decisions = data.songIds.map((songId) => ({
+		// Record decisions only for songs the account actually likes — never write
+		// match_decision rows for arbitrary catalog UUIDs.
+		const ownedSongIds = data.songIds.filter((id) => ownedResult.value.has(id));
+		if (ownedSongIds.length === 0) return { recorded: 0 };
+
+		const decisions = ownedSongIds.map((songId) => ({
 			accountId,
 			songId,
 			playlistId,

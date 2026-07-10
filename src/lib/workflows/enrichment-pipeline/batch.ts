@@ -70,6 +70,12 @@ export async function getEntitledDataEnrichedSongIds(
  * selector returns the same audio_features/genre_tagging candidates the gated
  * one would (it is a superset minus the is_entitled conjunct), so taking those
  * two flags from Phase-1 only never drops or double-counts an entitled song.
+ *
+ * Batch-size note: both selectors run with `p_limit: maxSongs` independently, so
+ * the unioned `allSongIds` can hold up to `2 × maxSongs` entries — the sets are
+ * fully disjoint for a free user whose Phase-1 backlog doesn't overlap any
+ * entitled song. This is intentional (saturate the batch with available work),
+ * but callers must not assume `allSongIds.length <= maxSongs`.
  */
 export async function selectEnrichmentWorkPlan(
 	accountId: string,
@@ -135,7 +141,9 @@ export async function selectEnrichmentWorkPlan(
 		gatedRows.filter((r) => r.needs_content_activation).map((r) => r.song_id),
 	);
 
-	// Union all song IDs across both selectors; Phase-1 order first.
+	// Union all song IDs across both selectors; Phase-1 order first. Each selector
+	// was capped at maxSongs independently, so this union can reach 2 × maxSongs
+	// when the two sets are disjoint (see the batch-size note above).
 	const allIds = new Set<string>();
 	for (const r of phase1Rows) allIds.add(r.song_id);
 	for (const r of gatedRows) allIds.add(r.song_id);

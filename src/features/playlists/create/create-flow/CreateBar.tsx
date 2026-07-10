@@ -50,6 +50,12 @@ export interface CreateBarProps {
 	intentApplied: boolean;
 	/** The intent phrase from the config (only sent if intentApplied). */
 	intent: string | null | undefined;
+	/**
+	 * True while the live config is ahead of the previewed (debounced) config.
+	 * Blocks Create so a submit can't persist an edited config against songs
+	 * scored under the previous one.
+	 */
+	isPreviewStale: boolean;
 	/** Gate state computed by the parent — avoids re-checking on every render. */
 	gateState: SpotifyGateState;
 	/**
@@ -68,6 +74,7 @@ export function CreateBar({
 	matchFilters,
 	intentApplied,
 	intent,
+	isPreviewStale,
 	gateState,
 	onNameCommit,
 	onResult,
@@ -77,7 +84,10 @@ export function CreateBar({
 
 	const trimmedName = name.trim();
 	const canSubmit =
-		songIds.length > 0 && trimmedName.length > 0 && !isSubmitting;
+		songIds.length > 0 &&
+		trimmedName.length > 0 &&
+		!isSubmitting &&
+		!isPreviewStale;
 
 	async function handleSubmit() {
 		if (!canSubmit) return;

@@ -19,6 +19,16 @@ import type {
 } from "@/lib/domains/taste/song-matching/types";
 
 /**
+ * Upper bound on liked songs pulled per preview request. This query fires once
+ * per debounce cycle with a nested song + audio-feature join, so an unbounded
+ * fetch would transfer the account's entire enriched library on every keystroke
+ * settle. The cap is generous enough that realistic libraries are unaffected;
+ * accounts above it keep their most-recently-liked songs (ordered below), which
+ * the deterministic scorer then ranks down to the slider's maxSongs.
+ */
+const PHASE1_CANDIDATE_CAP = 10_000;
+
+/**
  * The nine scoring-relevant audio-feature columns, as embedded under song.
  * Every column is nullable; a present row (even all-null) still counts as
  * Phase-1 audio evidence for candidacy — see loadPhase1Candidates.
@@ -110,7 +120,9 @@ export async function loadPhase1Candidates(
 			"song_id, liked_at, song:song_id ( id, spotify_id, name, artists, genres, image_url, duration_ms, language, language_secondary, vocal_gender, release_year, album_name, song_audio_feature ( energy, valence, danceability, acousticness, instrumentalness, speechiness, liveness, tempo, loudness ) )",
 		)
 		.eq("account_id", accountId)
-		.is("unliked_at", null);
+		.is("unliked_at", null)
+		.order("liked_at", { ascending: false })
+		.limit(PHASE1_CANDIDATE_CAP);
 
 	if (likedError) {
 		throw new Error(

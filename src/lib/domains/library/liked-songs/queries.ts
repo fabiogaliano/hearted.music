@@ -134,6 +134,51 @@ export async function isSongOwnedByAccount(
 }
 
 /**
+ * Filters `songIds` down to the ones the account currently likes (un-unliked
+ * `liked_song` rows). Used as a server-side ownership guard before resolving
+ * track URIs or recording match decisions from a client-supplied draft:
+ * callers MUST drop any id not in the returned set, so a tampered request can't
+ * act on songs the account never liked.
+ *
+ * `songIds` is an externally-sourced (request) list, so chunked `.in()` reads
+ * are the sanctioned path here — the CLAUDE.md ban targets DB-derived id sets,
+ * not caller-supplied ones. Returns an error Result on any chunk failure so
+ * callers fail closed rather than under-filter.
+ */
+export async function selectOwnedSongIds(
+	accountId: string,
+	songIds: string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (songIds.length === 0) {
+		return Result.ok(new Set<string>());
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const owned = new Set<string>();
+
+	for (const chunk of chunkArray(songIds, DB_IN_FILTER_CHUNK_SIZE)) {
+		const { data, error } = await supabase
+			.from("liked_song")
+			.select("song_id")
+			.eq("account_id", accountId)
+			.is("unliked_at", null)
+			.in("song_id", chunk);
+
+		if (error) {
+			return Result.err(
+				new DatabaseError({ code: error.code, message: error.message }),
+			);
+		}
+
+		for (const row of data ?? []) {
+			owned.add(row.song_id);
+		}
+	}
+
+	return Result.ok(owned);
+}
+
+/**
  * Gets recent liked songs with song details for activity feed.
  * Uses Supabase foreign key join to fetch song name, artists, and image.
  */

@@ -372,10 +372,11 @@ export function CreatePlaylistScreen({
 				) : (
 					<CreateBar
 						songIds={draft.preview.map((s) => s.id)}
-						genrePills={draft.config.genrePills}
-						matchFilters={draft.config.matchFilters}
+						genrePills={draft.committedConfig.genrePills}
+						matchFilters={draft.committedConfig.matchFilters}
 						intentApplied={draft.intentApplied}
-						intent={draft.config.intent ?? null}
+						intent={draft.committedConfig.intent ?? null}
+						isPreviewStale={draft.isConfigStale}
 						gateState={gateState}
 						onNameCommit={onNameCommit}
 						onResult={handleCreateResult}

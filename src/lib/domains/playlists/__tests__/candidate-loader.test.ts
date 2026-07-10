@@ -15,14 +15,18 @@ import { loadPhase1Candidates } from "../candidate-loader";
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mockLikedSongIs, mockFrom } = vi.hoisted(() => {
-	const mockLikedSongIs = vi.fn();
+const { mockLikedSongLimit, mockLikedSongOrder, mockFrom } = vi.hoisted(() => {
+	// Chain terminates at .limit(): select → eq → is → order → limit.
+	const mockLikedSongLimit = vi.fn();
+	const mockLikedSongOrder = vi.fn(() => ({ limit: mockLikedSongLimit }));
+	const mockLikedSongIs = vi.fn(() => ({ order: mockLikedSongOrder }));
 	const mockLikedSongEq = vi.fn(() => ({ is: mockLikedSongIs }));
 	const mockLikedSongSelect = vi.fn(() => ({ eq: mockLikedSongEq }));
 	const mockFrom = vi.fn(() => ({ select: mockLikedSongSelect }));
 
 	return {
-		mockLikedSongIs,
+		mockLikedSongLimit,
+		mockLikedSongOrder,
 		mockFrom,
 	};
 });
@@ -92,7 +96,7 @@ describe("loadPhase1Candidates", () => {
 		// it is a free-tier song with only Phase-1 enrichment. It must be included.
 		const songId = "phase1-genre-only";
 		const song = makeSongRow(songId, { genres: ["indie rock"], audio: null });
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -111,7 +115,7 @@ describe("loadPhase1Candidates", () => {
 			genres: [],
 			audio: makeEmbeddedAudioFeature(),
 		});
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -131,7 +135,7 @@ describe("loadPhase1Candidates", () => {
 			...makeSongRow(songId, { genres: [] }),
 			song_audio_feature: [makeEmbeddedAudioFeature()],
 		};
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -145,7 +149,7 @@ describe("loadPhase1Candidates", () => {
 	it("excludes a song with no genres AND no audio features", async () => {
 		const songId = "unenriched";
 		const song = makeSongRow(songId, { genres: [], audio: null });
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -161,7 +165,7 @@ describe("loadPhase1Candidates", () => {
 			genres: ["pop"],
 			audio: makeEmbeddedAudioFeature(),
 		});
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -176,7 +180,7 @@ describe("loadPhase1Candidates", () => {
 	it("does NOT call select_data_enriched_liked_song_ids (the analysis-gated RPC)", async () => {
 		// The loader must query liked_song directly, not via the RPC that requires
 		// song_analysis + song_embedding.
-		mockLikedSongIs.mockResolvedValue({ data: [], error: null });
+		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
 
 		await loadPhase1Candidates("any-account");
 
@@ -187,11 +191,24 @@ describe("loadPhase1Candidates", () => {
 	});
 
 	it("returns empty array when account has no liked songs", async () => {
-		mockLikedSongIs.mockResolvedValue({ data: [], error: null });
+		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
 
 		const candidates = await loadPhase1Candidates("any-account");
 
 		expect(candidates).toHaveLength(0);
+	});
+
+	it("caps the fetch and keeps the most-recently-liked rows", async () => {
+		// Bounds the per-preview transfer so a huge library isn't pulled on every
+		// debounce cycle; ordering by liked_at desc defines which rows survive the cap.
+		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
+
+		await loadPhase1Candidates("any-account");
+
+		expect(mockLikedSongOrder).toHaveBeenCalledWith("liked_at", {
+			ascending: false,
+		});
+		expect(mockLikedSongLimit).toHaveBeenCalledWith(10_000);
 	});
 
 	it("populates filterMeta correctly from liked_song and song data", async () => {
@@ -204,7 +221,7 @@ describe("loadPhase1Candidates", () => {
 			release_year: 2010,
 		};
 		const liked_at = "2023-06-15T00:00:00Z";
-		mockLikedSongIs.mockResolvedValue({
+		mockLikedSongLimit.mockResolvedValue({
 			data: [{ song_id: songId, liked_at, song }],
 			error: null,
 		});

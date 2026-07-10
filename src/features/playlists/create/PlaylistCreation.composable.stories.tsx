@@ -464,6 +464,7 @@ function FullScreenHarness({
 						matchFilters={filters}
 						intentApplied={isIntentEligible && !!intent}
 						intent={intent ?? null}
+						isPreviewStale={false}
 						gateState={gateState}
 						onNameCommit={() => {}}
 						onResult={() => {}}

@@ -58,7 +58,21 @@ export interface CreatePlaylistDraftActions {
 }
 
 export interface CreatePlaylistDraftState {
+	/** Live config — drives the controlled config inputs. */
 	config: CreatePlaylistDraftConfig;
+	/**
+	 * The debounced config that produced the current preview. The create path
+	 * must submit THIS (not the live config): otherwise a config edited within
+	 * the debounce window is persisted as the playlist's match config while the
+	 * preview — and therefore the songs actually added — still reflects the old
+	 * config.
+	 */
+	committedConfig: CreatePlaylistDraftConfig;
+	/**
+	 * True while a config edit is still pending debounce — the preview is stale
+	 * relative to `config`. Create should be blocked until this settles.
+	 */
+	isConfigStale: boolean;
 	selection: CreatePlaylistDraftSelection;
 	preview: SongVM[];
 	suggestions: SongVM[];
@@ -105,6 +119,11 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 	// keystroke. Selection changes (add/remove) are not debounced — they bypass
 	// the window by being read live from state, giving instant preview feedback.
 	const debouncedConfig = useDebounce(config, DEBOUNCE_MS);
+
+	// Reference inequality is exact here: setConfig always produces a new object
+	// and useDebounce settles back to that same reference, so config !==
+	// debouncedConfig holds precisely while a debounce is in flight.
+	const isConfigStale = config !== debouncedConfig;
 
 	// The query key is the debounced config + live selection. Selection changes
 	// (add/remove) bypass the config debounce by depending directly on selection,
@@ -185,6 +204,8 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 
 	return {
 		config,
+		committedConfig: debouncedConfig,
+		isConfigStale,
 		selection,
 		preview: result.preview,
 		suggestions: result.suggestions,

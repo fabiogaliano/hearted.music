@@ -273,6 +273,7 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 					matchFilters={EMPTY_FILTERS}
 					intentApplied={false}
 					intent={null}
+					isPreviewStale={false}
 					gateState="ok"
 					onNameCommit={() => {}}
 					onResult={() => {}}
@@ -303,6 +304,7 @@ export const CreateBarReconnect: Story = () => (
 				matchFilters={EMPTY_FILTERS}
 				intentApplied={false}
 				intent={null}
+				isPreviewStale={false}
 				gateState="reconnect-required"
 				onNameCommit={() => {}}
 				onResult={() => {}}
@@ -326,6 +328,7 @@ export const CreateBarExtensionMissing: Story = () => (
 				matchFilters={EMPTY_FILTERS}
 				intentApplied={false}
 				intent={null}
+				isPreviewStale={false}
 				gateState="extension-unavailable"
 				onNameCommit={() => {}}
 				onResult={() => {}}

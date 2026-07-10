@@ -66,6 +66,7 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 		matchFilters: DEFAULT_FILTERS,
 		intentApplied: false,
 		intent: null,
+		isPreviewStale: false,
 		gateState: "ok" as const,
 		onNameCommit: vi.fn(),
 		onResult: vi.fn(),
@@ -101,6 +102,14 @@ describe("CreateBar — CTA disabled states", () => {
 		render(<CreateBar {...makeProps()} />);
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).not.toBeDisabled();
+	});
+
+	it("is disabled while the preview is stale (a config edit is mid-debounce)", () => {
+		// Blocks the divergence where the live config is persisted against songs
+		// scored under the previous (previewed) config.
+		render(<CreateBar {...makeProps({ isPreviewStale: true })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
 	});
 });
 
