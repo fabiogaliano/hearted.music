@@ -4,12 +4,15 @@ let rpcResponse: { data: unknown; error: unknown };
 // Per-RPC overrides let a test feed the ungated Phase-1 selector and the gated
 // selector distinct rows; unset names fall back to the shared rpcResponse.
 let rpcResponseByName: Record<string, { data: unknown; error: unknown }>;
-let lastCalledRpcName: string | null = null;
+// Every RPC name the code issues, in call order. Tracking all of them (rather
+// than just the last) lets dispatch assertions check exactly which gated
+// selector ran without constraining the order the production code issues in.
+let calledRpcNames: string[];
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(() => ({
 		rpc: vi.fn((name: string) => {
-			lastCalledRpcName = name;
+			calledRpcNames.push(name);
 			return rpcResponseByName[name] ?? rpcResponse;
 		}),
 	})),
@@ -26,7 +29,7 @@ const GATED_RPC = "select_liked_song_ids_needing_enrichment_work";
 beforeEach(() => {
 	rpcResponse = { data: [], error: null };
 	rpcResponseByName = {};
-	lastCalledRpcName = null;
+	calledRpcNames = [];
 });
 
 describe("selectEnrichmentWorkPlan", () => {
@@ -205,16 +208,22 @@ describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
 	it("calls the normal RPC when mode is 'normal'", async () => {
 		await selectEnrichmentWorkPlan("account-1", 10, "normal");
 
-		expect(lastCalledRpcName).toBe(
+		expect(calledRpcNames).toContain(
 			"select_liked_song_ids_needing_enrichment_work",
+		);
+		expect(calledRpcNames).not.toContain(
+			"select_liked_song_ids_needing_first_match_enrichment_work",
 		);
 	});
 
 	it("calls the bootstrap RPC when mode is 'first_match_bootstrap'", async () => {
 		await selectEnrichmentWorkPlan("account-1", 10, "first_match_bootstrap");
 
-		expect(lastCalledRpcName).toBe(
+		expect(calledRpcNames).toContain(
 			"select_liked_song_ids_needing_first_match_enrichment_work",
+		);
+		expect(calledRpcNames).not.toContain(
+			"select_liked_song_ids_needing_enrichment_work",
 		);
 	});
 

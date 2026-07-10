@@ -86,8 +86,9 @@ export async function selectEnrichmentWorkPlan(
 			: "select_liked_song_ids_needing_enrichment_work"
 	) as "select_liked_song_ids_needing_enrichment_work";
 
-	// Gated selector is issued second so a name-tracking mock sees it last; its
-	// error is checked first so the thrown message matches the pre-merge contract.
+	// Both selectors run concurrently. The gated selector is the primary one, so
+	// its error is checked first and surfaces as the canonical failure message;
+	// the Phase-1 selector's error is reported only when it alone fails.
 	const [phase1Result, gatedResult] = await Promise.all([
 		supabase.rpc("select_phase1_song_ids_needing_enrichment_work", {
 			p_account_id: accountId,
