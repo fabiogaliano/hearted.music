@@ -23,7 +23,10 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import type { CreatePlaylistFromDraftResult } from "@/lib/extension/create-playlist-from-draft";
+import type {
+	CreatePlaylistFromDraftInput,
+	CreatePlaylistFromDraftResult,
+} from "@/lib/extension/create-playlist-from-draft";
 import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
@@ -64,6 +67,12 @@ export interface CreateBarProps {
 	 * unmounts on a successful create.
 	 */
 	onNameCommit: (name: string) => void;
+	/**
+	 * Called with the exact orchestrator input just before it runs. Lets the
+	 * parent snapshot the submitted draft so a "created-unsynced" retry resumes
+	 * against the same settings even if the live config is edited afterward.
+	 */
+	onSubmitInput?: (input: CreatePlaylistFromDraftInput) => void;
 	/** Called with the discriminated result from the orchestrator. */
 	onResult: (result: CreatePlaylistFromDraftResult) => void;
 }
@@ -77,6 +86,7 @@ export function CreateBar({
 	isPreviewStale,
 	gateState,
 	onNameCommit,
+	onSubmitInput,
 	onResult,
 }: CreateBarProps) {
 	const [name, setName] = useState(DEFAULT_NAME);
@@ -93,16 +103,18 @@ export function CreateBar({
 		if (!canSubmit) return;
 
 		onNameCommit(trimmedName);
+		const submitInput: CreatePlaylistFromDraftInput = {
+			name: trimmedName,
+			songIds,
+			genrePills,
+			matchFilters,
+			intentApplied,
+			intent: intentApplied && intent ? intent : null,
+		};
+		onSubmitInput?.(submitInput);
 		setIsSubmitting(true);
 		try {
-			const result = await createPlaylistFromDraft({
-				name: trimmedName,
-				songIds,
-				genrePills,
-				matchFilters,
-				intentApplied,
-				intent: intentApplied && intent ? intent : null,
-			});
+			const result = await createPlaylistFromDraft(submitInput);
 
 			if (result.status === "error") {
 				toast.error(result.message);

@@ -56,6 +56,7 @@ import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/t
 import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { PartialState } from "../create-flow/PartialState";
 import { SuccessState } from "../create-flow/SuccessState";
+import { UnsyncedState } from "../create-flow/UnsyncedState";
 
 const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
 
@@ -490,6 +491,47 @@ describe("PartialState — no duplicate-create path", () => {
 			/>,
 		);
 		expect(screen.getByText(/tracks couldn't be added/i)).toBeInTheDocument();
+	});
+});
+
+describe("UnsyncedState — safe retry path", () => {
+	it("offers a Retry alongside Open in Spotify and Done", () => {
+		render(
+			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={vi.fn()} />,
+		);
+		expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+		expect(
+			screen.getByRole("link", { name: /open in spotify/i }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /done/i })).toBeInTheDocument();
+	});
+
+	it("calls onRetry when Retry is clicked", async () => {
+		const user = userEvent.setup();
+		const onRetry = vi.fn();
+		render(
+			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={onRetry} />,
+		);
+		await user.click(screen.getByRole("button", { name: /retry/i }));
+		expect(onRetry).toHaveBeenCalledTimes(1);
+	});
+
+	it("disables Retry (aria-busy) while a retry is in flight", () => {
+		render(
+			<UnsyncedState spotifyId="abc123" isRetrying={true} onRetry={vi.fn()} />,
+		);
+		const btn = screen.getByRole("button", { name: /retrying/i });
+		expect(btn).toBeDisabled();
+		expect(btn).toHaveAttribute("aria-busy", "true");
+	});
+
+	it("links to the correct Spotify playlist URL", () => {
+		render(
+			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={vi.fn()} />,
+		);
+		expect(
+			screen.getByRole("link", { name: /open in spotify/i }),
+		).toHaveAttribute("href", "https://open.spotify.com/playlist/abc123");
 	});
 });
 

@@ -14,13 +14,18 @@ import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	getBrowserTarget,
 	getExtensionStoreUrl,
 } from "@/lib/extension/browser-target";
-import type { CreatePlaylistFromDraftResult } from "@/lib/extension/create-playlist-from-draft";
+import type {
+	CreatePlaylistFromDraftInput,
+	CreatePlaylistFromDraftResult,
+} from "@/lib/extension/create-playlist-from-draft";
+import { resumePlaylistCreateFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import {
 	getSpotifyConnectionStatus,
 	isExtensionInstalled,
@@ -33,6 +38,7 @@ import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
 import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
 import { PartialState } from "./create-flow/PartialState";
 import { SuccessState } from "./create-flow/SuccessState";
+import { UnsyncedState } from "./create-flow/UnsyncedState";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { PreviewList } from "./preview/PreviewList";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
@@ -56,7 +62,8 @@ type FlowResult =
 			spotifyId: string;
 			failedTrackCount: number;
 			totalSongCount: number;
-	  };
+	  }
+	| { status: "created-unsynced"; spotifyId: string; playlistUri: string };
 
 interface CreatePlaylistScreenProps {
 	accountId: string;
@@ -145,6 +152,13 @@ export function CreatePlaylistScreen({
 	// so reading a ref is safer than relying on the closure-captured state value.
 	const submittedNameRef = useRef<string>("");
 
+	// Snapshot of the exact input submitted to the orchestrator. A "created-unsynced"
+	// retry must resume against these original draft settings (genre pills, filters,
+	// intent, songIds) even if the live config was edited after the failed attempt,
+	// so the draft isn't silently lost.
+	const submittedInputRef = useRef<CreatePlaylistFromDraftInput | null>(null);
+	const [isRetryingUnsynced, setIsRetryingUnsynced] = useState(false);
+
 	// When the create bar unmounts and the result state mounts (success or
 	// partial), keyboard focus would otherwise fall to <body>. Move it into
 	// the result region so AT users land on the status message immediately.
@@ -156,6 +170,9 @@ export function CreatePlaylistScreen({
 	}, [flowResult]);
 	const onNameCommit = useCallback((name: string) => {
 		submittedNameRef.current = name;
+	}, []);
+	const onSubmitInput = useCallback((input: CreatePlaylistFromDraftInput) => {
+		submittedInputRef.current = input;
 	}, []);
 
 	function handleCreateResult(result: CreatePlaylistFromDraftResult) {
@@ -170,7 +187,19 @@ export function CreatePlaylistScreen({
 				status: "partial",
 				spotifyId: result.spotifyId,
 				failedTrackCount: result.failedTrackCount,
-				totalSongCount: draft.preview.length,
+				// Denominator is the snapshot the attempt actually ran against, not
+				// live preview state — the preview can drift while a result sits on
+				// screen (e.g. between a failed create and a resume retry).
+				totalSongCount:
+					submittedInputRef.current?.songIds.length ?? draft.preview.length,
+			});
+		} else if (result.status === "created-unsynced") {
+			// Spotify has the playlist but the local row never landed. Hold the
+			// URI/ID so the retry can resume against the same playlist.
+			setFlowResult({
+				status: "created-unsynced",
+				spotifyId: result.spotifyId,
+				playlistUri: result.playlistUri,
 			});
 		} else if (result.status === "reconnect-required") {
 			// The gate was "ok" when submit started but auth expired mid-flight.
@@ -180,6 +209,26 @@ export function CreatePlaylistScreen({
 			setGateState("extension-unavailable");
 		}
 		// error: handled in CreateBar via toast; no flow result change needed.
+	}
+
+	// Resume a "created-unsynced" create: re-drive acknowledge + config + track
+	// adds against the EXISTING playlist (never a fresh create, so no duplicate).
+	async function handleRetryUnsynced(playlistUri: string, spotifyId: string) {
+		const input = submittedInputRef.current;
+		if (!input) return;
+		setIsRetryingUnsynced(true);
+		try {
+			const result = await resumePlaylistCreateFromDraft(
+				input,
+				playlistUri,
+				spotifyId,
+			);
+			handleCreateResult(result);
+		} catch {
+			toast.error("Something went sideways. Let's try that again.");
+		} finally {
+			setIsRetryingUnsynced(false);
+		}
 	}
 
 	// Not-enough note: eligible but fewer than the slider max.
@@ -369,6 +418,19 @@ export function CreatePlaylistScreen({
 							totalSongCount={flowResult.totalSongCount}
 						/>
 					</div>
+				) : flowResult?.status === "created-unsynced" ? (
+					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
+						<UnsyncedState
+							spotifyId={flowResult.spotifyId}
+							isRetrying={isRetryingUnsynced}
+							onRetry={() =>
+								void handleRetryUnsynced(
+									flowResult.playlistUri,
+									flowResult.spotifyId,
+								)
+							}
+						/>
+					</div>
 				) : (
 					<CreateBar
 						songIds={draft.preview.map((s) => s.id)}
@@ -379,6 +441,7 @@ export function CreatePlaylistScreen({
 						isPreviewStale={draft.isConfigStale}
 						gateState={gateState}
 						onNameCommit={onNameCommit}
+						onSubmitInput={onSubmitInput}
 						onResult={handleCreateResult}
 					/>
 				)}

@@ -67,7 +67,28 @@ describe("createPlaylistAcknowledged", () => {
 		expect(mockAcknowledgeCreate).not.toHaveBeenCalled();
 	});
 
-	it("returns success with acknowledged=false when acknowledgement fails", async () => {
+	it("retries a failed acknowledge and reports acknowledged=true when a later attempt lands", async () => {
+		mockCreatePlaylist.mockResolvedValue({
+			ok: true,
+			data: { uri: "spotify:playlist:new1", revision: "r1" },
+			commandId: "cmd-1",
+		});
+		// First attempt fails (transient DB blip), second attempt succeeds.
+		mockAcknowledgeCreate
+			.mockRejectedValueOnce(new Error("transient"))
+			.mockResolvedValueOnce({ success: true });
+
+		const result = await createPlaylistAcknowledged("My Playlist", "user1");
+
+		expect(result).toEqual({
+			ok: true,
+			data: { uri: "spotify:playlist:new1", revision: "r1" },
+			acknowledged: true,
+		});
+		expect(mockAcknowledgeCreate).toHaveBeenCalledTimes(2);
+	});
+
+	it("returns success with acknowledged=false when acknowledgement fails on every retry", async () => {
 		mockCreatePlaylist.mockResolvedValue({
 			ok: true,
 			data: { uri: "spotify:playlist:new1", revision: "r1" },
@@ -85,6 +106,8 @@ describe("createPlaylistAcknowledged", () => {
 		if (result.ok && !result.acknowledged) {
 			expect(result.acknowledgeError).toBeInstanceOf(Error);
 		}
+		// Initial attempt + 2 bounded retries.
+		expect(mockAcknowledgeCreate).toHaveBeenCalledTimes(3);
 	});
 });
 

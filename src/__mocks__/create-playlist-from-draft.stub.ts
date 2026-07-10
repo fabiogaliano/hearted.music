@@ -14,3 +14,10 @@ export type { CreatePlaylistFromDraftResult } from "@/lib/extension/create-playl
 // state, which is safe and clearly shows the loading affordance.
 export const createPlaylistFromDraft = (_input: CreatePlaylistFromDraftInput) =>
 	new Promise<never>(() => {});
+
+// Same posture for the resume path — never resolves in Ladle.
+export const resumePlaylistCreateFromDraft = (
+	_input: CreatePlaylistFromDraftInput,
+	_playlistUri: string,
+	_spotifyId: string,
+) => new Promise<never>(() => {});

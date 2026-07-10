@@ -10,6 +10,14 @@
  *   5. bulk addToPlaylist for the previewed tracks (single command)
  *   6. bulk match_decision "added" rows (non-fatal, fire-and-forget)
  *
+ * The dual write (Spotify then DB) is non-atomic and un-eliminable: only the
+ * client extension can talk to Spotify. If the Spotify create succeeds but the
+ * DB acknowledge write fails even after bounded retries, step 3 returns a
+ * "created-unsynced" result and the flow stops BEFORE step 4 — the ownership
+ * guard in persistNewPlaylistConfig requires the row to exist. The caller then
+ * resumes via resumePlaylistCreateFromDraft, which re-drives the acknowledge and
+ * steps 4–6 against the EXISTING playlist (never a fresh create).
+ *
  * The draft state (songIds, config) is never mutated here — callers are
  * responsible for preserving it on any failure branch so the user can retry.
  */
@@ -21,7 +29,10 @@ import {
 	resolveSpotifyUserId,
 } from "@/lib/server/playlist-draft.functions";
 import { getSpotifyConnectionStatus, isExtensionInstalled } from "./detect";
-import { createPlaylistAcknowledged } from "./playlist-write-acknowledgement";
+import {
+	acknowledgeCreateWithRetry,
+	createPlaylistAcknowledged,
+} from "./playlist-write-acknowledgement";
 import {
 	outcomeFromAcknowledgedResult,
 	outcomeFromCommandResponse,
@@ -62,6 +73,19 @@ export type CreatePlaylistFromDraftResult =
 	  }
 	| { status: "reconnect-required" }
 	| { status: "extension-unavailable" }
+	| {
+			/**
+			 * The playlist exists on Spotify but the DB acknowledge write never landed
+			 * (even after bounded retries), so there is no local playlist row yet.
+			 * The flow stopped BEFORE persistNewPlaylistConfig — no config or tracks
+			 * were persisted. Callers must offer a retry that resumes from the
+			 * acknowledge/config steps using this playlistUri/spotifyId, never a fresh
+			 * create (which would produce a duplicate Spotify playlist).
+			 */
+			status: "created-unsynced";
+			playlistUri: string;
+			spotifyId: string;
+	  }
 	| {
 			status: "partial";
 			playlistUri: string;
@@ -129,6 +153,56 @@ export async function createPlaylistFromDraft(
 		};
 	}
 
+	// The Spotify create succeeded but the DB acknowledge write never landed
+	// (even after the bounded retries inside createPlaylistAcknowledged). The
+	// playlist exists on Spotify with no local row. We must NOT fall through to
+	// persistNewPlaylistConfig — its ownership guard reads the (missing) row and
+	// throws "Playlist not found", which would be misreported as an all-tracks
+	// failure and tempt a full re-create (a duplicate Spotify playlist). Surface
+	// the honest state so the caller can resume from acknowledge/config instead.
+	if (!createResult.acknowledged) {
+		return { status: "created-unsynced", playlistUri, spotifyId };
+	}
+
+	return finalizePlaylistCreate(playlistUri, spotifyId, input);
+}
+
+/**
+ * Resumes a create that stopped at "created-unsynced": the Spotify playlist
+ * already exists (playlistUri/spotifyId), but its DB row and config were never
+ * written. Re-drives the acknowledge (idempotent upsert) and, once the row
+ * exists, the config + track-add steps against the EXISTING playlist. It never
+ * calls createPlaylist, so it cannot produce a duplicate Spotify playlist.
+ *
+ * Callers pass the SAME draft input used for the original attempt so the draft's
+ * config (genre pills, match filters, intent) and track adds are preserved.
+ */
+export async function resumePlaylistCreateFromDraft(
+	input: CreatePlaylistFromDraftInput,
+	playlistUri: string,
+	spotifyId: string,
+): Promise<CreatePlaylistFromDraftResult> {
+	const ack = await acknowledgeCreateWithRetry(playlistUri, input.name);
+	if (!ack.acknowledged) {
+		// Still couldn't write the row — stay unsynced so the user can retry again.
+		return { status: "created-unsynced", playlistUri, spotifyId };
+	}
+
+	return finalizePlaylistCreate(playlistUri, spotifyId, input);
+}
+
+/**
+ * Steps 5–7 of the commit, shared by the initial create and the resume path.
+ * Assumes the DB playlist row already exists (acknowledge succeeded):
+ *   5. persist match config server-side and resolve ordered track URIs
+ *   6. bulk addToPlaylist for the previewed tracks
+ *   7. record match_decision "added" rows (non-fatal, fire-and-forget)
+ */
+async function finalizePlaylistCreate(
+	playlistUri: string,
+	spotifyId: string,
+	input: CreatePlaylistFromDraftInput,
+): Promise<CreatePlaylistFromDraftResult> {
 	// Step 5: persist match config and resolve ordered track URIs.
 	// persistNewPlaylistConfig does both in one server round-trip:
 	//   - writes match_intent (only if eligible) / genre_pills / match_filters

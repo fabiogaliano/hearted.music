@@ -38,10 +38,13 @@ vi.mock("../detect", () => ({
 }));
 
 const mockCreatePlaylistAcknowledged = vi.fn();
+const mockAcknowledgeCreateWithRetry = vi.fn();
 
 vi.mock("../playlist-write-acknowledgement", () => ({
 	createPlaylistAcknowledged: (...args: unknown[]) =>
 		mockCreatePlaylistAcknowledged(...args),
+	acknowledgeCreateWithRetry: (...args: unknown[]) =>
+		mockAcknowledgeCreateWithRetry(...args),
 }));
 
 const mockAddToPlaylist = vi.fn();
@@ -52,7 +55,7 @@ vi.mock("../spotify-client", () => ({
 
 // ── Import under test ──────────────────────────────────────────────────────
 
-const { createPlaylistFromDraft } = await import(
+const { createPlaylistFromDraft, resumePlaylistCreateFromDraft } = await import(
 	"../create-playlist-from-draft"
 );
 
@@ -369,6 +372,138 @@ describe("match_decision recording", () => {
 			status: "success",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+		});
+	});
+});
+
+// ── acknowledge failure → created-unsynced ─────────────────────────────────
+
+describe("created-unsynced (acknowledge exhausted retries)", () => {
+	it("returns created-unsynced when the DB acknowledge never landed", async () => {
+		setupHappyPath();
+		// Spotify create succeeded, but the DB acknowledge write failed even after
+		// the bounded retries inside createPlaylistAcknowledged.
+		mockCreatePlaylistAcknowledged.mockResolvedValue({
+			ok: true as const,
+			data: { uri: "spotify:playlist:abc123", revision: "r1" },
+			acknowledged: false as const,
+			acknowledgeError: new Error("DB down"),
+		});
+
+		const result = await createPlaylistFromDraft({ ...BASE_INPUT });
+
+		expect(result).toEqual({
+			status: "created-unsynced",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+		});
+	});
+
+	it("does NOT persist config or add tracks when acknowledge failed", async () => {
+		setupHappyPath();
+		mockCreatePlaylistAcknowledged.mockResolvedValue({
+			ok: true as const,
+			data: { uri: "spotify:playlist:abc123", revision: "r1" },
+			acknowledged: false as const,
+			acknowledgeError: new Error("DB down"),
+		});
+
+		await createPlaylistFromDraft({ ...BASE_INPUT });
+
+		// The ownership guard in persistNewPlaylistConfig would throw on the
+		// missing row — the flow must stop before reaching it.
+		expect(mockPersistNewPlaylistConfig).not.toHaveBeenCalled();
+		expect(mockAddToPlaylist).not.toHaveBeenCalled();
+	});
+
+	it("still succeeds when the internal retry lands the acknowledge", async () => {
+		// createPlaylistAcknowledged owns the bounded retry; from the orchestrator's
+		// view a recovered write simply reports acknowledged: true.
+		setupHappyPath();
+
+		const result = await createPlaylistFromDraft({ ...BASE_INPUT });
+
+		expect(result).toEqual({
+			status: "success",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+		});
+		expect(mockPersistNewPlaylistConfig).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ── resume from created-unsynced ───────────────────────────────────────────
+
+describe("resumePlaylistCreateFromDraft", () => {
+	it("re-drives acknowledge + config + tracks against the existing playlist", async () => {
+		setupHappyPath();
+		mockAcknowledgeCreateWithRetry.mockResolvedValue({ acknowledged: true });
+
+		const result = await resumePlaylistCreateFromDraft(
+			{ ...BASE_INPUT },
+			"spotify:playlist:abc123",
+			"abc123",
+		);
+
+		expect(result).toEqual({
+			status: "success",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+		});
+		// Resume must never re-create the Spotify playlist.
+		expect(mockCreatePlaylistAcknowledged).not.toHaveBeenCalled();
+		expect(mockAcknowledgeCreateWithRetry).toHaveBeenCalledWith(
+			"spotify:playlist:abc123",
+			BASE_INPUT.name,
+		);
+		expect(mockPersistNewPlaylistConfig).toHaveBeenCalledTimes(1);
+		expect(mockAddToPlaylist).toHaveBeenCalledTimes(1);
+	});
+
+	it("stays created-unsynced (and skips config) when acknowledge still fails", async () => {
+		setupHappyPath();
+		mockAcknowledgeCreateWithRetry.mockResolvedValue({
+			acknowledged: false,
+			acknowledgeError: new Error("still down"),
+		});
+
+		const result = await resumePlaylistCreateFromDraft(
+			{ ...BASE_INPUT },
+			"spotify:playlist:abc123",
+			"abc123",
+		);
+
+		expect(result).toEqual({
+			status: "created-unsynced",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+		});
+		expect(mockPersistNewPlaylistConfig).not.toHaveBeenCalled();
+		expect(mockAddToPlaylist).not.toHaveBeenCalled();
+	});
+
+	it("reports partial when config persists but the track-add fails on resume", async () => {
+		setupHappyPath();
+		mockAcknowledgeCreateWithRetry.mockResolvedValue({ acknowledged: true });
+		mockAddToPlaylist.mockResolvedValue({
+			ok: false as const,
+			errorCode: "UPSTREAM_ERROR" as const,
+			message: "Spotify 500",
+			retryable: true,
+			commandId: "cmd-add-1",
+		});
+
+		const result = await resumePlaylistCreateFromDraft(
+			{ ...BASE_INPUT },
+			"spotify:playlist:abc123",
+			"abc123",
+		);
+
+		expect(result).toEqual({
+			status: "partial",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+			failedTrackCount: 2,
 		});
 	});
 });
