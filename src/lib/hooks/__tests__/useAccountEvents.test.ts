@@ -282,7 +282,7 @@ describe("useAccountEvents", () => {
 		});
 	});
 
-	it("invalidates active jobs when a refresh settles without a snapshot", async () => {
+	it("applies the trailing snapshot instead of refetching active jobs on job-change frames", async () => {
 		setupMockFetch();
 		const { result } = renderHook(() => useAccountEvents(ACCOUNT_ID), {
 			wrapper,
@@ -293,6 +293,12 @@ describe("useAccountEvents", () => {
 		});
 
 		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+		const settledSnapshot = {
+			enrichment: null,
+			matchSnapshotRefresh: null,
+			firstMatchReady: true,
+			firstVisibleMatchReady: true,
+		};
 
 		act(() => {
 			for (const stream of createdStreams) {
@@ -308,15 +314,19 @@ describe("useAccountEvents", () => {
 						303,
 					),
 				);
+				// Gateway contract: every replay batch ends with a snapshot frame.
+				stream.push(buildFrame("active_jobs_snapshot", settledSnapshot));
 			}
 		});
 
 		await waitFor(() => {
-			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: ["active-jobs", ACCOUNT_ID],
-			});
+			expect(queryClient.getQueryData(["active-jobs", ACCOUNT_ID])).toEqual(
+				settledSnapshot,
+			);
 		});
-		expect(invalidateSpy).toHaveBeenCalledTimes(2);
+		expect(invalidateSpy).not.toHaveBeenCalledWith({
+			queryKey: ["active-jobs", ACCOUNT_ID],
+		});
 	});
 
 	it("does not promote Last-Event-ID from live frames across reconnects", async () => {

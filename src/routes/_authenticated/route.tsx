@@ -149,7 +149,12 @@ export const Route = createFileRoute("/_authenticated")({
 	// banner renders flash-free. Lives on the authenticated layout — not the
 	// root — so public/marketing pages never solicit analytics consent or pay
 	// for the lookup; the gate appears only once the user is in the product.
+	// Consent only changes through the banner itself (client-driven), so one
+	// fetch per session is enough — without this, every link-hover preload and
+	// navigation re-runs the loader.
 	loader: () => getInitialConsentState(),
+	staleTime: Number.POSITIVE_INFINITY,
+	preloadStaleTime: Number.POSITIVE_INFINITY,
 	component: AuthenticatedLayout,
 });
 

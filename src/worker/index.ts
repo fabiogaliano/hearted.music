@@ -68,13 +68,17 @@ async function main() {
 	await runDefaultSweepTick();
 	// Reclaim any backfill job whose worker died mid-run before the loop opens,
 	// so an expired lease can't keep the selector wedged in backfill_active.
-	await runAudioFeatureBackfillSweepTick();
+	if (workerConfig.isProduction) {
+		await runAudioFeatureBackfillSweepTick();
+	}
 	// Reclaim any deck job whose worker died mid-run (stale heartbeat) and
 	// dead-letter exhausted ones before the deck poll loop opens.
 	await runMatchDeckJobSweepTick();
 
 	const sweep = startDefaultSweep();
-	const audioBackfillSweep = startAudioFeatureBackfillSweep();
+	const audioBackfillSweep = workerConfig.isProduction
+		? startAudioFeatureBackfillSweep()
+		: null;
 	const matchDeckSweep = startMatchDeckJobSweep();
 
 	// Primary wake-up for enqueued jobs: a NOTIFY drains the queue immediately;
@@ -108,7 +112,7 @@ async function main() {
 		keepAlive.stop();
 		dbBackup.stop();
 		sweep.stop();
-		audioBackfillSweep.stop();
+		audioBackfillSweep?.stop();
 		matchDeckSweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
@@ -163,13 +167,19 @@ async function main() {
 
 	// Audio-feature backfill runs its own loop with a dedicated claim RPC,
 	// isolating slow yt-dlp downloads + rate-limited ReccoBeats uploads from the
-	// other workflows.
-	const audioBackfillLoop = startAudioFeatureBackfillPolling().catch((err) => {
-		log.error("audio-backfill-poll-loop-error", { error: String(err) });
-		Sentry.captureException(err, {
-			tags: { loop: "audio-feature-backfill" },
-		});
-	});
+	// other workflows. Prod-only — real YouTube + ReccoBeats calls are wasteful
+	// against a local offline snapshot.
+	if (!workerConfig.isProduction) {
+		log.info("audio-backfill-disabled");
+	}
+	const audioBackfillLoop = workerConfig.isProduction
+		? startAudioFeatureBackfillPolling().catch((err) => {
+				log.error("audio-backfill-poll-loop-error", { error: String(err) });
+				Sentry.captureException(err, {
+					tags: { loop: "audio-feature-backfill" },
+				});
+			})
+		: Promise.resolve();
 
 	// Match deck jobs run their own single-slot loop with a dedicated claim RPC,
 	// draining publish→build→append and capture-ahead off the request path.

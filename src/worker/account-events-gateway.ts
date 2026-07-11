@@ -468,21 +468,29 @@ export function startAccountEventsGateway() {
 
 			let streamClient: AccountEventClient | null = null;
 			return new Response(
-				new ReadableStream({
-					start: async (controller) => {
-						streamClient = await initializeClientStream(
-							controller,
-							accountClients,
-							claims.sub,
-							req.signal,
-							cursor,
-							claims.exp,
-						);
+				new ReadableStream(
+					{
+						start: async (controller) => {
+							streamClient = await initializeClientStream(
+								controller,
+								accountClients,
+								claims.sub,
+								req.signal,
+								cursor,
+								claims.exp,
+							);
+						},
+						cancel() {
+							streamClient?.close();
+						},
 					},
-					cancel() {
-						streamClient?.close();
-					},
-				}),
+					// The default highWaterMark of 1 makes the backpressure guard in
+					// sendEnvelope trip on any multi-frame burst — connect-time replay
+					// (backlog rows + snapshot) enqueues faster than the socket drains,
+					// killing healthy connections. Real headroom keeps the guard for
+					// genuinely stuck consumers only.
+					new CountQueuingStrategy({ highWaterMark: 256 }),
+				),
 				{ headers: responseHeaders },
 			);
 		},

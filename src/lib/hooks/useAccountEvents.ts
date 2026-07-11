@@ -234,15 +234,13 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					break;
 				case "match_snapshot_published":
 					queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot });
-					queryClient.invalidateQueries({
-						queryKey: activeJobsKeys.byAccount(accountId),
-					});
 					break;
+				// The gateway follows every replay batch with an authoritative
+				// active_jobs_snapshot frame, so job-change frames need no
+				// invalidate/refetch roundtrip — the snapshot lands via
+				// setQueryData in the same batch.
 				case "match_snapshot_failed":
 				case "active_jobs_changed":
-					queryClient.invalidateQueries({
-						queryKey: activeJobsKeys.byAccount(accountId),
-					});
 					break;
 				case "match_deck_appended":
 					queryClient.invalidateQueries({

@@ -12,7 +12,7 @@
 		"dev:embeddings": "bun scripts/dev/dev-embedding-sidecar.ts",
 		"dev:brand": "cd ../v1_hearted_brand && bun run dev",
 		"dev:stripe": "stripe listen --forward-to localhost:3100/webhooks/stripe",
-		"dev:all": "concurrently -n app,worker,ml -c blue,green,magenta --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:embeddings\"",
+		"dev:all": "concurrently -n app,worker,gateway,ml -c blue,green,yellow,magenta --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:gateway\" \"bun run dev:embeddings\"",
 		"dev:monetization": "concurrently -n app,worker,ml,brand,stripe -c blue,green,magenta,yellow,cyan --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:embeddings\" \"bun run dev:brand\" \"bun run dev:stripe\"",
 		"build": "vite build",
 		"preview": "vite preview",
