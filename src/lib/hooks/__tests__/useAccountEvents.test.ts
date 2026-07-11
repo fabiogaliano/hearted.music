@@ -81,7 +81,13 @@ describe("useAccountEvents", () => {
 
 	let createdStreams: ReturnType<typeof createMockStream>[] = [];
 
-	function setupMockFetch(options: { ok?: boolean; status?: number } = {}) {
+	function setupMockFetch(
+		options: {
+			ok?: boolean;
+			status?: number;
+			headers?: Record<string, string>;
+		} = {},
+	) {
 		mockFetch.mockImplementation(async (_url, fetchOptions) => {
 			return new Promise((resolve, reject) => {
 				const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
@@ -98,7 +104,7 @@ describe("useAccountEvents", () => {
 					body = mockStream.stream;
 				}
 
-				resolve({ ok, status, body });
+				resolve({ ok, status, body, headers: new Headers(options.headers) });
 			});
 		});
 	}
@@ -360,6 +366,32 @@ describe("useAccountEvents", () => {
 			| Record<string, string>
 			| undefined;
 		expect(reconnectHeaders?.["Last-Event-ID"]).toBeUndefined();
+	});
+
+	it("seeds Last-Event-ID from the connect response cursor header", async () => {
+		setupMockFetch({ headers: { "x-account-events-cursor": "42" } });
+
+		renderHook(() => useAccountEvents(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(createdStreams).toHaveLength(1);
+		});
+
+		act(() => {
+			createdStreams[0]?.close();
+		});
+
+		await waitFor(
+			() => {
+				expect(mockFetch).toHaveBeenCalledTimes(2);
+			},
+			{ timeout: 2500 },
+		);
+
+		const reconnectHeaders = mockFetch.mock.calls[1]?.[1]?.headers as
+			| Record<string, string>
+			| undefined;
+		expect(reconnectHeaders?.["Last-Event-ID"]).toBe("42");
 	});
 
 	it("stops on 403 and sets state to forbidden", async () => {

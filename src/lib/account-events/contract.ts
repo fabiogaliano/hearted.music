@@ -203,3 +203,12 @@ export const HEARTBEAT_INTERVAL_MS = 20_000;
  * Standard SSE `Last-Event-ID` — sent explicitly by the fetch-based client.
  */
 export const CURSOR_HEADER = "last-event-id" as const;
+
+/**
+ * Response header on which the gateway announces the stream's effective
+ * starting cursor. A client that connected cursor-less seeds its in-memory
+ * cursor from it, so a reconnect before the first durable frame still
+ * carries a `Last-Event-ID` instead of presenting as a fresh page load
+ * (which would skip to the new head and drop events published in the gap).
+ */
+export const CURSOR_RESPONSE_HEADER = "x-account-events-cursor" as const;

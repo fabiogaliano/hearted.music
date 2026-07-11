@@ -237,6 +237,13 @@ from no cursor, receives a full `active_jobs_snapshot`, and only then begins
 advancing. This trades a redundant snapshot on reload (cheap) for never trusting a
 stale cursor.
 
+The gateway announces the stream's effective starting cursor in the
+`x-account-events-cursor` response header, and the client seeds its in-memory
+cursor from it on a cursor-less connect. A mid-session reconnect that happens
+before the first durable frame therefore still carries a `Last-Event-ID`
+instead of presenting as another fresh page load — which would re-resolve the
+head and silently skip events published in the gap.
+
 ### 5.2 Multi-tab behavior (phase 1 decision)
 
 **Phase 1: one stream per tab.** N open tabs for one account = N gateway

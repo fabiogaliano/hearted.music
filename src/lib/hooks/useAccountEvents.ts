@@ -4,10 +4,11 @@ import { billingKeys } from "@/features/billing/query-keys";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { likedSongsKeys } from "@/features/liked-songs/queries";
 import { matchDeckKeys } from "@/features/matching/deck-queries";
-import type {
-	AccountEventPayloadMap,
-	ActiveJobsSnapshot,
-	AnyAccountEventEnvelope,
+import {
+	type AccountEventPayloadMap,
+	type ActiveJobsSnapshot,
+	type AnyAccountEventEnvelope,
+	CURSOR_RESPONSE_HEADER,
 } from "@/lib/account-events/contract";
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
 import { activeJobsKeys } from "./active-jobs-keys";
@@ -324,6 +325,21 @@ export function useAccountEvents(accountId: string, enabled = true) {
 						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
 					});
 					return;
+				}
+
+				// On a cursor-less connect the gateway skips history and announces
+				// the starting cursor here. Seed it so a reconnect before the first
+				// durable frame still sends Last-Event-ID — without it the gateway
+				// would treat the reconnect as another fresh page load and skip
+				// events published in the gap.
+				if (lastSeenPublishIdRef.current === undefined) {
+					const startCursor = parseInt(
+						response.headers.get(CURSOR_RESPONSE_HEADER) ?? "",
+						10,
+					);
+					if (!Number.isNaN(startCursor)) {
+						lastSeenPublishIdRef.current = startCursor;
+					}
 				}
 
 				setConnectionState("connected");
