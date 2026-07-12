@@ -7,7 +7,12 @@
  * untouched while another task may be editing it concurrently.
  */
 
-import type { PresetVM, SongWithReason } from "./types";
+import type {
+	IntentGateVM,
+	PresetVM,
+	SongWithReason,
+	TasteProfileVM,
+} from "./types";
 
 export const PROTO_PREVIEW_SONGS: SongWithReason[] = [
 	{
@@ -200,3 +205,87 @@ export const PROTO_PRESETS: PresetVM[] = [
 		intent: "Late-night, slow-building electronic",
 	},
 ];
+
+/**
+ * Three library depths for judging the dynamic seed stage: rich derives the
+ * full template spread with well-stocked slots, sparse only what clears the
+ * floors (fewer cards, fewer options per blank), brand-new derives nothing
+ * (the stage must explain itself instead of showing hollow cards).
+ */
+export const PROTO_TASTE_PROFILES: Record<
+	"rich" | "sparse" | "brand-new",
+	TasteProfileVM
+> = {
+	rich: {
+		totalLikedCount: 1238,
+		likedWindows: [
+			{ id: "last-30d", label: "last 30 days", count: 47 },
+			{ id: "last-3m", label: "last 3 months", count: 132 },
+			{ id: "last-6m", label: "last 6 months", count: 257 },
+			{ id: "first-3m", label: "first 3 months", count: 64 },
+		],
+		topGenres: [
+			{ name: "indie", count: 340 },
+			{ name: "electronic", count: 185 },
+			{ name: "pop", count: 121 },
+			{ name: "house", count: 78 },
+			{ name: "indie rock", count: 45 },
+		],
+		topArtists: [
+			{ name: "KAYTRANADA", count: 26 },
+			{ name: "Dua Lipa", count: 19 },
+			{ name: "The Strokes", count: 14 },
+		],
+		decades: [
+			{ label: "2010s", from: 2010, to: 2019, count: 214 },
+			{ label: "2000s", from: 2000, to: 2009, count: 88 },
+			{ label: "1990s", from: 1990, to: 1999, count: 41 },
+		],
+	},
+	sparse: {
+		totalLikedCount: 86,
+		likedWindows: [
+			{ id: "last-30d", label: "last 30 days", count: 12 },
+			{ id: "last-3m", label: "last 3 months", count: 31 },
+			{ id: "first-3m", label: "first 3 months", count: 5 },
+		],
+		topGenres: [
+			{ name: "pop", count: 34 },
+			{ name: "dance pop", count: 18 },
+		],
+		topArtists: [{ name: "Dua Lipa", count: 9 }],
+		decades: [{ label: "2020s", from: 2020, to: 2026, count: 15 }],
+	},
+	"brand-new": {
+		totalLikedCount: 23,
+		likedWindows: [{ id: "last-30d", label: "last 30 days", count: 6 }],
+		topGenres: [],
+		topArtists: [],
+		decades: [],
+	},
+};
+
+/**
+ * The intent gate in both states. Criteria mirror the prod predicate
+ * (Backstage Pass OR ≥1,000 unlocked songs, unlocks bought as 500-song
+ * packs — hence progress in pack-sized steps). See types.ts for the
+ * promotion mapping.
+ */
+export const PROTO_INTENT_GATES: Record<"unlocked" | "locked", IntentGateVM> = {
+	unlocked: {
+		allowed: true,
+		criteria: [{ id: "backstage-pass", label: "Backstage Pass", met: true }],
+	},
+	locked: {
+		allowed: false,
+		criteria: [
+			{ id: "backstage-pass", label: "Backstage Pass", met: false },
+			{
+				id: "unlocked-songs",
+				label: "1,000 songs from packs",
+				met: false,
+				progress: { current: 500, target: 1000 },
+			},
+		],
+	},
+};
