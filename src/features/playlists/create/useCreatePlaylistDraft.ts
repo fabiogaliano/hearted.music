@@ -15,6 +15,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { PreviewPlaylistDraftResult } from "@/lib/server/playlist-draft.functions";
@@ -25,12 +26,6 @@ import {
 } from "./queries";
 
 const DEBOUNCE_MS = 600;
-
-// Mirrors draft-engine.ts's SUGGESTIONS_COUNT (the server's per-batch size).
-// Not imported directly to keep this client hook decoupled from the scoring
-// engine module; a mismatch here only affects how far one refresh advances,
-// never correctness (assembleDraft clamps out-of-range offsets).
-const SUGGESTIONS_PAGE_SIZE = 12;
 
 export interface CreatePlaylistDraftConfig {
 	intent?: string;
@@ -252,7 +247,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 	const dismissSuggestion = removeSong;
 
 	const refreshSuggestions = useCallback(() => {
-		setSuggestionsOffset((prev) => prev + SUGGESTIONS_PAGE_SIZE);
+		setSuggestionsOffset((prev) => prev + SUGGESTIONS_COUNT);
 	}, []);
 
 	const reset = useCallback(() => {

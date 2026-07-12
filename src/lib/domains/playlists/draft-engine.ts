@@ -18,6 +18,7 @@ import type {
 	MatchResult,
 } from "@/lib/domains/taste/song-matching/types";
 import type { Phase1Candidate } from "./candidate-loader";
+import { SUGGESTIONS_COUNT } from "./constants";
 import type { SongVM } from "./types";
 
 /**
@@ -259,13 +260,6 @@ export interface DraftResult {
 	totalEligible: number;
 	intentApplied: boolean;
 }
-
-/**
- * Exported so client-side "refresh suggestions" can page by exactly one
- * suggestions-page's worth of candidates — keeping the offset step in sync
- * with how big a "batch" is on the server.
- */
-export const SUGGESTIONS_COUNT = 12;
 
 /**
  * Assemble the full draft result from scored candidates.

@@ -12,6 +12,7 @@ import type { BillingState } from "@/lib/domains/billing/state";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { computeAdaptiveWeights } from "@/lib/domains/taste/song-matching/config";
 import type { Phase1Candidate } from "../candidate-loader";
+import { SUGGESTIONS_COUNT } from "../constants";
 import { assembleDraft, filterCandidates } from "../draft-engine";
 import { buildIntentGate, isIntentEligible } from "../intent-eligibility";
 
@@ -567,11 +568,11 @@ describe("assembleDraft", () => {
 			10,
 			false,
 			candidates,
-			12,
+			SUGGESTIONS_COUNT,
 		);
 
-		expect(firstBatch.suggestions).toHaveLength(12);
-		expect(secondBatch.suggestions).toHaveLength(12);
+		expect(firstBatch.suggestions).toHaveLength(SUGGESTIONS_COUNT);
+		expect(secondBatch.suggestions).toHaveLength(SUGGESTIONS_COUNT);
 		// Genuinely new songs — no overlap between the two pages.
 		const firstIds = new Set(firstBatch.suggestions.map((s) => s.id));
 		for (const song of secondBatch.suggestions) {
