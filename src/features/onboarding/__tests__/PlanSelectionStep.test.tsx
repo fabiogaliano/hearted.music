@@ -9,6 +9,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 import type { PlanSelectionConfig } from "@/lib/server/billing.functions";
 import { setupShortcutMock } from "@/test/mocks";
@@ -66,15 +67,7 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 		vi.clearAllMocks();
 		sessionStorage.clear();
 		controlledPollingState = null;
-		mockGetBillingState.mockResolvedValue({
-			plan: "free",
-			creditBalance: 0,
-			subscriptionStatus: "none",
-			cancelAtPeriodEnd: false,
-			subscriptionPeriodEnd: null,
-			unlimitedAccess: { kind: "none" },
-			queueBand: "low",
-		});
+		mockGetBillingState.mockResolvedValue(makeBillingState());
 	});
 
 	it("clears persisted intent and stays on success even if polling later times out", async () => {

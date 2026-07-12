@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BillingState } from "@/lib/domains/billing/state";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 
 // --- Mocks ---
 
@@ -35,19 +35,6 @@ function makeCtx(accountId = "account-1"): EnrichmentContext {
 		accountId,
 		embeddingService: {} as EnrichmentContext["embeddingService"],
 		profilingService: {} as EnrichmentContext["profilingService"],
-	};
-}
-
-function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
 	};
 }
 

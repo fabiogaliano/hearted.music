@@ -101,24 +101,11 @@ vi.mock("@/lib/content/landing/demo-matches", () => ({
 	getDemoMatchesForSong: vi.fn(() => []),
 }));
 
-import type { BillingState } from "@/lib/domains/billing/state";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import {
 	markOnboardingComplete,
 	saveDemoSongSelection,
 } from "../onboarding.functions";
-
-function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
-	};
-}
 
 describe("saveDemoSongSelection", () => {
 	beforeEach(() => {

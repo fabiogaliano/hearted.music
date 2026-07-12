@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { BillingState } from "@/lib/domains/billing/state";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { computeAdaptiveWeights } from "@/lib/domains/taste/song-matching/config";
@@ -87,15 +88,7 @@ function makeScored(
 	}));
 }
 
-const freeBillingState: BillingState = {
-	plan: "free",
-	creditBalance: 0,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
-	unlimitedAccess: { kind: "none" },
-	queueBand: "low",
-};
+const freeBillingState: BillingState = makeBillingState();
 
 const premiumBillingState: BillingState = {
 	plan: "yearly",

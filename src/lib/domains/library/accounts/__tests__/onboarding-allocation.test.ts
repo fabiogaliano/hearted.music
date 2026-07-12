@@ -14,8 +14,8 @@ vi.mock("../preferences-queries", () => ({
 }));
 
 import type { AdminSupabaseClient } from "@/lib/data/client";
+import { makeBillingState as freeBillingState } from "@/lib/domains/billing/fixtures";
 import { readBillingState } from "@/lib/domains/billing/queries";
-import type { BillingState } from "@/lib/domains/billing/state";
 import { grantFreeAllocation } from "@/lib/domains/billing/unlocks";
 import { completeOnboardingWithAllocations } from "../onboarding-allocation";
 import { completeOnboarding } from "../preferences-queries";
@@ -23,19 +23,6 @@ import { completeOnboarding } from "../preferences-queries";
 const mockedReadBilling = vi.mocked(readBillingState);
 const mockedGrantFree = vi.mocked(grantFreeAllocation);
 const mockedCompleteOnboarding = vi.mocked(completeOnboarding);
-
-function freeBillingState(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
-	};
-}
 
 function makeSupabase(grantRow: unknown, error: unknown = null) {
 	const maybeSingle = vi.fn().mockResolvedValue({ data: grantRow, error });

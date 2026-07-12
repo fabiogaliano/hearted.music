@@ -16,7 +16,7 @@
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { BillingState } from "@/lib/domains/billing/state";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { PipelineBatch } from "../batch";
 import type { EnrichmentWorkPlan } from "../types";
 
@@ -184,15 +184,10 @@ vi.mock("@/lib/data/client", () => ({
 // Mocks: billing queries (for content activation path)
 // ---------------------------------------------------------------------------
 
-const selfHostedBillingState: BillingState = {
-	plan: "free",
-	creditBalance: 0,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
+const selfHostedBillingState = makeBillingState({
 	unlimitedAccess: { kind: "self_hosted" },
 	queueBand: "priority",
-};
+});
 
 vi.mock("@/lib/domains/billing/queries", () => ({
 	readBillingState: vi.fn(() => Result.ok(selfHostedBillingState)),

@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
-import type { BillingState } from "@/lib/domains/billing/state";
 
 const mockCreateCheckoutSession = vi.fn();
 
@@ -12,15 +12,7 @@ vi.mock("@/lib/server/billing.functions", () => ({
 
 import { useCheckoutFlow } from "../hooks/useCheckoutFlow";
 
-const billingState: BillingState = {
-	plan: "free",
-	creditBalance: 30,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
-	unlimitedAccess: { kind: "none" },
-	queueBand: "low",
-};
+const billingState = makeBillingState({ creditBalance: 30 });
 
 const originalLocation = window.location;
 
