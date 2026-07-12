@@ -1,23 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { BillingState } from "@/lib/domains/billing/state";
 
 const mockAuthContext = {
 	session: { accountId: "acct-1" },
 	account: null,
 };
-
-function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
-	};
-}
 
 const mockReadBillingStateOrFreeTier = vi.fn();
 
