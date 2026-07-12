@@ -1,12 +1,13 @@
 /**
- * Dashboard home view.
- * Composition: HomeHeader → MatchReviewCTA → ActivityFeed
+ * Dashboard home view — the session's action hub.
+ * Composition: HomeHeader → MatchReviewCTA → CreatePlaylistCTA → ActivityFeed
  */
 import { useState } from "react";
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { hasNavigatedThisSession } from "@/lib/navigation/session-navigation";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
+import { CreatePlaylistCTA } from "./sections/CreatePlaylistCTA";
 import { DashboardHeader } from "./sections/DashboardHeader";
 import { MatchReviewCTA } from "./sections/MatchReviewCTA";
 import type { DashboardProps } from "./types";
@@ -38,6 +39,8 @@ export function Dashboard({
 				matchPreviews={matchPreviews}
 				orientation={stats.matchOrientation}
 			/>
+
+			<CreatePlaylistCTA />
 
 			<ActivityFeed
 				activities={recentActivity}

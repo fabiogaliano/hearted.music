@@ -1,6 +1,7 @@
 import { MagnifyingGlassIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/Button";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
@@ -46,9 +47,30 @@ export function CoverFlowPlaylists({
 	// explicit here and the guided path overrides only what it needs.
 	const showSearch = guided == null;
 	const hideRailAdd = guided != null;
-	const matchingEmptyTitle = guided?.matchingEmptyTitle;
-	const matchingEmptyBody = guided?.matchingEmptyBody;
-	const matchingEmptyAction = guided?.matchingEmptyAction;
+	// With zero playlists at all, the shelf's default empty copy ("add from your
+	// library below") points at a library that's also empty — a dead end for the
+	// user who needs creation most. Swap in a create-first invitation instead.
+	// Guided mode keeps its own copy; other cases keep the shelf defaults.
+	const noPlaylistsAtAll = guided == null && playlists.length === 0;
+	const matchingEmptyTitle =
+		guided?.matchingEmptyTitle ??
+		(noPlaylistsAtAll ? "No playlists yet" : undefined);
+	const matchingEmptyBody =
+		guided?.matchingEmptyBody ??
+		(noPlaylistsAtAll
+			? "Start one from your liked songs — hearted drafts it, you curate it."
+			: undefined);
+	const matchingEmptyAction =
+		guided?.matchingEmptyAction ??
+		(noPlaylistsAtAll ? (
+			<Button
+				variant="secondary"
+				size="sm"
+				onClick={() => void navigate({ to: "/playlists/new" })}
+			>
+				Create playlist
+			</Button>
+		) : undefined);
 	const library = playlists.filter((p) => !p.isTarget);
 
 	// Searching collapses the two-zone layout into one flat rail across the whole
