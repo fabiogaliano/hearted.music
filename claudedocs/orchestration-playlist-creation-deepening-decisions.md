@@ -215,4 +215,31 @@ plan exactly.
 
 ## Workstream C — commit-flow hook
 
-- (none yet)
+- `isSubmitting`/`isRetryingUnsynced` reset via a `finally` block wrapping the
+  whole `submit`/`retryUnsynced` body, not by setting `false` inside every
+  `switch` case of `applyResult`. The plan's "reset in every terminal branch"
+  requirement is satisfied more structurally this way — a `finally` can't be
+  forgotten for a newly-added branch the way a per-case `setIsSubmitting(false)`
+  could, and `applyResult` stays free of submitting/retrying concerns entirely
+  (it only ever writes `result` or toasts).
+- Added `CreatePlaylistFlowSubmitInput` as a type alias for
+  `CreatePlaylistFromDraftInput` (not a new interface) — the plan's hook
+  signature names this type but doesn't define it; aliasing keeps `submit`'s
+  input shape identical to the orchestrator's own input with zero duplication.
+- `retryUnsynced` reads `playlistUri`/`spotifyId` off the hook's own public
+  `result` state (narrowed to the `created-unsynced` variant), not off the
+  private `submittedInputRef`. Only the draft *content* (name, songIds,
+  genrePills, matchFilters, intent) needs privacy for the "resume verbatim
+  even after config edits" guarantee — the `created-unsynced` identifiers are
+  already public via `result` and the screen needs them for `UnsyncedState`'s
+  own props regardless.
+- `useCreatePlaylistFlow.test.ts` is a `.test.ts` (not `.tsx`) file using
+  `renderHook`, so it needed adding to `domTestFiles` in `vite.config.ts` to
+  route it to the jsdom test project — otherwise `renderHook` throws
+  `ReferenceError: document is not defined` under the default node
+  environment for `.test.ts` files. Followed the existing precedent of
+  `useSpotifyGate.test.ts` in the same directory, which has the identical
+  extension/environment mismatch.
+- `PlaylistCreation.atoms.stories.tsx`'s `EMPTY_FILTERS` const became dead
+  code once the three `CreateBar` stories dropped `matchFilters` — deleted it
+  rather than leaving an unused export, since it had no other callers.

@@ -290,8 +290,6 @@ SuggestionsTrayEmpty.storyName = "Suggestions Tray — empty";
 
 // ─── CreateBar ────────────────────────────────────────────────────────────────
 
-const EMPTY_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
-
 export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 	const songIds = SONG_FIXTURES.slice(0, songCount).map((s) => s.id);
 	return (
@@ -305,15 +303,11 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 				<CreateBar
 					name="New playlist"
 					songIds={songIds}
-					genrePills={["indie", "electronic"]}
-					matchFilters={EMPTY_FILTERS}
-					intentApplied={false}
-					intent={null}
 					isPreviewStale={false}
+					isSubmitting={false}
 					gateState="ok"
 					recheck={async () => {}}
-					onNameCommit={() => {}}
-					onResult={() => {}}
+					onSubmit={() => {}}
 				/>
 			</div>
 		</div>
@@ -338,15 +332,11 @@ export const CreateBarReconnect: Story = () => (
 			<CreateBar
 				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
-				genrePills={[]}
-				matchFilters={EMPTY_FILTERS}
-				intentApplied={false}
-				intent={null}
 				isPreviewStale={false}
+				isSubmitting={false}
 				gateState="reconnect-required"
 				recheck={async () => {}}
-				onNameCommit={() => {}}
-				onResult={() => {}}
+				onSubmit={() => {}}
 			/>
 		</div>
 	</div>
@@ -364,15 +354,11 @@ export const CreateBarExtensionMissing: Story = () => (
 			<CreateBar
 				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
-				genrePills={[]}
-				matchFilters={EMPTY_FILTERS}
-				intentApplied={false}
-				intent={null}
 				isPreviewStale={false}
+				isSubmitting={false}
 				gateState="extension-unavailable"
 				recheck={async () => {}}
-				onNameCommit={() => {}}
-				onResult={() => {}}
+				onSubmit={() => {}}
 			/>
 		</div>
 	</div>

@@ -492,15 +492,11 @@ function FullScreenHarness({
 					<CreateBar
 						name="New playlist"
 						songIds={preview.map((s) => s.id)}
-						genrePills={genres}
-						matchFilters={filters}
-						intentApplied={isIntentEligible && !!intent}
-						intent={intent ?? null}
 						isPreviewStale={false}
+						isSubmitting={false}
 						gateState={gateState}
 						recheck={async () => {}}
-						onNameCommit={() => {}}
-						onResult={() => {}}
+						onSubmit={() => {}}
 					/>
 				</div>
 			</div>

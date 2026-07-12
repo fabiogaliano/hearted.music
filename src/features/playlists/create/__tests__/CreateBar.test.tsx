@@ -1,50 +1,30 @@
 /**
  * Tests for CreateBar, PartialState, and SuccessState.
  *
+ * CreateBar is fully presentational now (see useCreatePlaylistFlow for the
+ * commit-flow lifecycle) — no orchestrator import, no submit-payload or
+ * result-mapping tests here; those live in useCreatePlaylistFlow.test.ts.
+ * isSubmitting is driven as a prop.
+ *
  * Covers:
  *  - Default name "New playlist" pre-filled in the input.
  *  - CTA disabled when songIds is empty; enabled when songs present.
  *  - CTA disabled when the name is blank (whitespace-only).
- *  - Submit calls createPlaylistFromDraft with the correct payload
- *    (ordered songIds, intentApplied, trimmed name, genrePills, matchFilters).
- *  - onNameCommit called with the trimmed name before orchestrator runs.
- *  - success result → onResult called.
- *  - partial result → onResult called.
- *  - reconnect-required result → onResult called.
- *  - extension-unavailable result → onResult called.
- *  - error result → toast.error fired; CTA re-enabled; onResult NOT called.
+ *  - CTA disabled while isSubmitting is true (prop-driven), aria-busy set.
+ *  - onSubmit called on click when the CTA is enabled.
  *  - gate state extension-unavailable → renders ExtensionUnavailablePrompt.
  *  - gate state reconnect-required → renders ReconnectPrompt / SpotifyReconnectLink.
- *  - aria-busy while submitting.
- *  - CTA stays disabled after a successful result (duplicate-create guard).
- *  - PartialState has no Retry/re-create affordance (duplicate-create guard).
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 import { CreateBar } from "../create-flow/CreateBar";
-
-// Mock the orchestrator so tests don't hit the extension.
-vi.mock("@/lib/extension/create-playlist-from-draft", () => ({
-	createPlaylistFromDraft: vi.fn(),
-}));
 
 // Mock browser-target so ExtensionUnavailablePrompt renders without navigator.
 vi.mock("@/lib/extension/browser-target", () => ({
 	getBrowserTarget: () => "chromium",
 	getExtensionStoreUrl: () => "https://chromewebstore.google.com/detail/test",
-}));
-
-// sonner is partially mocked by setup.tsx (toast.error etc).
-// For this suite we override the full toast module so toast.error is callable.
-vi.mock("sonner", () => ({
-	toast: {
-		error: vi.fn(),
-		success: vi.fn(),
-		info: vi.fn(),
-	},
 }));
 
 // PartialState and SuccessState use useNavigate for the "Done" → /playlists button.
@@ -77,27 +57,19 @@ vi.mock("@tanstack/react-router", () => ({
 	},
 }));
 
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { PartialState } from "../create-flow/PartialState";
 import { SuccessState } from "../create-flow/SuccessState";
 import { UnsyncedState } from "../create-flow/UnsyncedState";
-
-const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
 
 function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 	return {
 		name: "New playlist",
 		songIds: ["s1", "s2", "s3"],
-		genrePills: ["indie", "electronic"],
-		matchFilters: DEFAULT_FILTERS,
-		intentApplied: false,
-		intent: null,
 		isPreviewStale: false,
+		isSubmitting: false,
 		gateState: "ok" as const,
 		recheck: vi.fn(async () => {}),
-		onNameCommit: vi.fn(),
-		onResult: vi.fn(),
+		onSubmit: vi.fn(),
 		...overrides,
 	};
 }
@@ -137,6 +109,30 @@ describe("CreateBar — CTA disabled states", () => {
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
 	});
+
+	it("is disabled (and aria-busy) while isSubmitting is true", () => {
+		render(<CreateBar {...makeProps({ isSubmitting: true })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
+		expect(btn).toHaveAttribute("aria-busy", "true");
+	});
+
+	it("is enabled again once isSubmitting flips back to false — the stuck-CTA fix", () => {
+		// Regression coverage at the presentational layer: the bar just renders
+		// whatever isSubmitting it's given, so a caller (useCreatePlaylistFlow)
+		// that resets isSubmitting in every terminal branch un-sticks the CTA.
+		const { rerender } = render(
+			<CreateBar {...makeProps({ isSubmitting: true })} />,
+		);
+		expect(
+			screen.getByRole("button", { name: /create playlist/i }),
+		).toBeDisabled();
+
+		rerender(<CreateBar {...makeProps({ isSubmitting: false })} />);
+		expect(
+			screen.getByRole("button", { name: /create playlist/i }),
+		).not.toBeDisabled();
+	});
 });
 
 describe("CreateBar — CTA label", () => {
@@ -155,264 +151,21 @@ describe("CreateBar — CTA label", () => {
 	});
 });
 
-describe("CreateBar — submit payload", () => {
-	it("calls createPlaylistFromDraft with the correct payload", async () => {
+describe("CreateBar — onSubmit", () => {
+	it("calls onSubmit when the CTA is clicked", async () => {
 		const user = userEvent.setup();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "success",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			playlistId: "playlist-abc",
-		});
-
-		const props = makeProps({
-			// Padded so we verify the bar trims before submitting.
-			name: "  Night Mix  ",
-			songIds: ["id1", "id2"],
-			genrePills: ["jazz"],
-			intentApplied: true,
-			intent: "late night vibes",
-		});
-		render(<CreateBar {...props} />);
-
+		const onSubmit = vi.fn();
+		render(<CreateBar {...makeProps({ onSubmit })} />);
 		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(createPlaylistFromDraft).toHaveBeenCalledWith({
-				name: "Night Mix",
-				songIds: ["id1", "id2"],
-				genrePills: ["jazz"],
-				matchFilters: DEFAULT_FILTERS,
-				intentApplied: true,
-				intent: "late night vibes",
-			});
-		});
+		expect(onSubmit).toHaveBeenCalledTimes(1);
 	});
 
-	it("sends intent: null when intentApplied is false", async () => {
+	it("does not call onSubmit when the CTA is disabled", async () => {
 		const user = userEvent.setup();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "success",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			playlistId: "playlist-abc",
-		});
-
-		render(
-			<CreateBar {...makeProps({ intentApplied: false, intent: "ignored" })} />,
-		);
+		const onSubmit = vi.fn();
+		render(<CreateBar {...makeProps({ onSubmit, songIds: [] })} />);
 		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(createPlaylistFromDraft).toHaveBeenCalledWith(
-				expect.objectContaining({ intent: null, intentApplied: false }),
-			);
-		});
-	});
-
-	it("calls onNameCommit with the trimmed name before orchestrator", async () => {
-		const user = userEvent.setup();
-		const onNameCommit = vi.fn();
-		let nameAtCallTime: string | undefined;
-
-		vi.mocked(createPlaylistFromDraft).mockImplementation(async (input) => {
-			nameAtCallTime = input.name;
-			return {
-				status: "success",
-				playlistUri: "spotify:playlist:x",
-				spotifyId: "x",
-				playlistId: "playlist-x",
-			};
-		});
-
-		render(
-			<CreateBar {...makeProps({ name: "  New playlist  ", onNameCommit })} />,
-		);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(onNameCommit).toHaveBeenCalledWith("New playlist");
-		});
-		// onNameCommit fires before (or at same time as) the orchestrator
-		expect(nameAtCallTime).toBe("New playlist");
-	});
-});
-
-describe("CreateBar — result mapping", () => {
-	it("calls onResult on success", async () => {
-		const user = userEvent.setup();
-		const onResult = vi.fn();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "success",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			playlistId: "playlist-abc",
-		});
-
-		render(<CreateBar {...makeProps({ onResult })} />);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(onResult).toHaveBeenCalledWith(
-				expect.objectContaining({ status: "success" }),
-			);
-		});
-	});
-
-	it("calls onResult on partial", async () => {
-		const user = userEvent.setup();
-		const onResult = vi.fn();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "partial",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			failedTrackCount: 2,
-		});
-
-		render(<CreateBar {...makeProps({ onResult })} />);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(onResult).toHaveBeenCalledWith(
-				expect.objectContaining({ status: "partial", failedTrackCount: 2 }),
-			);
-		});
-	});
-
-	it("calls onResult on reconnect-required", async () => {
-		const user = userEvent.setup();
-		const onResult = vi.fn();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "reconnect-required",
-		});
-
-		render(<CreateBar {...makeProps({ onResult })} />);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(onResult).toHaveBeenCalledWith({ status: "reconnect-required" });
-		});
-	});
-
-	it("calls onResult on extension-unavailable", async () => {
-		const user = userEvent.setup();
-		const onResult = vi.fn();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "extension-unavailable",
-		});
-
-		render(<CreateBar {...makeProps({ onResult })} />);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(onResult).toHaveBeenCalledWith({
-				status: "extension-unavailable",
-			});
-		});
-	});
-
-	it("fires toast.error on error and does NOT call onResult", async () => {
-		const user = userEvent.setup();
-		const onResult = vi.fn();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "error",
-			message: "Playlist creation failed",
-		});
-
-		render(<CreateBar {...makeProps({ onResult })} />);
-		await user.click(screen.getByRole("button", { name: /create playlist/i }));
-
-		await waitFor(() => {
-			expect(toast.error).toHaveBeenCalledWith("Playlist creation failed");
-		});
-		expect(onResult).not.toHaveBeenCalled();
-	});
-
-	it("re-enables the CTA after an error", async () => {
-		const user = userEvent.setup();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "error",
-			message: "oops",
-		});
-
-		render(<CreateBar {...makeProps()} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		await user.click(btn);
-
-		await waitFor(() => {
-			expect(btn).not.toBeDisabled();
-		});
-	});
-});
-
-describe("CreateBar — aria-busy while submitting", () => {
-	it("sets aria-busy on the CTA while the orchestrator is in flight", async () => {
-		const user = userEvent.setup();
-		let resolve!: (
-			v: Awaited<ReturnType<typeof createPlaylistFromDraft>>,
-		) => void;
-		vi.mocked(createPlaylistFromDraft).mockReturnValue(
-			new Promise((res) => {
-				resolve = res;
-			}),
-		);
-
-		render(<CreateBar {...makeProps()} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		await user.click(btn);
-
-		expect(btn).toHaveAttribute("aria-busy", "true");
-
-		resolve({
-			status: "success",
-			playlistUri: "spotify:playlist:x",
-			spotifyId: "x",
-			playlistId: "playlist-x",
-		});
-		await waitFor(() => {
-			// After result, the bar is kept inert (success unmounts it via parent)
-		});
-	});
-});
-
-describe("CreateBar — duplicate-create guard", () => {
-	it("CTA stays disabled (aria-busy) after a success result so a second submit is impossible", async () => {
-		const user = userEvent.setup();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "success",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			playlistId: "playlist-abc",
-		});
-
-		render(<CreateBar {...makeProps()} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		await user.click(btn);
-
-		// After a non-error result the bar stays in isSubmitting=true state.
-		// The parent transitions to SuccessState (unmounting CreateBar), but
-		// if somehow the bar is still mounted it must be inert.
-		await waitFor(() => {
-			expect(btn).toBeDisabled();
-		});
-	});
-
-	it("CTA stays disabled after a partial result for the same reason", async () => {
-		const user = userEvent.setup();
-		vi.mocked(createPlaylistFromDraft).mockResolvedValueOnce({
-			status: "partial",
-			playlistUri: "spotify:playlist:abc",
-			spotifyId: "abc",
-			failedTrackCount: 3,
-		});
-
-		render(<CreateBar {...makeProps()} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		await user.click(btn);
-
-		await waitFor(() => {
-			expect(btn).toBeDisabled();
-		});
+		expect(onSubmit).not.toHaveBeenCalled();
 	});
 });
 

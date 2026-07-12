@@ -22,11 +22,7 @@ import {
 	getBrowserTarget,
 	getExtensionStoreUrl,
 } from "@/lib/extension/browser-target";
-import type {
-	CreatePlaylistFromDraftInput,
-	CreatePlaylistFromDraftResult,
-} from "@/lib/extension/create-playlist-from-draft";
-import { resumePlaylistCreateFromDraft } from "@/lib/extension/create-playlist-from-draft";
+import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { getLikedSongIdsByArtist } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
@@ -46,30 +42,11 @@ import { SeedStage } from "./seed/SeedStage";
 import type { PresetVM } from "./seedTypes";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
+import { useCreatePlaylistFlow } from "./useCreatePlaylistFlow";
 import { useSpotifyGate } from "./useSpotifyGate";
 
 const MAX_NAME_LENGTH = 100;
 const DEFAULT_NAME = "New playlist";
-
-/**
- * Result state held by the screen after the orchestrator returns.
- * null = not yet attempted.
- */
-type FlowResult =
-	| null
-	| {
-			status: "success";
-			playlistName: string;
-			spotifyId: string;
-			playlistId: string;
-	  }
-	| {
-			status: "partial";
-			spotifyId: string;
-			playlistId?: string;
-			failedTrackCount: number;
-	  }
-	| { status: "created-unsynced"; spotifyId: string; playlistUri: string };
 
 interface CreatePlaylistScreenProps {
 	accountId: string;
@@ -84,21 +61,31 @@ export function CreatePlaylistScreen({
 	const draft = useCreatePlaylistDraft();
 	const [name, setName] = useState(DEFAULT_NAME);
 	const [showPaywall, setShowPaywall] = useState(false);
-	const [flowResult, setFlowResult] = useState<FlowResult>(null);
 
 	// Beat 1 vs beat 2: null = the seed landing ("What are we making?"), set =
 	// the studio. The seed carries the chosen preset/typed vibe into the draft.
 	const [hasSeeded, setHasSeeded] = useState(false);
 
+	// Proactively surface the reconnect/install affordance at page load so the
+	// user knows about a disconnected Spotify session before attempting to create.
+	// The gate keeps re-checking while unhealthy (focus/visibility + a manual
+	// "Check again" in the prompts) so recovering in another tab isn't a dead end.
+	const { gateState, recheck, reportGateFailure } = useSpotifyGate();
+
+	// Owns the commit-flow lifecycle (submit → success/partial/created-unsynced,
+	// gate-failure routing, isSubmitting). Declared before `playback` below
+	// since it's keyed on flow.result.
+	const flow = useCreatePlaylistFlow({ reportGateFailure });
+
 	// Shared across the preview list AND the suggestions tray so only one
 	// in-row Spotify preview plays at a time across the whole screen (U2).
 	// resetKey: PreviewList and SuggestionsTray stay mounted regardless of
-	// flowResult — only the footer swaps to SuccessState/PartialState/
-	// UnsyncedState. Keying on flowResult?.status instead stops any in-flight
+	// flow.result — only the footer swaps to SuccessState/PartialState/
+	// UnsyncedState. Keying on flow.result?.status instead stops any in-flight
 	// preview the moment a create result lands (and again on later status
 	// transitions, e.g. a created-unsynced retry), rather than leaving an
 	// iframe playing behind a footer that no longer matches it.
-	const playback = useSingleActivePlayback(flowResult?.status ?? null);
+	const playback = useSingleActivePlayback(flow.result?.status ?? null);
 
 	// Track IDs of songs added to the preview this session so PreviewList can
 	// briefly highlight them on entry. Cleared after the pulse animation plays out
@@ -203,92 +190,40 @@ export function CreatePlaylistScreen({
 		],
 	);
 
-	// Proactively surface the reconnect/install affordance at page load so the
-	// user knows about a disconnected Spotify session before attempting to create.
-	// The gate keeps re-checking while unhealthy (focus/visibility + a manual
-	// "Check again" in the prompts) so recovering in another tab isn't a dead end.
-	const { gateState, recheck, reportGateFailure } = useSpotifyGate();
-
-	// Holds the name committed just before the orchestrator runs. A ref avoids
-	// the stale-closure risk: handleCreateResult fires after an async boundary,
-	// so reading a ref is safer than relying on the closure-captured state value.
-	const submittedNameRef = useRef<string>("");
-
-	// Snapshot of the exact input submitted to the orchestrator. A "created-unsynced"
-	// retry must resume against these original draft settings (genre pills, filters,
-	// intent, songIds) even if the live config was edited after the failed attempt,
-	// so the draft isn't silently lost.
-	const submittedInputRef = useRef<CreatePlaylistFromDraftInput | null>(null);
-	const [isRetryingUnsynced, setIsRetryingUnsynced] = useState(false);
-
 	// When the create bar unmounts and the result state mounts (success or
 	// partial), keyboard focus would otherwise fall to <body>. Move it into
 	// the result region so AT users land on the status message immediately.
 	const resultRegionRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (flowResult !== null) {
+		if (flow.result !== null) {
 			resultRegionRef.current?.focus();
 		}
-	}, [flowResult]);
-	const onNameCommit = useCallback((name: string) => {
-		submittedNameRef.current = name;
-	}, []);
-	const onSubmitInput = useCallback((input: CreatePlaylistFromDraftInput) => {
-		submittedInputRef.current = input;
-	}, []);
+	}, [flow.result]);
 
-	function handleCreateResult(result: CreatePlaylistFromDraftResult) {
-		if (result.status === "success") {
-			setFlowResult({
-				status: "success",
-				playlistName: submittedNameRef.current,
-				spotifyId: result.spotifyId,
-				playlistId: result.playlistId,
-			});
-		} else if (result.status === "partial") {
-			setFlowResult({
-				status: "partial",
-				spotifyId: result.spotifyId,
-				playlistId: result.playlistId,
-				failedTrackCount: result.failedTrackCount,
-			});
-		} else if (result.status === "created-unsynced") {
-			// Spotify has the playlist but the local row never landed. Hold the
-			// URI/ID so the retry can resume against the same playlist.
-			setFlowResult({
-				status: "created-unsynced",
-				spotifyId: result.spotifyId,
-				playlistUri: result.playlistUri,
-			});
-		} else if (result.status === "reconnect-required") {
-			// The gate was "ok" when submit started but auth expired mid-flight.
-			// Force the gate so the create section swaps to the reconnect affordance.
-			reportGateFailure("reconnect-required");
-		} else if (result.status === "extension-unavailable") {
-			reportGateFailure("extension-unavailable");
-		}
-		// error: handled in CreateBar via toast; no flow result change needed.
-	}
-
-	// Resume a "created-unsynced" create: re-drive acknowledge + config + track
-	// adds against the EXISTING playlist (never a fresh create, so no duplicate).
-	async function handleRetryUnsynced(playlistUri: string, spotifyId: string) {
-		const input = submittedInputRef.current;
-		if (!input) return;
-		setIsRetryingUnsynced(true);
-		try {
-			const result = await resumePlaylistCreateFromDraft(
-				input,
-				playlistUri,
-				spotifyId,
-			);
-			handleCreateResult(result);
-		} catch {
-			toast.error("Something went sideways. Let's try that again.");
-		} finally {
-			setIsRetryingUnsynced(false);
-		}
-	}
+	// Payload assembly lives here (not in CreateBar, which is presentational):
+	// songIds come from the previewed draft, config from the DEBOUNCED
+	// (committed) config — never the live config — so a submit can't persist an
+	// edited config against songs scored under the previous one.
+	const handleSubmit = useCallback(() => {
+		const submitInput: CreatePlaylistFromDraftInput = {
+			name: name.trim(),
+			songIds: draft.preview.map((s) => s.id),
+			genrePills: draft.committedConfig.genrePills,
+			matchFilters: draft.committedConfig.matchFilters,
+			intentApplied: draft.intentApplied,
+			intent:
+				draft.intentApplied && draft.committedConfig.intent
+					? draft.committedConfig.intent
+					: null,
+		};
+		void flow.submit(submitInput);
+	}, [
+		name,
+		draft.preview,
+		draft.committedConfig,
+		draft.intentApplied,
+		flow.submit,
+	]);
 
 	// Not-enough note: eligible but fewer than the slider max.
 	const showNotEnoughNote =
@@ -488,52 +423,42 @@ export function CreatePlaylistScreen({
 					</span>
 				</div>
 
-				{flowResult?.status === "success" ? (
+				{flow.result?.status === "success" ? (
 					// tabIndex={-1} lets the ref.focus() land here without putting the
 					// container itself in the tab order — focus immediately moves to the
 					// first interactive element (the Spotify link or Done button) via AT.
 					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
 						<SuccessState
-							playlistName={flowResult.playlistName}
-							spotifyId={flowResult.spotifyId}
-							playlistId={flowResult.playlistId}
+							playlistName={flow.result.playlistName}
+							spotifyId={flow.result.spotifyId}
+							playlistId={flow.result.playlistId}
 						/>
 					</div>
-				) : flowResult?.status === "partial" ? (
+				) : flow.result?.status === "partial" ? (
 					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
 						<PartialState
-							spotifyId={flowResult.spotifyId}
-							playlistId={flowResult.playlistId}
-							failedTrackCount={flowResult.failedTrackCount}
+							spotifyId={flow.result.spotifyId}
+							playlistId={flow.result.playlistId}
+							failedTrackCount={flow.result.failedTrackCount}
 						/>
 					</div>
-				) : flowResult?.status === "created-unsynced" ? (
+				) : flow.result?.status === "created-unsynced" ? (
 					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
 						<UnsyncedState
-							spotifyId={flowResult.spotifyId}
-							isRetrying={isRetryingUnsynced}
-							onRetry={() =>
-								void handleRetryUnsynced(
-									flowResult.playlistUri,
-									flowResult.spotifyId,
-								)
-							}
+							spotifyId={flow.result.spotifyId}
+							isRetrying={flow.isRetryingUnsynced}
+							onRetry={() => void flow.retryUnsynced()}
 						/>
 					</div>
 				) : (
 					<CreateBar
 						name={name}
 						songIds={draft.preview.map((s) => s.id)}
-						genrePills={draft.committedConfig.genrePills}
-						matchFilters={draft.committedConfig.matchFilters}
-						intentApplied={draft.intentApplied}
-						intent={draft.committedConfig.intent ?? null}
 						isPreviewStale={draft.isConfigStale}
+						isSubmitting={flow.isSubmitting}
 						gateState={gateState}
 						recheck={recheck}
-						onNameCommit={onNameCommit}
-						onSubmitInput={onSubmitInput}
-						onResult={handleCreateResult}
+						onSubmit={handleSubmit}
 					/>
 				)}
 			</div>

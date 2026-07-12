@@ -7,14 +7,9 @@
  * the hint explains a disabled CTA (unnamed draft or a preview still settling)
  * now that the name field it used to own has moved away.
  *
- * On submit it calls the createPlaylistFromDraft orchestrator with the full
- * draft payload and maps the discriminated result to the right UI state via
- * the onResult callback. The draft is never mutated here so it survives any
- * failure branch intact for retry.
- *
- * onNameCommit is called with the trimmed name just before the orchestrator
- * runs, so the parent can display the committed name in the success state
- * even after this bar unmounts.
+ * Fully presentational: submitting and payload assembly are owned by
+ * useCreatePlaylistFlow up in CreatePlaylistScreen. This bar just renders
+ * readiness state and forwards a plain onSubmit — no orchestrator import.
  *
  * Gated by the Spotify gate state already computed by the parent screen — if
  * reconnect or extension is needed, the CTA is replaced by the appropriate
@@ -22,15 +17,7 @@
  * gate's recheck so the user can recover in place without a page reload.
  */
 
-import { useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import type {
-	CreatePlaylistFromDraftInput,
-	CreatePlaylistFromDraftResult,
-} from "@/lib/extension/create-playlist-from-draft";
-import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { fonts } from "@/lib/theme/fonts";
 import type { SpotifyGateState } from "../useSpotifyGate";
 import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
@@ -41,95 +28,37 @@ export interface CreateBarProps {
 	name: string;
 	/** Ordered song UUIDs to include in the playlist. */
 	songIds: string[];
-	/** Genre pills from the current draft config. */
-	genrePills: string[];
-	/** Match filters from the current draft config. */
-	matchFilters: PlaylistMatchFiltersV1;
-	/** Whether the preview engine applied the intent phrase. */
-	intentApplied: boolean;
-	/** The intent phrase from the config (only sent if intentApplied). */
-	intent: string | null | undefined;
 	/**
 	 * True while the live config is ahead of the previewed (debounced) config.
 	 * Blocks Create so a submit can't persist an edited config against songs
 	 * scored under the previous one.
 	 */
 	isPreviewStale: boolean;
+	/** True while the flow's submit is in flight. */
+	isSubmitting: boolean;
 	/** Gate state computed by the parent — avoids re-checking on every render. */
 	gateState: SpotifyGateState;
 	/** Re-runs the gate detection; wired to the gate-failure affordances. */
 	recheck: () => Promise<void>;
-	/**
-	 * Called with the trimmed playlist name just before the orchestrator runs.
-	 * Lets the parent capture the name for the success state before this bar
-	 * unmounts on a successful create.
-	 */
-	onNameCommit: (name: string) => void;
-	/**
-	 * Called with the exact orchestrator input just before it runs. Lets the
-	 * parent snapshot the submitted draft so a "created-unsynced" retry resumes
-	 * against the same settings even if the live config is edited afterward.
-	 */
-	onSubmitInput?: (input: CreatePlaylistFromDraftInput) => void;
-	/** Called with the discriminated result from the orchestrator. */
-	onResult: (result: CreatePlaylistFromDraftResult) => void;
+	/** Called when the user submits — the screen assembles the payload. */
+	onSubmit: () => void;
 }
 
 export function CreateBar({
 	name,
 	songIds,
-	genrePills,
-	matchFilters,
-	intentApplied,
-	intent,
 	isPreviewStale,
+	isSubmitting,
 	gateState,
 	recheck,
-	onNameCommit,
-	onSubmitInput,
-	onResult,
+	onSubmit,
 }: CreateBarProps) {
-	const [isSubmitting, setIsSubmitting] = useState(false);
-
 	const trimmedName = name.trim();
 	const canSubmit =
 		songIds.length > 0 &&
 		trimmedName.length > 0 &&
 		!isSubmitting &&
 		!isPreviewStale;
-
-	async function handleSubmit() {
-		if (!canSubmit) return;
-
-		onNameCommit(trimmedName);
-		const submitInput: CreatePlaylistFromDraftInput = {
-			name: trimmedName,
-			songIds,
-			genrePills,
-			matchFilters,
-			intentApplied,
-			intent: intentApplied && intent ? intent : null,
-		};
-		onSubmitInput?.(submitInput);
-		setIsSubmitting(true);
-		try {
-			const result = await createPlaylistFromDraft(submitInput);
-
-			if (result.status === "error") {
-				toast.error(result.message);
-				// Re-enable the CTA so the user can retry.
-				setIsSubmitting(false);
-				return;
-			}
-
-			onResult(result);
-			// Keep submitting=true for non-error results so the bar stays inert
-			// while the parent transitions to a result state.
-		} catch {
-			toast.error("Something went sideways. Let's try that again.");
-			setIsSubmitting(false);
-		}
-	}
 
 	// Show the relevant inline affordance for gate failures instead of the CTA.
 	if (gateState === "extension-unavailable") {
@@ -167,7 +96,7 @@ export function CreateBar({
 				size="sm"
 				disabled={!canSubmit}
 				aria-busy={isSubmitting}
-				onClick={handleSubmit}
+				onClick={onSubmit}
 			>
 				{ctaLabel}
 			</Button>

@@ -2,8 +2,9 @@
  * Ladle stub for @/lib/extension/create-playlist-from-draft.
  *
  * The real orchestrator calls the extension (which can't run in a browser
- * without the real extension installed). Stories that render CreateBar pass
- * a no-op onResult so the submit button is inert in Ladle.
+ * without the real extension installed). The default stub below never resolves,
+ * so a story's submit stays in its "submitting" state and the button is inert
+ * in Ladle.
  */
 
 import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
