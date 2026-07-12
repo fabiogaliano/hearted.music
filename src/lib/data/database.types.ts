@@ -3908,6 +3908,28 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			get_account_liked_song_ids_by_artist: {
+				Args: { p_account_id: string; p_artist: string };
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			get_account_liked_window_counts: {
+				Args: { p_account_id: string };
+				Returns: {
+					window_id: string;
+					occurrences: number;
+					start_at: string;
+					end_at: string | null;
+				}[];
+			};
+			get_account_top_artists: {
+				Args: { p_account_id: string; p_limit?: number };
+				Returns: {
+					artist: string;
+					occurrences: number;
+				}[];
+			};
 			get_account_top_genres: {
 				Args: { p_account_id: string; p_limit?: number };
 				Returns: {

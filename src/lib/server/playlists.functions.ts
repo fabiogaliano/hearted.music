@@ -7,7 +7,17 @@ import {
 	getLikedAtAggregates,
 	getReleaseYearAggregates,
 } from "@/lib/domains/library/liked-songs/filter-options-queries";
-import { getAccountTopGenres as queryAccountTopGenres } from "@/lib/domains/library/liked-songs/queries";
+import {
+	getStats,
+	getAccountTopGenres as queryAccountTopGenres,
+} from "@/lib/domains/library/liked-songs/queries";
+import {
+	getLikedWindowAggregates,
+	getTopArtists,
+	getLikedSongIdsByArtist as queryLikedSongIdsByArtist,
+	rollUpDecades,
+	type TasteProfile,
+} from "@/lib/domains/library/liked-songs/taste-profile-queries";
 import {
 	deletePlaylist,
 	getPlaylistById,
@@ -1226,4 +1236,132 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 				yearCounts: likedAtResult.value.yearCounts,
 			},
 		};
+	});
+
+// ============================================================================
+// Taste profile read (seed stage)
+// ============================================================================
+
+/**
+ * Raw-count taste profile for the playlist-creation seed stage — the numbers
+ * the mad-lib starting templates are built from. Composes the per-slice domain
+ * queries at this layer only; each slice degrades to empty on failure so one
+ * broken aggregation can't blank the whole landing (the seed stage always keeps
+ * its from-scratch path and growth note). Genres/artists/windows aggregate the
+ * full active library; decades reuse the eligible-population release-year
+ * aggregate the filter-options path already computes — an intentional, harmless
+ * population skew for a "starting point" hint.
+ */
+export const getTasteProfile = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.handler(async ({ context }): Promise<TasteProfile> => {
+		const { accountId } = context.session;
+
+		let eligibleSongIds: string[] = [];
+		try {
+			eligibleSongIds = await getEntitledDataEnrichedSongIds(accountId);
+		} catch (err) {
+			captureServerError(err, {
+				area: "playlists",
+				operation: "get_taste_profile",
+				accountId,
+				extra: { stage: "eligibility" },
+			});
+			console.error("[taste-profile] eligibility fetch failed:", err);
+		}
+
+		const [
+			statsResult,
+			genresResult,
+			artistsResult,
+			windowsResult,
+			yearsResult,
+		] = await Promise.all([
+			getStats(accountId),
+			queryAccountTopGenres(accountId),
+			getTopArtists(accountId),
+			getLikedWindowAggregates(accountId),
+			getReleaseYearAggregates(eligibleSongIds),
+		]);
+
+		// Degrade per slice: capture the failure but keep composing so the seed
+		// stage still renders whatever signal did come back.
+		const degrade = (stage: string, error: unknown) => {
+			captureServerError(error, {
+				area: "playlists",
+				operation: "get_taste_profile",
+				accountId,
+				extra: { stage },
+			});
+		};
+
+		let totalLikedCount = eligibleSongIds.length;
+		if (Result.isOk(statsResult)) {
+			totalLikedCount = statsResult.value.total;
+		} else {
+			degrade("stats", statsResult.error);
+		}
+
+		const topGenres: TasteProfile["topGenres"] = [];
+		if (Result.isOk(genresResult)) {
+			for (const g of genresResult.value) {
+				topGenres.push({ name: g.genre, count: g.occurrences });
+			}
+		} else {
+			degrade("genres", genresResult.error);
+		}
+
+		let topArtists: TasteProfile["topArtists"] = [];
+		if (Result.isOk(artistsResult)) {
+			topArtists = artistsResult.value;
+		} else {
+			degrade("artists", artistsResult.error);
+		}
+
+		let likedWindows: TasteProfile["likedWindows"] = [];
+		if (Result.isOk(windowsResult)) {
+			likedWindows = windowsResult.value;
+		} else {
+			degrade("windows", windowsResult.error);
+		}
+
+		let decades: TasteProfile["decades"] = [];
+		if (Result.isOk(yearsResult)) {
+			decades = rollUpDecades(yearsResult.value);
+		} else {
+			degrade("releaseYears", yearsResult.error);
+		}
+
+		return { totalLikedCount, topGenres, topArtists, likedWindows, decades };
+	});
+
+/**
+ * Song ids of the account's still-liked songs credited to one artist — the pin
+ * set behind the "Around [artist]" seed template. Resolved at seed-commit time
+ * (not baked into the taste profile) so the profile payload stays lean and the
+ * lookup only runs when a user actually picks an artist. Degrades to an empty
+ * set on failure: the studio still opens, just without the artist's pins.
+ */
+const LikedSongsByArtistSchema = z.object({
+	artist: z.string().min(1).max(400),
+});
+
+export const getLikedSongIdsByArtist = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => LikedSongsByArtistSchema.parse(data))
+	.handler(async ({ data, context }): Promise<{ songIds: string[] }> => {
+		const { accountId } = context.session;
+
+		const result = await queryLikedSongIdsByArtist(accountId, data.artist);
+		if (Result.isError(result)) {
+			captureServerError(result.error, {
+				area: "playlists",
+				operation: "get_liked_song_ids_by_artist",
+				accountId,
+			});
+			return { songIds: [] };
+		}
+
+		return { songIds: result.value };
 	});

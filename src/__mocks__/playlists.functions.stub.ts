@@ -42,6 +42,14 @@ export async function getAccountTopGenres(): Promise<{ genres: string[] }> {
 	return { genres: [...STATIC_TOP_GENRES] };
 }
 
+// The "Around [artist]" seed resolves an artist name to pinned song ids here.
+// Stubbed empty: stories exercise the seed UI, not the real library lookup.
+export async function getLikedSongIdsByArtist(_args: {
+	data: { artist: string };
+}): Promise<{ songIds: string[] }> {
+	return { songIds: [] };
+}
+
 export async function savePlaylistMatchConfig(args: {
 	data: SavePlaylistMatchConfigInput;
 }): Promise<SavePlaylistMatchConfigResult> {
@@ -106,4 +114,10 @@ export async function getPlaylistTracksPage(): Promise<never> {
 
 export async function getPlaylistMatchFilterOptions(): Promise<never> {
 	throw new Error("getPlaylistMatchFilterOptions is not available in Ladle");
+}
+
+// Seed-stage stories seed the taste-profile query cache directly, so this is
+// only here to satisfy the import — it must never actually run in Ladle.
+export async function getTasteProfile(): Promise<never> {
+	throw new Error("getTasteProfile is not available in Ladle");
 }
