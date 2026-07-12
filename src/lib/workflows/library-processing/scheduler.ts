@@ -1,7 +1,6 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readBillingState } from "@/lib/domains/billing/queries";
-import { FREE_BILLING_STATE } from "@/lib/domains/billing/state";
+import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
@@ -238,10 +237,12 @@ export async function executeEffect(
 > {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const billingResult = await readBillingState(supabase, effect.accountId);
-		const billingBand = resolveQueuePriority(
-			Result.isOk(billingResult) ? billingResult.value : FREE_BILLING_STATE,
+		const billingState = await readBillingStateOrFreeTier(
+			supabase,
+			effect.accountId,
+			"library_processing_execute_effect",
 		);
+		const billingBand = resolveQueuePriority(billingState);
 		const band = resolveEnrichmentBand(billingBand, change.kind);
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);

@@ -87,7 +87,79 @@ plan exactly.
 
 ## Workstream A — billing reader
 
-- (none yet)
+- `scheduler.ts:executeEffect` operation string chosen as
+  `"library_processing_execute_effect"` (not specified by the plan) — the
+  effect is generic (enrichment job or match-snapshot-refresh job), so a
+  single stable name for the one call site, not one per effect kind, keeps
+  the Sentry tag meaningful without multiplying operation strings for what is
+  structurally one degrade point.
+- `previewPlaylistDraft` / `persistNewPlaylistConfig` operation strings used
+  exactly as the plan specified: `"preview_playlist_draft"` /
+  `"persist_new_playlist_config"`.
+- `getIntentEligibility` operation string `"get_intent_eligibility"` chosen
+  (not specified by the plan) — mirrors the server-fn name, consistent with
+  the other three call sites' snake_case-of-the-caller convention.
+- `scheduler.test.ts` required updating beyond what the plan's task list
+  mentions: it mocked `readBillingState` directly (`vi.mock("@/lib/domains/billing/queries", () => ({ readBillingState: ... }))`),
+  which fully replaces the module's exports — once `scheduler.ts` imports
+  `readBillingStateOrFreeTier` instead, that mock would leave the import
+  undefined. Repointed the mock to `readBillingStateOrFreeTier` (resolving a
+  plain `BillingState`, not a `Result`) and updated the three call sites
+  accordingly. The "falls back to free/low priority when billing read fails"
+  test no longer simulates a `Result.err` from `readBillingState` (that
+  degrade path is now `readBillingStateOrFreeTier`'s own concern, covered by
+  its unit tests in `queries.test.ts`) — it instead mocks
+  `readBillingStateOrFreeTier` resolving `FREE_BILLING_STATE` directly, i.e.
+  what the reader would return after an internal failure.
+- `Object.freeze(FREE_BILLING_STATE)` needed an explicit `Object.freeze<BillingState>(...)`
+  type argument — without it, `tsgo` widened `unlimitedAccess: { kind: "none" }`
+  to `{ kind: string }` inside the frozen literal and typecheck failed on the
+  `BillingState` annotation (a generic-call contextual-typing quirk, not a
+  behavior change).
+- CHUNK 1's new `intentEligibility.test.ts` intentionally does **not** import
+  the CHUNK 2 `domains/billing/fixtures.ts` — it uses a local
+  `makeBillingState` literal (same shape) so CHUNK 1 stays testable and
+  committable independent of whether CHUNK 2 lands in the same PR.
+- Fixture repoint site count came in higher than the plan's "~10" estimate
+  once distinguished from DB-row mocks: grep for `plan: "free"` found ~30
+  hits, but most are snake_case `account_billing` row literals for
+  `readBillingState`/integration-test DB inserts, not `BillingState` object
+  fixtures. Filtered to the 13 genuine camelCase `BillingState` construction
+  sites (local `makeBillingState`/`billing`/`freeBillingState` factories or
+  one-off literals) and left every snake_case DB-row mock alone — repointing
+  those would conflate two different data shapes.
+- Chunk-2 repoint list (13 sites, all now importing
+  `@/lib/domains/billing/fixtures`):
+  `features/settings/components/BillingSection.stories.tsx`,
+  `features/liked-songs/components/UnlockConfirmDialog.stories.tsx`,
+  `features/billing/components/PaywallCTA.stories.tsx` (kept its positional
+  `makeFreeBillingState(creditBalance)` convenience wrapper, delegating to
+  the shared fixture),
+  `features/billing/__tests__/useCheckoutFlow.test.ts`,
+  `features/billing/__tests__/checkout-fulfillment.test.ts`,
+  `features/onboarding/__tests__/PlanSelectionStep.test.tsx`,
+  `lib/domains/playlists/__tests__/draft-engine.test.ts` (only the
+  `freeBillingState` const; left the unrelated `premiumBillingState` const
+  alone — not a free-tier fixture),
+  `lib/domains/library/accounts/__tests__/onboarding-allocation.test.ts`,
+  `lib/domains/billing/__tests__/unlocks.test.ts`,
+  `lib/workflows/enrichment-pipeline/__tests__/content-activation.test.ts`,
+  `lib/workflows/enrichment-pipeline/__tests__/provider-disabled-validation.test.ts`
+  (the `selfHostedBillingState` const only — the earlier snake_case
+  `account_billing` row literal in the same file is a DB-row mock, untouched),
+  `lib/workflows/library-processing/__tests__/scheduler.test.ts`,
+  `lib/server/__tests__/onboarding.free-allocation.test.ts`.
+  `unlocks.test.ts`'s local factory had different base defaults
+  (`creditBalance: 10`, `queueBand: "standard"`) than the canonical free-tier
+  base — verified every call site in that file always passes an explicit
+  override for any field it asserts on, so repointing to the shared
+  free-tier-based `makeBillingState` changes no test's observable behavior.
+- Deliberately left `queries.test.ts`'s existing self-heal assertion
+  (`result.value` `toEqual({ plan: "free", ... })` in the "returns free
+  default and self-heals" test) as a literal rather than repointing it to
+  `FREE_BILLING_STATE`/`makeBillingState()` — it pins production output
+  shape, not a hand-authored fixture, so it's outside "repoint the fixture
+  sites" scope.
 
 ## Workstream B — workflow extraction
 

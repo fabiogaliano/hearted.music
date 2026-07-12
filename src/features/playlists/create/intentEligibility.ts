@@ -10,22 +10,13 @@
 
 import { queryOptions } from "@tanstack/react-query";
 import { createServerFn } from "@tanstack/react-start";
-import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readBillingState } from "@/lib/domains/billing/queries";
+import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
 import {
 	buildIntentGate,
 	type IntentGateVM,
 } from "@/lib/domains/playlists/intent-eligibility";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-
-// The gate shown when billing can't be resolved: locked, with the Backstage Pass
-// path listed as unmet. Degrades to ineligible rather than accidentally granting
-// access, while still naming the path to the user.
-const LOCKED_GATE_FALLBACK: IntentGateVM = {
-	allowed: false,
-	criteria: [{ id: "backstage-pass", label: "Backstage Pass", met: false }],
-};
 
 export const getIntentEligibility = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
@@ -33,12 +24,16 @@ export const getIntentEligibility = createServerFn({ method: "GET" })
 		const { accountId } = context.session;
 		const supabase = createAdminSupabaseClient();
 
-		const billingResult = await readBillingState(supabase, accountId);
+		// On billing error, readBillingStateOrFreeTier degrades to the free tier,
+		// which buildIntentGate turns into a locked gate — never accidentally
+		// granting access.
+		const billingState = await readBillingStateOrFreeTier(
+			supabase,
+			accountId,
+			"get_intent_eligibility",
+		);
 
-		// On billing error, degrade to a locked gate rather than accidentally granting access.
-		if (Result.isError(billingResult)) return LOCKED_GATE_FALLBACK;
-
-		return buildIntentGate(billingResult.value);
+		return buildIntentGate(billingState);
 	});
 
 const INTENT_ELIGIBILITY_KEY = ["playlist-intent-eligibility"] as const;

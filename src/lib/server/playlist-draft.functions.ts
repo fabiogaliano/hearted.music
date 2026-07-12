@@ -14,7 +14,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readBillingState } from "@/lib/domains/billing/queries";
+import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
 import { getSongEmbeddingsBatch } from "@/lib/domains/enrichment/embeddings/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { selectOwnedSongIds } from "@/lib/domains/library/liked-songs/queries";
@@ -122,23 +122,10 @@ export const previewPlaylistDraft = createServerFn({ method: "POST" })
 		const supabase = createAdminSupabaseClient();
 
 		// Resolve billing state in parallel with candidate loading
-		const [billingResult, candidates] = await Promise.all([
-			readBillingState(supabase, accountId),
+		const [billingState, candidates] = await Promise.all([
+			readBillingStateOrFreeTier(supabase, accountId, "preview_playlist_draft"),
 			loadPhase1Candidates(accountId),
 		]);
-
-		const billingState = Result.isOk(billingResult)
-			? billingResult.value
-			: // On billing read failure, degrade to free tier (safe)
-				{
-					plan: "free" as const,
-					creditBalance: 0,
-					subscriptionStatus: "none" as const,
-					cancelAtPeriodEnd: false,
-					subscriptionPeriodEnd: null,
-					unlimitedAccess: { kind: "none" as const },
-					queueBand: "low" as const,
-				};
 
 		// Intent eligibility is always computed server-side; client input is ignored
 		// when the account is not eligible (defense in depth).
@@ -357,24 +344,15 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 			// liked_song rows — getSongsByIds hits the global song table via the
 			// service-role client, so without this a tampered request could resolve
 			// URIs for songs the account never liked.
-			const [billingResult, songsResult, ownedResult] = await Promise.all([
-				readBillingState(supabase, accountId),
+			const [billingState, songsResult, ownedResult] = await Promise.all([
+				readBillingStateOrFreeTier(
+					supabase,
+					accountId,
+					"persist_new_playlist_config",
+				),
 				getSongsByIds(data.songIds),
 				selectOwnedSongIds(accountId, data.songIds),
 			]);
-
-			const billingState = Result.isOk(billingResult)
-				? billingResult.value
-				: // Degrade to free tier on billing read failure (safe default)
-					{
-						plan: "free" as const,
-						creditBalance: 0,
-						subscriptionStatus: "none" as const,
-						cancelAtPeriodEnd: false,
-						subscriptionPeriodEnd: null,
-						unlimitedAccess: { kind: "none" as const },
-						queueBand: "low" as const,
-					};
 
 			// intent is only persisted when the server independently confirms eligibility
 			// AND the client-reported intentApplied flag is true. The client flag gates
