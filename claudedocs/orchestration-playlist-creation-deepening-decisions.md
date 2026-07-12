@@ -163,7 +163,55 @@ plan exactly.
 
 ## Workstream B — workflow extraction
 
-- (none yet)
+- Input types for `runPreviewPlaylistDraft`/`runPersistNewPlaylistConfig`/
+  `runRecordPlaylistMatchDecisions` are declared as plain interfaces local to
+  each workflow file (`PreviewPlaylistDraftInput`, `PersistNewPlaylistConfigInput`,
+  `RecordPlaylistMatchDecisionsInput`) rather than importing the zod-inferred
+  type from the adapter — importing a type back from `server/playlist-draft.functions.ts`
+  into the workflow module would invert the intended dependency direction
+  (adapter depends on workflow, not vice versa) even though `import type` has
+  no runtime cost. The interfaces mirror the zod schemas' output shape exactly
+  (using `PlaylistMatchFiltersV1` for `matchFilters`, matching the schema's
+  structural type), so the adapter's validated `data` satisfies them with no
+  cast.
+- Adapter handlers keep explicit `Promise<...>` return-type annotations
+  (`PreviewPlaylistDraftResult`, `PersistNewPlaylistConfigResult`, inline
+  `{ recorded: number }`) even though they're now one-liners delegating to the
+  workflow — this requires both an `import type` and a re-exporting
+  `export type` of the same name from each workflow module in the adapter
+  file (biome's import-organizer sorts them apart) but keeps the handler
+  signatures self-documenting and guards against an accidental type drift in
+  the workflow silently changing what the server fn returns.
+- `runPreviewPlaylistDraft`'s internal parameter is still named `data` (not
+  `input`) to keep the moved body byte-for-byte verbatim — only the enclosing
+  function signature (`supabase, accountId, data`) is new; every reference to
+  `data.foo` inside the body is untouched from the original handler.
+- `preview.test.ts` mocks `@/lib/domains/playlists/draft-engine` entirely
+  (`filterCandidates`/`buildProfileFromPills`/`buildProfileFromIntent`/
+  `scoreCandidates`/`assembleDraft`) rather than letting the real pure scoring
+  logic run — the plan's six required cases are all about *orchestration*
+  branching (which path is taken, whether `EmbeddingService.create`/`embedText`
+  fire, what gets passed to `scoreCandidates`), not scoring correctness, which
+  is already covered by `draft-engine.test.ts`. `assembleDraft`'s mock threads
+  the `effectiveIntentApplied` arg straight into the returned object so tests
+  can assert `result.intentApplied` without reimplementing the real slicing
+  logic.
+- `commit.test.ts` and `preview.test.ts` keep `isIntentEligible` /
+  `parseSaveMatchFilters` / `normalizeMatchFilters` / `sanitizeGenrePills`
+  real (un-mocked) rather than mocking every collaborator — these are pure,
+  cheap, and are exactly what the AND-gate / invalid-filters test cases need
+  to exercise for real; only DB-touching query modules are mocked, matching
+  `scheduler.test.ts`'s precedent of leaving sibling pure modules real.
+- Added one test beyond the plan's list in `commit.test.ts`
+  ("persists intent when eligible AND intentApplied: true") — the plan only
+  specifies the two negative AND-gate branches; the positive branch was added
+  for symmetry/confidence that the gate isn't accidentally always-false.
+- `playlist-draft.functions.test.ts` adapter-wiring tests needed a builder
+  variant that actually *invokes* the captured `inputValidator` function
+  (copied from the pattern already used in `billing.checkout.test.ts`, not
+  the simpler no-op builder in `playlists.functions.test.ts`) — the simpler
+  builder discards the validator entirely, which would make the "zod
+  rejection before workflow call" tests unable to observe a rejection.
 
 ## Workstream C — commit-flow hook
 

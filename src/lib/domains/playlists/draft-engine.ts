@@ -4,7 +4,8 @@
  * All functions here are stateless and side-effect-free (no DB writes, no
  * persisted profiles, no snapshot rows). They take in-memory data and return
  * ranked SongVM lists. Server orchestration (DB reads, auth context) lives in
- * playlist-draft.functions.ts; this module is the testable core.
+ * workflows/playlist-studio/preview.ts (and its thin server-fn adapter,
+ * server/playlist-draft.functions.ts); this module is the testable core.
  */
 
 import { Result } from "better-result";
