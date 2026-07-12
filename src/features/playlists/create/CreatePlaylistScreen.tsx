@@ -29,7 +29,9 @@ import type {
 import { resumePlaylistCreateFromDraft } from "@/lib/extension/create-playlist-from-draft";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
-import { ConfigSurface } from "./config/ConfigSurface";
+import { FiltersConfig } from "./config/FiltersConfig";
+import { GenreConfig } from "./config/GenreConfig";
+import { IntentEditor } from "./config/IntentEditor";
 import { CreateBar } from "./create-flow/CreateBar";
 import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
 import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
@@ -37,10 +39,14 @@ import { PartialState } from "./create-flow/PartialState";
 import { SuccessState } from "./create-flow/SuccessState";
 import { UnsyncedState } from "./create-flow/UnsyncedState";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
+import { MaxSongsSlider } from "./MaxSongsSlider";
 import { PreviewList } from "./preview/PreviewList";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
 import { useSpotifyGate } from "./useSpotifyGate";
+
+const MAX_NAME_LENGTH = 100;
+const DEFAULT_NAME = "New playlist";
 
 /**
  * Result state held by the screen after the orchestrator returns.
@@ -73,6 +79,7 @@ export function CreatePlaylistScreen({
 }: CreatePlaylistScreenProps) {
 	const navigate = useNavigate();
 	const draft = useCreatePlaylistDraft();
+	const [name, setName] = useState(DEFAULT_NAME);
 	const [showPaywall, setShowPaywall] = useState(false);
 	const [flowResult, setFlowResult] = useState<FlowResult>(null);
 
@@ -248,22 +255,29 @@ export function CreatePlaylistScreen({
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
 			<header className="mb-10 flex items-start justify-between gap-6">
-				<div className="flex flex-col gap-1">
+				<div className="flex min-w-0 flex-1 flex-col gap-1">
 					<button
 						type="button"
 						onClick={() => void navigate({ to: "/playlists" })}
-						className="theme-text-muted -ml-0.5 mb-3 inline-flex cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+						className="theme-text-muted -ml-0.5 mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
 						style={{ fontFamily: fonts.body }}
 					>
 						<ArrowLeftIcon size={11} weight="regular" aria-hidden />
 						Playlists
 					</button>
-					<h1
-						className="theme-text text-page-title leading-[0.95] font-extralight tracking-tight text-balance"
+					{/* The name is the page title; the visible control is an input, so the
+					    heading in the a11y tree is a sibling sr-only h1. */}
+					<h1 className="sr-only">{name.trim() || DEFAULT_NAME}</h1>
+					<input
+						type="text"
+						value={name}
+						onChange={(e) => setName(e.target.value.slice(0, MAX_NAME_LENGTH))}
+						maxLength={MAX_NAME_LENGTH}
+						placeholder="Name this playlist…"
+						aria-label="Playlist name"
+						className="theme-text text-page-title w-full bg-transparent leading-[0.95] font-extralight tracking-tight outline-none focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
 						style={{ fontFamily: fonts.display }}
-					>
-						New playlist
-					</h1>
+					/>
 				</div>
 
 				{gateState === "extension-unavailable" && (
@@ -302,104 +316,105 @@ export function CreatePlaylistScreen({
 				)}
 			</header>
 
-			<section className="mb-10">
-				<div className="mb-6 flex items-center gap-4 px-1">
-					<span
-						className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Configure
-					</span>
-					<div className="theme-border-color h-px flex-1 border-t" />
-				</div>
+			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[300px_1fr] lg:items-start">
+				<aside className="flex flex-col gap-7 lg:sticky lg:top-8">
+					<IntentEditor
+						isEligible={isIntentEligible}
+						value={draft.config.intent}
+						onChange={draft.setIntent}
+						onOpenPaywall={() => setShowPaywall(true)}
+					/>
+					<GenreConfig
+						accountId={accountId}
+						value={draft.config.genrePills}
+						onChange={draft.setGenrePills}
+					/>
+					<FiltersConfig
+						accountId={accountId}
+						value={draft.config.matchFilters}
+						onChange={draft.setMatchFilters}
+					/>
+					<MaxSongsSlider
+						value={draft.config.maxSongs}
+						onChange={draft.setMaxSongs}
+					/>
+				</aside>
 
-				<ConfigSurface
-					accountId={accountId}
-					isIntentEligible={isIntentEligible}
-					intent={draft.config.intent}
-					genrePills={draft.config.genrePills}
-					matchFilters={draft.config.matchFilters}
-					maxSongs={draft.config.maxSongs}
-					onIntentChange={draft.setIntent}
-					onGenrePillsChange={draft.setGenrePills}
-					onMatchFiltersChange={draft.setMatchFilters}
-					onMaxSongsChange={draft.setMaxSongs}
-					onOpenPaywall={() => setShowPaywall(true)}
-				/>
-			</section>
+				<main>
+					<section className="mb-10">
+						<div className="mb-6 flex items-center justify-between gap-4 px-1">
+							<div className="flex items-center gap-4">
+								<h2
+									className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
+									style={{ fontFamily: fonts.body }}
+								>
+									Preview
+								</h2>
+								<div className="theme-border-color h-px w-20 border-t" />
+								{draft.totalEligible > 0 && (
+									<span
+										className="theme-text-muted text-xs tabular-nums"
+										style={{ fontFamily: fonts.body }}
+									>
+										{draft.preview.length} of {draft.totalEligible} eligible
+									</span>
+								)}
+							</div>
+							{draft.isLoading && (
+								<span
+									className="theme-text-muted text-[11px] tracking-widest uppercase"
+									style={{ fontFamily: fonts.body }}
+								>
+									Updating…
+								</span>
+							)}
+						</div>
 
-			<section className="mb-10">
-				<div className="mb-6 flex items-center justify-between gap-4 px-1">
-					<div className="flex items-center gap-4">
-						<span
-							className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-							style={{ fontFamily: fonts.body }}
-						>
-							Preview
-						</span>
-						<div className="theme-border-color h-px w-20 border-t" />
-						{draft.totalEligible > 0 && (
-							<span
-								className="theme-text-muted text-xs tabular-nums"
+						{draft.totalEligible === 0 && !draft.isLoading ? (
+							<LibraryEmptyState isWarming={false} />
+						) : isWarming ? (
+							<LibraryEmptyState isWarming={true} />
+						) : (
+							<PreviewList
+								songs={draft.preview}
+								isLoading={draft.isLoading}
+								onRemoveSong={draft.removeSong}
+								onRestoreSong={draft.restoreSong}
+								newSongIds={newSongIds}
+								playback={playback}
+							/>
+						)}
+
+						{showNotEnoughNote && (
+							<div className="mt-3">
+								<NotEnoughSongsNote totalEligible={draft.totalEligible} />
+							</div>
+						)}
+					</section>
+
+					<section>
+						<div className="mb-6 flex items-center gap-4 px-1">
+							<h2
+								className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
 								style={{ fontFamily: fonts.body }}
 							>
-								{draft.preview.length} of {draft.totalEligible} eligible
-							</span>
-						)}
-					</div>
-					{draft.isLoading && (
-						<span
-							className="theme-text-muted text-[11px] tracking-widest uppercase"
-							style={{ fontFamily: fonts.body }}
-						>
-							Updating…
-						</span>
-					)}
-				</div>
+								Suggested to add
+							</h2>
+							<div className="theme-border-color h-px flex-1 border-t" />
+						</div>
+						<SuggestionsTray
+							suggestions={draft.suggestions}
+							onAddSong={handleAddSong}
+							onDismissSong={handleDismissSuggestion}
+							onRefresh={draft.refreshSuggestions}
+							playback={playback}
+						/>
+					</section>
+				</main>
+			</div>
 
-				{draft.totalEligible === 0 && !draft.isLoading ? (
-					<LibraryEmptyState isWarming={false} />
-				) : isWarming ? (
-					<LibraryEmptyState isWarming={true} />
-				) : (
-					<PreviewList
-						songs={draft.preview}
-						isLoading={draft.isLoading}
-						onRemoveSong={draft.removeSong}
-						onRestoreSong={draft.restoreSong}
-						newSongIds={newSongIds}
-						playback={playback}
-					/>
-				)}
-
-				{showNotEnoughNote && (
-					<div className="mt-3">
-						<NotEnoughSongsNote totalEligible={draft.totalEligible} />
-					</div>
-				)}
-			</section>
-
-			<section className="mb-10">
-				<div className="mb-6 flex items-center gap-4 px-1">
-					<span
-						className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Suggested to add
-					</span>
-					<div className="theme-border-color h-px flex-1 border-t" />
-				</div>
-				<SuggestionsTray
-					suggestions={draft.suggestions}
-					onAddSong={handleAddSong}
-					onDismissSong={handleDismissSuggestion}
-					onRefresh={draft.refreshSuggestions}
-					playback={playback}
-				/>
-			</section>
-
-			{/* Create section — flat bordered footer anchored below the suggestions tray */}
-			<div className="theme-border-color border border-t-0">
+			{/* Create section — flat bordered footer anchored below the studio grid */}
+			<div className="theme-border-color mt-10 border">
 				<div className="theme-border-color border-b px-6 py-3">
 					<span
 						className="theme-text-muted text-[11px] tracking-[0.2em] uppercase"
@@ -443,6 +458,7 @@ export function CreatePlaylistScreen({
 					</div>
 				) : (
 					<CreateBar
+						name={name}
 						songIds={draft.preview.map((s) => s.id)}
 						genrePills={draft.committedConfig.genrePills}
 						matchFilters={draft.committedConfig.matchFilters}

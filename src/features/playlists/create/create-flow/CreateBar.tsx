@@ -1,9 +1,11 @@
 /**
- * CreateBar — the sticky footer action bar for the playlist creation flow.
+ * CreateBar — the full-width create footer for the playlist creation flow.
  *
- * Houses:
- *  - A playlist name input (labelled, trimmed, max 100 chars).
- *  - The primary "Create playlist" CTA with a live song count badge.
+ * Houses the primary "Create playlist" CTA with a live song-count badge and a
+ * left-aligned readiness hint. The playlist NAME lives in the page-title input
+ * on the screen (not here), so this bar receives the committed name as a prop;
+ * the hint explains a disabled CTA (unnamed draft or a preview still settling)
+ * now that the name field it used to own has moved away.
  *
  * On submit it calls the createPlaylistFromDraft orchestrator with the full
  * draft payload and maps the discriminated result to the right UI state via
@@ -29,16 +31,14 @@ import type {
 	CreatePlaylistFromDraftResult,
 } from "@/lib/extension/create-playlist-from-draft";
 import { createPlaylistFromDraft } from "@/lib/extension/create-playlist-from-draft";
-import { cn } from "@/lib/shared/utils/utils";
 import { fonts } from "@/lib/theme/fonts";
 import type { SpotifyGateState } from "../useSpotifyGate";
 import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
 import { ReconnectPrompt } from "./ReconnectPrompt";
 
-const MAX_NAME_LENGTH = 100;
-const DEFAULT_NAME = "New playlist";
-
 export interface CreateBarProps {
+	/** The playlist name, owned by the screen's title input. */
+	name: string;
 	/** Ordered song UUIDs to include in the playlist. */
 	songIds: string[];
 	/** Genre pills from the current draft config. */
@@ -76,6 +76,7 @@ export interface CreateBarProps {
 }
 
 export function CreateBar({
+	name,
 	songIds,
 	genrePills,
 	matchFilters,
@@ -88,7 +89,6 @@ export function CreateBar({
 	onSubmitInput,
 	onResult,
 }: CreateBarProps) {
-	const [name, setName] = useState(DEFAULT_NAME);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const trimmedName = name.trim();
@@ -145,43 +145,23 @@ export function CreateBar({
 			? "Create playlist"
 			: `Create playlist · ${songCount} ${songCount === 1 ? "song" : "songs"}`;
 
-	return (
-		<div className={cn("flex items-center gap-4 px-6 py-4")}>
-			{/* Name field — label is visually hidden but always in the DOM */}
-			<label
-				htmlFor="playlist-name"
-				className="sr-only"
-				style={{ fontFamily: fonts.body }}
-			>
-				Playlist name
-			</label>
-			<input
-				id="playlist-name"
-				type="text"
-				value={name}
-				onChange={(e) => setName(e.target.value.slice(0, MAX_NAME_LENGTH))}
-				maxLength={MAX_NAME_LENGTH}
-				disabled={isSubmitting}
-				placeholder="Playlist name"
-				className={cn(
-					"theme-text theme-border-color min-w-0 flex-1 border-b bg-transparent pb-0.5 text-sm outline-none",
-					"placeholder:theme-text-muted",
-					"focus-visible:outline-none",
-					"disabled:opacity-40",
-					"transition-[border-color,opacity] duration-150",
-					"focus:[border-color:var(--t-primary)]",
-				)}
-				style={{ fontFamily: fonts.body }}
-				aria-describedby={
-					trimmedName.length === 0 ? "playlist-name-error" : undefined
-				}
-			/>
-			{trimmedName.length === 0 && (
-				<span id="playlist-name-error" className="sr-only">
-					Playlist name is required.
-				</span>
-			)}
+	// Explains a disabled CTA now that the name field lives in the page title.
+	const hint =
+		trimmedName.length === 0
+			? "Name your playlist above to create"
+			: isPreviewStale
+				? "Updating preview…"
+				: null;
 
+	return (
+		<div className="flex items-center justify-between gap-4 px-6 py-4">
+			<span
+				className="theme-text-muted text-xs"
+				style={{ fontFamily: fonts.body }}
+				aria-live="polite"
+			>
+				{hint}
+			</span>
 			<Button
 				variant="primary"
 				size="sm"

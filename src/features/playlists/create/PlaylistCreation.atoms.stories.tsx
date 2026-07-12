@@ -304,6 +304,7 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 					</span>
 				</div>
 				<CreateBar
+					name="New playlist"
 					songIds={songIds}
 					genrePills={["indie", "electronic"]}
 					matchFilters={EMPTY_FILTERS}
@@ -336,6 +337,7 @@ export const CreateBarReconnect: Story = () => (
 				</span>
 			</div>
 			<CreateBar
+				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
 				genrePills={[]}
 				matchFilters={EMPTY_FILTERS}
@@ -361,6 +363,7 @@ export const CreateBarExtensionMissing: Story = () => (
 				</span>
 			</div>
 			<CreateBar
+				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
 				genrePills={[]}
 				matchFilters={EMPTY_FILTERS}

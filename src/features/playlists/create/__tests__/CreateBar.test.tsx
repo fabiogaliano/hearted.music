@@ -87,6 +87,7 @@ const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
 
 function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 	return {
+		name: "New playlist",
 		songIds: ["s1", "s2", "s3"],
 		genrePills: ["indie", "electronic"],
 		matchFilters: DEFAULT_FILTERS,
@@ -101,11 +102,12 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 	};
 }
 
-describe("CreateBar — default name", () => {
-	it("pre-fills the name input with 'New playlist'", () => {
+describe("CreateBar — name is a prop, not an internal field", () => {
+	it("does not render its own name input (the page title owns the name)", () => {
 		render(<CreateBar {...makeProps()} />);
-		const input = screen.getByRole("textbox", { name: /playlist name/i });
-		expect((input as HTMLInputElement).value).toBe("New playlist");
+		expect(
+			screen.queryByRole("textbox", { name: /playlist name/i }),
+		).not.toBeInTheDocument();
 	});
 });
 
@@ -116,11 +118,8 @@ describe("CreateBar — CTA disabled states", () => {
 		expect(btn).toBeDisabled();
 	});
 
-	it("is disabled when name is blank", async () => {
-		const user = userEvent.setup();
-		render(<CreateBar {...makeProps()} />);
-		const input = screen.getByRole("textbox", { name: /playlist name/i });
-		await user.clear(input);
+	it("is disabled when name is blank", () => {
+		render(<CreateBar {...makeProps({ name: "   " })} />);
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
 	});
@@ -167,17 +166,14 @@ describe("CreateBar — submit payload", () => {
 		});
 
 		const props = makeProps({
+			// Padded so we verify the bar trims before submitting.
+			name: "  Night Mix  ",
 			songIds: ["id1", "id2"],
 			genrePills: ["jazz"],
 			intentApplied: true,
 			intent: "late night vibes",
 		});
 		render(<CreateBar {...props} />);
-
-		// Change the name so we verify trimming too
-		const input = screen.getByRole("textbox", { name: /playlist name/i });
-		await user.clear(input);
-		await user.type(input, "  Night Mix  ");
 
 		await user.click(screen.getByRole("button", { name: /create playlist/i }));
 
@@ -229,7 +225,9 @@ describe("CreateBar — submit payload", () => {
 			};
 		});
 
-		render(<CreateBar {...makeProps({ onNameCommit })} />);
+		render(
+			<CreateBar {...makeProps({ name: "  New playlist  ", onNameCommit })} />,
+		);
 		await user.click(screen.getByRole("button", { name: /create playlist/i }));
 
 		await waitFor(() => {

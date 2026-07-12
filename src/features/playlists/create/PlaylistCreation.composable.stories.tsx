@@ -478,6 +478,7 @@ function FullScreenHarness({
 						</span>
 					</div>
 					<CreateBar
+						name="New playlist"
 						songIds={preview.map((s) => s.id)}
 						genrePills={genres}
 						matchFilters={filters}
