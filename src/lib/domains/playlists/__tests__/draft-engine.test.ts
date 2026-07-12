@@ -13,7 +13,7 @@ import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/t
 import { computeAdaptiveWeights } from "@/lib/domains/taste/song-matching/config";
 import type { Phase1Candidate } from "../candidate-loader";
 import { assembleDraft, filterCandidates } from "../draft-engine";
-import { isIntentEligible } from "../intent-eligibility";
+import { buildIntentGate, isIntentEligible } from "../intent-eligibility";
 
 // ============================================================================
 // Test helpers
@@ -337,23 +337,12 @@ describe("no-embedding weight redistribution", () => {
 // ============================================================================
 
 describe("isIntentEligible", () => {
-	it("returns true for unlimited-access accounts regardless of unlock count", () => {
-		expect(isIntentEligible(premiumBillingState, 0)).toBe(true);
-		expect(isIntentEligible(premiumBillingState, 500)).toBe(true);
-		expect(isIntentEligible(premiumBillingState, 1000)).toBe(true);
+	it("returns true for unlimited-access accounts", () => {
+		expect(isIntentEligible(premiumBillingState)).toBe(true);
 	});
 
-	it("returns false for free accounts with fewer than 1000 unlocked songs", () => {
-		expect(isIntentEligible(freeBillingState, 0)).toBe(false);
-		expect(isIntentEligible(freeBillingState, 999)).toBe(false);
-	});
-
-	it("returns true for free accounts with exactly 1000 unlocked songs", () => {
-		expect(isIntentEligible(freeBillingState, 1000)).toBe(true);
-	});
-
-	it("returns true for free accounts with more than 1000 unlocked songs", () => {
-		expect(isIntentEligible(freeBillingState, 2000)).toBe(true);
+	it("returns false for free accounts (pack path disabled)", () => {
+		expect(isIntentEligible(freeBillingState)).toBe(false);
 	});
 
 	it("self-hosted billing state is always eligible", () => {
@@ -361,7 +350,33 @@ describe("isIntentEligible", () => {
 			...freeBillingState,
 			unlimitedAccess: { kind: "self_hosted" },
 		};
-		expect(isIntentEligible(selfHostedState, 0)).toBe(true);
+		expect(isIntentEligible(selfHostedState)).toBe(true);
+	});
+});
+
+describe("buildIntentGate", () => {
+	it("allows unlimited-access accounts via the Backstage Pass criterion", () => {
+		const gate = buildIntentGate(premiumBillingState);
+
+		expect(gate.allowed).toBe(true);
+		expect(gate.criteria.find((c) => c.id === "backstage-pass")?.met).toBe(
+			true,
+		);
+	});
+
+	it("locks a free account with the Backstage Pass path unmet and no other path", () => {
+		const gate = buildIntentGate(freeBillingState);
+
+		expect(gate.allowed).toBe(false);
+		const pass = gate.criteria.find((c) => c.id === "backstage-pass");
+		expect(pass?.met).toBe(false);
+		expect(gate.criteria).toHaveLength(1);
+	});
+
+	it("keeps allowed in lockstep with isIntentEligible", () => {
+		for (const state of [freeBillingState, premiumBillingState]) {
+			expect(buildIntentGate(state).allowed).toBe(isIntentEligible(state));
+		}
 	});
 });
 

@@ -2,54 +2,58 @@
  * Intent-eligibility helpers for the playlist creation preview engine.
  *
  * The natural-language intent field is a premium feature. Eligibility is:
- *   hasUnlimitedAccess(billingState) OR unlockedSongCount >= 1000
+ *   hasUnlimitedAccess(billingState)   (Backstage Pass / self-hosted)
+ *
+ * The pack-accumulation path is disabled for now: there is no 1,000-song pack
+ * tier, so buying a pack can't reach the threshold and framing progress toward
+ * it as a running song count would misrepresent the offer. A pass is the only
+ * way in until that tier exists.
  *
  * This is always computed server-side and never trusted from the client.
  */
 
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 
-const UNLOCK_THRESHOLD = 1000;
-
 /**
- * Pure predicate: is this account eligible to use the intent field?
- *
- * Unlimited-access users always qualify. Free users qualify once they have
- * accumulated ≥ 1000 non-revoked unlocked songs — a meaningful signal that
- * they have engaged deeply enough to benefit from semantic search.
+ * One any-of path through the intent gate, as data so the UI can explain WHY
+ * the field is locked and how close the user is — never just a boolean.
  */
-export function isIntentEligible(
-	billingState: BillingState,
-	unlockedSongCount: number,
-): boolean {
-	return (
-		hasUnlimitedAccess(billingState) || unlockedSongCount >= UNLOCK_THRESHOLD
-	);
+export interface GateCriterionVM {
+	id: string;
+	/** e.g. "Backstage Pass". */
+	label: string;
+	met: boolean;
+	/** Present for accumulative criteria (unlock counts) — enables "340 / 1,000". */
+	progress?: { current: number; target: number };
+}
+
+/** Any-of gate: `allowed` is true when at least one criterion is met. */
+export interface IntentGateVM {
+	allowed: boolean;
+	criteria: GateCriterionVM[];
 }
 
 /**
- * Count non-revoked rows in account_song_unlock for the given account.
- *
- * A row counts as "unlocked" when revoked_at IS NULL. Revoked rows (pack
- * reversal, subscription lapse) must not inflate the count so a reverted
- * user cannot retain intent access based on stale rows.
+ * The intent gate as data: the single source of truth for whether an account
+ * may use the natural-language intent field AND why. One any-of path for now —
+ * unlimited access (Backstage Pass / self-hosted). The locked treatment reads
+ * the criteria; keeping this the sole lever means re-enabling a pack path later
+ * is a change here, not in every surface.
  */
-export async function getUnlockedSongCount(accountId: string): Promise<number> {
-	const supabase = createAdminSupabaseClient();
-	const { count, error } = await supabase
-		.from("account_song_unlock")
-		.select("*", { count: "exact", head: true })
-		.eq("account_id", accountId)
-		.is("revoked_at", null);
+export function buildIntentGate(billingState: BillingState): IntentGateVM {
+	const hasPass = hasUnlimitedAccess(billingState);
 
-	if (error) {
-		// Non-fatal: default to 0 so the intent field stays locked for uncertain
-		// cases rather than accidentally granting access on error.
-		console.error("[intent-eligibility] unlock count query failed:", error);
-		return 0;
-	}
+	return {
+		allowed: hasPass,
+		criteria: [{ id: "backstage-pass", label: "Backstage Pass", met: hasPass }],
+	};
+}
 
-	return count ?? 0;
+/**
+ * Pure predicate: is this account eligible to use the intent field? Thin
+ * wrapper over buildIntentGate so the gate stays the single source of truth.
+ */
+export function isIntentEligible(billingState: BillingState): boolean {
+	return buildIntentGate(billingState).allowed;
 }

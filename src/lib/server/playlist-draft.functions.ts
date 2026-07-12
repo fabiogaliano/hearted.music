@@ -31,10 +31,7 @@ import {
 	filterCandidates,
 	scoreCandidates,
 } from "@/lib/domains/playlists/draft-engine";
-import {
-	getUnlockedSongCount,
-	isIntentEligible,
-} from "@/lib/domains/playlists/intent-eligibility";
+import { isIntentEligible } from "@/lib/domains/playlists/intent-eligibility";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
@@ -124,10 +121,9 @@ export const previewPlaylistDraft = createServerFn({ method: "POST" })
 		const { accountId } = context.session;
 		const supabase = createAdminSupabaseClient();
 
-		// Resolve billing state + unlock count in parallel with candidate loading
-		const [billingResult, unlockedCount, candidates] = await Promise.all([
+		// Resolve billing state in parallel with candidate loading
+		const [billingResult, candidates] = await Promise.all([
 			readBillingState(supabase, accountId),
-			getUnlockedSongCount(accountId),
 			loadPhase1Candidates(accountId),
 		]);
 
@@ -146,7 +142,7 @@ export const previewPlaylistDraft = createServerFn({ method: "POST" })
 
 		// Intent eligibility is always computed server-side; client input is ignored
 		// when the account is not eligible (defense in depth).
-		const eligible = isIntentEligible(billingState, unlockedCount);
+		const eligible = isIntentEligible(billingState);
 		const effectiveIntent =
 			eligible && data.intent && data.intent.trim().length > 0
 				? data.intent.trim()
@@ -355,19 +351,17 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 			}
 			const playlistId = playlistResult.value.id;
 
-			// Server-side intent eligibility re-check: billing state + unlock count
-			// resolved in parallel with the song lookup and the ownership guard to
-			// avoid serial waits. ownedResult constrains data.songIds to the
-			// account's active liked_song rows — getSongsByIds hits the global song
-			// table via the service-role client, so without this a tampered request
-			// could resolve URIs for songs the account never liked.
-			const [billingResult, unlockedCount, songsResult, ownedResult] =
-				await Promise.all([
-					readBillingState(supabase, accountId),
-					getUnlockedSongCount(accountId),
-					getSongsByIds(data.songIds),
-					selectOwnedSongIds(accountId, data.songIds),
-				]);
+			// Server-side intent eligibility re-check: billing state resolved in
+			// parallel with the song lookup and the ownership guard to avoid serial
+			// waits. ownedResult constrains data.songIds to the account's active
+			// liked_song rows — getSongsByIds hits the global song table via the
+			// service-role client, so without this a tampered request could resolve
+			// URIs for songs the account never liked.
+			const [billingResult, songsResult, ownedResult] = await Promise.all([
+				readBillingState(supabase, accountId),
+				getSongsByIds(data.songIds),
+				selectOwnedSongIds(accountId, data.songIds),
+			]);
 
 			const billingState = Result.isOk(billingResult)
 				? billingResult.value
@@ -387,7 +381,7 @@ export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 			// intent writes only when the feature was actually used in the preview —
 			// eligibility alone doesn't mean intent should be saved (e.g. user cleared
 			// the field before creating).
-			const eligible = isIntentEligible(billingState, unlockedCount);
+			const eligible = isIntentEligible(billingState);
 			const trimmedIntent = data.intent?.trim() ?? "";
 			const effectiveIntent =
 				eligible && data.intentApplied && trimmedIntent.length > 0
