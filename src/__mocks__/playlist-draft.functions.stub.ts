@@ -7,20 +7,22 @@
  * stories can drive any fixture state they need without a real server.
  */
 
-import type { SongVM } from "@/lib/domains/playlists/types";
+// Type-only imports: erased before module resolution, so they can never pull
+// the real module's server graph (drizzle/postgres/supabase via authMiddleware)
+// into the Ladle bundle. `satisfies` below then keeps every constructed
+// literal checked against the real result shape.
+import type {
+	PersistNewPlaylistConfigResult,
+	PreviewPlaylistDraftResult,
+	recordPlaylistMatchDecisions as recordPlaylistMatchDecisionsReal,
+} from "@/lib/server/playlist-draft.functions";
 
-// ── Types (re-exported verbatim) ──────────────────────────────────────────────
-
-export interface PreviewPlaylistDraftResult {
-	preview: SongVM[];
-	suggestions: SongVM[];
-	totalEligible: number;
-	intentApplied: boolean;
-}
-
-export interface PersistNewPlaylistConfigResult {
-	trackUris: string[];
-}
+// recordPlaylistMatchDecisions doesn't export a named result interface (its
+// handler uses an inline return-type annotation), so its real shape is pulled
+// through the function's own type instead of a named type import.
+type RecordPlaylistMatchDecisionsResult = Awaited<
+	ReturnType<typeof recordPlaylistMatchDecisionsReal>
+>;
 
 // ── Controllable fixture state ────────────────────────────────────────────────
 
@@ -44,7 +46,12 @@ export const resolveSpotifyUserId = () =>
 	Promise.resolve({ spotifyUserId: null as string | null });
 
 export const persistNewPlaylistConfig = (_opts: unknown) =>
-	Promise.resolve({ trackUris: [] } satisfies PersistNewPlaylistConfigResult);
+	Promise.resolve({
+		trackUris: [],
+		playlistId: "stub-playlist-id",
+	} satisfies PersistNewPlaylistConfigResult);
 
 export const recordPlaylistMatchDecisions = (_opts: unknown) =>
-	Promise.resolve();
+	Promise.resolve({
+		recorded: 0,
+	} satisfies RecordPlaylistMatchDecisionsResult);

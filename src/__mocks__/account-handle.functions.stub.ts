@@ -10,32 +10,10 @@
  * before the parent's effects — so an effect-based set would land too late.
  */
 
-import type { HandleValidationReason } from "@/lib/domains/library/accounts/handle-rules";
-import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
-
-type CheckHandleAvailabilityResult =
-	| { status: "available" }
-	| {
-			status: "already_owned";
-			ownedHandle: string;
-			onboarding: OnboardingAuthPayload;
-	  }
-	| { status: "unavailable"; reason: HandleValidationReason }
-	| { status: "error" };
-
-type ClaimHandleAndAdvanceResult =
-	| {
-			status: "claimed";
-			ownedHandle: string;
-			onboarding: OnboardingAuthPayload;
-	  }
-	| { status: "not_ready"; onboarding: OnboardingAuthPayload }
-	| {
-			status: "already_owned";
-			ownedHandle: string;
-			onboarding: OnboardingAuthPayload;
-	  }
-	| { status: "unavailable"; reason: HandleValidationReason };
+import type {
+	CheckHandleAvailabilityResult,
+	ClaimHandleAndAdvanceResult,
+} from "@/lib/server/account-handle.functions";
 
 export type HandleAvailabilityBehavior =
 	| "available"

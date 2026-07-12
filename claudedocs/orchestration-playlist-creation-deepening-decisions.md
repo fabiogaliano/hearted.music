@@ -36,7 +36,54 @@ plan exactly.
 
 ## Workstream D — stub conformance
 
-- (none yet)
+- `account-handle.functions.stub.ts`: the real `account-handle.functions.ts` already
+  exports `CheckHandleAvailabilityResult` and `ClaimHandleAndAdvanceResult` as named
+  types (plan described them as hand-copied-but-in-sync, implying no real export
+  existed) — switched the stub to `import type` these directly instead of leaving
+  the hand-copied duplicates, going slightly beyond "preventive" since the real
+  names were already available.
+- `onboarding.functions.stub.ts`: real `OnboardingData.syncStats` is `SyncStats`
+  (non-nullable), not `SyncStats | null` as the stub had it — an extra divergence
+  beyond the ones the plan called out (missing `accountId`/`claimHandleSeed`,
+  `phaseJobIds`/`landingSongs` shape). Fixed by importing `OnboardingData` wholesale
+  from the real module rather than reconstructing the interface field-by-field.
+- `onboarding.functions.stub.ts`: did not add separate `import type { PhaseJobIds }`
+  / `import type { LandingSongManifest }` statements as the task list literally
+  enumerated — once `OnboardingData`/`OnboardingPlaylist`/`SyncStats`/
+  `ReadyCopyVariant` are type-imported wholesale from the real module, those two
+  types are already carried transitively inside `OnboardingData.phaseJobIds` /
+  `.landingSongs` with no local reconstruction, so a separate import would be an
+  unused/dead import (`OnboardingPlaylist` real shape also picked up the missing
+  `spotifyId` field this way, with no field-by-field fix needed).
+- `onboarding.functions.stub.ts`: left `saveThemePreference`, `executeSync`,
+  `resetSyncJobs`, `saveOnboardingStep`, and `markOnboardingComplete` typed as
+  resolving `void`/`{success:true}` even though the real handlers return richer
+  literals (e.g. `markOnboardingComplete` returns `MarkOnboardingCompleteResult`).
+  Out of scope: the plan's task list enumerates only
+  `OnboardingData`/`OnboardingPlaylist`/`SyncStats`/`ReadyCopyVariant`/
+  `PhaseJobIds`/`LandingSongManifest`, and the core-principle note explicitly
+  says not to enforce callable-signature/return parity for `createServerFn`
+  wrappers (intentional stub divergence) — these five stay `reject()`-only so
+  their resolve type is never observed at runtime.
+- `playlists.functions.stub.ts` (task 5, lowest priority): `getAccountTopGenres`,
+  `getLikedSongIdsByArtist`, `savePlaylistGenrePills`, and `savePlaylistMatchIntent`
+  in the real module have no named exported result interface (inline handler
+  return-type annotations only) — added `satisfies` support by type-importing the
+  *functions themselves* (`import type { fn as fnReal }`) and deriving
+  `Awaited<ReturnType<typeof fnReal>>` locally, rather than leaving them
+  unguarded or hand-copying an interface. This is a single-function type
+  extraction, not the whole-module `satisfies typeof import(...)` the plan
+  rejects.
+- `stub-types.test.ts`: the only two "PURE input-type re-exports" found across the
+  touched stubs (unmodified `import type` used directly as a callable's parameter
+  type, not a hand-copied shape) are `CreatePlaylistFromDraftInput`
+  (`create-playlist-from-draft.stub.ts`, already-conformant per the plan) and
+  `SavePlaylistMatchConfigInput` (`playlists.functions.stub.ts`). All other
+  type-only imports across the touched stubs are *result/response* types, which
+  are already guarded in-place by `satisfies` at their construction site — adding
+  a redundant `expectTypeOf` assertion for those would just restate the
+  `satisfies` check, so the test file only covers the two genuine input types via
+  `Parameters<typeof stubFn>[...] toEqualTypeOf<RealInputType>()`.
 
 ## Workstream A — billing reader
 
