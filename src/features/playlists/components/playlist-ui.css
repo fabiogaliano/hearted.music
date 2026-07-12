@@ -262,17 +262,20 @@
 	border-color: transparent;
 }
 
-/* Unset facet — dashed add pill, mirroring "+ add genre" (.xpl-genres .gp-pill). */
+/* Unset facet — dashed add pill at the create-rail chip scale (the genre
+   field's "+ add genre" recipe: 0.625rem, 3px 10px, radius 12). Label/border
+   keep the ink mix — plain --t-border goes near-invisible on the band. */
 .mf-add {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	padding: 6px 12px;
-	border-radius: 999px;
+	gap: 4px;
+	padding: 3px 10px;
+	border-radius: 12px;
 	border: 1px dashed color-mix(in srgb, var(--t-text) 50%, transparent);
 	background: transparent;
 	color: color-mix(in srgb, var(--t-text) 72%, var(--t-text-muted));
-	font-size: 13px;
+	font-size: 0.625rem;
+	letter-spacing: 0.07em;
 	cursor: pointer;
 	transition:
 		background-color 150ms ease,
@@ -303,7 +306,7 @@
 	transform: scale(0.96);
 }
 
-/* 28px visual, extended to a 40px hit target without disturbing the row. */
+/* 20px visual, extended to a 40px hit target without disturbing the row. */
 .mf-remove {
 	position: relative;
 	color: var(--t-text-muted);
@@ -315,7 +318,7 @@
 .mf-remove::after {
 	content: "";
 	position: absolute;
-	inset: -6px;
+	inset: -10px;
 }
 .mf-remove:hover:not(:disabled) {
 	color: var(--t-text);
