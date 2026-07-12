@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { Button } from "@/components/ui/Button";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
 import {
@@ -26,9 +26,19 @@ export const Route = createFileRoute("/_authenticated/playlists")({
 
 function PlaylistsPage() {
 	const { session, onboardingSession } = Route.useRouteContext();
+	const matchRoute = useMatchRoute();
 
 	if (onboardingSession.status === "flag-playlists") {
 		return <PlaylistsPreview />;
+	}
+
+	// /playlists/new is a full-page child that renders its own screen into the
+	// Outlet, so it must render ALONE — mounting the cover-flow shelf as well
+	// would stack the create screen underneath it. Detail ($playlistRef) is the
+	// opposite case: it renders null and is drawn inside the shelf, so the shelf
+	// stays mounted for the list and detail URLs.
+	if (matchRoute({ to: "/playlists/new" })) {
+		return <Outlet />;
 	}
 
 	return (

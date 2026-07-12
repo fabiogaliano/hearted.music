@@ -22,7 +22,6 @@ import {
 	SONG_FIXTURES,
 } from "@/lib/domains/playlists/fixtures";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { ConfigSurface } from "./config/ConfigSurface";
 import { FiltersConfig } from "./config/FiltersConfig";
 import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
@@ -597,19 +596,29 @@ export const ConfigSurfaceStory: Story = () => {
 	return (
 		<QueryClientProvider client={makeSeededQueryClient()}>
 			<div className="mx-auto max-w-2xl p-10">
-				<ConfigSurface
-					accountId={STORY_ACCOUNT_ID}
-					isIntentEligible={true}
-					intent={intent}
-					genrePills={genres}
-					matchFilters={filters}
-					maxSongs={maxSongs}
-					onIntentChange={setIntent}
-					onGenrePillsChange={setGenres}
-					onMatchFiltersChange={setFilters}
-					onMaxSongsChange={setMaxSongs}
-					onOpenPaywall={() => {}}
-				/>
+				<div className="grid grid-cols-[1fr_280px] gap-10">
+					<div className="flex flex-col gap-8">
+						<IntentEditor
+							isEligible={true}
+							value={intent}
+							onChange={setIntent}
+							onOpenPaywall={() => {}}
+						/>
+						<GenreConfig
+							accountId={STORY_ACCOUNT_ID}
+							value={genres}
+							onChange={setGenres}
+						/>
+						<FiltersConfig
+							accountId={STORY_ACCOUNT_ID}
+							value={filters}
+							onChange={setFilters}
+						/>
+					</div>
+					<div className="flex flex-col gap-2">
+						<MaxSongsSlider value={maxSongs} onChange={setMaxSongs} />
+					</div>
+				</div>
 			</div>
 		</QueryClientProvider>
 	);
@@ -625,19 +634,29 @@ export const ConfigSurfaceLocked: Story = () => {
 	return (
 		<QueryClientProvider client={makeSeededQueryClient()}>
 			<div className="mx-auto max-w-2xl p-10">
-				<ConfigSurface
-					accountId={STORY_ACCOUNT_ID}
-					isIntentEligible={false}
-					intent={undefined}
-					genrePills={genres}
-					matchFilters={filters}
-					maxSongs={maxSongs}
-					onIntentChange={() => {}}
-					onGenrePillsChange={setGenres}
-					onMatchFiltersChange={setFilters}
-					onMaxSongsChange={setMaxSongs}
-					onOpenPaywall={() => {}}
-				/>
+				<div className="grid grid-cols-[1fr_280px] gap-10">
+					<div className="flex flex-col gap-8">
+						<IntentEditor
+							isEligible={false}
+							value={undefined}
+							onChange={() => {}}
+							onOpenPaywall={() => {}}
+						/>
+						<GenreConfig
+							accountId={STORY_ACCOUNT_ID}
+							value={genres}
+							onChange={setGenres}
+						/>
+						<FiltersConfig
+							accountId={STORY_ACCOUNT_ID}
+							value={filters}
+							onChange={setFilters}
+						/>
+					</div>
+					<div className="flex flex-col gap-2">
+						<MaxSongsSlider value={maxSongs} onChange={setMaxSongs} />
+					</div>
+				</div>
 			</div>
 		</QueryClientProvider>
 	);

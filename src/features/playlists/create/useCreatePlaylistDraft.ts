@@ -54,6 +54,12 @@ export interface CreatePlaylistDraftActions {
 	/** Move a suggestion into pinnedSongIds; clears any previous exclusion. */
 	addSong: (id: string) => void;
 	/**
+	 * Pin many songs at once (clearing any prior exclusion), preserving their
+	 * given order after existing pins. Backs the "Around [artist]" seed, which
+	 * pins the artist's liked songs so the preview opens on them.
+	 */
+	pinSongs: (ids: string[]) => void;
+	/**
 	 * Reverse a remove without force-pinning the song.
 	 * Removes the song from excludedSongIds so the preview engine can include it
 	 * again if the current config selects it — the song re-enters only if the
@@ -212,6 +218,27 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		}));
 	}, []);
 
+	const pinSongs = useCallback((ids: string[]) => {
+		if (ids.length === 0) return;
+		setSelection((prev) => {
+			const pinnedSongIds = [...prev.pinnedSongIds];
+			const seen = new Set(pinnedSongIds);
+			for (const id of ids) {
+				if (!seen.has(id)) {
+					seen.add(id);
+					pinnedSongIds.push(id);
+				}
+			}
+			const excludedSet = new Set(ids);
+			return {
+				pinnedSongIds,
+				excludedSongIds: prev.excludedSongIds.filter(
+					(eid) => !excludedSet.has(eid),
+				),
+			};
+		});
+	}, []);
+
 	const restoreSong = useCallback((id: string) => {
 		setSelection((prev) => ({
 			pinnedSongIds: prev.pinnedSongIds,
@@ -259,6 +286,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		setMaxSongs,
 		removeSong,
 		addSong,
+		pinSongs,
 		restoreSong,
 		dismissSuggestion,
 		refreshSuggestions,

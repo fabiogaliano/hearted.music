@@ -26,11 +26,13 @@ import { playlistKeys } from "@/features/playlists/queries";
 import { SONG_FIXTURES } from "@/lib/domains/playlists/fixtures";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { fonts } from "@/lib/theme/fonts";
-import { ConfigSurface } from "./config/ConfigSurface";
+import { FiltersConfig } from "./config/FiltersConfig";
+import { GenreConfig } from "./config/GenreConfig";
+import { IntentEditor } from "./config/IntentEditor";
 import { CreateBar } from "./create-flow/CreateBar";
 import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
 import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
-import { MAX_SONGS_DEFAULT } from "./MaxSongsSlider";
+import { MAX_SONGS_DEFAULT, MaxSongsSlider } from "./MaxSongsSlider";
 import { PreviewList } from "./preview/PreviewList";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 
@@ -388,19 +390,29 @@ function FullScreenHarness({
 						<div className="theme-border-color h-px flex-1 border-t" />
 					</div>
 
-					<ConfigSurface
-						accountId={STORY_ACCOUNT_ID}
-						isIntentEligible={isIntentEligible}
-						intent={intent}
-						genrePills={genres}
-						matchFilters={filters}
-						maxSongs={maxSongs}
-						onIntentChange={setIntent}
-						onGenrePillsChange={setGenres}
-						onMatchFiltersChange={setFilters}
-						onMaxSongsChange={setMaxSongs}
-						onOpenPaywall={() => {}}
-					/>
+					<div className="grid grid-cols-[1fr_280px] gap-10">
+						<div className="flex flex-col gap-8">
+							<IntentEditor
+								isEligible={isIntentEligible}
+								value={intent}
+								onChange={setIntent}
+								onOpenPaywall={() => {}}
+							/>
+							<GenreConfig
+								accountId={STORY_ACCOUNT_ID}
+								value={genres}
+								onChange={setGenres}
+							/>
+							<FiltersConfig
+								accountId={STORY_ACCOUNT_ID}
+								value={filters}
+								onChange={setFilters}
+							/>
+						</div>
+						<div className="flex flex-col gap-2">
+							<MaxSongsSlider value={maxSongs} onChange={setMaxSongs} />
+						</div>
+					</div>
 				</section>
 
 				{/* Preview */}

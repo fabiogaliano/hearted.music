@@ -12,13 +12,13 @@
  * gated capability, and templates must not leak it to free accounts.
  */
 
+import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import type {
-	IntentGateVM,
 	PresetVM,
 	SeedChoiceVM,
 	SeedTemplateVM,
 	TasteProfileVM,
-} from "./types";
+} from "./seedTypes";
 
 /** Rotate so a random element leads — the genre blank defaults differently per visit. */
 function rotateRandom<T>(items: T[]): T[] {
@@ -35,7 +35,11 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 			id: "tpl-window",
 			parts: ["Liked in the ", { slot: "window" }],
 			slots: {
-				window: windows.map((w) => ({ id: w.id, label: w.label })),
+				window: windows.map((w) => ({
+					id: w.id,
+					label: w.label,
+					likedAt: w.likedAt,
+				})),
 			},
 			describe: (sel) => {
 				const w = windows.find((x) => x.id === sel.window?.id);
@@ -58,8 +62,10 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 			id: "tpl-genre",
 			parts: ["All things ", { slot: "genre" }],
 			slots: { genre: rotateRandom(genreChoices) },
+			// Pills bias the ranking, not a hard filter — phrase the count as the pool
+			// it leans on, never a promise the whole playlist is this genre.
 			describe: (sel) =>
-				`${genreCount(sel.genre?.id)} liked songs and counting`,
+				`leans ${sel.genre?.id}, drawn from ${genreCount(sel.genre?.id)} you've liked`,
 		});
 	}
 
@@ -69,7 +75,11 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 			id: "tpl-decade",
 			parts: ["Throwbacks: ", { slot: "period" }],
 			slots: {
-				period: decades.map((d) => ({ id: d.label, label: d.label })),
+				period: decades.map((d) => ({
+					id: d.label,
+					label: d.label,
+					releaseYear: { kind: "range", start: d.from, end: d.to },
+				})),
 			},
 			describe: (sel) => {
 				const d = decades.find((x) => x.label === sel.period?.id);
@@ -88,20 +98,30 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 				b: [...genreChoices.slice(1), genreChoices[0]],
 			},
 			// A sum, not an intersection — say "across both", never "overlap".
+			// Pills bias the ranking, so it leans toward the blend rather than
+			// guaranteeing every track sits in one genre or the other.
 			describe: (sel) =>
 				sel.a?.id === sel.b?.id
 					? "pick two different genres to blend"
-					: `${genreCount(sel.a?.id) + genreCount(sel.b?.id)} liked songs across both`,
+					: `leans toward both, from ${genreCount(sel.a?.id) + genreCount(sel.b?.id)} you've liked`,
 		});
 	}
 
-	const artists = profile.topArtists.filter((a) => a.count >= 12).slice(0, 5);
+	// Artists spread far thinner than genres across real libraries (a heavy
+	// listener still tops out at single-digit likes per artist), so the floor
+	// sits at the window floor, not the genre floor — an artist you've liked 8+
+	// times is a strong "in their orbit" seed, not a thin signal.
+	const artists = profile.topArtists.filter((a) => a.count >= 8).slice(0, 5);
 	if (artists.length > 0) {
 		templates.push({
 			id: "tpl-artist",
 			parts: ["Around ", { slot: "artist" }],
 			slots: {
-				artist: artists.map((a) => ({ id: a.name, label: a.name })),
+				artist: artists.map((a) => ({
+					id: a.name,
+					label: a.name,
+					artist: a.name,
+				})),
 			},
 			describe: (sel) => {
 				const a = artists.find((x) => x.name === sel.artist?.id);
@@ -122,34 +142,54 @@ export function defaultSelection(
 	);
 }
 
-/** Collapse a tuned template into the concrete PresetVM the draft stage consumes. */
+/**
+ * Collapse a tuned template into the concrete PresetVM the studio consumes.
+ *
+ * Each choice carries at most one structured dimension, and no template mixes
+ * them (genre/blend contribute pills, decade a release-year window, window a
+ * liked-at window, artist a pin target), so folding is a union: pills dedupe
+ * across slots; release-year/liked-at/artist take the first choice that carries
+ * them. A decade or window resolves into a `matchFilters` object; an artist into
+ * `pinArtist`. Genre-only templates leave both unset (the previous behaviour).
+ */
 export function resolveTemplate(
 	template: SeedTemplateVM,
 	selection: Record<string, SeedChoiceVM>,
 ): PresetVM {
+	const choices = Object.values(selection);
 	const label = template.parts
 		.map((part) =>
 			typeof part === "string" ? part : selection[part.slot].label,
 		)
 		.join("");
 	const genrePills = [
-		...new Set(
-			Object.values(selection).flatMap((choice) => choice.genrePills ?? []),
-		),
+		...new Set(choices.flatMap((choice) => choice.genrePills ?? [])),
 	];
+	const releaseYear = choices.find((c) => c.releaseYear)?.releaseYear;
+	const likedAt = choices.find((c) => c.likedAt)?.likedAt;
+	const pinArtist = choices.find((c) => c.artist)?.artist;
+	const matchFilters =
+		releaseYear || likedAt
+			? {
+					version: 1 as const,
+					...(releaseYear ? { releaseYear } : {}),
+					...(likedAt ? { likedAt } : {}),
+				}
+			: undefined;
 	return {
-		id: `${template.id}:${Object.values(selection)
-			.map((c) => c.id)
-			.join("+")}`,
+		id: `${template.id}:${choices.map((c) => c.id).join("+")}`,
 		label,
 		description: template.describe(selection),
 		genrePills,
+		matchFilters,
+		pinArtist,
 	};
 }
 
 /**
  * One-line explanation of every unmet path through the gate, for the locked
- * treatment — e.g. "Backstage Pass · or 1,000 songs from packs — 500 / 1,000".
+ * treatment — e.g. "Backstage Pass" (or, if an accumulating path is re-added,
+ * "Backstage Pass · or 1,000 songs from packs — 500 / 1,000").
  */
 export function formatGateHint(gate: IntentGateVM): string {
 	return gate.criteria

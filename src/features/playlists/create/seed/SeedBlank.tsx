@@ -1,9 +1,9 @@
 /**
- * Prototype shared piece — a fillable blank rendered as a popover listbox.
- * Used by the template cards: tapping the blank shows the WHOLE profile-derived
- * option inventory (no blind cycling that hides how many options exist), and
- * picking is direct. Inherits the surrounding text's font so the blank reads as
- * part of the sentence, not a control dropped into it.
+ * A fillable blank in a seed template's mad-lib sentence, rendered as a popover
+ * listbox. Tapping the blank shows the WHOLE profile-derived option inventory
+ * (no blind cycling that hides how many options exist), and picking is direct.
+ * Inherits the surrounding text's font so the blank reads as part of the
+ * sentence, not a control dropped into it.
  *
  * Keyboard: the trigger opens the list and moves focus into it; Up/Down/Home/End
  * move the active option (tracked via aria-activedescendant), Enter/Space picks,
@@ -13,7 +13,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import type { SeedChoiceVM } from "../types";
+import type { SeedChoiceVM } from "../seedTypes";
 
 export function SeedBlank({
 	value,
