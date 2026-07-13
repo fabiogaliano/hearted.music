@@ -200,10 +200,15 @@ export function StudioScreen({
 		flow.submit,
 	]);
 
-	// Not-enough note: eligible but fewer than the slider max.
+	// Not-enough note: eligible but fewer than the slider max. Also gated on the
+	// tracklist having room: filter-exempt anchor pins can fill the playlist even
+	// when few songs match, and "broaden your filters for more" is wrong once
+	// there's no room for more. Compared against committedConfig because the
+	// tracklist was produced under it, not the live (possibly mid-debounce) config.
 	const showNotEnoughNote =
 		draft.totalEligible > 0 &&
 		draft.totalEligible < draft.config.maxSongs &&
+		draft.tracklist.length < draft.committedConfig.maxSongs &&
 		!draft.isLoading;
 
 	// The empty state must key on the TRACKLIST, not totalEligible: manual pins
