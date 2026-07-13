@@ -231,8 +231,16 @@ export function CreatePlaylistScreen({
 		draft.totalEligible < draft.config.maxSongs &&
 		!draft.isLoading;
 
-	// Warming: no eligible songs, still loading (backfill just kicked off).
-	const isWarming = draft.totalEligible === 0 && draft.isLoading;
+	// The empty state must key on the TRACKLIST, not totalEligible: manual pins
+	// are filter-exempt (see preview.ts's manualExtras) and still land in
+	// draft.tracklist even when totalEligible is 0, so a tracklist-empty check
+	// is the only way to avoid replacing the user's own pins with "no songs
+	// match" copy while the Create bar still reads "Create playlist · N songs".
+	const tracklistIsEmpty = draft.tracklist.length === 0;
+
+	// Warming: nothing to show yet, still loading (backfill just kicked off).
+	// Once the tracklist is empty and settled, it's genuinely empty instead.
+	const isWarming = tracklistIsEmpty && draft.isLoading;
 
 	// Beat 1: the seed landing owns the whole screen until a seed is chosen. The
 	// locked intent field reuses the studio's paywall — same UpgradeDialog, same
@@ -360,8 +368,11 @@ export function CreatePlaylistScreen({
 								<div className="theme-border-color h-px w-20 border-t" />
 								{/* Selected count and filter-eligible count are separate facts:
 								    a manual pin outside the filters is valid, so "N of M" phrasing
-								    could read "11 of 10 eligible" and look like a bug. */}
-								{draft.totalEligible > 0 && (
+								    could read "11 of 10 eligible" and look like a bug. Shown
+								    whenever either number has something to say — including the
+								    "1 selected · 0 match filters" case where pins alone survive
+								    a filter set nothing else clears. */}
+								{(!tracklistIsEmpty || draft.totalEligible > 0) && (
 									<span
 										className="theme-text-muted text-xs tabular-nums"
 										style={{ fontFamily: fonts.body }}
@@ -381,10 +392,8 @@ export function CreatePlaylistScreen({
 							)}
 						</div>
 
-						{draft.totalEligible === 0 && !draft.isLoading ? (
-							<LibraryEmptyState isWarming={false} />
-						) : isWarming ? (
-							<LibraryEmptyState isWarming={true} />
+						{tracklistIsEmpty ? (
+							<LibraryEmptyState isWarming={isWarming} />
 						) : (
 							<PreviewList
 								songs={draft.tracklist}
