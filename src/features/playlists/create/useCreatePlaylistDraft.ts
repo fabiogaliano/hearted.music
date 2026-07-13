@@ -36,6 +36,20 @@ export interface CreatePlaylistDraftConfig {
 	maxSongs: number;
 }
 
+/**
+ * Seed values the studio opens with, carried across the entrance→studio route
+ * boundary (see studioSeed.ts). Read ONCE at mount via lazy state initializers
+ * — the studio route derives these from stable search params, so re-seeding
+ * means a fresh mount, not a mid-life mutation.
+ */
+export interface CreatePlaylistDraftInit {
+	intent?: string;
+	genrePills?: string[];
+	matchFilters?: PlaylistMatchFiltersV1;
+	/** Artists to seed the "Around" selection with — all enabled. */
+	artists?: string[];
+}
+
 export interface CreatePlaylistDraftSelection {
 	/** MANUAL pins only — songs the user hand-added. Artist-derived pins are
 	 *  computed from artistSelections at query-key time and never stored here,
@@ -174,13 +188,15 @@ const EMPTY_PREVIEW_RESULT: PlaylistDraftPreview = {
 	droppedPinnedSongIds: [],
 };
 
-export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
-	const [config, setConfig] = useState<CreatePlaylistDraftConfig>({
-		intent: DEFAULT_DRAFT_CONFIG.intent,
-		genrePills: DEFAULT_DRAFT_CONFIG.genrePills,
-		matchFilters: DEFAULT_DRAFT_CONFIG.matchFilters,
+export function useCreatePlaylistDraft(
+	init?: CreatePlaylistDraftInit,
+): UseCreatePlaylistDraftResult {
+	const [config, setConfig] = useState<CreatePlaylistDraftConfig>(() => ({
+		intent: init?.intent ?? DEFAULT_DRAFT_CONFIG.intent,
+		genrePills: init?.genrePills ?? DEFAULT_DRAFT_CONFIG.genrePills,
+		matchFilters: init?.matchFilters ?? DEFAULT_DRAFT_CONFIG.matchFilters,
 		maxSongs: DEFAULT_DRAFT_CONFIG.maxSongs,
-	});
+	}));
 
 	const [selection, setSelection] = useState<CreatePlaylistDraftSelection>({
 		pinnedSongIds: DEFAULT_DRAFT_CONFIG.pinnedSongIds,
@@ -192,7 +208,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 	// resolution query below, so a filter change re-resolves them without any
 	// imperative bookkeeping.
 	const [artistSelections, setArtistSelections] = useState<ArtistSelection[]>(
-		[],
+		() => (init?.artists ?? []).map((name) => ({ name, enabled: true })),
 	);
 
 	// Pages the suggestions window deeper (see DraftConfig.suggestionsOffset).

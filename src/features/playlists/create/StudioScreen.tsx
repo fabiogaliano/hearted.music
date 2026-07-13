@@ -1,5 +1,5 @@
 /**
- * CreatePlaylistScreen — the page shell for /playlists/new.
+ * StudioScreen — beat 2 of creation, the route body for /playlists/new/studio.
  *
  * Lays out the four regions of the creation flow with intentional
  * hearted-style spacing and typography. The create bar anchors the bottom
@@ -8,12 +8,17 @@
  *
  * The screen is deliberately calm — no loaders in the shell itself; the
  * useCreatePlaylistDraft hook drives per-region loading state.
+ *
+ * The seed arrives in router history state (studioSeed.ts): name, genre,
+ * filters, intent, and an optional pinned artist are read ONCE to initialize
+ * the draft. Re-seeding is a fresh navigation from the entrance, so a fresh
+ * mount — never a mid-life mutation of this screen's state.
  */
 
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
@@ -38,8 +43,7 @@ import { UnsyncedState } from "./create-flow/UnsyncedState";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { MaxSongsSlider } from "./MaxSongsSlider";
 import { PreviewList } from "./preview/PreviewList";
-import { SeedStage } from "./seed/SeedStage";
-import type { PresetVM } from "./seedTypes";
+import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
 import { useCreatePlaylistFlow } from "./useCreatePlaylistFlow";
@@ -48,27 +52,41 @@ import { useSpotifyGate } from "./useSpotifyGate";
 const MAX_NAME_LENGTH = 100;
 const DEFAULT_NAME = "New playlist";
 
-interface CreatePlaylistScreenProps {
+interface StudioScreenProps {
 	accountId: string;
 	billingState: BillingState;
+	seed: StudioSeed;
 }
 
-export function CreatePlaylistScreen({
+export function StudioScreen({
 	accountId,
 	billingState,
-}: CreatePlaylistScreenProps) {
+	seed,
+}: StudioScreenProps) {
 	const navigate = useNavigate();
-	const draft = useCreatePlaylistDraft();
-	const [name, setName] = useState(DEFAULT_NAME);
+
+	// Intent eligibility was seeded by the route loader; this read is synchronous
+	// from cache. The gate carries the criteria (for the IntentEditor's locked
+	// treatment); the studio only needs `allowed`, collapsed here. Defaults to
+	// locked so the teaser renders first-paint even if the pre-warm missed.
+	const { data: intentGate } = useQuery(intentEligibilityQueryOptions());
+	const isIntentEligible = intentGate?.allowed ?? false;
+
+	// The seed initializes the draft ONCE. isIntentEligible is cache-synchronous
+	// on first paint (loader-ensured), so gating the seeded intent here reproduces
+	// the original single-screen handleSeed invariant exactly.
+	const draft = useCreatePlaylistDraft(
+		useMemo(
+			() => studioSeedToDraftInit(seed, isIntentEligible),
+			[seed, isIntentEligible],
+		),
+	);
+	const [name, setName] = useState(() => seed.name ?? DEFAULT_NAME);
 	const [showPaywall, setShowPaywall] = useState(false);
 
-	// Beat 1 vs beat 2: null = the seed landing ("What are we making?"), set =
-	// the studio. The seed carries the chosen preset/typed vibe into the draft.
-	const [hasSeeded, setHasSeeded] = useState(false);
-
-	// The seed card's "+" (add another artist) commits the seed and lands here
-	// with the artist search focused, ready for artist #2.
-	const [focusArtistSearch, setFocusArtistSearch] = useState(false);
+	// The seed card's "+" (add another artist) lands here with the artist search
+	// focused, ready for artist #2.
+	const [focusArtistSearch] = useState(() => seed.focusArtistSearch ?? false);
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
@@ -147,49 +165,6 @@ export function CreatePlaylistScreen({
 		[draft.suggestions, draft.dismissSuggestion, draft.restoreSong],
 	);
 
-	// Intent eligibility was seeded by the route loader; this read is synchronous
-	// from cache. The gate carries the criteria (for the seed stage's locked
-	// treatment); the studio only needs `allowed`, collapsed here. Defaults to
-	// locked so the teaser renders first-paint even if the pre-warm missed.
-	const { data: intentGate } = useQuery(intentEligibilityQueryOptions());
-	const isIntentEligible = intentGate?.allowed ?? false;
-
-	// Commit a seed → enter the studio. A template preset names the playlist and
-	// pre-fills its structured config; "own words" seeds the intent (only if the
-	// gate allows it — templates are structured and never carry intent); "from
-	// scratch" just enters. Genres, match-filters (decade → releaseYear, window →
-	// likedAt), and intent flow into the live draft so the preview reflects the
-	// seed immediately. An artist seed carries no config filter — the name enters
-	// the draft's artist selection, whose filter-aware song resolution runs as a
-	// query with a chip-level pending state in ArtistConfig (no fire-and-forget).
-	const handleSeed = useCallback(
-		(preset: PresetVM | null, intentText: string) => {
-			if (preset?.label) setName(preset.label);
-			if (preset && preset.genrePills.length > 0) {
-				draft.setGenrePills(preset.genrePills);
-			}
-			if (preset?.matchFilters) {
-				draft.setMatchFilters(preset.matchFilters);
-			}
-			const nextIntent = intentText || undefined;
-			if (isIntentEligible && nextIntent) draft.setIntent(nextIntent);
-			setHasSeeded(true);
-			if (preset?.pinArtist) {
-				draft.addArtist(preset.pinArtist);
-			}
-			if (preset?.focusArtistSearch) {
-				setFocusArtistSearch(true);
-			}
-		},
-		[
-			draft.setGenrePills,
-			draft.setMatchFilters,
-			draft.setIntent,
-			draft.addArtist,
-			isIntentEligible,
-		],
-	);
-
 	// When the create bar unmounts and the result state mounts (success or
 	// partial), keyboard focus would otherwise fall to <body>. Move it into
 	// the result region so AT users land on the status message immediately.
@@ -241,23 +216,6 @@ export function CreatePlaylistScreen({
 	// Warming: nothing to show yet, still loading (backfill just kicked off).
 	// Once the tracklist is empty and settled, it's genuinely empty instead.
 	const isWarming = tracklistIsEmpty && draft.isLoading;
-
-	// Beat 1: the seed landing owns the whole screen until a seed is chosen. The
-	// locked intent field reuses the studio's paywall — same UpgradeDialog, same
-	// showPaywall state — so "unlock" is one consistent surface across the flow.
-	if (!hasSeeded) {
-		return (
-			<>
-				<SeedStage onSeed={handleSeed} onUnlock={() => setShowPaywall(true)} />
-				{showPaywall && (
-					<UpgradeDialog
-						billingState={billingState}
-						onClose={() => setShowPaywall(false)}
-					/>
-				)}
-			</>
-		);
-	}
 
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">

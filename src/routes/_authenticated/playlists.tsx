@@ -32,12 +32,13 @@ function PlaylistsPage() {
 		return <PlaylistsPreview />;
 	}
 
-	// /playlists/new is a full-page child that renders its own screen into the
-	// Outlet, so it must render ALONE — mounting the cover-flow shelf as well
-	// would stack the create screen underneath it. Detail ($playlistRef) is the
-	// opposite case: it renders null and is drawn inside the shelf, so the shelf
-	// stays mounted for the list and detail URLs.
-	if (matchRoute({ to: "/playlists/new" })) {
+	// The /playlists/new flow (entrance AND its /studio child) renders its own
+	// full-page screen into the Outlet, so it must render ALONE — mounting the
+	// cover-flow shelf as well would stack the create screen underneath it.
+	// fuzzy matches the whole /playlists/new subtree, not just the exact index.
+	// Detail ($playlistRef) is the opposite case: it renders null and is drawn
+	// inside the shelf, so the shelf stays mounted for the list and detail URLs.
+	if (matchRoute({ to: "/playlists/new", fuzzy: true })) {
 		return <Outlet />;
 	}
 

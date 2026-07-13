@@ -48,7 +48,9 @@ function renderSeedStage(onSeed = vi.fn()) {
 	const wrapper = ({ children }: { children: ReactNode }) => (
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	);
-	render(<SeedStage onSeed={onSeed} onUnlock={vi.fn()} />, { wrapper });
+	render(<SeedStage onSeed={onSeed} onUnlock={vi.fn()} onBack={vi.fn()} />, {
+		wrapper,
+	});
 	return onSeed;
 }
 

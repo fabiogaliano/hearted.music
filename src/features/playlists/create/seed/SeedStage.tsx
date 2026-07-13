@@ -29,6 +29,7 @@
  */
 
 import {
+	ArrowLeftIcon,
 	ArrowRightIcon,
 	ArrowUpRightIcon,
 	LockSimpleIcon,
@@ -284,9 +285,11 @@ interface SeedStageProps {
 	onSeed: (preset: PresetVM | null, intentText: string) => void;
 	/** Opens the paywall when the gated intent field is used. */
 	onUnlock: () => void;
+	/** "Up a level" to /playlists — the entrance's exit, matching the studio's. */
+	onBack: () => void;
 }
 
-export function SeedStage({ onSeed, onUnlock }: SeedStageProps) {
+export function SeedStage({ onSeed, onUnlock, onBack }: SeedStageProps) {
 	const { data: profile } = useQuery(tasteProfileQueryOptions());
 	const { data: gate } = useQuery(intentEligibilityQueryOptions());
 	const intentGate = gate ?? LOCKED_GATE;
@@ -361,6 +364,15 @@ export function SeedStage({ onSeed, onUnlock }: SeedStageProps) {
 
 	return (
 		<div className="mx-auto max-w-5xl p-8 pt-20">
+			<button
+				type="button"
+				onClick={onBack}
+				className="theme-text-muted -ml-0.5 mb-6 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+				style={{ fontFamily: fonts.body }}
+			>
+				<ArrowLeftIcon size={11} weight="regular" aria-hidden />
+				Playlists
+			</button>
 			<p
 				className="theme-text-muted mb-3 text-[11px] tracking-widest uppercase"
 				style={{ fontFamily: fonts.body }}

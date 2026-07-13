@@ -159,6 +159,7 @@ export const ScreenSeedStage: Story<SeedStageArgs> = ({
 				key={`${library}-${intentAccess}`}
 				onSeed={(preset, intentText) => setSeeded({ preset, intentText })}
 				onUnlock={() => setUnlockOpened(true)}
+				onBack={() => {}}
 			/>
 			{unlockOpened && (
 				<p

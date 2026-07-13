@@ -38,10 +38,12 @@ import { Route as AuthenticatedPlaylistsNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
 import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
+import { Route as AuthenticatedPlaylistsNewIndexRouteImport } from './routes/_authenticated/playlists.new.index'
 import { Route as ApiExtensionSyncStatusRouteImport } from './routes/api/extension/sync/status'
 import { Route as ApiExtensionReleaseYearPendingRouteImport } from './routes/api/extension/release-year/pending'
 import { Route as ApiExtensionReleaseYearCheckedRouteImport } from './routes/api/extension/release-year/checked'
 import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
+import { Route as AuthenticatedPlaylistsNewStudioRouteImport } from './routes/_authenticated/playlists.new.studio'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -191,6 +193,12 @@ const AuthenticatedCheckoutCancelRoute =
     path: '/checkout/cancel',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPlaylistsNewIndexRoute =
+  AuthenticatedPlaylistsNewIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPlaylistsNewRoute,
+  } as any)
 const ApiExtensionSyncStatusRoute = ApiExtensionSyncStatusRouteImport.update({
   id: '/status',
   path: '/status',
@@ -213,6 +221,12 @@ const ApiExtensionArtistsCheckRoute =
     id: '/api/extension/artists/check',
     path: '/api/extension/artists/check',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedPlaylistsNewStudioRoute =
+  AuthenticatedPlaylistsNewStudioRouteImport.update({
+    id: '/studio',
+    path: '/studio',
+    getParentRoute: () => AuthenticatedPlaylistsNewRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -238,16 +252,18 @@ export interface FileRoutesByFullPath {
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
-  '/playlists/new': typeof AuthenticatedPlaylistsNewRoute
+  '/playlists/new': typeof AuthenticatedPlaylistsNewRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
+  '/playlists/new/studio': typeof AuthenticatedPlaylistsNewStudioRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
   '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
+  '/playlists/new/': typeof AuthenticatedPlaylistsNewIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -272,16 +288,17 @@ export interface FileRoutesByTo {
   '/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
-  '/playlists/new': typeof AuthenticatedPlaylistsNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
+  '/playlists/new/studio': typeof AuthenticatedPlaylistsNewStudioRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
   '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
+  '/playlists/new': typeof AuthenticatedPlaylistsNewIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -308,16 +325,18 @@ export interface FileRoutesById {
   '/_authenticated/checkout/cancel': typeof AuthenticatedCheckoutCancelRoute
   '/_authenticated/checkout/success': typeof AuthenticatedCheckoutSuccessRoute
   '/_authenticated/playlists/$playlistRef': typeof AuthenticatedPlaylistsPlaylistRefRoute
-  '/_authenticated/playlists/new': typeof AuthenticatedPlaylistsNewRoute
+  '/_authenticated/playlists/new': typeof AuthenticatedPlaylistsNewRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/extension/status': typeof ApiExtensionStatusRoute
   '/api/extension/sync': typeof ApiExtensionSyncRouteWithChildren
   '/api/extension/token': typeof ApiExtensionTokenRoute
   '/api/pulse-h/$': typeof ApiPulseHSplatRoute
+  '/_authenticated/playlists/new/studio': typeof AuthenticatedPlaylistsNewStudioRoute
   '/api/extension/artists/check': typeof ApiExtensionArtistsCheckRoute
   '/api/extension/release-year/checked': typeof ApiExtensionReleaseYearCheckedRoute
   '/api/extension/release-year/pending': typeof ApiExtensionReleaseYearPendingRoute
   '/api/extension/sync/status': typeof ApiExtensionSyncStatusRoute
+  '/_authenticated/playlists/new/': typeof AuthenticatedPlaylistsNewIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -350,10 +369,12 @@ export interface FileRouteTypes {
     | '/api/extension/sync'
     | '/api/extension/token'
     | '/api/pulse-h/$'
+    | '/playlists/new/studio'
     | '/api/extension/artists/check'
     | '/api/extension/release-year/checked'
     | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
+    | '/playlists/new/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -378,16 +399,17 @@ export interface FileRouteTypes {
     | '/checkout/cancel'
     | '/checkout/success'
     | '/playlists/$playlistRef'
-    | '/playlists/new'
     | '/api/auth/$'
     | '/api/extension/status'
     | '/api/extension/sync'
     | '/api/extension/token'
     | '/api/pulse-h/$'
+    | '/playlists/new/studio'
     | '/api/extension/artists/check'
     | '/api/extension/release-year/checked'
     | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
+    | '/playlists/new'
   id:
     | '__root__'
     | '/'
@@ -419,10 +441,12 @@ export interface FileRouteTypes {
     | '/api/extension/sync'
     | '/api/extension/token'
     | '/api/pulse-h/$'
+    | '/_authenticated/playlists/new/studio'
     | '/api/extension/artists/check'
     | '/api/extension/release-year/checked'
     | '/api/extension/release-year/pending'
     | '/api/extension/sync/status'
+    | '/_authenticated/playlists/new/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -655,6 +679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/playlists/new/': {
+      id: '/_authenticated/playlists/new/'
+      path: '/'
+      fullPath: '/playlists/new/'
+      preLoaderRoute: typeof AuthenticatedPlaylistsNewIndexRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsNewRoute
+    }
     '/api/extension/sync/status': {
       id: '/api/extension/sync/status'
       path: '/status'
@@ -683,19 +714,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/playlists/new/studio': {
+      id: '/_authenticated/playlists/new/studio'
+      path: '/studio'
+      fullPath: '/playlists/new/studio'
+      preLoaderRoute: typeof AuthenticatedPlaylistsNewStudioRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsNewRoute
+    }
   }
 }
 
+interface AuthenticatedPlaylistsNewRouteChildren {
+  AuthenticatedPlaylistsNewStudioRoute: typeof AuthenticatedPlaylistsNewStudioRoute
+  AuthenticatedPlaylistsNewIndexRoute: typeof AuthenticatedPlaylistsNewIndexRoute
+}
+
+const AuthenticatedPlaylistsNewRouteChildren: AuthenticatedPlaylistsNewRouteChildren =
+  {
+    AuthenticatedPlaylistsNewStudioRoute: AuthenticatedPlaylistsNewStudioRoute,
+    AuthenticatedPlaylistsNewIndexRoute: AuthenticatedPlaylistsNewIndexRoute,
+  }
+
+const AuthenticatedPlaylistsNewRouteWithChildren =
+  AuthenticatedPlaylistsNewRoute._addFileChildren(
+    AuthenticatedPlaylistsNewRouteChildren,
+  )
+
 interface AuthenticatedPlaylistsRouteChildren {
   AuthenticatedPlaylistsPlaylistRefRoute: typeof AuthenticatedPlaylistsPlaylistRefRoute
-  AuthenticatedPlaylistsNewRoute: typeof AuthenticatedPlaylistsNewRoute
+  AuthenticatedPlaylistsNewRoute: typeof AuthenticatedPlaylistsNewRouteWithChildren
 }
 
 const AuthenticatedPlaylistsRouteChildren: AuthenticatedPlaylistsRouteChildren =
   {
     AuthenticatedPlaylistsPlaylistRefRoute:
       AuthenticatedPlaylistsPlaylistRefRoute,
-    AuthenticatedPlaylistsNewRoute: AuthenticatedPlaylistsNewRoute,
+    AuthenticatedPlaylistsNewRoute: AuthenticatedPlaylistsNewRouteWithChildren,
   }
 
 const AuthenticatedPlaylistsRouteWithChildren =
