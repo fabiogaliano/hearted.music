@@ -15,17 +15,22 @@ import { loadPhase1Candidates } from "../candidate-loader";
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mockLikedSongLimit, mockLikedSongOrder, mockFrom } = vi.hoisted(() => {
-	// Chain terminates at .limit(): select → eq → is → order → limit.
-	const mockLikedSongLimit = vi.fn();
-	const mockLikedSongOrder = vi.fn(() => ({ limit: mockLikedSongLimit }));
-	const mockLikedSongIs = vi.fn(() => ({ order: mockLikedSongOrder }));
+const { mockLikedSongRange, mockLikedSongOrder, mockFrom } = vi.hoisted(() => {
+	// Each page builds select → eq → is → order → order → range.
+	const mockLikedSongRange = vi.fn();
+	const mockLikedSongOrder = vi.fn();
+	const orderedQuery = {
+		order: mockLikedSongOrder,
+		range: mockLikedSongRange,
+	};
+	mockLikedSongOrder.mockReturnValue(orderedQuery);
+	const mockLikedSongIs = vi.fn(() => orderedQuery);
 	const mockLikedSongEq = vi.fn(() => ({ is: mockLikedSongIs }));
 	const mockLikedSongSelect = vi.fn(() => ({ eq: mockLikedSongEq }));
 	const mockFrom = vi.fn(() => ({ select: mockLikedSongSelect }));
 
 	return {
-		mockLikedSongLimit,
+		mockLikedSongRange,
 		mockLikedSongOrder,
 		mockFrom,
 	};
@@ -96,7 +101,7 @@ describe("loadPhase1Candidates", () => {
 		// it is a free-tier song with only Phase-1 enrichment. It must be included.
 		const songId = "phase1-genre-only";
 		const song = makeSongRow(songId, { genres: ["indie rock"], audio: null });
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -115,7 +120,7 @@ describe("loadPhase1Candidates", () => {
 			genres: [],
 			audio: makeEmbeddedAudioFeature(),
 		});
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -135,7 +140,7 @@ describe("loadPhase1Candidates", () => {
 			...makeSongRow(songId, { genres: [] }),
 			song_audio_feature: [makeEmbeddedAudioFeature()],
 		};
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -149,7 +154,7 @@ describe("loadPhase1Candidates", () => {
 	it("excludes a song with no genres AND no audio features", async () => {
 		const songId = "unenriched";
 		const song = makeSongRow(songId, { genres: [], audio: null });
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -165,7 +170,7 @@ describe("loadPhase1Candidates", () => {
 			genres: ["pop"],
 			audio: makeEmbeddedAudioFeature(),
 		});
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [makeLikedRow(songId, song)],
 			error: null,
 		});
@@ -180,7 +185,7 @@ describe("loadPhase1Candidates", () => {
 	it("does NOT call select_data_enriched_liked_song_ids (the analysis-gated RPC)", async () => {
 		// The loader must query liked_song directly, not via the RPC that requires
 		// song_analysis + song_embedding.
-		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
+		mockLikedSongRange.mockResolvedValue({ data: [], error: null });
 
 		await loadPhase1Candidates("any-account");
 
@@ -191,24 +196,32 @@ describe("loadPhase1Candidates", () => {
 	});
 
 	it("returns empty array when account has no liked songs", async () => {
-		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
+		mockLikedSongRange.mockResolvedValue({ data: [], error: null });
 
 		const candidates = await loadPhase1Candidates("any-account");
 
 		expect(candidates).toHaveLength(0);
 	});
 
-	it("caps the fetch and keeps the most-recently-liked rows", async () => {
-		// Bounds the per-preview transfer so a huge library isn't pulled on every
-		// debounce cycle; ordering by liked_at desc defines which rows survive the cap.
-		mockLikedSongLimit.mockResolvedValue({ data: [], error: null });
+	it("pages through the 1,000-row transport limit up to the 10,000-candidate cap", async () => {
+		const fullPage = Array.from({ length: 1_000 }, (_, index) => {
+			const songId = `paged-${index}`;
+			return makeLikedRow(songId, makeSongRow(songId));
+		});
+		mockLikedSongRange.mockResolvedValue({ data: fullPage, error: null });
 
-		await loadPhase1Candidates("any-account");
+		const candidates = await loadPhase1Candidates("any-account");
 
+		expect(candidates).toHaveLength(10_000);
+		expect(mockLikedSongRange).toHaveBeenCalledTimes(10);
+		expect(mockLikedSongRange).toHaveBeenNthCalledWith(1, 0, 999);
+		expect(mockLikedSongRange).toHaveBeenLastCalledWith(9_000, 9_999);
 		expect(mockLikedSongOrder).toHaveBeenCalledWith("liked_at", {
 			ascending: false,
 		});
-		expect(mockLikedSongLimit).toHaveBeenCalledWith(10_000);
+		expect(mockLikedSongOrder).toHaveBeenCalledWith("song_id", {
+			ascending: true,
+		});
 	});
 
 	it("populates filterMeta correctly from liked_song and song data", async () => {
@@ -221,7 +234,7 @@ describe("loadPhase1Candidates", () => {
 			release_year: 2010,
 		};
 		const liked_at = "2023-06-15T00:00:00Z";
-		mockLikedSongLimit.mockResolvedValue({
+		mockLikedSongRange.mockResolvedValue({
 			data: [{ song_id: songId, liked_at, song }],
 			error: null,
 		});

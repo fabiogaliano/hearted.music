@@ -27,6 +27,7 @@ import type {
  * the deterministic scorer then ranks down to the slider's maxSongs.
  */
 const PHASE1_CANDIDATE_CAP = 10_000;
+const PHASE1_CANDIDATE_PAGE_SIZE = 1_000;
 
 /**
  * The nine scoring-relevant audio-feature columns, as embedded under song.
@@ -96,10 +97,12 @@ function toMatchingAudioFeatures(
 /**
  * Load all Phase-1 enriched candidates for the account.
  *
- * A single embedded query fetches the account's active liked_song rows joined
- * to song and, nested under song, its one-to-one song_audio_feature row. Only
- * songs with Phase-1 enrichment (genres non-empty OR an audio-feature row) are
- * kept. No entitlement check — Phase-1 is ungated.
+ * Paginated embedded reads fetch the account's active liked_song rows joined
+ * to song and, nested under song, its one-to-one song_audio_feature row. Each
+ * page stays within PostgREST's 1,000-row response limit while the domain cap
+ * remains 10,000 candidates. Only songs with Phase-1 enrichment (genres
+ * non-empty OR an audio-feature row) are kept. No entitlement check — Phase-1
+ * is ungated.
  *
  * The audio features are embedded through the FK rather than derived into an id
  * list and re-queried with `.in(...)`: DB-derived id sets must never re-enter a
@@ -114,23 +117,44 @@ export async function loadPhase1Candidates(
 ): Promise<Phase1Candidate[]> {
 	const supabase = createAdminSupabaseClient();
 
-	const { data: likedRows, error: likedError } = await supabase
-		.from("liked_song")
-		.select(
-			"song_id, liked_at, song:song_id ( id, spotify_id, name, artists, genres, image_url, duration_ms, language, language_secondary, vocal_gender, release_year, album_name, song_audio_feature ( energy, valence, danceability, acousticness, instrumentalness, speechiness, liveness, tempo, loudness ) )",
-		)
-		.eq("account_id", accountId)
-		.is("unliked_at", null)
-		.order("liked_at", { ascending: false })
-		.limit(PHASE1_CANDIDATE_CAP);
+	const likedRows: {
+		song_id: string;
+		liked_at: string | null;
+		song: unknown;
+	}[] = [];
 
-	if (likedError) {
-		throw new Error(
-			`[candidate-loader] failed to load liked songs: ${likedError.message}`,
+	for (
+		let pageStart = 0;
+		pageStart < PHASE1_CANDIDATE_CAP;
+		pageStart += PHASE1_CANDIDATE_PAGE_SIZE
+	) {
+		const pageSize = Math.min(
+			PHASE1_CANDIDATE_PAGE_SIZE,
+			PHASE1_CANDIDATE_CAP - pageStart,
 		);
+		const { data, error } = await supabase
+			.from("liked_song")
+			.select(
+				"song_id, liked_at, song:song_id ( id, spotify_id, name, artists, genres, image_url, duration_ms, language, language_secondary, vocal_gender, release_year, album_name, song_audio_feature ( energy, valence, danceability, acousticness, instrumentalness, speechiness, liveness, tempo, loudness ) )",
+			)
+			.eq("account_id", accountId)
+			.is("unliked_at", null)
+			.order("liked_at", { ascending: false })
+			.order("song_id", { ascending: true })
+			.range(pageStart, pageStart + pageSize - 1);
+
+		if (error) {
+			throw new Error(
+				`[candidate-loader] failed to load liked songs at offset ${pageStart}: ${error.message}`,
+			);
+		}
+
+		if (!data || data.length === 0) break;
+		likedRows.push(...data);
+		if (data.length < pageSize) break;
 	}
 
-	if (!likedRows || likedRows.length === 0) return [];
+	if (likedRows.length === 0) return [];
 
 	// Assemble candidates, keeping only Phase-1 enriched songs. A song qualifies
 	// when it has non-empty genres OR an audio-feature row — either signal is

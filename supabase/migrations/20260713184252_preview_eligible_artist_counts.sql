@@ -32,7 +32,7 @@ AS $$
     FROM liked_song ls
     WHERE ls.account_id = p_account_id
       AND ls.unliked_at IS NULL
-    ORDER BY ls.liked_at DESC
+    ORDER BY ls.liked_at DESC, ls.song_id ASC
     LIMIT 10000
   )
   SELECT a AS artist, COUNT(*)::BIGINT AS occurrences
@@ -64,7 +64,7 @@ AS $$
     FROM liked_song ls
     WHERE ls.account_id = p_account_id
       AND ls.unliked_at IS NULL
-    ORDER BY ls.liked_at DESC
+    ORDER BY ls.liked_at DESC, ls.song_id ASC
     LIMIT 10000
   )
   SELECT a AS artist, COUNT(*)::BIGINT AS occurrences
