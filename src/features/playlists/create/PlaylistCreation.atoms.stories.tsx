@@ -304,6 +304,8 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 					name="New playlist"
 					songIds={songIds}
 					isPreviewStale={false}
+					isResolvingArtists={false}
+					isArtistResolutionError={false}
 					isSubmitting={false}
 					gateState="ok"
 					recheck={async () => {}}
@@ -333,6 +335,8 @@ export const CreateBarReconnect: Story = () => (
 				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
 				isPreviewStale={false}
+				isResolvingArtists={false}
+				isArtistResolutionError={false}
 				isSubmitting={false}
 				gateState="reconnect-required"
 				recheck={async () => {}}
@@ -355,6 +359,8 @@ export const CreateBarExtensionMissing: Story = () => (
 				name="New playlist"
 				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
 				isPreviewStale={false}
+				isResolvingArtists={false}
+				isArtistResolutionError={false}
 				isSubmitting={false}
 				gateState="extension-unavailable"
 				recheck={async () => {}}

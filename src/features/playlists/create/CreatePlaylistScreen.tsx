@@ -343,6 +343,8 @@ export function CreatePlaylistScreen({
 						onRemoveArtist={draft.removeArtist}
 						onRestoreArtist={draft.restoreArtist}
 						autoFocusSearch={focusArtistSearch}
+						isResolutionError={draft.isArtistResolutionError}
+						onRetryResolution={draft.retryArtistResolution}
 					/>
 					<FiltersConfig
 						accountId={accountId}
@@ -477,6 +479,8 @@ export function CreatePlaylistScreen({
 						name={name}
 						songIds={draft.tracklist.map((s) => s.id)}
 						isPreviewStale={draft.isConfigStale}
+						isResolvingArtists={draft.isResolvingArtists}
+						isArtistResolutionError={draft.isArtistResolutionError}
 						isSubmitting={flow.isSubmitting}
 						gateState={gateState}
 						recheck={recheck}

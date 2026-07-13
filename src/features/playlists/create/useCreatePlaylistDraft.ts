@@ -79,6 +79,13 @@ export interface CreatePlaylistDraftActions {
 	/** Re-insert a removed artist at its prior position — the Undo toast action. */
 	restoreArtist: (selection: ArtistSelection, index: number) => void;
 	/**
+	 * Re-fetches the artist song resolution after a failure. Resolution errors
+	 * otherwise have no recovery path short of removing and re-adding every
+	 * artist chip, so this is the retry the ArtistConfig panel wires to its
+	 * error affordance.
+	 */
+	retryArtistResolution: () => void;
+	/**
 	 * Reverse a remove without force-pinning the song.
 	 * Removes the song from excludedSongIds so the preview engine can include it
 	 * again if the current config selects it — the song re-enters only if the
@@ -115,8 +122,22 @@ export interface CreatePlaylistDraftState {
 	selection: CreatePlaylistDraftSelection;
 	/** Selected artists (chips), in add order, with filter-aware song counts. */
 	artistSelections: ArtistSelectionVM[];
-	/** True while the artist song resolution query is in flight. */
+	/**
+	 * True while the artist song resolution query is in flight (including
+	 * background refetches on the 30s staleTime). Until it lands, resolved
+	 * pools default to empty, so submitting now would silently create the
+	 * playlist without any of the pending artists' songs — Create must be
+	 * blocked on this exactly like a mid-debounce config edit.
+	 */
 	isResolvingArtists: boolean;
+	/**
+	 * True when the artist song resolution query failed. Left unhandled, the
+	 * chips would show a pending "…" forever with no explanation, AND
+	 * submitting would silently create the playlist with every selected
+	 * artist's pool empty. Both CreateBar (blocks submit) and ArtistConfig
+	 * (surfaces the failure + retry) read this.
+	 */
+	isArtistResolutionError: boolean;
 	/**
 	 * The deduplicated, ordered union actually sent as pins: balanced artist
 	 * allocation first, then manual pins. What the tracklist's pinned block is.
@@ -359,6 +380,14 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		}));
 	}, []);
 
+	// refetch() is the react-query escape hatch for a failed query — there's no
+	// other way back to a resolved state without removing and re-adding every
+	// artist chip (which would also lose the enabled/disabled toggle state).
+	const { refetch: refetchArtistResolution } = artistResolution;
+	const retryArtistResolution = useCallback(() => {
+		void refetchArtistResolution();
+	}, [refetchArtistResolution]);
+
 	// Dismissing a suggestion is semantically "reject a suggestion" rather than
 	// "undo a pin", but the underlying state transition is identical to
 	// removeSong. Aliased (not reimplemented) so the two can never drift apart.
@@ -404,6 +433,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		selection,
 		artistSelections: artistSelectionVMs,
 		isResolvingArtists: artistResolution.isFetching,
+		isArtistResolutionError: artistResolution.isError,
 		effectivePinnedSongIds,
 		tracklist: result.tracklist,
 		suggestions: result.suggestions,
@@ -422,6 +452,7 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		toggleArtist,
 		removeArtist,
 		restoreArtist,
+		retryArtistResolution,
 		restoreSong,
 		dismissSuggestion,
 		refreshSuggestions,

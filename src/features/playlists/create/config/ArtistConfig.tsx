@@ -15,6 +15,12 @@
  * Song counts on chips are the FILTER-AWARE resolution counts from the draft
  * hook (null while resolving → shown as a pending "…"), so a chip never claims
  * songs the current filters would reject.
+ *
+ * If the resolution query fails outright, the counts would otherwise stay
+ * pending forever with no explanation (and Create would silently drop every
+ * selected artist's songs — CreateBar blocks on isResolutionError for that
+ * reason). This panel surfaces the failure inline with a retry, since it's
+ * where the affected chips live.
  */
 
 import { XIcon } from "@phosphor-icons/react";
@@ -45,6 +51,10 @@ interface ArtistConfigProps {
 	onRestoreArtist: (selection: ArtistSelection, index: number) => void;
 	/** Focus the search input on mount (seed-card "+" lands here, ready for #2). */
 	autoFocusSearch?: boolean;
+	/** True when the filter-aware song resolution for the current selection failed. */
+	isResolutionError: boolean;
+	/** Re-fetches the failed resolution — the only recovery path short of removing every chip. */
+	onRetryResolution: () => void;
 }
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
@@ -77,6 +87,8 @@ export function ArtistConfig({
 	onRemoveArtist,
 	onRestoreArtist,
 	autoFocusSearch = false,
+	isResolutionError,
+	onRetryResolution,
 }: ArtistConfigProps) {
 	const [query, setQuery] = useState("");
 	const [overflowOpen, setOverflowOpen] = useState(false);
@@ -214,6 +226,26 @@ export function ArtistConfig({
 						)}
 					</div>
 				)
+			)}
+
+			{isResolutionError && (
+				// role="status" so the failure (and its later resolution) is
+				// announced without stealing focus. A dedicated message rather than
+				// leaving the chips' "…" to speak for itself — that state gave no
+				// indication anything was wrong, let alone how to fix it.
+				<p
+					role="status"
+					className="theme-text-muted flex items-center gap-2 pt-1 text-xs"
+				>
+					Couldn't load song counts for your selected artists.
+					<button
+						type="button"
+						onClick={onRetryResolution}
+						className="theme-border-color hover-border-brighten cursor-pointer rounded-full border px-2 py-0.5 text-xs whitespace-nowrap"
+					>
+						Retry
+					</button>
+				</p>
 			)}
 
 			{overflowOpen && (

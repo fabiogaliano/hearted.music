@@ -1,8 +1,9 @@
 /**
  * Tests for ArtistConfig: chip sorting (active first, like-count desc),
  * body-click toggle, ✕ remove with Undo restore (prior position), search mode
- * (flat results, add-on-toggle), and the "+N more" overflow dialog with
- * search-within filtering.
+ * (flat results, add-on-toggle), the "+N more" overflow dialog with
+ * search-within filtering, and the resolution-error affordance (chips would
+ * otherwise be stuck at a pending "…" with no explanation).
  */
 
 import { render, screen, waitFor, within } from "@testing-library/react";
@@ -42,7 +43,9 @@ function renderPanel(
 			selection: { name: string; enabled: boolean },
 			index: number,
 		) => void;
+		onRetryResolution: () => void;
 	}> = {},
+	options: { isResolutionError?: boolean } = {},
 ) {
 	searchLikedArtistsMock.mockImplementation(
 		({ data }: { data: { query: string } }) => {
@@ -66,6 +69,8 @@ function renderPanel(
 				onToggleArtist={handlers.onToggleArtist ?? vi.fn()}
 				onRemoveArtist={handlers.onRemoveArtist ?? vi.fn()}
 				onRestoreArtist={handlers.onRestoreArtist ?? vi.fn()}
+				isResolutionError={options.isResolutionError ?? false}
+				onRetryResolution={handlers.onRetryResolution ?? vi.fn()}
 			/>
 		</QueryClientProvider>,
 	);
@@ -183,5 +188,36 @@ describe("ArtistConfig", () => {
 		expect(
 			within(dialog).getAllByRole("button", { name: /^Disable / }),
 		).toHaveLength(1);
+	});
+
+	describe("resolution error", () => {
+		it("does not render the error notice or retry when isResolutionError is false", () => {
+			renderPanel([sel("Clairo")], {}, { isResolutionError: false });
+			expect(
+				screen.queryByRole("button", { name: /retry/i }),
+			).not.toBeInTheDocument();
+		});
+
+		it("surfaces a failure notice with a retry affordance when isResolutionError is true", () => {
+			renderPanel([sel("Clairo", true, null)], {}, { isResolutionError: true });
+			expect(
+				screen.getByText(/couldn't load song counts/i),
+			).toBeInTheDocument();
+			expect(
+				screen.getByRole("button", { name: /retry/i }),
+			).toBeInTheDocument();
+		});
+
+		it("calls onRetryResolution when the retry button is clicked", async () => {
+			const user = userEvent.setup();
+			const onRetryResolution = vi.fn();
+			renderPanel(
+				[sel("Clairo", true, null)],
+				{ onRetryResolution },
+				{ isResolutionError: true },
+			);
+			await user.click(screen.getByRole("button", { name: /retry/i }));
+			expect(onRetryResolution).toHaveBeenCalledTimes(1);
+		});
 	});
 });

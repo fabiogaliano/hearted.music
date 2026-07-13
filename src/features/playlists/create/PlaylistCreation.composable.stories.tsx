@@ -493,6 +493,8 @@ function FullScreenHarness({
 						name="New playlist"
 						songIds={preview.map((s) => s.id)}
 						isPreviewStale={false}
+						isResolvingArtists={false}
+						isArtistResolutionError={false}
 						isSubmitting={false}
 						gateState={gateState}
 						recheck={async () => {}}

@@ -240,3 +240,68 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		]);
 	});
 });
+
+describe("useCreatePlaylistDraft — artist resolution readiness", () => {
+	beforeEach(() => {
+		previewPlaylistDraftMock.mockReset();
+		previewPlaylistDraftMock.mockResolvedValue(EMPTY_RESULT);
+		resolveLikedArtistSongsMock.mockReset();
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+	});
+
+	it("isResolvingArtists and isArtistResolutionError are both false with no artist selections", async () => {
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		expect(result.current.isResolvingArtists).toBe(false);
+		expect(result.current.isArtistResolutionError).toBe(false);
+		expect(resolveLikedArtistSongsMock).not.toHaveBeenCalled();
+	});
+
+	it("isResolvingArtists is true while the resolution query is in flight after addArtist", async () => {
+		// A promise that never settles keeps the query in its fetching state so
+		// the readiness flag can be observed before resolution lands — mirrors
+		// the real "add an artist then click Create quickly" race.
+		resolveLikedArtistSongsMock.mockReturnValue(new Promise(() => {}));
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("Radiohead");
+		});
+
+		await waitFor(() => expect(result.current.isResolvingArtists).toBe(true));
+		expect(result.current.isArtistResolutionError).toBe(false);
+	});
+
+	it("isArtistResolutionError is true when the resolution query rejects, and retryArtistResolution refetches it", async () => {
+		resolveLikedArtistSongsMock.mockRejectedValueOnce(new Error("boom"));
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "Radiohead", songIds: ["r1"] }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("Radiohead");
+		});
+
+		await waitFor(() =>
+			expect(result.current.isArtistResolutionError).toBe(true),
+		);
+		expect(result.current.isResolvingArtists).toBe(false);
+
+		act(() => {
+			result.current.retryArtistResolution();
+		});
+
+		await waitFor(() =>
+			expect(result.current.isArtistResolutionError).toBe(false),
+		);
+		expect(resolveLikedArtistSongsMock).toHaveBeenCalledTimes(2);
+	});
+});

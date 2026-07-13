@@ -11,6 +11,10 @@
  *  - CTA disabled when songIds is empty; enabled when songs present.
  *  - CTA disabled when the name is blank (whitespace-only).
  *  - CTA disabled while isSubmitting is true (prop-driven), aria-busy set.
+ *  - CTA disabled while isResolvingArtists is true, with the shared
+ *    "Updating preview…" hint.
+ *  - CTA disabled (harder) on isArtistResolutionError, with its own hint
+ *    pointing at the ArtistConfig retry.
  *  - onSubmit called on click when the CTA is enabled.
  *  - gate state extension-unavailable → renders ExtensionUnavailablePrompt.
  *  - gate state reconnect-required → renders ReconnectPrompt / SpotifyReconnectLink.
@@ -66,6 +70,8 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 		name: "New playlist",
 		songIds: ["s1", "s2", "s3"],
 		isPreviewStale: false,
+		isResolvingArtists: false,
+		isArtistResolutionError: false,
 		isSubmitting: false,
 		gateState: "ok" as const,
 		recheck: vi.fn(async () => {}),
@@ -115,6 +121,49 @@ describe("CreateBar — CTA disabled states", () => {
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
 		expect(btn).toHaveAttribute("aria-busy", "true");
+	});
+
+	it("is disabled while artist song resolution is in flight, with the shared 'Updating preview…' hint", () => {
+		// The pinned ids don't reflect the artist selection until resolution
+		// lands — submitting here would silently drop that artist's songs.
+		render(<CreateBar {...makeProps({ isResolvingArtists: true })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
+		expect(screen.getByText("Updating preview…")).toBeInTheDocument();
+	});
+
+	it("is disabled on an artist resolution error, with a hint pointing at the retry", () => {
+		render(<CreateBar {...makeProps({ isArtistResolutionError: true })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
+		expect(
+			screen.getByText(/couldn't load one or more artists/i),
+		).toBeInTheDocument();
+	});
+
+	it("the artist-resolution-error hint takes precedence over the generic preview-stale hint", () => {
+		render(
+			<CreateBar
+				{...makeProps({ isArtistResolutionError: true, isPreviewStale: true })}
+			/>,
+		);
+		expect(
+			screen.getByText(/couldn't load one or more artists/i),
+		).toBeInTheDocument();
+		expect(screen.queryByText("Updating preview…")).not.toBeInTheDocument();
+	});
+
+	it("is unaffected when there are no artist selections (both flags false)", () => {
+		render(
+			<CreateBar
+				{...makeProps({
+					isResolvingArtists: false,
+					isArtistResolutionError: false,
+				})}
+			/>,
+		);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).not.toBeDisabled();
 	});
 
 	it("is enabled again once isSubmitting flips back to false — the stuck-CTA fix", () => {
