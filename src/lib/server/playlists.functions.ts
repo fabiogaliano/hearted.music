@@ -1325,14 +1325,18 @@ export const getTasteProfile = createServerFn({ method: "GET" })
 	});
 
 /**
- * The account's liked artists (name + like count), filtered by a query string
- * and ranked by like count — the type-to-search source for the studio's
- * ArtistConfig panel. Two paths with different populations by design:
+ * The account's liked artists (name + count), filtered by a query string and
+ * ranked by count — the type-to-search source for the studio's ArtistConfig
+ * panel. Counts are PREVIEW-ELIGIBLE likes (Phase-1 enriched, within the
+ * candidate loader's recency cap), not total likes: the number shown here is
+ * a promise of what anchoring the artist yields, so it must equal what
+ * resolveLikedArtistSongs later resolves the chip to. Two paths:
  * - Empty query (browse mode): the ranked top-N aggregate. A cap is correct
  *   here — browsing is inherently "my top artists".
- * - Non-empty query: the match runs inside the RPC over ALL still-liked
- *   artists (searchLikedArtistsByName), so an artist outside any top-N pool
- *   is still findable. Truncating before matching was the bug this replaces.
+ * - Non-empty query: the match runs inside the RPC over every artist in that
+ *   population (searchLikedArtistsByName), so an artist outside any top-N
+ *   pool is still findable. Truncating before matching was the bug this
+ *   replaces.
  * Degrades to an empty list on failure — search simply finds nothing rather
  * than breaking the panel.
  */
@@ -1372,16 +1376,20 @@ export const searchLikedArtists = createServerFn({ method: "GET" })
 	);
 
 /**
- * Filter-aware resolution of the studio's selected artists into pinnable song
- * ids: each artist's still-liked, Phase-1 enriched songs that pass the given
- * match filters, most-recently-liked first (the candidate loader's order).
+ * Filter-INDEPENDENT resolution of the studio's selected artists into
+ * pinnable song ids: each artist's preview-eligible liked songs — Phase-1
+ * enriched candidates within the loader's recency cap — most-recently-liked
+ * first (the candidate loader's order). Anchor pins are filter-exempt
+ * commitments (D2 in docs/playlist-creation/pin-semantics-decisions.md), so
+ * match filters play no part here; the pools only change when the artist
+ * selection does.
  *
- * Resolving WITH the filters applied — and against the same Phase-1 candidate
- * population the preview engine ranks — makes chip counts and the balanced
- * allocation honest by construction: an artist pin can only reference a song
- * the engine could actually place. Re-invoked by the client whenever the
- * filters change. Artist-derived pins stay filter-subject (unlike manual
- * pins), which is the split-semantics contract.
+ * Resolving against the same Phase-1 candidate population the preview engine
+ * ranks keeps chip counts and the balanced allocation honest by construction:
+ * an artist pin can only reference a song the engine could actually place.
+ * The artist-count RPCs behind searchLikedArtists count this same population,
+ * so the number shown before selecting an artist is the number its chip
+ * resolves to.
  */
 const ResolveLikedArtistSongsSchema = z.object({
 	artists: z.array(z.string().min(1).max(400)).min(1).max(100),
@@ -1399,14 +1407,14 @@ export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
 
 			const candidates = await loadPhase1Candidates(accountId);
 
-			// Group every liked song under each requested artist — deliberately
-			// NOT filter-aware. An anchor artist is a filter-exempt commitment (its
-			// songs are pinned and survive filter changes, like a hand-added pin),
-			// so match filters must not shape this pool. Candidates arrive
-			// most-recently-liked first, so each bucket inherits the recency order
-			// the balanced allocator expects. A song crediting several of the
-			// requested artists lands in every matching bucket; the allocator
-			// dedupes at take time.
+			// Group every preview-eligible candidate under each requested artist —
+			// deliberately NOT filter-aware. An anchor artist is a filter-exempt
+			// commitment (its songs are pinned and survive filter changes, like a
+			// hand-added pin), so match filters must not shape this pool.
+			// Candidates arrive most-recently-liked first, so each bucket inherits
+			// the recency order the balanced allocator expects. A song crediting
+			// several of the requested artists lands in every matching bucket; the
+			// allocator dedupes at take time.
 			const buckets = new Map<string, string[]>(
 				data.artists.map((name) => [name, []]),
 			);

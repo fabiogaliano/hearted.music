@@ -181,7 +181,7 @@ describe("resolveLikedArtistSongs", () => {
 		]);
 	});
 
-	it("is filter-INDEPENDENT: an anchor artist's pool is its full liked catalog", async () => {
+	it("is filter-INDEPENDENT: an anchor artist's pool is its full preview-eligible catalog", async () => {
 		// An anchor artist is a filter-exempt pin, so resolution must ignore match
 		// filters entirely — both the 1999 and 2021 songs stay in Clairo's pool
 		// even though a release-year filter would otherwise drop the older one.

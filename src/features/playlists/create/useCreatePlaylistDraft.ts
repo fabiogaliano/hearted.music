@@ -75,7 +75,9 @@ export interface ArtistSelection {
 
 /** ArtistSelection enriched with its resolution status. */
 export interface ArtistSelectionVM extends ArtistSelection {
-	/** Total liked-song count (filter-independent); null while resolution pends. */
+	/** Preview-eligible liked-song count (filter-independent) — the size of the
+	 *  pool anchor pins draw from, matching the search dropdown's number; null
+	 *  while resolution pends. */
 	songCount: number | null;
 }
 
@@ -255,9 +257,9 @@ export function useCreatePlaylistDraft(
 	}, [debouncedConfig]);
 
 	// Resolve every selected artist (enabled AND disabled — dimmed chips still
-	// show honest counts) into their liked songs. Filter-INDEPENDENT: an anchor
-	// artist is a filter-exempt pin, so its pool (and the chip count) reflects the
-	// artist's total liked songs and never re-resolves when filters change.
+	// show honest counts) into their preview-eligible liked songs. Filter-
+	// INDEPENDENT: an anchor artist is a filter-exempt pin, so its pool (and
+	// the chip count) never re-resolves when filters change.
 	const artistNames = useMemo(
 		() => artistSelections.map((a) => a.name),
 		[artistSelections],

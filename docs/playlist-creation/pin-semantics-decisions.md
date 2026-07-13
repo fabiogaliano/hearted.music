@@ -47,8 +47,18 @@ were filter-aware, tightening a filter silently shrank an anchor artist's
 contribution and its chip count, so chips claimed different song counts as
 unrelated config changed — and the resolution had to re-run on every filter
 settle, coordinating filter generations between chip counts and allocation.
-Filter-independence makes the chip count stable (the artist's total liked
-songs) and the resolution cacheable per artist set.
+Filter-independence makes the chip count stable and the resolution cacheable
+per artist set.
+
+The stable count is the artist's PREVIEW-ELIGIBLE likes (Phase-1 enriched,
+within the candidate loader's recency cap), not total likes — the preview
+engine cannot place a song outside that population, so a pin referencing one
+would just be dropped and reported. The artist-count RPCs behind browse and
+search count the same population (migration
+`20260713184252_preview_eligible_artist_counts`), so the number shown before
+selecting an artist equals what its chip resolves to. An earlier iteration
+counted total likes in search/browse while resolving against the Phase-1
+population, which made chip counts visibly shrink after selection.
 
 Consequence to accept, not "fix": an anchor artist can pull songs into the
 preview that the active filters would reject.

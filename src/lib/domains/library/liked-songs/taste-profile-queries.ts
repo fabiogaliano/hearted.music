@@ -15,7 +15,14 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { ReleaseYearAggregate } from "./filter-options-queries";
 
-/** One artist credited across the account's liked songs, with its like count. */
+/**
+ * One artist credited across the account's PREVIEW-ELIGIBLE liked songs
+ * (Phase-1 enriched, within the candidate loader's recency cap), with that
+ * count. Deliberately not the total like count: everywhere this number is
+ * shown it reads as "what anchoring this artist yields", so it must match
+ * what resolveLikedArtistSongs resolves — the RPCs behind both functions
+ * below mirror loadPhase1Candidates' population.
+ */
 export interface TasteTopArtist {
 	name: string;
 	count: number;
@@ -60,9 +67,10 @@ export interface TasteProfile {
 }
 
 /**
- * Top artists by like count across an account's still-liked songs, most
- * frequent first. Backs the "Around [artist]" seed template. Mirrors
- * getAccountTopGenres — a song crediting several artists counts for each.
+ * Top artists by preview-eligible like count (see TasteTopArtist), most
+ * frequent first. Backs the "Around [artist]" seed template and the studio's
+ * browse mode. Mirrors getAccountTopGenres — a song crediting several artists
+ * counts for each.
  */
 export async function getTopArtists(
 	accountId: string,
@@ -99,12 +107,13 @@ function escapeIlikePattern(query: string): string {
 }
 
 /**
- * Liked artists whose name contains `query` (case-insensitive), ranked by like
- * count. Unlike getTopArtists — which truncates to a top-N pool BEFORE any
- * text match can run — the predicate here executes inside the RPC over ALL of
- * the account's still-liked artists, so the limit bounds the results, never
- * the searched population. This is what keeps a one-like artist findable in a
- * library with more distinct artists than any browse pool.
+ * Liked artists whose name contains `query` (case-insensitive), ranked by
+ * preview-eligible like count (see TasteTopArtist). Unlike getTopArtists —
+ * which truncates to a top-N pool BEFORE any text match can run — the
+ * predicate here executes inside the RPC over every artist in that
+ * population, so the limit bounds the results, never the searched population.
+ * This is what keeps a one-like artist findable in a library with more
+ * distinct artists than any browse pool.
  */
 export async function searchLikedArtistsByName(
 	accountId: string,
