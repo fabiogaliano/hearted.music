@@ -8,7 +8,7 @@
 
 /**
  * The paging contract between `useCreatePlaylistDraft` (client stride) and
- * `assembleDraft` (server window width) for the suggestions tray. Both sides
+ * `composePlaylistPreview` (server window width) for the suggestions tray. Both sides
  * must advance/slice by the same amount, or "Refresh suggestions" either
  * repeats songs (client stride < server width) or silently skips ranked
  * candidates (client stride > server width).

@@ -3,8 +3,8 @@
  *
  * All tests operate on in-memory data — no DB calls, no server functions.
  * The goal is to verify: filter application, no-embedding weight redistribution,
- * intent eligibility, pinned-first / excluded-dropped ordering, and
- * maxSongs / suggestions slicing.
+ * intent eligibility, pinned-first / excluded-dropped ordering, the maxSongs
+ * clamp + dropped-pin reporting, and suggestions slicing.
  */
 
 import { describe, expect, it } from "vitest";
@@ -14,7 +14,14 @@ import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/t
 import { computeAdaptiveWeights } from "@/lib/domains/taste/song-matching/config";
 import type { Phase1Candidate } from "../candidate-loader";
 import { SUGGESTIONS_COUNT } from "../constants";
-import { assembleDraft, filterCandidates } from "../draft-engine";
+import type {
+	ComposePlaylistPreviewInput,
+	RankedCandidate,
+} from "../draft-engine";
+import {
+	composePlaylistPreview,
+	selectEligibleCandidates,
+} from "../draft-engine";
 import { buildIntentGate, isIntentEligible } from "../intent-eligibility";
 
 // ============================================================================
@@ -78,14 +85,29 @@ function makeCandidate(
 	};
 }
 
-function makeScored(
+function makeRanking(
 	candidates: Phase1Candidate[],
 	scoreMap?: Map<string, number>,
-): Array<{ candidate: Phase1Candidate; score: number }> {
+): RankedCandidate[] {
 	return candidates.map((c) => ({
 		candidate: c,
 		score: scoreMap?.get(c.song.id) ?? 0.5,
 	}));
+}
+
+function compose(
+	ranking: RankedCandidate[],
+	overrides: Partial<ComposePlaylistPreviewInput> = {},
+) {
+	return composePlaylistPreview({
+		ranking,
+		pinnedSongIds: [],
+		excludedSongIds: [],
+		maxSongs: 15,
+		intentApplied: false,
+		totalEligible: ranking.length,
+		...overrides,
+	});
 }
 
 const freeBillingState: BillingState = makeBillingState();
@@ -101,10 +123,10 @@ const premiumBillingState: BillingState = {
 };
 
 // ============================================================================
-// filterCandidates
+// selectEligibleCandidates
 // ============================================================================
 
-describe("filterCandidates", () => {
+describe("selectEligibleCandidates", () => {
 	const nowMs = new Date("2024-06-01T00:00:00Z").getTime();
 
 	it("passes all candidates when filters are empty (version:1 only)", () => {
@@ -114,7 +136,7 @@ describe("filterCandidates", () => {
 			makeCandidate("c"),
 		];
 		const filters: PlaylistMatchFiltersV1 = { version: 1 };
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result).toHaveLength(3);
 	});
 
@@ -128,7 +150,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			languages: { codes: ["en"] },
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["en"]);
 	});
 
@@ -142,7 +164,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			releaseYear: { kind: "before", end: 2000 },
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["old", "match"]);
 	});
 
@@ -157,7 +179,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			releaseYear: { kind: "range", start: 2000, end: 2005 },
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["b", "c"]);
 	});
 
@@ -171,7 +193,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			vocalGender: "female",
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["f"]);
 	});
 
@@ -187,7 +209,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			likedAt: { kind: "after", startDate: afterDate },
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["new"]);
 	});
 
@@ -220,7 +242,7 @@ describe("filterCandidates", () => {
 			releaseYear: { kind: "after", start: 2000 },
 			vocalGender: "female",
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["pass"]);
 	});
 
@@ -233,7 +255,7 @@ describe("filterCandidates", () => {
 			version: 1,
 			releaseYear: { kind: "after", start: 2000 },
 		};
-		const result = filterCandidates(candidates, filters, nowMs);
+		const result = selectEligibleCandidates(candidates, filters, nowMs);
 		expect(result.map((c) => c.song.id)).toEqual(["b"]);
 	});
 });
@@ -375,33 +397,31 @@ describe("buildIntentGate", () => {
 });
 
 // ============================================================================
-// assembleDraft — pinned / excluded / maxSongs / suggestions slicing
+// composePlaylistPreview — pinned / excluded / maxSongs clamp / suggestions
 // ============================================================================
 
-describe("assembleDraft", () => {
-	it("returns empty preview and suggestions when there are no candidates", () => {
-		const result = assembleDraft([], [], [], 15, false, []);
-		expect(result.preview).toHaveLength(0);
+describe("composePlaylistPreview", () => {
+	it("returns empty tracklist and suggestions when there are no candidates", () => {
+		const result = compose([], { totalEligible: 0 });
+		expect(result.tracklist).toHaveLength(0);
 		expect(result.suggestions).toHaveLength(0);
 		expect(result.totalEligible).toBe(0);
 	});
 
-	it("caps preview at maxSongs", () => {
+	it("caps the tracklist at maxSongs", () => {
 		const candidates = Array.from({ length: 20 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const result = assembleDraft(scored, [], [], 5, false, candidates);
-		expect(result.preview).toHaveLength(5);
+		const result = compose(makeRanking(candidates), { maxSongs: 5 });
+		expect(result.tracklist).toHaveLength(5);
 	});
 
-	it("suggestions contains up to 12 songs after the preview slice", () => {
+	it("suggestions contains up to 12 songs after the tracklist slice", () => {
 		const candidates = Array.from({ length: 30 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const result = assembleDraft(scored, [], [], 10, false, candidates);
-		expect(result.preview).toHaveLength(10);
+		const result = compose(makeRanking(candidates), { maxSongs: 10 });
+		expect(result.tracklist).toHaveLength(10);
 		expect(result.suggestions).toHaveLength(12);
 	});
 
@@ -409,13 +429,12 @@ describe("assembleDraft", () => {
 		const candidates = Array.from({ length: 12 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const result = assembleDraft(scored, [], [], 10, false, candidates);
-		expect(result.preview).toHaveLength(10);
+		const result = compose(makeRanking(candidates), { maxSongs: 10 });
+		expect(result.tracklist).toHaveLength(10);
 		expect(result.suggestions).toHaveLength(2);
 	});
 
-	it("pinned songs appear first in preview in the order specified by pinnedSongIds", () => {
+	it("pinned songs appear first in the tracklist in the order specified by pinnedSongIds", () => {
 		const candidates = [
 			makeCandidate("a"),
 			makeCandidate("b"),
@@ -423,7 +442,7 @@ describe("assembleDraft", () => {
 			makeCandidate("d"),
 		];
 		// Score map: a=0.9, b=0.8, c=0.7, d=0.6
-		const scored = makeScored(
+		const ranking = makeRanking(
 			candidates,
 			new Map([
 				["a", 0.9],
@@ -433,22 +452,25 @@ describe("assembleDraft", () => {
 			]),
 		);
 		// Pin d and c (lower-scored) — they should come first, in that order
-		const result = assembleDraft(scored, ["d", "c"], [], 4, false, candidates);
-		expect(result.preview[0].id).toBe("d");
-		expect(result.preview[1].id).toBe("c");
+		const result = compose(ranking, {
+			pinnedSongIds: ["d", "c"],
+			maxSongs: 4,
+		});
+		expect(result.tracklist[0].id).toBe("d");
+		expect(result.tracklist[1].id).toBe("c");
 		// Remaining slots filled by top-ranked non-pinned (a, b)
-		expect(result.preview[2].id).toBe("a");
-		expect(result.preview[3].id).toBe("b");
+		expect(result.tracklist[2].id).toBe("a");
+		expect(result.tracklist[3].id).toBe("b");
 	});
 
-	it("excluded songs never appear in preview or suggestions", () => {
+	it("excluded songs never appear in the tracklist or suggestions", () => {
 		const candidates = [
 			makeCandidate("a"),
 			makeCandidate("b"),
 			makeCandidate("c"),
 			makeCandidate("d"),
 		];
-		const scored = makeScored(
+		const ranking = makeRanking(
 			candidates,
 			new Map([
 				["a", 0.9],
@@ -457,9 +479,12 @@ describe("assembleDraft", () => {
 				["d", 0.6],
 			]),
 		);
-		const result = assembleDraft(scored, [], ["b", "d"], 10, false, candidates);
+		const result = compose(ranking, {
+			excludedSongIds: ["b", "d"],
+			maxSongs: 10,
+		});
 		const allIds = [
-			...result.preview.map((s) => s.id),
+			...result.tracklist.map((s) => s.id),
 			...result.suggestions.map((s) => s.id),
 		];
 		expect(allIds).not.toContain("b");
@@ -468,62 +493,110 @@ describe("assembleDraft", () => {
 		expect(allIds).toContain("c");
 	});
 
-	it("excluded songs do not count toward preview slots", () => {
+	it("excluded songs do not count toward tracklist slots", () => {
 		const candidates = Array.from({ length: 10 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
 		// Exclude the first 3 songs
 		const excluded = ["song-0", "song-1", "song-2"];
-		const result = assembleDraft(scored, [], excluded, 5, false, candidates);
-		// Preview should have 5 non-excluded songs
-		expect(result.preview).toHaveLength(5);
-		for (const s of result.preview) {
+		const result = compose(makeRanking(candidates), {
+			excludedSongIds: excluded,
+			maxSongs: 5,
+		});
+		// Tracklist should have 5 non-excluded songs
+		expect(result.tracklist).toHaveLength(5);
+		for (const s of result.tracklist) {
 			expect(excluded).not.toContain(s.id);
 		}
 	});
 
-	it("pinned songs excluded from the excluded set are dropped", () => {
+	it("a pin that is also excluded is dropped and reported — exclusion wins", () => {
 		const candidates = [makeCandidate("a"), makeCandidate("b")];
-		const scored = makeScored(candidates);
-		// Pin a, but also exclude it — exclusion wins
-		const result = assembleDraft(scored, ["a"], ["a"], 5, false, candidates);
-		expect(result.preview.map((s) => s.id)).not.toContain("a");
+		const result = compose(makeRanking(candidates), {
+			pinnedSongIds: ["a"],
+			excludedSongIds: ["a"],
+			maxSongs: 5,
+		});
+		expect(result.tracklist.map((s) => s.id)).not.toContain("a");
+		expect(result.droppedPinnedSongIds).toEqual(["a"]);
+	});
+
+	it("clamps the tracklist to maxSongs when pins alone exceed it, reporting the cut pins", () => {
+		const candidates = Array.from({ length: 10 }, (_, i) =>
+			makeCandidate(`song-${i}`),
+		);
+		const pinnedSongIds = candidates.map((c) => c.song.id);
+		const result = compose(makeRanking(candidates), {
+			pinnedSongIds,
+			maxSongs: 5,
+		});
+		expect(result.tracklist).toHaveLength(5);
+		// First maxSongs pins survive in user order
+		expect(result.tracklist.map((s) => s.id)).toEqual(
+			pinnedSongIds.slice(0, 5),
+		);
+		// The rest are reported, not silently shown
+		expect(result.droppedPinnedSongIds).toEqual(pinnedSongIds.slice(5));
+		// Clamped pins do not re-enter the suggestions pool
+		for (const s of result.suggestions) {
+			expect(pinnedSongIds).not.toContain(s.id);
+		}
+	});
+
+	it("reports pins missing from the ranking (filtered out / unliked)", () => {
+		const candidates = [makeCandidate("a"), makeCandidate("b")];
+		const result = compose(makeRanking(candidates), {
+			pinnedSongIds: ["ghost", "a"],
+			maxSongs: 5,
+		});
+		expect(result.tracklist.map((s) => s.id)).toContain("a");
+		expect(result.droppedPinnedSongIds).toEqual(["ghost"]);
+	});
+
+	it("droppedPinnedSongIds is empty when every pin is honored", () => {
+		const candidates = [makeCandidate("a"), makeCandidate("b")];
+		const result = compose(makeRanking(candidates), {
+			pinnedSongIds: ["b"],
+			maxSongs: 5,
+		});
+		expect(result.droppedPinnedSongIds).toEqual([]);
 	});
 
 	it("intentApplied is passed through to the result", () => {
 		const candidates = [makeCandidate("a")];
-		const scored = makeScored(candidates);
-		const withIntent = assembleDraft(scored, [], [], 5, true, candidates);
-		const withoutIntent = assembleDraft(scored, [], [], 5, false, candidates);
+		const withIntent = compose(makeRanking(candidates), {
+			intentApplied: true,
+		});
+		const withoutIntent = compose(makeRanking(candidates), {
+			intentApplied: false,
+		});
 		expect(withIntent.intentApplied).toBe(true);
 		expect(withoutIntent.intentApplied).toBe(false);
 	});
 
-	it("totalEligible reflects the full candidate set count", () => {
+	it("totalEligible is passed through to the result", () => {
 		const candidates = Array.from({ length: 100 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const result = assembleDraft(scored, [], [], 15, false, candidates);
+		const result = compose(makeRanking(candidates), { totalEligible: 100 });
 		expect(result.totalEligible).toBe(100);
 	});
 
-	it("matchScore on SongVM matches the scored value", () => {
+	it("matchScore on SongVM matches the ranked value", () => {
 		const candidates = [makeCandidate("a"), makeCandidate("b")];
-		const scored = makeScored(
+		const ranking = makeRanking(
 			candidates,
 			new Map([
 				["a", 0.77],
 				["b", 0.55],
 			]),
 		);
-		const result = assembleDraft(scored, [], [], 2, false, candidates);
-		// Sorted by score descending: a (0.77) before b (0.55)
-		expect(result.preview[0].id).toBe("a");
-		expect(result.preview[0].matchScore).toBeCloseTo(0.77);
-		expect(result.preview[1].id).toBe("b");
-		expect(result.preview[1].matchScore).toBeCloseTo(0.55);
+		const result = compose(ranking, { maxSongs: 5 });
+		// Ranking order: a (0.77) before b (0.55)
+		expect(result.tracklist[0].id).toBe("a");
+		expect(result.tracklist[0].matchScore).toBeCloseTo(0.77);
+		expect(result.tracklist[1].id).toBe("b");
+		expect(result.tracklist[1].matchScore).toBeCloseTo(0.55);
 	});
 
 	// ── suggestionsOffset — "Refresh suggestions" paging ──────────────────────
@@ -532,17 +605,12 @@ describe("assembleDraft", () => {
 		const candidates = Array.from({ length: 30 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const withoutOffset = assembleDraft(scored, [], [], 10, false, candidates);
-		const withZeroOffset = assembleDraft(
-			scored,
-			[],
-			[],
-			10,
-			false,
-			candidates,
-			0,
-		);
+		const ranking = makeRanking(candidates);
+		const withoutOffset = compose(ranking, { maxSongs: 10 });
+		const withZeroOffset = compose(ranking, {
+			maxSongs: 10,
+			suggestionsOffset: 0,
+		});
 		expect(withoutOffset.suggestions.map((s) => s.id)).toEqual(
 			withZeroOffset.suggestions.map((s) => s.id),
 		);
@@ -552,17 +620,15 @@ describe("assembleDraft", () => {
 		const candidates = Array.from({ length: 40 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const firstBatch = assembleDraft(scored, [], [], 10, false, candidates, 0);
-		const secondBatch = assembleDraft(
-			scored,
-			[],
-			[],
-			10,
-			false,
-			candidates,
-			SUGGESTIONS_COUNT,
-		);
+		const ranking = makeRanking(candidates);
+		const firstBatch = compose(ranking, {
+			maxSongs: 10,
+			suggestionsOffset: 0,
+		});
+		const secondBatch = compose(ranking, {
+			maxSongs: 10,
+			suggestionsOffset: SUGGESTIONS_COUNT,
+		});
 
 		expect(firstBatch.suggestions).toHaveLength(SUGGESTIONS_COUNT);
 		expect(secondBatch.suggestions).toHaveLength(SUGGESTIONS_COUNT);
@@ -573,23 +639,21 @@ describe("assembleDraft", () => {
 		}
 	});
 
-	it("suggestionsOffset never changes the preview window", () => {
+	it("suggestionsOffset never changes the tracklist window", () => {
 		const candidates = Array.from({ length: 40 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
-		const withoutOffset = assembleDraft(
-			scored,
-			[],
-			[],
-			10,
-			false,
-			candidates,
-			0,
-		);
-		const withOffset = assembleDraft(scored, [], [], 10, false, candidates, 12);
-		expect(withOffset.preview.map((s) => s.id)).toEqual(
-			withoutOffset.preview.map((s) => s.id),
+		const ranking = makeRanking(candidates);
+		const withoutOffset = compose(ranking, {
+			maxSongs: 10,
+			suggestionsOffset: 0,
+		});
+		const withOffset = compose(ranking, {
+			maxSongs: 10,
+			suggestionsOffset: 12,
+		});
+		expect(withOffset.tracklist.map((s) => s.id)).toEqual(
+			withoutOffset.tracklist.map((s) => s.id),
 		);
 	});
 
@@ -597,9 +661,11 @@ describe("assembleDraft", () => {
 		const candidates = Array.from({ length: 20 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
 		// Way past the end of the ranked pool
-		const result = assembleDraft(scored, [], [], 10, false, candidates, 1000);
+		const result = compose(makeRanking(candidates), {
+			maxSongs: 10,
+			suggestionsOffset: 1000,
+		});
 		expect(result.suggestions.length).toBeGreaterThan(0);
 	});
 
@@ -607,19 +673,14 @@ describe("assembleDraft", () => {
 		const candidates = Array.from({ length: 30 }, (_, i) =>
 			makeCandidate(`song-${i}`),
 		);
-		const scored = makeScored(candidates);
 		const excluded = ["song-15", "song-16"];
-		const result = assembleDraft(
-			scored,
-			[],
-			excluded,
-			10,
-			false,
-			candidates,
-			5,
-		);
+		const result = compose(makeRanking(candidates), {
+			excludedSongIds: excluded,
+			maxSongs: 10,
+			suggestionsOffset: 5,
+		});
 		const allIds = [
-			...result.preview.map((s) => s.id),
+			...result.tracklist.map((s) => s.id),
 			...result.suggestions.map((s) => s.id),
 		];
 		expect(allIds).not.toContain("song-15");

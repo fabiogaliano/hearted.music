@@ -18,7 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import type { PreviewPlaylistDraftResult } from "@/lib/server/playlist-draft.functions";
+import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
 import type { DraftConfig } from "./queries";
 import {
 	DEFAULT_DRAFT_CONFIG,
@@ -89,10 +89,13 @@ export interface CreatePlaylistDraftState {
 	 */
 	isConfigStale: boolean;
 	selection: CreatePlaylistDraftSelection;
-	preview: SongVM[];
+	/** Songs currently in the draft (pins first, then ranked fill), ≤ maxSongs. */
+	tracklist: SongVM[];
 	suggestions: SongVM[];
 	totalEligible: number;
 	intentApplied: boolean;
+	/** Pinned ids the engine could not honor — excluded, filtered out, or clamped. */
+	droppedPinnedSongIds: string[];
 	isLoading: boolean;
 	isError: boolean;
 }
@@ -109,11 +112,12 @@ function useDebounce<T>(value: T, delayMs: number): T {
 	return debounced;
 }
 
-const EMPTY_PREVIEW_RESULT: PreviewPlaylistDraftResult = {
-	preview: [],
+const EMPTY_PREVIEW_RESULT: PlaylistDraftPreview = {
+	tracklist: [],
 	suggestions: [],
 	totalEligible: 0,
 	intentApplied: false,
+	droppedPinnedSongIds: [],
 };
 
 export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
@@ -269,10 +273,11 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		committedConfig: debouncedConfig,
 		isConfigStale,
 		selection,
-		preview: result.preview,
+		tracklist: result.tracklist,
 		suggestions: result.suggestions,
 		totalEligible: result.totalEligible,
 		intentApplied: result.intentApplied,
+		droppedPinnedSongIds: result.droppedPinnedSongIds,
 		isLoading,
 		isError,
 		setIntent,

@@ -12,7 +12,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
-import type { PreviewPlaylistDraftResult } from "@/lib/server/playlist-draft.functions";
+import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
 
 const previewPlaylistDraftMock = vi.fn();
 
@@ -23,11 +23,12 @@ vi.mock("@/lib/server/playlist-draft.functions", () => ({
 
 import { useCreatePlaylistDraft } from "../useCreatePlaylistDraft";
 
-const EMPTY_RESULT: PreviewPlaylistDraftResult = {
-	preview: [],
+const EMPTY_RESULT: PlaylistDraftPreview = {
+	tracklist: [],
 	suggestions: [],
 	totalEligible: 0,
 	intentApplied: false,
+	droppedPinnedSongIds: [],
 };
 
 let queryClient: QueryClient;

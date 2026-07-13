@@ -42,19 +42,17 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	},
 }));
 
-const filterCandidatesMock = vi.fn();
-const buildProfileFromPillsMock = vi.fn();
-const buildProfileFromIntentMock = vi.fn();
-const scoreCandidatesMock = vi.fn();
-const assembleDraftMock = vi.fn();
+const selectEligibleCandidatesMock = vi.fn();
+const buildDraftProfileMock = vi.fn();
+const rankCandidatesMock = vi.fn();
+const composePlaylistPreviewMock = vi.fn();
 vi.mock("@/lib/domains/playlists/draft-engine", () => ({
-	filterCandidates: (...args: unknown[]) => filterCandidatesMock(...args),
-	buildProfileFromPills: (...args: unknown[]) =>
-		buildProfileFromPillsMock(...args),
-	buildProfileFromIntent: (...args: unknown[]) =>
-		buildProfileFromIntentMock(...args),
-	scoreCandidates: (...args: unknown[]) => scoreCandidatesMock(...args),
-	assembleDraft: (...args: unknown[]) => assembleDraftMock(...args),
+	selectEligibleCandidates: (...args: unknown[]) =>
+		selectEligibleCandidatesMock(...args),
+	buildDraftProfile: (...args: unknown[]) => buildDraftProfileMock(...args),
+	rankCandidates: (...args: unknown[]) => rankCandidatesMock(...args),
+	composePlaylistPreview: (...args: unknown[]) =>
+		composePlaylistPreviewMock(...args),
 }));
 
 import { runPreviewPlaylistDraft } from "../preview";
@@ -104,25 +102,18 @@ describe("runPreviewPlaylistDraft", () => {
 			makeCandidate("a"),
 			makeCandidate("b"),
 		]);
-		filterCandidatesMock.mockImplementation((candidates) => candidates);
-		buildProfileFromPillsMock.mockReturnValue({ source: "pills" });
-		buildProfileFromIntentMock.mockReturnValue({ source: "intent" });
-		scoreCandidatesMock.mockResolvedValue([]);
-		// Passes the effectiveIntentApplied arg (5th) straight through so tests
-		// can assert on it without re-implementing assembleDraft's slicing logic.
-		assembleDraftMock.mockImplementation(
-			(
-				_scored,
-				_pinned,
-				_excluded,
-				_maxSongs,
-				intentApplied,
-				allCandidates,
-			) => ({
-				preview: [],
+		selectEligibleCandidatesMock.mockImplementation((candidates) => candidates);
+		buildDraftProfileMock.mockReturnValue({ source: "draft-profile" });
+		rankCandidatesMock.mockResolvedValue([]);
+		// Passes intentApplied/totalEligible straight through so tests can assert
+		// on them without re-implementing composePlaylistPreview's slicing logic.
+		composePlaylistPreviewMock.mockImplementation(
+			({ intentApplied, totalEligible }) => ({
+				tracklist: [],
 				suggestions: [],
-				totalEligible: allCandidates.length,
+				totalEligible,
 				intentApplied,
+				droppedPinnedSongIds: [],
 			}),
 		);
 	});
@@ -140,8 +131,8 @@ describe("runPreviewPlaylistDraft", () => {
 		);
 
 		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
-		expect(buildProfileFromPillsMock).toHaveBeenCalled();
-		expect(buildProfileFromIntentMock).not.toHaveBeenCalled();
+		expect(buildDraftProfileMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
@@ -157,7 +148,8 @@ describe("runPreviewPlaylistDraft", () => {
 		);
 
 		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
-		expect(buildProfileFromPillsMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
@@ -173,7 +165,8 @@ describe("runPreviewPlaylistDraft", () => {
 		);
 
 		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
-		expect(buildProfileFromPillsMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
@@ -192,8 +185,8 @@ describe("runPreviewPlaylistDraft", () => {
 		);
 
 		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
-		expect(buildProfileFromPillsMock).toHaveBeenCalled();
-		expect(buildProfileFromIntentMock).not.toHaveBeenCalled();
+		expect(buildDraftProfileMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
@@ -213,8 +206,8 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
-		expect(buildProfileFromPillsMock).toHaveBeenCalled();
-		expect(buildProfileFromIntentMock).not.toHaveBeenCalled();
+		expect(buildDraftProfileMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
@@ -238,7 +231,7 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
-		const songEmbeddingsMap = scoreCandidatesMock.mock.calls[0][2] as Map<
+		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2] as Map<
 			string,
 			number[]
 		>;
@@ -263,7 +256,7 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
-		const songEmbeddingsMap = scoreCandidatesMock.mock.calls[0][2] as Map<
+		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2] as Map<
 			string,
 			number[]
 		>;
@@ -288,9 +281,9 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
-		expect(buildProfileFromIntentMock).toHaveBeenCalled();
+		expect(buildDraftProfileMock.mock.calls[0][2]).toEqual([0.1, 0.2, 0.3]);
 		expect(result.intentApplied).toBe(true);
-		const songEmbeddingsMap = scoreCandidatesMock.mock.calls[0][2];
+		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2];
 		expect(songEmbeddingsMap).toBeUndefined();
 	});
 });

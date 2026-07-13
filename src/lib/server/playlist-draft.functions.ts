@@ -23,7 +23,7 @@ import {
 	runPersistNewPlaylistConfig,
 	runRecordPlaylistMatchDecisions,
 } from "@/lib/workflows/playlist-studio/commit";
-import type { PreviewPlaylistDraftResult } from "@/lib/workflows/playlist-studio/preview";
+import type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
 import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview";
 
 // ============================================================================
@@ -31,7 +31,7 @@ import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview
 // ============================================================================
 
 export type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-studio/commit";
-export type { PreviewPlaylistDraftResult } from "@/lib/workflows/playlist-studio/preview";
+export type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
 
 // ============================================================================
 // Input schema
@@ -99,7 +99,7 @@ const PreviewPlaylistDraftSchema = z.object({
 export const previewPlaylistDraft = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => PreviewPlaylistDraftSchema.parse(data))
-	.handler(async ({ data, context }): Promise<PreviewPlaylistDraftResult> => {
+	.handler(async ({ data, context }): Promise<PlaylistDraftPreview> => {
 		const { accountId } = context.session;
 		const supabase = createAdminSupabaseClient();
 		return runPreviewPlaylistDraft(supabase, accountId, data);

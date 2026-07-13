@@ -207,7 +207,7 @@ export function CreatePlaylistScreen({
 	const handleSubmit = useCallback(() => {
 		const submitInput: CreatePlaylistFromDraftInput = {
 			name: name.trim(),
-			songIds: draft.preview.map((s) => s.id),
+			songIds: draft.tracklist.map((s) => s.id),
 			genrePills: draft.committedConfig.genrePills,
 			matchFilters: draft.committedConfig.matchFilters,
 			intentApplied: draft.intentApplied,
@@ -219,7 +219,7 @@ export function CreatePlaylistScreen({
 		void flow.submit(submitInput);
 	}, [
 		name,
-		draft.preview,
+		draft.tracklist,
 		draft.committedConfig,
 		draft.intentApplied,
 		flow.submit,
@@ -355,7 +355,7 @@ export function CreatePlaylistScreen({
 										className="theme-text-muted text-xs tabular-nums"
 										style={{ fontFamily: fonts.body }}
 									>
-										{draft.preview.length} of {draft.totalEligible} eligible
+										{draft.tracklist.length} of {draft.totalEligible} eligible
 									</span>
 								)}
 							</div>
@@ -375,7 +375,7 @@ export function CreatePlaylistScreen({
 							<LibraryEmptyState isWarming={true} />
 						) : (
 							<PreviewList
-								songs={draft.preview}
+								songs={draft.tracklist}
 								isLoading={draft.isLoading}
 								onRemoveSong={draft.removeSong}
 								onRestoreSong={draft.restoreSong}
@@ -453,7 +453,7 @@ export function CreatePlaylistScreen({
 				) : (
 					<CreateBar
 						name={name}
-						songIds={draft.preview.map((s) => s.id)}
+						songIds={draft.tracklist.map((s) => s.id)}
 						isPreviewStale={draft.isConfigStale}
 						isSubmitting={flow.isSubmitting}
 						gateState={gateState}

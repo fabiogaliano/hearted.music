@@ -6,6 +6,10 @@
  * ranked SongVM lists. Server orchestration (DB reads, auth context) lives in
  * workflows/playlist-studio/preview.ts (and its thin server-fn adapter,
  * server/playlist-draft.functions.ts); this module is the testable core.
+ *
+ * The pipeline reads as a sentence:
+ *   selectEligibleCandidates → buildDraftProfile → rankCandidates →
+ *   composePlaylistPreview
  */
 
 import { Result } from "better-result";
@@ -23,10 +27,10 @@ import { SUGGESTIONS_COUNT } from "./constants";
 import type { SongVM } from "./types";
 
 /**
- * A transient (never-persisted) playlist profile for the draft engine.
+ * The never-persisted profile of the draft being edited in the studio.
  * Mirrors MatchingPlaylistProfile but without a real playlist ID.
  */
-interface TransientProfile {
+interface DraftProfile {
 	genreDistribution: GenreDistribution;
 	audioCentroid: Record<string, number>;
 	/** Query embedding — present only on the intent/premium path. */
@@ -35,16 +39,16 @@ interface TransientProfile {
 }
 
 // Synthetic playlist ID for the scoring pass. The draft engine scores every
-// candidate against a single transient profile, so the ID is only needed to
+// candidate against a single draft profile, so the ID is only needed to
 // satisfy the MatchingPlaylistProfile interface — it is never stored or returned.
 const DRAFT_PLAYLIST_ID = "__draft__";
 
 /**
- * Apply hard match-filters to reduce candidates to the eligible set.
+ * Apply hard match-filters to select the eligible candidate set.
  *
  * Pure pass through passesAllMatchFilters — no side effects, no IO.
  */
-export function filterCandidates(
+export function selectEligibleCandidates(
 	candidates: Phase1Candidate[],
 	filters: PlaylistMatchFiltersV1,
 	nowMs: number,
@@ -102,18 +106,23 @@ function computeAudioCentroidFromMatchingFeatures(
 }
 
 /**
- * Build a transient profile from genre pills + the eligible candidate set.
- *
- * Used on the free / no-intent path. No embedding is produced.
+ * Build the draft's profile from genre pills + the eligible candidate set,
+ * optionally carrying a pre-computed intent embedding (premium path).
  *
  * Genre distribution: blendGenreDistribution blends declared pills (PILL_SHARE=0.5)
  * with observed song-genre counts from the eligible set.
  * Audio centroid: mean of audio features across all eligible candidates.
+ *
+ * When `intentEmbedding` is provided, it is set as the profile's query
+ * embedding and semantic ranking becomes active in rankCandidates. The caller
+ * (server workflow) is responsible for obtaining the embedding via the
+ * embeddings service — this function only assembles the profile shape.
  */
-export function buildProfileFromPills(
+export function buildDraftProfile(
 	eligibleCandidates: Phase1Candidate[],
 	genrePills: string[],
-): TransientProfile {
+	intentEmbedding?: number[],
+): DraftProfile {
 	// Accumulate observed genre counts from eligible songs for blending.
 	const observedCounts: Record<string, number> = {};
 	for (const c of eligibleCandidates) {
@@ -134,29 +143,21 @@ export function buildProfileFromPills(
 	return {
 		genreDistribution,
 		audioCentroid,
-		embedding: null,
+		embedding: intentEmbedding ?? null,
 		hasGenrePills: genrePills.length > 0,
 	};
 }
 
-/**
- * Build a transient profile from a pre-computed intent embedding + pills.
- *
- * Used on the premium path when the account is intent-eligible. The caller
- * (server fn) is responsible for obtaining the embedding via the embeddings
- * service — this function only assembles the profile shape.
- */
-export function buildProfileFromIntent(
-	eligibleCandidates: Phase1Candidate[],
-	genrePills: string[],
-	intentEmbedding: number[],
-): TransientProfile {
-	const base = buildProfileFromPills(eligibleCandidates, genrePills);
-	return { ...base, embedding: intentEmbedding };
+/** One candidate with its match score, in ranking order. */
+export interface RankedCandidate {
+	candidate: Phase1Candidate;
+	score: number;
 }
 
 /**
- * Score and rank all eligible candidates against the transient profile.
+ * Rank all eligible candidates against the draft profile: scores every
+ * candidate via the matching service, returns them sorted by score descending.
+ * The ordering is the contract — composePlaylistPreview slices top-N from it.
  *
  * When `profile.embedding` is null (free/no-intent path), the matching service
  * runs in noEmbeddingMode — vector scoring is skipped and the embedding weight
@@ -173,14 +174,12 @@ export function buildProfileFromIntent(
  *
  * Candidates without audio features are still scored on genre alone (audio
  * weight further redistributed by computeAdaptiveWeights).
- *
- * Returns candidates sorted by score descending.
  */
-export async function scoreCandidates(
+export async function rankCandidates(
 	candidates: Phase1Candidate[],
-	profile: TransientProfile,
+	profile: DraftProfile,
 	songEmbeddings?: Map<string, number[]>,
-): Promise<Array<{ candidate: Phase1Candidate; score: number }>> {
+): Promise<RankedCandidate[]> {
 	if (candidates.length === 0) return [];
 
 	const useEmbedding = profile.embedding !== null;
@@ -217,7 +216,12 @@ export async function scoreCandidates(
 	);
 
 	if (Result.isError(result)) {
-		// Non-fatal: fall back to unscored order (no matches is a safe degradation)
+		// Non-fatal: fall back to unscored order (no matches is a safe
+		// degradation), but say so — the "ranking" is insertion order from here.
+		console.error(
+			"[draft-engine] matchBatch failed, ranking degraded to unscored order",
+			result.error,
+		);
 		return candidates.map((c) => ({ candidate: c, score: 0 }));
 	}
 
@@ -253,93 +257,119 @@ function toSongVM(candidate: Phase1Candidate, score?: number): SongVM {
 	};
 }
 
-export interface DraftResult {
-	/** Top ≤ maxSongs candidates (pinned first, then ranked). */
-	preview: SongVM[];
-	/** Next ~12 ranked candidates not in preview or excluded. */
+export interface PlaylistDraftPreview {
+	/**
+	 * The songs currently in the draft — pins first (user order), then ranked
+	 * fill. Never exceeds maxSongs: this is what "Create" will persist.
+	 */
+	tracklist: SongVM[];
+	/** Next ~12 ranked candidates not in the tracklist or excluded. */
 	suggestions: SongVM[];
 	totalEligible: number;
 	intentApplied: boolean;
+	/**
+	 * Pinned ids that could not be honored: excluded, filtered out by match
+	 * filters, no longer liked, or cut by the maxSongs clamp. Lets the UI tell
+	 * the truth instead of silently showing fewer songs than the user pinned.
+	 */
+	droppedPinnedSongIds: string[];
+}
+
+export interface ComposePlaylistPreviewInput {
+	/** Output of rankCandidates — order is load-bearing. */
+	ranking: RankedCandidate[];
+	/** Song IDs the user explicitly added — appear first, in this order. */
+	pinnedSongIds: string[];
+	/** Song IDs the user explicitly removed — never appear in results. */
+	excludedSongIds: string[];
+	maxSongs: number;
+	intentApplied: boolean;
+	totalEligible: number;
+	/**
+	 * Pages the suggestions window deeper into the ranked (non-pinned,
+	 * non-excluded) candidates without touching config or scoring — this is
+	 * what "Refresh suggestions" uses to rotate in a genuinely new batch. It
+	 * does not shift the tracklist window: the tracklist always starts at the
+	 * top of the ranking so a refresh never changes which songs are already
+	 * picked.
+	 */
+	suggestionsOffset?: number;
 }
 
 /**
- * Assemble the full draft result from scored candidates.
+ * Compose the studio's preview of the draft from the ranking + the user's
+ * overrides (pins, exclusions, maxSongs).
  *
- * Pinned songs always appear first in preview regardless of score.
- * Excluded songs are dropped from both preview and suggestions.
- * After reserving pinned slots, remaining preview slots are filled by
- * the top-ranked non-pinned candidates. Suggestions follow immediately after.
- *
- * suggestionsOffset pages the suggestions window deeper into the ranked
- * (non-pinned, non-excluded) candidates without touching config or scoring —
- * this is what "Refresh suggestions" uses to rotate in a genuinely new batch.
- * It does not shift the preview window: the preview always starts at the top
- * of the ranking so a refresh never changes which songs are already picked.
+ * Pinned songs always lead the tracklist in user order regardless of score;
+ * remaining slots are filled by the top-ranked non-pinned candidates, and the
+ * whole tracklist is clamped to maxSongs. Pins that can't be honored —
+ * excluded, absent from the ranking (filtered out / unliked), or cut by the
+ * clamp — are reported in droppedPinnedSongIds rather than silently vanishing.
+ * Clamped pins do not re-enter the suggestions pool: suggestions mean "the
+ * engine thinks you'd like these", and a demoted user choice is not that.
  */
-export function assembleDraft(
-	scored: Array<{ candidate: Phase1Candidate; score: number }>,
-	pinnedSongIds: string[],
-	excludedSongIds: string[],
-	maxSongs: number,
-	intentApplied: boolean,
-	allCandidates: Phase1Candidate[],
-	suggestionsOffset = 0,
-): DraftResult {
-	const excludedSet = new Set(excludedSongIds);
-	const pinnedSet = new Set(pinnedSongIds);
+export function composePlaylistPreview(
+	input: ComposePlaylistPreviewInput,
+): PlaylistDraftPreview {
+	const {
+		ranking,
+		pinnedSongIds,
+		excludedSongIds,
+		maxSongs,
+		intentApplied,
+		totalEligible,
+		suggestionsOffset = 0,
+	} = input;
 
-	const totalEligible = allCandidates.length;
+	const excluded = new Set(excludedSongIds);
+	const pinned = new Set(pinnedSongIds);
+	const byId = new Map(ranking.map((e) => [e.candidate.song.id, e]));
 
-	// Separate pinned from non-pinned, dropping excluded from both groups.
-	const pinnedCandidates: Array<{ candidate: Phase1Candidate; score: number }> =
-		[];
-	const rankedCandidates: Array<{ candidate: Phase1Candidate; score: number }> =
-		[];
-
-	for (const entry of scored) {
-		const id = entry.candidate.song.id;
-		if (excludedSet.has(id)) continue;
-		if (pinnedSet.has(id)) {
-			pinnedCandidates.push(entry);
-		} else {
-			rankedCandidates.push(entry);
+	// Walk pinnedSongIds directly: user order is preserved by construction,
+	// and every id that can't be honored is collected instead of vanishing.
+	const droppedPinnedSongIds: string[] = [];
+	const pinnedEntries: RankedCandidate[] = [];
+	for (const id of pinnedSongIds) {
+		const entry = byId.get(id);
+		if (!entry || excluded.has(id)) {
+			droppedPinnedSongIds.push(id);
+			continue;
 		}
+		pinnedEntries.push(entry);
 	}
 
-	// Preserve pinnedSongIds order (user-specified) rather than score order
-	const pinnedOrder = new Map(pinnedSongIds.map((id, i) => [id, i]));
-	pinnedCandidates.sort(
-		(a, b) =>
-			(pinnedOrder.get(a.candidate.song.id) ?? 0) -
-			(pinnedOrder.get(b.candidate.song.id) ?? 0),
-	);
+	// The maxSongs clamp: pins beyond the cap are dropped and reported.
+	const keptPins = pinnedEntries.slice(0, maxSongs);
+	for (const entry of pinnedEntries.slice(maxSongs)) {
+		droppedPinnedSongIds.push(entry.candidate.song.id);
+	}
 
-	const remainingSlots = Math.max(0, maxSongs - pinnedCandidates.length);
-	const previewRanked = rankedCandidates.slice(0, remainingSlots);
+	const ranked = ranking.filter((e) => {
+		const id = e.candidate.song.id;
+		return !pinned.has(id) && !excluded.has(id);
+	});
+
+	const rankedSlots = maxSongs - keptPins.length;
+	const tracklistRanked = ranked.slice(0, rankedSlots);
 
 	// Clamp so a stale/out-of-range offset (e.g. after an exclusion shrinks the
 	// ranked pool, or the user keeps clicking refresh past the end) degrades to
 	// the last available window rather than returning nothing.
-	const suggestionsPoolSize = Math.max(
-		0,
-		rankedCandidates.length - remainingSlots,
-	);
+	const suggestionsPoolSize = Math.max(0, ranked.length - rankedSlots);
 	const maxOffset = Math.max(0, suggestionsPoolSize - SUGGESTIONS_COUNT);
 	const safeOffset = Math.max(0, Math.min(suggestionsOffset, maxOffset));
-	const suggestionsStart = remainingSlots + safeOffset;
-	const suggestionRanked = rankedCandidates.slice(
-		suggestionsStart,
-		suggestionsStart + SUGGESTIONS_COUNT,
-	);
+	const suggestionsStart = rankedSlots + safeOffset;
 
-	const preview = [
-		...pinnedCandidates.map((e) => toSongVM(e.candidate, e.score)),
-		...previewRanked.map((e) => toSongVM(e.candidate, e.score)),
-	];
-
-	const suggestions = suggestionRanked.map((e) =>
-		toSongVM(e.candidate, e.score),
-	);
-
-	return { preview, suggestions, totalEligible, intentApplied };
+	return {
+		tracklist: [
+			...keptPins.map((e) => toSongVM(e.candidate, e.score)),
+			...tracklistRanked.map((e) => toSongVM(e.candidate, e.score)),
+		],
+		suggestions: ranked
+			.slice(suggestionsStart, suggestionsStart + SUGGESTIONS_COUNT)
+			.map((e) => toSongVM(e.candidate, e.score)),
+		totalEligible,
+		intentApplied,
+		droppedPinnedSongIds,
+	};
 }

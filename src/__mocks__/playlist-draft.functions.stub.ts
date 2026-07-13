@@ -13,7 +13,7 @@
 // literal checked against the real result shape.
 import type {
 	PersistNewPlaylistConfigResult,
-	PreviewPlaylistDraftResult,
+	PlaylistDraftPreview,
 	recordPlaylistMatchDecisions as recordPlaylistMatchDecisionsReal,
 } from "@/lib/server/playlist-draft.functions";
 
@@ -26,14 +26,15 @@ type RecordPlaylistMatchDecisionsResult = Awaited<
 
 // ── Controllable fixture state ────────────────────────────────────────────────
 
-let _previewResult: PreviewPlaylistDraftResult = {
-	preview: [],
+let _previewResult: PlaylistDraftPreview = {
+	tracklist: [],
 	suggestions: [],
 	totalEligible: 0,
 	intentApplied: false,
+	droppedPinnedSongIds: [],
 };
 
-export function setPreviewResult(result: PreviewPlaylistDraftResult) {
+export function setPreviewResult(result: PlaylistDraftPreview) {
 	_previewResult = result;
 }
 
