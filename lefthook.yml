@@ -16,6 +16,16 @@ pre-commit:
 pre-push:
   parallel: true
   commands:
+    guard-worker:
+      # The dev worker's account-event publisher races the account-events
+      # integration tests (it claims their rows and fires extra wake NOTIFYs),
+      # so fail fast instead of burning a ~100s test run on a confusing failure.
+      run: |
+        if pgrep -f 'src/worker/index.ts' >/dev/null; then
+          echo "❌ Stop the dev worker (bun run dev) before pushing — it races the account-event integration tests."
+          exit 1
+        fi
+      skip: [merge, rebase]
     check:
       run: bun run check
       skip: [merge, rebase]
