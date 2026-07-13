@@ -230,8 +230,8 @@ function TemplateCard({
 							<span key={i}>{part}</span>
 						) : (
 							// The blank is the sentence's emphasis word — kept as <em> for
-							// semantics but not slanted; the dashed underline is the
-							// "this part is tunable" cue.
+							// semantics but not slanted; its accent color and caret are the
+							// "this part opens a list of options" cue.
 							<em key={part.slot} className="not-italic">
 								<SeedBlank
 									value={selection[part.slot]?.label ?? "…"}

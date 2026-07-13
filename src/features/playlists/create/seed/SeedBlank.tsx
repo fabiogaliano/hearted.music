@@ -11,6 +11,7 @@
  * the roles promise, rather than roles with no keyboard model behind them.
  */
 
+import { CaretDownIcon } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
 import type { SeedChoiceVM } from "../seedTypes";
@@ -90,8 +91,11 @@ export function SeedBlank({
 
 	return (
 		// z-10 lifts the blank above a host row's stretched commit overlay, so
-		// tapping the blank tunes it instead of committing the row.
-		<span className="relative z-10 inline-block">
+		// tapping the blank tunes it instead of committing the row. When OPEN it
+		// jumps to z-30: the popover's own z-20 is trapped inside this wrapper's
+		// stacking context, so without lifting the wrapper the sibling blanks (also
+		// z-10, later in the DOM) and neighbouring cards paint over the open list.
+		<span className={`relative inline-block ${open ? "z-30" : "z-10"}`}>
 			<button
 				ref={triggerRef}
 				type="button"
@@ -108,14 +112,30 @@ export function SeedBlank({
 				}}
 				className={`mx-0.5 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
 					openable
-						? // The screen's accent lives here: color marks the tunable word,
-							// so "colored = changeable" reads without any extra chrome.
-							"theme-primary cursor-pointer border-b border-dashed border-(--t-primary) transition-opacity hover:opacity-70"
+						? // The screen's accent lives here: color marks the tunable word.
+							// Color + dashed underline alone read as "editable text" and get
+							// missed on first run, so the caret does the loudest signifying —
+							// it's the learned "this opens a list of options" glyph, which is
+							// exactly the affordance these mad-lib blanks need to not degrade
+							// into fixed presets. The underline stays neutral (--t-border, the
+							// screen's dashed-border color) so it recedes — the accent word and
+							// caret carry the signal, not a second loud line.
+							"theme-primary cursor-pointer border-b border-dashed border-(--t-border) transition-opacity hover:opacity-70"
 						: // A single locked option isn't interactive — no accent, no underline.
 							"theme-text"
 				}`}
 			>
 				{value}
+				{openable && (
+					// Inherits the accent via currentColor (theme-primary); align-middle
+					// seats the glyph against the word's x-height so it reads as attached.
+					<CaretDownIcon
+						size={11}
+						weight="bold"
+						aria-hidden
+						className="ml-0.5 inline-block align-middle opacity-70"
+					/>
+				)}
 			</button>
 			{open && (
 				<>
