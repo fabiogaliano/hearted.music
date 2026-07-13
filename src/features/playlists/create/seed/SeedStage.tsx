@@ -1,11 +1,19 @@
 /**
  * The seeded landing beat ("What are we making?") — the first thing a user sees
  * on /playlists/new. Starting points are interactive TEMPLATES, not finished
- * picks: each card is a mad-lib whose blanks ("All things [indie]") open a
- * popover listing the account's profile-derived options — pick one, then tap the
- * arrow to start from the tuned result. A sparse library shows fewer cards with
- * fewer options; a brand-new one shows a growth note. "From scratch" is a real
- * card too, saying what the scratch is (the whole library, with its count).
+ * picks: each row is a mad-lib whose blanks ("All things [indie]") open a
+ * popover listing the account's profile-derived options — tune the blank, then
+ * click the row to start from the tuned result. A sparse library shows fewer
+ * rows with fewer options; a brand-new one shows a growth note. "From scratch"
+ * is a real card too, saying what the scratch is (the library, with its count).
+ *
+ * Templates render as a compact two-column grid of SURFACE-FILLED cards
+ * (hover-border-brighten: --t-surface fill + border) — the fill is what
+ * separates them from the page bg in a monochrome theme, where outline-only
+ * boxes read as "all the same color." The grid arrives already facet-ordered
+ * from buildSeedTemplates (genre → time → artist) so it scans dimension-by-
+ * dimension without group chrome, titles are Instrument Serif, and each card's
+ * tunable blank is the screen's accent — color means "you can change this."
  *
  * The free-text intent is the premium capability and leads either way: it sits
  * directly under the question, with the templates as the "or start from"
@@ -87,7 +95,10 @@ function IntentRowLocked({
 				In your own words
 			</p>
 			{/* Whole block is the CTA: a disabled input is a dead end, so this is an
-			    honest locked affordance that opens the paywall on click. */}
+			    honest locked affordance that opens the paywall on click. The faux
+			    input wears the surface fill (the screen's "clickable object"
+			    material, matching the template cards) rather than an input's
+			    underline — an underline promises typing, and this doesn't type. */}
 			<button
 				type="button"
 				onClick={onUnlock}
@@ -98,14 +109,16 @@ function IntentRowLocked({
 				}
 				className="group flex w-full cursor-pointer flex-col gap-2.5 text-left"
 			>
-				<span className="theme-border-color flex items-center gap-3 border-b px-1 py-2.5 transition-colors duration-150 group-hover:border-(--t-text-muted)">
+				<span className="hover-border-brighten flex items-center gap-3 px-4 py-3 group-hover:border-(--t-text-muted)">
 					<span
 						className="theme-text-muted min-w-0 flex-1 truncate text-base opacity-60"
 						style={{ fontFamily: fonts.body }}
 					>
 						{example}
 					</span>
-					<span className="theme-text-muted inline-flex flex-none items-center gap-1.5 text-[11px] tracking-widest uppercase transition-colors duration-150 group-hover:text-(--t-text)">
+					{/* The accent marks the premium act itself, tying "colored = the
+					    special interaction" to the tunable blanks below. */}
+					<span className="theme-primary inline-flex flex-none items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 group-hover:opacity-75">
 						<LockSimpleIcon size={12} weight="regular" aria-hidden />
 						Unlock
 					</span>
@@ -197,26 +210,37 @@ function TemplateCard({
 
 	const resolved = resolveTemplate(template, selection);
 
+	// hover-border-brighten fills the card with --t-surface — the same material
+	// as the whole-library card below — so the grid visibly lifts off the page
+	// bg instead of being one more same-color outline. The whole card commits,
+	// via the arrow button's stretched ::after overlay (nesting the card in a
+	// <button> would swallow the blanks, which are buttons of their own); the
+	// blanks sit above the overlay (z-raised in SeedBlank) so tuning one never
+	// accidentally commits.
 	return (
-		<div className="theme-border-color flex items-center justify-between gap-3 border px-4 py-3">
+		<div className="hover-border-brighten group relative flex items-center justify-between gap-3 px-4 py-3">
 			<div className="min-w-0">
 				<span
-					className="theme-text block text-sm"
-					style={{ fontFamily: fonts.body }}
+					className="theme-text block text-lg leading-tight font-light"
+					style={{ fontFamily: fonts.display }}
 				>
 					{template.parts.map((part, i) =>
 						typeof part === "string" ? (
 							// biome-ignore lint/suspicious/noArrayIndexKey: parts are a stable literal sequence
 							<span key={i}>{part}</span>
 						) : (
-							<SeedBlank
-								key={part.slot}
-								value={selection[part.slot]?.label ?? "…"}
-								options={template.slots[part.slot] ?? []}
-								onPick={(choice) =>
-									setSelection((prev) => ({ ...prev, [part.slot]: choice }))
-								}
-							/>
+							// The blank is the sentence's emphasis word — kept as <em> for
+							// semantics but not slanted; the dashed underline is the
+							// "this part is tunable" cue.
+							<em key={part.slot} className="not-italic">
+								<SeedBlank
+									value={selection[part.slot]?.label ?? "…"}
+									options={template.slots[part.slot] ?? []}
+									onPick={(choice) =>
+										setSelection((prev) => ({ ...prev, [part.slot]: choice }))
+									}
+								/>
+							</em>
 						),
 					)}
 				</span>
@@ -231,10 +255,9 @@ function TemplateCard({
 				type="button"
 				onClick={() => onUse(resolved)}
 				aria-label={`Start from ${resolved.label}`}
-				className="theme-text-muted flex flex-none cursor-pointer items-center justify-center transition-[color,transform] duration-150 hover:text-(--t-text) focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] motion-safe:hover:translate-x-0.5"
-				style={{ minWidth: 44, minHeight: 44 }}
+				className="theme-text-muted flex flex-none cursor-pointer items-center p-2 transition-[color,transform] duration-150 after:absolute after:inset-0 after:content-[''] group-hover:text-(--t-text) focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] motion-safe:group-hover:translate-x-1"
 			>
-				<ArrowRightIcon size={14} weight="regular" aria-hidden />
+				<ArrowRightIcon size={16} weight="regular" aria-hidden />
 			</button>
 		</div>
 	);
@@ -259,7 +282,6 @@ export function SeedStage({ onSeed, onUnlock }: SeedStageProps) {
 		() => (profile ? buildSeedTemplates(profile) : []),
 		[profile],
 	);
-
 	const templatesSection = (
 		<div className="mt-10">
 			<p
@@ -269,7 +291,7 @@ export function SeedStage({ onSeed, onUnlock }: SeedStageProps) {
 				Or start from
 			</p>
 			{templates.length > 0 ? (
-				<div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+				<div className="grid grid-cols-2 gap-2.5">
 					{templates.map((template) => (
 						<TemplateCard
 							key={template.id}
@@ -288,11 +310,13 @@ export function SeedStage({ onSeed, onUnlock }: SeedStageProps) {
 				</p>
 			)}
 
-			{/* From scratch as a real card: name what the scratch is. */}
+			{/* From scratch as a real card: name what the scratch is. Same surface
+			    material as the templates, but dashed — a different class of action
+			    (everything, unfaceted), so it earns the different border. */}
 			<button
 				type="button"
 				onClick={() => onSeed(null, "")}
-				className="theme-border-color hover-border-brighten mt-2 flex w-full cursor-pointer items-center justify-between gap-3 border border-dashed px-4 py-3 text-left transition-[background-color] duration-150 active:scale-[0.995]"
+				className="theme-border-color hover-border-brighten mt-2.5 flex w-full cursor-pointer items-center justify-between gap-3 border-dashed px-4 py-3 text-left active:scale-[0.995]"
 			>
 				<span className="min-w-0">
 					<span

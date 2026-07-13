@@ -26,27 +26,11 @@ function rotateRandom<T>(items: T[]): T[] {
 	return [...items.slice(start), ...items.slice(0, start)];
 }
 
+// Emission is facet-ordered — genre (single, then blend), time (liked-window,
+// then decade), artist — so the flat list still scans dimension-by-dimension
+// without the UI adding group chrome.
 export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 	const templates: SeedTemplateVM[] = [];
-
-	const windows = profile.likedWindows.filter((w) => w.count >= 8);
-	if (windows.length > 0) {
-		templates.push({
-			id: "tpl-window",
-			parts: ["Liked in the ", { slot: "window" }],
-			slots: {
-				window: windows.map((w) => ({
-					id: w.id,
-					label: w.label,
-					likedAt: w.likedAt,
-				})),
-			},
-			describe: (sel) => {
-				const w = windows.find((x) => x.id === sel.window?.id);
-				return `${w?.count ?? 0} liked songs from that stretch of your history`;
-			},
-		});
-	}
 
 	const genres = profile.topGenres.filter((g) => g.count >= 20).slice(0, 5);
 	const genreChoices: SeedChoiceVM[] = genres.map((g) => ({
@@ -60,6 +44,7 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 	if (genreChoices.length > 0) {
 		templates.push({
 			id: "tpl-genre",
+			facet: "genre",
 			parts: ["All things ", { slot: "genre" }],
 			slots: { genre: rotateRandom(genreChoices) },
 			// Pills bias the ranking, not a hard filter — phrase the count as the pool
@@ -69,28 +54,10 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 		});
 	}
 
-	const decades = profile.decades.filter((d) => d.count >= 20);
-	if (decades.length > 0) {
-		templates.push({
-			id: "tpl-decade",
-			parts: ["Throwbacks: ", { slot: "period" }],
-			slots: {
-				period: decades.map((d) => ({
-					id: d.label,
-					label: d.label,
-					releaseYear: { kind: "range", start: d.from, end: d.to },
-				})),
-			},
-			describe: (sel) => {
-				const d = decades.find((x) => x.label === sel.period?.id);
-				return d ? `${d.count} liked songs released ${d.from}–${d.to}` : "";
-			},
-		});
-	}
-
 	if (genreChoices.length >= 2) {
 		templates.push({
 			id: "tpl-blend",
+			facet: "genre",
 			parts: ["Where ", { slot: "a" }, " meets ", { slot: "b" }],
 			slots: {
 				a: genreChoices,
@@ -107,6 +74,46 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 		});
 	}
 
+	const windows = profile.likedWindows.filter((w) => w.count >= 8);
+	if (windows.length > 0) {
+		templates.push({
+			id: "tpl-window",
+			facet: "time",
+			parts: ["Liked in the ", { slot: "window" }],
+			slots: {
+				window: windows.map((w) => ({
+					id: w.id,
+					label: w.label,
+					likedAt: w.likedAt,
+				})),
+			},
+			describe: (sel) => {
+				const w = windows.find((x) => x.id === sel.window?.id);
+				return `${w?.count ?? 0} liked songs from that stretch of your history`;
+			},
+		});
+	}
+
+	const decades = profile.decades.filter((d) => d.count >= 20);
+	if (decades.length > 0) {
+		templates.push({
+			id: "tpl-decade",
+			facet: "time",
+			parts: ["Throwbacks: ", { slot: "period" }],
+			slots: {
+				period: decades.map((d) => ({
+					id: d.label,
+					label: d.label,
+					releaseYear: { kind: "range", start: d.from, end: d.to },
+				})),
+			},
+			describe: (sel) => {
+				const d = decades.find((x) => x.label === sel.period?.id);
+				return d ? `${d.count} liked songs released ${d.from}–${d.to}` : "";
+			},
+		});
+	}
+
 	// Artists spread far thinner than genres across real libraries (a heavy
 	// listener still tops out at single-digit likes per artist), so the floor
 	// sits at the window floor, not the genre floor — an artist you've liked 8+
@@ -115,6 +122,7 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 	if (artists.length > 0) {
 		templates.push({
 			id: "tpl-artist",
+			facet: "artist",
 			parts: ["Around ", { slot: "artist" }],
 			slots: {
 				artist: artists.map((a) => ({

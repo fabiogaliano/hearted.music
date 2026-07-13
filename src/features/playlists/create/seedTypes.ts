@@ -60,6 +60,14 @@ export interface SeedChoiceVM {
 }
 
 /**
+ * The taste dimension a template starts you from — genre (single or blend),
+ * time (when a song came out OR when you liked it), or artist. Templates are
+ * faceted content, and the seed stage groups them by this so a scanning user
+ * reads the axes they can start from instead of one undifferentiated pile.
+ */
+export type SeedFacet = "genre" | "time" | "artist";
+
+/**
  * A mad-lib starting point: literal text interleaved with cyclable slots
  * ("All things [indie]", "Throwbacks: [2010s]", "[indie] × [electronic]").
  * The card is a tiny configurator — the user tunes the slots in place, then
@@ -69,6 +77,8 @@ export interface SeedChoiceVM {
  */
 export interface SeedTemplateVM {
 	id: string;
+	/** The taste dimension this template starts from, for facet grouping. */
+	facet: SeedFacet;
 	parts: (string | { slot: string })[];
 	slots: Record<string, SeedChoiceVM[]>;
 	/** Selection-aware supporting line, quoting the profile's real numbers. */

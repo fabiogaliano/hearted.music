@@ -89,7 +89,9 @@ export function SeedBlank({
 	};
 
 	return (
-		<span className="relative inline-block">
+		// z-10 lifts the blank above a host row's stretched commit overlay, so
+		// tapping the blank tunes it instead of committing the row.
+		<span className="relative z-10 inline-block">
 			<button
 				ref={triggerRef}
 				type="button"
@@ -104,8 +106,13 @@ export function SeedBlank({
 					if (open) close(false);
 					else openList();
 				}}
-				className={`theme-text mx-0.5 inline-block border-b border-dashed border-(--t-text-muted) px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
-					openable ? "cursor-pointer transition-opacity hover:opacity-70" : ""
+				className={`mx-0.5 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
+					openable
+						? // The screen's accent lives here: color marks the tunable word,
+							// so "colored = changeable" reads without any extra chrome.
+							"theme-primary cursor-pointer border-b border-dashed border-(--t-primary) transition-opacity hover:opacity-70"
+						: // A single locked option isn't interactive — no accent, no underline.
+							"theme-text"
 				}`}
 			>
 				{value}
@@ -128,7 +135,7 @@ export function SeedBlank({
 						aria-label="Options"
 						aria-activedescendant={`${listId}-opt-${activeIndex}`}
 						onKeyDown={onListKeyDown}
-						className="theme-border-color theme-surface-bg absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col border py-1 shadow-sm outline-none"
+						className="theme-border-color theme-surface-bg absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col border py-1 not-italic shadow-sm outline-none"
 					>
 						{options.map((option, i) => (
 							<button

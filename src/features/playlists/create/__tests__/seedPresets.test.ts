@@ -87,3 +87,26 @@ describe("resolveTemplate structured payloads", () => {
 		expect(preset.pinArtist).toBeUndefined();
 	});
 });
+
+describe("buildSeedTemplates facet ordering", () => {
+	it("emits facet-ordered: genre (single, blend), time (window, decade), artist", () => {
+		const templates = buildSeedTemplates(profile());
+
+		expect(templates.map((t) => `${t.facet}:${t.id}`)).toEqual([
+			"genre:tpl-genre",
+			"genre:tpl-blend",
+			"time:tpl-window",
+			"time:tpl-decade",
+			"artist:tpl-artist",
+		]);
+	});
+
+	it("skips facets whose signals miss their floors without breaking the order", () => {
+		// Only genres clear their floors here — no windows, decades, or artists.
+		const templates = buildSeedTemplates(
+			profile({ likedWindows: [], decades: [], topArtists: [] }),
+		);
+
+		expect(templates.map((t) => t.id)).toEqual(["tpl-genre", "tpl-blend"]);
+	});
+});
