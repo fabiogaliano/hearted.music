@@ -11,15 +11,20 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Phase1Candidate } from "@/lib/domains/playlists/candidate-loader";
 
-const { mockAuthContext, mockGetTopArtists, mockLoadPhase1Candidates } =
-	vi.hoisted(() => ({
-		mockAuthContext: {
-			session: { accountId: "acct-1" },
-			account: null,
-		},
-		mockGetTopArtists: vi.fn(),
-		mockLoadPhase1Candidates: vi.fn(),
-	}));
+const {
+	mockAuthContext,
+	mockGetTopArtists,
+	mockSearchLikedArtistsByName,
+	mockLoadPhase1Candidates,
+} = vi.hoisted(() => ({
+	mockAuthContext: {
+		session: { accountId: "acct-1" },
+		account: null,
+	},
+	mockGetTopArtists: vi.fn(),
+	mockSearchLikedArtistsByName: vi.fn(),
+	mockLoadPhase1Candidates: vi.fn(),
+}));
 
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
@@ -58,6 +63,8 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({ authMiddleware: {} }));
 
 vi.mock("@/lib/domains/library/liked-songs/taste-profile-queries", () => ({
 	getTopArtists: (...args: unknown[]) => mockGetTopArtists(...args),
+	searchLikedArtistsByName: (...args: unknown[]) =>
+		mockSearchLikedArtistsByName(...args),
 	getLikedWindowAggregates: vi.fn(),
 	getAccountReleaseYearAggregates: vi.fn(),
 	rollUpDecades: vi.fn(),
@@ -105,7 +112,7 @@ function makeCandidate(
 describe("searchLikedArtists", () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it("returns the full ranked aggregate for an empty query", async () => {
+	it("returns the ranked browse aggregate for an empty query without invoking search", async () => {
 		mockGetTopArtists.mockResolvedValue(
 			Result.ok([
 				{ name: "KAYTRANADA", count: 26 },
@@ -119,23 +126,33 @@ describe("searchLikedArtists", () => {
 			{ name: "KAYTRANADA", count: 26 },
 			{ name: "Clairo", count: 19 },
 		]);
+		expect(mockSearchLikedArtistsByName).not.toHaveBeenCalled();
 	});
 
-	it("filters case-insensitively by substring", async () => {
-		mockGetTopArtists.mockResolvedValue(
-			Result.ok([
-				{ name: "KAYTRANADA", count: 26 },
-				{ name: "Clairo", count: 19 },
-			]),
+	it("routes a typed query through the full-population search, trimmed", async () => {
+		mockSearchLikedArtistsByName.mockResolvedValue(
+			Result.ok([{ name: "Clairo", count: 19 }]),
 		);
 
-		const result = await searchLikedArtists({ data: { query: "cLaI" } });
+		const result = await searchLikedArtists({ data: { query: "  cLaI " } });
 
+		expect(mockSearchLikedArtistsByName).toHaveBeenCalledWith("acct-1", "cLaI");
 		expect(result.artists).toEqual([{ name: "Clairo", count: 19 }]);
+		expect(mockGetTopArtists).not.toHaveBeenCalled();
 	});
 
-	it("degrades to an empty list when the aggregate fails", async () => {
+	it("degrades to an empty list when the browse aggregate fails", async () => {
 		mockGetTopArtists.mockResolvedValue(Result.err(new Error("boom")));
+
+		const result = await searchLikedArtists({ data: { query: "" } });
+
+		expect(result.artists).toEqual([]);
+	});
+
+	it("degrades to an empty list when the search query fails", async () => {
+		mockSearchLikedArtistsByName.mockResolvedValue(
+			Result.err(new Error("boom")),
+		);
 
 		const result = await searchLikedArtists({ data: { query: "x" } });
 

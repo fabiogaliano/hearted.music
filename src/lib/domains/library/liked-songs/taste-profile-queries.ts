@@ -90,6 +90,50 @@ export async function getTopArtists(
 }
 
 /**
+ * ILIKE treats \ % _ as pattern syntax; escaping here (rather than in SQL)
+ * keeps the RPC a plain one-expression predicate and matches the migration's
+ * documented contract that p_query arrives pre-escaped.
+ */
+function escapeIlikePattern(query: string): string {
+	return query.replace(/[\\%_]/g, "\\$&");
+}
+
+/**
+ * Liked artists whose name contains `query` (case-insensitive), ranked by like
+ * count. Unlike getTopArtists — which truncates to a top-N pool BEFORE any
+ * text match can run — the predicate here executes inside the RPC over ALL of
+ * the account's still-liked artists, so the limit bounds the results, never
+ * the searched population. This is what keeps a one-like artist findable in a
+ * library with more distinct artists than any browse pool.
+ */
+export async function searchLikedArtistsByName(
+	accountId: string,
+	query: string,
+	limit = 50,
+): Promise<Result<TasteTopArtist[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("search_account_liked_artists", {
+		p_account_id: accountId,
+		p_query: escapeIlikePattern(query),
+		p_limit: limit,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(
+		(data ?? []).map((row) => ({
+			name: row.artist,
+			count: Number(row.occurrences),
+		})),
+	);
+}
+
+/**
  * Counts of active likes bucketed into named recency windows, computed
  * entirely in SQL from liked_at. Backs the "Liked in the [window]" template.
  * Only non-empty windows come back; ordering is imposed by the VM.

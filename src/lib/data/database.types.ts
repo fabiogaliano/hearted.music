@@ -3917,17 +3917,17 @@ export type Database = {
 			get_account_liked_window_counts: {
 				Args: { p_account_id: string };
 				Returns: {
-					window_id: string;
+					end_at: string | null;
 					occurrences: number;
 					start_at: string;
-					end_at: string | null;
+					window_id: string;
 				}[];
 			};
 			get_account_release_year_counts: {
 				Args: { p_account_id: string };
 				Returns: {
-					release_year: number;
 					occurrences: number;
+					release_year: number;
 				}[];
 			};
 			get_account_top_artists: {
@@ -4471,6 +4471,13 @@ export type Database = {
 				};
 				Returns: {
 					song_id: string;
+				}[];
+			};
+			search_account_liked_artists: {
+				Args: { p_account_id: string; p_limit?: number; p_query?: string };
+				Returns: {
+					artist: string;
+					occurrences: number;
 				}[];
 			};
 			select_data_enriched_liked_song_ids: {

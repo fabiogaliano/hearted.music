@@ -16,6 +16,7 @@ import {
 	getLikedWindowAggregates,
 	getTopArtists,
 	rollUpDecades,
+	searchLikedArtistsByName,
 	type TasteProfile,
 } from "@/lib/domains/library/liked-songs/taste-profile-queries";
 import {
@@ -1327,19 +1328,21 @@ export const getTasteProfile = createServerFn({ method: "GET" })
 /**
  * The account's liked artists (name + like count), filtered by a query string
  * and ranked by like count — the type-to-search source for the studio's
- * ArtistConfig panel. Same aggregate that feeds the taste profile's topArtists,
- * without the seed stage's small cap. The text match runs here rather than in
- * SQL so the existing RPC is reused as-is; the aggregate is small (one row per
- * distinct artist) and already ordered by like count. Degrades to an empty
- * list on failure — search simply finds nothing rather than breaking the panel.
+ * ArtistConfig panel. Two paths with different populations by design:
+ * - Empty query (browse mode): the ranked top-N aggregate. A cap is correct
+ *   here — browsing is inherently "my top artists".
+ * - Non-empty query: the match runs inside the RPC over ALL still-liked
+ *   artists (searchLikedArtistsByName), so an artist outside any top-N pool
+ *   is still findable. Truncating before matching was the bug this replaces.
+ * Degrades to an empty list on failure — search simply finds nothing rather
+ * than breaking the panel.
  */
 const SearchLikedArtistsSchema = z.object({
 	query: z.string().max(400).default(""),
 });
 
-// Generous ceiling on distinct artists considered by the panel's search; keeps
-// the RPC bounded without a realistic library ever hitting it.
-const LIKED_ARTIST_SEARCH_POOL = 1000;
+// Browse-mode ceiling only; typed searches run over the full artist population.
+const LIKED_ARTIST_BROWSE_POOL = 1000;
 
 export const searchLikedArtists = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
@@ -1351,7 +1354,11 @@ export const searchLikedArtists = createServerFn({ method: "GET" })
 		}): Promise<{ artists: { name: string; count: number }[] }> => {
 			const { accountId } = context.session;
 
-			const result = await getTopArtists(accountId, LIKED_ARTIST_SEARCH_POOL);
+			const query = data.query.trim();
+			const result =
+				query.length === 0
+					? await getTopArtists(accountId, LIKED_ARTIST_BROWSE_POOL)
+					: await searchLikedArtistsByName(accountId, query);
 			if (Result.isError(result)) {
 				captureServerError(result.error, {
 					area: "playlists",
@@ -1361,12 +1368,7 @@ export const searchLikedArtists = createServerFn({ method: "GET" })
 				return { artists: [] };
 			}
 
-			const query = data.query.trim().toLowerCase();
-			const artists =
-				query.length === 0
-					? result.value
-					: result.value.filter((a) => a.name.toLowerCase().includes(query));
-			return { artists };
+			return { artists: result.value };
 		},
 	);
 

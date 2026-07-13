@@ -10,6 +10,7 @@ vi.mock("@/lib/data/client", () => ({
 
 const {
 	getTopArtists,
+	searchLikedArtistsByName,
 	getLikedWindowAggregates,
 	getAccountReleaseYearAggregates,
 	rollUpDecades,
@@ -78,6 +79,80 @@ describe("getTopArtists", () => {
 		const result = await getTopArtists("acct-1");
 
 		expect(Result.isError(result)).toBe(true);
+	});
+});
+
+describe("searchLikedArtistsByName", () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it("maps RPC rows to the domain shape, forwarding the query and default limit", async () => {
+		mockRpc.mockResolvedValue({
+			data: [{ artist: "Clairo", occurrences: 19 }],
+			error: null,
+		});
+
+		const result = await searchLikedArtistsByName("acct-1", "clai");
+
+		expect(result).toEqual(Result.ok([{ name: "Clairo", count: 19 }]));
+		expect(mockRpc).toHaveBeenCalledWith("search_account_liked_artists", {
+			p_account_id: "acct-1",
+			p_query: "clai",
+			p_limit: 50,
+		});
+	});
+
+	it("escapes ILIKE metacharacters so they match literally", async () => {
+		mockRpc.mockResolvedValue({ data: [], error: null });
+
+		await searchLikedArtistsByName("acct-1", "100% wet_leg\\");
+
+		expect(mockRpc).toHaveBeenCalledWith("search_account_liked_artists", {
+			p_account_id: "acct-1",
+			p_query: "100\\% wet\\_leg\\\\",
+			p_limit: 50,
+		});
+	});
+
+	it("forwards a custom limit", async () => {
+		mockRpc.mockResolvedValue({ data: [], error: null });
+
+		await searchLikedArtistsByName("acct-1", "x", 8);
+
+		expect(mockRpc).toHaveBeenCalledWith("search_account_liked_artists", {
+			p_account_id: "acct-1",
+			p_query: "x",
+			p_limit: 8,
+		});
+	});
+
+	it("coerces bigint occurrences arriving as strings", async () => {
+		mockRpc.mockResolvedValue({
+			data: [{ artist: "SZA", occurrences: "14" }],
+			error: null,
+		});
+
+		expect(await searchLikedArtistsByName("acct-1", "sza")).toEqual(
+			Result.ok([{ name: "SZA", count: 14 }]),
+		);
+	});
+
+	it("returns an empty array when the RPC yields null data", async () => {
+		mockRpc.mockResolvedValue({ data: null, error: null });
+
+		expect(await searchLikedArtistsByName("acct-1", "x")).toEqual(
+			Result.ok([]),
+		);
+	});
+
+	it("returns a DatabaseError when the RPC fails", async () => {
+		mockRpc.mockResolvedValue({
+			data: null,
+			error: { code: "42883", message: "function does not exist" },
+		});
+
+		expect(Result.isError(await searchLikedArtistsByName("acct-1", "x"))).toBe(
+			true,
+		);
 	});
 });
 
