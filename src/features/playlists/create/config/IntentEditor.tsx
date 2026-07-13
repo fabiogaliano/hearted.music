@@ -12,7 +12,7 @@
  * the draft hook debounces changes before they hit the preview query.
  */
 
-import { LockSimpleIcon } from "@phosphor-icons/react";
+import { ArrowUpRightIcon, LockSimpleIcon } from "@phosphor-icons/react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -76,47 +76,63 @@ interface IntentEditorLockedProps {
 
 function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 	return (
-		<div className="flex flex-col gap-3">
+		<>
 			{/*
-			 * Disabled textarea as the teaser — §4: show then lock, never blur.
-			 * A real <textarea disabled> correctly signals non-interactivity to both
-			 * the a11y tree and browser UA styles without needing ARIA role hacks.
-			 * aria-describedby explains the premium requirement to screen readers.
+			 * Collapsed locked state — a single field-shaped teaser instead of a
+			 * disabled textarea stacked over a CTA row. The bordered box reads as a
+			 * real input (muted example on the left, lock + UNLOCK affordance on the
+			 * right); the whole box is the paywall trigger. aria-describedby carries
+			 * the premium requirement to screen readers.
+			 *
+			 * The two triggers share one `group` so hovering either lights both up
+			 * as a single affordance rather than two independent hover states.
 			 */}
-			<textarea
-				disabled
-				aria-label="Playlist intent"
-				aria-describedby={LOCKED_DESC_ID}
-				value={PLACEHOLDER_EXAMPLES[0]}
-				readOnly
-				rows={1}
-				className="theme-text-muted theme-border-color w-full resize-none appearance-none border-b bg-transparent pb-2 text-sm leading-relaxed outline-none opacity-50"
-				style={{
-					fontFamily: fonts.body,
-					minHeight: "3.5rem",
-				}}
-			/>
+			<div className="group flex flex-col gap-1.5">
+				<button
+					type="button"
+					onClick={onOpenPaywall}
+					aria-describedby={LOCKED_DESC_ID}
+					className="theme-border-color flex w-full cursor-pointer items-center gap-3 border px-4 py-3 text-left transition-colors duration-150 group-hover:border-[var(--t-text-muted)]"
+					style={{ fontFamily: fonts.body }}
+				>
+					<span className="theme-text-muted min-w-0 flex-1 truncate text-sm leading-relaxed opacity-50">
+						{PLACEHOLDER_EXAMPLES[0]}
+					</span>
+					<span className="theme-text-muted inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] transition-opacity duration-150 group-hover:opacity-70">
+						<LockSimpleIcon size={12} weight="regular" aria-hidden />
+						Unlock
+					</span>
+				</button>
+
+				<button
+					type="button"
+					onClick={onOpenPaywall}
+					aria-describedby={LOCKED_DESC_ID}
+					className="inline-flex cursor-pointer items-center gap-1 self-start text-xs leading-snug transition-opacity duration-150 group-hover:opacity-70"
+					style={{ fontFamily: fonts.body }}
+				>
+					<span className="theme-text-muted">
+						Available with Backstage Pass —
+					</span>
+					<span
+						className="theme-text italic"
+						style={{ fontFamily: fonts.display }}
+					>
+						Upgrade
+					</span>
+					<ArrowUpRightIcon
+						size={12}
+						weight="regular"
+						aria-hidden
+						style={{ color: "var(--t-text)", flexShrink: 0 }}
+					/>
+				</button>
+			</div>
+
 			<p id={LOCKED_DESC_ID} className="sr-only">
 				Describing the vibe in your own words is available with Backstage Pass.
 			</p>
-			<button
-				type="button"
-				onClick={onOpenPaywall}
-				aria-describedby={LOCKED_DESC_ID}
-				className="inline-flex items-center gap-1.5 self-start text-left"
-				style={{ fontFamily: fonts.body }}
-			>
-				<LockSimpleIcon
-					size={11}
-					weight="regular"
-					aria-hidden
-					style={{ color: "var(--t-text-muted)", flexShrink: 0 }}
-				/>
-				<span className="theme-text-muted text-xs leading-snug underline underline-offset-2 transition-opacity duration-150 hover:opacity-70">
-					Describe the vibe in your own words — available with Backstage Pass
-				</span>
-			</button>
-		</div>
+		</>
 	);
 }
 
