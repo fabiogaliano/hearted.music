@@ -256,4 +256,61 @@ describe("PreviewList", () => {
 
 		expect(playback.deactivatePlayback).not.toHaveBeenCalled();
 	});
+
+	it("shows ownership eyebrows when the list mixes pins and engine fill", () => {
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1", "s2"]}
+			/>,
+		);
+		expect(screen.getByText(/your picks/i)).toBeInTheDocument();
+		expect(screen.getByText(/matched for you/i)).toBeInTheDocument();
+	});
+
+	it("hides eyebrows when there are no pins", () => {
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				pinnedSongIds={[]}
+			/>,
+		);
+		expect(screen.queryByText(/your picks/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/matched for you/i)).not.toBeInTheDocument();
+	});
+
+	it("hides eyebrows when every song is a pin", () => {
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1", "s2", "s3"]}
+			/>,
+		);
+		expect(screen.queryByText(/your picks/i)).not.toBeInTheDocument();
+	});
+
+	it("counts only the leading pinned run, ignoring stale pin ids", () => {
+		// "s3" is in the pinned set but the engine placed it in the fill (e.g. a
+		// stale id) — the eyebrow count must reflect the leading run only.
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1", "s3"]}
+			/>,
+		);
+		expect(screen.getByText(/your picks/i).textContent).toMatch(/1/);
+		expect(screen.getByText(/matched for you/i).textContent).toMatch(/2/);
+	});
 });

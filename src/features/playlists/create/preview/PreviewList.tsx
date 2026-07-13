@@ -35,9 +35,28 @@ interface PreviewListProps {
 	onRestoreSong: (id: string) => void;
 	/** IDs of songs that just entered the preview (recently added). */
 	newSongIds?: ReadonlySet<string>;
+	/**
+	 * Effective pinned ids (user picks + artist-derived). The tracklist leads
+	 * with pins, so the leading run of songs found in this set is labeled
+	 * "Your picks" and the rest "Matched for you" — purely typographic
+	 * ownership eyebrows, no per-row badges.
+	 */
+	pinnedSongIds?: readonly string[];
 	/** Shared "one preview at a time" coordinator; see CreatePlaylistScreen.
 	 *  Omitted → rows fall back to plain static covers (no play affordance). */
 	playback?: SingleActivePlayback;
+}
+
+function SectionEyebrow({ label, count }: { label: string; count: number }) {
+	return (
+		<div
+			className="theme-text-muted pt-1 pb-2 text-[11px] tracking-[0.2em] uppercase"
+			style={{ fontFamily: fonts.body }}
+		>
+			{label} <span aria-hidden="true">·</span>{" "}
+			<span className="tabular-nums">{count}</span>
+		</div>
+	);
 }
 
 export function PreviewList({
@@ -46,10 +65,26 @@ export function PreviewList({
 	onRemoveSong,
 	onRestoreSong,
 	newSongIds,
+	pinnedSongIds,
 	playback,
 }: PreviewListProps) {
 	const songCount = songs.length;
 	const durationHint = approximateDuration(songCount);
+
+	// The engine composes the tracklist pins-first, so the pinned block is the
+	// leading run of songs whose id is in the pinned set — counting the run
+	// (rather than set membership across the whole list) keeps the split honest
+	// even if a stale pin id lingers in the set after the engine dropped it.
+	const pinnedSet = new Set(pinnedSongIds ?? []);
+	let pinnedCount = 0;
+	while (pinnedCount < songs.length) {
+		const song = songs[pinnedCount];
+		if (!song || !pinnedSet.has(song.id)) break;
+		pinnedCount++;
+	}
+	// Eyebrows only appear when there's ownership to disambiguate: a mixed list
+	// of picks + engine fill. An all-pins or all-fill list keeps the plain look.
+	const showEyebrows = pinnedCount > 0 && pinnedCount < songs.length;
 
 	// Only announce count changes after the initial mount — avoid reading out
 	// the full count on page load. The live region is always in the DOM but
@@ -140,10 +175,35 @@ export function PreviewList({
 				</span>
 			</div>
 
-			{/* Song rows — AnimatePresence manages enter/exit per row */}
+			{/* Song rows — AnimatePresence manages enter/exit per row. The section
+			    eyebrows live inside the same list (keyed, non-motion children) so
+			    row exit animations keep working across the pinned/fill boundary. */}
 			<ul aria-label="Preview playlist songs" className="flex flex-col">
 				<AnimatePresence initial={false}>
-					{songs.map((song) => (
+					{showEyebrows && (
+						<li key="__eyebrow-picks" style={{ listStyle: "none" }}>
+							<SectionEyebrow label="Your picks" count={pinnedCount} />
+						</li>
+					)}
+					{songs.slice(0, pinnedCount).map((song) => (
+						<li key={song.id} style={{ listStyle: "none" }}>
+							<PreviewSongRow
+								song={song}
+								onRemove={() => handleRemove(song)}
+								isNew={newSongIds?.has(song.id) ?? false}
+								playback={playback}
+							/>
+						</li>
+					))}
+					{showEyebrows && (
+						<li key="__eyebrow-fill" style={{ listStyle: "none" }}>
+							<SectionEyebrow
+								label="Matched for you"
+								count={songs.length - pinnedCount}
+							/>
+						</li>
+					)}
+					{songs.slice(pinnedCount).map((song) => (
 						<li key={song.id} style={{ listStyle: "none" }}>
 							<PreviewSongRow
 								song={song}

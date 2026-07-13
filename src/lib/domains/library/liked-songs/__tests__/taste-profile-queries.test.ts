@@ -12,7 +12,6 @@ const {
 	getTopArtists,
 	getLikedWindowAggregates,
 	getAccountReleaseYearAggregates,
-	getLikedSongIdsByArtist,
 	rollUpDecades,
 } = await import("../taste-profile-queries");
 
@@ -190,44 +189,6 @@ describe("getAccountReleaseYearAggregates", () => {
 
 		expect(
 			Result.isError(await getAccountReleaseYearAggregates("acct-1")),
-		).toBe(true);
-	});
-});
-
-describe("getLikedSongIdsByArtist", () => {
-	beforeEach(() => vi.clearAllMocks());
-
-	it("maps rows to a plain id array and passes account id + artist", async () => {
-		mockRpc.mockResolvedValue({
-			data: [{ song_id: "song-a" }, { song_id: "song-b" }],
-			error: null,
-		});
-
-		const result = await getLikedSongIdsByArtist("acct-1", "Clairo");
-
-		expect(result).toEqual(Result.ok(["song-a", "song-b"]));
-		expect(mockRpc).toHaveBeenCalledWith(
-			"get_account_liked_song_ids_by_artist",
-			{ p_account_id: "acct-1", p_artist: "Clairo" },
-		);
-	});
-
-	it("returns an empty array when the RPC yields null data", async () => {
-		mockRpc.mockResolvedValue({ data: null, error: null });
-
-		expect(await getLikedSongIdsByArtist("acct-1", "Clairo")).toEqual(
-			Result.ok([]),
-		);
-	});
-
-	it("returns a DatabaseError when the RPC fails", async () => {
-		mockRpc.mockResolvedValue({
-			data: null,
-			error: { code: "57014", message: "canceling statement" },
-		});
-
-		expect(
-			Result.isError(await getLikedSongIdsByArtist("acct-1", "Clairo")),
 		).toBe(true);
 	});
 });

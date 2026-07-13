@@ -24,8 +24,8 @@ import {
 } from "@/lib/extension/browser-target";
 import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
-import { getLikedSongIdsByArtist } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
+import { ArtistConfig } from "./config/ArtistConfig";
 import { FiltersConfig } from "./config/FiltersConfig";
 import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
@@ -65,6 +65,10 @@ export function CreatePlaylistScreen({
 	// Beat 1 vs beat 2: null = the seed landing ("What are we making?"), set =
 	// the studio. The seed carries the chosen preset/typed vibe into the draft.
 	const [hasSeeded, setHasSeeded] = useState(false);
+
+	// The seed card's "+" (add another artist) commits the seed and lands here
+	// with the artist search focused, ready for artist #2.
+	const [focusArtistSearch, setFocusArtistSearch] = useState(false);
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
@@ -155,11 +159,9 @@ export function CreatePlaylistScreen({
 	// gate allows it — templates are structured and never carry intent); "from
 	// scratch" just enters. Genres, match-filters (decade → releaseYear, window →
 	// likedAt), and intent flow into the live draft so the preview reflects the
-	// seed immediately. An artist seed carries no config filter — instead its name
-	// resolves to the account's liked songs by that artist, pinned so the preview
-	// opens on them. The lookup is fire-and-forget after entering the studio: it
-	// only shifts pins, so a slow/failed resolve just delays (or skips) the pins
-	// rather than blocking the studio.
+	// seed immediately. An artist seed carries no config filter — the name enters
+	// the draft's artist selection, whose filter-aware song resolution runs as a
+	// query with a chip-level pending state in ArtistConfig (no fire-and-forget).
 	const handleSeed = useCallback(
 		(preset: PresetVM | null, intentText: string) => {
 			if (preset?.label) setName(preset.label);
@@ -173,19 +175,17 @@ export function CreatePlaylistScreen({
 			if (isIntentEligible && nextIntent) draft.setIntent(nextIntent);
 			setHasSeeded(true);
 			if (preset?.pinArtist) {
-				void getLikedSongIdsByArtist({ data: { artist: preset.pinArtist } })
-					.then(({ songIds }) => draft.pinSongs(songIds))
-					.catch(() => {
-						// Non-fatal: the studio is already open on the default preview;
-						// a failed pin resolve just means no artist songs are pre-pinned.
-					});
+				draft.addArtist(preset.pinArtist);
+			}
+			if (preset?.focusArtistSearch) {
+				setFocusArtistSearch(true);
 			}
 		},
 		[
 			draft.setGenrePills,
 			draft.setMatchFilters,
 			draft.setIntent,
-			draft.pinSongs,
+			draft.addArtist,
 			isIntentEligible,
 		],
 	);
@@ -328,6 +328,14 @@ export function CreatePlaylistScreen({
 						value={draft.config.genrePills}
 						onChange={draft.setGenrePills}
 					/>
+					<ArtistConfig
+						selections={draft.artistSelections}
+						onAddArtist={draft.addArtist}
+						onToggleArtist={draft.toggleArtist}
+						onRemoveArtist={draft.removeArtist}
+						onRestoreArtist={draft.restoreArtist}
+						autoFocusSearch={focusArtistSearch}
+					/>
 					<FiltersConfig
 						accountId={accountId}
 						value={draft.config.matchFilters}
@@ -350,12 +358,16 @@ export function CreatePlaylistScreen({
 									Preview
 								</h2>
 								<div className="theme-border-color h-px w-20 border-t" />
+								{/* Selected count and filter-eligible count are separate facts:
+								    a manual pin outside the filters is valid, so "N of M" phrasing
+								    could read "11 of 10 eligible" and look like a bug. */}
 								{draft.totalEligible > 0 && (
 									<span
 										className="theme-text-muted text-xs tabular-nums"
 										style={{ fontFamily: fonts.body }}
 									>
-										{draft.tracklist.length} of {draft.totalEligible} eligible
+										{draft.tracklist.length} selected · {draft.totalEligible}{" "}
+										match filters
 									</span>
 								)}
 							</div>
@@ -380,6 +392,7 @@ export function CreatePlaylistScreen({
 								onRemoveSong={draft.removeSong}
 								onRestoreSong={draft.restoreSong}
 								newSongIds={newSongIds}
+								pinnedSongIds={draft.effectivePinnedSongIds}
 								playback={playback}
 							/>
 						)}

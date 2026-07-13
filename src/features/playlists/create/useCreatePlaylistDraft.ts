@@ -14,13 +14,15 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { allocateArtistPins } from "@/lib/domains/playlists/artist-allocation";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
 import type { DraftConfig } from "./queries";
 import {
+	artistSongResolutionQueryOptions,
 	DEFAULT_DRAFT_CONFIG,
 	playlistDraftPreviewQueryOptions,
 } from "./queries";
@@ -35,8 +37,24 @@ export interface CreatePlaylistDraftConfig {
 }
 
 export interface CreatePlaylistDraftSelection {
+	/** MANUAL pins only — songs the user hand-added. Artist-derived pins are
+	 *  computed from artistSelections at query-key time and never stored here,
+	 *  so toggling/removing an artist can't disturb manual pins by construction. */
 	pinnedSongIds: string[];
 	excludedSongIds: string[];
+}
+
+/** One selected artist in the studio's multi-artist "Around" selection. */
+export interface ArtistSelection {
+	name: string;
+	/** Disabled artists stay in the list (dimmed chip) but contribute no pins. */
+	enabled: boolean;
+}
+
+/** ArtistSelection enriched with its filter-aware resolution status. */
+export interface ArtistSelectionVM extends ArtistSelection {
+	/** Filter-aware pinnable song count; null while the resolution is pending. */
+	songCount: number | null;
 }
 
 export interface CreatePlaylistDraftActions {
@@ -49,11 +67,17 @@ export interface CreatePlaylistDraftActions {
 	/** Move a suggestion into pinnedSongIds; clears any previous exclusion. */
 	addSong: (id: string) => void;
 	/**
-	 * Pin many songs at once (clearing any prior exclusion), preserving their
-	 * given order after existing pins. Backs the "Around [artist]" seed, which
-	 * pins the artist's liked songs so the preview opens on them.
+	 * Add an artist to the selection (enabled), or re-enable it if already
+	 * present. Song resolution is filter-aware and asynchronous — the chip shows
+	 * a pending state until the resolution query settles.
 	 */
-	pinSongs: (ids: string[]) => void;
+	addArtist: (name: string) => void;
+	/** Flip an artist's enabled state; disabled artists contribute no pins. */
+	toggleArtist: (name: string) => void;
+	/** Drop the artist from the selection entirely (chip ✕, undo via restoreArtist). */
+	removeArtist: (name: string) => void;
+	/** Re-insert a removed artist at its prior position — the Undo toast action. */
+	restoreArtist: (selection: ArtistSelection, index: number) => void;
 	/**
 	 * Reverse a remove without force-pinning the song.
 	 * Removes the song from excludedSongIds so the preview engine can include it
@@ -89,6 +113,15 @@ export interface CreatePlaylistDraftState {
 	 */
 	isConfigStale: boolean;
 	selection: CreatePlaylistDraftSelection;
+	/** Selected artists (chips), in add order, with filter-aware song counts. */
+	artistSelections: ArtistSelectionVM[];
+	/** True while the artist song resolution query is in flight. */
+	isResolvingArtists: boolean;
+	/**
+	 * The deduplicated, ordered union actually sent as pins: balanced artist
+	 * allocation first, then manual pins. What the tracklist's pinned block is.
+	 */
+	effectivePinnedSongIds: string[];
 	/** Songs currently in the draft (pins first, then ranked fill), ≤ maxSongs. */
 	tracklist: SongVM[];
 	suggestions: SongVM[];
@@ -133,6 +166,14 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		excludedSongIds: DEFAULT_DRAFT_CONFIG.excludedSongIds,
 	});
 
+	// The multi-artist "Around" selection. Ephemeral draft state: only names +
+	// enabled flags live here; the filter-aware song ids come from the
+	// resolution query below, so a filter change re-resolves them without any
+	// imperative bookkeeping.
+	const [artistSelections, setArtistSelections] = useState<ArtistSelection[]>(
+		[],
+	);
+
 	// Pages the suggestions window deeper (see DraftConfig.suggestionsOffset).
 	// Reset to 0 whenever config changes — the ranking itself shifted, so an old
 	// offset would point at an arbitrary, no-longer-meaningful slice. Selection
@@ -159,6 +200,63 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		setSuggestionsOffset(0);
 	}, [debouncedConfig]);
 
+	// Resolve every selected artist (enabled AND disabled — dimmed chips still
+	// show honest counts) against the DEBOUNCED filters, matching the preview's
+	// own filter timing so allocation never mixes filter generations.
+	const artistNames = useMemo(
+		() => artistSelections.map((a) => a.name),
+		[artistSelections],
+	);
+	const artistResolution = useQuery(
+		artistSongResolutionQueryOptions(artistNames, debouncedConfig.matchFilters),
+	);
+	const resolvedSongIdsByArtist = useMemo(() => {
+		const map = new Map<string, string[]>();
+		for (const entry of artistResolution.data?.artists ?? []) {
+			map.set(entry.name, entry.songIds);
+		}
+		return map;
+	}, [artistResolution.data]);
+
+	// Balanced allocation: manual pins are commitments and come off the top of
+	// the budget; the enabled artists split the rest evenly (with redistribution
+	// + interleave inside the allocator). Keyed off the DEBOUNCED maxSongs so a
+	// slider mid-drag doesn't thrash the allocation.
+	const manualPinnedSongIds = selection.pinnedSongIds;
+	const artistPinIds = useMemo(() => {
+		const pools = artistSelections
+			.filter((a) => a.enabled)
+			.map((a) => ({
+				name: a.name,
+				songIds: resolvedSongIdsByArtist.get(a.name) ?? [],
+			}));
+		const slots = Math.max(
+			0,
+			debouncedConfig.maxSongs - manualPinnedSongIds.length,
+		);
+		return allocateArtistPins(pools, slots);
+	}, [
+		artistSelections,
+		resolvedSongIdsByArtist,
+		debouncedConfig.maxSongs,
+		manualPinnedSongIds.length,
+	]);
+
+	// The effective ordered union: artist allocation first, manual pins after,
+	// deduplicated, and clamped to the schema bound. Derived at query-key
+	// assembly time and never stored merged — provenance stays explicit.
+	const effectivePinnedSongIds = useMemo(() => {
+		const seen = new Set<string>();
+		const union: string[] = [];
+		for (const id of [...artistPinIds, ...manualPinnedSongIds]) {
+			if (!seen.has(id)) {
+				seen.add(id);
+				union.push(id);
+			}
+		}
+		return union.slice(0, 50);
+	}, [artistPinIds, manualPinnedSongIds]);
+
 	// The query key is the debounced config + live selection. Selection changes
 	// (add/remove) bypass the config debounce by depending directly on selection,
 	// giving instant visual feedback when the user pins or excludes songs.
@@ -167,7 +265,8 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		genrePills: debouncedConfig.genrePills,
 		matchFilters: debouncedConfig.matchFilters,
 		maxSongs: debouncedConfig.maxSongs,
-		pinnedSongIds: selection.pinnedSongIds,
+		pinnedSongIds: effectivePinnedSongIds,
+		manualPinnedSongIds: manualPinnedSongIds.slice(0, 50),
 		excludedSongIds: selection.excludedSongIds,
 		suggestionsOffset,
 	};
@@ -217,26 +316,41 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		}));
 	}, []);
 
-	const pinSongs = useCallback((ids: string[]) => {
-		if (ids.length === 0) return;
-		setSelection((prev) => {
-			const pinnedSongIds = [...prev.pinnedSongIds];
-			const seen = new Set(pinnedSongIds);
-			for (const id of ids) {
-				if (!seen.has(id)) {
-					seen.add(id);
-					pinnedSongIds.push(id);
-				}
+	const addArtist = useCallback((name: string) => {
+		setArtistSelections((prev) => {
+			const existing = prev.find((a) => a.name === name);
+			if (existing) {
+				// Search unifies "add" and "activate": adding an already-present
+				// artist re-enables it rather than duplicating the chip.
+				return existing.enabled
+					? prev
+					: prev.map((a) => (a.name === name ? { ...a, enabled: true } : a));
 			}
-			const excludedSet = new Set(ids);
-			return {
-				pinnedSongIds,
-				excludedSongIds: prev.excludedSongIds.filter(
-					(eid) => !excludedSet.has(eid),
-				),
-			};
+			return [...prev, { name, enabled: true }];
 		});
 	}, []);
+
+	const toggleArtist = useCallback((name: string) => {
+		setArtistSelections((prev) =>
+			prev.map((a) => (a.name === name ? { ...a, enabled: !a.enabled } : a)),
+		);
+	}, []);
+
+	const removeArtist = useCallback((name: string) => {
+		setArtistSelections((prev) => prev.filter((a) => a.name !== name));
+	}, []);
+
+	const restoreArtist = useCallback(
+		(restored: ArtistSelection, index: number) => {
+			setArtistSelections((prev) => {
+				if (prev.some((a) => a.name === restored.name)) return prev;
+				const next = [...prev];
+				next.splice(Math.min(index, next.length), 0, restored);
+				return next;
+			});
+		},
+		[],
+	);
 
 	const restoreSong = useCallback((id: string) => {
 		setSelection((prev) => ({
@@ -265,14 +379,32 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 			pinnedSongIds: [],
 			excludedSongIds: [],
 		});
+		setArtistSelections([]);
 		setSuggestionsOffset(0);
 	}, []);
+
+	// Chip VMs: count is null (pending) until the resolution for the CURRENT
+	// filter generation has landed; isFetching covers the re-resolve window
+	// after a filter change, when cached data would otherwise show stale counts.
+	const artistSelectionVMs: ArtistSelectionVM[] = useMemo(
+		() =>
+			artistSelections.map((a) => ({
+				...a,
+				songCount: artistResolution.isFetching
+					? null
+					: (resolvedSongIdsByArtist.get(a.name)?.length ?? null),
+			})),
+		[artistSelections, resolvedSongIdsByArtist, artistResolution.isFetching],
+	);
 
 	return {
 		config,
 		committedConfig: debouncedConfig,
 		isConfigStale,
 		selection,
+		artistSelections: artistSelectionVMs,
+		isResolvingArtists: artistResolution.isFetching,
+		effectivePinnedSongIds,
 		tracklist: result.tracklist,
 		suggestions: result.suggestions,
 		totalEligible: result.totalEligible,
@@ -286,7 +418,10 @@ export function useCreatePlaylistDraft(): UseCreatePlaylistDraftResult {
 		setMaxSongs,
 		removeSong,
 		addSong,
-		pinSongs,
+		addArtist,
+		toggleArtist,
+		removeArtist,
+		restoreArtist,
 		restoreSong,
 		dismissSuggestion,
 		refreshSuggestions,

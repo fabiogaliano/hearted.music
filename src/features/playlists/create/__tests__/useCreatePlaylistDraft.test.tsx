@@ -21,6 +21,14 @@ vi.mock("@/lib/server/playlist-draft.functions", () => ({
 		previewPlaylistDraftMock(...args),
 }));
 
+const resolveLikedArtistSongsMock = vi.fn();
+
+vi.mock("@/lib/server/playlists.functions", () => ({
+	resolveLikedArtistSongs: (...args: unknown[]) =>
+		resolveLikedArtistSongsMock(...args),
+	searchLikedArtists: vi.fn(),
+}));
+
 import { useCreatePlaylistDraft } from "../useCreatePlaylistDraft";
 
 const EMPTY_RESULT: PlaylistDraftPreview = {
@@ -77,5 +85,158 @@ describe("useCreatePlaylistDraft — refreshSuggestions paging", () => {
 				}),
 			}),
 		);
+	});
+});
+
+describe("useCreatePlaylistDraft — artist selections", () => {
+	beforeEach(() => {
+		previewPlaylistDraftMock.mockReset();
+		previewPlaylistDraftMock.mockResolvedValue(EMPTY_RESULT);
+		resolveLikedArtistSongsMock.mockReset();
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+	});
+
+	it("addArtist resolves filter-aware song ids and pins the allocation", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "Radiohead", songIds: ["r1", "r2"] }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("Radiohead");
+		});
+
+		await waitFor(() =>
+			expect(previewPlaylistDraftMock).toHaveBeenLastCalledWith({
+				data: expect.objectContaining({
+					pinnedSongIds: ["r1", "r2"],
+					manualPinnedSongIds: [],
+				}),
+			}),
+		);
+		expect(resolveLikedArtistSongsMock).toHaveBeenLastCalledWith({
+			data: expect.objectContaining({ artists: ["Radiohead"] }),
+		});
+		await waitFor(() =>
+			expect(result.current.artistSelections).toEqual([
+				{ name: "Radiohead", enabled: true, songCount: 2 },
+			]),
+		);
+	});
+
+	it("interleaves two artists' pins round-robin", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [
+				{ name: "A", songIds: ["a1", "a2"] },
+				{ name: "B", songIds: ["b1", "b2"] },
+			],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("A");
+			result.current.addArtist("B");
+		});
+
+		await waitFor(() =>
+			expect(previewPlaylistDraftMock).toHaveBeenLastCalledWith({
+				data: expect.objectContaining({
+					pinnedSongIds: ["a1", "b1", "a2", "b2"],
+				}),
+			}),
+		);
+	});
+
+	it("toggleArtist off removes its pins without touching manual pins", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "A", songIds: ["a1"] }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("A");
+			result.current.addSong("m1");
+		});
+		await waitFor(() =>
+			expect(previewPlaylistDraftMock).toHaveBeenLastCalledWith({
+				data: expect.objectContaining({ pinnedSongIds: ["a1", "m1"] }),
+			}),
+		);
+
+		act(() => {
+			result.current.toggleArtist("A");
+		});
+		// Assert on the derived union, not the mock: the ["m1"]-only query key was
+		// already cached from the intermediate state, so no new fetch fires.
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(["m1"]),
+		);
+		expect(result.current.selection.pinnedSongIds).toEqual(["m1"]);
+		// The disabled artist stays in the list, dimmed, ready to re-enable.
+		expect(result.current.artistSelections[0]).toMatchObject({
+			name: "A",
+			enabled: false,
+		});
+	});
+
+	it("manual pins come off the top of the artist budget (maxSongs honored)", async () => {
+		const manyIds = Array.from({ length: 30 }, (_, i) => `a${i + 1}`);
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "A", songIds: manyIds }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addSong("m1");
+			result.current.addArtist("A");
+		});
+
+		// Default maxSongs 15: 1 manual commitment + 14 artist slots.
+		await waitFor(() => {
+			const call = previewPlaylistDraftMock.mock.lastCall?.[0] as {
+				data: { pinnedSongIds: string[] };
+			};
+			expect(call.data.pinnedSongIds).toHaveLength(15);
+			expect(call.data.pinnedSongIds.at(-1)).toBe("m1");
+		});
+	});
+
+	it("removeArtist drops the chip; restoreArtist re-inserts at its prior position", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("A");
+			result.current.addArtist("B");
+			result.current.addArtist("C");
+		});
+		act(() => {
+			result.current.removeArtist("B");
+		});
+		expect(result.current.artistSelections.map((a) => a.name)).toEqual([
+			"A",
+			"C",
+		]);
+
+		act(() => {
+			result.current.restoreArtist({ name: "B", enabled: true }, 1);
+		});
+		expect(result.current.artistSelections.map((a) => a.name)).toEqual([
+			"A",
+			"B",
+			"C",
+		]);
 	});
 });

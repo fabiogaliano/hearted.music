@@ -158,33 +158,6 @@ export async function getAccountReleaseYearAggregates(
 }
 
 /**
- * Song ids of an account's still-liked songs credited to one artist, most
- * recently liked first. Backs the "Around [artist]" seed template: the studio
- * pins these so the preview opens on the artist's songs. The artist NAME (not a
- * DB-derived id set) is user-chosen from their own profile, and the array
- * membership predicate lives in the RPC, so no id set re-enters as a URL filter.
- */
-export async function getLikedSongIdsByArtist(
-	accountId: string,
-	artist: string,
-): Promise<Result<string[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-
-	const { data, error } = await supabase.rpc(
-		"get_account_liked_song_ids_by_artist",
-		{ p_account_id: accountId, p_artist: artist },
-	);
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	return Result.ok((data ?? []).map((row) => row.song_id));
-}
-
-/**
  * Pure fold: collapse per-year release counts into per-decade buckets
  * (`Math.floor(year / 10) * 10`), most-populous decade first. `from` is the
  * round decade start; `to` is the decade end clamped to the newest liked year

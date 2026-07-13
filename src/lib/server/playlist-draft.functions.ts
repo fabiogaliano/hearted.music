@@ -82,6 +82,12 @@ const PreviewPlaylistDraftSchema = z.object({
 	maxSongs: z.number().int().min(5).max(50),
 	/** Song IDs the user explicitly added — always appear first in preview. */
 	pinnedSongIds: z.array(z.uuid()).max(50),
+	/**
+	 * The hand-picked, filter-exempt subset of pinnedSongIds. The workflow
+	 * intersects it with pinnedSongIds before use, so ids outside the effective
+	 * union grant no exemption. Defaulted for older clients still in flight.
+	 */
+	manualPinnedSongIds: z.array(z.uuid()).max(50).default([]),
 	/** Song IDs the user explicitly removed — never appear in results. */
 	excludedSongIds: z.array(z.uuid()).max(500),
 	/**

@@ -32,6 +32,7 @@ import {
 	ArrowRightIcon,
 	ArrowUpRightIcon,
 	LockSimpleIcon,
+	PlusIcon,
 } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -242,6 +243,21 @@ function TemplateCard({
 								/>
 							</em>
 						),
+					)}
+					{/* Add-artist affordance on the artist card: it does NOT try to fit
+					    artist #2 inline — it commits the seed (artist #1 selected +
+					    pinned) and lands in the studio with the artist search focused.
+					    z-10 lifts it above the card's stretched commit overlay, same as
+					    the blanks. */}
+					{template.facet === "artist" && (
+						<button
+							type="button"
+							onClick={() => onUse({ ...resolved, focusArtistSearch: true })}
+							aria-label={`Start from ${resolved.label} and add another artist`}
+							className="theme-text-muted relative z-10 ml-1.5 inline-flex cursor-pointer items-center rounded-full p-0.5 align-middle transition-colors duration-150 after:absolute after:-inset-2 after:content-[''] hover:text-(--t-primary) focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+						>
+							<PlusIcon size={14} weight="regular" aria-hidden />
+						</button>
 					)}
 				</span>
 				<span

@@ -35,6 +35,14 @@ export interface PreviewPlaylistDraftInput {
 	maxSongs: number;
 	/** Song IDs the user explicitly added — always appear first in the tracklist. */
 	pinnedSongIds: string[];
+	/**
+	 * The hand-picked subset of pinnedSongIds — filter-exempt commitments.
+	 * Match filters never evict these (exclusion still wins); they are scored
+	 * against the filtered profile without reshaping it. Provenance is carried
+	 * explicitly rather than inferred from the union: artist-derived pins stay
+	 * filter-subject, manual pins do not.
+	 */
+	manualPinnedSongIds: string[];
 	/** Song IDs the user explicitly removed — never appear in results. */
 	excludedSongIds: string[];
 	/**
@@ -76,6 +84,31 @@ export async function runPreviewPlaylistDraft(
 		nowMs,
 	);
 
+	// Split filter semantics: manual pins are filter-exempt commitments. Any
+	// still-liked Phase-1 candidate the user hand-picked joins the set sent to
+	// ranking even when the match filters would drop it — but the profile and
+	// totalEligible below are built from eligibleCandidates only, so a manual
+	// exception is scored against the filtered profile without reshaping it.
+	// Intersecting with pinnedSongIds keeps provenance honest: a manual id the
+	// client failed to also carry in the effective union grants no exemption.
+	// Manual ids that are no longer liked simply stay absent from the ranking
+	// and surface via droppedPinnedSongIds in composePlaylistPreview.
+	const pinnedSet = new Set(data.pinnedSongIds);
+	const manualSet = new Set(
+		data.manualPinnedSongIds.filter((id) => pinnedSet.has(id)),
+	);
+	const eligibleIds = new Set(eligibleCandidates.map((c) => c.song.id));
+	const manualExtras =
+		manualSet.size > 0
+			? candidates.filter(
+					(c) => manualSet.has(c.song.id) && !eligibleIds.has(c.song.id),
+				)
+			: [];
+	const rankableCandidates =
+		manualExtras.length > 0
+			? [...eligibleCandidates, ...manualExtras]
+			: eligibleCandidates;
+
 	// On the premium/intent path, embed the intent phrase as a query-role
 	// vector so semantic ranking is active. We also fetch any song embeddings
 	// that exist for the eligible candidates — some users may have had songs
@@ -93,7 +126,7 @@ export async function runPreviewPlaylistDraft(
 		const embeddingServiceResult = EmbeddingService.create();
 		if (Result.isOk(embeddingServiceResult)) {
 			const embeddingService = embeddingServiceResult.value;
-			const candidateIds = eligibleCandidates.map((c) => c.song.id);
+			const candidateIds = rankableCandidates.map((c) => c.song.id);
 
 			// Fetch intent embedding + any available song embeddings in parallel.
 			const [embeddingResult, songEmbeddingsResult] = await Promise.all([
@@ -148,12 +181,15 @@ export async function runPreviewPlaylistDraft(
 	);
 	const intentApplied = intentEmbedding !== undefined;
 
-	// Rank all eligible candidates. When intent was applied, the profile
-	// carries the query embedding and songEmbeddingsMap carries per-song vectors
-	// for candidates that have them; songs without embeddings fall back to
-	// adaptive-weight redistribution (hasEmbedding=false path in the scorer).
+	// Rank the eligible candidates plus any out-of-filter manual pins. When
+	// intent was applied, the profile carries the query embedding and
+	// songEmbeddingsMap carries per-song vectors for candidates that have them;
+	// songs without embeddings fall back to adaptive-weight redistribution
+	// (hasEmbedding=false path in the scorer). Manual extras can only surface as
+	// pins in composePlaylistPreview — they're in pinnedSongIds by construction,
+	// so they never leak into the ranked fill or suggestions.
 	const ranking = await rankCandidates(
-		eligibleCandidates,
+		rankableCandidates,
 		profile,
 		songEmbeddingsMap,
 	);

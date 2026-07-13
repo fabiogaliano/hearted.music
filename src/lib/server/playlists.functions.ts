@@ -15,7 +15,6 @@ import {
 	getAccountReleaseYearAggregates,
 	getLikedWindowAggregates,
 	getTopArtists,
-	getLikedSongIdsByArtist as queryLikedSongIdsByArtist,
 	rollUpDecades,
 	type TasteProfile,
 } from "@/lib/domains/library/liked-songs/taste-profile-queries";
@@ -34,6 +33,7 @@ import {
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
+import { loadPhase1Candidates } from "@/lib/domains/playlists/candidate-loader";
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import {
 	isLanguageCatalogCode,
@@ -41,6 +41,7 @@ import {
 	SUPPORTED_LANGUAGE_CODES,
 } from "@/lib/domains/taste/match-filters/languages";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
+import { passesAllMatchFilters } from "@/lib/domains/taste/match-filters/predicates";
 import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type {
 	PlaylistMatchFilterOptions,
@@ -1324,31 +1325,109 @@ export const getTasteProfile = createServerFn({ method: "GET" })
 	});
 
 /**
- * Song ids of the account's still-liked songs credited to one artist — the pin
- * set behind the "Around [artist]" seed template. Resolved at seed-commit time
- * (not baked into the taste profile) so the profile payload stays lean and the
- * lookup only runs when a user actually picks an artist. Degrades to an empty
- * set on failure: the studio still opens, just without the artist's pins.
+ * The account's liked artists (name + like count), filtered by a query string
+ * and ranked by like count — the type-to-search source for the studio's
+ * ArtistConfig panel. Same aggregate that feeds the taste profile's topArtists,
+ * without the seed stage's small cap. The text match runs here rather than in
+ * SQL so the existing RPC is reused as-is; the aggregate is small (one row per
+ * distinct artist) and already ordered by like count. Degrades to an empty
+ * list on failure — search simply finds nothing rather than breaking the panel.
  */
-const LikedSongsByArtistSchema = z.object({
-	artist: z.string().min(1).max(400),
+const SearchLikedArtistsSchema = z.object({
+	query: z.string().max(400).default(""),
 });
 
-export const getLikedSongIdsByArtist = createServerFn({ method: "GET" })
+// Generous ceiling on distinct artists considered by the panel's search; keeps
+// the RPC bounded without a realistic library ever hitting it.
+const LIKED_ARTIST_SEARCH_POOL = 1000;
+
+export const searchLikedArtists = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongsByArtistSchema.parse(data))
-	.handler(async ({ data, context }): Promise<{ songIds: string[] }> => {
-		const { accountId } = context.session;
+	.inputValidator((data) => SearchLikedArtistsSchema.parse(data))
+	.handler(
+		async ({
+			data,
+			context,
+		}): Promise<{ artists: { name: string; count: number }[] }> => {
+			const { accountId } = context.session;
 
-		const result = await queryLikedSongIdsByArtist(accountId, data.artist);
-		if (Result.isError(result)) {
-			captureServerError(result.error, {
-				area: "playlists",
-				operation: "get_liked_song_ids_by_artist",
-				accountId,
-			});
-			return { songIds: [] };
-		}
+			const result = await getTopArtists(accountId, LIKED_ARTIST_SEARCH_POOL);
+			if (Result.isError(result)) {
+				captureServerError(result.error, {
+					area: "playlists",
+					operation: "search_liked_artists",
+					accountId,
+				});
+				return { artists: [] };
+			}
 
-		return { songIds: result.value };
-	});
+			const query = data.query.trim().toLowerCase();
+			const artists =
+				query.length === 0
+					? result.value
+					: result.value.filter((a) => a.name.toLowerCase().includes(query));
+			return { artists };
+		},
+	);
+
+/**
+ * Filter-aware resolution of the studio's selected artists into pinnable song
+ * ids: each artist's still-liked, Phase-1 enriched songs that pass the given
+ * match filters, most-recently-liked first (the candidate loader's order).
+ *
+ * Resolving WITH the filters applied — and against the same Phase-1 candidate
+ * population the preview engine ranks — makes chip counts and the balanced
+ * allocation honest by construction: an artist pin can only reference a song
+ * the engine could actually place. Re-invoked by the client whenever the
+ * filters change. Artist-derived pins stay filter-subject (unlike manual
+ * pins), which is the split-semantics contract.
+ */
+const ResolveLikedArtistSongsSchema = z.object({
+	artists: z.array(z.string().min(1).max(400)).min(1).max(100),
+	matchFilters: z.unknown(),
+});
+
+export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => ResolveLikedArtistSongsSchema.parse(data))
+	.handler(
+		async ({
+			data,
+			context,
+		}): Promise<{ artists: { name: string; songIds: string[] }[] }> => {
+			const { accountId } = context.session;
+
+			const filtersResult = parseSaveMatchFilters(data.matchFilters);
+			if (Result.isError(filtersResult)) {
+				throw new Error(`Invalid match filters: ${filtersResult.error}`);
+			}
+			const matchFilters = filtersResult.value;
+
+			const candidates = await loadPhase1Candidates(accountId);
+			const nowMs = Date.now();
+
+			// Group eligible candidate ids under each requested artist. Candidates
+			// arrive most-recently-liked first, so each bucket inherits the recency
+			// order the balanced allocator expects. A song crediting several of the
+			// requested artists lands in every matching bucket; the allocator
+			// dedupes at take time.
+			const buckets = new Map<string, string[]>(
+				data.artists.map((name) => [name, []]),
+			);
+			for (const candidate of candidates) {
+				if (!passesAllMatchFilters(matchFilters, candidate.filterMeta, nowMs)) {
+					continue;
+				}
+				for (const artistName of candidate.song.artists) {
+					buckets.get(artistName)?.push(candidate.song.id);
+				}
+			}
+
+			return {
+				artists: data.artists.map((name) => ({
+					name,
+					songIds: buckets.get(name) ?? [],
+				})),
+			};
+		},
+	);

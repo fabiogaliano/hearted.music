@@ -100,4 +100,10 @@ export interface PresetVM {
 	 * [artist]" opens on those songs rather than the generic library top.
 	 */
 	pinArtist?: string;
+	/**
+	 * Land in the studio with the artist search focused, ready for artist #2 —
+	 * set by the seed card's "+" (add-artist) affordance. The tiny card is not
+	 * the place to manage a list; past one artist the studio is home.
+	 */
+	focusArtistSearch?: boolean;
 }

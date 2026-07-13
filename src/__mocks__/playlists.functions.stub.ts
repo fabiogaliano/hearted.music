@@ -15,22 +15,18 @@ import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/t
 import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
 import type {
 	getAccountTopGenres as getAccountTopGenresReal,
-	getLikedSongIdsByArtist as getLikedSongIdsByArtistReal,
 	SavePlaylistMatchConfigInput,
 	SavePlaylistMatchConfigResult,
 	savePlaylistGenrePills as savePlaylistGenrePillsReal,
 	savePlaylistMatchIntent as savePlaylistMatchIntentReal,
 } from "@/lib/server/playlists.functions";
 
-// getAccountTopGenres/getLikedSongIdsByArtist/savePlaylistGenrePills/
-// savePlaylistMatchIntent don't export named result interfaces (their handlers
-// use inline return-type annotations), so their real shape is pulled through
-// the function's own type instead of a named type import.
+// getAccountTopGenres/savePlaylistGenrePills/savePlaylistMatchIntent don't
+// export named result interfaces (their handlers use inline return-type
+// annotations), so their real shape is pulled through the function's own type
+// instead of a named type import.
 type GetAccountTopGenresResult = Awaited<
 	ReturnType<typeof getAccountTopGenresReal>
->;
-type GetLikedSongIdsByArtistResult = Awaited<
-	ReturnType<typeof getLikedSongIdsByArtistReal>
 >;
 type SavePlaylistGenrePillsResult = Awaited<
 	ReturnType<typeof savePlaylistGenrePillsReal>
@@ -61,14 +57,6 @@ export function setSaveMatchConfigBehavior(next: SaveMatchConfigBehavior) {
 
 export async function getAccountTopGenres(): Promise<GetAccountTopGenresResult> {
 	return { genres: [...STATIC_TOP_GENRES] } satisfies GetAccountTopGenresResult;
-}
-
-// The "Around [artist]" seed resolves an artist name to pinned song ids here.
-// Stubbed empty: stories exercise the seed UI, not the real library lookup.
-export async function getLikedSongIdsByArtist(_args: {
-	data: { artist: string };
-}): Promise<GetLikedSongIdsByArtistResult> {
-	return { songIds: [] } satisfies GetLikedSongIdsByArtistResult;
 }
 
 export async function savePlaylistMatchConfig(args: {
@@ -149,4 +137,18 @@ export async function getPlaylistMatchFilterOptions(): Promise<never> {
 // only here to satisfy the import — it must never actually run in Ladle.
 export async function getTasteProfile(): Promise<never> {
 	throw new Error("getTasteProfile is not available in Ladle");
+}
+
+// Studio artist selection: search finds nothing and resolution yields empty
+// pools, so stories exercise the panel chrome without a library behind it.
+export async function searchLikedArtists(_args: {
+	data: { query: string };
+}): Promise<{ artists: { name: string; count: number }[] }> {
+	return { artists: [] };
+}
+
+export async function resolveLikedArtistSongs(_args: {
+	data: { artists: string[]; matchFilters: unknown };
+}): Promise<{ artists: { name: string; songIds: string[] }[] }> {
+	return { artists: [] };
 }

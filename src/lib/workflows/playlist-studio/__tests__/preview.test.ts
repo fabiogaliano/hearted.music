@@ -89,6 +89,7 @@ function baseInput(
 		matchFilters: { version: 1 as const },
 		maxSongs: 15,
 		pinnedSongIds: [],
+		manualPinnedSongIds: [],
 		excludedSongIds: [],
 		suggestionsOffset: 0,
 		...overrides,
@@ -261,6 +262,56 @@ describe("runPreviewPlaylistDraft", () => {
 			number[]
 		>;
 		expect(songEmbeddingsMap.get("b")).toEqual([4, 5, 6]);
+	});
+
+	it("out-of-filter manual pin is ranked but excluded from the profile and totalEligible", async () => {
+		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
+		const [a, b] = [makeCandidate("a"), makeCandidate("b")];
+		loadPhase1CandidatesMock.mockResolvedValue([a, b]);
+		// Filters drop "b" — but the user hand-picked it.
+		selectEligibleCandidatesMock.mockReturnValue([a]);
+
+		const result = await runPreviewPlaylistDraft(
+			fakeSupabase,
+			"acct-1",
+			baseInput({ pinnedSongIds: ["b"], manualPinnedSongIds: ["b"] }),
+		);
+
+		// Profile is built from the filtered set only; the manual exception
+		// re-enters just for ranking, so it gets a score without reshaping taste.
+		expect(buildDraftProfileMock.mock.calls[0][0]).toEqual([a]);
+		expect(rankCandidatesMock.mock.calls[0][0]).toEqual([a, b]);
+		expect(result.totalEligible).toBe(1);
+	});
+
+	it("manual id absent from pinnedSongIds grants no filter exemption", async () => {
+		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
+		const [a, b] = [makeCandidate("a"), makeCandidate("b")];
+		loadPhase1CandidatesMock.mockResolvedValue([a, b]);
+		selectEligibleCandidatesMock.mockReturnValue([a]);
+
+		await runPreviewPlaylistDraft(
+			fakeSupabase,
+			"acct-1",
+			baseInput({ pinnedSongIds: [], manualPinnedSongIds: ["b"] }),
+		);
+
+		expect(rankCandidatesMock.mock.calls[0][0]).toEqual([a]);
+	});
+
+	it("unliked manual pin never enters the ranking (dropped downstream by compose)", async () => {
+		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
+
+		await runPreviewPlaylistDraft(
+			fakeSupabase,
+			"acct-1",
+			baseInput({ pinnedSongIds: ["z"], manualPinnedSongIds: ["z"] }),
+		);
+
+		const rankedIds = (
+			rankCandidatesMock.mock.calls[0][0] as Phase1Candidate[]
+		).map((c) => c.song.id);
+		expect(rankedIds).toEqual(["a", "b"]);
 	});
 
 	it("song-embeddings fetch error with successful intent embedding: intentApplied stays true, map stays undefined", async () => {
