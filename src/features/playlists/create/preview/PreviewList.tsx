@@ -25,7 +25,6 @@ import type { SingleActivePlayback } from "@/features/playback/useSingleActivePl
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { fonts } from "@/lib/theme/fonts";
 import { approximateDuration } from "../MaxSongsSlider";
-import type { PinToggleOutcome } from "../useCreatePlaylistDraft";
 import { PreviewSongRow } from "./PreviewSongRow";
 
 interface PreviewListProps {
@@ -35,13 +34,13 @@ interface PreviewListProps {
 	/** Reverses a remove without force-pinning the song back in. */
 	onRestoreSong: (id: string) => void;
 	/**
-	 * Flip a row's pin. The draft module owns the routing (pin a matched row,
-	 * release a manual pin, exclude an artist-derived pick) and reports which
-	 * transition happened; this component only mirrors the remove feedback
-	 * (undo toast, playback cleanup) when the toggle turned into an exclusion.
+	 * Flip a row's pin. The draft module owns the policy (pin an unpinned row,
+	 * release a pinned one). Release is non-destructive — the song stays
+	 * eligible on merit — so no remove feedback is mirrored here; the undo
+	 * toast belongs to remove, the only banishing gesture.
 	 * Omitted → rows render without a pin toggle (isolated consumers, stories).
 	 */
-	onTogglePin?: (id: string) => PinToggleOutcome;
+	onTogglePin?: (id: string) => void;
 	/** IDs of songs that just entered the preview (recently added). */
 	newSongIds?: ReadonlySet<string>;
 	/**
@@ -99,25 +98,6 @@ export function PreviewList({
 			playback.deactivatePlayback();
 		}
 		onRemoveSong(song.id);
-		toast(`Removed ${song.name}`, {
-			action: {
-				label: "Undo",
-				onClick: () => onRestoreSong(song.id),
-			},
-		});
-	}
-
-	// The draft module routes the toggle (pin / release / exclude) and reports
-	// the transition. Only "excluded" needs feedback here: an artist-derived
-	// pick un-pinned must read exactly like a remove, so it mirrors
-	// handleRemove's undo toast and playback cleanup. (The draft has already
-	// applied the exclusion by the time this runs — both state updates land in
-	// the same event batch, so no render sees a stale active playback id.)
-	function handleTogglePin(song: SongVM) {
-		if (onTogglePin?.(song.id) !== "excluded") return;
-		if (playback?.activePlaybackId === song.id) {
-			playback.deactivatePlayback();
-		}
 		toast(`Removed ${song.name}`, {
 			action: {
 				label: "Undo",
@@ -190,7 +170,7 @@ export function PreviewList({
 								onRemove={() => handleRemove(song)}
 								isPinned={pinnedSet.has(song.id)}
 								onTogglePin={
-									onTogglePin ? () => handleTogglePin(song) : undefined
+									onTogglePin ? () => onTogglePin(song.id) : undefined
 								}
 								isNew={newSongIds?.has(song.id) ?? false}
 								playback={playback}

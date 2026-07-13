@@ -210,6 +210,37 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 	});
 
+	it("excluding an allocated song promotes the artist's next song instead of burning the slot", async () => {
+		const manyIds = Array.from({ length: 20 }, (_, i) => `a${i + 1}`);
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "A", songIds: manyIds }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		act(() => {
+			result.current.addArtist("A");
+		});
+		// Default maxSongs 15: allocation takes the first 15 of the pool.
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(
+				manyIds.slice(0, 15),
+			),
+		);
+
+		act(() => {
+			result.current.removeSong("a1");
+		});
+		// The excluded id leaves the pool entirely, so a16 fills the slot a1 held
+		// — the engine would drop a1 server-side, so keeping it would waste the slot.
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(
+				manyIds.slice(1, 16),
+			),
+		);
+	});
+
 	it("removeArtist drops the chip from the selection", async () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
 
@@ -236,26 +267,31 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
 		await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-		let outcome: string | undefined;
 		act(() => {
-			outcome = result.current.togglePin("song-1");
+			result.current.togglePin("song-1");
 		});
-		expect(outcome).toBe("pinned");
 		expect(result.current.selection.pinnedSongIds).toContain("song-1");
 
 		// Releasing drops the pin only — no exclusion, so the song can re-enter
 		// the tracklist on merit if the current config still selects it.
 		act(() => {
-			outcome = result.current.togglePin("song-1");
+			result.current.togglePin("song-1");
 		});
-		expect(outcome).toBe("released");
 		expect(result.current.selection.pinnedSongIds).not.toContain("song-1");
 		expect(result.current.selection.excludedSongIds).not.toContain("song-1");
+		expect(result.current.selection.releasedSongIds).toContain("song-1");
+
+		// Re-pinning clears the release — the stances are mutually exclusive.
+		act(() => {
+			result.current.togglePin("song-1");
+		});
+		expect(result.current.selection.pinnedSongIds).toContain("song-1");
+		expect(result.current.selection.releasedSongIds).not.toContain("song-1");
 	});
 
-	it("togglePin excludes an artist-derived pick (there is no unpinned-but-present state)", async () => {
+	it("togglePin releases an artist-derived pick and suppresses re-allocation, without excluding it", async () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({
-			artists: [{ name: "Radiohead", songIds: ["r1"] }],
+			artists: [{ name: "Radiohead", songIds: ["r1", "r2"] }],
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
@@ -265,16 +301,47 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 			result.current.addArtist("Radiohead");
 		});
 		await waitFor(() =>
-			expect(result.current.effectivePinnedSongIds).toContain("r1"),
+			expect(result.current.effectivePinnedSongIds).toEqual(["r1", "r2"]),
 		);
 
-		let outcome: string | undefined;
+		// The released id leaves the allocator's pool — it is NOT re-derived on
+		// the next allocation pass — but stays eligible on merit (no exclusion).
 		act(() => {
-			outcome = result.current.togglePin("r1");
+			result.current.togglePin("r1");
 		});
-		expect(outcome).toBe("excluded");
-		expect(result.current.selection.excludedSongIds).toContain("r1");
-		expect(result.current.selection.pinnedSongIds).not.toContain("r1");
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(["r2"]),
+		);
+		expect(result.current.selection.excludedSongIds).not.toContain("r1");
+		expect(result.current.selection.releasedSongIds).toContain("r1");
+	});
+
+	it("releasing a manual pin whose artist is anchored does not resurrect it via allocation", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "Radiohead", songIds: ["r1", "r2"] }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		// Manual pin first, then anchor the artist: the allocator must skip the
+		// manual pin (it already comes off the top of the budget), so the union
+		// carries each id exactly once — artist picks first, manual pins after.
+		act(() => {
+			result.current.addSong("r1");
+			result.current.addArtist("Radiohead");
+		});
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(["r2", "r1"]),
+		);
+
+		act(() => {
+			result.current.togglePin("r1");
+		});
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toEqual(["r2"]),
+		);
+		expect(result.current.selection.excludedSongIds).not.toContain("r1");
 	});
 });
 

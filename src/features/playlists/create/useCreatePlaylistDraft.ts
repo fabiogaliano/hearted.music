@@ -9,8 +9,8 @@
  *
  * removeSong: moves a preview song into excludedSongIds and drops it from
  *   pinnedSongIds (it was pinned, so clearing both is correct).
- * addSong: moves a suggestion into pinnedSongIds and removes it from
- *   excludedSongIds (in case the user had previously removed it).
+ * addSong: moves a suggestion into pinnedSongIds and clears it from
+ *   excludedSongIds and releasedSongIds (pinning overrides both stances).
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +57,13 @@ export interface CreatePlaylistDraftSelection {
 	 *  so toggling/removing an artist can't disturb manual pins by construction. */
 	pinnedSongIds: string[];
 	excludedSongIds: string[];
+	/**
+	 * Songs the user un-pinned. NOT exclusions — they stay eligible for the
+	 * ranked fill and suggestions — but the artist allocator skips them, so a
+	 * release can't be silently re-derived into a pin while its artist stays
+	 * anchored. Cleared per song by pinning again; never crosses the wire.
+	 */
+	releasedSongIds: string[];
 }
 
 /** One selected artist in the studio's multi-artist "Around" selection. */
@@ -72,9 +79,6 @@ export interface ArtistSelectionVM extends ArtistSelection {
 	songCount: number | null;
 }
 
-/** What a pin toggle did — the UI mirrors remove feedback on "excluded". */
-export type PinToggleOutcome = "pinned" | "released" | "excluded";
-
 export interface CreatePlaylistDraftActions {
 	setIntent: (intent: string | undefined) => void;
 	setGenrePills: (pills: string[]) => void;
@@ -85,16 +89,15 @@ export interface CreatePlaylistDraftActions {
 	/** Move a suggestion into pinnedSongIds; clears any previous exclusion. */
 	addSong: (id: string) => void;
 	/**
-	 * Flip a preview row's pin. The routing policy lives here, next to the
-	 * state it inspects: a matched row becomes a manual pin (a filter-exempt
-	 * commitment, same transition as addSong); a manual pin releases in place
-	 * (dropped from pinnedSongIds only, so it re-enters the tracklist on merit
-	 * if the current config still selects it); an artist-derived pick has no
-	 * "unpinned but present" state, so un-pinning it excludes it. The outcome is
-	 * returned so the UI can mirror remove feedback (undo toast, playback
-	 * cleanup) when a toggle turns into an exclusion.
+	 * Flip a preview row's pin between forced and neutral. An unpinned row
+	 * becomes a manual pin (same transition as addSong). A pinned row — manual
+	 * or artist-derived alike — releases: it leaves pinnedSongIds and joins
+	 * releasedSongIds, which the artist allocator skips, so the song re-enters
+	 * the tracklist or suggestions only on merit. Release is never an
+	 * exclusion; banishment stays with removeSong. (This reverses D3's
+	 * exclude-on-unpin — see docs/playlist-creation/pin-semantics-decisions.md.)
 	 */
-	togglePin: (id: string) => PinToggleOutcome;
+	togglePin: (id: string) => void;
 	/**
 	 * Add an artist to the selection (enabled), or re-enable it if already
 	 * present. Song resolution is asynchronous — the chip shows a pending state
@@ -214,6 +217,7 @@ export function useCreatePlaylistDraft(
 	const [selection, setSelection] = useState<CreatePlaylistDraftSelection>({
 		pinnedSongIds: DEFAULT_DRAFT_CONFIG.pinnedSongIds,
 		excludedSongIds: DEFAULT_DRAFT_CONFIG.excludedSongIds,
+		releasedSongIds: [],
 	});
 
 	// The multi-artist "Around" selection. Ephemeral draft state: only names +
@@ -275,11 +279,25 @@ export function useCreatePlaylistDraft(
 	// slider mid-drag doesn't thrash the allocation.
 	const manualPinnedSongIds = selection.pinnedSongIds;
 	const artistPinIds = useMemo(() => {
+		// Ids the allocator must not spend slots on. Excluded: the engine drops
+		// them server-side (droppedPinnedSongIds), so they'd burn a slot on a
+		// song that can never appear. Released: the user un-pinned them, and
+		// re-deriving the pin would make release a visible no-op. Manual pins:
+		// they already come off the top of the budget below — allocating one
+		// again would collapse in the union and leave the tracklist a slot
+		// short. In every case the artist's next song takes the slot instead.
+		const withheld = new Set([
+			...selection.excludedSongIds,
+			...selection.releasedSongIds,
+			...manualPinnedSongIds,
+		]);
 		const pools = artistSelections
 			.filter((a) => a.enabled)
 			.map((a) => ({
 				name: a.name,
-				songIds: resolvedSongIdsByArtist.get(a.name) ?? [],
+				songIds: (resolvedSongIdsByArtist.get(a.name) ?? []).filter(
+					(id) => !withheld.has(id),
+				),
 			}));
 		const slots = Math.max(
 			0,
@@ -290,7 +308,9 @@ export function useCreatePlaylistDraft(
 		artistSelections,
 		resolvedSongIdsByArtist,
 		debouncedConfig.maxSongs,
-		manualPinnedSongIds.length,
+		manualPinnedSongIds,
+		selection.excludedSongIds,
+		selection.releasedSongIds,
 	]);
 
 	// The effective ordered union: artist allocation first, manual pins after,
@@ -353,6 +373,7 @@ export function useCreatePlaylistDraft(
 
 	const removeSong = useCallback((id: string) => {
 		setSelection((prev) => ({
+			...prev,
 			pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
 			excludedSongIds: prev.excludedSongIds.includes(id)
 				? prev.excludedSongIds
@@ -366,29 +387,29 @@ export function useCreatePlaylistDraft(
 				? prev.pinnedSongIds
 				: [...prev.pinnedSongIds, id],
 			excludedSongIds: prev.excludedSongIds.filter((eid) => eid !== id),
+			releasedSongIds: prev.releasedSongIds.filter((rid) => rid !== id),
 		}));
 	}, []);
 
-	// The three-way pin routing (see the interface doc). Pinning reuses addSong
-	// (not a reimplementation) so the two transitions can never drift; the
-	// exclude branch reuses removeSong for the same reason.
+	// The two-way pin routing (see the interface doc). Pinning reuses addSong
+	// (not a reimplementation) so the two transitions can never drift. Release
+	// records the id even for pure-manual pins whose artist isn't anchored yet:
+	// anchoring that artist later must not resurrect a pin the user dropped.
 	const togglePin = useCallback(
-		(id: string): PinToggleOutcome => {
+		(id: string) => {
 			if (!effectivePinnedSongIds.includes(id)) {
 				addSong(id);
-				return "pinned";
+				return;
 			}
-			if (selection.pinnedSongIds.includes(id)) {
-				setSelection((prev) => ({
-					pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
-					excludedSongIds: prev.excludedSongIds,
-				}));
-				return "released";
-			}
-			removeSong(id);
-			return "excluded";
+			setSelection((prev) => ({
+				...prev,
+				pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
+				releasedSongIds: prev.releasedSongIds.includes(id)
+					? prev.releasedSongIds
+					: [...prev.releasedSongIds, id],
+			}));
 		},
-		[effectivePinnedSongIds, selection.pinnedSongIds, addSong, removeSong],
+		[effectivePinnedSongIds, addSong],
 	);
 
 	const addArtist = useCallback((name: string) => {
@@ -415,9 +436,12 @@ export function useCreatePlaylistDraft(
 		setArtistSelections((prev) => prev.filter((a) => a.name !== name));
 	}, []);
 
+	// Deliberately leaves releasedSongIds alone: undoing a remove restores the
+	// song's pre-remove stance, and a previously released song was present on
+	// merit, not as a pin — un-excluding must not re-arm the allocator for it.
 	const restoreSong = useCallback((id: string) => {
 		setSelection((prev) => ({
-			pinnedSongIds: prev.pinnedSongIds,
+			...prev,
 			excludedSongIds: prev.excludedSongIds.filter((eid) => eid !== id),
 		}));
 	}, []);
@@ -449,6 +473,7 @@ export function useCreatePlaylistDraft(
 		setSelection({
 			pinnedSongIds: [],
 			excludedSongIds: [],
+			releasedSongIds: [],
 		});
 		setArtistSelections([]);
 		setSuggestionsOffset(0);

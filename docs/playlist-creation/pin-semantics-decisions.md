@@ -16,6 +16,10 @@
   to `MAX_PINNED_SONG_IDS`.
 - **Release vs. exclude** — releasing drops a pin so the song re-enters the
   tracklist on merit; excluding removes it from results entirely (undoable).
+- **Released set** — `releasedSongIds` in the draft selection: songs the user
+  un-pinned. Skipped by the artist allocator (a release must not be silently
+  re-derived into a pin) but still eligible for ranked fill and suggestions.
+  Never crosses the wire.
 
 ## D1 — All pins are filter-exempt; provenance does not cross the wire
 
@@ -49,23 +53,39 @@ songs) and the resolution cacheable per artist set.
 Consequence to accept, not "fix": an anchor artist can pull songs into the
 preview that the active filters would reject.
 
-## D3 — The pin toggle routes three ways, and the draft module owns the policy
+## D3 — The pin toggle is uniform: pinned ↔ neutral, never an exclusion
 
-A row's pin toggle means different things depending on provenance, because an
-anchor-derived pick has no "unpinned but still present" state:
+(REVISED — this reverses the earlier three-way routing recorded here, where
+un-pinning an anchor-derived pick excluded it.)
 
-| Row state | Toggle result |
-| --- | --- |
-| Not pinned (ranked fill) | Becomes a manual pin (`"pinned"`) |
-| Manual pin | Released — re-enters on merit (`"released"`) |
-| Anchor-derived pick | Excluded, with the same undo toast as remove (`"excluded"`) |
+The pin toggle has one meaning regardless of provenance: an unpinned row
+becomes a manual pin; a pinned row — manual or anchor-derived alike — is
+released into the released set, so it re-enters the tracklist or suggestions
+only on merit. Removal (the ✕ / swipe) remains the only excluding gesture,
+and the only one that mirrors remove feedback (undo toast).
 
-The routing lives in `useCreatePlaylistDraft.togglePin`, next to the selection
-state it inspects; it returns the outcome so `PreviewList` can mirror remove
-feedback (undo toast, playback cleanup) only when a toggle turned into an
-exclusion. `PreviewList` must not receive a "manual pins" prop to route this
-itself — that was tried and it widened a presentational interface with a
-distinction that is not visual.
+The earlier routing excluded anchor-derived picks on un-pin because no
+"unpinned but still present" state existed: the allocator re-derived any
+released anchor song on the next pass, making release a visible no-op. That
+was a mechanism gap, not a UX goal — the same gesture silently meant
+"neutralize" or "banish" depending on provenance the UI deliberately does not
+display. The released set creates the missing state; with it, exclusion via
+the pin toggle lost its reason to exist. A released song may still drop out
+of the tracklist (an anchor pick that the filters would reject no longer has
+a pin forcing it in) — that is release semantics working, not a loss to
+guard against: the stance is recorded and the song stays eligible.
+
+The released set also closes two allocator leaks: songs that are manually
+pinned, released, or excluded are all withheld from the artist pools, so a
+slot can never be spent on an id that would be deduplicated away (manual
+overlap) or dropped server-side (exclusion) — the artist's next song is
+promoted instead.
+
+The policy lives in `useCreatePlaylistDraft.togglePin`, next to the selection
+state it inspects. It no longer returns an outcome: with release uniform and
+non-destructive, `PreviewList` has no feedback to mirror. `PreviewList` must
+not receive a "manual pins" prop to route this itself — that was tried and it
+widened a presentational interface with a distinction that is not visual.
 
 Visually, all effective pins render one filled pin marker (no zone labels, no
 per-row provenance badge); "Your picks / Matched for you" eyebrows were

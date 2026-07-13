@@ -5,12 +5,11 @@
  * aria-live region presence, onRemoveSong called with correct id,
  * sonner toast fired with Undo action, Undo invokes onRestoreSong, the per-row
  * pin toggle (picks render filled/Unpin, matched render Pin; clicks route to
- * onTogglePin, and an "excluded" outcome mirrors remove feedback — undo toast
- * plus playback cleanup — while other outcomes stay silent; the routing policy
- * itself is the draft hook's and is tested there), playback coordinator
- * threading (rows get a play affordance, removing an actively-previewing row
- * deactivates it first so orphaned audio state can't linger past the row's
- * removal).
+ * onTogglePin and never mirror remove feedback — release is non-destructive;
+ * the pin policy itself is the draft hook's and is tested there), playback
+ * coordinator threading (rows get a play affordance, removing an
+ * actively-previewing row deactivates it first so orphaned audio state can't
+ * linger past the row's removal).
  */
 
 import { render, screen } from "@testing-library/react";
@@ -306,7 +305,7 @@ describe("PreviewList", () => {
 
 	it("routes a toggle click to onTogglePin with the song id", async () => {
 		const user = userEvent.setup();
-		const onTogglePin = vi.fn(() => "pinned" as const);
+		const onTogglePin = vi.fn();
 		render(
 			<PreviewList
 				songs={SONGS}
@@ -322,64 +321,9 @@ describe("PreviewList", () => {
 		expect(onTogglePin).toHaveBeenCalledWith("s3");
 	});
 
-	it("stays silent on a 'released' outcome (no toast, no remove)", async () => {
+	it("never mirrors remove feedback on a toggle — release is non-destructive", async () => {
 		const user = userEvent.setup();
 		const onRemoveSong = vi.fn();
-		render(
-			<PreviewList
-				songs={SONGS}
-				isLoading={false}
-				onRemoveSong={onRemoveSong}
-				onRestoreSong={vi.fn()}
-				onTogglePin={vi.fn(() => "released" as const)}
-				pinnedSongIds={["s1"]}
-			/>,
-		);
-
-		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
-		expect(onRemoveSong).not.toHaveBeenCalled();
-		expect(toast).not.toHaveBeenCalled();
-	});
-
-	it("mirrors remove feedback on an 'excluded' outcome: undo toast wired to onRestoreSong", async () => {
-		const user = userEvent.setup();
-		const onRestoreSong = vi.fn();
-
-		vi.mocked(toast).mockImplementation((_msg, opts) => {
-			const action = opts?.action;
-			if (action && typeof action === "object" && "onClick" in action) {
-				action.onClick(
-					new MouseEvent(
-						"click",
-					) as unknown as React.MouseEvent<HTMLButtonElement>,
-				);
-			}
-			return "toast-id";
-		});
-
-		render(
-			<PreviewList
-				songs={SONGS}
-				isLoading={false}
-				onRemoveSong={vi.fn()}
-				onRestoreSong={onRestoreSong}
-				onTogglePin={vi.fn(() => "excluded" as const)}
-				pinnedSongIds={["s1"]}
-			/>,
-		);
-
-		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
-		expect(toast).toHaveBeenCalledWith(
-			"Removed Song Alpha",
-			expect.objectContaining({
-				action: expect.objectContaining({ label: "Undo" }),
-			}),
-		);
-		expect(onRestoreSong).toHaveBeenCalledWith("s1");
-	});
-
-	it("deactivates playback when an 'excluded' toggle hits the actively-previewing row", async () => {
-		const user = userEvent.setup();
 		const playback = {
 			activePlaybackId: "s1",
 			activatePlayback: vi.fn(),
@@ -389,15 +333,17 @@ describe("PreviewList", () => {
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
-				onRemoveSong={vi.fn()}
+				onRemoveSong={onRemoveSong}
 				onRestoreSong={vi.fn()}
-				onTogglePin={vi.fn(() => "excluded" as const)}
+				onTogglePin={vi.fn()}
 				pinnedSongIds={["s1"]}
 				playback={playback}
 			/>,
 		);
 
 		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
-		expect(playback.deactivatePlayback).toHaveBeenCalledOnce();
+		expect(onRemoveSong).not.toHaveBeenCalled();
+		expect(toast).not.toHaveBeenCalled();
+		expect(playback.deactivatePlayback).not.toHaveBeenCalled();
 	});
 });
