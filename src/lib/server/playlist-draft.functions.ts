@@ -17,6 +17,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { MAX_PINNED_SONG_IDS } from "@/lib/domains/playlists/draft-engine";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
 import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview";
@@ -80,14 +81,12 @@ const PreviewPlaylistDraftSchema = z.object({
 	matchFilters: MatchFiltersV1Schema,
 	/** Max songs in the preview (5–50, step 5). */
 	maxSongs: z.number().int().min(5).max(50),
-	/** Song IDs the user explicitly added — always appear first in preview. */
-	pinnedSongIds: z.array(z.uuid()).max(50),
 	/**
-	 * The hand-picked, filter-exempt subset of pinnedSongIds. The workflow
-	 * intersects it with pinnedSongIds before use, so ids outside the effective
-	 * union grant no exemption. Defaulted for older clients still in flight.
+	 * Song IDs the user explicitly pinned (manual adds + anchor-artist songs).
+	 * All are filter-exempt commitments: they always appear first in the preview
+	 * and match filters never evict them (only an explicit exclude does).
 	 */
-	manualPinnedSongIds: z.array(z.uuid()).max(50).default([]),
+	pinnedSongIds: z.array(z.uuid()).max(MAX_PINNED_SONG_IDS),
 	/** Song IDs the user explicitly removed — never appear in results. */
 	excludedSongIds: z.array(z.uuid()).max(500),
 	/**

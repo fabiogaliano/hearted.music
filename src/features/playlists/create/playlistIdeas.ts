@@ -158,7 +158,7 @@ export function defaultSelection(
  * liked-at window, artist a pin target), so folding is a union: pills dedupe
  * across slots; release-year/liked-at/artist take the first choice that carries
  * them. A decade or window resolves into a `matchFilters` object; an artist into
- * `pinArtist`. Genre-only ideas leave both unset (the previous behaviour).
+ * `anchorArtist`. Genre-only ideas leave both unset (the previous behaviour).
  */
 export function resolveIdea(
 	idea: PlaylistIdeaVM,
@@ -175,7 +175,7 @@ export function resolveIdea(
 	];
 	const releaseYear = choices.find((c) => c.releaseYear)?.releaseYear;
 	const likedAt = choices.find((c) => c.likedAt)?.likedAt;
-	const pinArtist = choices.find((c) => c.artist)?.artist;
+	const anchorArtist = choices.find((c) => c.artist)?.artist;
 	const matchFilters =
 		releaseYear || likedAt
 			? {
@@ -190,7 +190,7 @@ export function resolveIdea(
 		description: idea.describe(selection),
 		genrePills,
 		matchFilters,
-		pinArtist,
+		anchorArtist,
 	};
 }
 

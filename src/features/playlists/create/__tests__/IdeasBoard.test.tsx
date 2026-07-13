@@ -68,7 +68,7 @@ describe("IdeasBoard — artist card + affordance", () => {
 		expect(onSeed).toHaveBeenCalledTimes(1);
 		const [idea, intentText] = onSeed.mock.calls[0] ?? [];
 		expect(idea).toMatchObject({
-			pinArtist: "Clairo",
+			anchorArtist: "Clairo",
 			focusArtistSearch: true,
 		});
 		expect(intentText).toBe("");
@@ -83,7 +83,7 @@ describe("IdeasBoard — artist card + affordance", () => {
 		);
 
 		const [idea] = onSeed.mock.calls[0] ?? [];
-		expect(idea).toMatchObject({ pinArtist: "Clairo" });
+		expect(idea).toMatchObject({ anchorArtist: "Clairo" });
 		expect(idea.focusArtistSearch).toBeUndefined();
 	});
 });

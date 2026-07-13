@@ -95,11 +95,11 @@ export interface ResolvedIdeaVM {
 	/** Hard match-filters the seed commits (decade → releaseYear, window → likedAt). */
 	matchFilters?: PlaylistMatchFiltersV1;
 	/**
-	 * Artist whose liked songs seed the preview. The studio resolves this name to
-	 * the account's liked song ids at commit time and pins them, so "Around
-	 * [artist]" opens on those songs rather than the generic library top.
+	 * The artist this idea is anchored on. The studio resolves this name to the
+	 * account's liked song ids at commit time and pins them, so "Around [artist]"
+	 * opens on those songs rather than the generic library top.
 	 */
-	pinArtist?: string;
+	anchorArtist?: string;
 	/**
 	 * Land in the studio with the artist search focused, ready for artist #2 —
 	 * set by the seed card's "+" (add-artist) affordance. The tiny card is not

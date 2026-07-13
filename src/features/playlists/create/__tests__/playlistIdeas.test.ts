@@ -48,7 +48,7 @@ describe("resolveIdea structured payloads", () => {
 		// The original bug: the artist seed produced an empty idea, so the studio
 		// opened on the generic library top with no trace of the artist.
 		expect(idea.label).toBe("Around Clairo");
-		expect(idea.pinArtist).toBe("Clairo");
+		expect(idea.anchorArtist).toBe("Clairo");
 		expect(idea.genrePills).toEqual([]);
 		expect(idea.matchFilters).toBeUndefined();
 	});
@@ -62,7 +62,7 @@ describe("resolveIdea structured payloads", () => {
 			version: 1,
 			releaseYear: { kind: "range", start: 2010, end: 2019 },
 		});
-		expect(idea.pinArtist).toBeUndefined();
+		expect(idea.anchorArtist).toBeUndefined();
 	});
 
 	it("resolves the window idea to the window's likedAt filter", () => {
@@ -74,7 +74,7 @@ describe("resolveIdea structured payloads", () => {
 			version: 1,
 			likedAt: { kind: "after", startDate: "2026-06-12" },
 		});
-		expect(idea.pinArtist).toBeUndefined();
+		expect(idea.anchorArtist).toBeUndefined();
 	});
 
 	it("resolves a genre idea to pills alone (no filters, no pin)", () => {
@@ -84,7 +84,7 @@ describe("resolveIdea structured payloads", () => {
 
 		expect(idea.genrePills).toHaveLength(1);
 		expect(idea.matchFilters).toBeUndefined();
-		expect(idea.pinArtist).toBeUndefined();
+		expect(idea.anchorArtist).toBeUndefined();
 	});
 });
 

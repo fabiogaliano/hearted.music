@@ -19,9 +19,8 @@ export interface DraftConfig {
 	genrePills: string[];
 	matchFilters: PlaylistMatchFiltersV1;
 	maxSongs: number;
+	/** Pinned song ids (manual adds + anchor-artist songs) — all filter-exempt. */
 	pinnedSongIds: string[];
-	/** The hand-picked, filter-exempt subset of pinnedSongIds. */
-	manualPinnedSongIds: string[];
 	excludedSongIds: string[];
 	/** Pages the suggestions window deeper; bumped by "Refresh suggestions". */
 	suggestionsOffset: number;
@@ -33,7 +32,6 @@ export const DEFAULT_DRAFT_CONFIG: DraftConfig = {
 	matchFilters: { version: 1 },
 	maxSongs: 15,
 	pinnedSongIds: [],
-	manualPinnedSongIds: [],
 	excludedSongIds: [],
 	suggestionsOffset: 0,
 };
@@ -50,7 +48,6 @@ export const draftPreviewKeys = {
 			config.genrePills,
 			config.matchFilters,
 			config.pinnedSongIds,
-			config.manualPinnedSongIds,
 			config.excludedSongIds,
 			config.suggestionsOffset,
 		] as const,
@@ -74,7 +71,6 @@ export function playlistDraftPreviewQueryOptions(config: DraftConfig) {
 					matchFilters: config.matchFilters,
 					maxSongs: config.maxSongs,
 					pinnedSongIds: config.pinnedSongIds,
-					manualPinnedSongIds: config.manualPinnedSongIds,
 					excludedSongIds: config.excludedSongIds,
 					suggestionsOffset: config.suggestionsOffset,
 				},
@@ -84,18 +80,16 @@ export function playlistDraftPreviewQueryOptions(config: DraftConfig) {
 }
 
 /**
- * Filter-aware resolution of the studio's selected artists into pinnable song
- * ids. Keyed on the DEBOUNCED match filters (the caller passes those), so a
- * filter change re-resolves exactly once per settle — chip counts and the
- * balanced allocation both read from this one source.
+ * Resolve the studio's selected artists into their liked song ids. Deliberately
+ * filter-INDEPENDENT: an anchor artist is a filter-exempt commitment (its songs
+ * are pinned and survive filter changes), so a filter change must NOT re-resolve
+ * this pool. Chip counts and the balanced allocation both read from this one
+ * source, which is why they now reflect an artist's total liked songs.
  */
-export function artistSongResolutionQueryOptions(
-	artists: string[],
-	matchFilters: PlaylistMatchFiltersV1,
-) {
+export function artistSongResolutionQueryOptions(artists: string[]) {
 	return queryOptions({
-		queryKey: ["liked-artist-song-resolution", artists, matchFilters] as const,
-		queryFn: () => resolveLikedArtistSongs({ data: { artists, matchFilters } }),
+		queryKey: ["liked-artist-song-resolution", artists] as const,
+		queryFn: () => resolveLikedArtistSongs({ data: { artists } }),
 		enabled: artists.length > 0,
 		staleTime: 30_000,
 	});

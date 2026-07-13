@@ -12,7 +12,7 @@
  * back to a plain static cover so a broken play affordance never renders.
  */
 
-import { XIcon } from "@phosphor-icons/react";
+import { PushPinIcon, XIcon } from "@phosphor-icons/react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
@@ -24,6 +24,11 @@ import { fonts } from "@/lib/theme/fonts";
 interface PreviewSongRowProps {
 	song: SongVM;
 	onRemove: (id: string) => void;
+	/** Filled (true) = manual pin, filter-exempt; outline (false) = pinnable. */
+	isPinned?: boolean;
+	/** Flip the pin: promote to a manual pin or release it (see PreviewList).
+	 *  Omitted → the pin toggle is not rendered (e.g. isolated row stories). */
+	onTogglePin?: (id: string) => void;
 	/** Briefly highlight the row when it first enters the preview. */
 	isNew?: boolean;
 	/** Shared "one preview at a time" coordinator; see PreviewList/CreatePlaylistScreen.
@@ -34,6 +39,8 @@ interface PreviewSongRowProps {
 export function PreviewSongRow({
 	song,
 	onRemove,
+	isPinned = false,
+	onTogglePin,
 	isNew = false,
 	playback,
 }: PreviewSongRowProps) {
@@ -121,18 +128,39 @@ export function PreviewSongRow({
 				</p>
 			</div>
 
-			{/* Genre pill — optional; rendered when present and space permits */}
-			{song.genres.length > 0 && (
-				<span
-					className="theme-text-muted hidden flex-none text-[10px] lg:block"
+			{/* Pin toggle — takes the slot the genre pill used to occupy. Filled = a
+			    pick kept in the playlist; outline = a matched song you can pin. */}
+			{onTogglePin && (
+				<button
+					type="button"
+					onClick={() => onTogglePin(song.id)}
+					aria-pressed={isPinned}
+					aria-label={isPinned ? `Unpin ${song.name}` : `Pin ${song.name}`}
+					title={isPinned ? "Pinned — kept in your playlist" : "Pin this song"}
+					className={cn(
+						"flex-none cursor-pointer rounded-full p-2",
+						"transition-opacity duration-150 active:scale-[0.96]",
+						"focus-visible:outline-2 focus-visible:outline-offset-2",
+						"[outline-color:var(--t-primary)]",
+						isPinned
+							? "opacity-100 hover:opacity-80"
+							: "theme-text-muted opacity-50 hover:opacity-90",
+					)}
 					style={{
-						fontFamily: fonts.body,
-						letterSpacing: "0.07em",
-						opacity: 0.6,
+						minWidth: 40,
+						minHeight: 40,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						color: isPinned ? "var(--t-primary)" : undefined,
 					}}
 				>
-					{song.genres[0]}
-				</span>
+					<PushPinIcon
+						size={15}
+						weight={isPinned ? "fill" : "regular"}
+						aria-hidden
+					/>
+				</button>
 			)}
 
 			{/* Remove button — ≥40px hit area via explicit min dimensions */}

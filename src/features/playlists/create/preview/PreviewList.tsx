@@ -25,6 +25,7 @@ import type { SingleActivePlayback } from "@/features/playback/useSingleActivePl
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { fonts } from "@/lib/theme/fonts";
 import { approximateDuration } from "../MaxSongsSlider";
+import type { PinToggleOutcome } from "../useCreatePlaylistDraft";
 import { PreviewSongRow } from "./PreviewSongRow";
 
 interface PreviewListProps {
@@ -33,13 +34,21 @@ interface PreviewListProps {
 	onRemoveSong: (id: string) => void;
 	/** Reverses a remove without force-pinning the song back in. */
 	onRestoreSong: (id: string) => void;
+	/**
+	 * Flip a row's pin. The draft module owns the routing (pin a matched row,
+	 * release a manual pin, exclude an artist-derived pick) and reports which
+	 * transition happened; this component only mirrors the remove feedback
+	 * (undo toast, playback cleanup) when the toggle turned into an exclusion.
+	 * Omitted → rows render without a pin toggle (isolated consumers, stories).
+	 */
+	onTogglePin?: (id: string) => PinToggleOutcome;
 	/** IDs of songs that just entered the preview (recently added). */
 	newSongIds?: ReadonlySet<string>;
 	/**
-	 * Effective pinned ids (user picks + artist-derived). The tracklist leads
-	 * with pins, so the leading run of songs found in this set is labeled
-	 * "Your picks" and the rest "Matched for you" — purely typographic
-	 * ownership eyebrows, no per-row badges.
+	 * Effective pinned ids (manual picks + artist-derived). These lead the
+	 * tracklist and render with a FILLED pin — the picks are pinned by default,
+	 * which is what distinguishes them from the engine's matched fill (no zone
+	 * labels; the pin marker carries the distinction).
 	 */
 	pinnedSongIds?: readonly string[];
 	/** Shared "one preview at a time" coordinator; see CreatePlaylistScreen.
@@ -47,44 +56,19 @@ interface PreviewListProps {
 	playback?: SingleActivePlayback;
 }
 
-function SectionEyebrow({ label, count }: { label: string; count: number }) {
-	return (
-		<div
-			className="theme-text-muted pt-1 pb-2 text-[11px] tracking-[0.2em] uppercase"
-			style={{ fontFamily: fonts.body }}
-		>
-			{label} <span aria-hidden="true">·</span>{" "}
-			<span className="tabular-nums">{count}</span>
-		</div>
-	);
-}
-
 export function PreviewList({
 	songs,
 	isLoading,
 	onRemoveSong,
 	onRestoreSong,
+	onTogglePin,
 	newSongIds,
 	pinnedSongIds,
 	playback,
 }: PreviewListProps) {
+	const pinnedSet = new Set(pinnedSongIds ?? []);
 	const songCount = songs.length;
 	const durationHint = approximateDuration(songCount);
-
-	// The engine composes the tracklist pins-first, so the pinned block is the
-	// leading run of songs whose id is in the pinned set — counting the run
-	// (rather than set membership across the whole list) keeps the split honest
-	// even if a stale pin id lingers in the set after the engine dropped it.
-	const pinnedSet = new Set(pinnedSongIds ?? []);
-	let pinnedCount = 0;
-	while (pinnedCount < songs.length) {
-		const song = songs[pinnedCount];
-		if (!song || !pinnedSet.has(song.id)) break;
-		pinnedCount++;
-	}
-	// Eyebrows only appear when there's ownership to disambiguate: a mixed list
-	// of picks + engine fill. An all-pins or all-fill list keeps the plain look.
-	const showEyebrows = pinnedCount > 0 && pinnedCount < songs.length;
 
 	// Only announce count changes after the initial mount — avoid reading out
 	// the full count on page load. The live region is always in the DOM but
@@ -115,6 +99,25 @@ export function PreviewList({
 			playback.deactivatePlayback();
 		}
 		onRemoveSong(song.id);
+		toast(`Removed ${song.name}`, {
+			action: {
+				label: "Undo",
+				onClick: () => onRestoreSong(song.id),
+			},
+		});
+	}
+
+	// The draft module routes the toggle (pin / release / exclude) and reports
+	// the transition. Only "excluded" needs feedback here: an artist-derived
+	// pick un-pinned must read exactly like a remove, so it mirrors
+	// handleRemove's undo toast and playback cleanup. (The draft has already
+	// applied the exclusion by the time this runs — both state updates land in
+	// the same event batch, so no render sees a stale active playback id.)
+	function handleTogglePin(song: SongVM) {
+		if (onTogglePin?.(song.id) !== "excluded") return;
+		if (playback?.activePlaybackId === song.id) {
+			playback.deactivatePlayback();
+		}
 		toast(`Removed ${song.name}`, {
 			action: {
 				label: "Undo",
@@ -175,39 +178,20 @@ export function PreviewList({
 				</span>
 			</div>
 
-			{/* Song rows — AnimatePresence manages enter/exit per row. The section
-			    eyebrows live inside the same list (keyed, non-motion children) so
-			    row exit animations keep working across the pinned/fill boundary. */}
+			{/* Song rows — AnimatePresence manages enter/exit per row. Picks (pinned)
+			    lead the tracklist with a filled pin; matched fill follows unfilled.
+			    No zone labels: the pin marker alone carries the distinction. */}
 			<ul aria-label="Preview playlist songs" className="flex flex-col">
 				<AnimatePresence initial={false}>
-					{showEyebrows && (
-						<li key="__eyebrow-picks" style={{ listStyle: "none" }}>
-							<SectionEyebrow label="Your picks" count={pinnedCount} />
-						</li>
-					)}
-					{songs.slice(0, pinnedCount).map((song) => (
+					{songs.map((song) => (
 						<li key={song.id} style={{ listStyle: "none" }}>
 							<PreviewSongRow
 								song={song}
 								onRemove={() => handleRemove(song)}
-								isNew={newSongIds?.has(song.id) ?? false}
-								playback={playback}
-							/>
-						</li>
-					))}
-					{showEyebrows && (
-						<li key="__eyebrow-fill" style={{ listStyle: "none" }}>
-							<SectionEyebrow
-								label="Matched for you"
-								count={songs.length - pinnedCount}
-							/>
-						</li>
-					)}
-					{songs.slice(pinnedCount).map((song) => (
-						<li key={song.id} style={{ listStyle: "none" }}>
-							<PreviewSongRow
-								song={song}
-								onRemove={() => handleRemove(song)}
+								isPinned={pinnedSet.has(song.id)}
+								onTogglePin={
+									onTogglePin ? () => handleTogglePin(song) : undefined
+								}
 								isNew={newSongIds?.has(song.id) ?? false}
 								playback={playback}
 							/>

@@ -6,15 +6,16 @@
  * Default (no search): active chips first, then inactive, each group sorted by
  * like-count desc. While searching the grouping disappears — a flat result
  * list where toggling an unselected artist adds+enables it, so search unifies
- * "add" and "activate". Chip body toggles enable/disable (dim), ✕ removes with
- * a sonner Undo (no confirm dialog: an unsaved draft you can re-add via search
- * is not a destructive action). Inline chips are capped; beyond that a
+ * "add" and "activate". Chip body toggles enable/disable (dim), ✕ removes
+ * outright (no confirm dialog and no undo: an unsaved draft artist you can
+ * re-add via search is not a destructive loss). Inline chips are capped; beyond that a
  * "+N more" affordance opens a dialog managing the full set with the same
  * sorting and search-collapses-grouping behavior.
  *
- * Song counts on chips are the FILTER-AWARE resolution counts from the draft
- * hook (null while resolving → shown as a pending "…"), so a chip never claims
- * songs the current filters would reject.
+ * Song counts on chips are an artist's TOTAL liked-song count from the draft
+ * hook (null while resolving → shown as a pending "…"). They are deliberately
+ * filter-independent: an anchor artist is a filter-exempt pin, so its songs (and
+ * this count) survive filter changes rather than shrinking to what filters allow.
  *
  * If the resolution query fails outright, the counts would otherwise stay
  * pending forever with no explanation (and Create would silently drop every
@@ -27,14 +28,10 @@ import { XIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { toast } from "sonner";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { likedArtistSearchQueryOptions } from "../queries";
-import type {
-	ArtistSelection,
-	ArtistSelectionVM,
-} from "../useCreatePlaylistDraft";
+import type { ArtistSelectionVM } from "../useCreatePlaylistDraft";
 
 // Chips visible inline before the overflow dialog takes over. Sized for a
 // ~300px sidebar column: enough to see a real selection, small enough that a
@@ -48,10 +45,9 @@ interface ArtistConfigProps {
 	onAddArtist: (name: string) => void;
 	onToggleArtist: (name: string) => void;
 	onRemoveArtist: (name: string) => void;
-	onRestoreArtist: (selection: ArtistSelection, index: number) => void;
 	/** Focus the search input on mount (seed-card "+" lands here, ready for #2). */
 	autoFocusSearch?: boolean;
-	/** True when the filter-aware song resolution for the current selection failed. */
+	/** True when the song resolution for the current selection failed. */
 	isResolutionError: boolean;
 	/** Re-fetches the failed resolution — the only recovery path short of removing every chip. */
 	onRetryResolution: () => void;
@@ -85,7 +81,6 @@ export function ArtistConfig({
 	onAddArtist,
 	onToggleArtist,
 	onRemoveArtist,
-	onRestoreArtist,
 	autoFocusSearch = false,
 	isResolutionError,
 	onRetryResolution,
@@ -125,23 +120,6 @@ export function ArtistConfig({
 	useEffect(() => {
 		if (autoFocusSearch) inputRef.current?.focus();
 	}, []);
-
-	const handleRemove = (name: string) => {
-		const index = selections.findIndex((s) => s.name === name);
-		const removed = selections[index];
-		if (!removed) return;
-		onRemoveArtist(name);
-		toast(`Removed ${name}`, {
-			action: {
-				label: "Undo",
-				onClick: () =>
-					onRestoreArtist(
-						{ name: removed.name, enabled: removed.enabled },
-						index,
-					),
-			},
-		});
-	};
 
 	const searchResults = (searchData?.artists ?? []).slice(
 		0,
@@ -191,7 +169,7 @@ export function ArtistConfig({
 										: onAddArtist(result.name)
 								}
 								onRemove={
-									selection ? () => handleRemove(result.name) : undefined
+									selection ? () => onRemoveArtist(result.name) : undefined
 								}
 							/>
 						);
@@ -212,7 +190,7 @@ export function ArtistConfig({
 								count={selection.songCount}
 								state={selection.enabled ? "enabled" : "disabled"}
 								onBody={() => onToggleArtist(selection.name)}
-								onRemove={() => handleRemove(selection.name)}
+								onRemove={() => onRemoveArtist(selection.name)}
 							/>
 						))}
 						{overflowCount > 0 && (
@@ -253,7 +231,7 @@ export function ArtistConfig({
 					selections={selections}
 					likeCounts={likeCounts}
 					onToggleArtist={onToggleArtist}
-					onRemove={handleRemove}
+					onRemove={onRemoveArtist}
 					onClose={() => setOverflowOpen(false)}
 				/>
 			)}

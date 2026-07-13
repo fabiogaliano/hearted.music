@@ -155,6 +155,8 @@ export const PreviewRowStory: Story = () => {
 					<PreviewSongRow
 						song={PREVIEW_ROW_SONG}
 						onRemove={() => {}}
+						isPinned
+						onTogglePin={() => {}}
 						playback={playback}
 					/>
 				</li>
@@ -173,6 +175,7 @@ export const PreviewRowNew: Story = () => {
 					<PreviewSongRow
 						song={PREVIEW_ROW_NEW_SONG}
 						onRemove={() => {}}
+						onTogglePin={() => {}}
 						isNew={true}
 						playback={playback}
 					/>

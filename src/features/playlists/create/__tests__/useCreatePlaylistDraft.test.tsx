@@ -98,7 +98,7 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 	});
 
-	it("addArtist resolves filter-aware song ids and pins the allocation", async () => {
+	it("addArtist resolves the artist's liked song ids and pins the allocation", async () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({
 			artists: [{ name: "Radiohead", songIds: ["r1", "r2"] }],
 		});
@@ -114,7 +114,6 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 			expect(previewPlaylistDraftMock).toHaveBeenLastCalledWith({
 				data: expect.objectContaining({
 					pinnedSongIds: ["r1", "r2"],
-					manualPinnedSongIds: [],
 				}),
 			}),
 		);
@@ -211,7 +210,7 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 	});
 
-	it("removeArtist drops the chip; restoreArtist re-inserts at its prior position", async () => {
+	it("removeArtist drops the chip from the selection", async () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
@@ -229,15 +228,53 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 			"A",
 			"C",
 		]);
+	});
+
+	it("togglePin pins a matched row, then releases the manual pin without excluding it", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		let outcome: string | undefined;
+		act(() => {
+			outcome = result.current.togglePin("song-1");
+		});
+		expect(outcome).toBe("pinned");
+		expect(result.current.selection.pinnedSongIds).toContain("song-1");
+
+		// Releasing drops the pin only — no exclusion, so the song can re-enter
+		// the tracklist on merit if the current config still selects it.
+		act(() => {
+			outcome = result.current.togglePin("song-1");
+		});
+		expect(outcome).toBe("released");
+		expect(result.current.selection.pinnedSongIds).not.toContain("song-1");
+		expect(result.current.selection.excludedSongIds).not.toContain("song-1");
+	});
+
+	it("togglePin excludes an artist-derived pick (there is no unpinned-but-present state)", async () => {
+		resolveLikedArtistSongsMock.mockResolvedValue({
+			artists: [{ name: "Radiohead", songIds: ["r1"] }],
+		});
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
 
 		act(() => {
-			result.current.restoreArtist({ name: "B", enabled: true }, 1);
+			result.current.addArtist("Radiohead");
 		});
-		expect(result.current.artistSelections.map((a) => a.name)).toEqual([
-			"A",
-			"B",
-			"C",
-		]);
+		await waitFor(() =>
+			expect(result.current.effectivePinnedSongIds).toContain("r1"),
+		);
+
+		let outcome: string | undefined;
+		act(() => {
+			outcome = result.current.togglePin("r1");
+		});
+		expect(outcome).toBe("excluded");
+		expect(result.current.selection.excludedSongIds).toContain("r1");
+		expect(result.current.selection.pinnedSongIds).not.toContain("r1");
 	});
 });
 

@@ -1,6 +1,6 @@
 /**
  * Tests for ArtistConfig: chip sorting (active first, like-count desc),
- * body-click toggle, ✕ remove with Undo restore (prior position), search mode
+ * body-click toggle, ✕ remove (outright, no undo), search mode
  * (flat results, add-on-toggle), the "+N more" overflow dialog with
  * search-within filtering, and the resolution-error affordance (chips would
  * otherwise be stuck at a pending "…" with no explanation).
@@ -8,11 +8,8 @@
 
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 import type { ArtistSelectionVM } from "../useCreatePlaylistDraft";
-
-vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 // The overflow dialog registers an Escape shortcut; the provider isn't mounted
 // in these tests, so stub the hook — close behavior is exercised via the ✕.
@@ -39,10 +36,6 @@ function renderPanel(
 		onAddArtist: (name: string) => void;
 		onToggleArtist: (name: string) => void;
 		onRemoveArtist: (name: string) => void;
-		onRestoreArtist: (
-			selection: { name: string; enabled: boolean },
-			index: number,
-		) => void;
 		onRetryResolution: () => void;
 	}> = {},
 	options: { isResolutionError?: boolean } = {},
@@ -68,7 +61,6 @@ function renderPanel(
 				onAddArtist={handlers.onAddArtist ?? vi.fn()}
 				onToggleArtist={handlers.onToggleArtist ?? vi.fn()}
 				onRemoveArtist={handlers.onRemoveArtist ?? vi.fn()}
-				onRestoreArtist={handlers.onRestoreArtist ?? vi.fn()}
 				isResolutionError={options.isResolutionError ?? false}
 				onRetryResolution={handlers.onRetryResolution ?? vi.fn()}
 			/>
@@ -103,15 +95,13 @@ describe("ArtistConfig", () => {
 		});
 	});
 
-	it("chip body click toggles; ✕ removes with an Undo that restores at the prior index", async () => {
+	it("chip body click toggles; ✕ removes outright", async () => {
 		const user = userEvent.setup();
 		const onToggleArtist = vi.fn();
 		const onRemoveArtist = vi.fn();
-		const onRestoreArtist = vi.fn();
 		renderPanel([sel("Clairo"), sel("KAYTRANADA", false)], {
 			onToggleArtist,
 			onRemoveArtist,
-			onRestoreArtist,
 		});
 
 		await user.click(screen.getByRole("button", { name: "Disable Clairo" }));
@@ -119,16 +109,6 @@ describe("ArtistConfig", () => {
 
 		await user.click(screen.getByRole("button", { name: "Remove KAYTRANADA" }));
 		expect(onRemoveArtist).toHaveBeenCalledWith("KAYTRANADA");
-
-		const toastCall = vi.mocked(toast).mock.calls.at(-1);
-		expect(toastCall?.[0]).toBe("Removed KAYTRANADA");
-		(
-			toastCall?.[1] as unknown as { action: { onClick: () => void } }
-		).action.onClick();
-		expect(onRestoreArtist).toHaveBeenCalledWith(
-			{ name: "KAYTRANADA", enabled: false },
-			1,
-		);
 	});
 
 	it("search shows a flat result list; toggling an unselected result adds it", async () => {

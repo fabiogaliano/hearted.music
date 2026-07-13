@@ -3,16 +3,20 @@
  *
  * Covers: header count/duration formatting, empty and loading states,
  * aria-live region presence, onRemoveSong called with correct id,
- * sonner toast fired with Undo action, Undo invokes onRestoreSong, playback
- * coordinator threading (rows get a play affordance, removing an
- * actively-previewing row deactivates it first so orphaned audio state can't
- * linger past the row's removal).
+ * sonner toast fired with Undo action, Undo invokes onRestoreSong, the per-row
+ * pin toggle (picks render filled/Unpin, matched render Pin; clicks route to
+ * onTogglePin, and an "excluded" outcome mirrors remove feedback — undo toast
+ * plus playback cleanup — while other outcomes stay silent; the routing policy
+ * itself is the draft hook's and is tested there), playback coordinator
+ * threading (rows get a play affordance, removing an actively-previewing row
+ * deactivates it first so orphaned audio state can't linger past the row's
+ * removal).
  */
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { PreviewList } from "../preview/PreviewList";
 
@@ -21,6 +25,12 @@ import { PreviewList } from "../preview/PreviewList";
 vi.mock("sonner", () => ({
 	toast: vi.fn(),
 }));
+
+// No global clearMocks in this repo, so the module-level toast mock would
+// otherwise leak calls and implementations across tests.
+beforeEach(() => {
+	vi.mocked(toast).mockReset();
+});
 
 const makeSong = (id: string, name: string): SongVM => ({
 	id,
@@ -257,60 +267,137 @@ describe("PreviewList", () => {
 		expect(playback.deactivatePlayback).not.toHaveBeenCalled();
 	});
 
-	it("shows ownership eyebrows when the list mixes pins and engine fill", () => {
+	it("renders a filled Unpin toggle for picks and a Pin toggle for matched rows", () => {
 		render(
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
 				onRemoveSong={vi.fn()}
 				onRestoreSong={vi.fn()}
+				onTogglePin={vi.fn(() => "pinned" as const)}
 				pinnedSongIds={["s1", "s2"]}
 			/>,
 		);
-		expect(screen.getByText(/your picks/i)).toBeInTheDocument();
-		expect(screen.getByText(/matched for you/i)).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Unpin Song Alpha" }),
+		).toHaveAttribute("aria-pressed", "true");
+		expect(
+			screen.getByRole("button", { name: "Unpin Song Beta" }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Pin Song Gamma" }),
+		).toHaveAttribute("aria-pressed", "false");
 	});
 
-	it("hides eyebrows when there are no pins", () => {
+	it("renders no pin toggle when onTogglePin is omitted", () => {
 		render(
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
 				onRemoveSong={vi.fn()}
 				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1"]}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: /^(Pin|Unpin) / }),
+		).not.toBeInTheDocument();
+	});
+
+	it("routes a toggle click to onTogglePin with the song id", async () => {
+		const user = userEvent.setup();
+		const onTogglePin = vi.fn(() => "pinned" as const);
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={vi.fn()}
+				onTogglePin={onTogglePin}
 				pinnedSongIds={[]}
 			/>,
 		);
-		expect(screen.queryByText(/your picks/i)).not.toBeInTheDocument();
-		expect(screen.queryByText(/matched for you/i)).not.toBeInTheDocument();
+
+		await user.click(screen.getByRole("button", { name: "Pin Song Gamma" }));
+		expect(onTogglePin).toHaveBeenCalledWith("s3");
 	});
 
-	it("hides eyebrows when every song is a pin", () => {
+	it("stays silent on a 'released' outcome (no toast, no remove)", async () => {
+		const user = userEvent.setup();
+		const onRemoveSong = vi.fn();
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={onRemoveSong}
+				onRestoreSong={vi.fn()}
+				onTogglePin={vi.fn(() => "released" as const)}
+				pinnedSongIds={["s1"]}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
+		expect(onRemoveSong).not.toHaveBeenCalled();
+		expect(toast).not.toHaveBeenCalled();
+	});
+
+	it("mirrors remove feedback on an 'excluded' outcome: undo toast wired to onRestoreSong", async () => {
+		const user = userEvent.setup();
+		const onRestoreSong = vi.fn();
+
+		vi.mocked(toast).mockImplementation((_msg, opts) => {
+			const action = opts?.action;
+			if (action && typeof action === "object" && "onClick" in action) {
+				action.onClick(
+					new MouseEvent(
+						"click",
+					) as unknown as React.MouseEvent<HTMLButtonElement>,
+				);
+			}
+			return "toast-id";
+		});
+
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={vi.fn()}
+				onRestoreSong={onRestoreSong}
+				onTogglePin={vi.fn(() => "excluded" as const)}
+				pinnedSongIds={["s1"]}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
+		expect(toast).toHaveBeenCalledWith(
+			"Removed Song Alpha",
+			expect.objectContaining({
+				action: expect.objectContaining({ label: "Undo" }),
+			}),
+		);
+		expect(onRestoreSong).toHaveBeenCalledWith("s1");
+	});
+
+	it("deactivates playback when an 'excluded' toggle hits the actively-previewing row", async () => {
+		const user = userEvent.setup();
+		const playback = {
+			activePlaybackId: "s1",
+			activatePlayback: vi.fn(),
+			deactivatePlayback: vi.fn(),
+		};
 		render(
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
 				onRemoveSong={vi.fn()}
 				onRestoreSong={vi.fn()}
-				pinnedSongIds={["s1", "s2", "s3"]}
+				onTogglePin={vi.fn(() => "excluded" as const)}
+				pinnedSongIds={["s1"]}
+				playback={playback}
 			/>,
 		);
-		expect(screen.queryByText(/your picks/i)).not.toBeInTheDocument();
-	});
 
-	it("counts only the leading pinned run, ignoring stale pin ids", () => {
-		// "s3" is in the pinned set but the engine placed it in the fill (e.g. a
-		// stale id) — the eyebrow count must reflect the leading run only.
-		render(
-			<PreviewList
-				songs={SONGS}
-				isLoading={false}
-				onRemoveSong={vi.fn()}
-				onRestoreSong={vi.fn()}
-				pinnedSongIds={["s1", "s3"]}
-			/>,
-		);
-		expect(screen.getByText(/your picks/i).textContent).toMatch(/1/);
-		expect(screen.getByText(/matched for you/i).textContent).toMatch(/2/);
+		await user.click(screen.getByRole("button", { name: "Unpin Song Alpha" }));
+		expect(playback.deactivatePlayback).toHaveBeenCalledOnce();
 	});
 });

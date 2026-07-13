@@ -42,7 +42,6 @@ import {
 	SUPPORTED_LANGUAGE_CODES,
 } from "@/lib/domains/taste/match-filters/languages";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
-import { passesAllMatchFilters } from "@/lib/domains/taste/match-filters/predicates";
 import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type {
 	PlaylistMatchFilterOptions,
@@ -1386,7 +1385,6 @@ export const searchLikedArtists = createServerFn({ method: "GET" })
  */
 const ResolveLikedArtistSongsSchema = z.object({
 	artists: z.array(z.string().min(1).max(400)).min(1).max(100),
-	matchFilters: z.unknown(),
 });
 
 export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
@@ -1399,27 +1397,20 @@ export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
 		}): Promise<{ artists: { name: string; songIds: string[] }[] }> => {
 			const { accountId } = context.session;
 
-			const filtersResult = parseSaveMatchFilters(data.matchFilters);
-			if (Result.isError(filtersResult)) {
-				throw new Error(`Invalid match filters: ${filtersResult.error}`);
-			}
-			const matchFilters = filtersResult.value;
-
 			const candidates = await loadPhase1Candidates(accountId);
-			const nowMs = Date.now();
 
-			// Group eligible candidate ids under each requested artist. Candidates
-			// arrive most-recently-liked first, so each bucket inherits the recency
-			// order the balanced allocator expects. A song crediting several of the
+			// Group every liked song under each requested artist — deliberately
+			// NOT filter-aware. An anchor artist is a filter-exempt commitment (its
+			// songs are pinned and survive filter changes, like a hand-added pin),
+			// so match filters must not shape this pool. Candidates arrive
+			// most-recently-liked first, so each bucket inherits the recency order
+			// the balanced allocator expects. A song crediting several of the
 			// requested artists lands in every matching bucket; the allocator
 			// dedupes at take time.
 			const buckets = new Map<string, string[]>(
 				data.artists.map((name) => [name, []]),
 			);
 			for (const candidate of candidates) {
-				if (!passesAllMatchFilters(matchFilters, candidate.filterMeta, nowMs)) {
-					continue;
-				}
 				for (const artistName of candidate.song.artists) {
 					buckets.get(artistName)?.push(candidate.song.id);
 				}

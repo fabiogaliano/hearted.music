@@ -89,7 +89,6 @@ function baseInput(
 		matchFilters: { version: 1 as const },
 		maxSongs: 15,
 		pinnedSongIds: [],
-		manualPinnedSongIds: [],
 		excludedSongIds: [],
 		suggestionsOffset: 0,
 		...overrides,
@@ -264,27 +263,27 @@ describe("runPreviewPlaylistDraft", () => {
 		expect(songEmbeddingsMap.get("b")).toEqual([4, 5, 6]);
 	});
 
-	it("out-of-filter manual pin is ranked but excluded from the profile and totalEligible", async () => {
+	it("out-of-filter pin is ranked but excluded from the profile and totalEligible", async () => {
 		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
 		const [a, b] = [makeCandidate("a"), makeCandidate("b")];
 		loadPhase1CandidatesMock.mockResolvedValue([a, b]);
-		// Filters drop "b" — but the user hand-picked it.
+		// Filters drop "b" — but the user pinned it, so it's filter-exempt.
 		selectEligibleCandidatesMock.mockReturnValue([a]);
 
 		const result = await runPreviewPlaylistDraft(
 			fakeSupabase,
 			"acct-1",
-			baseInput({ pinnedSongIds: ["b"], manualPinnedSongIds: ["b"] }),
+			baseInput({ pinnedSongIds: ["b"] }),
 		);
 
-		// Profile is built from the filtered set only; the manual exception
+		// Profile is built from the filtered set only; the pinned exception
 		// re-enters just for ranking, so it gets a score without reshaping taste.
 		expect(buildDraftProfileMock.mock.calls[0][0]).toEqual([a]);
 		expect(rankCandidatesMock.mock.calls[0][0]).toEqual([a, b]);
 		expect(result.totalEligible).toBe(1);
 	});
 
-	it("manual id absent from pinnedSongIds grants no filter exemption", async () => {
+	it("a filtered-out song that isn't pinned stays out of the ranking", async () => {
 		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
 		const [a, b] = [makeCandidate("a"), makeCandidate("b")];
 		loadPhase1CandidatesMock.mockResolvedValue([a, b]);
@@ -293,19 +292,19 @@ describe("runPreviewPlaylistDraft", () => {
 		await runPreviewPlaylistDraft(
 			fakeSupabase,
 			"acct-1",
-			baseInput({ pinnedSongIds: [], manualPinnedSongIds: ["b"] }),
+			baseInput({ pinnedSongIds: [] }),
 		);
 
 		expect(rankCandidatesMock.mock.calls[0][0]).toEqual([a]);
 	});
 
-	it("unliked manual pin never enters the ranking (dropped downstream by compose)", async () => {
+	it("unliked pin never enters the ranking (dropped downstream by compose)", async () => {
 		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
 
 		await runPreviewPlaylistDraft(
 			fakeSupabase,
 			"acct-1",
-			baseInput({ pinnedSongIds: ["z"], manualPinnedSongIds: ["z"] }),
+			baseInput({ pinnedSongIds: ["z"] }),
 		);
 
 		const rankedIds = (

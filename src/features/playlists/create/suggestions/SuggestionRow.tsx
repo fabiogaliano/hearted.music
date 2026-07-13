@@ -124,20 +124,6 @@ export function SuggestionRow({
 				</p>
 			</div>
 
-			{/* Genre pill — optional */}
-			{song.genres.length > 0 && (
-				<span
-					className="theme-text-muted hidden flex-none text-[10px] lg:block"
-					style={{
-						fontFamily: fonts.body,
-						letterSpacing: "0.07em",
-						opacity: 0.45,
-					}}
-				>
-					{song.genres[0]}
-				</span>
-			)}
-
 			{/* Dismiss button — secondary to add: lower resting opacity, same hit
 			    target/size as PreviewSongRow's remove button. Placed before add so
 			    add stays the visually terminal, primary action in reading order. */}

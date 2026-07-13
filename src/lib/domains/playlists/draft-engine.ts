@@ -44,6 +44,15 @@ interface DraftProfile {
 const DRAFT_PLAYLIST_ID = "__draft__";
 
 /**
+ * Wire bound on the preview input's pinnedSongIds: the client clamps its
+ * effective union to this before sending, and the server schema rejects
+ * anything longer. The engine itself clamps kept pins to maxSongs (≤ this)
+ * and reports overflow via droppedPinnedSongIds, so ids past this bound could
+ * only ever have shortened that report — never the kept tracklist.
+ */
+export const MAX_PINNED_SONG_IDS = 50;
+
+/**
  * Apply hard match-filters to select the eligible candidate set.
  *
  * Pure pass through passesAllMatchFilters — no side effects, no IO.

@@ -2,7 +2,8 @@
  * Tests for PreviewSongRow.
  *
  * Covers: render with/without album art, aria-label on remove button,
- * onClick fires onRemove with the correct song id, genre pill presence,
+ * onClick fires onRemove with the correct song id, the pin toggle (rendered
+ * only with onTogglePin; fill/label reflect isPinned; click fires the toggle),
  * Spotify in-row playback affordance (present only with both a `playback`
  * coordinator and a spotifyId; activating calls the coordinator).
  */
@@ -90,6 +91,44 @@ describe("PreviewSongRow", () => {
 		await user.keyboard("{Enter}");
 
 		expect(onRemove).toHaveBeenCalledOnce();
+	});
+
+	it("renders no pin toggle when onTogglePin is omitted", () => {
+		render(<PreviewSongRow song={SONG} onRemove={vi.fn()} />);
+		expect(
+			screen.queryByRole("button", { name: /^(Pin|Unpin) / }),
+		).not.toBeInTheDocument();
+	});
+
+	it("shows a 'Pin' toggle when unpinned and fires onTogglePin with the song id", async () => {
+		const user = userEvent.setup();
+		const onTogglePin = vi.fn();
+		render(
+			<PreviewSongRow
+				song={SONG}
+				onRemove={vi.fn()}
+				onTogglePin={onTogglePin}
+			/>,
+		);
+
+		const btn = screen.getByRole("button", { name: "Pin Last Nite" });
+		expect(btn).toHaveAttribute("aria-pressed", "false");
+		await user.click(btn);
+		expect(onTogglePin).toHaveBeenCalledWith("song-01");
+	});
+
+	it("shows an 'Unpin' toggle with aria-pressed when pinned", () => {
+		render(
+			<PreviewSongRow
+				song={SONG}
+				onRemove={vi.fn()}
+				isPinned
+				onTogglePin={vi.fn()}
+			/>,
+		);
+		expect(
+			screen.getByRole("button", { name: "Unpin Last Nite" }),
+		).toHaveAttribute("aria-pressed", "true");
 	});
 
 	it("renders no play affordance without a playback coordinator", () => {

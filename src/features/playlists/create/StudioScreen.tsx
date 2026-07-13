@@ -299,7 +299,6 @@ export function StudioScreen({
 						onAddArtist={draft.addArtist}
 						onToggleArtist={draft.toggleArtist}
 						onRemoveArtist={draft.removeArtist}
-						onRestoreArtist={draft.restoreArtist}
 						autoFocusSearch={focusArtistSearch}
 						isResolutionError={draft.isArtistResolutionError}
 						onRetryResolution={draft.retryArtistResolution}
@@ -360,6 +359,7 @@ export function StudioScreen({
 								isLoading={draft.isLoading}
 								onRemoveSong={draft.removeSong}
 								onRestoreSong={draft.restoreSong}
+								onTogglePin={draft.togglePin}
 								newSongIds={newSongIds}
 								pinnedSongIds={draft.effectivePinnedSongIds}
 								playback={playback}
@@ -373,24 +373,26 @@ export function StudioScreen({
 						)}
 					</section>
 
-					<section>
-						<div className="mb-6 flex items-center gap-4 px-1">
-							<h2
-								className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
-								style={{ fontFamily: fonts.body }}
-							>
-								Suggested to add
-							</h2>
-							<div className="theme-border-color h-px flex-1 border-t" />
-						</div>
-						<SuggestionsTray
-							suggestions={draft.suggestions}
-							onAddSong={handleAddSong}
-							onDismissSong={handleDismissSuggestion}
-							onRefresh={draft.refreshSuggestions}
-							playback={playback}
-						/>
-					</section>
+					{draft.suggestions.length > 0 && (
+						<section>
+							<div className="mb-6 flex items-center gap-4 px-1">
+								<h2
+									className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
+									style={{ fontFamily: fonts.body }}
+								>
+									Suggested to add
+								</h2>
+								<div className="theme-border-color h-px flex-1 border-t" />
+							</div>
+							<SuggestionsTray
+								suggestions={draft.suggestions}
+								onAddSong={handleAddSong}
+								onDismissSong={handleDismissSuggestion}
+								onRefresh={draft.refreshSuggestions}
+								playback={playback}
+							/>
+						</section>
+					)}
 				</main>
 			</div>
 

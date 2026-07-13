@@ -33,16 +33,13 @@ export interface PreviewPlaylistDraftInput {
 	matchFilters: PlaylistMatchFiltersV1;
 	/** Max songs in the tracklist (5–50, step 5). */
 	maxSongs: number;
-	/** Song IDs the user explicitly added — always appear first in the tracklist. */
-	pinnedSongIds: string[];
 	/**
-	 * The hand-picked subset of pinnedSongIds — filter-exempt commitments.
-	 * Match filters never evict these (exclusion still wins); they are scored
-	 * against the filtered profile without reshaping it. Provenance is carried
-	 * explicitly rather than inferred from the union: artist-derived pins stay
-	 * filter-subject, manual pins do not.
+	 * Song IDs the user explicitly pinned (manual adds + anchor-artist songs).
+	 * All are filter-exempt commitments: they always lead the tracklist, and
+	 * match filters never evict them (exclusion still wins). They are scored
+	 * against the filtered profile without reshaping it.
 	 */
-	manualPinnedSongIds: string[];
+	pinnedSongIds: string[];
 	/** Song IDs the user explicitly removed — never appear in results. */
 	excludedSongIds: string[];
 	/**
@@ -84,29 +81,24 @@ export async function runPreviewPlaylistDraft(
 		nowMs,
 	);
 
-	// Split filter semantics: manual pins are filter-exempt commitments. Any
-	// still-liked Phase-1 candidate the user hand-picked joins the set sent to
+	// Pins are filter-exempt commitments. Any still-liked Phase-1 candidate the
+	// user pinned (a manual add OR an anchor-artist song) joins the set sent to
 	// ranking even when the match filters would drop it — but the profile and
-	// totalEligible below are built from eligibleCandidates only, so a manual
+	// totalEligible below are built from eligibleCandidates only, so a pinned
 	// exception is scored against the filtered profile without reshaping it.
-	// Intersecting with pinnedSongIds keeps provenance honest: a manual id the
-	// client failed to also carry in the effective union grants no exemption.
-	// Manual ids that are no longer liked simply stay absent from the ranking
+	// Pinned ids that are no longer liked simply stay absent from the ranking
 	// and surface via droppedPinnedSongIds in composePlaylistPreview.
 	const pinnedSet = new Set(data.pinnedSongIds);
-	const manualSet = new Set(
-		data.manualPinnedSongIds.filter((id) => pinnedSet.has(id)),
-	);
 	const eligibleIds = new Set(eligibleCandidates.map((c) => c.song.id));
-	const manualExtras =
-		manualSet.size > 0
+	const pinnedExtras =
+		pinnedSet.size > 0
 			? candidates.filter(
-					(c) => manualSet.has(c.song.id) && !eligibleIds.has(c.song.id),
+					(c) => pinnedSet.has(c.song.id) && !eligibleIds.has(c.song.id),
 				)
 			: [];
 	const rankableCandidates =
-		manualExtras.length > 0
-			? [...eligibleCandidates, ...manualExtras]
+		pinnedExtras.length > 0
+			? [...eligibleCandidates, ...pinnedExtras]
 			: eligibleCandidates;
 
 	// On the premium/intent path, embed the intent phrase as a query-role
@@ -181,13 +173,13 @@ export async function runPreviewPlaylistDraft(
 	);
 	const intentApplied = intentEmbedding !== undefined;
 
-	// Rank the eligible candidates plus any out-of-filter manual pins. When
-	// intent was applied, the profile carries the query embedding and
-	// songEmbeddingsMap carries per-song vectors for candidates that have them;
-	// songs without embeddings fall back to adaptive-weight redistribution
-	// (hasEmbedding=false path in the scorer). Manual extras can only surface as
-	// pins in composePlaylistPreview — they're in pinnedSongIds by construction,
-	// so they never leak into the ranked fill or suggestions.
+	// Rank the eligible candidates plus any out-of-filter pins. When intent was
+	// applied, the profile carries the query embedding and songEmbeddingsMap
+	// carries per-song vectors for candidates that have them; songs without
+	// embeddings fall back to adaptive-weight redistribution (hasEmbedding=false
+	// path in the scorer). Pinned extras can only surface as pins in
+	// composePlaylistPreview — they're in pinnedSongIds by construction, so they
+	// never leak into the ranked fill or suggestions.
 	const ranking = await rankCandidates(
 		rankableCandidates,
 		profile,

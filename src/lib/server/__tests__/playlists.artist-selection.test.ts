@@ -1,10 +1,10 @@
 /**
  * Tests for the studio's multi-artist selection server fns:
  * searchLikedArtists (query-filtered liked-artist aggregate) and
- * resolveLikedArtistSongs (filter-aware per-artist song-id resolution).
+ * resolveLikedArtistSongs (filter-INDEPENDENT per-artist song-id resolution —
+ * anchor-artist pins are filter-exempt, so their pool is the full liked catalog).
  *
- * getTopArtists and loadPhase1Candidates are mocked; the match-filter
- * predicate runs for real so the "filter-aware" claim is actually exercised.
+ * getTopArtists and loadPhase1Candidates are mocked.
  */
 
 import { Result } from "better-result";
@@ -163,7 +163,7 @@ describe("searchLikedArtists", () => {
 describe("resolveLikedArtistSongs", () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it("groups eligible candidate ids per requested artist, in candidate (recency) order", async () => {
+	it("groups every liked candidate id per requested artist, in candidate (recency) order", async () => {
 		mockLoadPhase1Candidates.mockResolvedValue([
 			makeCandidate("s1", ["Clairo"]),
 			makeCandidate("s2", ["KAYTRANADA"]),
@@ -171,10 +171,7 @@ describe("resolveLikedArtistSongs", () => {
 		]);
 
 		const result = await resolveLikedArtistSongs({
-			data: {
-				artists: ["Clairo", "KAYTRANADA", "Nobody"],
-				matchFilters: { version: 1 },
-			},
+			data: { artists: ["Clairo", "KAYTRANADA", "Nobody"] },
 		});
 
 		expect(result.artists).toEqual([
@@ -184,35 +181,21 @@ describe("resolveLikedArtistSongs", () => {
 		]);
 	});
 
-	it("applies match filters to the resolution (artist pins stay filter-subject)", async () => {
+	it("is filter-INDEPENDENT: an anchor artist's pool is its full liked catalog", async () => {
+		// An anchor artist is a filter-exempt pin, so resolution must ignore match
+		// filters entirely — both the 1999 and 2021 songs stay in Clairo's pool
+		// even though a release-year filter would otherwise drop the older one.
 		mockLoadPhase1Candidates.mockResolvedValue([
 			makeCandidate("old", ["Clairo"], 1999),
 			makeCandidate("new", ["Clairo"], 2021),
 		]);
 
 		const result = await resolveLikedArtistSongs({
-			data: {
-				artists: ["Clairo"],
-				matchFilters: {
-					version: 1,
-					releaseYear: { kind: "after", start: 2015 },
-				},
-			},
+			data: { artists: ["Clairo"] },
 		});
 
-		expect(result.artists).toEqual([{ name: "Clairo", songIds: ["new"] }]);
-	});
-
-	it("rejects malformed match filters", async () => {
-		mockLoadPhase1Candidates.mockResolvedValue([]);
-
-		await expect(async () => {
-			await resolveLikedArtistSongs({
-				data: {
-					artists: ["Clairo"],
-					matchFilters: { version: 1, releaseYear: { kind: "sideways" } },
-				},
-			});
-		}).rejects.toThrow(/invalid match filters/i);
+		expect(result.artists).toEqual([
+			{ name: "Clairo", songIds: ["old", "new"] },
+		]);
 	});
 });

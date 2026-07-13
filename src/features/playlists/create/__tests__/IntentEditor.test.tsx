@@ -3,7 +3,10 @@
  *
  * Verifies the two core eligibility branches:
  *   - Eligible: textarea is rendered, onChange fires, no CTA rendered.
- *   - Ineligible: teaser is visible, onChange is never called, CTA present.
+ *   - Ineligible: the collapsed field-shaped teaser (no textarea at all — a
+ *     button showing a muted example phrase) plus the Upgrade line; both
+ *     trigger the paywall, both carry the premium note via aria-describedby,
+ *     and onChange can never fire from the locked state.
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -73,7 +76,7 @@ describe("IntentEditor — eligible", () => {
 });
 
 describe("IntentEditor — ineligible", () => {
-	it("does not render an editable textarea — the teaser is disabled", () => {
+	it("renders no textarea — the locked teaser is a button, so intent can't be typed", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -82,14 +85,13 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={vi.fn()}
 			/>,
 		);
-		// The locked teaser is a real <textarea disabled> so screen readers can
-		// reach it — but it must not be editable (keyboard input goes nowhere).
-		const textarea = document.querySelector<HTMLTextAreaElement>("textarea");
-		expect(textarea).not.toBeNull();
-		expect(textarea?.disabled).toBe(true);
+		expect(document.querySelector("textarea")).toBeNull();
+		expect(
+			screen.getByRole("button", { name: /late-night drive/i }),
+		).toBeTruthy();
 	});
 
-	it("renders the locked teaser with aria-describedby pointing to the premium note", () => {
+	it("both locked triggers carry aria-describedby pointing to the premium note", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -98,14 +100,17 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={vi.fn()}
 			/>,
 		);
-		const textarea = document.querySelector<HTMLTextAreaElement>("textarea");
-		const descId = textarea?.getAttribute("aria-describedby");
-		expect(descId).toBeTruthy();
-		const descEl = descId ? document.getElementById(descId) : null;
-		expect(descEl?.textContent).toMatch(/backstage pass/i);
+		const buttons = screen.getAllByRole("button");
+		expect(buttons).toHaveLength(2);
+		for (const button of buttons) {
+			const descId = button.getAttribute("aria-describedby");
+			expect(descId).toBeTruthy();
+			const descEl = descId ? document.getElementById(descId) : null;
+			expect(descEl?.textContent).toMatch(/backstage pass/i);
+		}
 	});
 
-	it("renders the upgrade CTA button", () => {
+	it("renders the Upgrade CTA", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -114,10 +119,10 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={vi.fn()}
 			/>,
 		);
-		expect(screen.getByRole("button")).toBeTruthy();
+		expect(screen.getByRole("button", { name: /upgrade/i })).toBeTruthy();
 	});
 
-	it("calls onOpenPaywall when the CTA is clicked", () => {
+	it("calls onOpenPaywall from both the teaser field and the Upgrade CTA", () => {
 		const onOpenPaywall = vi.fn();
 		render(
 			<IntentEditor
@@ -127,8 +132,10 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={onOpenPaywall}
 			/>,
 		);
-		fireEvent.click(screen.getByRole("button"));
+		fireEvent.click(screen.getByRole("button", { name: /late-night drive/i }));
 		expect(onOpenPaywall).toHaveBeenCalledOnce();
+		fireEvent.click(screen.getByRole("button", { name: /upgrade/i }));
+		expect(onOpenPaywall).toHaveBeenCalledTimes(2);
 	});
 
 	it("never calls onChange — intent cannot leak from the locked state", () => {
@@ -142,12 +149,14 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={onOpenPaywall}
 			/>,
 		);
-		// Clicking the CTA should open the paywall, not set intent.
-		fireEvent.click(screen.getByRole("button"));
+		// Clicking the locked triggers opens the paywall, never sets intent.
+		for (const button of screen.getAllByRole("button")) {
+			fireEvent.click(button);
+		}
 		expect(onChange).not.toHaveBeenCalled();
 	});
 
-	it("renders a visible teaser phrase in the disabled textarea (not hidden/blurred)", () => {
+	it("renders a visible teaser phrase (not hidden/blurred)", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -156,9 +165,10 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={vi.fn()}
 			/>,
 		);
-		// The locked state shows a muted example phrase via the disabled textarea's
-		// value — visible and readable but not interactive.
-		const textarea = document.querySelector<HTMLTextAreaElement>("textarea");
-		expect(textarea?.value).toBe("Late-night drive through an empty city");
+		// The locked field shows a muted example phrase as plain text — visible
+		// and readable, just not interactive as an input.
+		expect(
+			screen.getByText("Late-night drive through an empty city"),
+		).toBeTruthy();
 	});
 });
