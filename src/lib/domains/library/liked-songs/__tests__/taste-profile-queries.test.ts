@@ -11,6 +11,7 @@ vi.mock("@/lib/data/client", () => ({
 const {
 	getTopArtists,
 	getLikedWindowAggregates,
+	getAccountReleaseYearAggregates,
 	getLikedSongIdsByArtist,
 	rollUpDecades,
 } = await import("../taste-profile-queries");
@@ -139,6 +140,57 @@ describe("getLikedWindowAggregates", () => {
 		});
 
 		expect(Result.isError(await getLikedWindowAggregates("acct-1"))).toBe(true);
+	});
+});
+
+describe("getAccountReleaseYearAggregates", () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it("maps release-year count rows to min, max, and counts", async () => {
+		mockRpc.mockResolvedValue({
+			data: [
+				{ release_year: 1999, occurrences: "2" },
+				{ release_year: 2005, occurrences: 7 },
+				{ release_year: 2020, occurrences: 3 },
+			],
+			error: null,
+		});
+
+		const result = await getAccountReleaseYearAggregates("acct-1");
+
+		expect(result).toEqual(
+			Result.ok({
+				min: 1999,
+				max: 2020,
+				counts: [
+					{ year: 1999, count: 2 },
+					{ year: 2005, count: 7 },
+					{ year: 2020, count: 3 },
+				],
+			}),
+		);
+		expect(mockRpc).toHaveBeenCalledWith("get_account_release_year_counts", {
+			p_account_id: "acct-1",
+		});
+	});
+
+	it("returns an empty aggregate when the RPC yields null data", async () => {
+		mockRpc.mockResolvedValue({ data: null, error: null });
+
+		expect(await getAccountReleaseYearAggregates("acct-1")).toEqual(
+			Result.ok({ min: null, max: null, counts: [] }),
+		);
+	});
+
+	it("returns a DatabaseError when the RPC fails", async () => {
+		mockRpc.mockResolvedValue({
+			data: null,
+			error: { code: "57014", message: "canceling statement" },
+		});
+
+		expect(
+			Result.isError(await getAccountReleaseYearAggregates("acct-1")),
+		).toBe(true);
 	});
 });
 

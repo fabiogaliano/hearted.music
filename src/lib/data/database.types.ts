@@ -3923,6 +3923,13 @@ export type Database = {
 					end_at: string | null;
 				}[];
 			};
+			get_account_release_year_counts: {
+				Args: { p_account_id: string };
+				Returns: {
+					release_year: number;
+					occurrences: number;
+				}[];
+			};
 			get_account_top_artists: {
 				Args: { p_account_id: string; p_limit?: number };
 				Returns: {

@@ -12,6 +12,7 @@ import {
 	getAccountTopGenres as queryAccountTopGenres,
 } from "@/lib/domains/library/liked-songs/queries";
 import {
+	getAccountReleaseYearAggregates,
 	getLikedWindowAggregates,
 	getTopArtists,
 	getLikedSongIdsByArtist as queryLikedSongIdsByArtist,
@@ -1248,28 +1249,14 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
  * queries at this layer only; each slice degrades to empty on failure so one
  * broken aggregation can't blank the whole landing (the seed stage always keeps
  * its from-scratch path and growth note). Genres/artists/windows aggregate the
- * full active library; decades reuse the eligible-population release-year
- * aggregate the filter-options path already computes — an intentional, harmless
- * population skew for a "starting point" hint.
+ * full active library; decades use the matching-eligible release-year RPC — an
+ * intentional, harmless population skew for a "starting point" hint.
  */
 export const getTasteProfile = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<TasteProfile> => {
 		const { accountId } = context.session;
-
-		let eligibleSongIds: string[] = [];
-		try {
-			eligibleSongIds = await getEntitledDataEnrichedSongIds(accountId);
-		} catch (err) {
-			captureServerError(err, {
-				area: "playlists",
-				operation: "get_taste_profile",
-				accountId,
-				extra: { stage: "eligibility" },
-			});
-			console.error("[taste-profile] eligibility fetch failed:", err);
-		}
 
 		const [
 			statsResult,
@@ -1282,7 +1269,7 @@ export const getTasteProfile = createServerFn({ method: "GET" })
 			queryAccountTopGenres(accountId),
 			getTopArtists(accountId),
 			getLikedWindowAggregates(accountId),
-			getReleaseYearAggregates(eligibleSongIds),
+			getAccountReleaseYearAggregates(accountId),
 		]);
 
 		// Degrade per slice: capture the failure but keep composing so the seed
@@ -1296,7 +1283,7 @@ export const getTasteProfile = createServerFn({ method: "GET" })
 			});
 		};
 
-		let totalLikedCount = eligibleSongIds.length;
+		let totalLikedCount = 0;
 		if (Result.isOk(statsResult)) {
 			totalLikedCount = statsResult.value.total;
 		} else {

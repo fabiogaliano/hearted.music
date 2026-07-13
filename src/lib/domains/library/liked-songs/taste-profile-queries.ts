@@ -5,10 +5,9 @@
  *
  * Each query is independently testable and returns a raw-count DOMAIN shape;
  * the seed feature composes them into a TasteProfile at the server-fn layer and
- * maps that to presentation VMs. Artist and window aggregation is pushed into
- * RPCs (account id in, buckets out) so no DB-derived id set is ever re-issued
- * as a URL .in() filter. The decade rollup is a pure fold over the release-year
- * aggregate the filter-options path already computes — no extra DB query.
+ * maps that to presentation VMs. Artist, window, and release-year aggregation is
+ * pushed into RPCs (account id in, buckets out) so no DB-derived id set is ever
+ * re-issued as a URL .in() filter.
  */
 
 import { Result } from "better-result";
@@ -119,6 +118,43 @@ export async function getLikedWindowAggregates(
 			to: row.end_at,
 		})),
 	);
+}
+
+/**
+ * Min, max, and per-year release counts for the account's matching-eligible
+ * liked songs. The eligibility predicate lives inside the RPC so callers never
+ * materialize a DB-derived song-id set and feed it back through `.in(...)`.
+ */
+export async function getAccountReleaseYearAggregates(
+	accountId: string,
+): Promise<Result<ReleaseYearAggregate, DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc(
+		"get_account_release_year_counts",
+		{ p_account_id: accountId },
+	);
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	const counts = (data ?? []).map((row) => ({
+		year: row.release_year,
+		count: Number(row.occurrences),
+	}));
+
+	if (counts.length === 0) {
+		return Result.ok({ min: null, max: null, counts: [] });
+	}
+
+	return Result.ok({
+		min: counts[0]?.year ?? null,
+		max: counts.at(-1)?.year ?? null,
+		counts,
+	});
 }
 
 /**
