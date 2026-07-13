@@ -18,20 +18,20 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-studio/commit";
+import type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
+import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview";
+import type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-studio/publish";
 import {
 	runPersistNewPlaylistConfig,
 	runRecordPlaylistMatchDecisions,
-} from "@/lib/workflows/playlist-studio/commit";
-import type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
-import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview";
+} from "@/lib/workflows/playlist-studio/publish";
 
 // ============================================================================
 // Result types (re-exported from the workflow modules that own them)
 // ============================================================================
 
-export type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-studio/commit";
 export type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
+export type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-studio/publish";
 
 // ============================================================================
 // Input schema

@@ -1,5 +1,5 @@
 /**
- * A fillable blank in a seed template's mad-lib sentence, rendered as a popover
+ * A fillable blank in an idea's mad-lib sentence, rendered as a popover
  * listbox. Tapping the blank shows the WHOLE profile-derived option inventory
  * (no blind cycling that hides how many options exist), and picking is direct.
  * Inherits the surrounding text's font so the blank reads as part of the
@@ -14,16 +14,16 @@
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import type { SeedChoiceVM } from "../seedTypes";
+import type { IdeaOptionVM } from "../ideaTypes";
 
-export function SeedBlank({
+export function IdeaSlot({
 	value,
 	options,
 	onPick,
 }: {
 	value: string;
-	options: SeedChoiceVM[];
-	onPick: (choice: SeedChoiceVM) => void;
+	options: IdeaOptionVM[];
+	onPick: (choice: IdeaOptionVM) => void;
 }) {
 	const [open, setOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -51,7 +51,7 @@ export function SeedBlank({
 		if (open) listRef.current?.focus();
 	}, [open]);
 
-	const commit = (choice: SeedChoiceVM) => {
+	const commit = (choice: IdeaOptionVM) => {
 		onPick(choice);
 		close();
 	};
@@ -117,7 +117,7 @@ export function SeedBlank({
 							// missed on first run, so the caret does the loudest signifying —
 							// it's the learned "this opens a list of options" glyph, which is
 							// exactly the affordance these mad-lib blanks need to not degrade
-							// into fixed presets. The underline stays neutral (--t-border, the
+							// into fixed ideas. The underline stays neutral (--t-border, the
 							// screen's dashed-border color) so it recedes — the accent word and
 							// caret carry the signal, not a second loud line.
 							"theme-primary cursor-pointer border-b border-dashed border-(--t-border) transition-opacity hover:opacity-70"

@@ -1,5 +1,5 @@
 /**
- * Workflow: draft→Spotify commit path (the write half of the studio session).
+ * Workflow: draft→Spotify publish path (the write half of the studio session).
  *
  * runPersistNewPlaylistConfig persists match config onto a newly-created
  * playlist and returns the ordered track URIs for the bulk-add step.
@@ -49,7 +49,7 @@ export interface PersistNewPlaylistConfigResult {
 	trackUris: string[];
 	/**
 	 * Internal DB playlist id (the `playlist` table's UUID primary key, distinct
-	 * from spotifyId). The create-flow result needs this to link into the
+	 * from spotifyId). The publish result needs this to link into the
 	 * managed-playlist detail route (/playlists/$playlistRef), which resolves
 	 * against this id, never the Spotify id.
 	 */

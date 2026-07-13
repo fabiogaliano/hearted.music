@@ -4,7 +4,7 @@
  * Coordinates billing (intent eligibility), library (Phase-1 candidate
  * loading), enrichment (intent + song embeddings), and taste (ranking) to
  * compose a tracklist + suggestions preview. No writes — this is the read-only
- * half of the create screen's studio session; see commit.ts for the write
+ * half of the create screen's studio session; see publish.ts for the write
  * half (persisting the config + recording match decisions).
  */
 

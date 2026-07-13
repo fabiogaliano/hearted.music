@@ -1,9 +1,9 @@
 /**
  * Tests for CreateBar, PartialState, and SuccessState.
  *
- * CreateBar is fully presentational now (see useCreatePlaylistFlow for the
- * commit-flow lifecycle) — no orchestrator import, no submit-payload or
- * result-mapping tests here; those live in useCreatePlaylistFlow.test.ts.
+ * CreateBar is fully presentational now (see usePublishPlaylist for the
+ * publish lifecycle) — no orchestrator import, no submit-payload or
+ * result-mapping tests here; those live in usePublishPlaylist.test.ts.
  * isSubmitting is driven as a prop.
  *
  * Covers:
@@ -23,7 +23,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { CreateBar } from "../create-flow/CreateBar";
+import { CreateBar } from "../publish/CreateBar";
 
 // Mock browser-target so ExtensionUnavailablePrompt renders without navigator.
 vi.mock("@/lib/extension/browser-target", () => ({
@@ -61,9 +61,9 @@ vi.mock("@tanstack/react-router", () => ({
 	},
 }));
 
-import { PartialState } from "../create-flow/PartialState";
-import { SuccessState } from "../create-flow/SuccessState";
-import { UnsyncedState } from "../create-flow/UnsyncedState";
+import { PartialState } from "../publish/PartialState";
+import { SuccessState } from "../publish/SuccessState";
+import { UnsyncedState } from "../publish/UnsyncedState";
 
 function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 	return {
@@ -168,7 +168,7 @@ describe("CreateBar — CTA disabled states", () => {
 
 	it("is enabled again once isSubmitting flips back to false — the stuck-CTA fix", () => {
 		// Regression coverage at the presentational layer: the bar just renders
-		// whatever isSubmitting it's given, so a caller (useCreatePlaylistFlow)
+		// whatever isSubmitting it's given, so a caller (usePublishPlaylist)
 		// that resets isSubmitting in every terminal branch un-sticks the CTA.
 		const { rerender } = render(
 			<CreateBar {...makeProps({ isSubmitting: true })} />,

@@ -14,8 +14,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { SongVM } from "@/lib/domains/playlists/types";
-import { LibraryEmptyState } from "../create-flow/LibraryEmptyState";
-import { NotEnoughSongsNote } from "../create-flow/NotEnoughSongsNote";
+import { LibraryEmptyState } from "../LibraryEmptyState";
+import { NotEnoughSongsNote } from "../NotEnoughSongsNote";
 import { PreviewList } from "../preview/PreviewList";
 
 const makeSong = (id: string, name: string): SongVM => ({

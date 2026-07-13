@@ -1,5 +1,5 @@
 /**
- * useCreatePlaylistFlow — owns the commit-flow lifecycle for the playlist
+ * usePublishPlaylist — owns the publish lifecycle for the playlist
  * creation screen: idle → submitting → {success | partial | created-unsynced
  * → retrying} | gate-failure | error.
  *
@@ -37,7 +37,7 @@ import {
 import type { SpotifyGateFailure } from "./useSpotifyGate";
 
 /** The orchestrator input, submitted with the name as a call-time argument. */
-export type CreatePlaylistFlowSubmitInput = CreatePlaylistFromDraftInput;
+export type PublishPlaylistSubmitInput = CreatePlaylistFromDraftInput;
 
 /**
  * Result states the screen renders. Only the terminal, user-facing statuses
@@ -46,29 +46,29 @@ export type CreatePlaylistFlowSubmitInput = CreatePlaylistFromDraftInput;
  * Derived via Extract<> (never re-declared) so a shape change to the
  * orchestrator's union propagates here automatically.
  */
-export type CreatePlaylistFlowResult =
+export type PublishPlaylistResult =
 	| (Extract<CreatePlaylistFromDraftResult, { status: "success" }> & {
 			playlistName: string;
 	  })
 	| Extract<CreatePlaylistFromDraftResult, { status: "partial" }>
 	| Extract<CreatePlaylistFromDraftResult, { status: "created-unsynced" }>;
 
-export interface UseCreatePlaylistFlow {
-	result: CreatePlaylistFlowResult | null;
+export interface UsePublishPlaylist {
+	result: PublishPlaylistResult | null;
 	isSubmitting: boolean;
 	isRetryingUnsynced: boolean;
-	submit: (input: CreatePlaylistFlowSubmitInput) => Promise<void>;
+	submit: (input: PublishPlaylistSubmitInput) => Promise<void>;
 	/** No args — resumes the private submitted-input snapshot verbatim. */
 	retryUnsynced: () => Promise<void>;
 }
 
 const GENERIC_ERROR_MESSAGE = "Something went sideways. Let's try that again.";
 
-export function useCreatePlaylistFlow(args: {
+export function usePublishPlaylist(args: {
 	reportGateFailure: (failure: SpotifyGateFailure) => void;
-}): UseCreatePlaylistFlow {
+}): UsePublishPlaylist {
 	const { reportGateFailure } = args;
-	const [result, setResult] = useState<CreatePlaylistFlowResult | null>(null);
+	const [result, setResult] = useState<PublishPlaylistResult | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isRetryingUnsynced, setIsRetryingUnsynced] = useState(false);
 
@@ -109,7 +109,7 @@ export function useCreatePlaylistFlow(args: {
 	);
 
 	const submit = useCallback(
-		async (input: CreatePlaylistFlowSubmitInput) => {
+		async (input: PublishPlaylistSubmitInput) => {
 			submittedInputRef.current = input;
 			setIsSubmitting(true);
 			try {

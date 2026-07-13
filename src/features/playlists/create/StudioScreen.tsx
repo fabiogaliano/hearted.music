@@ -34,19 +34,19 @@ import { ArtistConfig } from "./config/ArtistConfig";
 import { FiltersConfig } from "./config/FiltersConfig";
 import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
-import { CreateBar } from "./create-flow/CreateBar";
-import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
-import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
-import { PartialState } from "./create-flow/PartialState";
-import { SuccessState } from "./create-flow/SuccessState";
-import { UnsyncedState } from "./create-flow/UnsyncedState";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
+import { LibraryEmptyState } from "./LibraryEmptyState";
 import { MaxSongsSlider } from "./MaxSongsSlider";
+import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
 import { PreviewList } from "./preview/PreviewList";
+import { CreateBar } from "./publish/CreateBar";
+import { PartialState } from "./publish/PartialState";
+import { SuccessState } from "./publish/SuccessState";
+import { UnsyncedState } from "./publish/UnsyncedState";
 import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
-import { useCreatePlaylistFlow } from "./useCreatePlaylistFlow";
+import { usePublishPlaylist } from "./usePublishPlaylist";
 import { useSpotifyGate } from "./useSpotifyGate";
 
 const MAX_NAME_LENGTH = 100;
@@ -94,10 +94,10 @@ export function StudioScreen({
 	// "Check again" in the prompts) so recovering in another tab isn't a dead end.
 	const { gateState, recheck, reportGateFailure } = useSpotifyGate();
 
-	// Owns the commit-flow lifecycle (submit → success/partial/created-unsynced,
+	// Owns the publish lifecycle (submit → success/partial/created-unsynced,
 	// gate-failure routing, isSubmitting). Declared before `playback` below
 	// since it's keyed on flow.result.
-	const flow = useCreatePlaylistFlow({ reportGateFailure });
+	const flow = usePublishPlaylist({ reportGateFailure });
 
 	// Shared across the preview list AND the suggestions tray so only one
 	// in-row Spotify preview plays at a time across the whole screen (U2).

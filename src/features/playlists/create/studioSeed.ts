@@ -2,7 +2,7 @@
  * The seed carried across the entrance (/playlists/new) → studio
  * (/playlists/new/studio) navigation, via router history STATE — never the URL.
  *
- * The entrance owns no draft state: SeedStage hands back a PresetVM (or null for
+ * The entrance owns no draft state: IdeasBoard hands back a ResolvedIdeaVM (or null for
  * "own words" / "from scratch") plus the typed intent. Those are internal
  * starting values (a name, some genres, a pinned artist), not addressable state,
  * so they travel in history state and the studio URL stays clean. The seed is
@@ -12,18 +12,18 @@
  */
 
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import type { PresetVM } from "./seedTypes";
+import type { ResolvedIdeaVM } from "./ideaTypes";
 import type { CreatePlaylistDraftInit } from "./useCreatePlaylistDraft";
 
 /** The starting values the studio opens with; every field optional (from-scratch = {}). */
 export interface StudioSeed {
-	/** Preset label → the studio's initial playlist name. */
+	/** Idea label → the studio's initial playlist name. */
 	name?: string;
 	/** Typed vibe; only ever set when the intent gate allows it. */
 	intent?: string;
 	genrePills?: string[];
 	matchFilters?: PlaylistMatchFiltersV1;
-	/** Artist template pin — seeds the "Around" selection with one enabled artist. */
+	/** Artist idea pin — seeds the "Around" selection with one enabled artist. */
 	pinArtist?: string;
 	/** Land with the artist search focused (the seed card's "+" affordance). */
 	focusArtistSearch?: boolean;
@@ -39,22 +39,22 @@ declare module "@tanstack/react-router" {
 }
 
 /**
- * Collapse the entrance's (preset, intentText) into the studio seed. Intent is
+ * Collapse the entrance's (idea, intentText) into the studio seed. Intent is
  * assumed already gated by the caller (the entrance only lets an eligible
  * account type it).
  */
 export function buildStudioSeed(
-	preset: PresetVM | null,
+	idea: ResolvedIdeaVM | null,
 	intentText: string,
 ): StudioSeed {
 	return {
-		name: preset?.label,
+		name: idea?.label,
 		intent: intentText || undefined,
 		genrePills:
-			preset && preset.genrePills.length > 0 ? preset.genrePills : undefined,
-		matchFilters: preset?.matchFilters,
-		pinArtist: preset?.pinArtist,
-		focusArtistSearch: preset?.focusArtistSearch || undefined,
+			idea && idea.genrePills.length > 0 ? idea.genrePills : undefined,
+		matchFilters: idea?.matchFilters,
+		pinArtist: idea?.pinArtist,
+		focusArtistSearch: idea?.focusArtistSearch || undefined,
 	};
 }
 

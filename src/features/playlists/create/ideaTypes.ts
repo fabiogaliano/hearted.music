@@ -1,7 +1,7 @@
 /**
- * Presentation view-models for the playlist-creation seed stage (beat 1).
+ * Presentation view-models for the playlist-creation ideas screen (beat 1).
  *
- * These carry function-valued and label-bearing fields (a template's
+ * These carry function-valued and label-bearing fields (a idea's
  * `describe`, window/decade labels) — presentation shapes, not domain data — so
  * they live in the feature, not `src/lib/domains`. The raw-count domain payload
  * (`TasteProfile`) is mapped into these in `tasteProfile.ts`. The intent gate is
@@ -15,10 +15,10 @@ import type {
 } from "@/lib/domains/taste/match-filters/types";
 
 /**
- * Per-account aggregates the seed templates derive from, with display labels
+ * Per-account aggregates the playlist ideas derive from, with display labels
  * attached: `likedWindows` ← liked-song rows bucketed into named time windows,
  * `topGenres`/`topArtists` ← per-genre/-artist like counts, `decades` ←
- * release-year buckets. Templates are generated from this, never hand-authored,
+ * release-year buckets. Ideas are generated from this, never hand-authored,
  * so every account sees its own starting points with its own numbers.
  */
 export interface TasteProfileVM {
@@ -40,53 +40,53 @@ export interface TasteProfileVM {
 }
 
 /**
- * One fillable value for a template slot. Beyond the display `label`, a choice
- * carries the STRUCTURED config it contributes when its template is committed —
- * exactly one of these dimensions per choice, matching the template it belongs
+ * One fillable value for a idea slot. Beyond the display `label`, a choice
+ * carries the STRUCTURED config it contributes when its idea is committed —
+ * exactly one of these dimensions per choice, matching the idea it belongs
  * to (genre → `genrePills`, decade → `releaseYear`, window → `likedAt`, artist →
- * `artist`). `resolveTemplate` folds these into the concrete `PresetVM`.
+ * `artist`). `resolveIdea` folds these into the concrete `ResolvedIdeaVM`.
  */
-export interface SeedChoiceVM {
+export interface IdeaOptionVM {
 	id: string;
 	label: string;
-	/** Genre pills this choice contributes (genre / blend templates). */
+	/** Genre pills this choice contributes (genre / blend ideas). */
 	genrePills?: string[];
-	/** Release-year window this choice constrains to (decade template). */
+	/** Release-year window this choice constrains to (decade idea). */
 	releaseYear?: ReleaseYearFilterV1;
-	/** Liked-at window this choice constrains to (window template). */
+	/** Liked-at window this choice constrains to (window idea). */
 	likedAt?: LikedAtFilterV1;
-	/** Artist whose liked songs seed the preview as pins (artist template). */
+	/** Artist whose liked songs seed the preview as pins (artist idea). */
 	artist?: string;
 }
 
 /**
- * The taste dimension a template starts you from — genre (single or blend),
- * time (when a song came out OR when you liked it), or artist. Templates are
- * faceted content, and the seed stage groups them by this so a scanning user
+ * The taste dimension a idea starts you from — genre (single or blend),
+ * time (when a song came out OR when you liked it), or artist. Ideas are
+ * faceted content, and the ideas screen groups them by this so a scanning user
  * reads the axes they can start from instead of one undifferentiated pile.
  */
-export type SeedFacet = "genre" | "time" | "artist";
+export type IdeaFacet = "genre" | "time" | "artist";
 
 /**
  * A mad-lib starting point: literal text interleaved with cyclable slots
  * ("All things [indie]", "Throwbacks: [2010s]", "[indie] × [electronic]").
  * The card is a tiny configurator — the user tunes the slots in place, then
- * commits; resolveTemplate() collapses the choice into a concrete PresetVM.
+ * commits; resolveIdea() collapses the choice into a concrete ResolvedIdeaVM.
  * Slot options come from the taste profile, so the blanks are pre-filled
  * with THIS account's genres/decades/windows, first option = default.
  */
-export interface SeedTemplateVM {
+export interface PlaylistIdeaVM {
 	id: string;
-	/** The taste dimension this template starts from, for facet grouping. */
-	facet: SeedFacet;
+	/** The taste dimension this idea starts from, for facet grouping. */
+	facet: IdeaFacet;
 	parts: (string | { slot: string })[];
-	slots: Record<string, SeedChoiceVM[]>;
+	slots: Record<string, IdeaOptionVM[]>;
 	/** Selection-aware supporting line, quoting the profile's real numbers. */
-	describe: (selection: Record<string, SeedChoiceVM>) => string;
+	describe: (selection: Record<string, IdeaOptionVM>) => string;
 }
 
 /** One concrete starting point the studio pre-fills its config from. */
-export interface PresetVM {
+export interface ResolvedIdeaVM {
 	id: string;
 	label: string;
 	/** Short supporting line, e.g. "128 songs · updated weekly". */

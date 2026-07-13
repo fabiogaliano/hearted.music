@@ -1,8 +1,8 @@
 /**
- * Client-facing taste-profile query for the seed stage.
+ * Client-facing taste-profile query for the ideas screen.
  *
  * Server fn + query options factory so the route loader can ensureQueryData and
- * the seed stage can read it synchronously via useQuery. This is the ONE place
+ * the ideas screen can read it synchronously via useQuery. This is the ONE place
  * the raw-count domain payload is mapped to the presentation VM: window ids gain
  * human labels and a stable recency order, decades gain a "2010s"-style label.
  * Kept out of the domain layer because labels/order are presentation concerns.
@@ -16,7 +16,7 @@ import type {
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import type { LikedAtFilterV1 } from "@/lib/domains/taste/match-filters/types";
 import { getTasteProfile } from "@/lib/server/playlists.functions";
-import type { TasteProfileVM } from "./seedTypes";
+import type { TasteProfileVM } from "./ideaTypes";
 
 // Human labels for the RPC's window ids. Ids not listed here are dropped — the
 // map is the allow-list, so a new SQL bucket can't leak an unlabelled window.

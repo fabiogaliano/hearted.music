@@ -1,24 +1,24 @@
 /**
- * Derives interactive seed TEMPLATES from an account's taste profile — not a
- * fixed editorial list, and not finished picks either: each template is a
+ * Derives interactive playlist IDEAS from an account's taste profile — not a
+ * fixed editorial list, and not finished picks either: each idea is a
  * mad-lib with cyclable slots ("All things [indie]", "Throwbacks: [2010s]",
  * "Where [indie] meets [electronic]", "Liked in the [last 3 months]") whose options
  * and default fills come from the profile. Each rule has a floor so thin
  * signals don't produce hollow cards — a sparse library yields fewer
- * templates with fewer slot options, a brand-new one yields none.
+ * ideas with fewer slot options, a brand-new one yields none.
  *
- * Templates are deliberately structured-only (genres, windows, decades —
+ * Ideas are deliberately structured-only (genres, windows, decades —
  * never free-text `intent`): describing the vibe in words is the premium
- * gated capability, and templates must not leak it to free accounts.
+ * gated capability, and ideas must not leak it to free accounts.
  */
 
 import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import type {
-	PresetVM,
-	SeedChoiceVM,
-	SeedTemplateVM,
+	IdeaOptionVM,
+	PlaylistIdeaVM,
+	ResolvedIdeaVM,
 	TasteProfileVM,
-} from "./seedTypes";
+} from "./ideaTypes";
 
 /** Rotate so a random element leads — the genre blank defaults differently per visit. */
 function rotateRandom<T>(items: T[]): T[] {
@@ -29,11 +29,11 @@ function rotateRandom<T>(items: T[]): T[] {
 // Emission is facet-ordered — genre (single, then blend), time (liked-window,
 // then decade), artist — so the flat list still scans dimension-by-dimension
 // without the UI adding group chrome.
-export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
-	const templates: SeedTemplateVM[] = [];
+export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
+	const ideas: PlaylistIdeaVM[] = [];
 
 	const genres = profile.topGenres.filter((g) => g.count >= 20).slice(0, 5);
-	const genreChoices: SeedChoiceVM[] = genres.map((g) => ({
+	const genreChoices: IdeaOptionVM[] = genres.map((g) => ({
 		id: g.name,
 		label: g.name,
 		genrePills: [g.name],
@@ -42,8 +42,8 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 		genres.find((g) => g.name === id)?.count ?? 0;
 
 	if (genreChoices.length > 0) {
-		templates.push({
-			id: "tpl-genre",
+		ideas.push({
+			id: "idea-genre",
 			facet: "genre",
 			parts: ["All things ", { slot: "genre" }],
 			slots: { genre: rotateRandom(genreChoices) },
@@ -55,8 +55,8 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 	}
 
 	if (genreChoices.length >= 2) {
-		templates.push({
-			id: "tpl-blend",
+		ideas.push({
+			id: "idea-blend",
 			facet: "genre",
 			parts: ["Where ", { slot: "a" }, " meets ", { slot: "b" }],
 			slots: {
@@ -76,8 +76,8 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 
 	const windows = profile.likedWindows.filter((w) => w.count >= 8);
 	if (windows.length > 0) {
-		templates.push({
-			id: "tpl-window",
+		ideas.push({
+			id: "idea-window",
 			facet: "time",
 			parts: ["Liked in the ", { slot: "window" }],
 			slots: {
@@ -94,10 +94,10 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 		});
 	}
 
-	const decades = profile.decades.filter((d) => d.count >= 20);
+	const decades = profile.decades.filter((d) => d.count >= 3);
 	if (decades.length > 0) {
-		templates.push({
-			id: "tpl-decade",
+		ideas.push({
+			id: "idea-decade",
 			facet: "time",
 			parts: ["Throwbacks: ", { slot: "period" }],
 			slots: {
@@ -120,8 +120,8 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 	// times is a strong "in their orbit" seed, not a thin signal.
 	const artists = profile.topArtists.filter((a) => a.count >= 8).slice(0, 5);
 	if (artists.length > 0) {
-		templates.push({
-			id: "tpl-artist",
+		ideas.push({
+			id: "idea-artist",
 			facet: "artist",
 			parts: ["Around ", { slot: "artist" }],
 			slots: {
@@ -138,34 +138,34 @@ export function buildSeedTemplates(profile: TasteProfileVM): SeedTemplateVM[] {
 		});
 	}
 
-	return templates;
+	return ideas;
 }
 
 /** Default selection: every slot filled with its first (profile-ranked) option. */
 export function defaultSelection(
-	template: SeedTemplateVM,
-): Record<string, SeedChoiceVM> {
+	idea: PlaylistIdeaVM,
+): Record<string, IdeaOptionVM> {
 	return Object.fromEntries(
-		Object.entries(template.slots).map(([slot, options]) => [slot, options[0]]),
+		Object.entries(idea.slots).map(([slot, options]) => [slot, options[0]]),
 	);
 }
 
 /**
- * Collapse a tuned template into the concrete PresetVM the studio consumes.
+ * Collapse a tuned idea into the concrete ResolvedIdeaVM the studio consumes.
  *
- * Each choice carries at most one structured dimension, and no template mixes
+ * Each choice carries at most one structured dimension, and no idea mixes
  * them (genre/blend contribute pills, decade a release-year window, window a
  * liked-at window, artist a pin target), so folding is a union: pills dedupe
  * across slots; release-year/liked-at/artist take the first choice that carries
  * them. A decade or window resolves into a `matchFilters` object; an artist into
- * `pinArtist`. Genre-only templates leave both unset (the previous behaviour).
+ * `pinArtist`. Genre-only ideas leave both unset (the previous behaviour).
  */
-export function resolveTemplate(
-	template: SeedTemplateVM,
-	selection: Record<string, SeedChoiceVM>,
-): PresetVM {
+export function resolveIdea(
+	idea: PlaylistIdeaVM,
+	selection: Record<string, IdeaOptionVM>,
+): ResolvedIdeaVM {
 	const choices = Object.values(selection);
-	const label = template.parts
+	const label = idea.parts
 		.map((part) =>
 			typeof part === "string" ? part : selection[part.slot].label,
 		)
@@ -185,9 +185,9 @@ export function resolveTemplate(
 				}
 			: undefined;
 	return {
-		id: `${template.id}:${choices.map((c) => c.id).join("+")}`,
+		id: `${idea.id}:${choices.map((c) => c.id).join("+")}`,
 		label,
-		description: template.describe(selection),
+		description: idea.describe(selection),
 		genrePills,
 		matchFilters,
 		pinArtist,

@@ -2,10 +2,10 @@
  * Client-facing eligibility query for the intent field.
  *
  * Server fn + query options factory so the route loader can ensureQueryData
- * and both the studio rail and the seed stage can read it synchronously via
+ * and both the studio rail and the ideas screen can read it synchronously via
  * useQuery. Returns the full gate (allowed + criteria) so the locked treatment
  * can say WHY it's locked; the studio collapses it to `.allowed` for
- * IntentEditor, while the seed stage renders the criteria.
+ * IntentEditor, while the ideas screen renders the criteria.
  */
 
 import { queryOptions } from "@tanstack/react-query";

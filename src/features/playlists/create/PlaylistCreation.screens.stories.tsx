@@ -1,16 +1,16 @@
 /**
- * Playlist Creation — the seeded landing (beat 1), promoted to prod.
+ * Playlist Creation — the ideas screen (beat 1), promoted to prod.
  *
- * This is the real `SeedStage` from `./seed/`, reading the taste profile and
+ * This is the real `IdeasBoard` from `./ideas/`, reading the taste profile and
  * intent gate from the query cache (seeded here per control). Beat 2 — the
  * studio — is the live `CreatePlaylistScreen`, which needs the router/auth
  * context, so it's exercised by the composable stories rather than here; this
- * story owns the landing's own decisions: how the template spread adapts to a
+ * story owns the landing's own decisions: how the idea spread adapts to a
  * library's depth, and how the own-words premium gate reads locked vs unlocked.
  *
- * Flip the library control (rich / sparse / brand-new) to watch the template
+ * Flip the library control (rich / sparse / brand-new) to watch the idea
  * spread thin out; flip intentAccess to swap the own-words row between an open
- * field and the "show then lock" treatment. Best viewed at the desktop preset.
+ * field and the "show then lock" treatment. Best viewed at the desktop idea.
  */
 
 import type { Story } from "@ladle/react";
@@ -18,9 +18,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import { fonts } from "@/lib/theme/fonts";
+import { IdeasBoard } from "./ideas/IdeasBoard";
+import type { ResolvedIdeaVM, TasteProfileVM } from "./ideaTypes";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
-import { SeedStage } from "./seed/SeedStage";
-import type { PresetVM, TasteProfileVM } from "./seedTypes";
 import { tasteProfileQueryOptions } from "./tasteProfile";
 
 export default { title: "Playlist Creation" };
@@ -37,8 +37,8 @@ const first3m = {
 	end: { kind: "date", date: "2024-04-10" },
 } as const;
 
-// Three library depths for judging the dynamic seed stage: rich derives the full
-// template spread with well-stocked slots, sparse only what clears the floors
+// Three library depths for judging the dynamic ideas screen: rich derives the full
+// idea spread with well-stocked slots, sparse only what clears the floors
 // (fewer cards, fewer options per blank), brand-new derives nothing (the stage
 // explains itself instead of showing hollow cards).
 const TASTE_PROFILES: Record<"rich" | "sparse" | "brand-new", TasteProfileVM> =
@@ -110,7 +110,7 @@ const INTENT_GATES: Record<"unlocked" | "locked", IntentGateVM> = {
 	},
 };
 
-// A fresh client whose cache already holds the seed stage's two queries, so the
+// A fresh client whose cache already holds the ideas screen's two queries, so the
 // component's useQuery reads resolve synchronously without touching the server.
 function seededClient(
 	profile: TasteProfileVM,
@@ -131,17 +131,17 @@ function seededClient(
 	return qc;
 }
 
-interface SeedStageArgs {
+interface IdeasBoardArgs {
 	library: "rich" | "sparse" | "brand-new";
 	intentAccess: "unlocked" | "locked";
 }
 
-export const ScreenSeedStage: Story<SeedStageArgs> = ({
+export const ScreenIdeasBoard: Story<IdeasBoardArgs> = ({
 	library,
 	intentAccess,
 }) => {
 	const [seeded, setSeeded] = useState<{
-		preset: PresetVM | null;
+		idea: ResolvedIdeaVM | null;
 		intentText: string;
 	} | null>(null);
 	const [unlockOpened, setUnlockOpened] = useState(false);
@@ -155,9 +155,9 @@ export const ScreenSeedStage: Story<SeedStageArgs> = ({
 
 	return (
 		<QueryClientProvider client={client}>
-			<SeedStage
+			<IdeasBoard
 				key={`${library}-${intentAccess}`}
-				onSeed={(preset, intentText) => setSeeded({ preset, intentText })}
+				onSeed={(idea, intentText) => setSeeded({ idea, intentText })}
 				onUnlock={() => setUnlockOpened(true)}
 				onBack={() => {}}
 			/>
@@ -176,10 +176,10 @@ export const ScreenSeedStage: Story<SeedStageArgs> = ({
 					style={{ fontFamily: fonts.body }}
 				>
 					Seeded → name:{" "}
-					<span className="theme-text">{seeded.preset?.label ?? "—"}</span> ·
+					<span className="theme-text">{seeded.idea?.label ?? "—"}</span> ·
 					genres:{" "}
 					<span className="theme-text">
-						{seeded.preset?.genrePills.join(", ") || "—"}
+						{seeded.idea?.genrePills.join(", ") || "—"}
 					</span>{" "}
 					· intent:{" "}
 					<span className="theme-text">{seeded.intentText || "—"}</span>
@@ -188,12 +188,12 @@ export const ScreenSeedStage: Story<SeedStageArgs> = ({
 		</QueryClientProvider>
 	);
 };
-ScreenSeedStage.storyName = "Screen: Seed Stage (beat 1)";
-ScreenSeedStage.args = {
+ScreenIdeasBoard.storyName = "Screen: Seed Stage (beat 1)";
+ScreenIdeasBoard.args = {
 	library: "rich",
 	intentAccess: "unlocked",
 };
-ScreenSeedStage.argTypes = {
+ScreenIdeasBoard.argTypes = {
 	library: {
 		options: ["rich", "sparse", "brand-new"],
 		control: { type: "select" },
@@ -203,7 +203,7 @@ ScreenSeedStage.argTypes = {
 		control: { type: "radio" },
 	},
 };
-ScreenSeedStage.meta = {
+ScreenIdeasBoard.meta = {
 	description:
-		"The promoted seed landing: interactive mad-lib TEMPLATES derived from the taste profile — a dashed blank ('All things [indie]', 'Throwbacks: [2010s]', 'Where [indie] meets [electronic]', 'Around [artist]') opens a popover listing its profile-ranked options; the arrow starts from the tuned result. 'From your whole library' names the scratch and its count. Flip the library control (rich / sparse / brand-new) to see the spread adapt; flip intentAccess to see the own-words premium gate (available with Backstage Pass). Picking a seed shows the config it would carry into the studio.",
+		"The promoted seed landing: interactive mad-lib IDEAS derived from the taste profile — a dashed blank ('All things [indie]', 'Throwbacks: [2010s]', 'Where [indie] meets [electronic]', 'Around [artist]') opens a popover listing its profile-ranked options; the arrow starts from the tuned result. 'From your whole library' names the scratch and its count. Flip the library control (rich / sparse / brand-new) to see the spread adapt; flip intentAccess to see the own-words premium gate (available with Backstage Pass). Picking a seed shows the config it would carry into the studio.",
 };

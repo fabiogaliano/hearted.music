@@ -2,7 +2,7 @@
  * /playlists/new — layout for the two-beat creation flow.
  *
  * The flow is split across two routes that share this layout: the entrance
- * (beat 1, the index route → SeedLandingScreen) and the studio (beat 2,
+ * (beat 1, the index route → IdeasScreen) and the studio (beat 2,
  * playlists.new.studio → StudioScreen). This layout owns only what BOTH beats
  * need on entry, whichever they land on first (including a deep link straight
  * to the studio):

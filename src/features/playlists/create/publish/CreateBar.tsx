@@ -8,7 +8,7 @@
  * now that the name field it used to own has moved away.
  *
  * Fully presentational: submitting and payload assembly are owned by
- * useCreatePlaylistFlow up in CreatePlaylistScreen. This bar just renders
+ * usePublishPlaylist up in CreatePlaylistScreen. This bar just renders
  * readiness state and forwards a plain onSubmit — no orchestrator import.
  *
  * isResolvingArtists / isArtistResolutionError also gate the CTA: while the

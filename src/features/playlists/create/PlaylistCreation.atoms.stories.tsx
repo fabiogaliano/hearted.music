@@ -25,13 +25,7 @@ import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/t
 import { FiltersConfig } from "./config/FiltersConfig";
 import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
-import { CreateBar } from "./create-flow/CreateBar";
-import { ExtensionUnavailablePrompt } from "./create-flow/ExtensionUnavailablePrompt";
-import { LibraryEmptyState } from "./create-flow/LibraryEmptyState";
-import { NotEnoughSongsNote } from "./create-flow/NotEnoughSongsNote";
-import { PartialState } from "./create-flow/PartialState";
-import { ReconnectPrompt } from "./create-flow/ReconnectPrompt";
-import { SuccessState } from "./create-flow/SuccessState";
+import { LibraryEmptyState } from "./LibraryEmptyState";
 import {
 	MAX_SONGS_DEFAULT,
 	MAX_SONGS_MAX,
@@ -39,8 +33,14 @@ import {
 	MAX_SONGS_STEP,
 	MaxSongsSlider,
 } from "./MaxSongsSlider";
+import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
 import { PreviewList } from "./preview/PreviewList";
 import { PreviewSongRow } from "./preview/PreviewSongRow";
+import { CreateBar } from "./publish/CreateBar";
+import { ExtensionUnavailablePrompt } from "./publish/ExtensionUnavailablePrompt";
+import { PartialState } from "./publish/PartialState";
+import { ReconnectPrompt } from "./publish/ReconnectPrompt";
+import { SuccessState } from "./publish/SuccessState";
 import { SuggestionRow } from "./suggestions/SuggestionRow";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 

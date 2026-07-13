@@ -66,7 +66,7 @@ vi.mock("@/lib/workflows/playlist-studio/preview", () => ({
 
 const runPersistNewPlaylistConfigMock = vi.fn();
 const runRecordPlaylistMatchDecisionsMock = vi.fn();
-vi.mock("@/lib/workflows/playlist-studio/commit", () => ({
+vi.mock("@/lib/workflows/playlist-studio/publish", () => ({
 	runPersistNewPlaylistConfig: (...args: unknown[]) =>
 		runPersistNewPlaylistConfigMock(...args),
 	runRecordPlaylistMatchDecisions: (...args: unknown[]) =>

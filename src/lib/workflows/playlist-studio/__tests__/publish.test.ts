@@ -1,5 +1,5 @@
 /**
- * Tests for the draft→Spotify commit workflow: runPersistNewPlaylistConfig
+ * Tests for the draft→Spotify publish workflow: runPersistNewPlaylistConfig
  * and runRecordPlaylistMatchDecisions.
  *
  * DB-touching collaborators are mocked (per the scheduler.test.ts idiom);
@@ -54,7 +54,7 @@ vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
 import {
 	runPersistNewPlaylistConfig,
 	runRecordPlaylistMatchDecisions,
-} from "../commit";
+} from "../publish";
 
 const fakeSupabase = {} as AdminSupabaseClient;
 

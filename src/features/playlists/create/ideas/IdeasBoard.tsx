@@ -1,29 +1,29 @@
 /**
- * The seeded landing beat ("What are we making?") — the first thing a user sees
- * on /playlists/new. Starting points are interactive TEMPLATES, not finished
+ * The ideas board ("What are we making?") — the first thing a user sees
+ * on /playlists/new. Starting points are interactive IDEAS, not finished
  * picks: each row is a mad-lib whose blanks ("All things [indie]") open a
  * popover listing the account's profile-derived options — tune the blank, then
  * click the row to start from the tuned result. A sparse library shows fewer
  * rows with fewer options; a brand-new one shows a growth note. "From scratch"
  * is a real card too, saying what the scratch is (the library, with its count).
  *
- * Templates render as a compact two-column grid of SURFACE-FILLED cards
+ * Ideas render as a compact two-column grid of SURFACE-FILLED cards
  * (hover-border-brighten: --t-surface fill + border) — the fill is what
  * separates them from the page bg in a monochrome theme, where outline-only
  * boxes read as "all the same color." The grid arrives already facet-ordered
- * from buildSeedTemplates (genre → time → artist) so it scans dimension-by-
+ * from buildPlaylistIdeas (genre → time → artist) so it scans dimension-by-
  * dimension without group chrome, titles are Instrument Serif, and each card's
  * tunable blank is the screen's accent — color means "you can change this."
  *
  * The free-text intent is the premium capability and leads either way: it sits
- * directly under the question, with the templates as the "or start from"
+ * directly under the question, with the ideas as the "or start from"
  * alternative below. When the gate disallows it, the field becomes a locked CTA:
  * a labeled affordance ("In your own words") whose whole block is a button that
  * opens the paywall, with the offer copy — progress toward the free unlock path
  * first, then the instant Backstage Pass path — kept separate from the feature's
- * own name. Templates stay usable regardless — they're structured, not words.
+ * own name. Ideas stay usable regardless — they're structured, not words.
  *
- * Templates and the total come from the taste profile query; the gate from the
+ * Ideas and the total come from the taste profile query; the gate from the
  * eligibility query. Both are pre-warmed by the route loader, so this reads from
  * cache on first paint.
  */
@@ -41,16 +41,20 @@ import { Button } from "@/components/ui/Button";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import { fonts } from "@/lib/theme/fonts";
+import type {
+	IdeaOptionVM,
+	PlaylistIdeaVM,
+	ResolvedIdeaVM,
+} from "../ideaTypes";
 import { intentEligibilityQueryOptions } from "../intentEligibility";
 import {
-	buildSeedTemplates,
+	buildPlaylistIdeas,
 	defaultSelection,
 	formatGateHint,
-	resolveTemplate,
-} from "../seedPresets";
-import type { PresetVM, SeedChoiceVM, SeedTemplateVM } from "../seedTypes";
+	resolveIdea,
+} from "../playlistIdeas";
 import { tasteProfileQueryOptions } from "../tasteProfile";
-import { SeedBlank } from "./SeedBlank";
+import { IdeaSlot } from "./IdeaSlot";
 
 // Defensive gate for the impossible pre-warm-missed case: locked with no claimed
 // progress. The loader ensures the real gate is cached before first paint.
@@ -99,7 +103,7 @@ function IntentRowLocked({
 			{/* Whole block is the CTA: a disabled input is a dead end, so this is an
 			    honest locked affordance that opens the paywall on click. The faux
 			    input wears the surface fill (the screen's "clickable object"
-			    material, matching the template cards) rather than an input's
+			    material, matching the idea cards) rather than an input's
 			    underline — an underline promises typing, and this doesn't type. */}
 			<button
 				type="button"
@@ -199,25 +203,25 @@ function IntentRow({ onStart }: { onStart: (intentText: string) => void }) {
 	);
 }
 
-function TemplateCard({
-	template,
+function IdeaCard({
+	idea,
 	onUse,
 }: {
-	template: SeedTemplateVM;
-	onUse: (preset: PresetVM) => void;
+	idea: PlaylistIdeaVM;
+	onUse: (idea: ResolvedIdeaVM) => void;
 }) {
-	const [selection, setSelection] = useState<Record<string, SeedChoiceVM>>(() =>
-		defaultSelection(template),
+	const [selection, setSelection] = useState<Record<string, IdeaOptionVM>>(() =>
+		defaultSelection(idea),
 	);
 
-	const resolved = resolveTemplate(template, selection);
+	const resolved = resolveIdea(idea, selection);
 
 	// hover-border-brighten fills the card with --t-surface — the same material
 	// as the whole-library card below — so the grid visibly lifts off the page
 	// bg instead of being one more same-color outline. The whole card commits,
 	// via the arrow button's stretched ::after overlay (nesting the card in a
 	// <button> would swallow the blanks, which are buttons of their own); the
-	// blanks sit above the overlay (z-raised in SeedBlank) so tuning one never
+	// blanks sit above the overlay (z-raised in IdeaSlot) so tuning one never
 	// accidentally commits.
 	return (
 		<div className="hover-border-brighten group relative flex items-center justify-between gap-3 px-4 py-3">
@@ -226,7 +230,7 @@ function TemplateCard({
 					className="theme-text block text-lg leading-tight font-light"
 					style={{ fontFamily: fonts.display }}
 				>
-					{template.parts.map((part, i) =>
+					{idea.parts.map((part, i) =>
 						typeof part === "string" ? (
 							// biome-ignore lint/suspicious/noArrayIndexKey: parts are a stable literal sequence
 							<span key={i}>{part}</span>
@@ -235,9 +239,9 @@ function TemplateCard({
 							// semantics but not slanted; its accent color and caret are the
 							// "this part opens a list of options" cue.
 							<em key={part.slot} className="not-italic">
-								<SeedBlank
+								<IdeaSlot
 									value={selection[part.slot]?.label ?? "…"}
-									options={template.slots[part.slot] ?? []}
+									options={idea.slots[part.slot] ?? []}
 									onPick={(choice) =>
 										setSelection((prev) => ({ ...prev, [part.slot]: choice }))
 									}
@@ -250,7 +254,7 @@ function TemplateCard({
 					    pinned) and lands in the studio with the artist search focused.
 					    z-10 lifts it above the card's stretched commit overlay, same as
 					    the blanks. */}
-					{template.facet === "artist" && (
+					{idea.facet === "artist" && (
 						<button
 							type="button"
 							onClick={() => onUse({ ...resolved, focusArtistSearch: true })}
@@ -265,7 +269,7 @@ function TemplateCard({
 					className="theme-text-muted mt-0.5 block text-xs"
 					style={{ fontFamily: fonts.body }}
 				>
-					{template.describe(selection)}
+					{idea.describe(selection)}
 				</span>
 			</div>
 			<button
@@ -280,28 +284,28 @@ function TemplateCard({
 	);
 }
 
-interface SeedStageProps {
-	/** preset is null for "own words" / "from scratch"; intentText is the typed vibe ("" if none). */
-	onSeed: (preset: PresetVM | null, intentText: string) => void;
+interface IdeasBoardProps {
+	/** idea is null for "own words" / "from scratch"; intentText is the typed vibe ("" if none). */
+	onSeed: (idea: ResolvedIdeaVM | null, intentText: string) => void;
 	/** Opens the paywall when the gated intent field is used. */
 	onUnlock: () => void;
 	/** "Up a level" to /playlists — the entrance's exit, matching the studio's. */
 	onBack: () => void;
 }
 
-export function SeedStage({ onSeed, onUnlock, onBack }: SeedStageProps) {
+export function IdeasBoard({ onSeed, onUnlock, onBack }: IdeasBoardProps) {
 	const { data: profile } = useQuery(tasteProfileQueryOptions());
 	const { data: gate } = useQuery(intentEligibilityQueryOptions());
 	const intentGate = gate ?? LOCKED_GATE;
 	const totalLikedCount = profile?.totalLikedCount ?? 0;
 
-	// Memoized on the profile: buildSeedTemplates randomizes the genre blank's
+	// Memoized on the profile: buildPlaylistIdeas randomizes the genre blank's
 	// default, and a re-shuffle on every render would make the cards twitch.
-	const templates = useMemo(
-		() => (profile ? buildSeedTemplates(profile) : []),
+	const ideas = useMemo(
+		() => (profile ? buildPlaylistIdeas(profile) : []),
 		[profile],
 	);
-	const templatesSection = (
+	const ideasSection = (
 		<div className="mt-10">
 			<p
 				className="theme-text-muted mb-3 text-[11px] tracking-[0.18em] uppercase"
@@ -309,13 +313,13 @@ export function SeedStage({ onSeed, onUnlock, onBack }: SeedStageProps) {
 			>
 				Or start from
 			</p>
-			{templates.length > 0 ? (
+			{ideas.length > 0 ? (
 				<div className="grid grid-cols-2 gap-2.5">
-					{templates.map((template) => (
-						<TemplateCard
-							key={template.id}
-							template={template}
-							onUse={(preset) => onSeed(preset, "")}
+					{ideas.map((idea) => (
+						<IdeaCard
+							key={idea.id}
+							idea={idea}
+							onUse={(idea) => onSeed(idea, "")}
 						/>
 					))}
 				</div>
@@ -330,7 +334,7 @@ export function SeedStage({ onSeed, onUnlock, onBack }: SeedStageProps) {
 			)}
 
 			{/* From scratch as a real card: name what the scratch is. Same surface
-			    material as the templates, but dashed — a different class of action
+			    material as the ideas, but dashed — a different class of action
 			    (everything, unfaceted), so it earns the different border. */}
 			<button
 				type="button"
@@ -391,7 +395,7 @@ export function SeedStage({ onSeed, onUnlock, onBack }: SeedStageProps) {
 			) : (
 				<IntentRowLocked gate={intentGate} onUnlock={onUnlock} />
 			)}
-			{templatesSection}
+			{ideasSection}
 		</div>
 	);
 }

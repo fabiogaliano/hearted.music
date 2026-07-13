@@ -1,5 +1,5 @@
 /**
- * Tests for useCreatePlaylistFlow — the commit-flow lifecycle hook.
+ * Tests for usePublishPlaylist — the publish lifecycle hook.
  *
  * The orchestrator (createPlaylistFromDraft / resumePlaylistCreateFromDraft)
  * is mocked so these are pure renderHook tests, no server/extension involved.
@@ -33,7 +33,7 @@ vi.mock("sonner", () => ({
 	},
 }));
 
-import { useCreatePlaylistFlow } from "../useCreatePlaylistFlow";
+import { usePublishPlaylist } from "../usePublishPlaylist";
 
 const INPUT_A: CreatePlaylistFromDraftInput = {
 	name: "Night Mix",
@@ -47,7 +47,7 @@ const INPUT_A: CreatePlaylistFromDraftInput = {
 function setup() {
 	const reportGateFailure = vi.fn();
 	const { result } = renderHook(() =>
-		useCreatePlaylistFlow({ reportGateFailure }),
+		usePublishPlaylist({ reportGateFailure }),
 	);
 	return { result, reportGateFailure };
 }
@@ -58,7 +58,7 @@ beforeEach(() => {
 	vi.mocked(toast.error).mockClear();
 });
 
-describe("useCreatePlaylistFlow — submit → success", () => {
+describe("usePublishPlaylist — submit → success", () => {
 	it("attaches playlistName from the submitted input and resets isSubmitting", async () => {
 		createPlaylistFromDraftMock.mockResolvedValueOnce({
 			status: "success",
@@ -83,7 +83,7 @@ describe("useCreatePlaylistFlow — submit → success", () => {
 	});
 });
 
-describe("useCreatePlaylistFlow — submit → partial", () => {
+describe("usePublishPlaylist — submit → partial", () => {
 	it("surfaces the partial result and resets isSubmitting", async () => {
 		createPlaylistFromDraftMock.mockResolvedValueOnce({
 			status: "partial",
@@ -109,7 +109,7 @@ describe("useCreatePlaylistFlow — submit → partial", () => {
 	});
 });
 
-describe("useCreatePlaylistFlow — submit → created-unsynced → retryUnsynced → success", () => {
+describe("usePublishPlaylist — submit → created-unsynced → retryUnsynced → success", () => {
 	it("resumes and lands on success", async () => {
 		createPlaylistFromDraftMock.mockResolvedValueOnce({
 			status: "created-unsynced",
@@ -144,7 +144,7 @@ describe("useCreatePlaylistFlow — submit → created-unsynced → retryUnsynce
 	});
 });
 
-describe("useCreatePlaylistFlow — resume uses the original input", () => {
+describe("usePublishPlaylist — resume uses the original input", () => {
 	it("calls resumePlaylistCreateFromDraft with input A verbatim, unaffected by later reads", async () => {
 		createPlaylistFromDraftMock.mockResolvedValueOnce({
 			status: "created-unsynced",
@@ -174,7 +174,7 @@ describe("useCreatePlaylistFlow — resume uses the original input", () => {
 	});
 });
 
-describe("useCreatePlaylistFlow — gate-failure routing (the stuck-CTA regression test)", () => {
+describe("usePublishPlaylist — gate-failure routing (the stuck-CTA regression test)", () => {
 	it.each([
 		"reconnect-required",
 		"extension-unavailable",
@@ -208,7 +208,7 @@ describe("useCreatePlaylistFlow — gate-failure routing (the stuck-CTA regressi
 	});
 });
 
-describe("useCreatePlaylistFlow — submit → error", () => {
+describe("usePublishPlaylist — submit → error", () => {
 	it("toasts the error message, leaves result null, and resets isSubmitting so it's retryable", async () => {
 		createPlaylistFromDraftMock.mockResolvedValueOnce({
 			status: "error",
@@ -226,7 +226,7 @@ describe("useCreatePlaylistFlow — submit → error", () => {
 	});
 });
 
-describe("useCreatePlaylistFlow — submit throws", () => {
+describe("usePublishPlaylist — submit throws", () => {
 	it("toasts a generic message and resets isSubmitting so it's retryable", async () => {
 		createPlaylistFromDraftMock.mockRejectedValueOnce(new Error("network"));
 		const { result } = setup();
