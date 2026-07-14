@@ -13,7 +13,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
-import { checkoutErrorMessage } from "@/features/billing/error-copy";
+import { useCheckoutFlow } from "@/features/billing/hooks/useCheckoutFlow";
 import { billingKeys } from "@/features/billing/query-keys";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import {
@@ -26,14 +26,13 @@ import {
 import { formatOfferPrice } from "@/lib/domains/billing/pricing";
 import {
 	type BillingState,
+	FREE_BILLING_STATE,
 	hasUnlimitedAccess,
 } from "@/lib/domains/billing/state";
-import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
 import {
-	createCheckoutSession,
 	getBillingState,
 	getPlanSelectionConfig,
 	type PlanSelectionConfig,
@@ -49,7 +48,6 @@ import {
 	type CheckoutOffer,
 	clearCheckoutIntent,
 	loadCheckoutIntent,
-	saveCheckoutIntent,
 } from "../checkout-intent";
 import { useCheckoutPolling } from "../hooks/useCheckoutPolling";
 
@@ -77,9 +75,6 @@ export function PlanSelectionStep({
 	const [configState, setConfigState] = useState<ConfigState>({
 		status: "loading",
 	});
-	const [activeCheckout, setActiveCheckout] = useState<CheckoutOffer | null>(
-		null,
-	);
 
 	const [pendingIntent, setPendingIntent] = useState<CheckoutIntent | null>(
 		null,
@@ -89,6 +84,16 @@ export function PlanSelectionStep({
 		queryKey: billingKeys.state,
 		queryFn: () => getBillingState(),
 	});
+
+	const checkoutFlow = useCheckoutFlow(billingState ?? FREE_BILLING_STATE, {
+		onCheckoutStarted: (intent) =>
+			analytics.capture("checkout_started", {
+				plan_kind: intent.kind,
+				offer: intent.offer,
+			}),
+	});
+	const activeCheckout =
+		checkoutFlow.state.status !== "idle" ? checkoutFlow.state.offer : null;
 
 	const pollingState = useCheckoutPolling(pendingIntent);
 
@@ -152,58 +157,11 @@ export function PlanSelectionStep({
 		setPlanState("success");
 	};
 
-	const handleCheckout = async (offer: CheckoutOffer) => {
-		if (activeCheckout || pendingIntent) return;
-		if (!billingState) return;
-		setActiveCheckout(offer);
-
-		const existingIntent = loadCheckoutIntent();
-		const checkoutAttemptId =
-			existingIntent?.offer === offer
-				? existingIntent.checkoutAttemptId
-				: crypto.randomUUID();
-
-		const intent: CheckoutIntent = isPackOffer(offer)
-			? {
-					kind: "pack",
-					offer,
-					checkoutAttemptId,
-					baselineCreditBalance: billingState.creditBalance,
-				}
-			: { kind: "unlimited", offer, checkoutAttemptId };
-
-		analytics.capture("checkout_started", {
-			plan_kind: intent.kind,
-			offer,
-		});
-
-		try {
-			const result = await createCheckoutSession({
-				data: { offer, checkoutAttemptId },
-			});
-
-			if (!result.success) {
-				toast.error(checkoutErrorMessage(result.error));
-				clearCheckoutIntent();
-				setActiveCheckout(null);
-				return;
-			}
-
-			const safeUrl = parseStripeCheckoutUrl(result.checkoutUrl);
-			if (!safeUrl) {
-				toast.error(checkoutErrorMessage("invalid_billing_redirect"));
-				clearCheckoutIntent();
-				setActiveCheckout(null);
-				return;
-			}
-
-			saveCheckoutIntent(intent);
-			window.location.href = safeUrl;
-		} catch {
-			toast.error("Failed to start checkout. Please try again.");
-			clearCheckoutIntent();
-			setActiveCheckout(null);
-		}
+	const handleCheckout = (offer: CheckoutOffer) => {
+		// pendingIntent (a checkout-return in progress) has no equivalent inside
+		// useCheckoutFlow's own state machine, so it's guarded here at the call site.
+		if (checkoutFlow.isBusy || pendingIntent || !billingState) return;
+		void checkoutFlow.startCheckout(offer);
 	};
 
 	const handleRetryPolling = () => {
@@ -315,7 +273,7 @@ export function PlanSelectionStep({
 	}
 
 	// ── Initial state (plan cards) ──
-	const isBusy = activeCheckout !== null || pendingIntent !== null;
+	const isBusy = checkoutFlow.isBusy || pendingIntent !== null;
 
 	if (configState.status === "loading") {
 		return (

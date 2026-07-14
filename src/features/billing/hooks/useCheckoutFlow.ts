@@ -5,6 +5,9 @@
  * Stripe. Pack intents capture the current credit balance as a baseline so
  * post-purchase fulfillment can distinguish a new purchase from residual
  * credit. Unlimited intents only carry the offer.
+ *
+ * Shared by the paywall CTA and onboarding's plan selection step; the latter
+ * passes `onCheckoutStarted` to fire its analytics event.
  */
 
 import { useCallback, useState } from "react";
@@ -14,6 +17,7 @@ import {
 	type CheckoutIntent,
 	type CheckoutOffer,
 	clearCheckoutIntent,
+	loadCheckoutIntent,
 	saveCheckoutIntent,
 } from "@/features/onboarding/checkout-intent";
 import { isPackOffer } from "@/lib/domains/billing/offers";
@@ -26,8 +30,17 @@ type CheckoutFlowState =
 	| { status: "creating"; offer: CheckoutOffer }
 	| { status: "redirecting"; offer: CheckoutOffer };
 
-export function useCheckoutFlow(billingState: BillingState) {
+export interface UseCheckoutFlowOptions {
+	/** Fired right before the checkout session request is sent. */
+	onCheckoutStarted?: (intent: CheckoutIntent) => void;
+}
+
+export function useCheckoutFlow(
+	billingState: BillingState,
+	options: UseCheckoutFlowOptions = {},
+) {
 	const [state, setState] = useState<CheckoutFlowState>({ status: "idle" });
+	const { onCheckoutStarted } = options;
 
 	const startCheckout = useCallback(
 		async (offer: CheckoutOffer) => {
@@ -35,7 +48,14 @@ export function useCheckoutFlow(billingState: BillingState) {
 
 			setState({ status: "creating", offer });
 
-			const checkoutAttemptId = crypto.randomUUID();
+			// Reuse the attempt id of a still-persisted intent for the same offer
+			// so a resumed checkout (e.g. retry after navigating away) doesn't spawn
+			// an unrelated Stripe session under a fresh id.
+			const existingIntent = loadCheckoutIntent();
+			const checkoutAttemptId =
+				existingIntent?.offer === offer
+					? existingIntent.checkoutAttemptId
+					: crypto.randomUUID();
 			const intent: CheckoutIntent = isPackOffer(offer)
 				? {
 						kind: "pack",
@@ -44,6 +64,8 @@ export function useCheckoutFlow(billingState: BillingState) {
 						baselineCreditBalance: billingState.creditBalance,
 					}
 				: { kind: "unlimited", offer, checkoutAttemptId };
+
+			onCheckoutStarted?.(intent);
 
 			try {
 				const result = await createCheckoutSession({
@@ -69,7 +91,7 @@ export function useCheckoutFlow(billingState: BillingState) {
 			clearCheckoutIntent();
 			setState({ status: "idle" });
 		},
-		[state.status, billingState.creditBalance],
+		[state.status, billingState.creditBalance, onCheckoutStarted],
 	);
 
 	const isBusy = state.status !== "idle";
