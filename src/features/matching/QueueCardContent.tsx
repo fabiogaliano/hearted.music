@@ -650,13 +650,10 @@ export function QueueCardContent({
 		});
 	};
 
+	// song_dismissed is captured inside the mutation (after the navigation lock
+	// is acquired) so lock-rejected clicks don't emit and successes emit once.
 	const handleDismiss = async () => {
 		if (!currentReviewItem) return;
-		if (currentReviewItem.mode === "song") {
-			analytics.capture("song_dismissed", {
-				song_id: currentReviewItem.song.id,
-			});
-		}
 		await dismissCardMutation.run(undefined);
 	};
 
