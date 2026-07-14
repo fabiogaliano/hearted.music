@@ -35,10 +35,6 @@ import {
 import { SyncChanges } from "@/lib/workflows/library-processing/changes/sync";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
-	type SyncPayload,
-	SyncPayloadSchema,
-} from "@/lib/workflows/spotify-sync/payload-schema";
-import {
 	syncPlaylists,
 	syncPlaylistTracksFromData,
 } from "@/lib/workflows/spotify-sync/playlist-sync";
@@ -47,6 +43,10 @@ import {
 	initialSync,
 	runPhase,
 } from "@/lib/workflows/spotify-sync/sync-helpers";
+import {
+	type SyncPayload,
+	SyncPayloadSchema,
+} from "../../../../shared/spotify-sync-payload-schema";
 
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }

@@ -12,6 +12,11 @@
  * unaware of which path served them.
  */
 
+// Type-only — the extension's control-message vocabulary, kept in one place
+// (extensions/src/shared/types.ts) so the web-app transport and the
+// background dispatcher agree on the wire shape instead of the app
+// constructing untyped `Record<string, unknown>` literals.
+import type { ExtensionWireMessage } from "../../../extensions/src/shared/types";
 import {
 	type BridgeMessage,
 	isBridgeErrorResponse,
@@ -57,7 +62,7 @@ let warnedMissingExtensionId = false;
 
 function sendViaChrome<T>(
 	runtime: ChromeRuntime,
-	message: Record<string, unknown>,
+	message: ExtensionWireMessage,
 ): Promise<T | null> {
 	if (!EXTENSION_ID) {
 		// Reaching the Chrome path without an id means the env is misconfigured,
@@ -126,7 +131,7 @@ function ensureBridgeReady(): Promise<string | null> {
 	return readyHandshake;
 }
 
-function sendViaBridge<T>(message: Record<string, unknown>): Promise<T | null> {
+function sendViaBridge<T>(message: ExtensionWireMessage): Promise<T | null> {
 	return ensureBridgeReady().then((nonce) => {
 		if (!nonce) return null;
 		return new Promise<T | null>((resolve) => {
@@ -179,7 +184,7 @@ function sendViaBridge<T>(message: Record<string, unknown>): Promise<T | null> {
  * the extension is unreachable (Chrome: immediate lastError; Firefox: timeout).
  */
 export function sendExtensionCommand<T = unknown>(
-	message: Record<string, unknown>,
+	message: ExtensionWireMessage,
 ): Promise<T | null> {
 	if (typeof window === "undefined") return Promise.resolve(null);
 	const runtime = getChromeRuntime();

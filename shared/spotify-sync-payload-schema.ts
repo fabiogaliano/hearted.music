@@ -1,10 +1,15 @@
 /**
  * Shared Zod schema for the extension sync payload.
  *
- * Extracted from the sync route so the Bun worker can import and validate the
- * staged Storage payload with the exact same contract. The CF Worker ingress no
- * longer parses the body at all (it streams it straight to Storage); full
- * validation now happens once, in the worker, against this schema.
+ * Single source of truth for the shape the Chrome/Firefox extension uploads
+ * (`POST /api/extension/sync`) and the Bun worker validates the staged
+ * Storage payload against. Living in shared/ (like
+ * spotify-command-protocol.ts) gives both the server-side workflow
+ * (src/lib/workflows/spotify-sync/payload-schema.ts re-exports this) and the
+ * extension (extensions/src/shared/types.ts derives its DTO types via
+ * `z.infer`, as type-only imports so zod itself is never bundled into the
+ * extension) a compiler-checked link to one definition instead of two
+ * independently hand-maintained copies.
  */
 
 import { z } from "zod";
@@ -16,19 +21,19 @@ export const MAX_LIKED_SONGS = 50_000;
 export const MAX_PLAYLISTS = 11_000;
 export const MAX_TRACKS_PER_PLAYLIST = 10_000;
 
+export const SpotifyTrackArtistDTOSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	imageUrl: z.string().nullable().optional(),
+	bio: z.string().nullable().optional(),
+});
+
 export const SpotifyTrackDTOSchema = z.object({
 	added_at: z.string(),
 	track: z.object({
 		id: z.string(),
 		name: z.string(),
-		artists: z.array(
-			z.object({
-				id: z.string(),
-				name: z.string(),
-				imageUrl: z.string().nullable().optional(),
-				bio: z.string().nullable().optional(),
-			}),
-		),
+		artists: z.array(SpotifyTrackArtistDTOSchema),
 		album: z.object({
 			id: z.string(),
 			name: z.string(),
@@ -43,6 +48,9 @@ export const SpotifyTrackDTOSchema = z.object({
 		duration_ms: z.number(),
 		uri: z.string(),
 		release_year: z.number().int().nullable().optional(),
+		// True when the extension attempted a liked-song getTrack release-year
+		// lookup for this track during the current sync. The worker maps this to a
+		// server-side release_year_checked_at stamp for newly-inserted songs.
 		release_year_checked: z.boolean().optional(),
 	}),
 });
@@ -84,3 +92,7 @@ export const SyncPayloadSchema = z.object({
 });
 
 export type SyncPayload = z.infer<typeof SyncPayloadSchema>;
+export type SpotifyTrackArtistDTO = z.infer<typeof SpotifyTrackArtistDTOSchema>;
+export type SpotifyTrackDTO = z.infer<typeof SpotifyTrackDTOSchema>;
+export type SpotifyPlaylistDTO = z.infer<typeof SpotifyPlaylistDTOSchema>;
+export type PlaylistTrackEntry = z.infer<typeof PlaylistTrackEntrySchema>;

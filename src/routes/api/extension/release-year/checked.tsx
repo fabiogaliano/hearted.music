@@ -30,7 +30,7 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
-import { MAX_LIKED_SONGS } from "@/lib/workflows/spotify-sync/payload-schema";
+import { MAX_LIKED_SONGS } from "../../../../../shared/spotify-sync-payload-schema";
 
 const CheckedPayloadSchema = z.object({
 	lookups: z

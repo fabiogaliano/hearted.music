@@ -1,6 +1,17 @@
 // --- Spotify Token & Hash Interception ---
 
+import type { z } from "zod";
 import type { SpotifyCommand } from "../../../shared/spotify-command-protocol";
+// Type-only import: erased at build time, so zod itself is never bundled into
+// the extension. `z.infer` gives these DTOs a compiler-checked link to the
+// same schema the Bun worker validates the sync upload against, instead of a
+// hand-duplicated shape that can silently drift (see
+// shared/spotify-sync-payload-schema.ts).
+import type {
+	SpotifyPlaylistDTOSchema,
+	SpotifyTrackArtistDTOSchema,
+	SpotifyTrackDTOSchema,
+} from "../../../shared/spotify-sync-payload-schema";
 
 export type {
 	AddToPlaylistPayload,
@@ -34,14 +45,35 @@ export type PathfinderHashPayload = {
 	sha256Hash: string;
 };
 
-export type ExtensionMessage =
+/**
+ * The full control-message vocabulary understood by the background dispatcher
+ * (see `background/dispatcher.ts`), regardless of which front door it arrived
+ * through:
+ *   - content scripts / popup → `browser.runtime.onMessage` (SPOTIFY_TOKEN,
+ *     PATHFINDER_HASH, ARM_TOKEN_PRESENT, GET_TOKEN, CLOSE_AND_FOCUS_HEARTED,
+ *     plus GET_STATUS/TRIGGER_SYNC which the popup and web app both use)
+ *   - the web app → `runtime.onMessageExternal` on Chrome, or the app-bridge
+ *     envelope on Firefox (PING, CONNECT, TRIGGER_SYNC, SPOTIFY_STATUS,
+ *     EXPECT_LOGIN_RETURN, GET_STATUS, SpotifyCommand)
+ * Declared once here so there is exactly one typed vocabulary and one
+ * exhaustive dispatcher, instead of two independently-typed message unions
+ * routed through two separate handlers.
+ */
+export type ExtensionWireMessage =
+	| { type: "PING" }
+	| { type: "CONNECT"; token: string; backendUrl?: string }
+	| { type: "TRIGGER_SYNC" }
+	| { type: "SPOTIFY_STATUS" }
+	| { type: "EXPECT_LOGIN_RETURN"; armToken: string }
+	| { type: "GET_STATUS" }
+	| { type: "GET_TOKEN" }
+	| { type: "CLOSE_AND_FOCUS_HEARTED" }
 	| { type: "SPOTIFY_TOKEN"; payload: SpotifyTokenPayload }
 	| { type: "PATHFINDER_HASH"; payload: PathfinderHashPayload }
 	| { type: "ARM_TOKEN_PRESENT"; token: string }
-	| { type: "GET_STATUS" }
-	| { type: "TRIGGER_SYNC" }
-	| { type: "GET_TOKEN" }
-	| { type: "CLOSE_AND_FOCUS_HEARTED" };
+	| SpotifyCommand;
+
+export type ExtensionWireMessageType = ExtensionWireMessage["type"];
 
 export type StatusResponse = {
 	hasToken: boolean;
@@ -56,50 +88,13 @@ export type UserProfile = {
 	avatarUrl: string | null;
 };
 
-export type SpotifyTrackArtistDTO = {
-	id: string;
-	name: string;
-	imageUrl?: string | null;
-	bio?: string | null;
-};
+/** Derived from the shared sync payload schema — see import comment above. */
+export type SpotifyTrackArtistDTO = z.infer<typeof SpotifyTrackArtistDTOSchema>;
 
-/** Mirrors backend SpotifyTrackDTO — extension cannot import from app source */
-export type SpotifyTrackDTO = {
-	added_at: string;
-	track: {
-		id: string;
-		name: string;
-		artists: SpotifyTrackArtistDTO[];
-		album: {
-			id: string;
-			name: string;
-			images: Array<{ url: string; width: number; height: number }>;
-		};
-		duration_ms: number;
-		uri: string;
-		release_year?: number | null;
-		// True when the extension attempted a liked-song getTrack release-year
-		// lookup for this track during the current sync. The worker maps this to a
-		// server-side release_year_checked_at stamp for newly-inserted songs.
-		release_year_checked?: boolean;
-	};
-};
+/** Derived from the shared sync payload schema, which the Bun worker validates
+ * the sync upload against — a compiler-checked link instead of a
+ * hand-duplicated shape that can silently drift. */
+export type SpotifyTrackDTO = z.infer<typeof SpotifyTrackDTOSchema>;
 
-/** Mirrors backend SpotifyPlaylistDTO (superset with optional owner enrichment) */
-export type SpotifyPlaylistDTO = {
-	id: string;
-	name: string;
-	description: string | null;
-	owner: { id: string; name?: string; image_url?: string };
-	track_count: number | null;
-	image_url: string | null;
-};
-
-/** All messages received via chrome.runtime.onMessageExternal (from web app) */
-export type ExternalMessage =
-	| { type: "PING" }
-	| { type: "CONNECT"; token: string; backendUrl?: string }
-	| { type: "TRIGGER_SYNC" }
-	| { type: "SPOTIFY_STATUS" }
-	| { type: "EXPECT_LOGIN_RETURN"; armToken: string }
-	| SpotifyCommand;
+/** Derived from the shared sync payload schema (see SpotifyTrackDTO above). */
+export type SpotifyPlaylistDTO = z.infer<typeof SpotifyPlaylistDTOSchema>;
