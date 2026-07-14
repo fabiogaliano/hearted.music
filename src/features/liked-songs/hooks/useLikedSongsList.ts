@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
+import {
+	accountEventsConnectionKey,
+	type ConnectionState,
+} from "@/lib/hooks/useAccountEvents";
+import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
 import { scrollListElementIntoView } from "@/lib/keyboard/listScroll";
 import type {
@@ -6,57 +13,215 @@ import type {
 	ListScrollBlock,
 } from "@/lib/keyboard/types";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
+import type { SearchFilter } from "../filter";
+import { type FilterOption, likedSongsStatsQueryOptions } from "../queries";
 import type { LikedSong } from "../types";
-import {
-	type PendingSelectionFocus,
-	useSongActivation,
-} from "./useSongActivation";
+import { useLikedSongsCollection } from "./useLikedSongsCollection";
+import { useSelectedLikedSongBySlug } from "./useSelectedLikedSongBySlug";
+import { useSongExpansion } from "./useSongExpansion";
+import { useSongSuggestionPrefetch } from "./useSongSuggestionPrefetch";
 
-interface UseLikedSongsListControllerOptions {
-	displayedSongs: readonly LikedSong[];
-	displayedSongIndexById: ReadonlyMap<string, number>;
-	navItems: readonly LikedSong[];
-	navIndexBySongId: ReadonlyMap<string, number>;
-	selectedSongId: string | null;
-	selectedSongIdFromUrl: string | null;
-	shouldSyncInitialUrlSelection: boolean;
-	isExpanded: boolean;
+/**
+ * Refetch cadence for the liked-songs stats query. Polls while enrichment is
+ * running and the realtime stream hasn't taken over; otherwise the stream (or
+ * a one-shot fetch) is authoritative.
+ */
+export function likedSongsStatsRefetchInterval(
+	isEnrichmentRunning: boolean,
+	connectionState: ConnectionState,
+): number | false {
+	if (!isEnrichmentRunning || connectionState === "connected") return false;
+	return 5_000;
+}
+
+/**
+ * Which rows are visible in the list right now. Selection mode and the
+ * "locked" filter both narrow to locked-only rows so unlock candidates are
+ * easy to scan; everything else shows the full displayed set.
+ */
+export function computeVisibleSongs(
+	displayedSongs: readonly LikedSong[],
+	showLockedOnly: boolean,
+): readonly LikedSong[] {
+	return showLockedOnly
+		? displayedSongs.filter((song) => song.displayState === "locked")
+		: displayedSongs;
+}
+
+interface PendingSelectionFocus {
+	songId: string;
+	mode: "keyboard" | "pointer";
+	scrollBlock: ListScrollBlock;
+}
+
+interface UseLikedSongsListOptions {
+	accountId: string;
+	filter: FilterOption;
+	activeFilter: SearchFilter;
+	search?: string;
+	selectedSlug?: string | null;
+	isWalkthrough: boolean;
+	walkthroughSong: WalkthroughSong | null;
+	companionSongs?: readonly WalkthroughSong[];
+	isEnrichmentRunning: boolean;
 	selectionMode: boolean;
 	showSelectionUI: boolean;
 	selectionBarHeight: number;
 	enterSelectionMode: () => void;
 	toggleSongSelection: (songId: string) => void;
 	clearSelectionMode: () => void;
-	handleExpand: (song: LikedSong, element: HTMLElement) => void;
-	handleNext: () => void;
-	handlePrevious: () => void;
-	prefetchAdjacentSuggestions: (songId: string) => void;
-	handleLoadMore: () => void;
-	hasMore: boolean;
 }
 
-export function useLikedSongsListController({
-	displayedSongs,
-	displayedSongIndexById,
-	navItems,
-	navIndexBySongId,
-	selectedSongId,
-	selectedSongIdFromUrl,
-	shouldSyncInitialUrlSelection,
-	isExpanded,
+/**
+ * Owns everything the liked-songs list needs to render and navigate: the
+ * paginated collection, the deep-link song lookup, stats polling, which rows
+ * are visible under the current filter/selection mode, panel expansion (via
+ * useSongExpansion), and keyboard/pointer activation + focus tracking.
+ * Collapses what used to be a four-hook relay (page data → list model →
+ * activation → controller) into one module so the page consumes a single
+ * {state, panel, actions} triple instead of re-wiring ~30 intermediate values
+ * between hooks.
+ */
+export function useLikedSongsList({
+	accountId,
+	filter,
+	activeFilter,
+	search,
+	selectedSlug,
+	isWalkthrough,
+	walkthroughSong,
+	companionSongs,
+	isEnrichmentRunning,
 	selectionMode,
 	showSelectionUI,
 	selectionBarHeight,
 	enterSelectionMode,
 	toggleSongSelection,
 	clearSelectionMode,
-	handleExpand,
-	handleNext,
-	handlePrevious,
-	prefetchAdjacentSuggestions,
-	handleLoadMore,
-	hasMore,
-}: UseLikedSongsListControllerOptions) {
+}: UseLikedSongsListOptions) {
+	const {
+		isLoading,
+		displayedSongs,
+		displayedSongIndexById,
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useLikedSongsCollection({
+		accountId,
+		filter,
+		search,
+		isWalkthrough,
+		walkthroughSong,
+		companionSongs,
+	});
+
+	const { selectedSongFromUrl, selectedSongIdFromUrl, isSelectedSlugResolved } =
+		useSelectedLikedSongBySlug({
+			accountId,
+			displayedSongs,
+			selectedSlug,
+		});
+
+	const { data: connectionState } = useQuery<ConnectionState>({
+		queryKey: accountEventsConnectionKey(accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+
+	const { data: stats } = useQuery({
+		...likedSongsStatsQueryOptions(accountId),
+		refetchInterval: likedSongsStatsRefetchInterval(
+			isEnrichmentRunning,
+			connectionState,
+		),
+	});
+
+	const {
+		selectedSong,
+		selectedSongId,
+		isExpanded,
+		containerRef,
+		hasNext,
+		hasPrevious,
+		handleExpand,
+		openSong,
+		handleNext,
+		handlePrevious,
+		handleClose,
+		closingToSongId,
+	} = useSongExpansion(displayedSongs, {
+		selectedSlug,
+		fallbackSelectedSong: selectedSongFromUrl,
+		isSelectedSlugResolved,
+	});
+
+	// The URL-driven focus sync below only fires once per page load — for the
+	// slug the page mounted with, not for every subsequent selection change
+	// (panel-nav, unlock reveal, etc. manage focus themselves).
+	const initialSelectedSlugRef = useRef(selectedSlug ?? null);
+	const shouldSyncInitialUrlSelection =
+		initialSelectedSlugRef.current !== null &&
+		selectedSlug === initialSelectedSlugRef.current;
+
+	// Show only locked songs when either the user is in unlock-selection mode
+	// or they've explicitly filtered to "locked". Both paths reuse the same
+	// auto-paginate loop below so sparsely-distributed locked rows still
+	// surface without the user having to scroll.
+	const showLockedOnly =
+		(selectionMode && showSelectionUI) || activeFilter === "locked";
+
+	const visibleSongs = useMemo(
+		() => computeVisibleSongs(displayedSongs, showLockedOnly),
+		[displayedSongs, showLockedOnly],
+	);
+
+	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
+	const handleLoadMore = useCallback(() => {
+		if (!isFetchingNextPage && hasNextPage) {
+			void fetchNextPage();
+		}
+	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+	useEffect(() => {
+		if (
+			showLockedOnly &&
+			visibleSongs.length === 0 &&
+			hasMore &&
+			!isFetchingNextPage
+		) {
+			handleLoadMore();
+		}
+	}, [
+		showLockedOnly,
+		visibleSongs.length,
+		hasMore,
+		isFetchingNextPage,
+		handleLoadMore,
+	]);
+
+	const { sentinelRef } = useInfiniteScroll({
+		onLoadMore: handleLoadMore,
+		hasMore,
+	});
+
+	const prefetchAdjacentSuggestions = useSongSuggestionPrefetch({
+		displayedSongs,
+		displayedSongIndexById,
+	});
+
+	// The walkthrough library is fully navigable now that it holds the hero plus
+	// curated companions — keyboard nav and clicks span all of them, same as the
+	// real list. (The hero is still visually spotlighted by the list component.)
+	const navItems = visibleSongs;
+
+	const navIndexBySongId = useMemo(
+		() => new Map(navItems.map((song, index) => [song.track.id, index])),
+		[navItems],
+	);
+
+	// --- activation (locked → selection toggle; unlocked → expand panel) ---
+
 	const focusedSongIdRef = useRef<string | null>(null);
 	const pendingSelectionFocusRef = useRef<PendingSelectionFocus | null>(null);
 	const pendingCursorScrollBlocksRef = useRef<
@@ -77,17 +242,62 @@ export function useLikedSongsListController({
 		[],
 	);
 
-	const { activateSong, handleCardClick } = useSongActivation({
-		displayedSongs,
-		showSelectionUI,
-		selectionMode,
-		enterSelectionMode,
-		toggleSongSelection,
-		handleExpand,
-		prefetchAdjacentSuggestions,
-		queueSelectionFocus,
-		markRouteSelectionSource,
-	});
+	const songById = useMemo(() => {
+		const map = new Map<string, LikedSong>();
+		for (const song of displayedSongs) {
+			map.set(song.track.id, song);
+		}
+		return map;
+	}, [displayedSongs]);
+
+	const activateSong = useCallback(
+		(
+			song: LikedSong,
+			element: HTMLElement | null,
+			routeSource: Extract<ListNavigationSource, "keyboard" | "pointer">,
+			selectionFocusMode: PendingSelectionFocus["mode"],
+		) => {
+			if (song.displayState === "locked" && showSelectionUI) {
+				if (!selectionMode) {
+					queueSelectionFocus({
+						songId: song.track.id,
+						mode: selectionFocusMode,
+						scrollBlock: "start",
+					});
+					enterSelectionMode();
+				}
+				toggleSongSelection(song.track.id);
+				return;
+			}
+
+			if (!element) return;
+			markRouteSelectionSource(routeSource);
+			handleExpand(song, element);
+			prefetchAdjacentSuggestions(song.track.id);
+		},
+		[
+			enterSelectionMode,
+			handleExpand,
+			markRouteSelectionSource,
+			prefetchAdjacentSuggestions,
+			queueSelectionFocus,
+			selectionMode,
+			showSelectionUI,
+			toggleSongSelection,
+		],
+	);
+
+	const handleCardClick = useCallback(
+		(songId: string, element: HTMLElement) => {
+			const song = songById.get(songId);
+			if (!song) return;
+
+			activateSong(song, element, "pointer", "pointer");
+		},
+		[activateSong, songById],
+	);
+
+	// --- keyboard/pointer navigation + focus tracking ---
 
 	const {
 		focusedIndex,
@@ -106,13 +316,12 @@ export function useLikedSongsListController({
 			focusedSongIdRef.current = song?.track.id ?? null;
 		},
 		onSelect: (song, _index, element) => {
-			activateSong({
+			activateSong(
 				song,
 				element,
-				routeSource: "keyboard",
-				selectionFocusMode:
-					interactionMode === "pointer" ? "pointer" : "keyboard",
-			});
+				"keyboard",
+				interactionMode === "pointer" ? "pointer" : "keyboard",
+			);
 		},
 		getId: (song) => song.track.id,
 		onLoadMore: handleLoadMore,
@@ -372,13 +581,39 @@ export function useLikedSongsListController({
 	]);
 
 	return {
-		focusedIndex,
-		getItemProps,
-		handleCardClick,
-		openFocusedSong,
-		exitSelectionMode,
-		handleNextSong,
-		handlePreviousSong,
-		centerSongInList,
+		state: {
+			isLoading,
+			displayedSongs,
+			displayedSongIndexById,
+			visibleSongs,
+			hasMore,
+			stats,
+			selectedSongIdFromUrl,
+			focusedIndex,
+			navIndexBySongId,
+		},
+		panel: {
+			selectedSong,
+			selectedSongId,
+			isExpanded,
+			containerRef,
+			hasNext,
+			hasPrevious,
+			closingToSongId,
+			openSong,
+			handleClose,
+		},
+		actions: {
+			handleLoadMore,
+			sentinelRef,
+			prefetchAdjacentSuggestions,
+			getItemProps,
+			handleCardClick,
+			openFocusedSong,
+			exitSelectionMode,
+			handleNextSong,
+			handlePreviousSong,
+			centerSongInList,
+		},
 	};
 }

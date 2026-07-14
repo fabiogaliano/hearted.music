@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { likedSongsStatsRefetchInterval } from "../hooks/useLikedSongsPageData";
+import { likedSongsStatsRefetchInterval } from "../hooks/useLikedSongsList";
 
 describe("likedSongsStatsRefetchInterval", () => {
 	it("does not poll when enrichment is idle", () => {

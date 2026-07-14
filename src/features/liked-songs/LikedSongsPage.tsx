@@ -20,10 +20,7 @@ import { likedSongToSongDetail } from "./components/song-detail-panel/song-detai
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import type { SearchFilter } from "./filter";
 import { toQueryFilter } from "./filter";
-import { useLikedSongsListController } from "./hooks/useLikedSongsListController";
-import { useLikedSongsListModel } from "./hooks/useLikedSongsListModel";
-import { useLikedSongsPageData } from "./hooks/useLikedSongsPageData";
-import { useSongExpansion } from "./hooks/useSongExpansion";
+import { useLikedSongsList } from "./hooks/useLikedSongsList";
 import { useSongPlaylistSuggestions } from "./hooks/useSongPlaylistSuggestions";
 import { useSongUnlock } from "./hooks/useSongUnlock";
 import {
@@ -141,26 +138,55 @@ export function LikedSongsPage({
 		return () => window.clearTimeout(handle);
 	}, [searchQuery, debouncedSearchQuery]);
 
+	const enterSelectionMode = useCallback(() => setSelectionMode(true), []);
+
 	const {
-		isLoading,
-		displayedSongs,
-		displayedSongIndexById,
-		fetchNextPage,
-		hasNextPage,
-		isFetchingNextPage,
-		selectedSongFromUrl,
-		selectedSongIdFromUrl,
-		isSelectedSlugResolved,
-		stats,
-	} = useLikedSongsPageData({
+		state: {
+			isLoading,
+			displayedSongs,
+			visibleSongs,
+			hasMore,
+			stats,
+			focusedIndex,
+			navIndexBySongId,
+		},
+		panel: {
+			selectedSong,
+			selectedSongId,
+			isExpanded,
+			containerRef,
+			hasNext,
+			hasPrevious,
+			closingToSongId,
+			openSong,
+			handleClose,
+		},
+		actions: {
+			sentinelRef,
+			getItemProps,
+			handleCardClick,
+			openFocusedSong,
+			exitSelectionMode,
+			handleNextSong,
+			handlePreviousSong,
+			centerSongInList,
+		},
+	} = useLikedSongsList({
 		accountId,
 		filter: queryFilter,
+		activeFilter: filter,
 		search: debouncedSearchQuery,
 		selectedSlug,
 		isWalkthrough,
 		walkthroughSong,
 		companionSongs,
 		isEnrichmentRunning,
+		selectionMode,
+		showSelectionUI,
+		selectionBarHeight,
+		enterSelectionMode,
+		toggleSongSelection,
+		clearSelectionMode,
 	});
 
 	// The song whose panel opens once an unlock succeeds. Derived fresh each
@@ -178,25 +204,6 @@ export function LikedSongsPage({
 				.id ?? null;
 		requestConfirmation(ids);
 	}, [selectedSongIds, displayedSongs, requestConfirmation]);
-
-	const {
-		selectedSong,
-		selectedSongId,
-		isExpanded,
-		containerRef,
-		hasNext,
-		hasPrevious,
-		handleExpand,
-		openSong,
-		handleNext,
-		handlePrevious,
-		handleClose,
-		closingToSongId,
-	} = useSongExpansion(displayedSongs, {
-		selectedSlug,
-		fallbackSelectedSong: selectedSongFromUrl,
-		isSelectedSlugResolved,
-	});
 
 	// The song-detail panel reads the persisted v17 SongRead when present. The
 	// adapter always returns a SongDetail (read=null for rows that don't parse —
@@ -244,30 +251,6 @@ export function LikedSongsPage({
 
 	const lockedSongCount = stats?.success ? stats.locked : 0;
 
-	const {
-		visibleSongs,
-		hasMore,
-		handleLoadMore,
-		sentinelRef,
-		prefetchAdjacentSuggestions,
-		navItems,
-		navIndexBySongId,
-	} = useLikedSongsListModel({
-		displayedSongs,
-		displayedSongIndexById,
-		fetchNextPage,
-		hasNextPage,
-		isFetchingNextPage,
-		isWalkthrough,
-		selectionMode,
-		showSelectionUI,
-		activeFilter: filter,
-	});
-
-	const initialSelectedSlugRef = useRef(selectedSlug ?? null);
-	const shouldSyncInitialUrlSelection =
-		initialSelectedSlugRef.current !== null &&
-		selectedSlug === initialSelectedSlugRef.current;
 	const isSearching = debouncedSearchQuery.length > 0;
 
 	useIsomorphicLayoutEffect(() => {
@@ -301,40 +284,6 @@ export function LikedSongsPage({
 		selectionMode && showSelectionUI && selectionBarHeight > 0
 			? `${selectionBarHeight + LIST_TOP_GAP_PX}px`
 			: undefined;
-
-	const enterSelectionMode = useCallback(() => setSelectionMode(true), []);
-
-	const {
-		focusedIndex,
-		handleCardClick,
-		openFocusedSong,
-		exitSelectionMode,
-		handleNextSong,
-		handlePreviousSong,
-		getItemProps,
-		centerSongInList,
-	} = useLikedSongsListController({
-		displayedSongs,
-		displayedSongIndexById,
-		navItems,
-		navIndexBySongId,
-		selectedSongId,
-		selectedSongIdFromUrl,
-		shouldSyncInitialUrlSelection,
-		isExpanded,
-		selectionMode,
-		showSelectionUI,
-		selectionBarHeight,
-		enterSelectionMode,
-		toggleSongSelection,
-		clearSelectionMode,
-		handleExpand,
-		handleNext,
-		handlePrevious,
-		prefetchAdjacentSuggestions,
-		handleLoadMore,
-		hasMore,
-	});
 
 	// On a successful unlock, reveal the song captured at confirm (topmost of the
 	// selection by sort order): open its panel (deep-link style, no FLIP) and
