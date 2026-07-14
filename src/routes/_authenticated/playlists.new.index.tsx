@@ -13,11 +13,23 @@ import { tasteProfileQueryOptions } from "@/features/playlists/create/tasteProfi
 export const Route = createFileRoute("/_authenticated/playlists/new/")({
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(tasteProfileQueryOptions());
+		// The board's per-visit shuffle is seeded here, in the loader, so a hard
+		// load mints it on the server and serializes it to the client — server and
+		// client then compute the same shuffleIdeas draw, no hydration mismatch.
+		// The loader re-runs on every reload/navigation, so the board reshuffles
+		// each time while staying stable in-page.
+		return { ideaShuffleSeed: Math.floor(Math.random() * 0xffffffff) };
 	},
 	component: IdeasPage,
 });
 
 function IdeasPage() {
 	const { billingState } = Route.useRouteContext();
-	return <IdeasScreen billingState={billingState} />;
+	const { ideaShuffleSeed } = Route.useLoaderData();
+	return (
+		<IdeasScreen
+			billingState={billingState}
+			ideaShuffleSeed={ideaShuffleSeed}
+		/>
+	);
 }

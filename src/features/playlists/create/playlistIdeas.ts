@@ -22,12 +22,6 @@ import type {
 	TasteProfileVM,
 } from "./ideaTypes";
 
-/** Rotate so a random element leads — the genre blank defaults differently per visit. */
-function rotateRandom<T>(items: T[]): T[] {
-	const start = Math.floor(Math.random() * items.length);
-	return [...items.slice(start), ...items.slice(0, start)];
-}
-
 // The window idea's two axes, keyed off the RPC's window ids ("last-3m",
 // "first-12m", …). Anchor = which end of your liking history; length = how wide.
 const ANCHOR_LABEL = {
@@ -92,7 +86,10 @@ export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 			id: "idea-genre",
 			facet: "genre",
 			parts: ["All things ", { slot: "genre" }],
-			slots: { genre: rotateRandom(genreChoices) },
+			// Options stay profile-ranked (most-liked first) in the popover; the
+			// per-visit "which genre leads" shuffle lives in shuffleIdeas, the same
+			// mechanism every other card now shares.
+			slots: { genre: genreChoices },
 			// Pills bias the ranking, not a hard filter — phrase the count as the pool
 			// it leans on, never a promise the whole playlist is this genre.
 			describe: (sel) =>
@@ -238,6 +235,75 @@ export function defaultSelection(
 	idea: PlaylistIdeaVM,
 ): Record<string, IdeaOptionVM> {
 	return reconcileSelection(idea, {});
+}
+
+// A tiny seeded PRNG (mulberry32) — shuffleIdeas' die. Seeded, not
+// `Math.random()`, so the same seed replays the same rolls (see shuffleIdeas
+// for why that matters across hydration).
+function seededRandom(seed: number): () => number {
+	let a = seed >>> 0;
+	return () => {
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+// Every slot filled with a RANDOM offered option instead of the first,
+// resolved in declaration order so a dependent slot (window `length`)
+// randomizes within the anchor already picked. The option arrays keep their
+// profile-ranked order for the popover; only the starting choice is shuffled.
+function randomLeadSelection(
+	idea: PlaylistIdeaVM,
+	rng: () => number,
+): Record<string, IdeaOptionVM> {
+	const next: Record<string, IdeaOptionVM> = {};
+	for (const slot of Object.keys(idea.slots)) {
+		const options = slotOptionsFor(idea, slot, next);
+		next[slot] = options[Math.floor(rng() * options.length)] ?? options[0];
+	}
+	return next;
+}
+
+/** One visit's complete shuffle outcome — see shuffleIdeas. */
+export interface IdeaShuffleVM {
+	/** The intent field's ghost example, drawn from the pool passed in. */
+	example: string;
+	/** Each idea's random-lead selection (its cards' INITIAL fill), by idea id. */
+	leads: Record<string, Record<string, IdeaOptionVM>>;
+}
+
+/**
+ * The board's per-visit shuffle, computed in ONE deterministic draw: the ghost
+ * example first, then each idea's lead in list order, all off a single rng
+ * stream — so every visit the cards and the example land differently, while
+ * within a visit nothing moves.
+ *
+ * `ideaShuffleSeed` is a plain PRNG integer minted once per request by the
+ * route loader and serialized to the client, so server-render and
+ * client-hydration compute the SAME board. Rolling `Math.random()` during
+ * render would disagree across the hydration boundary — a mismatch that makes
+ * React re-render the board and replay its enter animation. (Unrelated to
+ * StudioSeed, the resolved idea config carried INTO the studio.)
+ *
+ * The leads are initial fills only — options keep their profile-ranked order,
+ * and `options[0]` stays the deterministic default reconcileSelection repairs
+ * to. The example is drawn before the leads, so it stays stable for a given
+ * seed even as the ideas list changes shape.
+ */
+export function shuffleIdeas(
+	ideaShuffleSeed: number,
+	ideas: PlaylistIdeaVM[],
+	examples: string[],
+): IdeaShuffleVM {
+	const rng = seededRandom(ideaShuffleSeed);
+	const example = examples[Math.floor(rng() * examples.length)] ?? "";
+	const leads: Record<string, Record<string, IdeaOptionVM>> = {};
+	for (const idea of ideas) {
+		leads[idea.id] = randomLeadSelection(idea, rng);
+	}
+	return { example, leads };
 }
 
 /**

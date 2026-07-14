@@ -49,9 +49,15 @@ function renderIdeasBoard(onSeed = vi.fn()) {
 	const wrapper = ({ children }: { children: ReactNode }) => (
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	);
-	render(<IdeasBoard onSeed={onSeed} onUnlock={vi.fn()} onBack={vi.fn()} />, {
-		wrapper,
-	});
+	render(
+		<IdeasBoard
+			onSeed={onSeed}
+			onUnlock={vi.fn()}
+			onBack={vi.fn()}
+			ideaShuffleSeed={1}
+		/>,
+		{ wrapper },
+	);
 	return onSeed;
 }
 

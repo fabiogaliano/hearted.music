@@ -179,6 +179,9 @@ export const ScreenIdeasBoard: Story<IdeasBoardArgs> = ({
 				onSeed={(idea, intentText) => setSeeded({ idea, intentText })}
 				onUnlock={() => setUnlockOpened(true)}
 				onBack={() => {}}
+				// Fixed seed so the story's shuffle is stable across Ladle re-renders;
+				// prod mints a fresh one per request in the route loader.
+				ideaShuffleSeed={1}
 			/>
 			{unlockOpened && (
 				<p

@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { PlaylistIdeaVM, TasteProfileVM } from "../ideaTypes";
+import type {
+	IdeaOptionVM,
+	PlaylistIdeaVM,
+	TasteProfileVM,
+} from "../ideaTypes";
 import {
 	buildPlaylistIdeas,
 	defaultSelection,
 	reconcileSelection,
 	resolveIdea,
+	shuffleIdeas,
 	slotOptionsFor,
 } from "../playlistIdeas";
 
@@ -187,5 +192,57 @@ describe("buildPlaylistIdeas facet ordering", () => {
 		);
 
 		expect(ideas.map((t) => t.id)).toEqual(["idea-genre"]);
+	});
+});
+
+describe("shuffleIdeas per-visit shuffle", () => {
+	const EXAMPLES = ["late-night drives", "sunny kitchen dancing", "deep focus"];
+
+	it("reproduces the exact same board for the same seed", () => {
+		// The load-bearing invariant: the seed is minted on the server and replayed
+		// on the client, so two independent draws must agree on everything.
+		const a = shuffleIdeas(7, buildPlaylistIdeas(windowProfile()), EXAMPLES);
+		const b = shuffleIdeas(7, buildPlaylistIdeas(windowProfile()), EXAMPLES);
+		expect(a).toEqual(b);
+	});
+
+	it("only leads with offered options, dependent slots within their anchor", () => {
+		const ideas = buildPlaylistIdeas(windowProfile());
+		for (let seed = 0; seed < 25; seed++) {
+			const { leads } = shuffleIdeas(seed, ideas, EXAMPLES);
+			for (const idea of ideas) {
+				const lead = leads[idea.id];
+				// Replay declaration order so the window `length` pick is checked
+				// against the options its drawn `anchor` actually offers. Deep
+				// equality: function-valued slots mint fresh option objects per call.
+				const settled: Record<string, IdeaOptionVM> = {};
+				for (const slot of Object.keys(idea.slots)) {
+					expect(slotOptionsFor(idea, slot, settled)).toContainEqual(
+						lead[slot],
+					);
+					settled[slot] = lead[slot];
+				}
+			}
+		}
+	});
+
+	it("actually shuffles: different seeds land on different leads", () => {
+		const ideas = buildPlaylistIdeas(profile());
+		const boards = new Set(
+			Array.from({ length: 20 }, (_, seed) =>
+				JSON.stringify(shuffleIdeas(seed, ideas, EXAMPLES).leads),
+			),
+		);
+		expect(boards.size).toBeGreaterThan(1);
+	});
+
+	it("draws the example from the pool, stable across ideas-list changes", () => {
+		const { example } = shuffleIdeas(3, [], EXAMPLES);
+		expect(EXAMPLES).toContain(example);
+		// The example is drawn before the leads, so a late-arriving or reshaped
+		// ideas list never moves the ghost text for a given seed.
+		expect(
+			shuffleIdeas(3, buildPlaylistIdeas(profile()), EXAMPLES).example,
+		).toBe(example);
 	});
 });

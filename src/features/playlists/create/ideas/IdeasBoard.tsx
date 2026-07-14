@@ -48,10 +48,10 @@ import type {
 import { intentEligibilityQueryOptions } from "../intentEligibility";
 import {
 	buildPlaylistIdeas,
-	defaultSelection,
 	formatGateHint,
 	reconcileSelection,
 	resolveIdea,
+	shuffleIdeas,
 	slotOptionsFor,
 } from "../playlistIdeas";
 import { tasteProfileQueryOptions } from "../tasteProfile";
@@ -66,21 +66,14 @@ const LOCKED_GATE: IntentGateVM = { allowed: false, criteria: [] };
 // instead of one frozen phrase.
 const INTENT_EXAMPLES = ALL_DEMO_INTENT_EXAMPLES.map((e) => e.description);
 
-// One random example, fixed for the life of the mount — shuffles on reload, not
-// in-page, so the ghost text never moves under a reading eye.
-function useExample(): string {
-	const [example] = useState(
-		() => INTENT_EXAMPLES[Math.floor(Math.random() * INTENT_EXAMPLES.length)],
-	);
-	return example ?? "";
-}
-
 function IntentRowLocked({
 	gate,
 	onUnlock,
+	example,
 }: {
 	gate: IntentGateVM;
 	onUnlock: () => void;
+	example: string;
 }) {
 	// The gate is currently a single Backstage Pass path, so the chip names it via
 	// formatGateHint and no progress line renders. The progress/instant split is
@@ -89,7 +82,6 @@ function IntentRowLocked({
 	// neutral "Get access" and its progress leads the line below, no change needed.
 	const progress = gate.criteria.find((c) => c.progress)?.progress;
 	const instantLabel = gate.criteria.find((c) => !c.progress && !c.met)?.label;
-	const example = useExample();
 
 	return (
 		<div className="mt-8 flex flex-col gap-2.5">
@@ -153,9 +145,14 @@ function IntentRowLocked({
 	);
 }
 
-function IntentRow({ onStart }: { onStart: (intentText: string) => void }) {
+function IntentRow({
+	onStart,
+	example,
+}: {
+	onStart: (intentText: string) => void;
+	example: string;
+}) {
 	const [intentText, setIntentText] = useState("");
-	const example = useExample();
 	return (
 		<div className="mt-8 flex items-center gap-3">
 			<input
@@ -184,15 +181,19 @@ function IntentRow({ onStart }: { onStart: (intentText: string) => void }) {
 function IdeaCard({
 	idea,
 	index,
+	initialSelection,
 	onUse,
 }: {
 	idea: PlaylistIdeaVM;
 	index: number;
+	/** The card's lead, precomputed by the board's shuffleIdeas draw. */
+	initialSelection: Record<string, IdeaOptionVM>;
 	onUse: (idea: ResolvedIdeaVM) => void;
 }) {
-	const [selection, setSelection] = useState<Record<string, IdeaOptionVM>>(() =>
-		defaultSelection(idea),
-	);
+	// useState seeds from the lead once; from then on the selection is the user's,
+	// so a later shuffle recompute never yanks a tuned card back to its lead.
+	const [selection, setSelection] =
+		useState<Record<string, IdeaOptionVM>>(initialSelection);
 
 	const resolved = resolveIdea(idea, selection);
 
@@ -303,6 +304,13 @@ interface IdeasBoardProps {
 	onUnlock: () => void;
 	/** "Up a level" to /playlists — the entrance's exit, matching the studio's. */
 	onBack: () => void;
+	/**
+	 * Per-request seed for shuffleIdeas (the cards' leads + the ghost example),
+	 * minted by the route loader so the server and client agree on the shuffle. A
+	 * fresh seed each reload reshuffles the board; a stable seed keeps it still
+	 * in-page.
+	 */
+	ideaShuffleSeed: number;
 }
 
 // The header's own enter-cascade steps (breadcrumb, h1, intent field, "or start
@@ -311,17 +319,27 @@ interface IdeasBoardProps {
 // keeps flowing from where the header left off instead of restarting at 0.
 const IDEAS_ENTER_OFFSET = 4;
 
-export function IdeasBoard({ onSeed, onUnlock, onBack }: IdeasBoardProps) {
+export function IdeasBoard({
+	onSeed,
+	onUnlock,
+	onBack,
+	ideaShuffleSeed,
+}: IdeasBoardProps) {
 	const { data: profile } = useQuery(tasteProfileQueryOptions());
 	const { data: gate } = useQuery(intentEligibilityQueryOptions());
 	const intentGate = gate ?? LOCKED_GATE;
 	const totalLikedCount = profile?.totalLikedCount ?? 0;
 
-	// Memoized on the profile: buildPlaylistIdeas randomizes the genre blank's
-	// default, and a re-shuffle on every render would make the cards twitch.
+	// Both memoized so the board doesn't twitch per render: buildPlaylistIdeas is
+	// deterministic on the profile, and shuffleIdeas is deterministic on the seed
+	// + ideas — one draw covers the ghost example and every card's lead.
 	const ideas = useMemo(
 		() => (profile ? buildPlaylistIdeas(profile) : []),
 		[profile],
+	);
+	const shuffle = useMemo(
+		() => shuffleIdeas(ideaShuffleSeed, ideas, INTENT_EXAMPLES),
+		[ideaShuffleSeed, ideas],
 	);
 	const ideasSection = (
 		<div className="mt-10">
@@ -379,6 +397,7 @@ export function IdeasBoard({ onSeed, onUnlock, onBack }: IdeasBoardProps) {
 							key={idea.id}
 							idea={idea}
 							index={IDEAS_ENTER_OFFSET + 1 + i}
+							initialSelection={shuffle.leads[idea.id]}
 							onUse={(idea) => onSeed(idea, "")}
 						/>
 					))}
@@ -430,9 +449,16 @@ export function IdeasBoard({ onSeed, onUnlock, onBack }: IdeasBoardProps) {
 				style={{ "--enter-index": 2 } as React.CSSProperties}
 			>
 				{intentGate.allowed ? (
-					<IntentRow onStart={(intentText) => onSeed(null, intentText)} />
+					<IntentRow
+						onStart={(intentText) => onSeed(null, intentText)}
+						example={shuffle.example}
+					/>
 				) : (
-					<IntentRowLocked gate={intentGate} onUnlock={onUnlock} />
+					<IntentRowLocked
+						gate={intentGate}
+						onUnlock={onUnlock}
+						example={shuffle.example}
+					/>
 				)}
 			</div>
 			{ideasSection}

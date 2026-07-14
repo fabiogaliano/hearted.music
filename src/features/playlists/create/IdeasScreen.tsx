@@ -24,9 +24,18 @@ import { buildStudioSeed } from "./studioSeed";
 
 interface IdeasScreenProps {
 	billingState: BillingState;
+	/**
+	 * Per-request seed for the board's shuffleIdeas draw, minted by the route
+	 * loader. A plain PRNG integer — not to be confused with the StudioSeed this
+	 * screen builds when an idea commits.
+	 */
+	ideaShuffleSeed: number;
 }
 
-export function IdeasScreen({ billingState }: IdeasScreenProps) {
+export function IdeasScreen({
+	billingState,
+	ideaShuffleSeed,
+}: IdeasScreenProps) {
 	const navigate = useNavigate();
 	const [showPaywall, setShowPaywall] = useState(false);
 
@@ -55,6 +64,7 @@ export function IdeasScreen({ billingState }: IdeasScreenProps) {
 				onSeed={handleSeed}
 				onUnlock={() => setShowPaywall(true)}
 				onBack={() => void navigate({ to: "/playlists" })}
+				ideaShuffleSeed={ideaShuffleSeed}
 			/>
 			{showPaywall && (
 				<UpgradeDialog

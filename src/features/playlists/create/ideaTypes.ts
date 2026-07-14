@@ -73,7 +73,9 @@ export type IdeaFacet = "genre" | "time" | "artist";
  * The card is a tiny configurator — the user tunes the slots in place, then
  * commits; resolveIdea() collapses the choice into a concrete ResolvedIdeaVM.
  * Slot options come from the taste profile, so the blanks are pre-filled
- * with THIS account's genres/decades/windows, first option = default.
+ * with THIS account's genres/decades/windows. The card leads with a random
+ * offered option per visit (its lead from shuffleIdeas); options[0] is the
+ * deterministic default used by resolveDefault and slot repairs.
  */
 export interface PlaylistIdeaVM {
 	id: string;
