@@ -15,11 +15,14 @@ import {
 	sweepStaleBackfillJobs,
 } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { processBackfillJob } from "@/lib/domains/enrichment/audio-feature-backfill/service";
+import type { BackfillJob } from "@/lib/domains/enrichment/audio-feature-backfill/types";
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
 import { audioFeatureBackfillConfig } from "@/lib/integrations/youtube-audio/config";
 import { log } from "@/lib/observability/logger";
+import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
+import { createPollLoop } from "./poll-loop";
 
 // Stable per-process id so the settlement RPCs can fence writes to this worker.
 const WORKER_ID = `audio-backfill-${hostname()}-${process.pid}`;
@@ -27,50 +30,20 @@ const WORKER_ID = `audio-backfill-${hostname()}-${process.pid}`;
 // sweep reclaims anything whose lease expires (crash/kill).
 const CLAIM_LEASE_SECONDS = 900;
 
-let shouldPoll = false;
-const activeJobs = new Set<string>();
-
-export function stopAudioFeatureBackfillPolling(): void {
-	shouldPoll = false;
-}
-
-export function getActiveAudioFeatureBackfillJobCount(): number {
-	return activeJobs.size;
-}
-
-export async function startAudioFeatureBackfillPolling(): Promise<void> {
-	shouldPoll = true;
-	log.info("audio-backfill-polling-start", {
-		workerId: WORKER_ID,
-		concurrency: audioFeatureBackfillConfig.concurrency,
-	});
-
-	while (shouldPoll) {
-		if (activeJobs.size >= audioFeatureBackfillConfig.concurrency) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		const claimResult = await claimBackfillJobs(
-			WORKER_ID,
-			1,
-			CLAIM_LEASE_SECONDS,
-		);
-		if (Result.isError(claimResult)) {
-			log.error("audio-backfill-claim-error", {
-				error: claimResult.error.message,
-			});
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		const job = claimResult.value[0];
-		if (!job) {
-			await Bun.sleep(workerConfig.pollIntervalMs);
-			continue;
-		}
-
-		activeJobs.add(job.id);
+// The claim RPC returns a batch (limit=1 here); the shared poll loop expects
+// a single-job claim, so unwrap the array to preserve the pre-refactor
+// "claim one, dispatch immediately" shape.
+const loop = createPollLoop<BackfillJob, DbError>({
+	concurrency: () => audioFeatureBackfillConfig.concurrency,
+	claim: async () => {
+		const result = await claimBackfillJobs(WORKER_ID, 1, CLAIM_LEASE_SECONDS);
+		if (Result.isError(result)) return result;
+		return Result.ok(result.value[0] ?? null);
+	},
+	jobId: (job) => job.id,
+	onClaimError: (error) =>
+		log.error("audio-backfill-claim-error", { error: error.message }),
+	dispatch: (job, markDone) => {
 		void (async () => {
 			try {
 				const outcome = await processBackfillJob(
@@ -93,12 +66,29 @@ export async function startAudioFeatureBackfillPolling(): Promise<void> {
 					tags: { loop: "audio-feature-backfill" },
 				});
 			} finally {
-				activeJobs.delete(job.id);
+				markDone();
 			}
 		})();
-	}
+	},
+	pollIntervalMs: workerConfig.pollIntervalMs,
+	onLoopStart: () =>
+		log.info("audio-backfill-polling-start", {
+			workerId: WORKER_ID,
+			concurrency: audioFeatureBackfillConfig.concurrency,
+		}),
+	onLoopStop: () => log.info("audio-backfill-polling-stopped"),
+});
 
-	log.info("audio-backfill-polling-stopped");
+export function stopAudioFeatureBackfillPolling(): void {
+	loop.stop();
+}
+
+export function getActiveAudioFeatureBackfillJobCount(): number {
+	return loop.getActiveCount();
+}
+
+export async function startAudioFeatureBackfillPolling(): Promise<void> {
+	return loop.start();
 }
 
 export async function runAudioFeatureBackfillSweepTick(): Promise<void> {
