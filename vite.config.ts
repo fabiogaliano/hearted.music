@@ -196,8 +196,44 @@ export default defineConfig(({ command }) => {
 		// covers the workerd SSR environment (the deps_ssr optimizer); the
 		// top-level block covers the client. Add any package named in a
 		// `[optimizer] bundling` dev log.
+		//
+		// The client list must cover every dep reachable from route chunks, not
+		// just the root entry: TanStack Start code-splits routes, so the initial
+		// crawl never sees deps imported only by lazy route modules. Each one
+		// discovered on first navigation forces a client re-optimize + full page
+		// reload ("optimized dependencies changed"), which shows up as constant
+		// blinking/flashing while browsing in dev.
 		optimizeDeps: {
-			include: ["@sentry/cloudflare", "@sentry/tanstackstart-react"],
+			include: [
+				"@sentry/cloudflare",
+				"@sentry/tanstackstart-react",
+				"@sentry/react",
+				"react",
+				"react-dom",
+				"react-dom/client",
+				"@tanstack/react-query",
+				"@tanstack/react-router",
+				"@tanstack/react-router-ssr-query",
+				"@tanstack/react-start",
+				"@tanstack/react-devtools",
+				"@tanstack/react-query-devtools",
+				"@tanstack/react-router-devtools",
+				"@phosphor-icons/react",
+				"@number-flow/react",
+				"framer-motion",
+				"gsap",
+				"@gsap/react",
+				"sonner",
+				"zod",
+				"clsx",
+				"tailwind-merge",
+				"better-result",
+				"@supabase/supabase-js",
+				"posthog-js",
+				"@posthog/react",
+				"better-auth/react",
+				"better-auth/tanstack-start",
+			],
 		},
 		ssr: {
 			optimizeDeps: {
