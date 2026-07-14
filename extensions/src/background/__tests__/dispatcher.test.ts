@@ -24,7 +24,6 @@ function makeTokenProvider(valid: boolean): TokenProvider {
 
 function makeDeps(overrides: Partial<DispatcherDeps> = {}): DispatcherDeps {
 	return {
-		rememberHeartedSender: vi.fn(),
 		isValidBackendUrl: (value: unknown): value is string =>
 			typeof value === "string",
 		normalizeBackendUrl: (url: string) => url,

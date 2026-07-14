@@ -31,7 +31,6 @@ export type SyncResult =
 /** Capabilities the dispatcher needs from the service worker's mutable state
  * and side-effecting collaborators. Constructed once in service-worker.ts. */
 export type DispatcherDeps = {
-	rememberHeartedSender: (sender: chrome.runtime.MessageSender) => void;
 	isValidBackendUrl: (value: unknown) => value is string;
 	normalizeBackendUrl: (url: string) => string;
 	setConnectStorage: (payload: {
@@ -118,8 +117,6 @@ export async function dispatchExtensionMessage(
 	sender: chrome.runtime.MessageSender,
 	deps: DispatcherDeps,
 ): Promise<unknown> {
-	deps.rememberHeartedSender(sender);
-
 	switch (message.type) {
 		case "PING":
 			return { type: "PONG" };

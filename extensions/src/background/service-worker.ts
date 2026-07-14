@@ -867,7 +867,9 @@ async function handleSpotifyTokenMessage(
 	const expiresIn = Math.round((payload.expiresAtMs - Date.now()) / 1000);
 	console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
 
-	if (!prevUsable || !nextUsable) return;
+	// Only a fresh login transition (unusable → usable) should consume
+	// pending login-return state; refreshes of an already-usable token must not.
+	if (prevUsable || !nextUsable) return;
 	const spotifyTabId = sender.tab?.id;
 	if (typeof spotifyTabId !== "number") return;
 
@@ -954,7 +956,6 @@ async function closeAndFocusHearted(
 }
 
 const dispatcherDeps: DispatcherDeps = {
-	rememberHeartedSender,
 	isValidBackendUrl,
 	normalizeBackendUrl,
 	setConnectStorage: async ({ apiToken, backendUrl }) => {
@@ -1036,6 +1037,10 @@ if (browser.runtime.onMessageExternal) {
 			) {
 				return false;
 			}
+			// Only the vetted web-app front door may claim the "hearted tab" slot —
+			// content-script senders (Spotify tabs) must never overwrite it, or
+			// CLOSE_AND_FOCUS_HEARTED would focus the Spotify tab it's about to close.
+			rememberHeartedSender(sender);
 			handleInboundMessage(message, sender, dispatcherDeps)
 				// Always respond, even for unknown types (undefined) or handler
 				// failures — leaving the channel open would hang the page's callback
@@ -1059,6 +1064,9 @@ browser.runtime.onMessage.addListener(
 		// back to the bridge, which posts it to the page. (This branch never fires
 		// on Chrome — the bridge content script is Firefox-only.)
 		if (isBridgeEnvelope(message)) {
+			// Bridge envelopes are relayed from the hearted web page, so the sender
+			// tab is a legitimate hearted tab (unlike other content-script messages).
+			rememberHeartedSender(sender);
 			return handleInboundMessage(message.payload, sender, dispatcherDeps);
 		}
 
