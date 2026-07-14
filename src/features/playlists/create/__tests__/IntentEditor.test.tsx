@@ -3,10 +3,10 @@
  *
  * Verifies the two core eligibility branches:
  *   - Eligible: textarea is rendered, onChange fires, no CTA rendered.
- *   - Ineligible: the collapsed field-shaped teaser (no textarea at all — a
- *     button showing a muted example phrase) plus the Upgrade line; both
- *     trigger the paywall, both carry the premium note via aria-describedby,
- *     and onChange can never fire from the locked state.
+ *   - Ineligible: a single collapsed field-shaped teaser (no textarea at
+ *     all — a button showing a muted example phrase and the "Backstage
+ *     Pass" chip) that triggers the paywall, carries the premium note via
+ *     aria-describedby, and never lets onChange fire.
  */
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -91,7 +91,7 @@ describe("IntentEditor — ineligible", () => {
 		).toBeTruthy();
 	});
 
-	it("both locked triggers carry aria-describedby pointing to the premium note", () => {
+	it("the locked trigger carries aria-describedby pointing to the premium note", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -101,7 +101,7 @@ describe("IntentEditor — ineligible", () => {
 			/>,
 		);
 		const buttons = screen.getAllByRole("button");
-		expect(buttons).toHaveLength(2);
+		expect(buttons).toHaveLength(1);
 		for (const button of buttons) {
 			const descId = button.getAttribute("aria-describedby");
 			expect(descId).toBeTruthy();
@@ -110,7 +110,7 @@ describe("IntentEditor — ineligible", () => {
 		}
 	});
 
-	it("renders the Upgrade CTA", () => {
+	it("renders the Backstage Pass chip on the teaser button", () => {
 		render(
 			<IntentEditor
 				isEligible={false}
@@ -119,10 +119,12 @@ describe("IntentEditor — ineligible", () => {
 				onOpenPaywall={vi.fn()}
 			/>,
 		);
-		expect(screen.getByRole("button", { name: /upgrade/i })).toBeTruthy();
+		expect(
+			screen.getByRole("button", { name: /backstage pass/i }),
+		).toBeTruthy();
 	});
 
-	it("calls onOpenPaywall from both the teaser field and the Upgrade CTA", () => {
+	it("calls onOpenPaywall from the teaser field", () => {
 		const onOpenPaywall = vi.fn();
 		render(
 			<IntentEditor
@@ -134,8 +136,6 @@ describe("IntentEditor — ineligible", () => {
 		);
 		fireEvent.click(screen.getByRole("button", { name: /late-night drive/i }));
 		expect(onOpenPaywall).toHaveBeenCalledOnce();
-		fireEvent.click(screen.getByRole("button", { name: /upgrade/i }));
-		expect(onOpenPaywall).toHaveBeenCalledTimes(2);
 	});
 
 	it("never calls onChange — intent cannot leak from the locked state", () => {
