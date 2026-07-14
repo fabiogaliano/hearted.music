@@ -18,12 +18,13 @@
  * detail page is offered whenever playlistId is available.
  */
 
-import { ArrowSquareOutIcon, WarningIcon } from "@phosphor-icons/react";
+import { WarningIcon } from "@phosphor-icons/react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/Button";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 import { buildPlaylistRouteRef } from "../../playlistRouteRef";
+import { SpotifyPlaylistLink } from "./SpotifyPlaylistLink";
 
 interface PartialStateProps {
 	spotifyId: string;
@@ -38,7 +39,6 @@ export function PartialState({
 	failedTrackCount,
 }: PartialStateProps) {
 	const navigate = useNavigate();
-	const spotifyUrl = `https://open.spotify.com/playlist/${spotifyId}`;
 	const songNoun = failedTrackCount === 1 ? "song" : "songs";
 	// Name isn't available in this state (only spotifyId/playlistId are
 	// carried through), so the slug falls back to a stable placeholder.
@@ -51,12 +51,7 @@ export function PartialState({
 		: null;
 
 	return (
-		<div
-			className="px-6 py-6"
-			role="status"
-			aria-live="polite"
-			aria-atomic="true"
-		>
+		<div className="px-6 py-6">
 			<div className="flex items-start gap-4">
 				<WarningIcon
 					size={18}
@@ -84,21 +79,7 @@ export function PartialState({
 					</div>
 
 					<div className="flex items-center gap-3">
-						<a
-							href={spotifyUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="hover-border-brighten inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
-							style={{ fontFamily: fonts.body }}
-						>
-							Open in Spotify
-							<ArrowSquareOutIcon
-								size={11}
-								weight="regular"
-								aria-hidden
-								style={{ opacity: 0.45 }}
-							/>
-						</a>
+						<SpotifyPlaylistLink spotifyId={spotifyId} />
 
 						{playlistRef && (
 							<Link

@@ -10,11 +10,12 @@
  * an instant opacity-only change under reduced motion.
  */
 
-import { ArrowSquareOutIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { fonts } from "@/lib/theme/fonts";
 import { buildPlaylistRouteRef } from "../../playlistRouteRef";
+import { SpotifyPlaylistLink } from "./SpotifyPlaylistLink";
 
 interface SuccessStateProps {
 	playlistName: string;
@@ -28,7 +29,6 @@ export function SuccessState({
 	spotifyId,
 	playlistId,
 }: SuccessStateProps) {
-	const spotifyUrl = `https://open.spotify.com/playlist/${spotifyId}`;
 	// buildPlaylistRouteRef only reads .id and .name — the rest of the row
 	// isn't available here (this is the write path, not a read of the list),
 	// so a minimal cast avoids fetching the full row just to build a slug.
@@ -40,9 +40,6 @@ export function SuccessState({
 	return (
 		<div
 			className="px-6 py-8"
-			role="status"
-			aria-live="polite"
-			aria-atomic="true"
 			style={{
 				animation:
 					"var(--success-state-enter, success-state-enter 300ms ease-out both)",
@@ -101,21 +98,7 @@ export function SuccessState({
 							View playlist
 						</Link>
 
-						<a
-							href={spotifyUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="hover-border-brighten inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
-							style={{ fontFamily: fonts.body }}
-						>
-							Open in Spotify
-							<ArrowSquareOutIcon
-								size={11}
-								weight="regular"
-								aria-hidden
-								style={{ opacity: 0.45 }}
-							/>
-						</a>
+						<SpotifyPlaylistLink spotifyId={spotifyId} />
 					</div>
 				</div>
 			</div>

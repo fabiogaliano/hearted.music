@@ -18,7 +18,7 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
@@ -27,7 +27,6 @@ import {
 	getBrowserTarget,
 	getExtensionStoreUrl,
 } from "@/lib/extension/browser-target";
-import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import { ArtistConfig } from "./config/ArtistConfig";
@@ -40,13 +39,14 @@ import { MaxSongsSlider } from "./MaxSongsSlider";
 import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
 import { PreviewList } from "./preview/PreviewList";
 import { CreateBar } from "./publish/CreateBar";
-import { PartialState } from "./publish/PartialState";
-import { SuccessState } from "./publish/SuccessState";
-import { UnsyncedState } from "./publish/UnsyncedState";
+import { PublishResultRegion } from "./publish/PublishResultRegion";
+import { getStudioPreviewState } from "./studioPreviewState";
 import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
+import { buildStudioSubmitInput } from "./studioSubmitInput";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
 import { useCreatePlaylistDraft } from "./useCreatePlaylistDraft";
 import { usePublishPlaylist } from "./usePublishPlaylist";
+import { useSongAddHighlight } from "./useSongAddHighlight";
 import { useSpotifyGate } from "./useSpotifyGate";
 
 const MAX_NAME_LENGTH = 100;
@@ -110,41 +110,15 @@ export function StudioScreen({
 	// iframe playing behind a footer that no longer matches it.
 	const playback = useSingleActivePlayback(flow.result?.status ?? null);
 
-	// Track IDs of songs added to the preview this session so PreviewList can
-	// briefly highlight them on entry. Cleared after the pulse animation plays out
-	// (1.5s covers the full opacity+y animation). Timers are cleaned up on unmount
-	// to avoid setState-after-unmount leaks.
-	const [newSongIds, setNewSongIds] = useState<ReadonlySet<string>>(new Set());
-	const newSongTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
-		new Map(),
-	);
-
-	useEffect(() => {
-		const timeouts = newSongTimeoutsRef.current;
-		return () => {
-			for (const tid of timeouts.values()) clearTimeout(tid);
-			timeouts.clear();
-		};
-	}, []);
-
+	// Keep the pulse pending through the preview fetch so a slow query cannot
+	// consume the animation before the newly added row actually appears.
+	const { newSongIds, markSongAdded } = useSongAddHighlight(draft.tracklist);
 	const handleAddSong = useCallback(
 		(id: string) => {
+			markSongAdded(id);
 			draft.addSong(id);
-			setNewSongIds((prev) => new Set([...prev, id]));
-			// Clear the highlight after the pulse animation completes
-			const existing = newSongTimeoutsRef.current.get(id);
-			if (existing) clearTimeout(existing);
-			const tid = setTimeout(() => {
-				setNewSongIds((prev) => {
-					const next = new Set(prev);
-					next.delete(id);
-					return next;
-				});
-				newSongTimeoutsRef.current.delete(id);
-			}, 1500);
-			newSongTimeoutsRef.current.set(id, tid);
 		},
-		[draft.addSong],
+		[draft.addSong, markSongAdded],
 	);
 
 	// Undo mirrors PreviewList's remove-undo: dismissing a suggestion and
@@ -166,33 +140,16 @@ export function StudioScreen({
 		[draft.suggestions, draft.dismissSuggestion, draft.restoreSong],
 	);
 
-	// When the create bar unmounts and the result state mounts (success or
-	// partial), keyboard focus would otherwise fall to <body>. Move it into
-	// the result region so AT users land on the status message immediately.
-	const resultRegionRef = useRef<HTMLDivElement>(null);
-	useEffect(() => {
-		if (flow.result !== null) {
-			resultRegionRef.current?.focus();
-		}
-	}, [flow.result]);
-
-	// Payload assembly lives here (not in CreateBar, which is presentational):
-	// songIds come from the previewed draft, config from the DEBOUNCED
-	// (committed) config — never the live config — so a submit can't persist an
-	// edited config against songs scored under the previous one.
+	// Payload assembly stays outside CreateBar, which is presentational. The
+	// helper structurally limits publishing to the preview's committed config.
 	const handleSubmit = useCallback(() => {
-		const submitInput: CreatePlaylistFromDraftInput = {
-			name: name.trim(),
-			songIds: draft.tracklist.map((s) => s.id),
-			genrePills: draft.committedConfig.genrePills,
-			matchFilters: draft.committedConfig.matchFilters,
-			intentApplied: draft.intentApplied,
-			intent:
-				draft.intentApplied && draft.committedConfig.intent
-					? draft.committedConfig.intent
-					: null,
-		};
-		void flow.submit(submitInput);
+		void flow.submit(
+			buildStudioSubmitInput(name, {
+				tracklist: draft.tracklist,
+				committedConfig: draft.committedConfig,
+				intentApplied: draft.intentApplied,
+			}),
+		);
 	}, [
 		name,
 		draft.tracklist,
@@ -201,27 +158,15 @@ export function StudioScreen({
 		flow.submit,
 	]);
 
-	// Not-enough note: eligible but fewer than the slider max. Also gated on the
-	// tracklist having room: filter-exempt anchor pins can fill the playlist even
-	// when few songs match, and "broaden your filters for more" is wrong once
-	// there's no room for more. Compared against committedConfig because the
-	// tracklist was produced under it, not the live (possibly mid-debounce) config.
-	const showNotEnoughNote =
-		draft.totalEligible > 0 &&
-		draft.totalEligible < draft.config.maxSongs &&
-		draft.tracklist.length < draft.committedConfig.maxSongs &&
-		!draft.isLoading;
-
-	// The empty state must key on the TRACKLIST, not totalEligible: manual pins
-	// are filter-exempt (see preview.ts's manualExtras) and still land in
-	// draft.tracklist even when totalEligible is 0, so a tracklist-empty check
-	// is the only way to avoid replacing the user's own pins with "no songs
-	// match" copy while the Create bar still reads "Create playlist · N songs".
-	const tracklistIsEmpty = draft.tracklist.length === 0;
-
-	// Warming: nothing to show yet, still loading (backfill just kicked off).
-	// Once the tracklist is empty and settled, it's genuinely empty instead.
-	const isWarming = tracklistIsEmpty && draft.isLoading;
+	// Preview messaging is derived from the same committed max that produced the
+	// tracklist, never the live value while its debounce is still in flight.
+	const { showNotEnoughNote, tracklistIsEmpty, isWarming } =
+		getStudioPreviewState({
+			totalEligible: draft.totalEligible,
+			tracklistLength: draft.tracklist.length,
+			committedMaxSongs: draft.committedConfig.maxSongs,
+			isLoading: draft.isLoading,
+		});
 
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
@@ -414,33 +359,12 @@ export function StudioScreen({
 					</span>
 				</div>
 
-				{flow.result?.status === "success" ? (
-					// tabIndex={-1} lets the ref.focus() land here without putting the
-					// container itself in the tab order — focus immediately moves to the
-					// first interactive element (the Spotify link or Done button) via AT.
-					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
-						<SuccessState
-							playlistName={flow.result.playlistName}
-							spotifyId={flow.result.spotifyId}
-							playlistId={flow.result.playlistId}
-						/>
-					</div>
-				) : flow.result?.status === "partial" ? (
-					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
-						<PartialState
-							spotifyId={flow.result.spotifyId}
-							playlistId={flow.result.playlistId}
-							failedTrackCount={flow.result.failedTrackCount}
-						/>
-					</div>
-				) : flow.result?.status === "created-unsynced" ? (
-					<div ref={resultRegionRef} tabIndex={-1} className="outline-none">
-						<UnsyncedState
-							spotifyId={flow.result.spotifyId}
-							isRetrying={flow.isRetryingUnsynced}
-							onRetry={() => void flow.retryUnsynced()}
-						/>
-					</div>
+				{flow.result ? (
+					<PublishResultRegion
+						result={flow.result}
+						isRetryingUnsynced={flow.isRetryingUnsynced}
+						onRetryUnsynced={() => void flow.retryUnsynced()}
+					/>
 				) : (
 					<CreateBar
 						name={name}
