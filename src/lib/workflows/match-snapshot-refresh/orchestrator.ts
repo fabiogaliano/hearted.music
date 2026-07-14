@@ -1,22 +1,7 @@
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
-import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
-import { get as getSongAnalyses } from "@/lib/domains/enrichment/content-analysis/queries";
-import { flattenAnalysisText } from "@/lib/domains/enrichment/embeddings/analysis-text";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { getByIds } from "@/lib/domains/library/songs/queries";
 import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import {
-	MATCH_STORED_PAIRS_PER_PLAYLIST,
-	MATCH_STORED_PAIRS_PER_SONG,
-	retainStoredMatchPairs,
-} from "@/lib/domains/taste/song-matching/retention";
-import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
-import type {
-	MatchingAudioFeatures,
-	MatchingSong,
-	MatchResult,
-} from "@/lib/domains/taste/song-matching/types";
+import type { MatchingSong } from "@/lib/domains/taste/song-matching/types";
 import type { LlmService } from "@/lib/integrations/llm/service";
 import { createLlmService } from "@/lib/integrations/llm/service";
 import { RerankerService } from "@/lib/integrations/reranker/service";
@@ -29,27 +14,23 @@ import {
 	type MatchSnapshotRefreshProgress,
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
 import { updateJobProgress } from "@/lib/platform/jobs/repository";
-import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
-import {
-	type PlaylistForRanking,
-	rankMatchSuggestionLists,
-	type SongForRanking,
-} from "@/lib/workflows/enrichment-pipeline/match-ranking";
-import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
-import { runLightweightEnrichment } from "@/lib/workflows/playlist-sync/lightweight-enrichment";
-import { loadTargetPlaylistProfiles } from "./profiles";
+import {
+	loadCandidateDetails,
+	loadCandidateSongIds,
+	loadSongEmbeddings,
+} from "./stages/candidate-loading";
+import { runScoring } from "./stages/matching";
+import { loadTargetPlaylistProfiles } from "./stages/playlist-profiling";
+import { runOrientedRanking } from "./stages/ranking";
+import { runTargetSongEnrichment } from "./stages/target-song-enrichment";
 import { isMatchRefreshJobSuperseded } from "./superseded";
 import type {
 	MatchSnapshotRefreshOutcome,
 	MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshResult,
 } from "./types";
-import {
-	type RankingRowPayload,
-	writeEmptySnapshot,
-	writeMatchSnapshot,
-} from "./write-match-snapshot";
+import { writeEmptySnapshot, writeMatchSnapshot } from "./write-match-snapshot";
 
 // Queries current state to check if a newer request has arrived since
 // this job was scheduled. Returns false on any state-load error so that
@@ -279,25 +260,28 @@ export async function executeMatchSnapshotRefresh(
 		llmService,
 	);
 
+	const isSuperseded = satisfiesRequestedAt
+		? () => checkIfSuperseded(accountId, satisfiesRequestedAt)
+		: undefined;
+
+	// --- Stage: target_song_enrichment ---
 	if (plan.needsTargetSongEnrichment) {
 		startStage(progress, "target_song_enrichment");
 		await persistRefreshProgress(jobId, progress);
-		try {
-			await runLightweightEnrichment({ accountId });
-			finishStage(progress, "target_song_enrichment", 1, 0);
-		} catch (err) {
-			log.warn("match:target-enrichment-failed", {
-				actor: who,
-				error: err instanceof Error ? err.message : String(err),
-			});
-			finishStage(progress, "target_song_enrichment", 0, 1);
-		}
+		const outcome = await runTargetSongEnrichment(accountId, who);
+		finishStage(
+			progress,
+			"target_song_enrichment",
+			outcome.succeeded ? 1 : 0,
+			outcome.succeeded ? 0 : 1,
+		);
 		await persistRefreshProgress(jobId, progress);
 	} else {
 		skipStage(progress, "target_song_enrichment");
 		await persistRefreshProgress(jobId, progress);
 	}
 
+	// --- Stage: playlist_profiling ---
 	startStage(progress, "playlist_profiling");
 	await persistRefreshProgress(jobId, progress);
 
@@ -316,10 +300,7 @@ export async function executeMatchSnapshotRefresh(
 		names: previewNames(playlists.map((p) => p.name)),
 	});
 
-	if (
-		satisfiesRequestedAt &&
-		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
-	) {
+	if (isSuperseded && (await isSuperseded())) {
 		return { status: "superseded" };
 	}
 
@@ -340,10 +321,11 @@ export async function executeMatchSnapshotRefresh(
 		);
 	}
 
+	// --- Stage: candidate_loading ---
 	startStage(progress, "candidate_loading");
 	await persistRefreshProgress(jobId, progress);
 
-	const songIds = await getEntitledDataEnrichedSongIds(accountId);
+	const songIds = await loadCandidateSongIds(accountId);
 	finishStage(progress, "candidate_loading", songIds.length, 0);
 	progress.candidateCount = songIds.length;
 	await persistRefreshProgress(jobId, progress);
@@ -354,10 +336,7 @@ export async function executeMatchSnapshotRefresh(
 		playlists: playlists.length,
 	});
 
-	if (
-		satisfiesRequestedAt &&
-		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
-	) {
+	if (isSuperseded && (await isSuperseded())) {
 		return { status: "superseded" };
 	}
 
@@ -378,116 +357,28 @@ export async function executeMatchSnapshotRefresh(
 		return { status: "published", result: snapshotResult };
 	}
 
-	const songsResult = await getByIds(songIds);
-	if (Result.isError(songsResult)) {
-		throw new Error(
-			`[target-refresh] Failed to load songs: ${songsResult.error.message}`,
-		);
-	}
-
-	const audioFeaturesResult = await getBatch(songIds);
-	if (Result.isError(audioFeaturesResult)) {
-		// Don't silently degrade every song to audio-feature-absent matching —
-		// surface the DB failure so a systemic outage is visible in the logs.
-		log.warn("match:audio-features-degraded", {
-			actor: who,
-			songs: songIds.length,
-			error: audioFeaturesResult.error.message,
-		});
-	}
-	const audioFeaturesMap = Result.isOk(audioFeaturesResult)
-		? audioFeaturesResult.value
-		: new Map();
-
-	const matchingSongs: MatchingSong[] = songsResult.value.map((song) => {
-		const audioFeatureRow = audioFeaturesMap.get(song.id);
-		const audioFeatures: MatchingAudioFeatures | null = audioFeatureRow
-			? {
-					energy: audioFeatureRow.energy ?? 0,
-					valence: audioFeatureRow.valence ?? 0,
-					danceability: audioFeatureRow.danceability ?? 0,
-					acousticness: audioFeatureRow.acousticness ?? 0,
-					instrumentalness: audioFeatureRow.instrumentalness ?? 0,
-					speechiness: audioFeatureRow.speechiness ?? 0,
-					liveness: audioFeatureRow.liveness ?? 0,
-					tempo: audioFeatureRow.tempo ?? 0,
-					loudness: audioFeatureRow.loudness ?? 0,
-				}
-			: null;
-
-		return {
-			id: song.id,
-			spotifyId: song.spotify_id,
-			name: song.name,
-			artists: song.artists,
-			genres: song.genres,
-			audioFeatures,
-		};
-	});
-
-	// Base exclusions only: pairs the user already decided on plus songs already
-	// in a target playlist. Safe metadata hard filters (language, vocal gender,
-	// release year, liked-at) are deliberately NOT applied here — they are
-	// read-time predicates in visible-suggestion-list.ts (Phase 9 / MSR-36/37), so
-	// loosening a filter reveals pairs from the already-stored snapshot without a
-	// recompute. Applying them at write time would drop those pairs before storage
-	// and make loosening impossible, so the snapshot keeps the broad candidate set.
-	let baseExclusionSet: Set<string> = new Set();
-	const baseResult = await loadExclusionSet(accountId).catch(
-		(err: unknown) => err,
+	const { matchingSongs, baseExclusionSet } = await loadCandidateDetails(
+		accountId,
+		songIds,
+		who,
 	);
-
-	if (baseResult instanceof Error || !(baseResult instanceof Set)) {
-		log.warn("match:exclusion-set-failed", {
-			actor: who,
-			error:
-				baseResult instanceof Error ? baseResult.message : String(baseResult),
-		});
-	} else {
-		baseExclusionSet = baseResult;
-	}
 
 	// Computed once and reused at both matchBatch and writeMatchSnapshot so the
 	// two call sites are guaranteed the identical set.
 	const exclusionSetArg =
 		baseExclusionSet.size > 0 ? baseExclusionSet : undefined;
 
-	if (
-		satisfiesRequestedAt &&
-		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
-	) {
+	if (isSuperseded && (await isSuperseded())) {
 		return { status: "superseded" };
 	}
 
-	const embeddingsResult = await embeddingService.getEmbeddings(songIds);
-	const songEmbeddings = new Map<string, number[]>();
-	if (Result.isOk(embeddingsResult)) {
-		for (const [songId, embeddingRow] of embeddingsResult.value) {
-			let parsedEmbedding: unknown;
-			try {
-				parsedEmbedding =
-					typeof embeddingRow.embedding === "string"
-						? JSON.parse(embeddingRow.embedding)
-						: embeddingRow.embedding;
-			} catch (error) {
-				// A single corrupt/partially-written embedding string must not throw
-				// and crash the whole refresh — skip the row, keep the rest usable.
-				log.warn("match:embedding-parse-failed", {
-					actor: who,
-					songId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				continue;
-			}
-			if (
-				Array.isArray(parsedEmbedding) &&
-				parsedEmbedding.every((value) => typeof value === "number")
-			) {
-				songEmbeddings.set(songId, parsedEmbedding);
-			}
-		}
-	}
+	const songEmbeddings = await loadSongEmbeddings(
+		embeddingService,
+		songIds,
+		who,
+	);
 
+	// --- Stage: matching (scoring + retention + oriented ranking) ---
 	startStage(progress, "matching");
 	await persistRefreshProgress(jobId, progress);
 
@@ -497,189 +388,60 @@ export async function executeMatchSnapshotRefresh(
 		playlists: profiles.length,
 	});
 
-	if (
-		satisfiesRequestedAt &&
-		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
-	) {
+	if (isSuperseded && (await isSuperseded())) {
 		return { status: "superseded" };
 	}
 
-	const matchingService = createMatchingService(
+	const scoringResult = await runScoring(
 		embeddingService,
 		profilingService,
-	);
-	const matchResult = await matchingService.matchBatch(
 		matchingSongs,
 		profiles,
 		songEmbeddings,
-		exclusionSetArg !== undefined
-			? { exclusionSet: exclusionSetArg }
-			: undefined,
+		exclusionSetArg,
 	);
 
-	if (Result.isError(matchResult)) {
+	if (Result.isError(scoringResult)) {
 		finishStage(progress, "matching", 0, 1);
 		await persistRefreshProgress(jobId, progress);
 		log.error("match:scoring-failed", { actor: who });
 		throw new Error("[target-refresh] Matching failed");
 	}
 
-	// Flatten all matched pairs and apply bilateral retention so both oriented
-	// suggestion lists have sufficient pairs (song-top-N ∪ playlist-top-N).
-	const allPairs: MatchResult[] = [];
-	for (const results of matchResult.value.matches.values()) {
-		allPairs.push(...results);
-	}
-	const storedPairs = retainStoredMatchPairs({
-		thresholdedPairs: allPairs,
-		perSongLimit: MATCH_STORED_PAIRS_PER_SONG,
-		perPlaylistLimit: MATCH_STORED_PAIRS_PER_PLAYLIST,
-	});
+	const { matches, storedPairs } = scoringResult.value;
 
-	// Recorded into the snapshot hash so it reflects documents actually built.
-	let rerankDocumentMode: "analysis" | "metadata" = "metadata";
-
-	// Rankings keyed by "songId:playlistId" — one row per (pair, orientation).
-	const rankingsByPair = new Map<string, RankingRowPayload[]>();
-	// Song-orientation rank keyed by "songId:playlistId" for legacy score/rank
-	// mirror (C12): new read paths use match_result_ranking; old read paths use
-	// the mirror value on match_result.score / match_result.rank.
-	const songOrientationRankByPair = new Map<
-		string,
-		{ rank: number; orderingScore: number }
-	>();
-
-	if (storedPairs.length > 0) {
-		// Load analyses for stored-pair songs — avoids fetching the full candidate
-		// set when most songs have no pairs (empty-match case skips this entirely).
-		const storedSongIdSet = new Set(storedPairs.map((p) => p.songId));
-		const storedSongIds = [...storedSongIdSet];
-		const analysesResult = await getSongAnalyses(storedSongIds);
-		const analysisTextMap = new Map<string, string>();
-		if (Result.isOk(analysesResult)) {
-			for (const [songId, analysis] of analysesResult.value) {
-				analysisTextMap.set(songId, flattenAnalysisText(analysis));
-			}
-		} else {
-			log.error("match:analyses-degraded", {
-				actor: who,
-				error: analysesResult.error.message,
-			});
-		}
-		rerankDocumentMode = analysisTextMap.size > 0 ? "analysis" : "metadata";
-
-		const songsForRanking: SongForRanking[] = songsResult.value
-			.filter((s) => storedSongIdSet.has(s.id))
-			.map((s) => ({
-				id: s.id,
-				name: s.name,
-				artists: s.artists,
-				genres: s.genres,
-				analysisText: analysisTextMap.get(s.id) ?? null,
-			}));
-
-		const playlistsForRanking: PlaylistForRanking[] = playlists.map((pl) => ({
+	const rankingOutcome = await runOrientedRanking({
+		who,
+		storedPairs,
+		matchingSongs,
+		playlists: playlists.map((pl) => ({
 			id: pl.id,
 			name: pl.name,
 			matchIntent: pl.match_intent ?? null,
 			genrePills: pl.genre_pills ?? null,
-		}));
+		})),
+		rerankerService,
+		isSuperseded,
+	});
 
-		const rankResult = await rankMatchSuggestionLists({
-			storedPairs,
-			songs: songsForRanking,
-			playlists: playlistsForRanking,
-			// If the provider is unavailable at call time, rankSongSuggestionLists
-			// and rankPlaylistSuggestionLists degrade to fused_fallback internally.
-			rerankerService,
-			isSuperseded: satisfiesRequestedAt
-				? () => checkIfSuperseded(accountId, satisfiesRequestedAt)
-				: undefined,
-		});
-
-		// A superseded result publishes nothing — a newer job will publish instead.
-		if (rankResult.status === "superseded") {
-			return { status: "superseded" };
-		}
-
-		// Build per-pair ranking payload from both orientations.
-		for (const [orientation, lists] of rankResult.byOrientation) {
-			for (const list of lists) {
-				list.rankedPairs.forEach((pair, idx) => {
-					const rank = idx + 1;
-					const key = `${pair.songId}:${pair.playlistId}`;
-					const row: RankingRowPayload = {
-						orientation,
-						rank,
-						ordering_score: pair.orderingScore,
-						reranker_score: pair.rerankerScore,
-						source: pair.source,
-						document_mode: pair.documentMode,
-					};
-					const existing = rankingsByPair.get(key) ?? [];
-					existing.push(row);
-					rankingsByPair.set(key, existing);
-
-					if (orientation === "song") {
-						songOrientationRankByPair.set(key, {
-							rank,
-							orderingScore: pair.orderingScore,
-						});
-					}
-				});
-			}
-		}
+	if (rankingOutcome.status === "superseded") {
+		return { status: "superseded" };
 	}
+
+	const { resultEntries, rerankDocumentMode } = rankingOutcome;
 
 	const matchedSongIds = [...new Set(storedPairs.map((p) => p.songId))];
 	finishStage(progress, "matching", matchedSongIds.length, 0);
 	progress.matchedSongCount = matchedSongIds.length;
 	await persistRefreshProgress(jobId, progress);
 
-	logMatchOutcome(who, matchResult.value.matches, matchingSongs, playlists);
+	logMatchOutcome(who, matches, matchingSongs, playlists);
 
-	const resultEntries: Array<{
-		song_id: string;
-		playlist_id: string;
-		score: number;
-		fused_score: number;
-		rank: number | null;
-		factors: Json;
-		normalized_factors: Json;
-		rankings?: RankingRowPayload[];
-	}> = storedPairs.map((pair) => {
-		const key = `${pair.songId}:${pair.playlistId}`;
-		const songOrientation = songOrientationRankByPair.get(key);
-		return {
-			song_id: pair.songId,
-			playlist_id: pair.playlistId,
-			// song-orientation ordering_score mirrors the legacy score column (C12);
-			// falls back to fusedScore when no ranking row exists for this pair.
-			score: songOrientation?.orderingScore ?? pair.fusedScore,
-			fused_score: pair.fusedScore,
-			// song-orientation rank mirrors the legacy rank column; null when absent.
-			rank: songOrientation?.rank ?? null,
-			factors: {
-				embedding: pair.factors.embedding,
-				audio: pair.factors.audio,
-				genre: pair.factors.genre,
-			},
-			normalized_factors: {
-				embedding: pair.normalizedFactors.embedding,
-				audio: pair.normalizedFactors.audio,
-				genre: pair.normalizedFactors.genre,
-			},
-			rankings: rankingsByPair.get(key),
-		};
-	});
-
-	if (
-		satisfiesRequestedAt &&
-		(await checkIfSuperseded(accountId, satisfiesRequestedAt))
-	) {
+	if (isSuperseded && (await isSuperseded())) {
 		return { status: "superseded" };
 	}
 
+	// --- Stage: publishing ---
 	const snapshotResult = await publishSnapshot({
 		jobId,
 		progress,
