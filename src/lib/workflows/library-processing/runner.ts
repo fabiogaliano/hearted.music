@@ -18,8 +18,7 @@ import {
 } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import { captureWorkerEvent } from "@/worker/posthog-capture";
-import { EnrichmentChanges } from "./changes/enrichment";
-import { MatchSnapshotChanges } from "./changes/match-snapshot";
+import { EnrichmentChanges, MatchSnapshotChanges } from "./changes";
 import { applyLibraryProcessingChange } from "./service";
 import {
 	settleEnrichmentJobTerminal,

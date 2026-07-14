@@ -34,7 +34,6 @@ function makeCtx(accountId = "account-1"): EnrichmentContext {
 	return {
 		accountId,
 		embeddingService: {} as EnrichmentContext["embeddingService"],
-		profilingService: {} as EnrichmentContext["profilingService"],
 	};
 }
 

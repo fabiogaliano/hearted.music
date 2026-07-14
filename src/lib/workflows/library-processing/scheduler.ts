@@ -28,7 +28,7 @@ import {
 } from "@/lib/workflows/enrichment-pipeline/progress";
 import { resolveEnrichmentBand, resolveRefreshBand } from "./band-policy";
 import { resolveMatchRefreshAvailableAt } from "./match-refresh-debounce";
-import { bandToNumeric, resolveQueuePriority } from "./queue-priority";
+import { bandToNumeric } from "./queue-priority";
 import type {
 	LibraryProcessingApplyCause,
 	LibraryProcessingApplyError,
@@ -242,7 +242,7 @@ export async function executeEffect(
 			effect.accountId,
 			"library_processing_execute_effect",
 		);
-		const billingBand = resolveQueuePriority(billingState);
+		const billingBand = billingState.queueBand;
 		const band = resolveEnrichmentBand(billingBand, change.kind);
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);

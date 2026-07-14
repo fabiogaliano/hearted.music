@@ -63,8 +63,10 @@ import { captureProductEventBestEffort } from "@/lib/observability/capture-produ
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
-import { FirstMatchSetupChanges } from "@/lib/workflows/library-processing/changes/first-match-setup";
-import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
+import {
+	FirstMatchSetupChanges,
+	PlaylistManagementChanges,
+} from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 const SPOTIFY_PLAYLIST_URI_RE = /^spotify:playlist:([a-zA-Z0-9]+)$/;

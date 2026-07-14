@@ -32,7 +32,7 @@ import {
 	deleteSyncPayload,
 	downloadSyncPayload,
 } from "@/lib/workflows/extension-sync/payload-storage";
-import { SyncChanges } from "@/lib/workflows/library-processing/changes/sync";
+import { SyncChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
 	syncPlaylists,

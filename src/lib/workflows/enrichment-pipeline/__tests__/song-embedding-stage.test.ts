@@ -61,7 +61,6 @@ function makeCtx(): EnrichmentContext {
 			getEmbeddings: mockGetEmbeddings,
 			embedBatch: mockEmbedBatch,
 		} as unknown as EnrichmentContext["embeddingService"],
-		profilingService: {} as EnrichmentContext["profilingService"],
 		jobId: "job-1",
 	};
 }

@@ -16,11 +16,27 @@ vi.mock("@/env", () => ({
 	env: { DEEPINFRA_API_KEY: "test-key" },
 }));
 
-import { rerank } from "@/lib/integrations/deepinfra/service";
+import { createDeepInfraProvider } from "@/lib/integrations/providers/adapters/deepinfra";
 import { DEFAULT_RERANK_INSTRUCTION } from "@/lib/integrations/providers/types";
 
 const RERANKER_URL =
 	"https://api.deepinfra.com/v1/inference/Qwen/Qwen3-Reranker-0.6B";
+
+function provider() {
+	const result = createDeepInfraProvider();
+	if (Result.isError(result)) {
+		throw new Error("expected DeepInfra provider to construct");
+	}
+	return result.value;
+}
+
+async function rerank(
+	query: string,
+	documents: string[],
+	options?: { instruction?: string; model?: string },
+) {
+	return provider().rerank(query, documents, options);
+}
 
 function mockFetchResponse(body: unknown, status = 200) {
 	const fetchMock = vi.fn(

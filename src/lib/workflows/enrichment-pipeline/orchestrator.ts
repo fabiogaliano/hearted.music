@@ -5,9 +5,6 @@ import { getAudioFeatureAvailability } from "@/lib/domains/enrichment/audio-feat
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { detectLanguageForSongs } from "@/lib/domains/enrichment/language-detection/service";
 import { resolveVocalGenderForSongs } from "@/lib/domains/enrichment/vocal-gender/service";
-import { createPlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
-import type { LlmService } from "@/lib/integrations/llm/service";
-import { createLlmService } from "@/lib/integrations/llm/service";
 import { log } from "@/lib/observability/logger";
 import type {
 	EnrichmentChunkProgress,
@@ -40,28 +37,13 @@ import {
 	PipelineBootstrapError,
 } from "./types";
 
-function initLlmService(): LlmService | undefined {
-	try {
-		return createLlmService();
-	} catch {
-		return undefined;
-	}
-}
-
 function buildContext(
 	accountId: string,
 	embeddingService: EmbeddingService,
 ): EnrichmentContext {
-	const llmService = initLlmService();
-
 	return {
 		accountId,
 		embeddingService,
-		profilingService: createPlaylistProfilingService(
-			embeddingService,
-			llmService,
-		),
-		llmService,
 	};
 }
 

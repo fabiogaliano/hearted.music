@@ -3,7 +3,7 @@ import { Result } from "better-result";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { log } from "@/lib/observability/logger";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { MaintenanceChanges } from "@/lib/workflows/library-processing/changes/maintenance";
+import { MaintenanceChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 export type RequestLibraryPhase1EnrichmentResult =
