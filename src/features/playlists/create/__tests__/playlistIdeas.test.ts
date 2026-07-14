@@ -3,8 +3,34 @@ import type { PlaylistIdeaVM, TasteProfileVM } from "../ideaTypes";
 import {
 	buildPlaylistIdeas,
 	defaultSelection,
+	reconcileSelection,
 	resolveIdea,
+	slotOptionsFor,
 } from "../playlistIdeas";
+
+const last3m = { kind: "after", startDate: "2026-04-14" } as const;
+const first12m = {
+	kind: "range",
+	startDate: "2017-08-14",
+	end: { kind: "date", date: "2018-08-14" },
+} as const;
+
+// A profile with both a recent and an origin window, so the window idea's anchor
+// is a real two-option toggle (recent lengths differ from origin lengths).
+function windowProfile(): TasteProfileVM {
+	return profile({
+		likedWindows: [
+			{ id: "last-3m", label: "last 3 months", count: 24, likedAt: last3m },
+			{ id: "last-6m", label: "last 6 months", count: 63, likedAt: last3m },
+			{
+				id: "first-12m",
+				label: "first 12 months",
+				count: 5,
+				likedAt: first12m,
+			},
+		],
+	});
+}
 
 // A profile rich enough to clear every idea floor (windows ≥ 8, genres ≥ 20,
 // decades ≥ 3, artists ≥ 8) so buildPlaylistIdeas emits all five ideas.
@@ -13,8 +39,8 @@ function profile(overrides: Partial<TasteProfileVM> = {}): TasteProfileVM {
 		totalLikedCount: 500,
 		likedWindows: [
 			{
-				id: "last-30d",
-				label: "last 30 days",
+				id: "last-3m",
+				label: "last 3 months",
 				count: 20,
 				likedAt: { kind: "after", startDate: "2026-06-12" },
 			},
@@ -85,6 +111,60 @@ describe("resolveIdea structured payloads", () => {
 		expect(idea.genrePills).toHaveLength(1);
 		expect(idea.matchFilters).toBeUndefined();
 		expect(idea.anchorArtist).toBeUndefined();
+	});
+});
+
+describe("window idea anchor × length", () => {
+	function windowIdea() {
+		return ideaById(buildPlaylistIdeas(windowProfile()), "idea-window");
+	}
+
+	it("offers both anchors, recent leading, with anchor-specific lengths", () => {
+		const idea = windowIdea();
+		const anchors = slotOptionsFor(idea, "anchor", {});
+		expect(anchors.map((a) => a.label)).toEqual(["last", "first"]);
+
+		const recent = { anchor: anchors[0] };
+		const origin = { anchor: anchors[1] };
+		expect(slotOptionsFor(idea, "length", recent).map((l) => l.label)).toEqual([
+			"3 months",
+			"6 months",
+		]);
+		expect(slotOptionsFor(idea, "length", origin).map((l) => l.label)).toEqual([
+			"12 months",
+		]);
+	});
+
+	it("defaults to the recent anchor's first length as an `after` filter", () => {
+		const idea = resolveDefault(windowIdea());
+		expect(idea.label).toBe("Your last likes, all 3 months of them");
+		expect(idea.matchFilters).toEqual({ version: 1, likedAt: last3m });
+	});
+
+	it("resolves the origin anchor to its bounded range filter", () => {
+		const idea = windowIdea();
+		const anchors = slotOptionsFor(idea, "anchor", {});
+		const selection = reconcileSelection(idea, { anchor: anchors[1] });
+		const resolved = resolveIdea(idea, selection);
+		expect(resolved.label).toBe("Your first likes, all 12 months of them");
+		expect(resolved.matchFilters).toEqual({ version: 1, likedAt: first12m });
+	});
+
+	it("snaps a stale length back to a valid one when the anchor flips", () => {
+		const idea = windowIdea();
+		const anchors = slotOptionsFor(idea, "anchor", {});
+		// Start on the recent anchor's "6 months", then switch to the origin anchor,
+		// which has no 6-month length — the selection must not dangle on the dead pair.
+		const recentSix = reconcileSelection(idea, {
+			anchor: anchors[0],
+			length: slotOptionsFor(idea, "length", { anchor: anchors[0] })[1],
+		});
+		expect(recentSix.length.label).toBe("6 months");
+		const flipped = reconcileSelection(idea, {
+			...recentSix,
+			anchor: anchors[1],
+		});
+		expect(flipped.length.label).toBe("12 months");
 	});
 });
 

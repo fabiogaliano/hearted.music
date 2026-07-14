@@ -51,7 +51,9 @@ import {
 	buildPlaylistIdeas,
 	defaultSelection,
 	formatGateHint,
+	reconcileSelection,
 	resolveIdea,
+	slotOptionsFor,
 } from "../playlistIdeas";
 import { tasteProfileQueryOptions } from "../tasteProfile";
 import { IdeaSlot } from "./IdeaSlot";
@@ -241,9 +243,16 @@ function IdeaCard({
 							<em key={part.slot} className="not-italic">
 								<IdeaSlot
 									value={selection[part.slot]?.label ?? "…"}
-									options={idea.slots[part.slot] ?? []}
+									options={slotOptionsFor(idea, part.slot, selection)}
 									onPick={(choice) =>
-										setSelection((prev) => ({ ...prev, [part.slot]: choice }))
+										// Reconcile so a dependent slot (window length) re-defaults
+										// when its anchor changes, never dangling on a dead pair.
+										setSelection((prev) =>
+											reconcileSelection(idea, {
+												...prev,
+												[part.slot]: choice,
+											}),
+										)
 									}
 								/>
 							</em>

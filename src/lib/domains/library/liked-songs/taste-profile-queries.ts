@@ -30,15 +30,17 @@ export interface TasteTopArtist {
 
 /** Count of active likes falling inside a named recency window. */
 export interface TasteLikedWindow {
-	/** Stable window id from the RPC (e.g. "last-30d"); the VM maps it to a label. */
+	/** Stable window id from the RPC (e.g. "last-3m"); the VM maps it to a label. */
 	id: string;
 	count: number;
-	/** ISO timestamp of the window's lower bound (inclusive). */
+	/** UTC-midnight timestamp of the window's start date (inclusive). */
 	from: string;
 	/**
-	 * ISO timestamp of the window's upper bound (exclusive), or null for an
-	 * open-ended rolling window ("last N days" runs up to now). The VM turns this
-	 * pair into the `likedAt` filter the window commits.
+	 * UTC-midnight timestamp of the window's end DATE, inclusive through that whole
+	 * day — the RPC floors bounds to UTC dates to match the day-granular committed
+	 * filter, so the VM reads this as an inclusive end date (not an exclusive
+	 * timestamp). Null for an open-ended rolling window ("last N months" runs up to
+	 * now). The VM turns this pair into the `likedAt` filter the window commits.
 	 */
 	to: string | null;
 }

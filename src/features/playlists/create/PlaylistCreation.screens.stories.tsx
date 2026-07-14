@@ -26,16 +26,20 @@ import { tasteProfileQueryOptions } from "./tasteProfile";
 export default { title: "Playlist Creation" };
 
 // Canned likedAt filters for the window fixtures. In prod these come from the
-// RPC's per-window date bounds (rolling "last N days" → an open `after`; anchored
-// "first 3 months" → a closed `range`); the exact dates don't matter to the story.
-const last30d = { kind: "after", startDate: "2026-06-12" } as const;
+// RPC's per-window date bounds (rolling "last N months" → an open `after`; anchored
+// "first N months" → a closed `range`); the exact dates don't matter to the story.
 const last3m = { kind: "after", startDate: "2026-04-12" } as const;
 const last6m = { kind: "after", startDate: "2026-01-12" } as const;
-const first3m = {
-	kind: "range",
-	startDate: "2024-01-10",
-	end: { kind: "date", date: "2024-04-10" },
-} as const;
+const last12m = { kind: "after", startDate: "2025-07-12" } as const;
+const firstRange = (endDate: string) =>
+	({
+		kind: "range",
+		startDate: "2024-01-10",
+		end: { kind: "date", date: endDate },
+	}) as const;
+const first3m = firstRange("2024-04-10");
+const first6m = firstRange("2024-07-10");
+const first12m = firstRange("2025-01-10");
 
 // Three library depths for judging the dynamic ideas screen: rich derives the full
 // idea spread with well-stocked slots, sparse only what clears the floors
@@ -46,14 +50,31 @@ const TASTE_PROFILES: Record<"rich" | "sparse" | "brand-new", TasteProfileVM> =
 		rich: {
 			totalLikedCount: 1238,
 			likedWindows: [
-				{ id: "last-30d", label: "last 30 days", count: 47, likedAt: last30d },
 				{ id: "last-3m", label: "last 3 months", count: 132, likedAt: last3m },
 				{ id: "last-6m", label: "last 6 months", count: 257, likedAt: last6m },
 				{
+					id: "last-12m",
+					label: "last 12 months",
+					count: 410,
+					likedAt: last12m,
+				},
+				{
 					id: "first-3m",
 					label: "first 3 months",
-					count: 64,
+					count: 18,
 					likedAt: first3m,
+				},
+				{
+					id: "first-6m",
+					label: "first 6 months",
+					count: 40,
+					likedAt: first6m,
+				},
+				{
+					id: "first-12m",
+					label: "first 12 months",
+					count: 64,
+					likedAt: first12m,
 				},
 			],
 			topGenres: [
@@ -77,8 +98,8 @@ const TASTE_PROFILES: Record<"rich" | "sparse" | "brand-new", TasteProfileVM> =
 		sparse: {
 			totalLikedCount: 86,
 			likedWindows: [
-				{ id: "last-30d", label: "last 30 days", count: 12, likedAt: last30d },
 				{ id: "last-3m", label: "last 3 months", count: 31, likedAt: last3m },
+				{ id: "last-6m", label: "last 6 months", count: 48, likedAt: last6m },
 				{ id: "first-3m", label: "first 3 months", count: 5, likedAt: first3m },
 			],
 			topGenres: [
@@ -90,9 +111,7 @@ const TASTE_PROFILES: Record<"rich" | "sparse" | "brand-new", TasteProfileVM> =
 		},
 		"brand-new": {
 			totalLikedCount: 23,
-			likedWindows: [
-				{ id: "last-30d", label: "last 30 days", count: 6, likedAt: last30d },
-			],
+			likedWindows: [],
 			topGenres: [],
 			topArtists: [],
 			decades: [],

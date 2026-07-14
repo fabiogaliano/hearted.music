@@ -21,14 +21,31 @@ import type { TasteProfileVM } from "./ideaTypes";
 // Human labels for the RPC's window ids. Ids not listed here are dropped — the
 // map is the allow-list, so a new SQL bucket can't leak an unlabelled window.
 const WINDOW_LABELS: Record<string, string> = {
-	"last-30d": "last 30 days",
 	"last-3m": "last 3 months",
 	"last-6m": "last 6 months",
+	"last-12m": "last 12 months",
+	"last-18m": "last 18 months",
+	"last-24m": "last 24 months",
 	"first-3m": "first 3 months",
+	"first-6m": "first 6 months",
+	"first-12m": "first 12 months",
+	"first-18m": "first 18 months",
+	"first-24m": "first 24 months",
 };
 
 // Recency order the windows read in, independent of the RPC's row order.
-const WINDOW_ORDER = ["last-30d", "last-3m", "last-6m", "first-3m"];
+const WINDOW_ORDER = [
+	"last-3m",
+	"last-6m",
+	"last-12m",
+	"last-18m",
+	"last-24m",
+	"first-3m",
+	"first-6m",
+	"first-12m",
+	"first-18m",
+	"first-24m",
+];
 
 /**
  * Turn a window's absolute liked-at bounds into the filter the seed commits.

@@ -80,7 +80,17 @@ export interface PlaylistIdeaVM {
 	/** The taste dimension this idea starts from, for facet grouping. */
 	facet: IdeaFacet;
 	parts: (string | { slot: string })[];
-	slots: Record<string, IdeaOptionVM[]>;
+	/**
+	 * A slot's options, either fixed or a function of the current selection. The
+	 * window idea's `length` options depend on the chosen `anchor` (your history's
+	 * start offers different lengths than the recent end), so dead anchor×length
+	 * pairs are never offered — the resolver only emits pairs the library has.
+	 */
+	slots: Record<
+		string,
+		| IdeaOptionVM[]
+		| ((selection: Record<string, IdeaOptionVM>) => IdeaOptionVM[])
+	>;
 	/** Selection-aware supporting line, quoting the profile's real numbers. */
 	describe: (selection: Record<string, IdeaOptionVM>) => string;
 }

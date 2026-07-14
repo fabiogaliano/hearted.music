@@ -163,16 +163,16 @@ describe("getLikedWindowAggregates", () => {
 		mockRpc.mockResolvedValue({
 			data: [
 				{
-					window_id: "last-30d",
+					window_id: "last-3m",
 					occurrences: 47,
 					start_at: "2026-06-12T00:00:00Z",
 					end_at: null,
 				},
 				{
-					window_id: "first-3m",
+					window_id: "first-12m",
 					occurrences: 64,
 					start_at: "2024-01-10T08:00:00Z",
-					end_at: "2024-04-10T08:00:00Z",
+					end_at: "2025-01-10T08:00:00Z",
 				},
 			],
 			error: null,
@@ -183,16 +183,16 @@ describe("getLikedWindowAggregates", () => {
 		expect(result).toEqual(
 			Result.ok([
 				{
-					id: "last-30d",
+					id: "last-3m",
 					count: 47,
 					from: "2026-06-12T00:00:00Z",
 					to: null,
 				},
 				{
-					id: "first-3m",
+					id: "first-12m",
 					count: 64,
 					from: "2024-01-10T08:00:00Z",
-					to: "2024-04-10T08:00:00Z",
+					to: "2025-01-10T08:00:00Z",
 				},
 			]),
 		);

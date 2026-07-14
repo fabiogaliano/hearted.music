@@ -2,7 +2,7 @@
  * Derives interactive playlist IDEAS from an account's taste profile — not a
  * fixed editorial list, and not finished picks either: each idea is a
  * mad-lib with cyclable slots ("All things [indie]", "Throwbacks: [2010s]",
- * "Where [indie] meets [electronic]", "Liked in the [last 3 months]") whose options
+ * "Where [indie] meets [electronic]", "Your [last] likes, all [3 months] of them") whose options
  * and default fills come from the profile. Each rule has a floor so thin
  * signals don't produce hollow cards — a sparse library yields fewer
  * ideas with fewer slot options, a brand-new one yields none.
@@ -24,6 +24,50 @@ import type {
 function rotateRandom<T>(items: T[]): T[] {
 	const start = Math.floor(Math.random() * items.length);
 	return [...items.slice(start), ...items.slice(0, start)];
+}
+
+// The window idea's two axes, keyed off the RPC's window ids ("last-3m",
+// "first-12m", …). Anchor = which end of your liking history; length = how wide.
+const ANCHOR_LABEL = {
+	recent: "last",
+	start: "first",
+} as const;
+// Recent leads — a fresh window is the more common starting point than one's origin.
+const ANCHOR_ORDER = ["recent", "start"] as const;
+const LENGTH_LABEL: Record<string, string> = {
+	"3m": "3 months",
+	"6m": "6 months",
+	"12m": "12 months",
+	"18m": "18 months",
+	"24m": "24 months",
+};
+const LENGTH_RANK: Record<string, number> = {
+	"3m": 0,
+	"6m": 1,
+	"12m": 2,
+	"18m": 3,
+	"24m": 4,
+};
+
+// A window this thin still makes a usable starting point the user shapes further,
+// and dropping it is what made the "first" anchor vanish for accounts with a slow
+// early ramp — so the floor sits low. The RPC only returns non-empty windows.
+const WINDOW_MIN_COUNT = 4;
+
+/**
+ * Decompose a window id ("last-3m") into its anchor + length. The id is the
+ * contract with the RPC's buckets; an unrecognised prefix or length drops out
+ * (returns null) so a new SQL bucket can't surface an unlabelled blank.
+ */
+function parseWindow(
+	id: string,
+): { anchor: "recent" | "start"; length: string; lengthLabel: string } | null {
+	const [prefix, length] = id.split("-");
+	const anchor =
+		prefix === "last" ? "recent" : prefix === "first" ? "start" : null;
+	const lengthLabel = length ? LENGTH_LABEL[length] : undefined;
+	if (!anchor || !length || !lengthLabel) return null;
+	return { anchor, length, lengthLabel };
 }
 
 // Emission is facet-ordered — genre (single, then blend), time (liked-window,
@@ -74,21 +118,57 @@ export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 		});
 	}
 
-	const windows = profile.likedWindows.filter((w) => w.count >= 8);
+	// The window idea splits into two independent blanks — an ANCHOR (which end of
+	// your liking history) and a bare LENGTH — instead of one fused "last 3 months"
+	// token. The anchor carries no filter of its own; the correct liked-at window
+	// for each anchor×length pair is baked onto the length option (which is why the
+	// length options are anchor-dependent), so resolveIdea folds it like any other.
+	const windows = profile.likedWindows
+		.filter((w) => w.count >= WINDOW_MIN_COUNT)
+		.map((w) => ({ ...w, parsed: parseWindow(w.id) }))
+		.filter(
+			(w): w is typeof w & { parsed: NonNullable<typeof w.parsed> } =>
+				w.parsed !== null,
+		);
 	if (windows.length > 0) {
+		const anchors = ANCHOR_ORDER.filter((a) =>
+			windows.some((w) => w.parsed.anchor === a),
+		).map((a) => ({ id: a, label: ANCHOR_LABEL[a] }));
+		const lengthOptionsFor = (anchorId: string): IdeaOptionVM[] =>
+			windows
+				.filter((w) => w.parsed.anchor === anchorId)
+				.sort(
+					(a, b) => LENGTH_RANK[a.parsed.length] - LENGTH_RANK[b.parsed.length],
+				)
+				.map((w) => ({
+					id: w.parsed.length,
+					label: w.parsed.lengthLabel,
+					likedAt: w.likedAt,
+				}));
 		ideas.push({
 			id: "idea-window",
 			facet: "time",
-			parts: ["Liked in the ", { slot: "window" }],
+			// Two blanks at opposite ends: "Your [first|last] likes, all [3 months] of
+			// them". The anchor adjective (front) carries direction, the duration
+			// (back) stays bare, and the words between hold them apart so they never
+			// read as one fused token.
+			parts: [
+				"Your ",
+				{ slot: "anchor" },
+				" likes, all ",
+				{ slot: "length" },
+				" of them",
+			],
 			slots: {
-				window: windows.map((w) => ({
-					id: w.id,
-					label: w.label,
-					likedAt: w.likedAt,
-				})),
+				anchor: anchors,
+				length: (sel) => lengthOptionsFor(sel.anchor?.id ?? anchors[0].id),
 			},
 			describe: (sel) => {
-				const w = windows.find((x) => x.id === sel.window?.id);
+				const w = windows.find(
+					(x) =>
+						x.parsed.anchor === sel.anchor?.id &&
+						x.parsed.length === sel.length?.id,
+				);
 				return `${w?.count ?? 0} liked songs from that stretch of your history`;
 			},
 		});
@@ -115,9 +195,9 @@ export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 	}
 
 	// Artists spread far thinner than genres across real libraries (a heavy
-	// listener still tops out at single-digit likes per artist), so the floor
-	// sits at the window floor, not the genre floor — an artist you've liked 8+
-	// times is a strong "in their orbit" seed, not a thin signal.
+	// listener still tops out at single-digit likes per artist), so the floor sits
+	// well below the genre floor — an artist you've liked 8+ times is a strong "in
+	// their orbit" seed, not a thin signal.
 	const artists = profile.topArtists.filter((a) => a.count >= 8).slice(0, 5);
 	if (artists.length > 0) {
 		ideas.push({
@@ -141,13 +221,41 @@ export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 	return ideas;
 }
 
+/** A slot's options resolved against the current selection (fixed or derived). */
+export function slotOptionsFor(
+	idea: PlaylistIdeaVM,
+	slot: string,
+	selection: Record<string, IdeaOptionVM>,
+): IdeaOptionVM[] {
+	const options = idea.slots[slot];
+	return typeof options === "function" ? options(selection) : (options ?? []);
+}
+
+/**
+ * Fill/repair a selection so every slot holds a valid option, resolving slots in
+ * declaration order so a dependent slot (window `length`) sees the slot it
+ * depends on (`anchor`) already settled. A slot whose current pick is no longer
+ * offered — e.g. "6 months" after switching the anchor to your history's start —
+ * snaps back to its first option rather than dangling on a dead pair.
+ */
+export function reconcileSelection(
+	idea: PlaylistIdeaVM,
+	selection: Record<string, IdeaOptionVM>,
+): Record<string, IdeaOptionVM> {
+	const next: Record<string, IdeaOptionVM> = {};
+	for (const slot of Object.keys(idea.slots)) {
+		const options = slotOptionsFor(idea, slot, next);
+		const current = selection[slot];
+		next[slot] = options.find((o) => o.id === current?.id) ?? options[0];
+	}
+	return next;
+}
+
 /** Default selection: every slot filled with its first (profile-ranked) option. */
 export function defaultSelection(
 	idea: PlaylistIdeaVM,
 ): Record<string, IdeaOptionVM> {
-	return Object.fromEntries(
-		Object.entries(idea.slots).map(([slot, options]) => [slot, options[0]]),
-	);
+	return reconcileSelection(idea, {});
 }
 
 /**

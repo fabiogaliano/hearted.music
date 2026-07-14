@@ -26,12 +26,12 @@ describe("toTasteProfileVM", () => {
 			domainProfile({
 				likedWindows: [
 					{
-						id: "first-3m",
+						id: "first-12m",
 						count: 64,
 						from: "2024-01-10T08:00:00Z",
-						to: "2024-04-10T08:00:00Z",
+						to: "2025-01-10T08:00:00Z",
 					},
-					{ id: "last-30d", count: 47, from: "2026-06-12T00:00:00Z", to: null },
+					{ id: "last-3m", count: 47, from: "2026-06-12T00:00:00Z", to: null },
 					{ id: "last-6m", count: 257, from: "2026-01-12T00:00:00Z", to: null },
 				],
 			}),
@@ -39,8 +39,8 @@ describe("toTasteProfileVM", () => {
 
 		expect(vm.likedWindows).toEqual([
 			{
-				id: "last-30d",
-				label: "last 30 days",
+				id: "last-3m",
+				label: "last 3 months",
 				count: 47,
 				likedAt: { kind: "after", startDate: "2026-06-12" },
 			},
@@ -51,13 +51,13 @@ describe("toTasteProfileVM", () => {
 				likedAt: { kind: "after", startDate: "2026-01-12" },
 			},
 			{
-				id: "first-3m",
-				label: "first 3 months",
+				id: "first-12m",
+				label: "first 12 months",
 				count: 64,
 				likedAt: {
 					kind: "range",
 					startDate: "2024-01-10",
-					end: { kind: "date", date: "2024-04-10" },
+					end: { kind: "date", date: "2025-01-10" },
 				},
 			},
 		]);
@@ -67,7 +67,7 @@ describe("toTasteProfileVM", () => {
 		const vm = toTasteProfileVM(
 			domainProfile({
 				likedWindows: [
-					{ id: "last-30d", count: 5, from: "2026-06-12T00:00:00Z", to: null },
+					{ id: "last-3m", count: 5, from: "2026-06-12T00:00:00Z", to: null },
 					{
 						id: "last-decade",
 						count: 900,
@@ -78,7 +78,7 @@ describe("toTasteProfileVM", () => {
 			}),
 		);
 
-		expect(vm.likedWindows.map((w) => w.id)).toEqual(["last-30d"]);
+		expect(vm.likedWindows.map((w) => w.id)).toEqual(["last-3m"]);
 	});
 
 	it("renders decade labels as '<start>s' and keeps the year bounds", () => {
