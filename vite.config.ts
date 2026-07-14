@@ -63,6 +63,7 @@ const domTestFiles = [
 	// useActiveJobs hook tests use renderHook and require a DOM environment.
 	"src/lib/hooks/__tests__/useActiveJobs.test.ts",
 	"src/lib/hooks/__tests__/useLockedMutation.test.ts",
+	"src/features/matching/__tests__/useMatchDeckSession.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {
