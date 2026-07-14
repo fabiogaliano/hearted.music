@@ -38,6 +38,7 @@ import {
 	getPlaylistSongCount,
 	getPlaylists,
 } from "@/lib/domains/library/playlists/queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type PhaseJobIds,
@@ -48,8 +49,29 @@ import {
 	loadOnboardingSession,
 	loadWalkthroughSong,
 } from "@/lib/server/onboarding-session";
-import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
+import {
+	OnboardingError,
+	type OnboardingErrorCause,
+} from "@/lib/shared/errors/domain/onboarding";
 import { themeSchema } from "@/lib/theme/types";
+
+/**
+ * Captures the cause via Sentry, then returns the typed OnboardingError to
+ * throw. console-only throws never reach Sentry (enableLogs:false), so every
+ * onboarding failure needs this at the throw site, not just the log line.
+ */
+function onboardingError(
+	operation: string,
+	cause: OnboardingErrorCause,
+	accountId?: string,
+): OnboardingError {
+	captureServerError(cause, {
+		area: "onboarding",
+		operation,
+		accountId,
+	});
+	return new OnboardingError(operation, cause);
+}
 
 /** Playlist view model for onboarding UI (camelCase frontend format) */
 export interface OnboardingPlaylist {
@@ -129,7 +151,7 @@ async function loadOnboardingData({
 	const authPayloadPromise = (async () => {
 		const prefsResult = await prefsPromise;
 		if (Result.isError(prefsResult)) {
-			throw new OnboardingError("load_preferences", prefsResult.error);
+			throw onboardingError("load_preferences", prefsResult.error);
 		}
 		return deriveAuthPayloadFromPrefs({
 			accountId,
@@ -160,28 +182,25 @@ async function loadOnboardingData({
 	]);
 
 	if (Result.isError(prefsResult)) {
-		throw new OnboardingError("load_preferences", prefsResult.error);
+		throw onboardingError("load_preferences", prefsResult.error);
 	}
 	if (Result.isError(playlistsResult)) {
-		throw new OnboardingError("load_playlists", playlistsResult.error);
+		throw onboardingError("load_playlists", playlistsResult.error);
 	}
 	if (Result.isError(songsCountResult)) {
-		throw new OnboardingError("load_songs_count", songsCountResult.error);
+		throw onboardingError("load_songs_count", songsCountResult.error);
 	}
 	if (Result.isError(playlistsCountResult)) {
-		throw new OnboardingError(
-			"load_playlists_count",
-			playlistsCountResult.error,
-		);
+		throw onboardingError("load_playlists_count", playlistsCountResult.error);
 	}
 	if (Result.isError(playlistSongsCountResult)) {
-		throw new OnboardingError(
+		throw onboardingError(
 			"load_playlist_songs_count",
 			playlistSongsCountResult.error,
 		);
 	}
 	if (Result.isError(artistsCountResult)) {
-		throw new OnboardingError("load_artists_count", artistsCountResult.error);
+		throw onboardingError("load_artists_count", artistsCountResult.error);
 	}
 
 	const playlists = playlistsResult.value.map((p) => ({
@@ -278,7 +297,7 @@ export const saveThemePreference = createServerFn({ method: "POST" })
 		const result = await updateTheme(session.accountId, data.theme);
 
 		if (Result.isError(result)) {
-			throw new OnboardingError("save_theme", result.error);
+			throw onboardingError("save_theme", result.error);
 		}
 
 		return { success: true };
@@ -302,19 +321,19 @@ export const getLibrarySummary = createServerFn({ method: "GET" })
 			]);
 
 		if (Result.isError(songsResult)) {
-			throw new OnboardingError("load_songs_count", songsResult.error);
+			throw onboardingError("load_songs_count", songsResult.error);
 		}
 		if (Result.isError(playlistsResult)) {
-			throw new OnboardingError("load_playlists_count", playlistsResult.error);
+			throw onboardingError("load_playlists_count", playlistsResult.error);
 		}
 		if (Result.isError(playlistSongsResult)) {
-			throw new OnboardingError(
+			throw onboardingError(
 				"load_playlist_songs_count",
 				playlistSongsResult.error,
 			);
 		}
 		if (Result.isError(artistsResult)) {
-			throw new OnboardingError("load_artists_count", artistsResult.error);
+			throw onboardingError("load_artists_count", artistsResult.error);
 		}
 
 		return {
@@ -346,6 +365,11 @@ export const resetSyncJobs = createServerFn({ method: "POST" })
 		const { session } = context;
 		const result = await clearPhaseJobIds(session.accountId);
 		if (Result.isError(result)) {
+			captureServerError(result.error, {
+				area: "onboarding",
+				operation: "reset_sync_jobs",
+				accountId: session.accountId,
+			});
 			console.warn("Failed to reset sync jobs:", result.error);
 		}
 		return { success: true };
@@ -374,10 +398,10 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		if (data.step === "song-walkthrough" || data.step === "match-walkthrough") {
 			const prefsResult = await getOrCreatePreferences(session.accountId);
 			if (Result.isError(prefsResult)) {
-				throw new OnboardingError("load_preferences", prefsResult.error);
+				throw onboardingError("load_preferences", prefsResult.error);
 			}
 			if (prefsResult.value.demo_song_id === null) {
-				throw new OnboardingError(
+				throw onboardingError(
 					"save_onboarding_step",
 					new Error(`Cannot advance to ${data.step} without a demo_song_id`),
 				);
@@ -387,13 +411,19 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 		const result = await updateOnboardingStep(session.accountId, data.step);
 
 		if (Result.isError(result)) {
-			throw new OnboardingError("save_onboarding_step", result.error);
+			throw onboardingError("save_onboarding_step", result.error);
 		}
 
 		if (clearsSyncPhaseJobIds(data.step)) {
 			const clearResult = await clearPhaseJobIds(session.accountId);
 			if (Result.isError(clearResult)) {
 				// Non-critical cleanup — log but don't fail the step save.
+				captureServerError(clearResult.error, {
+					area: "onboarding",
+					operation: "save_onboarding_step",
+					accountId: session.accountId,
+					extra: { stage: "clear_phase_job_ids" },
+				});
 				console.warn("Failed to clear phase job IDs:", clearResult.error);
 			}
 		}
@@ -454,7 +484,7 @@ export const markOnboardingComplete = createServerFn({
 		const result = await completeOnboardingWithAllocations(supabase, accountId);
 
 		if (Result.isError(result)) {
-			throw new OnboardingError("complete_onboarding", result.error);
+			throw onboardingError("complete_onboarding", result.error);
 		}
 
 		// account.handle comes fresh from the DB on every server call (auth
@@ -468,7 +498,7 @@ export const markOnboardingComplete = createServerFn({
 		});
 
 		if (freshOnboarding.session.status !== "complete") {
-			throw new OnboardingError(
+			throw onboardingError(
 				"complete_onboarding",
 				new Error(
 					`[onboarding invariant] post-write session is ${freshOnboarding.session.status}, expected "complete"`,
@@ -506,7 +536,7 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 			.single();
 
 		if (songError || !song) {
-			throw new OnboardingError(
+			throw onboardingError(
 				"lookup_demo_song",
 				songError ??
 					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
@@ -523,7 +553,7 @@ export const saveDemoSongSelection = createServerFn({ method: "POST" })
 			.eq("account_id", session.accountId);
 
 		if (updateError) {
-			throw new OnboardingError("save_demo_song_selection", updateError);
+			throw onboardingError("save_demo_song_selection", updateError);
 		}
 
 		return { success: true };
@@ -555,7 +585,7 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			.single();
 
 		if (songError || !song) {
-			throw new OnboardingError(
+			throw onboardingError(
 				"lookup_demo_song",
 				songError ??
 					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
@@ -574,13 +604,19 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			.eq("account_id", session.accountId);
 
 		if (updateError) {
-			throw new OnboardingError("commit_demo_song_walkthrough", updateError);
+			throw onboardingError("commit_demo_song_walkthrough", updateError);
 		}
 
 		// Mirror saveOnboardingStep's side-effect: clear phase job IDs when
 		// transitioning past syncing-related steps. Non-critical; log-only.
 		const clearResult = await clearPhaseJobIds(session.accountId);
 		if (Result.isError(clearResult)) {
+			captureServerError(clearResult.error, {
+				area: "onboarding",
+				operation: "commit_demo_song_walkthrough",
+				accountId: session.accountId,
+				extra: { stage: "clear_phase_job_ids" },
+			});
 			console.warn("Failed to clear phase job IDs:", clearResult.error);
 		}
 

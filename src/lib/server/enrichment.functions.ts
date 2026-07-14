@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { log } from "@/lib/observability/logger";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { MaintenanceChanges } from "@/lib/workflows/library-processing/changes/maintenance";
@@ -42,6 +43,12 @@ export const requestLibraryPhase1Enrichment = createServerFn({ method: "POST" })
 								: outcome.error.cause,
 						)
 					: outcome.error.kind;
+				// log.error never reaches Sentry with enableLogs:false; capture explicitly
+				captureServerError(outcome.error, {
+					area: "enrichment",
+					operation: "request_library_phase1_enrichment",
+					accountId,
+				});
 				log.error("phase1-enrichment-schedule-failed", { accountId, message });
 				return { status: "error", message };
 			}
