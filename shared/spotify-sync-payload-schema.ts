@@ -47,6 +47,10 @@ export const SpotifyTrackDTOSchema = z.object({
 		}),
 		duration_ms: z.number(),
 		uri: z.string(),
+		// Album release year. Playlist tracks carry it inline; the bulk liked-songs
+		// query doesn't, so the extension hydrates liked songs with targeted
+		// getTrack calls during sync. Null only when hydration hasn't reached the
+		// track yet or couldn't resolve a year (those fall to manual review).
 		release_year: z.number().int().nullable().optional(),
 		// True when the extension attempted a liked-song getTrack release-year
 		// lookup for this track during the current sync. The worker maps this to a
