@@ -1,11 +1,6 @@
-import { ArrowLeftIcon, ArrowRightIcon, XIcon } from "@phosphor-icons/react";
-import {
-	AnimatePresence,
-	motion,
-	useIsPresent,
-	useReducedMotion,
-} from "framer-motion";
-import { memo, type ReactNode } from "react";
+import { XIcon } from "@phosphor-icons/react";
+import { AnimatePresence, useReducedMotion } from "framer-motion";
+import { memo } from "react";
 import { Button } from "@/components/ui/Button";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
@@ -13,12 +8,23 @@ import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestionRow, SongSuggestionsSectionProps } from "../types";
 import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
+import {
+	AnimatedReviewPanel,
+	ReviewColumnFrame,
+	ReviewControls,
+	ReviewEmptyState,
+} from "./ReviewColumn";
 import { ReviewListScroll } from "./ReviewListScroll";
 
-// Mirrors MatchesSection's MIN_HEIGHT so both columns in the playlist-mode
-// grid stay visually consistent regardless of suggestion list length.
-const MIN_HEIGHT = "min(clamp(300px, 34vw, 620px), calc(56dvh - 40px))";
-
+// Playlist-mode review column: thin adapter over ReviewColumn's shared
+// layout/animation/controls. Its rows and preview interaction (single-active
+// song playback via useSingleActivePlayback + SpotifyPlaybackCover) are a
+// genuinely different feature from song-mode's playlist track-list disclosure
+// (usePlaylistTrackPreview) — this plays the suggested song's own audio
+// preview, that discloses a *playlist's* track list — so they stay
+// per-variant rather than merged. See
+// docs/architecture/audits/deepening-opportunities-2026-07-02.md for the
+// shared/variant split this was extracted from.
 export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	itemKey,
 	suggestions,
@@ -91,18 +97,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 		playback ?? localPlayback;
 
 	return (
-		<div
-			className="flex flex-col"
-			style={{
-				minHeight: MIN_HEIGHT,
-			}}
-		>
-			{/* Below lg the suggestions stack directly under the playlist cover with
-			only the grid gap between them; this border restores the visual break the
-			two-column split gives on wider viewports. Hidden at lg, where columns
-			sit side by side. */}
-			<div className="theme-border-color mb-8 border-t lg:hidden" />
-
+		<ReviewColumnFrame>
 			<div aria-live="polite" aria-atomic="true" className="sr-only">
 				{liveAnnouncement}
 			</div>
@@ -111,7 +106,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			entrance. StaggeredContent owns the entrance so the panel doesn't slide
 			in beside a static header on first render. */}
 			<AnimatePresence mode="wait" initial={false}>
-				<AnimatedSuggestionsPanel
+				<AnimatedReviewPanel
 					key={itemKey}
 					prefersReducedMotion={prefersReducedMotion ?? false}
 					instant={suppressTransition ?? false}
@@ -125,12 +120,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 
 					<ReviewListScroll footer={suggestionsFooter}>
 						{suggestions.length === 0 && !hasMoreSuggestions ? (
-							<p
-								className="theme-text-muted text-sm"
-								style={{ fontFamily: fonts.body }}
-							>
-								All suggestions reviewed.
-							</p>
+							<ReviewEmptyState />
 						) : (
 							suggestions.map((row) => (
 								<SongSuggestionRowItem
@@ -147,24 +137,25 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 							))
 						)}
 					</ReviewListScroll>
-				</AnimatedSuggestionsPanel>
+				</AnimatedReviewPanel>
 			</AnimatePresence>
 
 			{/* Lives outside the keyed AnimatePresence subtree so it always renders
 			against the latest committed review item. Stale DOM from the exiting
 			panel cannot intercept rapid Next clicks. */}
-			<SuggestionsControls
+			<ReviewControls
 				disabled={navigationDisabled ?? false}
 				isLastItem={isLastItem ?? false}
 				// suggestionTotal (capped, post-dismissal) is the playlist-mode source
 				// of truth once tail paging is in play — suggestions.length undercounts
 				// once earlier rows are loaded but later ones aren't yet.
-				suggestionCount={suggestionTotal ?? suggestions.length}
+				count={suggestionTotal ?? suggestions.length}
+				nextLabel="Skip Playlist"
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
 				onNext={onNext}
 			/>
-		</div>
+		</ReviewColumnFrame>
 	);
 });
 
@@ -268,120 +259,6 @@ function SongSuggestionRowItem({
 						</Button>
 					)}
 				</div>
-			</div>
-		</div>
-	);
-}
-
-interface AnimatedSuggestionsPanelProps {
-	prefersReducedMotion: boolean;
-	/** Skip the slide and swap immediately — see SongSuggestionsSectionProps.suppressTransition. */
-	instant?: boolean;
-	children: ReactNode;
-}
-
-function AnimatedSuggestionsPanel({
-	prefersReducedMotion,
-	instant,
-	children,
-}: AnimatedSuggestionsPanelProps) {
-	// While exiting, this subtree is still mounted but stale; block input so
-	// users cannot click "Add" buttons that belong to the previous review item.
-	const isPresent = useIsPresent();
-	const skip = instant || prefersReducedMotion;
-	return (
-		<motion.div
-			className="flex flex-1 flex-col"
-			initial={skip ? false : { opacity: 0, x: 20 }}
-			animate={{
-				opacity: 1,
-				x: 0,
-				transition: skip
-					? { duration: 0 }
-					: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-			}}
-			exit={
-				skip
-					? {}
-					: {
-							opacity: 0,
-							x: -20,
-							transition: {
-								duration: 0.18,
-								ease: [0.645, 0.045, 0.355, 1],
-							},
-						}
-			}
-			style={{ pointerEvents: isPresent ? "auto" : "none" }}
-		>
-			{children}
-		</motion.div>
-	);
-}
-
-interface SuggestionsControlsProps {
-	disabled: boolean;
-	isLastItem: boolean;
-	/** Drives the Reject button's singular/plural label (H3). */
-	suggestionCount: number;
-	onDismiss: () => void | Promise<void>;
-	onPrevious?: () => void;
-	onNext: () => void;
-}
-
-function SuggestionsControls({
-	disabled,
-	isLastItem,
-	suggestionCount,
-	onDismiss,
-	onPrevious,
-	onNext,
-}: SuggestionsControlsProps) {
-	return (
-		<div className="mt-8 flex items-center justify-between">
-			<Button
-				variant="ghost"
-				size="sm"
-				disabled={disabled}
-				onClick={onDismiss}
-				style={{ fontFamily: fonts.body }}
-			>
-				<span className="inline-flex min-h-11 items-center gap-1.5">
-					<XIcon size={14} weight="regular" />
-					{suggestionCount === 1 ? "Reject Match" : "Reject Matches"}
-				</span>
-			</Button>
-
-			<div className="flex items-center gap-6">
-				{onPrevious && (
-					<Button
-						variant="ghost"
-						size="sm"
-						disabled={disabled}
-						onClick={onPrevious}
-						style={{ fontFamily: fonts.body }}
-					>
-						<span className="inline-flex min-h-11 items-center gap-1.5">
-							<ArrowLeftIcon size={14} weight="regular" />
-							Previous
-						</span>
-					</Button>
-				)}
-				<Button
-					variant="link"
-					disabled={disabled}
-					onClick={onNext}
-					style={{ fontFamily: fonts.body }}
-				>
-					<span className="text-base font-medium tracking-wide">
-						{isLastItem ? "Finish matching" : "Skip Playlist"}
-					</span>
-					<ArrowRightIcon
-						size={16}
-						weight="regular"
-						className="theme-text-muted transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
-					/>
-				</Button>
 			</div>
 		</div>
 	);
