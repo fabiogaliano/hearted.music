@@ -12,7 +12,7 @@
  * the draft hook debounces changes before they hit the preview query.
  */
 
-import { ArrowUpRightIcon, LockSimpleIcon } from "@phosphor-icons/react";
+import { LockSimpleIcon } from "@phosphor-icons/react";
 import { useCallback, useLayoutEffect, useRef } from "react";
 import { fonts } from "@/lib/theme/fonts";
 
@@ -22,7 +22,7 @@ const PLACEHOLDER_EXAMPLES = [
 	"Late-night drive through an empty city",
 	"Sunday morning with coffee and no plans",
 	"Bittersweet nostalgia for the early 2010s",
-	"Focused deep work — no words, slow build",
+	"Focused deep work, no words, slow build",
 ];
 
 const PLACEHOLDER = PLACEHOLDER_EXAMPLES.join(" · ");
@@ -80,12 +80,10 @@ function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 			{/*
 			 * Collapsed locked state — a single field-shaped teaser instead of a
 			 * disabled textarea stacked over a CTA row. The bordered box reads as a
-			 * real input (muted example on the left, lock + UNLOCK affordance on the
-			 * right); the whole box is the paywall trigger. aria-describedby carries
-			 * the premium requirement to screen readers.
-			 *
-			 * The two triggers share one `group` so hovering either lights both up
-			 * as a single affordance rather than two independent hover states.
+			 * real input (muted example on the left, lock + the gate's name on the
+			 * right); the whole box is the paywall trigger, so the price lives in that
+			 * chip rather than a second CTA line below it. aria-describedby carries the
+			 * premium requirement to screen readers.
 			 */}
 			<div className="group flex flex-col gap-1.5">
 				<button
@@ -100,32 +98,8 @@ function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 					</span>
 					<span className="theme-text-muted inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] transition-opacity duration-150 group-hover:opacity-70">
 						<LockSimpleIcon size={12} weight="regular" aria-hidden />
-						Unlock
+						Backstage Pass
 					</span>
-				</button>
-
-				<button
-					type="button"
-					onClick={onOpenPaywall}
-					aria-describedby={LOCKED_DESC_ID}
-					className="inline-flex cursor-pointer items-center gap-1 self-start text-xs leading-snug transition-opacity duration-150 group-hover:opacity-70"
-					style={{ fontFamily: fonts.body }}
-				>
-					<span className="theme-text-muted">
-						Available with Backstage Pass —
-					</span>
-					<span
-						className="theme-text italic"
-						style={{ fontFamily: fonts.display }}
-					>
-						Upgrade
-					</span>
-					<ArrowUpRightIcon
-						size={12}
-						weight="regular"
-						aria-hidden
-						style={{ color: "var(--t-text)", flexShrink: 0 }}
-					/>
 				</button>
 			</div>
 

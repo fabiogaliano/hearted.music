@@ -110,16 +110,16 @@ export function IdeaSlot({
 					if (open) close(false);
 					else openList();
 				}}
-				className={`mx-0.5 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
+				className={`group mx-1 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
 					openable
-						? // The screen's accent lives here: color marks the tunable word.
-							// Color + dashed underline alone read as "editable text" and get
-							// missed on first run, so the caret does the loudest signifying —
-							// it's the learned "this opens a list of options" glyph, which is
-							// exactly the affordance these mad-lib blanks need to not degrade
-							// into fixed ideas. The underline stays neutral (--t-border, the
-							// screen's dashed-border color) so it recedes — the accent word and
-							// caret carry the signal, not a second loud line.
+						? // The screen's accent lives here: color marks the tunable word. On
+							// this otherwise-monochrome screen these are the ONLY colored
+							// words, so accent + dashed underline is a strong enough at-rest
+							// "tunable" cue on its own — the caret (the loudest "opens a list"
+							// glyph) is held invisible so it doesn't chop the sentence up as
+							// you read, and revealed on hover/focus to confirm the affordance
+							// the moment you engage. The underline stays neutral (--t-border)
+							// so it recedes; the accent word carries the resting signal.
 							"theme-primary cursor-pointer border-b border-dashed border-(--t-border) transition-opacity hover:opacity-70"
 						: // A single locked option isn't interactive — no accent, no underline.
 							"theme-text"
@@ -127,14 +127,24 @@ export function IdeaSlot({
 			>
 				{value}
 				{openable && (
-					// Inherits the accent via currentColor (theme-primary); align-middle
-					// seats the glyph against the word's x-height so it reads as attached.
-					<CaretDownIcon
-						size={11}
-						weight="bold"
+					// The caret and the underline's tail grow in together. This wrapper is
+					// width-0 and clipped at rest, so the button hugs just the word and its
+					// single dashed border-b sits under the word ONLY — no dangling tail.
+					// On hover/focus the slot expands to the caret's width, so the same
+					// continuous border extends under the arriving caret: one linked reveal,
+					// alignment automatic because it's still one border. align-middle seats
+					// the glyph on the word's x-height; it inherits the accent via
+					// currentColor.
+					<span
 						aria-hidden
-						className="ml-0.5 inline-block align-middle opacity-70"
-					/>
+						className="inline-flex w-0 items-center overflow-hidden align-middle opacity-0 transition-[width,opacity] duration-150 ease-out group-hover:w-[0.95rem] group-hover:opacity-100 group-focus-visible:w-[0.95rem] group-focus-visible:opacity-70"
+					>
+						<CaretDownIcon
+							size={11}
+							weight="bold"
+							className="ml-0.5 shrink-0"
+						/>
+					</span>
 				)}
 			</button>
 			{open && (

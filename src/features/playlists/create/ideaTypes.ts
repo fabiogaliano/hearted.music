@@ -112,8 +112,14 @@ export interface ResolvedIdeaVM {
 	anchorArtist?: string;
 	/**
 	 * Land in the studio with the artist search focused, ready for artist #2 —
-	 * set by the seed card's "+" (add-artist) affordance. The tiny card is not
+	 * set by the artist card's "& add more" affordance. The tiny card is not
 	 * the place to manage a list; past one artist the studio is home.
 	 */
 	focusArtistSearch?: boolean;
+	/**
+	 * Land in the studio with the genre search focused, ready to blend in more —
+	 * set by the genre card's "& add more" affordance. Blending genres lives in
+	 * the studio's genre picker, not on a second "Where X meets Y" idea card.
+	 */
+	focusGenreSearch?: boolean;
 }

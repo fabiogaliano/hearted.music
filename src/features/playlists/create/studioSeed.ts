@@ -25,8 +25,10 @@ export interface StudioSeed {
 	matchFilters?: PlaylistMatchFiltersV1;
 	/** Artist the idea is anchored on — seeds the "Around" selection with one enabled artist. */
 	anchorArtist?: string;
-	/** Land with the artist search focused (the seed card's "+" affordance). */
+	/** Land with the artist search focused (the artist card's "& add more" affordance). */
 	focusArtistSearch?: boolean;
+	/** Land with the genre search focused (the genre card's "& add more" affordance). */
+	focusGenreSearch?: boolean;
 }
 
 // Carry the seed in typed history state rather than search params. Augmenting
@@ -55,6 +57,7 @@ export function buildStudioSeed(
 		matchFilters: idea?.matchFilters,
 		anchorArtist: idea?.anchorArtist,
 		focusArtistSearch: idea?.focusArtistSearch || undefined,
+		focusGenreSearch: idea?.focusGenreSearch || undefined,
 	};
 }
 

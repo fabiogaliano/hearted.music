@@ -169,12 +169,11 @@ describe("window idea anchor × length", () => {
 });
 
 describe("buildPlaylistIdeas facet ordering", () => {
-	it("emits facet-ordered: genre (single, blend), time (window, decade), artist", () => {
+	it("emits facet-ordered: genre, time (window, decade), artist", () => {
 		const ideas = buildPlaylistIdeas(profile());
 
 		expect(ideas.map((t) => `${t.facet}:${t.id}`)).toEqual([
 			"genre:idea-genre",
-			"genre:idea-blend",
 			"time:idea-window",
 			"time:idea-decade",
 			"artist:idea-artist",
@@ -187,6 +186,6 @@ describe("buildPlaylistIdeas facet ordering", () => {
 			profile({ likedWindows: [], decades: [], topArtists: [] }),
 		);
 
-		expect(ideas.map((t) => t.id)).toEqual(["idea-genre", "idea-blend"]);
+		expect(ideas.map((t) => t.id)).toEqual(["idea-genre"]);
 	});
 });

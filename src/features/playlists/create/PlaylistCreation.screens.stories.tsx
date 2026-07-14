@@ -224,5 +224,5 @@ ScreenIdeasBoard.argTypes = {
 };
 ScreenIdeasBoard.meta = {
 	description:
-		"The promoted seed landing: interactive mad-lib IDEAS derived from the taste profile — a dashed blank ('All things [indie]', 'Throwbacks: [2010s]', 'Where [indie] meets [electronic]', 'Around [artist]') opens a popover listing its profile-ranked options; the arrow starts from the tuned result. 'From your whole library' names the scratch and its count. Flip the library control (rich / sparse / brand-new) to see the spread adapt; flip intentAccess to see the own-words premium gate (available with Backstage Pass). Picking a seed shows the config it would carry into the studio.",
+		"The promoted seed landing: interactive mad-lib IDEAS derived from the taste profile — a dashed blank ('All things [indie]', 'Throwbacks: [2010s]', 'Around [artist]') opens a popover listing its profile-ranked options; the arrow starts from the tuned result. The genre and artist cards carry an '& add more' affordance that lands in the studio with that search focused (blending genres / adding artists happens there). 'From your whole library' names the scratch and its count. Flip the library control (rich / sparse / brand-new) to see the spread adapt; flip intentAccess to see the own-words premium gate (available with Backstage Pass). Picking a seed shows the config it would carry into the studio.",
 };

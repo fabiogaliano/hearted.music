@@ -84,9 +84,10 @@ export function StudioScreen({
 	const [name, setName] = useState(() => seed.name ?? DEFAULT_NAME);
 	const [showPaywall, setShowPaywall] = useState(false);
 
-	// The seed card's "+" (add another artist) lands here with the artist search
-	// focused, ready for artist #2.
+	// The seed card's "& add more" affordance lands here with the matching search
+	// focused — artist search for the artist idea, genre search for the genre idea.
 	const [focusArtistSearch] = useState(() => seed.focusArtistSearch ?? false);
+	const [focusGenreSearch] = useState(() => seed.focusGenreSearch ?? false);
 
 	// Proactively surface the reconnect/install affordance at page load so the
 	// user knows about a disconnected Spotify session before attempting to create.
@@ -298,6 +299,7 @@ export function StudioScreen({
 						accountId={accountId}
 						value={draft.config.genrePills}
 						onChange={draft.setGenrePills}
+						autoFocusSearch={focusGenreSearch}
 					/>
 					<ArtistConfig
 						selections={draft.artistSelections}

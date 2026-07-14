@@ -14,13 +14,25 @@ interface GenreConfigProps {
 	accountId: string;
 	value: string[];
 	onChange: (next: string[]) => void;
+	/** Focus the add-genre input on mount (genre card's "& add more" lands here). */
+	autoFocusSearch?: boolean;
 }
 
-export function GenreConfig({ accountId, value, onChange }: GenreConfigProps) {
+export function GenreConfig({
+	accountId,
+	value,
+	onChange,
+	autoFocusSearch = false,
+}: GenreConfigProps) {
 	const { data } = useQuery(accountTopGenresQueryOptions(accountId));
 	const topGenres = data?.genres ?? [];
 
 	return (
-		<GenrePillsPicker value={value} onChange={onChange} topGenres={topGenres} />
+		<GenrePillsPicker
+			value={value}
+			onChange={onChange}
+			topGenres={topGenres}
+			autoFocus={autoFocusSearch}
+		/>
 	);
 }

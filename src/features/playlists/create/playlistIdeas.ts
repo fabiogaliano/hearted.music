@@ -2,10 +2,12 @@
  * Derives interactive playlist IDEAS from an account's taste profile — not a
  * fixed editorial list, and not finished picks either: each idea is a
  * mad-lib with cyclable slots ("All things [indie]", "Throwbacks: [2010s]",
- * "Where [indie] meets [electronic]", "Your [last] likes, all [3 months] of them") whose options
- * and default fills come from the profile. Each rule has a floor so thin
- * signals don't produce hollow cards — a sparse library yields fewer
- * ideas with fewer slot options, a brand-new one yields none.
+ * "Your [last] likes, all [3 months] of them") whose options and default fills
+ * come from the profile. Each rule has a floor so thin signals don't produce
+ * hollow cards — a sparse library yields fewer ideas with fewer slot options, a
+ * brand-new one yields none. The single-genre idea carries an "& add more"
+ * affordance (like the artist idea's) that lands in the studio with the genre
+ * search focused, so blending genres happens there rather than on a second card.
  *
  * Ideas are deliberately structured-only (genres, windows, decades —
  * never free-text `intent`): describing the vibe in words is the premium
@@ -70,9 +72,9 @@ function parseWindow(
 	return { anchor, length, lengthLabel };
 }
 
-// Emission is facet-ordered — genre (single, then blend), time (liked-window,
-// then decade), artist — so the flat list still scans dimension-by-dimension
-// without the UI adding group chrome.
+// Emission is facet-ordered — genre, time (liked-window, then decade), artist —
+// so the flat list still scans dimension-by-dimension without the UI adding
+// group chrome.
 export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 	const ideas: PlaylistIdeaVM[] = [];
 
@@ -95,26 +97,6 @@ export function buildPlaylistIdeas(profile: TasteProfileVM): PlaylistIdeaVM[] {
 			// it leans on, never a promise the whole playlist is this genre.
 			describe: (sel) =>
 				`leans ${sel.genre?.id}, drawn from ${genreCount(sel.genre?.id)} you've liked`,
-		});
-	}
-
-	if (genreChoices.length >= 2) {
-		ideas.push({
-			id: "idea-blend",
-			facet: "genre",
-			parts: ["Where ", { slot: "a" }, " meets ", { slot: "b" }],
-			slots: {
-				a: genreChoices,
-				// Offset by one so the default pairing is the top two, not a self-blend.
-				b: [...genreChoices.slice(1), genreChoices[0]],
-			},
-			// A sum, not an intersection — say "across both", never "overlap".
-			// Pills bias the ranking, so it leans toward the blend rather than
-			// guaranteeing every track sits in one genre or the other.
-			describe: (sel) =>
-				sel.a?.id === sel.b?.id
-					? "pick two different genres to blend"
-					: `leans toward both, from ${genreCount(sel.a?.id) + genreCount(sel.b?.id)} you've liked`,
 		});
 	}
 

@@ -1,8 +1,8 @@
 /**
- * Tests for the ideas screen's artist card "+" affordance: it commits the seed
- * (artist #1 pinned) AND flags focusArtistSearch so the studio lands with the
- * artist search focused — the studio, not the tiny card, is where a list of
- * artists is managed.
+ * Tests for the ideas screen's "or add more" affordance on the artist and genre
+ * cards: it commits the seed AND flags the matching focus (focusArtistSearch /
+ * focusGenreSearch) so the studio lands with that search focused — the studio,
+ * not the tiny card, is where a list of artists (or a genre blend) is managed.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -28,7 +28,8 @@ import { tasteProfileQueryOptions } from "../tasteProfile";
 const PROFILE: TasteProfileVM = {
 	totalLikedCount: 120,
 	likedWindows: [],
-	topGenres: [],
+	// count >= 20 keeps the genre idea above buildPlaylistIdeas' floor.
+	topGenres: [{ name: "indie", count: 72 }],
 	// count >= 8 keeps the artist idea above buildPlaylistIdeas' floor.
 	topArtists: [{ name: "Clairo", count: 19 }],
 	decades: [],
@@ -55,13 +56,13 @@ function renderIdeasBoard(onSeed = vi.fn()) {
 }
 
 describe("IdeasBoard — artist card + affordance", () => {
-	it("commits the artist seed with focusArtistSearch when + is clicked", async () => {
+	it("commits the artist seed with focusArtistSearch when the add-more action is clicked", async () => {
 		const user = userEvent.setup();
 		const onSeed = renderIdeasBoard();
 
 		await user.click(
 			screen.getByRole("button", {
-				name: /add another artist/i,
+				name: /add other artists/i,
 			}),
 		);
 
@@ -84,6 +85,25 @@ describe("IdeasBoard — artist card + affordance", () => {
 
 		const [idea] = onSeed.mock.calls[0] ?? [];
 		expect(idea).toMatchObject({ anchorArtist: "Clairo" });
+		expect(idea.focusArtistSearch).toBeUndefined();
+	});
+
+	it("commits the genre seed with focusGenreSearch when its add-more action is clicked", async () => {
+		const user = userEvent.setup();
+		const onSeed = renderIdeasBoard();
+
+		await user.click(
+			screen.getByRole("button", {
+				name: /add more genres/i,
+			}),
+		);
+
+		expect(onSeed).toHaveBeenCalledTimes(1);
+		const [idea] = onSeed.mock.calls[0] ?? [];
+		expect(idea).toMatchObject({
+			genrePills: ["indie"],
+			focusGenreSearch: true,
+		});
 		expect(idea.focusArtistSearch).toBeUndefined();
 	});
 });
