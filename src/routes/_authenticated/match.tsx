@@ -45,6 +45,7 @@ import {
 } from "@/features/matching/queue-helpers";
 import type {
 	CompletionStats,
+	MatchingReviewItem,
 	MatchingSuggestion,
 	MatchViewMode,
 	ReviewedItem,
@@ -60,12 +61,14 @@ import {
 	type ConnectionState,
 } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import { useLockedMutation } from "@/lib/hooks/useLockedMutation";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	type MatchDeckCard,
 	type MatchDeckView,
 	type StartOrResumeMatchDeckResult,
+	type SubmitMatchDeckActionResult,
 	submitMatchDeckAction,
 } from "@/lib/server/match-deck.functions";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
@@ -169,6 +172,133 @@ async function seedBakedDeckCardReads(
 // excluded: it is a transient not-yet-captured case, root-caused elsewhere
 // (H4), and stays a plain retry.
 const STALE_REJECTION_STATUSES = new Set(["already_resolved", "not_found"]);
+
+/**
+ * Outcome of an add-to-playlist decision, uniform across the song/playlist
+ * orientation branches (Patterns #2 — collapses the ~50 duplicated lines each
+ * branch used to repeat for the submit-then-classify-then-update-stats shape).
+ */
+interface AddOutcome {
+	status: "added" | "reconnect-required" | "spotify-error" | "rejected";
+	suggestionId: string;
+	analyticsPayload?: Record<string, unknown>;
+	/** Id folded into songsWithAdditions on a successful add. */
+	addedStatKey?: string;
+}
+
+/**
+ * Resolves an add-suggestion decision for either orientation: writes through
+ * to Spotify first (best-effort — only when both sides have a spotifyId),
+ * then persists the decision server-side. Pure w.r.t. React state — the
+ * caller (addSuggestionMutation's onSuccess/onRetryableFailure) applies the
+ * outcome to component state.
+ */
+async function addSuggestion({
+	suggestionId,
+	currentReviewItem,
+	currentSuggestions,
+	currentSong,
+	currentPlaylist,
+	itemId,
+}: {
+	suggestionId: string;
+	currentReviewItem: MatchingReviewItem | null;
+	currentSuggestions: MatchingSuggestion[];
+	currentSong: { id: string; spotifyId?: string | null } | null;
+	currentPlaylist: {
+		id: string;
+		spotifyId?: string | null;
+		name: string;
+	} | null;
+	itemId: string;
+}): Promise<AddOutcome> {
+	if (currentReviewItem?.mode === "song") {
+		// Song mode: suggestionId is a playlist id; add the review song to that playlist.
+		const currentMatches = currentSuggestions
+			.filter(
+				(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
+					s.mode === "song",
+			)
+			.map((s) => s.playlist);
+		const playlist = currentMatches.find((p) => p.id === suggestionId);
+
+		if (playlist?.spotifyId && currentSong?.spotifyId) {
+			const result = await addToPlaylist(
+				`spotify:playlist:${playlist.spotifyId}`,
+				[`spotify:track:${currentSong.spotifyId}`],
+			);
+			const outcome = outcomeFromCommandResponse(result);
+			if (outcome.status === "reconnect-required") {
+				return { status: "reconnect-required", suggestionId };
+			}
+			if (outcome.status === "error") {
+				return { status: "spotify-error", suggestionId };
+			}
+		}
+
+		const addResult = await submitMatchDeckAction({
+			data: { type: "add-suggestion", itemId, suggestionId },
+		});
+		if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
+			return { status: "rejected", suggestionId };
+		}
+
+		return {
+			status: "added",
+			suggestionId,
+			analyticsPayload: {
+				song_id: currentSong?.id,
+				playlist_id: suggestionId,
+				playlist_name: playlist?.name,
+				orientation: "song",
+			},
+			addedStatKey: currentSong?.id,
+		};
+	}
+
+	// Playlist mode: suggestionId is a song id; add that song to the review playlist.
+	const songSuggestions = currentSuggestions
+		.filter(
+			(s): s is Extract<MatchingSuggestion, { mode: "playlist" }> =>
+				s.mode === "playlist",
+		)
+		.map((s) => s.song);
+	const suggestionSong = songSuggestions.find((s) => s.id === suggestionId);
+
+	if (currentPlaylist?.spotifyId && suggestionSong?.spotifyId) {
+		const result = await addToPlaylist(
+			`spotify:playlist:${currentPlaylist.spotifyId}`,
+			[`spotify:track:${suggestionSong.spotifyId}`],
+		);
+		const outcome = outcomeFromCommandResponse(result);
+		if (outcome.status === "reconnect-required") {
+			return { status: "reconnect-required", suggestionId };
+		}
+		if (outcome.status === "error") {
+			return { status: "spotify-error", suggestionId };
+		}
+	}
+
+	const addResult = await submitMatchDeckAction({
+		data: { type: "add-suggestion", itemId, suggestionId },
+	});
+	if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
+		return { status: "rejected", suggestionId };
+	}
+
+	return {
+		status: "added",
+		suggestionId,
+		analyticsPayload: {
+			song_id: suggestionId,
+			playlist_id: currentPlaylist?.id,
+			playlist_name: currentPlaylist?.name,
+			orientation: "playlist",
+		},
+		// Track the review playlist as the matched review item (E12 generalization).
+		addedStatKey: currentPlaylist?.id,
+	};
+}
 
 // Route pendingComponent (RB): streamed while the loader awaits the bounded deck
 // read on cold SSR or during the rare miss-path first-window build. Also the
@@ -874,6 +1004,144 @@ function QueueCardContent({
 		);
 	};
 
+	// Reconciles a whole-card action's rejection to the server's fresh view
+	// instead of retrying into the same rejection (M7). Shared by every
+	// whole-card mutation below (skip/dismiss/next all submit a "finish-card" or
+	// "dismiss-card" action and treat already_resolved/not_found the same way).
+	const isStaleRejection = (result: SubmitMatchDeckActionResult) =>
+		STALE_REJECTION_STATUSES.has(result.actionStatus);
+
+	// Whole-card mutations declared up front (useLockedMutation calls a hook
+	// internally, so they must run unconditionally on every render — not inside
+	// the unavailable/retryable-error branches below where the old inline
+	// handlers used to live).
+	const skipUnavailableMutation = useLockedMutation<
+		undefined,
+		SubmitMatchDeckActionResult
+	>(queryClient, {
+		operation: "match.skipUnavailable",
+		onLockNavigation,
+		onReleaseNavigation,
+		mutationFn: () =>
+			submitMatchDeckAction({ data: { type: "finish-card", itemId } }),
+		isSuccess: (result) =>
+			isDeckActionSuccess("finish-card", result.actionStatus),
+		isStale: isStaleRejection,
+		onStale: (result) => applyResolvedView(result.view),
+		onSuccess: async (result) => {
+			// An unavailable card the user moves past is a skip.
+			onSessionStats((prev) => ({
+				...prev,
+				skippedCount: prev.skippedCount + 1,
+			}));
+			// Advance to the deck's promoted next card; the unavailable card leaves
+			// navigation because the server dropped it from itemIds.
+			await applyResolvedView(result.view);
+		},
+	});
+
+	const dismissCardMutation = useLockedMutation<
+		undefined,
+		SubmitMatchDeckActionResult
+	>(queryClient, {
+		operation: "match.dismissCard",
+		onLockNavigation,
+		onReleaseNavigation,
+		mutationFn: async () => {
+			await waitForPendingDismisses();
+			recordCurrentItem();
+			if (currentReviewItem?.mode === "song") {
+				analytics.capture("song_dismissed", {
+					song_id: currentReviewItem.song.id,
+				});
+			}
+			return submitMatchDeckAction({ data: { type: "dismiss-card", itemId } });
+		},
+		isSuccess: (result) =>
+			isDeckActionSuccess("dismiss-card", result.actionStatus),
+		isStale: isStaleRejection,
+		onStale: (result) => applyResolvedView(result.view),
+		onSuccess: async (result) => {
+			onSessionStats((prev) => ({
+				...prev,
+				dismissedCount: prev.dismissedCount + 1,
+			}));
+			onAddedTo([]);
+			await applyResolvedView(result.view);
+		},
+	});
+
+	const nextMutation = useLockedMutation<
+		undefined,
+		SubmitMatchDeckActionResult
+	>(queryClient, {
+		operation: "match.finishCard",
+		onLockNavigation,
+		onReleaseNavigation,
+		mutationFn: async () => {
+			await waitForPendingDismisses();
+			recordCurrentItem();
+			return submitMatchDeckAction({ data: { type: "finish-card", itemId } });
+		},
+		isSuccess: (result) =>
+			isDeckActionSuccess("finish-card", result.actionStatus),
+		isStale: isStaleRejection,
+		onStale: (result) => applyResolvedView(result.view),
+		onSuccess: async (result) => {
+			// Finishing a card with no adds is a skip; with adds it's a match
+			// (already counted via songsWithAdditions on each add). Check before
+			// clearing addedTo.
+			if (addedTo.length === 0) {
+				onSessionStats((prev) => ({
+					...prev,
+					skippedCount: prev.skippedCount + 1,
+				}));
+			}
+			onAddedTo([]);
+			await applyResolvedView(result.view);
+		},
+	});
+
+	const addSuggestionMutation = useLockedMutation<string, AddOutcome>(
+		queryClient,
+		{
+			operation: "match.addSuggestion",
+			onLockNavigation,
+			onReleaseNavigation,
+			releaseOnSuccess: true,
+			mutationFn: (suggestionId) => {
+				setReconnectNeeded(false);
+				return addSuggestion({
+					suggestionId,
+					currentReviewItem,
+					currentSuggestions,
+					currentSong,
+					currentPlaylist,
+					itemId,
+				});
+			},
+			isSuccess: (outcome) => outcome.status === "added",
+			onSuccess: (outcome) => {
+				if (outcome.analyticsPayload) {
+					analytics.capture("song_added_to_playlist", outcome.analyticsPayload);
+				}
+				onAddedTo((prev) => [...prev, outcome.suggestionId]);
+				onSessionStats((prev) => {
+					const next = new Set(prev.songsWithAdditions);
+					if (outcome.addedStatKey) next.add(outcome.addedStatKey);
+					return {
+						...prev,
+						addedCount: prev.addedCount + 1,
+						songsWithAdditions: next,
+					};
+				});
+			},
+			onRetryableFailure: (outcome) => {
+				if (outcome.status === "reconnect-required") setReconnectNeeded(true);
+			},
+		},
+	);
+
 	// Unavailable card: the item cannot be shown. The body copy is the server's
 	// real `message` for the specific `reason` (not-entitled, missing-song,
 	// snapshot-not-owned, already-resolved, no-visible-suggestions) — the old
@@ -887,40 +1155,7 @@ function QueueCardContent({
 		const skipLabel = mode === "playlist" ? "Skip Playlist" : "Skip Song";
 
 		const handleSkipUnavailable = async () => {
-			if (!onLockNavigation()) return;
-			try {
-				const result = await submitMatchDeckAction({
-					data: { type: "finish-card", itemId },
-				});
-
-				if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
-					if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
-						// already_resolved/not_found: this client is stale (e.g. a second
-						// tab resolved the card first). The server's fresh view is
-						// authoritative — reconcile to it (M7) instead of leaving the
-						// user to retry into the same rejection forever. Not a real skip,
-						// so no stats bump.
-						await applyResolvedView(result.view);
-						return;
-					}
-					// no_captured_pairs: transient, not-yet-captured — do NOT advance.
-					// Releasing the lock lets the user retry rather than skipping past a
-					// card the server still considers unresolved.
-					onReleaseNavigation();
-					return;
-				}
-
-				// An unavailable card the user moves past is a skip.
-				onSessionStats((prev) => ({
-					...prev,
-					skippedCount: prev.skippedCount + 1,
-				}));
-				// Advance to the deck's promoted next card; the unavailable card leaves
-				// navigation because the server dropped it from itemIds.
-				await applyResolvedView(result.view);
-			} catch {
-				onReleaseNavigation();
-			}
+			await skipUnavailableMutation.run(undefined);
 		};
 
 		return (
@@ -1044,119 +1279,15 @@ function QueueCardContent({
 		});
 	};
 
+	// Add does NOT advance the card — user may add to multiple suggestions. The
+	// mutation still locks navigation while the add decision is in flight so
+	// Finish or Dismiss cannot resolve the item before the add row exists
+	// (releaseOnSuccess: true on addSuggestionMutation covers that release; the
+	// retryable-failure path — reconnect/spotify-error/rejected — also releases,
+	// matching the old code's implicit "return without advancing").
 	const handleAdd = async (suggestionId: string) => {
-		// Add does NOT advance the card — user may add to multiple suggestions.
-		// It still locks navigation while the add decision is in flight so Finish or
-		// Dismiss cannot resolve the item before the add row exists.
-		if (!currentReviewItem || !onLockNavigation()) return;
-		try {
-			setReconnectNeeded(false);
-
-			if (currentReviewItem.mode === "song") {
-				// Song mode: suggestionId is a playlist id; add the review song to that playlist.
-				const currentMatches = currentSuggestions
-					.filter(
-						(s): s is Extract<MatchingSuggestion, { mode: "song" }> =>
-							s.mode === "song",
-					)
-					.map((s) => s.playlist);
-
-				const playlist = currentMatches.find((p) => p.id === suggestionId);
-
-				if (playlist?.spotifyId && currentSong?.spotifyId) {
-					const result = await addToPlaylist(
-						`spotify:playlist:${playlist.spotifyId}`,
-						[`spotify:track:${currentSong.spotifyId}`],
-					);
-					const outcome = outcomeFromCommandResponse(result);
-					if (outcome.status === "reconnect-required") {
-						setReconnectNeeded(true);
-						return;
-					}
-					if (outcome.status === "error") return;
-				}
-
-				const addResult = await submitMatchDeckAction({
-					data: { type: "add-suggestion", itemId, suggestionId },
-				});
-
-				if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
-					return;
-				}
-
-				analytics.capture("song_added_to_playlist", {
-					song_id: currentSong?.id,
-					playlist_id: suggestionId,
-					playlist_name: playlist?.name,
-					orientation: "song",
-				});
-
-				onAddedTo((prev) => [...prev, suggestionId]);
-				onSessionStats((prev) => {
-					const next = new Set(prev.songsWithAdditions);
-					if (currentSong?.id) next.add(currentSong.id);
-					return {
-						...prev,
-						addedCount: prev.addedCount + 1,
-						songsWithAdditions: next,
-					};
-				});
-			} else {
-				// Playlist mode: suggestionId is a song id; add that song to the review playlist.
-				const songSuggestions = currentSuggestions
-					.filter(
-						(s): s is Extract<MatchingSuggestion, { mode: "playlist" }> =>
-							s.mode === "playlist",
-					)
-					.map((s) => s.song);
-
-				const suggestionSong = songSuggestions.find(
-					(s) => s.id === suggestionId,
-				);
-
-				if (currentPlaylist?.spotifyId && suggestionSong?.spotifyId) {
-					const result = await addToPlaylist(
-						`spotify:playlist:${currentPlaylist.spotifyId}`,
-						[`spotify:track:${suggestionSong.spotifyId}`],
-					);
-					const outcome = outcomeFromCommandResponse(result);
-					if (outcome.status === "reconnect-required") {
-						setReconnectNeeded(true);
-						return;
-					}
-					if (outcome.status === "error") return;
-				}
-
-				const addResult = await submitMatchDeckAction({
-					data: { type: "add-suggestion", itemId, suggestionId },
-				});
-
-				if (!isDeckActionSuccess("add-suggestion", addResult.actionStatus)) {
-					return;
-				}
-
-				analytics.capture("song_added_to_playlist", {
-					song_id: suggestionId,
-					playlist_id: currentPlaylist?.id,
-					playlist_name: currentPlaylist?.name,
-					orientation: "playlist",
-				});
-
-				onAddedTo((prev) => [...prev, suggestionId]);
-				onSessionStats((prev) => {
-					const next = new Set(prev.songsWithAdditions);
-					// Track the review playlist as the matched review item (E12 generalization).
-					if (currentPlaylist?.id) next.add(currentPlaylist.id);
-					return {
-						...prev,
-						addedCount: prev.addedCount + 1,
-						songsWithAdditions: next,
-					};
-				});
-			}
-		} finally {
-			onReleaseNavigation();
-		}
+		if (!currentReviewItem) return;
+		await addSuggestionMutation.run(suggestionId);
 	};
 
 	// No navigation lock here: the mutation's optimistic removal (+ rollback on
@@ -1174,85 +1305,18 @@ function QueueCardContent({
 	};
 
 	const handleDismiss = async () => {
-		if (!currentReviewItem || !onLockNavigation()) return;
-		try {
-			await waitForPendingDismisses();
-			recordCurrentItem();
-			if (currentReviewItem.mode === "song") {
-				analytics.capture("song_dismissed", {
-					song_id: currentReviewItem.song.id,
-				});
-			}
-
-			const result = await submitMatchDeckAction({
-				data: { type: "dismiss-card", itemId },
+		if (!currentReviewItem) return;
+		if (currentReviewItem.mode === "song") {
+			analytics.capture("song_dismissed", {
+				song_id: currentReviewItem.song.id,
 			});
-
-			if (!isDeckActionSuccess("dismiss-card", result.actionStatus)) {
-				if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
-					// already_resolved/not_found: this client is stale. Reconcile to the
-					// server's fresh view (M7) instead of looping on the same rejection.
-					// Not a real dismiss, so no stats bump.
-					await applyResolvedView(result.view);
-					return;
-				}
-				// no_captured_pairs: do NOT advance the card. Releasing the lock lets
-				// the user retry rather than silently swallowing the error.
-				onReleaseNavigation();
-				return;
-			}
-
-			onSessionStats((prev) => ({
-				...prev,
-				dismissedCount: prev.dismissedCount + 1,
-			}));
-			onAddedTo([]);
-			// Advance to the deck's promoted next card; the resolved card leaves
-			// navigation because the server dropped it from itemIds.
-			await applyResolvedView(result.view);
-		} catch {
-			onReleaseNavigation();
 		}
+		await dismissCardMutation.run(undefined);
 	};
 
 	const handleNext = async () => {
-		if (!currentReviewItem || !onLockNavigation()) return;
-		try {
-			await waitForPendingDismisses();
-			recordCurrentItem();
-			const result = await submitMatchDeckAction({
-				data: { type: "finish-card", itemId },
-			});
-
-			if (!isDeckActionSuccess("finish-card", result.actionStatus)) {
-				if (STALE_REJECTION_STATUSES.has(result.actionStatus)) {
-					// already_resolved/not_found: this client is stale. Reconcile to the
-					// server's fresh view (M7) instead of looping on the same rejection.
-					// Not a real finish, so no stats bump.
-					await applyResolvedView(result.view);
-					return;
-				}
-				// no_captured_pairs: do NOT advance. Releasing the lock lets the user
-				// retry without losing their place.
-				onReleaseNavigation();
-				return;
-			}
-
-			// Finishing a card with no adds is a skip; with adds it's a match (already
-			// counted via songsWithAdditions on each add). Check before clearing addedTo.
-			if (addedTo.length === 0) {
-				onSessionStats((prev) => ({
-					...prev,
-					skippedCount: prev.skippedCount + 1,
-				}));
-			}
-			onAddedTo([]);
-			// Advance to the deck's promoted next card; the resolved card leaves
-			// navigation because the server dropped it from itemIds.
-			await applyResolvedView(result.view);
-		} catch {
-			onReleaseNavigation();
-		}
+		if (!currentReviewItem) return;
+		await nextMutation.run(undefined);
 	};
 
 	const handlePrevious = () => {

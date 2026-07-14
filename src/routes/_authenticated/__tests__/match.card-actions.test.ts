@@ -46,6 +46,17 @@ vi.mock("@tanstack/react-query", () => ({
 	useQuery: mockUseQuery,
 	useQueryClient: mockUseQueryClient,
 	useSuspenseQuery: mockUseSuspenseQuery,
+	// useLockedMutation's only touch point on useMutation: mutateAsync just runs
+	// mutationFn directly, matching real behavior closely enough for these
+	// DB-free handler tests (no caching/retry semantics under test here).
+	useMutation: ({
+		mutationFn,
+	}: {
+		mutationFn: (v: unknown) => Promise<unknown>;
+	}) => ({
+		mutateAsync: mutationFn,
+		isPending: false,
+	}),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -67,7 +78,7 @@ vi.mock("react", () => ({
 	],
 }));
 
-vi.mock("sonner", () => ({ toast: vi.fn() }));
+vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 vi.mock("@/features/dashboard/queries", () => ({
 	dashboardKeys: { all: ["dashboard"] },
