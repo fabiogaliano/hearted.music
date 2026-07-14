@@ -15,6 +15,41 @@ const sql = postgres(env.DATABASE_URL, {
 	fetch_types: false,
 });
 
+// Linear backoff keeps retried jobs from hammering a provider that just
+// failed, while staying well under the stale-sweep threshold.
+const RETRY_BACKOFF_BASE_SECONDS = 30;
+
+/**
+ * Requeue a running job whose execution threw, consuming one attempt (the
+ * claim RPC already incremented `attempts`). Mirrors the stale-job sweep's
+ * reset (status back to pending, started_at/heartbeat_at cleared) so app-level
+ * errors get the same retry budget as worker crashes. Returns false when the
+ * job was no longer running (e.g. already swept), in which case the caller
+ * should fall back to terminal failure handling.
+ */
+export async function requeueLibraryProcessingJobForRetry(
+	job: Job,
+	errorMsg: string,
+): Promise<Result<boolean, DbError>> {
+	try {
+		const rows = await sql`
+			UPDATE job
+			SET status = 'pending',
+			    started_at = NULL,
+			    heartbeat_at = NULL,
+			    error = ${errorMsg},
+			    available_at = now() + make_interval(secs => ${RETRY_BACKOFF_BASE_SECONDS * job.attempts}),
+			    updated_at = now()
+			WHERE id = ${job.id} AND status = 'running'
+			RETURNING id
+		`;
+		return Result.ok(rows.length > 0);
+	} catch (error) {
+		const message = errorMessage(error);
+		return Result.err(new DatabaseError({ code: "requeue_failed", message }));
+	}
+}
+
 export async function settleMatchSnapshotRefreshJobTerminal(
 	job: Job,
 	status: "completed" | "failed",

@@ -3,6 +3,7 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
+	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
 	settleMatchSnapshotRefreshJobTerminal,
 } from "../settlement";
@@ -24,6 +25,9 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 vi.mock("../settlement", () => ({
 	settleEnrichmentJobTerminal: vi.fn().mockResolvedValue({ isError: false }),
 	settleMatchSnapshotRefreshJobTerminal: vi
+		.fn()
+		.mockResolvedValue({ isError: false }),
+	requeueLibraryProcessingJobForRetry: vi
 		.fn()
 		.mockResolvedValue({ isError: false }),
 }));
@@ -58,8 +62,12 @@ import {
 	executeMatchSnapshotRefreshJob,
 } from "@/worker/execute";
 import { captureWorkerEvent } from "@/worker/posthog-capture";
-import { runClaimedJob } from "../runner";
+import { type RunJobOutcome, runClaimedJob } from "../runner";
 import type { LibraryProcessingApplyError } from "../types";
+
+function settlementOf(outcome: RunJobOutcome) {
+	return outcome.status === "retrying" ? null : outcome.settlement;
+}
 
 function makeJob(overrides: Partial<Job> = {}): Job {
 	return {
@@ -132,6 +140,11 @@ describe("runClaimedJob", () => {
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
 			Result.ok(undefined),
+		);
+		// Default: no retry budget consumed successfully — existing failure-path
+		// tests keep exercising terminal settlement. Retry tests override to true.
+		vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+			Result.ok(false),
 		);
 	});
 
@@ -226,6 +239,91 @@ describe("runClaimedJob", () => {
 				extra: { jobId: "job-2", accountId: "acct-1" },
 			}),
 		);
+	});
+
+	describe("app-error retry budget", () => {
+		it("requeues an enrichment job with attempts remaining instead of failing terminally", async () => {
+			vi.mocked(executeEnrichmentJob).mockRejectedValue(
+				new Error("provider down"),
+			);
+			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+				Result.ok(true),
+			);
+
+			const outcome = await runClaimedJob(
+				makeJob({ attempts: 1, max_attempts: 3 }),
+				"@test",
+			);
+
+			expect(outcome.status).toBe("retrying");
+			expect(requeueLibraryProcessingJobForRetry).toHaveBeenCalledWith(
+				expect.objectContaining({ id: "job-1" }),
+				"provider down",
+			);
+			expect(settleEnrichmentJobTerminal).not.toHaveBeenCalled();
+			// The job is still active (back to pending) — no reconciler change.
+			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
+		});
+
+		it("requeues a match_snapshot_refresh job with attempts remaining", async () => {
+			vi.mocked(executeMatchSnapshotRefreshJob).mockRejectedValue(
+				new Error("snapshot exploded"),
+			);
+			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+				Result.ok(true),
+			);
+
+			const outcome = await runClaimedJob(
+				makeJob({
+					id: "job-2",
+					type: "match_snapshot_refresh",
+					attempts: 2,
+					max_attempts: 3,
+				}),
+				"@test",
+			);
+
+			expect(outcome.status).toBe("retrying");
+			expect(settleMatchSnapshotRefreshJobTerminal).not.toHaveBeenCalled();
+			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
+		});
+
+		it("fails terminally once attempts are exhausted", async () => {
+			vi.mocked(executeEnrichmentJob).mockRejectedValue(
+				new Error("provider down"),
+			);
+
+			const outcome = await runClaimedJob(
+				makeJob({ attempts: 3, max_attempts: 3 }),
+				"@test",
+			);
+
+			expect(outcome.status).toBe("failed");
+			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+			expect(settleEnrichmentJobTerminal).toHaveBeenCalledWith(
+				expect.objectContaining({ id: "job-1" }),
+				"failed",
+				"failed",
+				"provider down",
+			);
+		});
+
+		it("falls back to terminal failure when the requeue does not land", async () => {
+			vi.mocked(executeEnrichmentJob).mockRejectedValue(
+				new Error("provider down"),
+			);
+			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+				Result.ok(false),
+			);
+
+			const outcome = await runClaimedJob(
+				makeJob({ attempts: 1, max_attempts: 3 }),
+				"@test",
+			);
+
+			expect(outcome.status).toBe("failed");
+			expect(settleEnrichmentJobTerminal).toHaveBeenCalled();
+		});
 	});
 
 	it("preserves workflow result payloads on completed outcomes", async () => {
@@ -328,7 +426,7 @@ describe("runClaimedJob", () => {
 
 			const outcome = await runClaimedJob(makeJob(), "@test");
 
-			expect(outcome.settlement).toBe("settled");
+			expect(settlementOf(outcome)).toBe("settled");
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
 		});
 
@@ -346,7 +444,7 @@ describe("runClaimedJob", () => {
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
-			expect(outcome.settlement).toBe("settled");
+			expect(settlementOf(outcome)).toBe("settled");
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(2);
 		});
 
@@ -363,27 +461,29 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob(), "@test");
-			await vi.advanceTimersByTimeAsync(60_000);
-			const outcome = await promise;
+			try {
+				const promise = runClaimedJob(makeJob(), "@test");
+				await vi.advanceTimersByTimeAsync(60_000);
+				const outcome = await promise;
 
-			expect(outcome.settlement).toBe("settlement_failed");
-			// 1 initial + 3 retries = 4 total attempts
-			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(4);
+				expect(settlementOf(outcome)).toBe("settlement_failed");
+				// 1 initial + 3 retries = 4 total attempts
+				expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(4);
 
-			expect(captureException).toHaveBeenCalledWith(
-				error,
-				expect.objectContaining({
-					tags: { workflow: "enrichment", phase: "settlement" },
-					extra: expect.objectContaining({
-						jobId: "job-1",
-						accountId: "acct-1",
-						changeKind: "enrichment_completed",
+				expect(captureException).toHaveBeenCalledWith(
+					error,
+					expect.objectContaining({
+						tags: { workflow: "enrichment", phase: "settlement" },
+						extra: expect.objectContaining({
+							jobId: "job-1",
+							accountId: "acct-1",
+							changeKind: "enrichment_completed",
+						}),
 					}),
-				}),
-			);
-
-			consoleSpy.mockRestore();
+				);
+			} finally {
+				consoleSpy.mockRestore();
+			}
 		});
 
 		it("returns settlement_failed on error-path settlement failures", async () => {
@@ -403,26 +503,28 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob(), "@test");
-			await vi.advanceTimersByTimeAsync(60_000);
-			const outcome = await promise;
+			try {
+				const promise = runClaimedJob(makeJob(), "@test");
+				await vi.advanceTimersByTimeAsync(60_000);
+				const outcome = await promise;
 
-			expect(outcome.status).toBe("failed");
-			expect(outcome.settlement).toBe("settlement_failed");
+				expect(outcome.status).toBe("failed");
+				expect(settlementOf(outcome)).toBe("settlement_failed");
 
-			expect(captureException).toHaveBeenCalledWith(
-				settlementError,
-				expect.objectContaining({
-					tags: { workflow: "enrichment", phase: "settlement" },
-					extra: expect.objectContaining({
-						jobId: "job-1",
-						accountId: "acct-1",
-						changeKind: "enrichment_stopped",
+				expect(captureException).toHaveBeenCalledWith(
+					settlementError,
+					expect.objectContaining({
+						tags: { workflow: "enrichment", phase: "settlement" },
+						extra: expect.objectContaining({
+							jobId: "job-1",
+							accountId: "acct-1",
+							changeKind: "enrichment_stopped",
+						}),
 					}),
-				}),
-			);
-
-			consoleSpy.mockRestore();
+				);
+			} finally {
+				consoleSpy.mockRestore();
+			}
 		});
 
 		it("returns settled for match_snapshot_refresh settlement", async () => {
@@ -444,7 +546,7 @@ describe("runClaimedJob", () => {
 				"@test",
 			);
 
-			expect(outcome.settlement).toBe("settled");
+			expect(settlementOf(outcome)).toBe("settled");
 		});
 
 		it("does not retry non-DatabaseError apply failures", async () => {
@@ -466,14 +568,16 @@ describe("runClaimedJob", () => {
 				.spyOn(console, "error")
 				.mockImplementation(() => {});
 
-			const promise = runClaimedJob(makeJob(), "@test");
-			await vi.advanceTimersByTimeAsync(60_000);
-			const outcome = await promise;
+			try {
+				const promise = runClaimedJob(makeJob(), "@test");
+				await vi.advanceTimersByTimeAsync(60_000);
+				const outcome = await promise;
 
-			expect(outcome.settlement).toBe("settlement_failed");
-			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
-
-			consoleSpy.mockRestore();
+				expect(settlementOf(outcome)).toBe("settlement_failed");
+				expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
+			} finally {
+				consoleSpy.mockRestore();
+			}
 		});
 	});
 
