@@ -51,14 +51,27 @@ describe("CommandPalette", () => {
 		);
 		renderPalette();
 
-		fireEvent.click(screen.getByRole("button", { name: "Users" }));
+		fireEvent.click(screen.getByRole("option", { name: "Users" }));
 		expect(navigate).toHaveBeenCalledWith("users", undefined);
 		expect(close).toHaveBeenCalled();
 
-		fireEvent.click(screen.getByRole("button", { name: /Pending grants/ }));
+		fireEvent.click(screen.getByRole("option", { name: /Pending grants/ }));
 		expect(navigate).toHaveBeenLastCalledWith("billing", {
 			status: "pending",
 		});
+	});
+
+	it("navigates results with the keyboard and activates with Enter", () => {
+		renderPalette();
+		const input = screen.getByPlaceholderText(
+			"Search sections, views, or accounts…",
+		);
+		fireEvent.change(input, { target: { value: "Users" } });
+		// Only the Users section matches, so it is the sole (and active) option.
+		fireEvent.keyDown(input, { key: "ArrowDown" });
+		fireEvent.keyDown(input, { key: "Enter" });
+		expect(navigate).toHaveBeenCalledWith("users", undefined);
+		expect(close).toHaveBeenCalled();
 	});
 
 	it("searches and opens an account without exposing a mutation command", async () => {
@@ -80,14 +93,14 @@ describe("CommandPalette", () => {
 		);
 
 		await waitFor(() => expect(getJson).toHaveBeenCalled());
-		expect(screen.getByRole("button", { name: /Ada Lovelace/ })).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: /Ada Lovelace/ }));
+		expect(screen.getByRole("option", { name: /Ada Lovelace/ })).toBeTruthy();
+		fireEvent.click(screen.getByRole("option", { name: /Ada Lovelace/ }));
 		expect(navigate).toHaveBeenCalledWith("users", { user: "account-1" });
 	});
 
 	it("focuses the current table search and closes on Escape", () => {
 		renderPalette();
-		fireEvent.click(screen.getByRole("button", { name: /Focus table search/ }));
+		fireEvent.click(screen.getByRole("option", { name: /Focus table search/ }));
 		expect(close).toHaveBeenCalled();
 		window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 		expect(close).toHaveBeenCalledTimes(2);

@@ -8,6 +8,7 @@ import {
 	GaugeIcon,
 	HeartIcon,
 	type Icon,
+	KeyboardIcon,
 	MicrophoneStageIcon,
 	PulseIcon,
 	SparkleIcon,
@@ -18,6 +19,7 @@ import {
 import { type ReactElement, useEffect, useRef, useState } from "react";
 import { BatchProgressDrawer } from "./components/BatchProgressDrawer";
 import { CommandPalette } from "./components/CommandPalette";
+import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { SavedViewsMenu } from "./components/SavedViewsMenu";
 import { invalidateApiCache, useApi } from "./lib/api";
 import { isModalOpen } from "./lib/modal-open";
@@ -163,6 +165,7 @@ export function App() {
 	);
 	const [now, setNow] = useState(() => Date.now());
 	const [paletteOpen, setPaletteOpen] = useState(false);
+	const [shortcutsOpen, setShortcutsOpen] = useState(false);
 	const previousRef = useRef<string | null>(null);
 	const health = useApi<{ ref: string }>("/api/health");
 	const location = parseUrlState(url);
@@ -202,25 +205,35 @@ export function App() {
 
 	useEffect(() => {
 		function onKeyDown(event: KeyboardEvent) {
-			if (
-				event.key.toLowerCase() !== "k" ||
-				(!event.metaKey && !event.ctrlKey)
-			) {
-				return;
-			}
-			if (isTypingTarget(event.target)) return;
-			if (paletteOpen) {
+			if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+				if (isTypingTarget(event.target)) return;
+				if (paletteOpen) {
+					event.preventDefault();
+					setPaletteOpen(false);
+					return;
+				}
+				if (isModalOpen()) return;
 				event.preventDefault();
-				setPaletteOpen(false);
+				setPaletteOpen(true);
 				return;
 			}
-			if (isModalOpen()) return;
-			event.preventDefault();
-			setPaletteOpen(true);
+			// "?" (Shift+/) opens the shortcuts cheat-sheet — the convention operators
+			// reach for. Never hijack it while typing or over another open overlay.
+			if (event.key === "?" && !event.metaKey && !event.ctrlKey) {
+				if (isTypingTarget(event.target)) return;
+				if (shortcutsOpen) {
+					event.preventDefault();
+					setShortcutsOpen(false);
+					return;
+				}
+				if (isModalOpen()) return;
+				event.preventDefault();
+				setShortcutsOpen(true);
+			}
 		}
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [paletteOpen]);
+	}, [paletteOpen, shortcutsOpen]);
 
 	useEffect(() => {
 		if (!health.data?.ref) return;
@@ -385,6 +398,15 @@ export function App() {
 								<button
 									type="button"
 									className="icon-btn"
+									title="Keyboard shortcuts (?)"
+									aria-label="Keyboard shortcuts"
+									onClick={() => setShortcutsOpen(true)}
+								>
+									<KeyboardIcon size={15} weight="bold" />
+								</button>
+								<button
+									type="button"
+									className="icon-btn"
 									title="Refresh all"
 									onClick={() => setRefreshKey((k) => k + 1)}
 								>
@@ -409,6 +431,9 @@ export function App() {
 								onClose={() => setPaletteOpen(false)}
 								onFocusTableSearch={focusCurrentTableSearch}
 							/>
+						)}
+						{shortcutsOpen && (
+							<KeyboardShortcuts onClose={() => setShortcutsOpen(false)} />
 						)}
 					</div>
 				</ShowAccountsContext.Provider>
