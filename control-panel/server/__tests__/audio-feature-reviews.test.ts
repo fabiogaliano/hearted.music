@@ -4,9 +4,9 @@ vi.mock("../db");
 vi.mock("@/lib/domains/enrichment/audio-feature-backfill/wake");
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
-import { mapRow, rejectAudioReview } from "../audio-feature-reviews";
+import { audioReviewsPage, mapRow, rejectAudioReview } from "../audio-feature-reviews";
 import type { TxRun } from "../db";
-import { tx } from "../db";
+import { read, tx } from "../db";
 
 describe("mapRow → UI shape", () => {
 	const dbRow: Record<string, unknown> = {
@@ -111,6 +111,65 @@ describe("mapRow → UI shape", () => {
 		});
 		expect(row.artists).toEqual(["Tyler, The Creator", "Kali Uchis"]);
 		expect(row.matchReasons).toEqual([]);
+	});
+});
+
+describe("audioReviewsPage", () => {
+	function captureSql(): { queries: string[]; params: unknown[][] } {
+		const queries: string[] = [];
+		const params: unknown[][] = [];
+		vi.mocked(read).mockImplementation((async (text: string, p: unknown[] = []) => {
+			queries.push(text);
+			params.push(p);
+			if (/count\(\*\) as total/.test(text)) return [{ total: "0" }];
+			return [];
+		}) as typeof read);
+		return { queries, params };
+	}
+
+	function url(search: string): URL {
+		return new URL(`https://panel.test/api/audio-feature-reviews${search}`);
+	}
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it("filters by status and defaults to newest-first pending", async () => {
+		const { queries, params } = captureSql();
+		await audioReviewsPage(url(""));
+		// queries[1] is the row page (queries[0] is the count).
+		expect(queries[1]).toMatch(/where r\.status = \$1/);
+		expect(queries[1]).toMatch(/order by r\.created_at desc/);
+		expect(params[1]?.[0]).toBe("pending");
+	});
+
+	it("serves the approved audit tab", async () => {
+		const { queries, params } = captureSql();
+		await audioReviewsPage(url("?status=approved"));
+		expect(params[1]?.[0]).toBe("approved");
+		expect(queries[1]).toMatch(/where r\.status = \$1/);
+	});
+
+	it("binds source-type, match-score, and duration-delta filters", async () => {
+		const { queries, params } = captureSql();
+		await audioReviewsPage(
+			url(
+				"?status=pending&q=oasis&sourceType=youtube_url&minMatchScore=0.7&maxDurationDelta=3",
+			),
+		);
+		expect(queries[1]).toMatch(/s\.name ilike/);
+		expect(queries[1]).toMatch(/r\.source_type = \$/);
+		expect(queries[1]).toMatch(/r\.match_score >= \$/);
+		expect(queries[1]).toMatch(/abs\(s\.duration_ms/);
+		expect(params[1]).toContain("%oasis%");
+		expect(params[1]).toContain("youtube_url");
+		expect(params[1]).toContain(0.7);
+		expect(params[1]).toContain(3);
+	});
+
+	it("flips ordering direction with the order toggle", async () => {
+		const { queries } = captureSql();
+		await audioReviewsPage(url("?order=oldest"));
+		expect(queries[1]).toMatch(/order by r\.created_at asc/);
 	});
 });
 

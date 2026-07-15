@@ -8,8 +8,7 @@ import { HttpError } from "../http-error";
 import {
 	buildLyricsSections,
 	countLyricsBuckets,
-	type LyricsFilter,
-	listLyricsReviews,
+	lyricsReviewsPage,
 	mapRow,
 	markInstrumental,
 	saveManualLyrics,
@@ -60,46 +59,69 @@ describe("mapRow → UI shape", () => {
 	});
 });
 
-describe("listLyricsReviews → filter semantics", () => {
-	function captureSql(): { queries: string[] } {
+describe("lyricsReviewsPage → filter semantics", () => {
+	function captureSql(): { queries: string[]; params: unknown[][] } {
 		const queries: string[] = [];
-		vi.mocked(read).mockImplementation((async (text: string) => {
+		const params: unknown[][] = [];
+		vi.mocked(read).mockImplementation((async (text: string, p: unknown[] = []) => {
 			queries.push(text);
+			params.push(p);
+			if (/count\(\*\) as total/.test(text)) return [{ total: "0" }];
 			return [];
 		}) as typeof read);
-		return { queries };
+		return { queries, params };
+	}
+
+	function url(search: string): URL {
+		return new URL(`https://panel.test/api/lyrics-reviews${search}`);
 	}
 
 	beforeEach(() => vi.clearAllMocks());
 
 	it("needs_review filters on latest not_found, scoped to entitled likers", async () => {
 		const { queries } = captureSql();
-		await listLyricsReviews("needs_review");
-		expect(queries[0]).toMatch(/latest\.fetch_status = 'not_found'/);
-		// Only entitled, still-liked songs are worth manual time.
-		expect(queries[0]).toMatch(/from public\.liked_song ls/);
-		expect(queries[0]).toMatch(/account_song_unlock/);
-		expect(queries[0]).toMatch(/unlimited_access_source/);
-		// The lateral picks the single most-recent fetch row.
-		expect(queries[0]).toMatch(/join lateral/);
+		await lyricsReviewsPage(url("?filter=needs_review"));
+		// queries[1] is the row page (queries[0] is the count).
+		expect(queries[1]).toMatch(/latest\.fetch_status = 'not_found'/);
+		expect(queries[1]).toMatch(/from public\.liked_song ls/);
+		expect(queries[1]).toMatch(/account_song_unlock/);
+		expect(queries[1]).toMatch(/unlimited_access_source/);
+		expect(queries[1]).toMatch(/join lateral/);
 	});
 
 	it("instrumental filters on latest instrumental", async () => {
 		const { queries } = captureSql();
-		await listLyricsReviews("instrumental");
-		expect(queries[0]).toMatch(/latest\.fetch_status = 'instrumental'/);
-		expect(queries[0]).toMatch(/from public\.liked_song ls/);
+		await lyricsReviewsPage(url("?filter=instrumental"));
+		expect(queries[1]).toMatch(/latest\.fetch_status = 'instrumental'/);
+		expect(queries[1]).toMatch(/from public\.liked_song ls/);
 	});
 
 	it("defaults to the needs_review (manual-entry) queue", async () => {
 		const { queries } = captureSql();
-		await listLyricsReviews();
-		expect(queries[0]).toMatch(/latest\.fetch_status = 'not_found'/);
+		await lyricsReviewsPage(url(""));
+		expect(queries[1]).toMatch(/latest\.fetch_status = 'not_found'/);
 	});
 
-	it("admits exactly the two known filters", () => {
-		const filters: LyricsFilter[] = ["needs_review", "instrumental"];
-		expect(filters).toHaveLength(2);
+	it("binds an escaped search pattern against name and artists", async () => {
+		const { queries, params } = captureSql();
+		await lyricsReviewsPage(url("?q=won_der"));
+		expect(queries[1]).toMatch(/s\.name ilike \$1 or array_to_string\(s\.artists/);
+		expect(params[1]?.[0]).toBe("%won\\_der%");
+	});
+
+	it("filters on an explicit provider source when supplied", async () => {
+		const { queries, params } = captureSql();
+		await lyricsReviewsPage(url("?source=lrclib"));
+		expect(queries[1]).toMatch(/latest\.fetch_source = \$1/);
+		expect(params[1]?.[0]).toBe("lrclib");
+	});
+
+	it("flips ordering direction with the order toggle", async () => {
+		const { queries } = captureSql();
+		await lyricsReviewsPage(url("?filter=needs_review&order=newest"));
+		expect(queries[1]).toMatch(/order by latest\.updated_at desc/);
+		await lyricsReviewsPage(url("?filter=needs_review"));
+		expect(queries[3]).toMatch(/order by latest\.updated_at asc/);
 	});
 });
 

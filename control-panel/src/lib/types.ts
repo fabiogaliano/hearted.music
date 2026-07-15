@@ -1,3 +1,12 @@
+export type PageSize = 25 | 50 | 100;
+
+export interface PageResult<T> {
+	rows: T[];
+	total: number;
+	page: number;
+	pageSize: PageSize;
+}
+
 // Mirrors the server metric shapes (control-panel/server/metrics.ts). Kept
 // separate so the UI bundle never imports the server's runtime deps.
 
@@ -37,6 +46,7 @@ export interface UserRow {
 	label: string;
 	handle: string | null;
 	email: string | null;
+	emailVerified: boolean;
 	createdAt: string;
 	lastSeenAt: string | null;
 	onboardingStep: string | null;
@@ -78,6 +88,42 @@ export interface EnrichmentMetrics {
 	}[];
 }
 
+export interface EnrichmentAccountRow {
+	id: string;
+	label: string;
+	handle: string | null;
+	entitledSongs: number;
+	missingAudio: number;
+	missingLyrics: number;
+	missingAnalysis: number;
+	missingEmbedding: number;
+	coverage: number;
+}
+
+export interface GrantRow {
+	id: string;
+	accountId: string;
+	accountLabel: string;
+	origin: string;
+	createdAt: string;
+	appliedAt: string | null;
+	requestedBy: string | null;
+	note: string | null;
+	status: "pending" | "applied";
+}
+
+export interface SubscriptionRow {
+	accountId: string;
+	accountLabel: string;
+	plan: string | null;
+	status: string;
+	unlimitedSource: string | null;
+	periodEnd: string | null;
+	cancelAtPeriodEnd: boolean;
+	creditBalance: number;
+	syntheticGift: boolean;
+}
+
 export interface JobFailureItem {
 	id: string;
 	itemType: string;
@@ -91,6 +137,23 @@ export interface JobFailureItem {
 	accountId: string | null;
 	accountLabel: string | null;
 	accountHandle: string | null;
+}
+
+export interface JobRunRow {
+	id: string;
+	accountId: string;
+	accountLabel: string;
+	accountHandle: string | null;
+	type: string;
+	status: string;
+	progress: Record<string, unknown> | null;
+	error: string | null;
+	createdAt: string;
+	startedAt: string | null;
+	completedAt: string | null;
+	updatedAt: string;
+	heartbeatAt: string | null;
+	stale: boolean;
 }
 
 export interface UserSong {
@@ -156,6 +219,25 @@ export interface JobMetrics {
 	failureCodes: { code: string; count: number }[];
 }
 
+export type OverviewRange = "24h" | "7d" | "14d" | "30d";
+
+export interface RangeComparison {
+	current: number;
+	previous: number;
+	deltaAbsolute: number;
+	deltaPercent: number | null;
+}
+
+export interface OverviewComparisons {
+	range: OverviewRange;
+	signups: RangeComparison;
+	jobsCreated: RangeComparison;
+	jobsCompleted: RangeComparison;
+	jobsFailed: RangeComparison;
+	analysesCreated: RangeComparison;
+	analysisSpendUsd: RangeComparison;
+}
+
 export interface BillingMetrics {
 	activeSubscriptions: number;
 	creditBalanceTotal: number;
@@ -203,4 +285,75 @@ export interface OperationResult {
 	status: string;
 	message: string;
 	details?: Record<string, unknown>;
+	// Present on a commit response: the local action_run id, for a history link.
+	runId?: string | null;
+}
+
+// Mirrors control-panel/server/operation-preview.ts. Structured impact rows the
+// Operations preview renders directly; raw facts stay behind a Debug disclosure.
+export type PreviewRowKind =
+	| "identity"
+	| "current"
+	| "change"
+	| "skip"
+	| "downstream"
+	| "warning";
+
+export type PreviewTone = "default" | "warning" | "danger" | "success";
+
+export interface OperationPreviewRow {
+	kind: PreviewRowKind;
+	label: string;
+	value: string;
+	tone?: PreviewTone;
+}
+
+export interface OperationPreview {
+	action: string;
+	title: string;
+	targetLabel: string;
+	targetId: string | null;
+	willChange: boolean;
+	rows: OperationPreviewRow[];
+	raw: Record<string, unknown>;
+}
+
+export interface OperationPreviewResponse {
+	previewId: string | null;
+	expiresAt: string | null;
+	preview: OperationPreview;
+}
+
+// Mirrors control-panel/server/local-store/action-runs.ts. The local action
+// history is for operator recall/recovery, not an authoritative audit record.
+export type ActionRunMode = "dry_run" | "commit";
+export type ActionRunStatus =
+	| "started"
+	| "succeeded"
+	| "failed"
+	| "partial"
+	| "interrupted";
+
+export interface ActionRunRow {
+	id: string;
+	prodRef: string;
+	actionType: string;
+	mode: ActionRunMode;
+	targetType: string | null;
+	targetId: string | null;
+	targetLabel: string | null;
+	inputSummary: Record<string, unknown> | null;
+	status: ActionRunStatus;
+	resultSummary: Record<string, unknown> | null;
+	errorMessage: string | null;
+	externalId: string | null;
+	startedAt: string;
+	completedAt: string | null;
+	parentRunId: string | null;
+}
+
+export interface ActionRunTodaySummary {
+	commits: number;
+	dryRuns: number;
+	failedOrPartial: number;
 }

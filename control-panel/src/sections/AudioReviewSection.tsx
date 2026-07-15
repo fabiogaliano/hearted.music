@@ -10,11 +10,17 @@ import {
 	WaveformIcon,
 	YoutubeLogoIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MatchCandidateSnapshot } from "@/lib/integrations/youtube-audio/types";
+import { BatchLauncher } from "../components/BatchLauncher";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { Badge, Card, ErrorState } from "../components/primitives";
+import { QueueToolbar } from "../components/QueueToolbar";
 import { postJson, useApi } from "../lib/api";
 import { noAutofill } from "../lib/form";
+import { useQueueKeyboard } from "../lib/queue-keyboard";
+import { type QueueState, useQueueState } from "../lib/queue-state";
+import type { PageResult } from "../lib/types";
 
 type AudioFeatureCandidate = MatchCandidateSnapshot;
 
@@ -85,7 +91,13 @@ interface QueueBuckets {
 	failed: number;
 }
 
-type Tab = "approval" | "needs_url" | "failed";
+type Tab = "pending" | "approved" | "rejected" | "needs_url" | "failed";
+type ReviewStatus = "pending" | "approved" | "rejected";
+type FilterKey = "sourceType" | "minMatchScore" | "maxDurationDelta";
+
+function isReviewTab(tab: Tab): tab is ReviewStatus {
+	return tab === "pending" || tab === "approved" || tab === "rejected";
+}
 
 // The shared duration() helper collapses to coarse units ("4m"), which is
 // useless when the whole point is comparing 3:42 against 3:39. Format precisely.
@@ -357,83 +369,90 @@ function CandidateList({
 	);
 }
 
+const REVIEW_STATUS_BADGE: Record<
+	ReviewStatus,
+	{ tone: "warning" | "success" | "danger"; label: string }
+> = {
+	pending: { tone: "warning", label: "pending · live" },
+	approved: { tone: "success", label: "approved" },
+	rejected: { tone: "danger", label: "rejected" },
+};
+
 function ReviewCard({
 	r,
-	onActioned,
+	busy,
+	error,
+	onApprove,
+	onReject,
+	onReplaced,
+	selected,
+	onToggleSelect,
 }: {
 	r: AudioFeatureReviewRow;
-	onActioned: () => void;
+	// Approve/reject are lifted to the queue so keyboard and advance-after-action
+	// stay consistent; replace stays local because it owns a URL-entry form.
+	busy: boolean;
+	error: string | null;
+	onApprove?: () => void;
+	onReject?: () => void;
+	onReplaced?: () => void;
+	selected?: boolean;
+	onToggleSelect?: () => void;
 }) {
-	const [busy, setBusy] = useState<null | "approve" | "reject" | "replace">(
-		null,
-	);
-	const [error, setError] = useState<string | null>(null);
+	const [replaceBusy, setReplaceBusy] = useState(false);
+	const [replaceError, setReplaceError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const [replaceUrl, setReplaceUrl] = useState("");
+	const [confirmReplace, setConfirmReplace] = useState(false);
+	const actionable = Boolean(onApprove && onReject);
+	const badge = REVIEW_STATUS_BADGE[r.status];
 
-	async function run(
-		action: "approve" | "reject" | "replace",
-		fn: () => Promise<unknown>,
-	) {
-		setBusy(action);
-		setError(null);
+	async function replace() {
+		setReplaceBusy(true);
+		setReplaceError(null);
 		setNotice(null);
 		try {
-			await fn();
-			onActioned();
+			const res = await postJson(
+				`/api/audio-feature-reviews/${r.id}/replace-youtube`,
+				{ url: replaceUrl },
+			);
+			setReplaceOpen(false);
+			setConfirmReplace(false);
+			setReplaceUrl("");
+			const job = (res as { manualJobId?: string }).manualJobId;
+			setNotice(`Replacement queued${job ? ` · job ${job.slice(0, 8)}` : ""}.`);
+			onReplaced?.();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setReplaceError(e instanceof Error ? e.message : String(e));
+			throw e;
 		} finally {
-			setBusy(null);
+			setReplaceBusy(false);
 		}
 	}
 
-	function approve() {
-		void run("approve", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/approve`, {}),
-		);
-	}
-
-	function reject() {
-		if (
-			!window.confirm(
-				`Reject and DELETE the live audio feature for "${r.songName}"?\n\nThis also invalidates any analysis/embedding generated from it and re-queues the song.`,
-			)
-		)
-			return;
-		void run("reject", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/reject`, {}),
-		);
-	}
-
-	function replace() {
-		if (
-			!window.confirm(
-				`Replace the feature for "${r.songName}" with this YouTube URL?\n\nThe current feature is deleted and a manual backfill job is queued.`,
-			)
-		)
-			return;
-		void run("replace", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/replace-youtube`, {
-				url: replaceUrl,
-			}).then((res) => {
-				setReplaceOpen(false);
-				setReplaceUrl("");
-				const job = (res as { manualJobId?: string }).manualJobId;
-				setNotice(
-					`Replacement queued${job ? ` · job ${job.slice(0, 8)}` : ""}.`,
-				);
-			}),
-		);
-	}
+	const disabled = busy || replaceBusy;
 
 	return (
 		<Card
 			title="Audio match"
 			icon={WaveformIcon}
 			span={12}
-			action={<Badge tone="warning">pending · live</Badge>}
+			action={
+				<div className="btn-row">
+					{onToggleSelect && (
+						<label className="batch-select">
+							<input
+								type="checkbox"
+								checked={selected ?? false}
+								onChange={onToggleSelect}
+							/>
+							Select
+						</label>
+					)}
+					<Badge tone={badge.tone}>{badge.label}</Badge>
+				</div>
+			}
 		>
 			<div className="ar-compare">
 				<SpotifyPanel r={r} />
@@ -442,37 +461,38 @@ function ReviewCard({
 
 			<Verdict r={r} reasons={r.matchReasons} />
 
-			<div className="btn-row" style={{ marginTop: 14 }}>
-				<button
-					type="button"
-					className="btn primary"
-					disabled={busy !== null}
-					onClick={approve}
-				>
-					<CheckCircleIcon size={14} weight="fill" />
-					{busy === "approve" ? "Approving…" : "Looks correct"}
-				</button>
-				<button
-					type="button"
-					className="btn"
-					disabled={busy !== null}
-					onClick={() => setReplaceOpen((o) => !o)}
-				>
-					<SwapIcon size={14} weight="bold" /> Replace URL
-				</button>
-				<button
-					type="button"
-					className="btn"
-					disabled={busy !== null}
-					onClick={reject}
-					style={{ color: "var(--danger)" }}
-				>
-					<TrashIcon size={14} weight="bold" />
-					{busy === "reject" ? "Rejecting…" : "Reject & delete"}
-				</button>
-			</div>
+			{actionable && (
+				<div className="btn-row" style={{ marginTop: 14 }}>
+					<button
+						type="button"
+						className="btn primary"
+						disabled={disabled}
+						onClick={onApprove}
+					>
+						<CheckCircleIcon size={14} weight="fill" />
+						{busy ? "Working…" : "Looks correct"}
+					</button>
+					<button
+						type="button"
+						className="btn"
+						disabled={disabled}
+						onClick={() => setReplaceOpen((o) => !o)}
+					>
+						<SwapIcon size={14} weight="bold" /> Replace URL
+					</button>
+					<button
+						type="button"
+						className="btn"
+						disabled={disabled}
+						onClick={onReject}
+						style={{ color: "var(--danger)" }}
+					>
+						<TrashIcon size={14} weight="bold" /> Reject & delete
+					</button>
+				</div>
+			)}
 
-			{replaceOpen && (
+			{actionable && replaceOpen && (
 				<div className="field" style={{ marginTop: 12 }}>
 					<label htmlFor={`replace-${r.id}`}>YouTube URL</label>
 					<input
@@ -487,13 +507,31 @@ function ReviewCard({
 						<button
 							type="button"
 							className="btn primary"
-							disabled={busy !== null || replaceUrl.trim().length === 0}
-							onClick={replace}
+							disabled={disabled || replaceUrl.trim().length === 0}
+							onClick={() => setConfirmReplace(true)}
 						>
-							{busy === "replace" ? "Queuing…" : "Queue replacement"}
+							{replaceBusy ? "Queuing…" : "Queue replacement"}
 						</button>
 					</div>
 				</div>
+			)}
+
+			{confirmReplace && (
+				<ConfirmModal
+					title="Replace audio feature"
+					danger
+					confirmLabel="Queue replacement"
+					description={
+						<>
+							Replace the feature for <strong>{r.songName}</strong> with this
+							YouTube URL? This runs against <strong>production</strong>: the
+							current feature is deleted and a manual backfill job is queued.
+							This is <strong>not reversible</strong> from the panel.
+						</>
+					}
+					onConfirm={() => replace()}
+					onClose={() => setConfirmReplace(false)}
+				/>
 			)}
 
 			<details className="ar-extra">
@@ -529,9 +567,9 @@ function ReviewCard({
 				</details>
 			)}
 
-			{error && (
+			{(error || replaceError) && (
 				<div className="result err" style={{ marginTop: 10 }}>
-					{error}
+					{error ?? replaceError}
 				</div>
 			)}
 			{notice && (
@@ -540,6 +578,293 @@ function ReviewCard({
 				</div>
 			)}
 		</Card>
+	);
+}
+
+const REVIEW_EMPTY: Record<ReviewStatus, string> = {
+	pending: "No pending audio reviews.",
+	approved: "No approved audio reviews yet.",
+	rejected: "No rejected audio reviews yet.",
+};
+
+function AudioReviewsQueue({
+	queue,
+	refreshKey,
+	onActioned,
+}: {
+	queue: QueueState<Tab, FilterKey>;
+	refreshKey: number;
+	onActioned: () => void;
+}) {
+	const searchRef = useRef<HTMLInputElement>(null);
+	const [actioning, setActioning] = useState<string | null>(null);
+	const [actionError, setActionError] = useState<{
+		id: string;
+		message: string;
+	} | null>(null);
+	// Reject deletes the live feature and its downstream artifacts, so it goes
+	// through the confirm modal with a mandatory reason.
+	const [rejectTarget, setRejectTarget] =
+		useState<AudioFeatureReviewRow | null>(null);
+
+	const status = queue.tab as ReviewStatus;
+	const params = new URLSearchParams(queue.listParams);
+	params.set("status", status);
+	const { data, error, loading, refreshing, refetch } = useApi<
+		PageResult<AudioFeatureReviewRow>
+	>(`/api/audio-feature-reviews?${params.toString()}`, refreshKey);
+
+	const rows = data?.rows ?? [];
+	const total = data?.total ?? 0;
+	const pageCount = Math.max(1, Math.ceil(total / queue.pageSize));
+	const { page, focusIndex, setPage, setFocusIndex } = queue;
+
+	useEffect(() => {
+		if (loading) return;
+		if (rows.length === 0) {
+			if (page > 1) setPage(page - 1);
+			return;
+		}
+		if (focusIndex > rows.length - 1) setFocusIndex(rows.length - 1);
+	}, [rows.length, loading, page, focusIndex, setPage, setFocusIndex]);
+
+	const globalIndex = (queue.page - 1) * queue.pageSize + queue.focusIndex;
+	const isFocus = queue.mode === "focus";
+	const isPending = status === "pending";
+	const canSelect = isPending && !isFocus;
+
+	// List-mode + pending selection for the safe approval batch; dropped when the
+	// operator leaves the pending tab or enters focus mode.
+	const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
+		new Set(),
+	);
+	const [batchOpen, setBatchOpen] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset-on-change; status/mode are the intended triggers
+	useEffect(() => {
+		setSelectedIds(new Set());
+	}, [status, queue.mode]);
+	function toggleSelect(id: string) {
+		setSelectedIds((current) => {
+			const next = new Set(current);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}
+
+	function goNext() {
+		if (isFocus && queue.focusIndex < rows.length - 1) {
+			queue.setFocusIndex(queue.focusIndex + 1);
+		} else if (queue.page < pageCount) {
+			queue.setPage(queue.page + 1);
+		}
+	}
+	function goPrev() {
+		if (isFocus && queue.focusIndex > 0) {
+			queue.setFocusIndex(queue.focusIndex - 1);
+		} else if (queue.page > 1) {
+			if (isFocus) queue.setFocusIndex(queue.pageSize - 1);
+			queue.setPage(queue.page - 1);
+		}
+	}
+
+	function afterAction() {
+		refetch();
+		onActioned();
+	}
+
+	async function approve(id: string) {
+		setActioning(id);
+		setActionError(null);
+		try {
+			await postJson(`/api/audio-feature-reviews/${id}/approve`, {});
+			afterAction();
+		} catch (e) {
+			setActionError({
+				id,
+				message: e instanceof Error ? e.message : String(e),
+			});
+		} finally {
+			setActioning(null);
+		}
+	}
+	async function confirmReject(r: AudioFeatureReviewRow, reason: string) {
+		setActioning(r.id);
+		setActionError(null);
+		try {
+			await postJson(`/api/audio-feature-reviews/${r.id}/reject`, { reason });
+			setRejectTarget(null);
+			afterAction();
+		} catch (e) {
+			setActionError({
+				id: r.id,
+				message: e instanceof Error ? e.message : String(e),
+			});
+			throw e;
+		} finally {
+			setActioning(null);
+		}
+	}
+
+	const focusRow = rows[Math.min(queue.focusIndex, rows.length - 1)];
+
+	useQueueKeyboard({
+		onNext: goNext,
+		onPrev: goPrev,
+		onSearch: () => searchRef.current?.focus(),
+		onApprove: () => {
+			if (isPending && isFocus && focusRow && actioning === null) {
+				void approve(focusRow.id);
+			}
+		},
+	});
+
+	const hasNext = isFocus ? globalIndex < total - 1 : queue.page < pageCount;
+	const hasPrev = isFocus ? globalIndex > 0 : queue.page > 1;
+
+	function card(r: AudioFeatureReviewRow) {
+		return (
+			<ReviewCard
+				key={r.id}
+				r={r}
+				busy={actioning === r.id}
+				error={actionError?.id === r.id ? actionError.message : null}
+				onApprove={isPending ? () => approve(r.id) : undefined}
+				onReject={isPending ? () => setRejectTarget(r) : undefined}
+				onReplaced={afterAction}
+				selected={canSelect ? selectedIds.has(r.id) : undefined}
+				onToggleSelect={canSelect ? () => toggleSelect(r.id) : undefined}
+			/>
+		);
+	}
+
+	if (error && !data) return <ErrorState message={error} />;
+
+	return (
+		<>
+			<Card span={12}>
+				<QueueToolbar
+					searchRef={searchRef}
+					search={queue.q}
+					onSearchChange={queue.setSearch}
+					order={queue.order}
+					onOrderChange={queue.setOrder}
+					mode={queue.mode}
+					onModeChange={queue.setMode}
+					pageSize={queue.pageSize}
+					onPageSizeChange={queue.setPageSize}
+					onReset={queue.reset}
+					refreshing={refreshing}
+					filters={
+						<>
+							<select
+								className="select"
+								aria-label="Source type"
+								value={queue.filters.sourceType}
+								onChange={(e) => queue.setFilter("sourceType", e.target.value)}
+							>
+								<option value="all">Any source</option>
+								<option value="youtube_search">Auto search</option>
+								<option value="youtube_url">Manual URL</option>
+							</select>
+							<input
+								className="input"
+								type="number"
+								step="0.05"
+								min="0"
+								max="1"
+								aria-label="Min match score"
+								placeholder="Min score"
+								style={{ maxWidth: 110 }}
+								value={queue.filters.minMatchScore}
+								onChange={(e) =>
+									queue.setFilter("minMatchScore", e.target.value)
+								}
+							/>
+							<input
+								className="input"
+								type="number"
+								min="0"
+								aria-label="Max duration delta (s)"
+								placeholder="Max Δs"
+								style={{ maxWidth: 100 }}
+								value={queue.filters.maxDurationDelta}
+								onChange={(e) =>
+									queue.setFilter("maxDurationDelta", e.target.value)
+								}
+							/>
+						</>
+					}
+					total={total}
+					page={queue.page}
+					focusIndex={isFocus ? queue.focusIndex : undefined}
+					onPrev={goPrev}
+					onNext={goNext}
+					hasPrev={hasPrev}
+					hasNext={hasNext}
+				/>
+			</Card>
+
+			{canSelect && selectedIds.size > 0 && (
+				<div className="batch-bar span-12">
+					<span>{selectedIds.size} selected</span>
+					<button
+						type="button"
+						className="btn primary"
+						onClick={() => setBatchOpen(true)}
+					>
+						Approve {selectedIds.size} selected…
+					</button>
+				</div>
+			)}
+
+			{batchOpen && (
+				<BatchLauncher
+					actionType="audio-approve-batch"
+					title="Approve audio reviews — batch"
+					description="Approves the selected pending matches. Rows no longer pending are skipped. Approval only — reject and replace stay single-item."
+					buildInput={() => ({ reviewIds: [...selectedIds] })}
+					onClose={() => setBatchOpen(false)}
+					onCommitted={() => {
+						setSelectedIds(new Set());
+						afterAction();
+					}}
+				/>
+			)}
+
+			{rows.length === 0 ? (
+				<div className="card span-12">
+					<div className="empty">
+						{queue.q ? "No songs match your search." : REVIEW_EMPTY[status]}
+					</div>
+				</div>
+			) : isFocus ? (
+				focusRow && <div className="ar-list span-12">{card(focusRow)}</div>
+			) : (
+				<div className="ar-list span-12">{rows.map((r) => card(r))}</div>
+			)}
+
+			{rejectTarget && (
+				<ConfirmModal
+					title="Reject & delete audio feature"
+					danger
+					confirmLabel="Reject & delete"
+					requireReason
+					reasonPlaceholder="Why this match is wrong"
+					description={
+						<>
+							Reject and DELETE the live audio feature for{" "}
+							<strong>{rejectTarget.songName}</strong>? This runs against{" "}
+							<strong>production</strong>: it also invalidates any
+							analysis/embedding generated from it and re-queues the song. This
+							is <strong>not reversible</strong> from the panel.
+						</>
+					}
+					onConfirm={(reason) => confirmReject(rejectTarget, reason)}
+					onClose={() => setRejectTarget(null)}
+				/>
+			)}
+		</>
 	);
 }
 
@@ -706,51 +1031,7 @@ function JobCard({
 	);
 }
 
-function ApprovalQueue({
-	refreshKey,
-	onActioned,
-}: {
-	refreshKey: number;
-	onActioned: () => void;
-}) {
-	const { data, error, refetch } = useApi<{ reviews: AudioFeatureReviewRow[] }>(
-		"/api/audio-feature-reviews?status=pending",
-		refreshKey,
-	);
-
-	if (error) return <ErrorState message={error} />;
-	if (!data) {
-		return (
-			<div className="card span-12">
-				<div className="empty">Loading…</div>
-			</div>
-		);
-	}
-
-	if (data.reviews.length === 0) {
-		return (
-			<div className="card span-12">
-				<div className="empty">No pending audio reviews.</div>
-			</div>
-		);
-	}
-	return (
-		<div className="ar-list span-12">
-			{data.reviews.map((r) => (
-				<ReviewCard
-					key={r.id}
-					r={r}
-					onActioned={() => {
-						refetch();
-						onActioned();
-					}}
-				/>
-			))}
-		</div>
-	);
-}
-
-const JOB_EMPTY: Record<Exclude<Tab, "approval">, string> = {
+const JOB_EMPTY: Record<"needs_url" | "failed", string> = {
 	needs_url: "No songs waiting on a URL — nothing to match by hand.",
 	failed: "No terminally-failed backfills.",
 };
@@ -760,7 +1041,7 @@ function JobQueue({
 	refreshKey,
 	onActioned,
 }: {
-	filter: Exclude<Tab, "approval">;
+	filter: "needs_url" | "failed";
 	refreshKey: number;
 	onActioned: () => void;
 }) {
@@ -802,7 +1083,17 @@ function JobQueue({
 }
 
 export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
-	const [tab, setTab] = useState<Tab>("approval");
+	const queue = useQueueState<Tab, FilterKey>({
+		storageKey: "audio",
+		tabs: ["pending", "approved", "rejected", "needs_url", "failed"],
+		defaultTab: "pending",
+		filterKeys: ["sourceType", "minMatchScore", "maxDurationDelta"],
+		filterDefaults: {
+			sourceType: "all",
+			minMatchScore: "",
+			maxDurationDelta: "",
+		},
+	});
 	const counts = useApi<QueueBuckets>(
 		"/api/audio-feature-queue/counts",
 		refreshKey,
@@ -830,30 +1121,46 @@ export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
 				<p className="muted-text">
 					Everything blocking a song's audio features, in one place.{" "}
 					<strong>Needs approval</strong> are auto-matched features that went
-					live and want a confirm/reject. <strong>Needs URL</strong> are songs
-					the auto-search couldn't match confidently — paste the right YouTube
-					video and a manual backfill is queued. <strong>Failed</strong> are
-					terminally-failed backfills; a URL fixes them the same way.
+					live and want a confirm/reject; <strong>Approved</strong> and{" "}
+					<strong>Rejected</strong> are a read-only history.{" "}
+					<strong>Needs URL</strong> are songs the auto-search couldn't match
+					confidently — paste the right YouTube video and a manual backfill is
+					queued. <strong>Failed</strong> are terminally-failed backfills; a URL
+					fixes them the same way.
 				</p>
 				<div className="btn-row" style={{ marginTop: 12 }}>
 					<button
 						type="button"
-						className={`btn ${tab === "approval" ? "primary" : ""}`}
-						onClick={() => setTab("approval")}
+						className={`btn ${queue.tab === "pending" ? "primary" : ""}`}
+						onClick={() => queue.setTab("pending")}
 					>
 						{label("Needs approval", b?.approval)}
 					</button>
 					<button
 						type="button"
-						className={`btn ${tab === "needs_url" ? "primary" : ""}`}
-						onClick={() => setTab("needs_url")}
+						className={`btn ${queue.tab === "approved" ? "primary" : ""}`}
+						onClick={() => queue.setTab("approved")}
+					>
+						Approved
+					</button>
+					<button
+						type="button"
+						className={`btn ${queue.tab === "rejected" ? "primary" : ""}`}
+						onClick={() => queue.setTab("rejected")}
+					>
+						Rejected
+					</button>
+					<button
+						type="button"
+						className={`btn ${queue.tab === "needs_url" ? "primary" : ""}`}
+						onClick={() => queue.setTab("needs_url")}
 					>
 						{label("Needs URL", b?.needsUrl)}
 					</button>
 					<button
 						type="button"
-						className={`btn ${tab === "failed" ? "primary" : ""}`}
-						onClick={() => setTab("failed")}
+						className={`btn ${queue.tab === "failed" ? "primary" : ""}`}
+						onClick={() => queue.setTab("failed")}
 					>
 						{label("Failed", b?.failed)}
 					</button>
@@ -862,11 +1169,15 @@ export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
 
 			{counts.error && <ErrorState message={counts.error} />}
 
-			{tab === "approval" ? (
-				<ApprovalQueue refreshKey={refreshKey} onActioned={counts.refetch} />
+			{isReviewTab(queue.tab) ? (
+				<AudioReviewsQueue
+					queue={queue}
+					refreshKey={refreshKey}
+					onActioned={counts.refetch}
+				/>
 			) : (
 				<JobQueue
-					filter={tab}
+					filter={queue.tab}
 					refreshKey={refreshKey}
 					onActioned={counts.refetch}
 				/>

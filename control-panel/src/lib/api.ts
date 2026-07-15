@@ -23,6 +23,8 @@ export interface QueryState<T> {
 	data: T | null;
 	error: string | null;
 	loading: boolean;
+	refreshing: boolean;
+	fetchedAt: number | null;
 	refetch: () => void;
 }
 
@@ -30,7 +32,17 @@ export interface QueryState<T> {
 // a result across visits. This module-level cache does: a revisit seeds instantly
 // from the last response while a background refetch keeps it current. The server
 // has its own short TTL cache, so that background refetch is usually a fast hit.
-const responseCache = new Map<string, unknown>();
+interface CachedResponse<T> {
+	data: T;
+	fetchedAt: number;
+}
+
+const responseCache = new Map<string, CachedResponse<unknown>>();
+
+export function invalidateApiCache(): void {
+	responseCache.clear();
+	freshWatermark.clear();
+}
 
 // Highest refreshKey for which we've already fetched fresh data for a path. Lets a
 // global refresh (which remounts the section, wiping component refs) still force a
@@ -42,10 +54,14 @@ function withFresh(path: string): string {
 }
 
 export function useApi<T>(path: string, refreshKey = 0): QueryState<T> {
-	const seed = responseCache.get(path) as T | undefined;
-	const [data, setData] = useState<T | null>(seed ?? null);
+	const seed = responseCache.get(path) as CachedResponse<T> | undefined;
+	const [data, setData] = useState<T | null>(seed?.data ?? null);
 	const [error, setError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(seed === undefined);
+	const [refreshing, setRefreshing] = useState(seed !== undefined);
+	const [fetchedAt, setFetchedAt] = useState<number | null>(
+		seed?.fetchedAt ?? null,
+	);
 	const [tick, setTick] = useState(0);
 	const lastTick = useRef(0);
 
@@ -62,34 +78,45 @@ export function useApi<T>(path: string, refreshKey = 0): QueryState<T> {
 		if (keyForced) freshWatermark.set(path, refreshKey);
 		const forced = tickForced || keyForced;
 
-		const cachedData = responseCache.get(path) as T | undefined;
+		const cachedData = responseCache.get(path) as CachedResponse<T> | undefined;
 		if (cachedData !== undefined && !forced) {
 			// Revisit with a warm cache: show it now, refresh quietly underneath.
-			setData(cachedData);
+			setData(cachedData.data);
+			setFetchedAt(cachedData.fetchedAt);
 			setError(null);
 			setLoading(false);
-		} else if (cachedData === undefined) {
-			setLoading(true);
+			setRefreshing(true);
+		} else {
+			setLoading(cachedData === undefined);
+			setRefreshing(cachedData !== undefined);
 			setError(null);
 		}
 
 		getJson<T>(forced ? withFresh(path) : path)
 			.then((d) => {
 				if (cancelled) return;
-				responseCache.set(path, d);
+				const response = {
+					data: d,
+					fetchedAt: Date.now(),
+				} satisfies CachedResponse<T>;
+				responseCache.set(path, response);
 				setData(d);
+				setFetchedAt(response.fetchedAt);
 				setError(null);
 			})
 			.catch((e: unknown) => {
 				if (!cancelled) setError(e instanceof Error ? e.message : String(e));
 			})
 			.finally(() => {
-				if (!cancelled) setLoading(false);
+				if (!cancelled) {
+					setLoading(false);
+					setRefreshing(false);
+				}
 			});
 		return () => {
 			cancelled = true;
 		};
 	}, [path, tick, refreshKey]);
 
-	return { data, error, loading, refetch };
+	return { data, error, loading, refreshing, fetchedAt, refetch };
 }

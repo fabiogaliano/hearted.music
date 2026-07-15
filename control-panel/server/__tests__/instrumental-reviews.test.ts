@@ -5,7 +5,7 @@ vi.mock("../db");
 import { read, type TxRun, tx } from "../db";
 import {
 	approveInstrumentalReview,
-	listInstrumentalReviews,
+	instrumentalReviewsPage,
 	mapRow,
 	rejectInstrumentalReview,
 } from "../instrumental-reviews";
@@ -61,39 +61,64 @@ describe("mapRow → UI shape", () => {
 	});
 });
 
-describe("listInstrumentalReviews", () => {
-	beforeEach(() => vi.clearAllMocks());
-
-	it("filters by status and joins the song", async () => {
+describe("instrumentalReviewsPage", () => {
+	function captureSql(): { queries: string[]; params: unknown[][] } {
 		const queries: string[] = [];
 		const params: unknown[][] = [];
 		vi.mocked(read).mockImplementation((async (text: string, p: unknown[] = []) => {
 			queries.push(text);
 			params.push(p);
+			if (/count\(\*\) as total/.test(text)) return [{ total: "0" }];
 			return [];
 		}) as typeof read);
+		return { queries, params };
+	}
 
-		await listInstrumentalReviews("pending");
-		expect(queries[0]).toMatch(/from public\.song_instrumental_review r/);
-		expect(queries[0]).toMatch(/join public\.song s on s\.id = r\.song_id/);
-		expect(queries[0]).toMatch(/where r\.status = \$1/);
+	function url(search: string): URL {
+		return new URL(`https://panel.test/api/instrumental-reviews${search}`);
+	}
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it("filters by status and joins the song", async () => {
+		const { queries, params } = captureSql();
+		await instrumentalReviewsPage(url("?status=pending"));
+		// queries[1] is the row page (queries[0] is the count).
+		expect(queries[1]).toMatch(/from public\.song_instrumental_review r/);
+		expect(queries[1]).toMatch(/join public\.song s on s\.id = r\.song_id/);
+		expect(queries[1]).toMatch(/where r\.status = \$1/);
 		// Pending queue hides superseded cards: only songs still settled by the
 		// 'analysis' verdict are actionable.
-		expect(queries[0]).toMatch(/left join lateral/);
-		expect(queries[0]).toMatch(/latest\.source = 'analysis'/);
-		expect(params[0]).toEqual(["pending"]);
+		expect(queries[1]).toMatch(/latest\.source = 'analysis'/);
+		expect(params[1]?.[0]).toBe("pending");
 	});
 
 	it("omits the liveness filter for non-pending audit lookups", async () => {
-		const queries: string[] = [];
-		vi.mocked(read).mockImplementation((async (text: string) => {
-			queries.push(text);
-			return [];
-		}) as typeof read);
+		const { queries } = captureSql();
+		await instrumentalReviewsPage(url("?status=rejected"));
+		expect(queries[1]).toMatch(/where r\.status = \$1/);
+		expect(queries[1]).not.toMatch(/latest\.source = 'analysis'/);
+	});
 
-		await listInstrumentalReviews("rejected");
-		expect(queries[0]).toMatch(/where r\.status = \$1/);
-		expect(queries[0]).not.toMatch(/latest\.source = 'analysis'/);
+	it("binds search, signal, and instrumentalness-threshold filters", async () => {
+		const { queries, params } = captureSql();
+		await instrumentalReviewsPage(
+			url("?status=pending&q=intro&signal=genre&minInstrumentalness=0.8"),
+		);
+		expect(queries[1]).toMatch(/s\.name ilike/);
+		expect(queries[1]).toMatch(/r\.signal = \$/);
+		expect(queries[1]).toMatch(/r\.instrumentalness >= \$/);
+		expect(params[1]).toContain("%intro%");
+		expect(params[1]).toContain("genre");
+		expect(params[1]).toContain(0.8);
+	});
+
+	it("flips ordering direction with the order toggle", async () => {
+		const { queries } = captureSql();
+		await instrumentalReviewsPage(url("?order=oldest"));
+		expect(queries[1]).toMatch(/order by r\.created_at asc/);
+		await instrumentalReviewsPage(url(""));
+		expect(queries[3]).toMatch(/order by r\.created_at desc/);
 	});
 });
 

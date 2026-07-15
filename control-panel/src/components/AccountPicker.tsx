@@ -26,7 +26,11 @@ export function AccountPicker({
 	placeholder?: string;
 	value: string;
 	label: string | undefined;
-	onChange: (value: string, label: string) => void;
+	onChange: (
+		value: string,
+		label: string,
+		account?: AccountSearchResult,
+	) => void;
 	allowRawEmail?: boolean;
 	selectValue?: (r: AccountSearchResult) => string;
 }) {
@@ -151,7 +155,7 @@ export function AccountPicker({
 									type="button"
 									className="picker-option"
 									onClick={() => {
-										onChange(selectValue(r), r.label);
+										onChange(selectValue(r), r.label, r);
 										setOpen(false);
 									}}
 								>

@@ -29,6 +29,12 @@
  */
 
 import { read, tx } from "./db";
+import {
+	type PageResult,
+	type PageSize,
+	parseQueueQuery,
+	type QueueOrder,
+} from "./query-params";
 
 export interface InstrumentalReviewRow {
 	id: string;
@@ -95,15 +101,105 @@ const REVIEW_SELECT = `
 const PENDING_LIVENESS =
 	"and latest.source = 'analysis' and latest.fetch_status = 'instrumental'";
 
-export async function listInstrumentalReviews(
-	status: InstrumentalReviewRow["status"] = "pending",
-): Promise<InstrumentalReviewRow[]> {
-	const livenessFilter = status === "pending" ? PENDING_LIVENESS : "";
-	const rows = await read(
-		`${REVIEW_SELECT} where r.status = $1 ${livenessFilter} order by r.created_at desc limit 200`,
-		[status],
+function escapeLike(value: string): string {
+	return value.replace(/([\\%_])/g, "\\$1");
+}
+
+export type InstrumentalSignal = "instrumentalness" | "genre" | "all";
+
+export interface InstrumentalListParams {
+	status: InstrumentalReviewRow["status"];
+	q: string;
+	order: QueueOrder;
+	page: number;
+	pageSize: PageSize;
+	signal: InstrumentalSignal;
+	// Only rows whose instrumentalness is at least this (0–1), for tuning the
+	// threshold. Ignored for genre-signal rows, which have no instrumentalness.
+	minInstrumentalness: number | null;
+}
+
+function parseStatus(value: string | null): InstrumentalReviewRow["status"] {
+	return value === "approved" || value === "rejected" ? value : "pending";
+}
+
+function parseUnitInterval(value: string | null): number | null {
+	if (value === null || value.trim() === "") return null;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : null;
+}
+
+export function parseInstrumentalQuery(url: URL): InstrumentalListParams {
+	const base = parseQueueQuery(url, "newest");
+	const signal = url.searchParams.get("signal");
+	return {
+		status: parseStatus(url.searchParams.get("status")),
+		q: base.q,
+		order: base.order,
+		page: base.page,
+		pageSize: base.pageSize,
+		signal:
+			signal === "instrumentalness" || signal === "genre" ? signal : "all",
+		minInstrumentalness: parseUnitInterval(
+			url.searchParams.get("minInstrumentalness"),
+		),
+	};
+}
+
+export async function instrumentalReviewsPage(
+	url: URL,
+): Promise<PageResult<InstrumentalReviewRow>> {
+	const query = parseInstrumentalQuery(url);
+	const params: unknown[] = [query.status];
+	// Only the pending queue enforces liveness; audit tabs (approved/rejected)
+	// show the full history even where the song has since moved on.
+	const where: string[] = ["r.status = $1"];
+	if (query.status === "pending") where.push(PENDING_LIVENESS.replace(/^and /, ""));
+	if (query.q) {
+		params.push(`%${escapeLike(query.q)}%`);
+		where.push(
+			`(s.name ilike $${params.length} or array_to_string(s.artists, ', ') ilike $${params.length})`,
+		);
+	}
+	if (query.signal !== "all") {
+		params.push(query.signal);
+		where.push(`r.signal = $${params.length}`);
+	}
+	if (query.minInstrumentalness != null) {
+		params.push(query.minInstrumentalness);
+		where.push(`r.instrumentalness >= $${params.length}`);
+	}
+	const predicate = where.join(" and ");
+	const direction = query.order === "oldest" ? "asc" : "desc";
+	const countRows = await read<{ total: string }>(
+		`select count(*) as total
+		 from public.song_instrumental_review r
+		 join public.song s on s.id = r.song_id
+		 left join lateral (
+			select sl.source, sl.fetch_status
+			from public.song_lyrics sl
+			where sl.song_id = r.song_id
+			order by sl.updated_at desc
+			limit 1
+		 ) latest on true
+		 where ${predicate}`,
+		params,
 	);
-	return rows.map(mapRow);
+	const total = Number(countRows[0]?.total ?? 0);
+	const offset = (query.page - 1) * query.pageSize;
+	const rowParams = [...params, query.pageSize, offset];
+	const rows = await read(
+		`${REVIEW_SELECT} where ${predicate}
+		 order by r.created_at ${direction}, r.id asc
+		 limit $${rowParams.length - 1} offset $${rowParams.length}`,
+		rowParams,
+	);
+	return {
+		rows: rows.map(mapRow),
+		total,
+		page: query.page,
+		pageSize: query.pageSize,
+	};
 }
 
 /** Counts live pending reviews so the nav/section badges only actionable cards. */

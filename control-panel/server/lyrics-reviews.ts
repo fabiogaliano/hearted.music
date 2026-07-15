@@ -32,6 +32,12 @@
 
 import { read, tx } from "./db";
 import { HttpError } from "./http-error";
+import {
+	type PageResult,
+	type PageSize,
+	parseQueueQuery,
+	type QueueOrder,
+} from "./query-params";
 
 export interface LyricsReviewRow {
 	songId: string;
@@ -124,23 +130,87 @@ const FILTER_WHERE: Record<LyricsFilter, string> = {
 	instrumental: "latest.fetch_status = 'instrumental'",
 };
 
-const FILTER_ORDER: Record<LyricsFilter, string> = {
-	// Oldest-waiting first: drain the backlog from the longest-stuck end.
-	needs_review: "latest.updated_at asc",
-	// Most-recently classified first: fresh (mis)classifications are likeliest
-	// to need a correction.
-	instrumental: "latest.updated_at desc",
-};
+function escapeLike(value: string): string {
+	return value.replace(/([\\%_])/g, "\\$1");
+}
 
-export async function listLyricsReviews(
-	filter: LyricsFilter = "needs_review",
-): Promise<LyricsReviewRow[]> {
+export interface LyricsListParams {
+	filter: LyricsFilter;
+	q: string;
+	order: QueueOrder;
+	page: number;
+	pageSize: PageSize;
+	// Exact provider that produced the latest settle row (e.g. lrclib), or "all".
+	source: string;
+}
+
+function parseLyricsFilter(value: string | null): LyricsFilter {
+	return value === "instrumental" ? "instrumental" : "needs_review";
+}
+
+export function parseLyricsQuery(url: URL): LyricsListParams {
+	const filter = parseLyricsFilter(url.searchParams.get("filter"));
+	// Drain the not-found backlog oldest-first; surface the freshest instrumental
+	// (mis)classifications first — matches the historical per-bucket ordering.
+	const defaultOrder: QueueOrder = filter === "instrumental" ? "newest" : "oldest";
+	const base = parseQueueQuery(url, defaultOrder);
+	return {
+		filter,
+		q: base.q,
+		order: base.order,
+		page: base.page,
+		pageSize: base.pageSize,
+		source: url.searchParams.get("source")?.trim() || "all",
+	};
+}
+
+export async function lyricsReviewsPage(
+	url: URL,
+): Promise<PageResult<LyricsReviewRow>> {
+	const query = parseLyricsQuery(url);
+	const params: unknown[] = [];
+	const where: string[] = [FILTER_WHERE[query.filter], HAS_ENTITLED_ACTIVE_LIKER];
+	if (query.q) {
+		params.push(`%${escapeLike(query.q)}%`);
+		where.push(
+			`(s.name ilike $${params.length} or array_to_string(s.artists, ', ') ilike $${params.length})`,
+		);
+	}
+	if (query.source !== "all") {
+		params.push(query.source);
+		where.push(`latest.fetch_source = $${params.length}`);
+	}
+	const predicate = where.join(" and ");
+	const direction = query.order === "newest" ? "desc" : "asc";
+	const countRows = await read<{ total: string }>(
+		`select count(*) as total
+		 from public.song s
+		 join lateral (
+			select sl.fetch_status, sl.fetch_source, sl.updated_at
+			from public.song_lyrics sl
+			where sl.song_id = s.id
+			order by sl.updated_at desc
+			limit 1
+		 ) latest on true
+		 where ${predicate}`,
+		params,
+	);
+	const total = Number(countRows[0]?.total ?? 0);
+	const offset = (query.page - 1) * query.pageSize;
+	const rowParams = [...params, query.pageSize, offset];
 	const rows = await read(
 		`${QUEUE_SELECT}
-		 where ${FILTER_WHERE[filter]} and ${HAS_ENTITLED_ACTIVE_LIKER}
-		 order by ${FILTER_ORDER[filter]} limit 200`,
+		 where ${predicate}
+		 order by latest.updated_at ${direction}, s.id asc
+		 limit $${rowParams.length - 1} offset $${rowParams.length}`,
+		rowParams,
 	);
-	return rows.map(mapRow);
+	return {
+		rows: rows.map(mapRow),
+		total,
+		page: query.page,
+		pageSize: query.pageSize,
+	};
 }
 
 /** Counts the two cohorts the operator drains, scoped to entitled liked songs. */
