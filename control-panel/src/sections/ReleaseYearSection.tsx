@@ -321,6 +321,7 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 					onPageSizeChange={queue.setPageSize}
 					onReset={queue.reset}
 					refreshing={refreshing}
+					activeFilterCount={queue.activeFilterCount}
 					filters={
 						queue.tab === "set" ? (
 							<>
@@ -329,7 +330,6 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 									type="number"
 									aria-label="Year from"
 									placeholder="Year from"
-									style={{ maxWidth: 120 }}
 									value={queue.filters.yearFrom}
 									onChange={(e) => queue.setFilter("yearFrom", e.target.value)}
 								/>
@@ -338,7 +338,6 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 									type="number"
 									aria-label="Year to"
 									placeholder="Year to"
-									style={{ maxWidth: 120 }}
 									value={queue.filters.yearTo}
 									onChange={(e) => queue.setFilter("yearTo", e.target.value)}
 								/>

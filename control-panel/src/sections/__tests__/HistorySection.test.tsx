@@ -68,8 +68,9 @@ describe("HistorySection", () => {
 	it("renders today's summary counts and a run row", () => {
 		renderSection();
 		expect(screen.getByText("Commits today")).toBeTruthy();
-		// "grant-access" also appears as a filter <option>; the row cell is the extra.
-		expect(screen.getAllByText("grant-access").length).toBeGreaterThan(1);
+		// The action-type filter <option> now lives inside the collapsed Filters
+		// popover, so the run row's cell is the only "grant-access" on screen.
+		expect(screen.getByText("grant-access")).toBeTruthy();
 		expect(screen.getByText("Ada Lovelace")).toBeTruthy();
 	});
 

@@ -755,6 +755,7 @@ function AudioReviewsQueue({
 					onPageSizeChange={queue.setPageSize}
 					onReset={queue.reset}
 					refreshing={refreshing}
+					activeFilterCount={queue.activeFilterCount}
 					filters={
 						<>
 							<select
@@ -775,7 +776,6 @@ function AudioReviewsQueue({
 								max="1"
 								aria-label="Min match score"
 								placeholder="Min score"
-								style={{ maxWidth: 110 }}
 								value={queue.filters.minMatchScore}
 								onChange={(e) =>
 									queue.setFilter("minMatchScore", e.target.value)
@@ -787,7 +787,6 @@ function AudioReviewsQueue({
 								min="0"
 								aria-label="Max duration delta (s)"
 								placeholder="Max Δs"
-								style={{ maxWidth: 100 }}
 								value={queue.filters.maxDurationDelta}
 								onChange={(e) =>
 									queue.setFilter("maxDurationDelta", e.target.value)

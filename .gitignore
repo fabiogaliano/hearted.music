@@ -43,3 +43,6 @@ claudedocs/lyrics-eval-snapshots.json
 scripts/db/migrate/.target.env
 scripts/db/migrate/.cutover.env
 scripts/db/migrate/.runbook.local.md
+
+# control-panel local action-history store (bun:sqlite; recall/recovery only)
+control-panel/.data/

@@ -1,5 +1,7 @@
+import { DownloadSimpleIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Badge } from "./primitives";
 
 export interface DataTableColumn<T> {
 	key: string;
@@ -25,6 +27,7 @@ export interface DataTableProps<T> {
 	onPageSizeChange: (pageSize: 25 | 50 | 100) => void;
 	onReset: () => void;
 	filters?: ReactNode;
+	activeFilterCount?: number;
 	loading?: boolean;
 	refreshing?: boolean;
 	error?: string | null;
@@ -58,6 +61,7 @@ export function DataTable<T>({
 	onPageSizeChange,
 	onReset,
 	filters,
+	activeFilterCount = 0,
 	loading = false,
 	refreshing = false,
 	error = null,
@@ -70,6 +74,28 @@ export function DataTable<T>({
 	selection,
 }: DataTableProps<T>) {
 	const [searchInput, setSearchInput] = useState(search);
+	// One toolbar menu open at a time (Filters, Columns, or Export), so opening
+	// one closes the others instead of stacking two overlapping panels.
+	const [openMenu, setOpenMenu] = useState<
+		"filters" | "columns" | "export" | null
+	>(null);
+	const toolbarRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!openMenu) return;
+		function onPointerDown(event: PointerEvent) {
+			if (!toolbarRef.current?.contains(event.target as Node))
+				setOpenMenu(null);
+		}
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") setOpenMenu(null);
+		}
+		window.addEventListener("pointerdown", onPointerDown, true);
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			window.removeEventListener("pointerdown", onPointerDown, true);
+			window.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [openMenu]);
 	const [hiddenColumns, setHiddenColumns] = useState<ReadonlySet<string>>(
 		() => {
 			if (!tableId || typeof window === "undefined") return new Set();
@@ -138,24 +164,56 @@ export function DataTable<T>({
 						onChange={(event) => setSearchInput(event.target.value)}
 					/>
 				</label>
-				{filters && <div className="data-table-filters">{filters}</div>}
-				<div className="data-table-actions">
+				<div className="data-table-actions" ref={toolbarRef}>
+					{filters && (
+						<div className="table-menu filter-popover">
+							<button
+								type="button"
+								className="btn"
+								aria-expanded={openMenu === "filters"}
+								aria-haspopup="dialog"
+								onClick={() =>
+									setOpenMenu((m) => (m === "filters" ? null : "filters"))
+								}
+							>
+								Filters
+								{activeFilterCount > 0 && (
+									<Badge tone="accent">{activeFilterCount}</Badge>
+								)}
+							</button>
+							{openMenu === "filters" && (
+								<div className="filter-panel">{filters}</div>
+							)}
+						</div>
+					)}
 					{tableId && (
-						<details>
-							<summary className="btn">Columns</summary>
-							<div className="data-table-column-menu">
-								{columns.map((column) => (
-									<label key={column.key}>
-										<input
-											type="checkbox"
-											checked={!hiddenColumns.has(column.key)}
-											onChange={() => toggleColumn(column.key)}
-										/>
-										{column.header}
-									</label>
-								))}
-							</div>
-						</details>
+						<div className="table-menu">
+							<button
+								type="button"
+								className="btn"
+								aria-expanded={openMenu === "columns"}
+								aria-haspopup="menu"
+								onClick={() =>
+									setOpenMenu((m) => (m === "columns" ? null : "columns"))
+								}
+							>
+								Columns
+							</button>
+							{openMenu === "columns" && (
+								<div className="data-table-column-menu">
+									{columns.map((column) => (
+										<label key={column.key}>
+											<input
+												type="checkbox"
+												checked={!hiddenColumns.has(column.key)}
+												onChange={() => toggleColumn(column.key)}
+											/>
+											{column.header}
+										</label>
+									))}
+								</div>
+							)}
+						</div>
 					)}
 					{selection && selection.selectedIds.size > 0 && (
 						<span className="dim">{selection.selectedIds.size} selected</span>
@@ -171,14 +229,42 @@ export function DataTable<T>({
 					)}
 					{refreshing && <span className="refreshing">Refreshing…</span>}
 					{exportUrl && (
-						<>
-							<a className="btn" href={`${exportUrl}.csv`} download>
-								Export production CSV
-							</a>
-							<a className="btn" href={`${exportUrl}.json`} download>
-								Export production JSON
-							</a>
-						</>
+						<div className="table-menu export-menu">
+							<button
+								type="button"
+								className="icon-btn"
+								title="Export production data"
+								aria-label="Export production data"
+								aria-expanded={openMenu === "export"}
+								aria-haspopup="menu"
+								onClick={() =>
+									setOpenMenu((m) => (m === "export" ? null : "export"))
+								}
+							>
+								<DownloadSimpleIcon size={16} weight="bold" />
+							</button>
+							{openMenu === "export" && (
+								<div className="table-menu-panel" role="menu">
+									<span className="table-menu-label">Export production</span>
+									<a
+										className="table-menu-item"
+										role="menuitem"
+										href={`${exportUrl}.csv`}
+										download
+									>
+										CSV
+									</a>
+									<a
+										className="table-menu-item"
+										role="menuitem"
+										href={`${exportUrl}.json`}
+										download
+									>
+										JSON
+									</a>
+								</div>
+							)}
+						</div>
 					)}
 					<button type="button" className="btn" onClick={onReset}>
 						Reset

@@ -65,6 +65,9 @@ export interface QueueState<Tab extends string, FilterKey extends string> {
 	setFilter: (key: FilterKey, value: string) => void;
 	setFocusIndex: (index: number) => void;
 	reset: () => void;
+	// Count of section-specific filters currently differing from their default,
+	// so the toolbar can badge the Filters button without each section re-deriving it.
+	activeFilterCount: number;
 	// Shared list params for the fetch URL. The section appends the tab under
 	// whatever name its endpoint expects (filter/status), so this stays generic.
 	listParams: URLSearchParams;
@@ -241,6 +244,10 @@ export function useQueueState<
 		return params;
 	}, [url, filterKeys]);
 
+	const activeFilterCount = (filterKeys ?? []).filter(
+		(key) => url.filters[key] !== (filterDefaults?.[key] ?? "all"),
+	).length;
+
 	return {
 		tab: url.tab,
 		q: url.q,
@@ -250,6 +257,7 @@ export function useQueueState<
 		mode,
 		filters: url.filters,
 		focusIndex,
+		activeFilterCount,
 		setTab,
 		setSearch,
 		setOrder,

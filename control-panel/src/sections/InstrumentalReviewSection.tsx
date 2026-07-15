@@ -390,6 +390,7 @@ export function InstrumentalReviewSection({
 					onPageSizeChange={queue.setPageSize}
 					onReset={queue.reset}
 					refreshing={refreshing}
+					activeFilterCount={queue.activeFilterCount}
 					filters={
 						<>
 							<select
@@ -410,7 +411,6 @@ export function InstrumentalReviewSection({
 								max="1"
 								aria-label="Min instrumentalness"
 								placeholder="Min instr."
-								style={{ maxWidth: 120 }}
 								value={queue.filters.minInstrumentalness}
 								onChange={(e) =>
 									queue.setFilter("minInstrumentalness", e.target.value)

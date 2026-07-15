@@ -154,7 +154,6 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		refreshKey,
 	);
 	const [table, setTable] = useState<TableState>(readTableState);
-	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
 		new Set(),
 	);
@@ -370,117 +369,113 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 					page={list.data?.page ?? table.page}
 					pageSize={list.data?.pageSize ?? table.pageSize}
 					search={table.search}
+					activeFilterCount={activeFilterCount}
 					filters={
 						<>
-							<button
-								type="button"
-								className="btn"
-								aria-expanded={filtersOpen}
-								onClick={() => setFiltersOpen((open) => !open)}
-							>
-								Filters
-								{activeFilterCount > 0 && (
-									<Badge tone="accent">{activeFilterCount}</Badge>
-								)}
-							</button>
-							{filtersOpen && (
-								<>
-									<select
-										className="select"
-										aria-label="Plan"
-										value={table.plan}
-										onChange={(event) =>
-											updateTable({ plan: event.target.value, page: 1 })
-										}
-									>
-										{PLAN_OPTIONS.map((o) => (
-											<option key={o.value} value={o.value}>
-												{o.label}
-											</option>
-										))}
-									</select>
-									<select
-										className="select"
-										aria-label="Access"
-										value={table.access}
-										onChange={(event) =>
-											updateTable({
-												access: enumValue<TableState["access"]>(
-													event.target.value,
-													["all", "unlimited", "limited"],
-													"all",
-												),
-												page: 1,
-											})
-										}
-									>
-										<option value="all">All access</option>
-										<option value="unlimited">Unlimited</option>
-										<option value="limited">Limited</option>
-									</select>
-									<select
-										className="select"
-										aria-label="Library"
-										value={table.library}
-										onChange={(event) =>
-											updateTable({
-												library: enumValue<TableState["library"]>(
-													event.target.value,
-													["all", "synced", "none"],
-													"all",
-												),
-												page: 1,
-											})
-										}
-									>
-										<option value="all">All libraries</option>
-										<option value="synced">Synced</option>
-										<option value="none">No library</option>
-									</select>
-									<select
-										className="select"
-										aria-label="Onboarding"
-										value={table.onboarding}
-										onChange={(event) =>
-											updateTable({
-												onboarding: enumValue<TableState["onboarding"]>(
-													event.target.value,
-													["all", "complete", "incomplete", "not_started"],
-													"all",
-												),
-												page: 1,
-											})
-										}
-									>
-										<option value="all">All onboarding</option>
-										<option value="complete">Complete</option>
-										<option value="incomplete">Incomplete</option>
-										<option value="not_started">Not started</option>
-									</select>
-									<select
-										className="select"
-										aria-label="Last seen"
-										value={table.lastSeen}
-										onChange={(event) =>
-											updateTable({
-												lastSeen: enumValue<TableState["lastSeen"]>(
-													event.target.value,
-													["all", "24h", "7d", "30d", "inactive_30d", "never"],
-													"all",
-												),
-												page: 1,
-											})
-										}
-									>
-										<option value="all">Any activity</option>
-										<option value="24h">Last 24h</option>
-										<option value="7d">Last 7d</option>
-										<option value="30d">Last 30d</option>
-										<option value="inactive_30d">Inactive 30d</option>
-										<option value="never">Never seen</option>
-									</select>
-								</>
-							)}
+							<label className="filter-field">
+								<span>Plan</span>
+								<select
+									className="select"
+									value={table.plan}
+									onChange={(event) =>
+										updateTable({ plan: event.target.value, page: 1 })
+									}
+								>
+									{PLAN_OPTIONS.map((o) => (
+										<option key={o.value} value={o.value}>
+											{o.label}
+										</option>
+									))}
+								</select>
+							</label>
+							<label className="filter-field">
+								<span>Access</span>
+								<select
+									className="select"
+									value={table.access}
+									onChange={(event) =>
+										updateTable({
+											access: enumValue<TableState["access"]>(
+												event.target.value,
+												["all", "unlimited", "limited"],
+												"all",
+											),
+											page: 1,
+										})
+									}
+								>
+									<option value="all">All access</option>
+									<option value="unlimited">Unlimited</option>
+									<option value="limited">Limited</option>
+								</select>
+							</label>
+							<label className="filter-field">
+								<span>Library</span>
+								<select
+									className="select"
+									value={table.library}
+									onChange={(event) =>
+										updateTable({
+											library: enumValue<TableState["library"]>(
+												event.target.value,
+												["all", "synced", "none"],
+												"all",
+											),
+											page: 1,
+										})
+									}
+								>
+									<option value="all">All libraries</option>
+									<option value="synced">Synced</option>
+									<option value="none">No library</option>
+								</select>
+							</label>
+							<label className="filter-field">
+								<span>Onboarding</span>
+								<select
+									className="select"
+									value={table.onboarding}
+									onChange={(event) =>
+										updateTable({
+											onboarding: enumValue<TableState["onboarding"]>(
+												event.target.value,
+												["all", "complete", "incomplete", "not_started"],
+												"all",
+											),
+											page: 1,
+										})
+									}
+								>
+									<option value="all">All onboarding</option>
+									<option value="complete">Complete</option>
+									<option value="incomplete">Incomplete</option>
+									<option value="not_started">Not started</option>
+								</select>
+							</label>
+							<label className="filter-field">
+								<span>Activity</span>
+								<select
+									className="select"
+									value={table.lastSeen}
+									onChange={(event) =>
+										updateTable({
+											lastSeen: enumValue<TableState["lastSeen"]>(
+												event.target.value,
+												["all", "24h", "7d", "30d", "inactive_30d", "never"],
+												"all",
+											),
+											page: 1,
+										})
+									}
+								>
+									<option value="all">Any activity</option>
+									<option value="24h">Last 24h</option>
+									<option value="7d">Last 7d</option>
+									<option value="30d">Last 30d</option>
+									<option value="inactive_30d">Inactive 30d</option>
+									<option value="never">Never seen</option>
+								</select>
+							</label>
 						</>
 					}
 					hasActiveFilters={activeFilterCount > 0}

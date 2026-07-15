@@ -1,7 +1,8 @@
 import type { ReactNode, Ref } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { QueueMode, QueueOrder } from "../lib/queue-state";
 import type { PageSize } from "../lib/types";
+import { Badge } from "./primitives";
 
 export interface QueueToolbarProps {
 	searchRef?: Ref<HTMLInputElement>;
@@ -16,6 +17,7 @@ export interface QueueToolbarProps {
 	onReset: () => void;
 	refreshing?: boolean;
 	filters?: ReactNode;
+	activeFilterCount?: number;
 	total: number;
 	page: number;
 	// Present → focus mode: card-by-card position across the whole result set.
@@ -45,6 +47,7 @@ export function QueueToolbar({
 	onReset,
 	refreshing = false,
 	filters,
+	activeFilterCount = 0,
 	total,
 	page,
 	focusIndex,
@@ -54,12 +57,30 @@ export function QueueToolbar({
 	hasNext,
 }: QueueToolbarProps) {
 	const [searchInput, setSearchInput] = useState(search);
+	const [filtersOpen, setFiltersOpen] = useState(false);
+	const toolbarRef = useRef<HTMLDivElement>(null);
 	useEffect(() => setSearchInput(search), [search]);
 	useEffect(() => {
 		if (searchInput === search) return;
 		const timer = window.setTimeout(() => onSearchChange(searchInput), 250);
 		return () => window.clearTimeout(timer);
 	}, [onSearchChange, search, searchInput]);
+	useEffect(() => {
+		if (!filtersOpen) return;
+		function onPointerDown(event: PointerEvent) {
+			if (!toolbarRef.current?.contains(event.target as Node))
+				setFiltersOpen(false);
+		}
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key === "Escape") setFiltersOpen(false);
+		}
+		window.addEventListener("pointerdown", onPointerDown, true);
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			window.removeEventListener("pointerdown", onPointerDown, true);
+			window.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, [filtersOpen]);
 
 	const isFocus = focusIndex !== undefined;
 	const position =
@@ -83,8 +104,24 @@ export function QueueToolbar({
 						onChange={(event) => setSearchInput(event.target.value)}
 					/>
 				</label>
-				{filters && <div className="data-table-filters">{filters}</div>}
-				<div className="data-table-actions">
+				<div className="data-table-actions" ref={toolbarRef}>
+					{filters && (
+						<div className="table-menu filter-popover">
+							<button
+								type="button"
+								className="btn"
+								aria-expanded={filtersOpen}
+								aria-haspopup="dialog"
+								onClick={() => setFiltersOpen((open) => !open)}
+							>
+								Filters
+								{activeFilterCount > 0 && (
+									<Badge tone="accent">{activeFilterCount}</Badge>
+								)}
+							</button>
+							{filtersOpen && <div className="filter-panel">{filters}</div>}
+						</div>
+					)}
 					<select
 						className="select"
 						aria-label="Order"

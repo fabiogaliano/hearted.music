@@ -11,6 +11,9 @@
 	--surface: #0c0d0e;
 	--surface-raised: #111213;
 	--surface-hover: #16171a;
+	/* Floating menus/popovers sit two steps above the app background so they
+	   read as detached layers rather than blending into the page. */
+	--surface-overlay: #1c1e23;
 
 	--border: rgba(255, 255, 255, 0.08);
 	--border-strong: rgba(255, 255, 255, 0.13);
@@ -791,10 +794,10 @@ body {
 	list-style: none;
 	max-height: 260px;
 	overflow-y: auto;
-	background: var(--surface-raised);
+	background: var(--surface-overlay);
 	border: 1px solid var(--border-strong);
 	border-radius: var(--radius-sm);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .picker-empty {
@@ -1112,7 +1115,11 @@ body {
 /* ── Entrance ───────────────────────────────────────────────────────────── */
 
 .enter {
-	animation: fade-up 240ms var(--ease) both;
+	/* `backwards` (not `both`): apply the from-state before the run to avoid an
+	   opacity flash, but revert afterward so no residual `transform` lingers.
+	   A persistent transform makes every card its own stacking context, which
+	   traps popover `z-index` inside the card and lets neighbours paint over it. */
+	animation: fade-up 240ms var(--ease) backwards;
 }
 
 @keyframes fade-up {
@@ -1661,12 +1668,12 @@ body {
 	top: calc(100% + 6px);
 	right: 0;
 	width: 280px;
-	background: var(--surface-raised);
-	border: 1px solid var(--border);
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
 	border-radius: var(--radius);
 	padding: 12px;
 	z-index: 50;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .saved-views-save {
@@ -1723,12 +1730,12 @@ body {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	background: var(--surface-raised);
-	border: 1px solid var(--border);
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
 	border-radius: var(--radius);
 	padding: 12px;
 	z-index: 50;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .threshold-field {
@@ -1791,20 +1798,94 @@ body {
 	margin-left: auto;
 }
 
-.data-table-column-menu {
+/* Popover-anchoring wrapper for the toolbar menus (Filters, Columns, Export).
+   `position: relative` scopes each menu panel to its own trigger. */
+.table-menu { position: relative; }
+
+.data-table-column-menu,
+.table-menu-panel {
 	position: absolute;
-	margin-top: 6px;
+	top: calc(100% + 6px);
+	right: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-	background: var(--surface-raised);
-	border: 1px solid var(--border);
+	gap: 4px;
+	min-width: 160px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
 	border-radius: var(--radius);
-	padding: 10px 12px;
+	padding: 8px;
 	z-index: 50;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 	font-size: 12px;
 	color: var(--fg-muted);
+}
+
+.data-table-column-menu { padding: 10px 12px; gap: 6px; }
+
+.table-menu-label {
+	padding: 2px 8px 4px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--fg-muted);
+}
+
+.table-menu-item {
+	display: flex;
+	align-items: center;
+	padding: 6px 8px;
+	border-radius: var(--radius-sm);
+	font-size: 13px;
+	color: var(--fg);
+	text-decoration: none;
+	transition: background 120ms ease;
+}
+
+.table-menu-item:hover { background: var(--surface-hover); }
+
+/* ── Table filter popover ───────────────────────────────────────────────── */
+
+.filter-popover { position: relative; }
+
+.filter-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	width: 260px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 12px;
+	z-index: 50;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.filter-field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.filter-field > span {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--fg-muted);
+}
+
+/* Sections that pass raw controls (not `.filter-field`) still stack full-width
+   inside the popover instead of overflowing the fixed-width panel. */
+.filter-panel .select,
+.filter-panel .input,
+.filter-field .select,
+.filter-field .input {
+	width: 100%;
 }
 
 .data-table-skeleton {
