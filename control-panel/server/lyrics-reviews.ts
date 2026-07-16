@@ -49,6 +49,10 @@ export interface LyricsReviewRow {
 	fetchStatus: "not_found" | "instrumental";
 	fetchSource: string | null;
 	fetchUpdatedAt: string;
+	// Best-effort playable source from the song's audio-feature match, so the
+	// review can embed a player. Null when the song never went through audio
+	// matching — the UI falls back to a YouTube search link.
+	youtubeVideoId: string | null;
 }
 
 const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -66,6 +70,8 @@ export function mapRow(r: Record<string, unknown>): LyricsReviewRow {
 		fetchStatus: r.fetch_status as LyricsReviewRow["fetchStatus"],
 		fetchSource: r.fetch_source == null ? null : String(r.fetch_source),
 		fetchUpdatedAt: String(r.fetch_updated_at),
+		youtubeVideoId:
+			r.youtube_video_id == null ? null : String(r.youtube_video_id),
 	};
 }
 
@@ -82,7 +88,8 @@ const QUEUE_SELECT = `
 		array_to_string(s.artists, ', ') as artist_label,
 		s.album_name, s.image_url, s.duration_ms,
 		latest.fetch_status, latest.fetch_source,
-		latest.updated_at as fetch_updated_at
+		latest.updated_at as fetch_updated_at,
+		afsr.youtube_video_id
 	from public.song s
 	join lateral (
 		select sl.fetch_status, sl.fetch_source, sl.updated_at
@@ -91,6 +98,13 @@ const QUEUE_SELECT = `
 		order by sl.updated_at desc
 		limit 1
 	) latest on true
+	left join lateral (
+		select r.youtube_video_id
+		from public.audio_feature_source_review r
+		where r.song_id = s.id and r.youtube_video_id is not null
+		order by r.created_at desc
+		limit 1
+	) afsr on true
 `;
 
 // Mirrors get_entitled_likers_of_song / the selector's entitlement predicate:

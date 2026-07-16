@@ -40,12 +40,13 @@ describe("migrations", () => {
 		const versions = db.all<{ version: number }>(
 			"select version from schema_migration order by version",
 		);
-		expect(versions.map((v) => Number(v.version))).toEqual([1, 2, 3]);
+		expect(versions.map((v) => Number(v.version))).toEqual([1, 2, 3, 4]);
 		// All tables exist and are queryable.
 		expect(db.all("select * from action_run")).toEqual([]);
 		expect(db.all("select * from operation_preview")).toEqual([]);
 		expect(db.all("select * from batch_run")).toEqual([]);
 		expect(db.all("select * from batch_target")).toEqual([]);
+		expect(db.all("select * from release_year_candidate")).toEqual([]);
 		db.close();
 	});
 });

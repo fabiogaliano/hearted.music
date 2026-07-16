@@ -210,10 +210,9 @@ export function EnrichmentSection({ refreshKey }: { refreshKey: number }) {
 		<div className="grid">
 			<Card span={12}>
 				<p className="muted-text">
-					Coverage is measured against <strong>entitled songs only</strong> —
-					songs an account has unlocked, or all liked songs when the account has
-					unlimited access. Enrichment never runs on locked songs, so the rest
-					of the library is excluded by design.
+					Coverage counts <strong>entitled songs only</strong> (unlocked, or the
+					whole library on unlimited access) — enrichment never runs on locked
+					songs.
 				</p>
 			</Card>
 

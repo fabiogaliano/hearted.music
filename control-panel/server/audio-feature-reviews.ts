@@ -134,7 +134,8 @@ function asStringArray(v: unknown): string[] {
 	return [];
 }
 
-function asNumberArray(v: unknown): number[] {
+// Exported for instrumental-audio.ts, which reads the same numeric[] columns.
+export function asNumberArray(v: unknown): number[] {
 	if (Array.isArray(v)) return v.map((x) => Number(x));
 	if (typeof v === "string") return parsePgArrayLiteral(v).map(Number);
 	return [];

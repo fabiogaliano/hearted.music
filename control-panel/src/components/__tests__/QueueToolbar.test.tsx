@@ -49,7 +49,7 @@ describe("QueueToolbar", () => {
 		try {
 			const onSearchChange = vi.fn();
 			renderToolbar({ onSearchChange });
-			fireEvent.change(screen.getByPlaceholderText(/search title or artist/i), {
+			fireEvent.change(screen.getByPlaceholderText(/search/i), {
 				target: { value: "oasis" },
 			});
 			expect(onSearchChange).not.toHaveBeenCalled();

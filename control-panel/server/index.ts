@@ -26,6 +26,7 @@ import {
 	renderStyledEmail,
 	sendStyledEmail,
 } from "./email";
+import { audioSourcesForInstrumentalReview } from "./instrumental-audio";
 import {
 	approveInstrumentalReview,
 	countPendingInstrumentalReviews,
@@ -33,6 +34,7 @@ import {
 	rejectInstrumentalReview,
 } from "./instrumental-reviews";
 import { accountsByLikedExport, accountsByLikedPage } from "./library-list";
+import { lyricsCandidatesForSong } from "./lyrics-fetch";
 import {
 	countLyricsBuckets,
 	lyricsReviewsPage,
@@ -90,6 +92,11 @@ import {
 	initLocalStore,
 	isLocalStoreReady,
 } from "./local-store/store";
+import {
+	releaseYearGroupsPage,
+	setReleaseYearForAlbum,
+	yearCandidatesForAlbums,
+} from "./release-year-groups";
 import {
 	countReleaseYearBuckets,
 	releaseYearReviewsPage,
@@ -751,6 +758,61 @@ const server = Bun.serve({
 				);
 			}
 
+			if (path === "/api/release-year-reviews/groups" && req.method === "GET") {
+				const [page, counts] = await Promise.all([
+					releaseYearGroupsPage(url),
+					countReleaseYearBuckets(),
+				]);
+				return json({
+					...page,
+					pendingTotal: counts.pending,
+					unresolvedTotal: counts.unresolved,
+				});
+			}
+
+			// External year lookup for the albums on screen. Read-only (iTunes/Deezer
+			// + local cache), so no recordAction audit entry — like the lyrics finder.
+			if (
+				path === "/api/release-year-reviews/candidates" &&
+				req.method === "POST"
+			) {
+				const body = (await req.json().catch(() => ({}))) as {
+					albumIds?: unknown;
+				};
+				return json(await yearCandidatesForAlbums(body.albumIds));
+			}
+
+			const setAlbumYearMatch = path.match(
+				/^\/api\/release-year-reviews\/album\/([A-Za-z0-9]+)$/,
+			);
+			if (setAlbumYearMatch && req.method === "POST") {
+				const albumId = setAlbumYearMatch[1]!;
+				const body = (await req.json().catch(() => ({}))) as {
+					year?: unknown;
+				};
+				return json(
+					await recordAction({
+						actionType: "release-year-set-album",
+						mode: "commit",
+						targetType: "album",
+						targetId: albumId,
+						inputSummary: {
+							year: typeof body.year === "number" ? body.year : String(body.year),
+						},
+						run: () => setReleaseYearForAlbum(albumId, body.year),
+						summarize: (r) => ({
+							// Every affected song had a null year (the update only touches
+							// null rows), so there is no previousYear and no revert path.
+							result: {
+								releaseYear: r.releaseYear,
+								songCount: r.songCount,
+							},
+							targetLabel: r.albumName,
+						}),
+					}),
+				);
+			}
+
 			if (path === "/api/release-year-reviews" && req.method === "GET") {
 				const [page, counts] = await Promise.all([
 					releaseYearReviewsPage(url),
@@ -871,6 +933,21 @@ const server = Bun.serve({
 				});
 			}
 
+			// On-demand lyrics lookup so the operator never leaves the panel to find
+			// lyrics. Read-only (queries LRCLIB), so no recordAction audit entry.
+			const lyricsFetchMatch = path.match(
+				/^\/api\/lyrics-reviews\/([0-9a-fA-F-]+)\/fetch-candidates$/,
+			);
+			if (lyricsFetchMatch && req.method === "GET") {
+				const id = lyricsFetchMatch[1]!;
+				return json(
+					await lyricsCandidatesForSong(id, {
+						track: url.searchParams.get("track") ?? undefined,
+						artist: url.searchParams.get("artist") ?? undefined,
+					}),
+				);
+			}
+
 			const lyricsMatch = path.match(
 				/^\/api\/lyrics-reviews\/([0-9a-fA-F-]+)\/lyrics$/,
 			);
@@ -919,6 +996,16 @@ const server = Bun.serve({
 					countPendingInstrumentalReviews(),
 				]);
 				return json({ ...page, pendingTotal });
+			}
+
+			// On-demand playable sources so the operator can LISTEN to the guess
+			// without leaving the panel. Read-only (stored match or yt-dlp search),
+			// so no recordAction audit entry.
+			const instrAudioMatch = path.match(
+				/^\/api\/instrumental-reviews\/([0-9a-fA-F-]+)\/audio-sources$/,
+			);
+			if (instrAudioMatch && req.method === "GET") {
+				return json(await audioSourcesForInstrumentalReview(instrAudioMatch[1]!));
 			}
 
 			const approveInstrMatch = path.match(

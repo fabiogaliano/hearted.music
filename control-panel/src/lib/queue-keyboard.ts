@@ -5,8 +5,12 @@ export interface QueueKeyHandlers {
 	onNext?: () => void;
 	onPrev?: () => void;
 	onApprove?: () => void;
+	onReject?: () => void;
 	onSearch?: () => void;
 	onEscape?: () => void;
+	// Space toggles the embedded player; separate from the others because it needs
+	// to preventDefault (Space would otherwise scroll the page).
+	onPlayPause?: () => void;
 }
 
 function isTypingTarget(target: EventTarget | null): boolean {
@@ -62,6 +66,18 @@ export function useQueueKeyboard(
 				case "a":
 				case "A":
 					ref.current.onApprove?.();
+					break;
+				case "r":
+				case "R":
+					ref.current.onReject?.();
+					break;
+				case " ":
+					// Only claim Space when a player is actually wired up, so queues
+					// without one keep native scroll behavior.
+					if (ref.current.onPlayPause) {
+						event.preventDefault();
+						ref.current.onPlayPause();
+					}
 					break;
 				case "/":
 					event.preventDefault();

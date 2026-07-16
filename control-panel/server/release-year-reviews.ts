@@ -79,7 +79,7 @@ const HAS_ACTIVE_LIKER = `exists (
 	where ls.song_id = s.id and ls.unliked_at is null
 )`;
 
-const FILTER_WHERE: Record<ReleaseYearFilter, string> = {
+export const FILTER_WHERE: Record<ReleaseYearFilter, string> = {
 	// Already checked but Spotify had no year, OR outside the liked-song
 	// auto-lookup path entirely (playlist-only / no current liker).
 	unresolved: `s.release_year is null and (s.release_year_checked_at is not null or not ${HAS_ACTIVE_LIKER})`,

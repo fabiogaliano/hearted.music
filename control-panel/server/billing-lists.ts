@@ -47,7 +47,7 @@ export async function grantsPage(url: URL): Promise<PageResult<GrantRow>> {
 	const count = await read<{ total: string }>(`select count(*) as total ${from} where ${predicate}`, params);
 	const total = Number(count[0]?.total ?? 0);
 	const rowParams = [...params, query.pageSize, (query.page - 1) * query.pageSize];
-	const rows = await read(`select g.id, g.account_id, coalesce(a.display_name, a.email, a.handle, a.id::text) as account_label, g.origin, to_char(g.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as created_at, to_char(g.applied_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as applied_at, g.requested_by, g.note ${from} where ${predicate} order by ${GRANT_SQL[query.sort]} ${query.direction} nulls last, g.id asc limit $${rowParams.length - 1} offset $${rowParams.length}`, rowParams);
+	const rows = await read(`select g.account_id as id, g.account_id, coalesce(a.display_name, a.email, a.handle, a.id::text) as account_label, g.origin, to_char(g.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as created_at, to_char(g.applied_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as applied_at, g.requested_by, g.note ${from} where ${predicate} order by ${GRANT_SQL[query.sort]} ${query.direction} nulls last, g.account_id asc limit $${rowParams.length - 1} offset $${rowParams.length}`, rowParams);
 	return { rows: rows.map((r) => ({ id: String(r.id), accountId: String(r.account_id), accountLabel: String(r.account_label), origin: String(r.origin), createdAt: String(r.created_at), appliedAt: r.applied_at ? String(r.applied_at) : null, requestedBy: r.requested_by ? String(r.requested_by) : null, note: r.note ? String(r.note) : null, status: r.applied_at ? "applied" : "pending" })), total, page: query.page, pageSize: query.pageSize };
 }
 

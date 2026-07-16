@@ -101,6 +101,16 @@ const MIGRATIONS: readonly Migration[] = [
 			create index batch_target_batch_status_idx on batch_target (batch_id, status);
 		`,
 	},
+	{
+		version: 4,
+		up: `
+			create table release_year_candidate (
+				album_id text primary key,
+				fetched_at text not null,
+				candidates_json text not null
+			);
+		`,
+	},
 ];
 
 export function applyMigrations(db: SqliteDriver): void {

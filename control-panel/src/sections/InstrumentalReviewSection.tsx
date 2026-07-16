@@ -1,13 +1,20 @@
 import {
+	ArrowSquareOutIcon,
 	CheckCircleIcon,
-	MusicNotesIcon,
+	InfoIcon,
+	MagnifyingGlassIcon,
 	TrashIcon,
 	WaveformIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+	AudioPlayer,
+	type AudioPlayerHandle,
+	type AudioSource,
+} from "../components/AudioPlayer";
 import { BatchLauncher } from "../components/BatchLauncher";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { Badge, Card, ErrorState, Loading } from "../components/primitives";
+import { Badge, ErrorState, Loading } from "../components/primitives";
 import { QueueToolbar } from "../components/QueueToolbar";
 import { postJson, useApi } from "../lib/api";
 import { useQueueKeyboard } from "../lib/queue-keyboard";
@@ -30,6 +37,22 @@ interface InstrumentalReviewRow {
 	durationMs: number | null;
 }
 
+// Mirror of server/instrumental-audio.ts InstrumentalAudioResult.
+interface InstrumentalAudioSourceRow {
+	videoId: string;
+	url: string;
+	title: string | null;
+	channel: string | null;
+	durationSeconds: number | null;
+}
+
+interface InstrumentalAudioResult {
+	origin: "match" | "search";
+	searchQuery: string | null;
+	clipStarts: number[];
+	sources: InstrumentalAudioSourceRow[];
+}
+
 type Status = "pending" | "approved" | "rejected";
 type FilterKey = "signal" | "minInstrumentalness";
 
@@ -37,128 +60,431 @@ interface InstrumentalPage extends PageResult<InstrumentalReviewRow> {
 	pendingTotal: number;
 }
 
-// Plain-language reason the classifier called this instrumental, so the operator
-// can sanity-check the guess at a glance.
-function reasonText(r: InstrumentalReviewRow): string {
-	if (r.signal === "genre") {
-		return r.matchedGenre
-			? `Instrumental genre: ${r.matchedGenre}`
-			: "Instrumental genre";
-	}
-	return r.instrumentalness != null
-		? `Instrumentalness ${r.instrumentalness.toFixed(2)}`
-		: "High instrumentalness";
+// The shared duration() helper collapses to coarse units ("4m"); the operator is
+// sanity-checking a specific track, so show exact m:ss like the audio queue.
+function clock(seconds: number | null): string {
+	if (seconds == null) return "—";
+	const total = Math.round(seconds);
+	const m = Math.floor(total / 60);
+	const s = total % 60;
+	return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-const STATUS_BADGE: Record<
-	Status,
-	{ tone: "warning" | "success" | "danger"; label: string }
-> = {
-	pending: { tone: "warning", label: "pending · live" },
-	approved: { tone: "success", label: "approved" },
-	rejected: { tone: "danger", label: "rejected" },
-};
+// The classifier's claim as the card verdict. Unlike the audio queue's match
+// score, this isn't a quality judgement — the tone tracks the review status:
+// pending guesses read warning ("check me"), history reads by its outcome.
+function verdict(r: InstrumentalReviewRow): {
+	num: number | null;
+	label: string;
+	tone: "" | "warning" | "danger";
+} {
+	const tone =
+		r.status === "pending"
+			? "warning"
+			: r.status === "rejected"
+				? "danger"
+				: "";
+	if (r.signal === "genre") {
+		return {
+			num: null,
+			label: r.matchedGenre ? `genre: ${r.matchedGenre}` : "genre",
+			tone,
+		};
+	}
+	return {
+		num:
+			r.instrumentalness != null ? Math.round(r.instrumentalness * 100) : null,
+		label: "instrumentalness",
+		tone,
+	};
+}
+
+// The duration gap between the Spotify song and a YouTube result — a result
+// minutes off is almost certainly the wrong video, so tint it as a warning.
+function durationDelta(spotifyMs: number | null, ytSec: number | null) {
+	if (spotifyMs == null || ytSec == null) return null;
+	const delta = Math.round(Math.abs(spotifyMs / 1000 - ytSec));
+	const tone = delta <= 2 ? "success" : delta <= 8 ? "warning" : "danger";
+	return { delta, tone };
+}
+
+// Pre-built YouTube search — the escape hatch when the panel found nothing
+// playable, so the operator lands on results for this exact song in one click.
+function youtubeSearchUrl(r: InstrumentalReviewRow): string {
+	return `https://www.youtube.com/results?search_query=${encodeURIComponent(
+		`${r.artistLabel} ${r.songName}`.trim(),
+	)}`;
+}
+
+// "Artists — Song", song title in the editorial serif italic; same identity
+// treatment as the audio queue so the two review surfaces read as one system.
+function IdentityLine({
+	artistLabel,
+	songName,
+}: {
+	artistLabel: string;
+	songName: string;
+}) {
+	return (
+		<span className="rv-ident">
+			{artistLabel && `${artistLabel} — `}
+			<span className="serif">{songName || "Unknown song"}</span>
+		</span>
+	);
+}
+
+function VerdictPill({
+	r,
+	size = "lg",
+}: {
+	r: InstrumentalReviewRow;
+	size?: "lg" | "sm";
+}) {
+	const v = verdict(r);
+	return (
+		<span className={`rv-verdict ${v.tone} ${size}`}>
+			{v.num != null && (
+				<span className="rv-verdict-num serif upright">{v.num}</span>
+			)}
+			<span className="rv-verdict-label">{v.label}</span>
+		</span>
+	);
+}
+
+function SongFace({
+	r,
+	size = "lg",
+}: {
+	r: InstrumentalReviewRow;
+	size?: "lg" | "sm";
+}) {
+	return (
+		<div className={`rv-panel sp ${size}`}>
+			{r.imageUrl ? (
+				<img className="rv-face-art" src={r.imageUrl} alt="" loading="lazy" />
+			) : (
+				<span className="rv-face-art placeholder" />
+			)}
+			<div className="rv-face-body">
+				<div className="rv-eye">
+					<span className="rv-dot sp" />
+					<span className="rv-tag">Spotify song</span>
+				</div>
+				<div className="rv-ptitle">{r.songName || "Unknown song"}</div>
+				<div className="rv-psub">
+					{[r.artistLabel, r.albumName].filter(Boolean).join(" · ") || "—"}
+					{size === "sm" && r.durationMs != null && (
+						<span className="num"> · {clock(r.durationMs / 1000)}</span>
+					)}
+				</div>
+				{size === "lg" && r.durationMs != null && (
+					<div className="rv-pclock num">{clock(r.durationMs / 1000)}</div>
+				)}
+			</div>
+		</div>
+	);
+}
+
+// The listen face — what the ear-check plays. Shows the source the operator
+// picked in the filmstrip (found via the audio pipeline's stored match or a live
+// search), with the raw YouTube search as the always-there escape hatch.
+function ListenFace({
+	r,
+	audio,
+	activeIndex,
+	size = "lg",
+}: {
+	r: InstrumentalReviewRow;
+	audio: { data: InstrumentalAudioResult | null; error: string | null };
+	activeIndex: number;
+	size?: "lg" | "sm";
+}) {
+	const top =
+		audio.data?.sources[activeIndex] ?? audio.data?.sources[0] ?? null;
+	const originLabel =
+		audio.data == null
+			? "looking up"
+			: audio.data.origin === "match"
+				? "pipeline match"
+				: "via search";
+	return (
+		<div className={`rv-panel yt ${size}`}>
+			<span className="rv-face-art placeholder" />
+			<div className="rv-face-body">
+				<div className="rv-eye">
+					<span className="rv-dot yt" />
+					<span className="rv-tag">YouTube audio · {originLabel}</span>
+				</div>
+				{audio.error ? (
+					<>
+						<div className="rv-ptitle">Lookup failed</div>
+						<div className="rv-psub">{audio.error}</div>
+					</>
+				) : audio.data == null ? (
+					<>
+						<div className="rv-ptitle">Finding audio…</div>
+						<div className="rv-psub">Searching YouTube for this song</div>
+					</>
+				) : top == null ? (
+					<>
+						<div className="rv-ptitle">No results</div>
+						<div className="rv-psub">Nothing playable came back</div>
+					</>
+				) : (
+					<>
+						<div className="rv-ptitle">{top.title ?? "(no title)"}</div>
+						<div className="rv-psub">
+							{top.channel ?? "—"}
+							{top.durationSeconds != null && (
+								<span className="num"> · {clock(top.durationSeconds)}</span>
+							)}
+						</div>
+					</>
+				)}
+				{size === "lg" &&
+					(top ? (
+						<a
+							href={top.url}
+							target="_blank"
+							rel="noreferrer"
+							className="rv-plink"
+						>
+							open on YouTube <ArrowSquareOutIcon size={11} weight="bold" />
+						</a>
+					) : (
+						<a
+							href={youtubeSearchUrl(r)}
+							target="_blank"
+							rel="noreferrer"
+							className="rv-plink"
+						>
+							search on YouTube <MagnifyingGlassIcon size={11} weight="bold" />
+						</a>
+					))}
+			</div>
+		</div>
+	);
+}
 
 function ReviewCard({
 	r,
+	variant,
+	position,
+	total,
+	statusLabel,
 	busy,
 	error,
 	onApprove,
 	onReject,
-	selected,
-	onToggleSelect,
+	onSkip,
+	playerRef,
 }: {
 	r: InstrumentalReviewRow;
+	// "focus" = split stage (one framed card); "cockpit" = bare detail beside the
+	// rail. Same anatomy as the audio queue's ReviewCard so the surfaces match.
+	variant: "focus" | "cockpit";
+	position?: number;
+	total?: number;
+	statusLabel?: string;
 	busy: boolean;
 	error: string | null;
 	onApprove?: () => void;
 	onReject?: () => void;
-	selected?: boolean;
-	onToggleSelect?: () => void;
+	onSkip?: () => void;
+	// The queue owns a single player ref (only one card is ever active) so Space
+	// can drive playback from the keyboard.
+	playerRef?: RefObject<AudioPlayerHandle | null>;
 }) {
-	// Em dash, not hyphen: song names here often already contain " - " (e.g.
-	// "Intro - Live"), so a hyphen separator would blur together.
-	const title = r.artistLabel ? `${r.artistLabel} — ${r.songName}` : r.songName;
-	const badge = STATUS_BADGE[r.status];
+	// Only the active card mounts (focus stage or cockpit detail), so this fires
+	// one lookup per card the operator actually views; the server caches per song.
+	const audio = useApi<InstrumentalAudioResult>(
+		`/api/instrumental-reviews/${r.id}/audio-sources`,
+	);
+	const sources: AudioSource[] = (audio.data?.sources ?? []).map((s, i) => ({
+		id: s.videoId,
+		label: audio.data?.origin === "match" && i === 0 ? "Match" : `#${i + 1}`,
+	}));
+	// Which result is loaded in the player; the filmstrip below drives it. The
+	// card remounts per review (keyed by id), so advancing resets to the top hit.
+	const [activeIdx, setActiveIdx] = useState(0);
+	const isCockpit = variant === "cockpit";
+
+	const player = sources.length > 0 && (
+		<AudioPlayer
+			ref={playerRef}
+			sources={sources}
+			clipStarts={audio.data?.clipStarts ?? []}
+			compact={isCockpit}
+			activeIndex={Math.min(activeIdx, sources.length - 1)}
+		/>
+	);
+
+	// The alternates as select-to-play cards, so a wrong top hit costs one click
+	// instead of a trip to YouTube.
+	const filmstrip = (audio.data?.sources.length ?? 0) > 1 && (
+		<div className="rv-films">
+			{audio.data?.sources.map((s, i) => {
+				const delta = durationDelta(r.durationMs, s.durationSeconds);
+				return (
+					<div
+						key={s.videoId}
+						className={`rv-cand pick${i === activeIdx ? " on" : ""}`}
+					>
+						<button
+							type="button"
+							className="rv-cand-main"
+							title="Listen to this result"
+							onClick={() => setActiveIdx(i)}
+						>
+							<span className="rv-cand-top">
+								<span className="rv-cand-rank num">{sources[i]?.label}</span>
+								{delta && (
+									<span className={`rv-delta ${delta.tone} num`}>
+										Δ{delta.delta}s
+									</span>
+								)}
+							</span>
+							<span className="rv-cand-title">{s.title ?? "(no title)"}</span>
+							<span className="rv-cand-sub num">
+								{s.channel ?? "—"}
+								{s.durationSeconds != null && ` · ${clock(s.durationSeconds)}`}
+							</span>
+						</button>
+					</div>
+				);
+			})}
+		</div>
+	);
+
+	const actionsRow = onApprove && onReject && (
+		<div className="rv-actions">
+			<button
+				type="button"
+				className="btn approve"
+				disabled={busy}
+				onClick={onApprove}
+			>
+				<CheckCircleIcon size={14} weight="fill" />
+				{busy ? "Working…" : "Instrumental — correct"}
+				<kbd>A</kbd>
+			</button>
+			<button
+				type="button"
+				className="btn reject"
+				disabled={busy}
+				onClick={onReject}
+			>
+				<TrashIcon size={14} weight="bold" /> Has vocals — reject
+				<kbd>R</kbd>
+			</button>
+			{onSkip && (
+				<button type="button" className="btn" onClick={onSkip}>
+					Skip <kbd>J</kbd>
+				</button>
+			)}
+		</div>
+	);
+
+	const feedback = error && (
+		<div className="result err" style={{ marginTop: 10 }}>
+			{error}
+		</div>
+	);
+
+	if (isCockpit) {
+		return (
+			<div className="rv-cockpit-detail">
+				<div className="rv-dhead">
+					<IdentityLine artistLabel={r.artistLabel} songName={r.songName} />
+					<VerdictPill r={r} size="sm" />
+				</div>
+				<div className="rv-cmp">
+					<SongFace r={r} size="sm" />
+					<ListenFace r={r} audio={audio} activeIndex={activeIdx} size="sm" />
+				</div>
+				{player}
+				{filmstrip}
+				{actionsRow}
+				{feedback}
+			</div>
+		);
+	}
 
 	return (
-		<Card
-			title="Instrumental guess"
-			icon={WaveformIcon}
-			span={12}
-			action={
-				<div className="btn-row">
-					{onToggleSelect && (
-						<label className="batch-select">
-							<input
-								type="checkbox"
-								checked={selected ?? false}
-								onChange={onToggleSelect}
-							/>
-							Select
-						</label>
+		<div className="card rv-focus">
+			<div className="rv-focus-inner">
+				<div className="rv-topline">
+					<IdentityLine artistLabel={r.artistLabel} songName={r.songName} />
+					{position != null && total != null && (
+						<span className="rv-pos num">
+							{position} / {total}
+							{statusLabel ? ` ${statusLabel}` : ""}
+						</span>
 					)}
-					<Badge tone={badge.tone}>{badge.label}</Badge>
+					<VerdictPill r={r} size="lg" />
 				</div>
-			}
-		>
-			<div className="ar-panel">
+
+				<div className="rv-panels">
+					<SongFace r={r} />
+					<ListenFace r={r} audio={audio} activeIndex={activeIdx} />
+				</div>
+
+				{player}
+				{filmstrip}
+				{actionsRow}
+				{feedback}
+			</div>
+		</div>
+	);
+}
+
+// One compact selectable row in the cockpit rail: art · song/artist · signal
+// chip, with a batch checkbox when the pending tab is multi-selecting.
+function RailRow({
+	r,
+	active,
+	canSelect,
+	selected,
+	onToggle,
+	onSelect,
+}: {
+	r: InstrumentalReviewRow;
+	active: boolean;
+	canSelect: boolean;
+	selected: boolean;
+	onToggle: () => void;
+	onSelect: () => void;
+}) {
+	const chip =
+		r.signal === "genre"
+			? "genre"
+			: r.instrumentalness != null
+				? `${Math.round(r.instrumentalness * 100)}%`
+				: "instr.";
+	return (
+		<div className={`ar-railrow${active ? " on" : ""}`}>
+			{canSelect && (
+				<input
+					className="ar-railcheck"
+					type="checkbox"
+					checked={selected}
+					onChange={onToggle}
+					aria-label={`Select ${r.songName} for batch`}
+				/>
+			)}
+			<button type="button" className="ar-railrow-main" onClick={onSelect}>
 				{r.imageUrl ? (
-					<img
-						className="ar-art cover"
-						src={r.imageUrl}
-						alt=""
-						loading="lazy"
-					/>
+					<img src={r.imageUrl} alt="" loading="lazy" />
 				) : (
-					<span className="ar-art cover placeholder" />
+					<span className="ar-railart" />
 				)}
-				<div className="ar-body">
-					<div className="ar-eyebrow">
-						<MusicNotesIcon className="sp" size={12} weight="fill" />
-						Spotify song
-					</div>
-					<div className="ar-title">{title}</div>
-					<div className="ar-sub">{r.albumName ?? "—"}</div>
-				</div>
-			</div>
-
-			<div className="ar-verdict">
-				<div className="ar-verdict-line">
-					<span className="ar-score">{reasonText(r)}</span>
-				</div>
-			</div>
-
-			{onApprove && onReject && (
-				<div className="btn-row" style={{ marginTop: 14 }}>
-					<button
-						type="button"
-						className="btn primary"
-						disabled={busy}
-						onClick={onApprove}
-					>
-						<CheckCircleIcon size={14} weight="fill" />
-						{busy ? "Working…" : "Instrumental — correct"}
-					</button>
-					<button
-						type="button"
-						className="btn"
-						disabled={busy}
-						onClick={onReject}
-						style={{ color: "var(--danger)" }}
-					>
-						<TrashIcon size={14} weight="bold" />
-						Has vocals — reject
-					</button>
-				</div>
-			)}
-
-			{error && (
-				<div className="result err" style={{ marginTop: 10 }}>
-					{error}
-				</div>
-			)}
-		</Card>
+				<span className="ar-railtext">
+					<span className="ar-railname">{r.songName}</span>
+					<span className="ar-railsub">{r.artistLabel || "—"}</span>
+				</span>
+				<span className="ar-railscore warning">{chip}</span>
+			</button>
+		</div>
 	);
 }
 
@@ -181,6 +507,9 @@ export function InstrumentalReviewSection({
 		filterDefaults: { signal: "all", minInstrumentalness: "" },
 	});
 	const searchRef = useRef<HTMLInputElement>(null);
+	// Single player instance across the queue — only one card is ever active — so
+	// Space toggles playback wherever the operator is.
+	const playerRef = useRef<AudioPlayerHandle | null>(null);
 	const [actioning, setActioning] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<{
 		id: string;
@@ -285,12 +614,16 @@ export function InstrumentalReviewSection({
 		onNext: goNext,
 		onPrev: goPrev,
 		onSearch: () => searchRef.current?.focus(),
-		// A approves the focused, still-live card only — never the destructive
-		// reject, which stays behind an explicit confirm.
+		onPlayPause: () => playerRef.current?.toggle(),
+		// Approve/reject act on the active card in either mode. Reject only opens
+		// the confirm modal — a shortcut never commits a destructive action.
 		onApprove: () => {
-			if (isPending && isFocus && focusRow && actioning === null) {
+			if (isPending && focusRow && actioning === null)
 				void approve(focusRow.id);
-			}
+		},
+		onReject: () => {
+			if (isPending && focusRow && actioning === null)
+				setRejectTarget(focusRow);
 		},
 	});
 
@@ -311,54 +644,50 @@ export function InstrumentalReviewSection({
 		});
 	}
 
-	function card(r: InstrumentalReviewRow) {
+	function card(r: InstrumentalReviewRow, variant: "focus" | "cockpit") {
 		return (
 			<ReviewCard
 				key={r.id}
 				r={r}
+				variant={variant}
+				position={variant === "focus" ? globalIndex + 1 : undefined}
+				total={variant === "focus" ? total : undefined}
+				statusLabel={queue.tab}
 				busy={actioning === r.id}
 				error={actionError?.id === r.id ? actionError.message : null}
 				onApprove={isPending ? () => approve(r.id) : undefined}
 				onReject={isPending ? () => setRejectTarget(r) : undefined}
-				selected={canSelect ? selectedIds.has(r.id) : undefined}
-				onToggleSelect={canSelect ? () => toggleSelect(r.id) : undefined}
+				onSkip={variant === "focus" ? goNext : undefined}
+				playerRef={playerRef}
 			/>
 		);
 	}
 
 	return (
-		<div className="grid">
-			<Card
-				title="Instrumental review"
-				icon={WaveformIcon}
-				span={12}
-				action={
-					data.pendingTotal > 0 ? (
-						<Badge tone="warning">{data.pendingTotal} to review</Badge>
-					) : (
-						<Badge tone="success">all clear</Badge>
-					)
-				}
-			>
-				<p className="muted-text">
-					When a song has no lyrics, analysis guesses{" "}
-					<strong>instrumental</strong> from its genre or Spotify
-					instrumentalness — usually right, occasionally wrong for a vocal track
-					tagged with an instrumental-ish genre. Each guess is{" "}
-					<strong>already live</strong>. <strong>Approve</strong> the correct
-					ones; <strong>Reject</strong> a vocal track to strip the instrumental
-					tag and its analysis and send it to the lyrics queue for manual entry
-					(it won't be auto-guessed instrumental again). The{" "}
-					<strong>Approved</strong> and <strong>Rejected</strong> tabs are a
-					read-only history.
-				</p>
-				<div className="btn-row" style={{ marginTop: 12 }}>
+		<div className="queue-page">
+			<div className="card queue-head span-12">
+				<WaveformIcon className="icon" size={15} weight="bold" />
+				<h2>Instrumental review</h2>
+				<details className="queue-info">
+					<summary aria-label="About this queue">
+						<InfoIcon size={15} weight="bold" />
+					</summary>
+					<div className="queue-info-panel">
+						Songs with no lyrics are auto-tagged <strong>instrumental</strong>{" "}
+						from genre or Spotify instrumentalness, and each guess is{" "}
+						<strong>already live</strong>. Play the embedded audio and listen
+						for vocals: approve to confirm, reject a vocal track to strip the
+						tag and send it to the lyrics queue for manual entry. Approved and
+						Rejected are read-only history.
+					</div>
+				</details>
+				<div className="queue-head-tabs">
 					<button
 						type="button"
 						className={`btn ${queue.tab === "pending" ? "primary" : ""}`}
 						onClick={() => queue.setTab("pending")}
 					>
-						Pending
+						Pending · {data.pendingTotal}
 					</button>
 					<button
 						type="button"
@@ -375,58 +704,61 @@ export function InstrumentalReviewSection({
 						Rejected
 					</button>
 				</div>
-			</Card>
+				{data.pendingTotal > 0 ? (
+					<Badge tone="warning">{data.pendingTotal} to review</Badge>
+				) : (
+					<Badge tone="success">all clear</Badge>
+				)}
+			</div>
 
-			<Card span={12}>
-				<QueueToolbar
-					searchRef={searchRef}
-					search={queue.q}
-					onSearchChange={queue.setSearch}
-					order={queue.order}
-					onOrderChange={queue.setOrder}
-					mode={queue.mode}
-					onModeChange={queue.setMode}
-					pageSize={queue.pageSize}
-					onPageSizeChange={queue.setPageSize}
-					onReset={queue.reset}
-					refreshing={refreshing}
-					activeFilterCount={queue.activeFilterCount}
-					filters={
-						<>
-							<select
-								className="select"
-								aria-label="Signal"
-								value={queue.filters.signal}
-								onChange={(e) => queue.setFilter("signal", e.target.value)}
-							>
-								<option value="all">Any signal</option>
-								<option value="instrumentalness">Instrumentalness</option>
-								<option value="genre">Genre</option>
-							</select>
-							<input
-								className="input"
-								type="number"
-								step="0.05"
-								min="0"
-								max="1"
-								aria-label="Min instrumentalness"
-								placeholder="Min instr."
-								value={queue.filters.minInstrumentalness}
-								onChange={(e) =>
-									queue.setFilter("minInstrumentalness", e.target.value)
-								}
-							/>
-						</>
-					}
-					total={total}
-					page={queue.page}
-					focusIndex={isFocus ? queue.focusIndex : undefined}
-					onPrev={goPrev}
-					onNext={goNext}
-					hasPrev={hasPrev}
-					hasNext={hasNext}
-				/>
-			</Card>
+			<QueueToolbar
+				searchRef={searchRef}
+				search={queue.q}
+				onSearchChange={queue.setSearch}
+				order={queue.order}
+				onOrderChange={queue.setOrder}
+				mode={queue.mode}
+				onModeChange={queue.setMode}
+				pageSize={queue.pageSize}
+				onPageSizeChange={queue.setPageSize}
+				onReset={queue.reset}
+				refreshing={refreshing}
+				activeFilterCount={queue.activeFilterCount}
+				filters={
+					<>
+						<select
+							className="select"
+							aria-label="Signal"
+							value={queue.filters.signal}
+							onChange={(e) => queue.setFilter("signal", e.target.value)}
+						>
+							<option value="all">Any signal</option>
+							<option value="instrumentalness">Instrumentalness</option>
+							<option value="genre">Genre</option>
+						</select>
+						<input
+							className="input"
+							type="number"
+							step="0.05"
+							min="0"
+							max="1"
+							aria-label="Min instrumentalness"
+							placeholder="Min instr."
+							value={queue.filters.minInstrumentalness}
+							onChange={(e) =>
+								queue.setFilter("minInstrumentalness", e.target.value)
+							}
+						/>
+					</>
+				}
+				total={total}
+				page={queue.page}
+				focusIndex={isFocus ? queue.focusIndex : undefined}
+				onPrev={goPrev}
+				onNext={goNext}
+				hasPrev={hasPrev}
+				hasNext={hasNext}
+			/>
 
 			{canSelect && selectedIds.size > 0 && (
 				<div className="batch-bar span-12">
@@ -462,9 +794,43 @@ export function InstrumentalReviewSection({
 					</div>
 				</div>
 			) : isFocus ? (
-				focusRow && <div className="ar-list span-12">{card(focusRow)}</div>
+				focusRow && (
+					<div className="ar-list solo span-12">{card(focusRow, "focus")}</div>
+				)
 			) : (
-				<div className="ar-list span-12">{rows.map((r) => card(r))}</div>
+				// Cockpit: a stat bar + selectable queue rail beside the active detail,
+				// mirroring the audio queue's list mode.
+				<div className="rv-cockpit span-12">
+					<div className="rv-statbar">
+						<span>
+							<b className="serif upright">{total}</b> {queue.tab}
+						</span>
+						<span className="rv-statbar-keys">
+							<span className="rv-tag">keyboard</span>
+							<kbd>J</kbd>
+							<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>R</kbd> reject ·{" "}
+							<kbd>Space</kbd> play
+						</span>
+					</div>
+					<div className="rv-cols">
+						<div className="ar-rail">
+							{rows.map((r, i) => (
+								<RailRow
+									key={r.id}
+									r={r}
+									active={i === Math.min(queue.focusIndex, rows.length - 1)}
+									canSelect={canSelect}
+									selected={selectedIds.has(r.id)}
+									onToggle={() => toggleSelect(r.id)}
+									onSelect={() => queue.setFocusIndex(i)}
+								/>
+							))}
+						</div>
+						<div className="ar-detail">
+							{focusRow && card(focusRow, "cockpit")}
+						</div>
+					</div>
+				</div>
 			)}
 
 			{rejectTarget && (
