@@ -112,6 +112,7 @@ export function scoreCandidate(
 	const titleFullNorm = normalizeText(candidate.title);
 	const channelNorm = normalizeText(candidate.channel ?? "");
 	const songNameNorm = normalizeText(song.name);
+	const albumNameNorm = song.albumName ? normalizeText(song.albumName) : "";
 
 	const reasons: string[] = [];
 
@@ -125,7 +126,8 @@ export function scoreCandidate(
 	for (const phrase of REJECT_PHRASES) {
 		if (
 			containsPhrase(penaltyHay, phrase) &&
-			!containsPhrase(songNameNorm, phrase)
+			!containsPhrase(songNameNorm, phrase) &&
+			!(albumNameNorm && containsPhrase(albumNameNorm, phrase))
 		) {
 			return {
 				candidate,

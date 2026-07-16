@@ -57,7 +57,7 @@ export type AcquireResult = AcquiredSource | ManualNeeded;
 
 export function buildSearchQuery(song: SongForScoring): string {
 	const primaryArtist = song.artists[0] ?? "";
-	return `${primaryArtist} ${song.name}`.trim();
+	return `${primaryArtist} ${song.name} audio`.trim();
 }
 
 interface AcquireInput {
