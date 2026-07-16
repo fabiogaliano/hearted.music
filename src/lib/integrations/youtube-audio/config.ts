@@ -15,6 +15,11 @@ export const audioFeatureBackfillConfig = {
 	// multi-hour upload masquerading as a track.
 	maxDownloadMb: 80,
 	searchResults: 8,
+	// The retry changes a retrieval term only after the first candidate set cannot
+	// meet the floor, so it improves recall without widening auto-approval.
+	searchRetry: {
+		fallbackSuffixWithoutAlbum: "audio",
+	},
 	// The top candidate must clear minScore to be auto-selected. No runner-up gap
 	// rule: near-identical uploads of the same recording tie constantly, and for
 	// feature extraction either is fine (wrong *versions* are filtered by the

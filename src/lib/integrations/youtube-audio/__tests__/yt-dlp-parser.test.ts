@@ -1,8 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { Result } from "better-result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("../spawn");
+
+import { runCommand } from "../spawn";
 import {
 	buildProxyArgs,
 	parseSearchOutput,
 	parseVideoJson,
+	searchYouTube,
 	summarizeYtDlpFailure,
 } from "../yt-dlp";
 
@@ -59,6 +65,95 @@ describe("parseSearchOutput", () => {
 			JSON.stringify({ entries: [{ title: "no id" }, { id: "ok" }] }),
 		);
 		expect(out.map((c) => c.videoId)).toEqual(["ok"]);
+	});
+
+	it("parses YouTube Music song-shelf video entries and skips browse entities", () => {
+		const out = parseSearchOutput(
+			JSON.stringify({
+				entries: [
+					{
+						id: "J7p4bzqLvCw",
+						title: "Blinding Lights",
+						url: "https://music.youtube.com/watch?v=J7p4bzqLvCw",
+					},
+					{
+						id: "UClYV6hHlupm_S_ObS1W-DYw",
+						title: null,
+						url: "https://music.youtube.com/browse/UClYV6hHlupm_S_ObS1W-DYw",
+					},
+				],
+			}),
+		);
+		expect(out).toHaveLength(1);
+		expect(out[0]).toMatchObject({
+			videoId: "J7p4bzqLvCw",
+			title: "Blinding Lights",
+			channel: null,
+			durationSeconds: null,
+			url: "https://www.youtube.com/watch?v=J7p4bzqLvCw",
+		});
+	});
+});
+
+const EMPTY_SEARCH = {
+	stdout: JSON.stringify({ entries: [] }),
+	stderr: "",
+	exitCode: 0,
+	timedOut: false,
+};
+
+const ONE_SEARCH_RESULT = {
+	stdout: JSON.stringify({ entries: [{ id: "result", title: "Song" }] }),
+	stderr: "",
+	exitCode: 0,
+	timedOut: false,
+};
+
+describe("searchYouTube", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it("uses the YouTube Music Songs shelf and falls back when it is empty", async () => {
+		vi.mocked(runCommand)
+			.mockResolvedValueOnce(EMPTY_SEARCH)
+			.mockResolvedValueOnce(ONE_SEARCH_RESULT);
+
+		const result = await searchYouTube("Artist Song", 3);
+		if (Result.isError(result)) throw result.error;
+
+		expect(result.value).toHaveLength(1);
+		expect(runCommand).toHaveBeenNthCalledWith(
+			1,
+			expect.arrayContaining([
+				"--playlist-end",
+				"3",
+				"https://music.youtube.com/search?q=Artist%20Song&sp=EgWKAQIIAWoKEAoQAxAEEAkQBQ%3D%3D",
+			]),
+			expect.any(Object),
+		);
+		expect(runCommand).toHaveBeenNthCalledWith(
+			2,
+			expect.arrayContaining(["ytsearch3:Artist Song"]),
+			expect.any(Object),
+		);
+	});
+
+	it("falls back to regular YouTube when the Music extractor errors", async () => {
+		vi.mocked(runCommand)
+			.mockResolvedValueOnce({
+				stdout: "",
+				stderr: "Music extractor failed",
+				exitCode: 1,
+				timedOut: false,
+			})
+			.mockResolvedValueOnce(ONE_SEARCH_RESULT);
+
+		const result = await searchYouTube("Artist Song", 3);
+		if (Result.isError(result)) throw result.error;
+
+		expect(result.value).toHaveLength(1);
+		expect(runCommand).toHaveBeenCalledTimes(2);
 	});
 });
 

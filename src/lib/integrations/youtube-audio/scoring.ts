@@ -27,6 +27,16 @@ export interface ScoringThresholds {
 	minScore: number;
 }
 
+// Policy version stamped onto every persisted candidate snapshot so historical
+// decisions can be segmented by the scoring/search policy that produced them
+// (rows from different policies are otherwise indistinguishable in the JSONB).
+// Bump on ANY change to REJECT_PHRASES, weights, thresholds, escape hatches, or
+// the search strategy (query shape, YT Music filter, retry). Absent on rows
+// written before versioning existed. Version 1 = the 2026-07 overhaul:
+// album/artist-name escape hatches, leftover-title-token penalty, YT Music
+// songs-shelf search with album-or-"audio" retry.
+export const SCORING_VERSION = 1;
+
 // Wrong-version markers. Single words are matched on token boundaries (so
 // "discover" never trips "cover"); multi-word entries match as bounded phrases.
 const REJECT_PHRASES = [
@@ -49,6 +59,31 @@ const OFFICIAL_MARKERS = [
 	"official video",
 	"provided to youtube by",
 ] as const;
+
+// Formatting terms don't identify a different recording. Everything else left
+// in a title after song/artist tokens is weak evidence that it is about more
+// than the requested track.
+const TITLE_FORMAT_WORDS = [
+	"official",
+	"audio",
+	"video",
+	"lyrics",
+	"lyric",
+	"hd",
+	"uhd",
+	"4k",
+	"mv",
+	"visualizer",
+	"music",
+	"provided",
+	"to",
+	"youtube",
+	"by",
+] as const;
+
+// Kept below the 0.0167 minimum observed slack above the 0.75 floor in the
+// persisted auto-approved corpus, so title noise cannot demote an old match.
+const TITLE_LEFTOVER_PENALTY_MAX = 0.015;
 
 export function normalizeText(input: string): string {
 	// NFKD (compatibility decomposition), not NFD: it folds look-alike glyphs
@@ -105,6 +140,24 @@ function fractionPresent(
 	return hits / needleTokens.length;
 }
 
+function unexplainedTitleTokenRatio(
+	song: SongForScoring,
+	candidate: YoutubeCandidate,
+): number {
+	const candidateTokens = tokenize(stripBracketed(candidate.title));
+	if (candidateTokens.length === 0) return 0;
+
+	const explainedTokens = new Set([
+		...tokenize(stripBracketed(stripVersionQualifier(song.name))),
+		...song.artists.flatMap((artist) => tokenize(artist)),
+		...TITLE_FORMAT_WORDS,
+	]);
+	const unexplained = candidateTokens.filter(
+		(token) => !explainedTokens.has(token),
+	).length;
+	return unexplained / candidateTokens.length;
+}
+
 export function scoreCandidate(
 	song: SongForScoring,
 	candidate: YoutubeCandidate,
@@ -113,6 +166,7 @@ export function scoreCandidate(
 	const channelNorm = normalizeText(candidate.channel ?? "");
 	const songNameNorm = normalizeText(song.name);
 	const albumNameNorm = song.albumName ? normalizeText(song.albumName) : "";
+	const artistNameNorms = song.artists.map(normalizeText);
 
 	const reasons: string[] = [];
 
@@ -127,7 +181,8 @@ export function scoreCandidate(
 		if (
 			containsPhrase(penaltyHay, phrase) &&
 			!containsPhrase(songNameNorm, phrase) &&
-			!(albumNameNorm && containsPhrase(albumNameNorm, phrase))
+			!(albumNameNorm && containsPhrase(albumNameNorm, phrase)) &&
+			!artistNameNorms.some((artistName) => containsPhrase(artistName, phrase))
 		) {
 			return {
 				candidate,
@@ -199,7 +254,10 @@ export function scoreCandidate(
 	const officialBonus = officialMarker || isTopic ? 0.1 : 0;
 	const raw =
 		0.4 * titleMatch + 0.35 * artistMatch + durationBonus + officialBonus;
-	const score = Math.min(1, Math.max(0, raw));
+	const unexplainedRatio = unexplainedTitleTokenRatio(song, candidate);
+	const leftoverPenalty = TITLE_LEFTOVER_PENALTY_MAX * unexplainedRatio;
+	if (leftoverPenalty > 0) reasons.push("title has unexplained tokens");
+	const score = Math.min(1, Math.max(0, raw - leftoverPenalty));
 
 	// A duration that's off by more than 25s is almost always a different edit
 	// (extended/sped/medley); only an otherwise-perfect official match survives.
@@ -247,6 +305,7 @@ export function toCandidateSnapshots(
 		rejected: s.rejected,
 		rejectReason: s.rejectReason ?? null,
 		rank,
+		scoringVersion: SCORING_VERSION,
 	});
 
 	return [

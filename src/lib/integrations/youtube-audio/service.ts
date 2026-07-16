@@ -57,7 +57,19 @@ export type AcquireResult = AcquiredSource | ManualNeeded;
 
 export function buildSearchQuery(song: SongForScoring): string {
 	const primaryArtist = song.artists[0] ?? "";
-	return `${primaryArtist} ${song.name} audio`.trim();
+	return `${primaryArtist} ${song.name}`.trim();
+}
+
+function buildRetrySearchQuery(
+	song: SongForScoring,
+	initialQuery: string,
+): string | null {
+	const primaryArtist = song.artists[0] ?? "";
+	const album = song.albumName?.trim();
+	const retry = album
+		? `${primaryArtist} ${song.name} ${album}`.trim()
+		: `${initialQuery} ${audioFeatureBackfillConfig.searchRetry.fallbackSuffixWithoutAlbum}`.trim();
+	return retry === initialQuery ? null : retry;
 }
 
 interface AcquireInput {
@@ -67,6 +79,56 @@ interface AcquireInput {
 	jobDir: string;
 	/** Optional egress proxy for all yt-dlp calls (see buildProxyArgs). */
 	proxy?: string;
+}
+
+interface HydratedSearchCandidates {
+	candidates: YoutubeCandidate[];
+	videoIds: Set<string>;
+}
+
+async function searchAndHydrate(
+	input: AcquireInput,
+	query: string,
+	excludedVideoIds: ReadonlySet<string> = new Set(),
+): Promise<Result<HydratedSearchCandidates, YtDlpError>> {
+	const searchResult = await searchYouTube(query, undefined, input.proxy);
+	if (Result.isError(searchResult)) return Result.err(searchResult.error);
+
+	const flat = searchResult.value;
+	const videoIds = new Set(flat.map((candidate) => candidate.videoId));
+	const hydrated: YoutubeCandidate[] = [];
+	const hydrateFailures: YtDlpError[] = [];
+	const candidatesToHydrate = flat
+		.filter((candidate) => !excludedVideoIds.has(candidate.videoId))
+		.slice(0, audioFeatureBackfillConfig.searchResults);
+
+	// Flat-playlist search omits reliable duration/channel, and scoring leans on
+	// both, so hydrate each candidate's full metadata before scoring. Failed
+	// hydrations are dropped as long as at least one candidate survives.
+	for (const candidate of candidatesToHydrate) {
+		const result = await hydrateCandidate(candidate.videoId, input.proxy);
+		if (Result.isOk(result)) hydrated.push(result.value);
+		else hydrateFailures.push(result.error);
+	}
+	if (candidatesToHydrate.length > 0 && hydrated.length === 0) {
+		// Every candidate failed to hydrate: don't auto-insert off weak flat data.
+		// A typed error defers/retries the job instead of marking it manual. Carry
+		// a sample of yt-dlp's stderr into the stored error_message.
+		const sample = hydrateFailures[0];
+		const detail =
+			summarizeYtDlpFailure(sample?.stderr) ?? sample?.message ?? null;
+		return Result.err(
+			new YtDlpErrorClass({
+				message: detail
+					? `all ${candidatesToHydrate.length} search candidates failed to hydrate: ${detail}`
+					: `all ${candidatesToHydrate.length} search candidates failed to hydrate`,
+				code: "hydrate_failed",
+				stderr: sample?.stderr,
+			}),
+		);
+	}
+
+	return Result.ok({ candidates: hydrated, videoIds });
 }
 
 /** Resolve the source candidate (search+score, or hydrate the operator URL). */
@@ -112,61 +174,49 @@ async function resolveCandidate(
 	}
 
 	const query = buildSearchQuery(input.song);
-	const searchResult = await searchYouTube(query, undefined, input.proxy);
-	if (Result.isError(searchResult)) return Result.err(searchResult.error);
+	const initial = await searchAndHydrate(input, query);
+	if (Result.isError(initial)) return Result.err(initial.error);
 
-	const flat = searchResult.value;
-	if (flat.length === 0) {
-		return Result.ok({
-			kind: "manual_needed",
-			code: "yt_search_no_candidates",
-			reason: `no YouTube candidates for "${query}"`,
-			scored: [],
-		});
-	}
-
-	// Flat-playlist search omits reliable duration/channel, and scoring leans on
-	// both, so hydrate each candidate's full metadata before scoring. Sequential
-	// (one yt-dlp call each) and capped to the configured search size. Failed
-	// hydrations are dropped as long as at least one candidate survives.
-	const hydrated: YoutubeCandidate[] = [];
-	const hydrateFailures: YtDlpError[] = [];
-	for (const candidate of flat.slice(
-		0,
-		audioFeatureBackfillConfig.searchResults,
-	)) {
-		const result = await hydrateCandidate(candidate.videoId, input.proxy);
-		if (Result.isOk(result)) hydrated.push(result.value);
-		else hydrateFailures.push(result.error);
-	}
-	if (hydrated.length === 0) {
-		// Every candidate failed to hydrate: don't auto-insert off weak flat data.
-		// A typed error defers/retries the job instead of marking it manual. Carry
-		// a sample of yt-dlp's stderr (e.g. "Sign in to confirm you're not a bot")
-		// into the message so the real cause reaches the stored error_message
-		// instead of being swallowed with the per-candidate Results here.
-		const sample = hydrateFailures[0];
-		const detail =
-			summarizeYtDlpFailure(sample?.stderr) ?? sample?.message ?? null;
-		return Result.err(
-			new YtDlpErrorClass({
-				message: detail
-					? `all ${flat.length} search candidates failed to hydrate: ${detail}`
-					: `all ${flat.length} search candidates failed to hydrate`,
-				code: "hydrate_failed",
-				stderr: sample?.stderr,
-			}),
-		);
-	}
-
-	const decision = scoreCandidates(input.song, hydrated, {
+	let candidates = initial.value.candidates;
+	let decision = scoreCandidates(input.song, candidates, {
 		minScore: audioFeatureBackfillConfig.minScore,
 	});
+	let selectedQuery = query;
+
+	if (candidates.length === 0 || decision.kind === "manual_needed") {
+		const retryQuery = buildRetrySearchQuery(input.song, query);
+		if (retryQuery) {
+			const retry = await searchAndHydrate(
+				input,
+				retryQuery,
+				initial.value.videoIds,
+			);
+			if (Result.isOk(retry)) {
+				candidates = [...candidates, ...retry.value.candidates];
+				decision = scoreCandidates(input.song, candidates, {
+					minScore: audioFeatureBackfillConfig.minScore,
+				});
+				if (
+					decision.kind === "selected" &&
+					!initial.value.videoIds.has(decision.candidate.videoId)
+				) {
+					selectedQuery = retryQuery;
+				}
+			}
+		}
+	}
+
 	if (decision.kind === "manual_needed") {
 		return Result.ok({
 			kind: "manual_needed",
-			code: "yt_search_low_confidence",
-			reason: decision.reason,
+			code:
+				candidates.length === 0
+					? "yt_search_no_candidates"
+					: "yt_search_low_confidence",
+			reason:
+				candidates.length === 0
+					? `no YouTube candidates for "${query}" after retry`
+					: decision.reason,
 			scored: decision.scored,
 		});
 	}
@@ -180,7 +230,7 @@ async function resolveCandidate(
 	return Result.ok({
 		candidate: decision.candidate,
 		provenance: {
-			searchQuery: query,
+			searchQuery: selectedQuery,
 			matchScore: decision.score,
 			matchReasons: decision.reasons,
 			candidateRank: rank > 0 ? rank : null,

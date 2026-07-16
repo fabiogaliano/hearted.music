@@ -107,6 +107,22 @@ describe("MatchCandidateSnapshotSchema", () => {
 			expect(result.success).toBe(false);
 		});
 
+		it("accepts legacy rows without scoringVersion (written before versioning existed)", () => {
+			// Both fixtures above deliberately omit scoringVersion: the field is
+			// optional so pre-versioning JSONB rows keep parsing.
+			expect("scoringVersion" in validCandidate).toBe(false);
+			const result = MatchCandidateSnapshotSchema.safeParse(validCandidate);
+			expect(result.success).toBe(true);
+		});
+
+		it("round-trips a stamped row and preserves scoringVersion", () => {
+			const stamped = { ...validCandidate, scoringVersion: 1 };
+			const parsed = MatchCandidateSnapshotSchema.parse(
+				JSON.parse(JSON.stringify(stamped)),
+			);
+			expect(parsed.scoringVersion).toBe(1);
+		});
+
 		it("accepts null for nullable fields (channel, durationSeconds, thumbnailUrl, rejectReason, rank)", () => {
 			const allNullable: MatchCandidateSnapshot = {
 				...validCandidate,

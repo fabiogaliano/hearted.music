@@ -15,6 +15,7 @@ import { runCommand } from "./spawn";
 import type { YoutubeCandidate } from "./types";
 
 const YT_DLP = "yt-dlp";
+const YOUTUBE_MUSIC_SONGS_FILTER = "EgWKAQIIAWoKEAoQAxAEEAkQBQ==";
 
 function videoUrl(videoId: string): string {
 	return `https://www.youtube.com/watch?v=${videoId}`;
@@ -64,7 +65,10 @@ function pickThumbnail(entry: Record<string, unknown>): string | null {
 /** Map one yt-dlp entry/video object to a candidate, or null if no usable id. */
 function toCandidate(entry: Record<string, unknown>): YoutubeCandidate | null {
 	const videoId = asString(entry.id);
-	if (!videoId) return null;
+	const sourceUrl = asString(entry.webpage_url) ?? asString(entry.url);
+	// Song-shelf output may interleave browse entities (artist/album pages), which
+	// cannot be hydrated as videos even though they have an `id` field.
+	if (!videoId || sourceUrl?.includes("music.youtube.com/browse/")) return null;
 	return {
 		videoId,
 		url: asString(entry.webpage_url) ?? videoUrl(videoId),
@@ -168,40 +172,62 @@ export async function checkYtDlpAvailable(): Promise<
 	return Result.ok(res.stdout.trim());
 }
 
-export async function searchYouTube(
-	query: string,
-	limit: number = audioFeatureBackfillConfig.searchResults,
-	proxy?: string,
-): Promise<Result<YoutubeCandidate[], YtDlpError>> {
-	const res = await runCommand(
-		[
-			YT_DLP,
-			...buildProxyArgs(proxy),
-			"--dump-single-json",
-			"--skip-download",
-			"--flat-playlist",
-			`ytsearch${limit}:${query}`,
-		],
-		{ timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs },
-	);
+function musicSongsSearchUrl(query: string): string {
+	return `https://music.youtube.com/search?q=${encodeURIComponent(query)}&sp=${encodeURIComponent(YOUTUBE_MUSIC_SONGS_FILTER)}`;
+}
 
+async function runSearch(
+	args: string[],
+	message: string,
+): Promise<Result<YoutubeCandidate[], YtDlpError>> {
+	const res = await runCommand(args, {
+		timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs,
+	});
 	if (res.timedOut) {
-		return Result.err(
-			new YtDlpError({ message: "yt-dlp search timed out", code: "timeout" }),
-		);
+		return Result.err(new YtDlpError({ message, code: "timeout" }));
 	}
 	if (res.exitCode !== 0) {
 		return Result.err(
 			new YtDlpError({
-				message: "yt-dlp search failed",
+				message,
 				code: "nonzero_exit",
 				exitCode: res.exitCode,
 				stderr: res.stderr,
 			}),
 		);
 	}
-
 	return Result.ok(parseSearchOutput(res.stdout));
+}
+
+export async function searchYouTube(
+	query: string,
+	limit: number = audioFeatureBackfillConfig.searchResults,
+	proxy?: string,
+): Promise<Result<YoutubeCandidate[], YtDlpError>> {
+	const commonArgs = [
+		YT_DLP,
+		...buildProxyArgs(proxy),
+		"--dump-single-json",
+		"--skip-download",
+		"--flat-playlist",
+	];
+	const music = await runSearch(
+		[
+			...commonArgs,
+			"--playlist-end",
+			String(limit),
+			musicSongsSearchUrl(query),
+		],
+		"yt-dlp YouTube Music search failed",
+	);
+	if (Result.isOk(music) && music.value.length > 0) return music;
+
+	// Music is biased toward tracks, but regular uploads remain essential for
+	// releases missing from its catalogue and for extractor outages.
+	return runSearch(
+		[...commonArgs, `ytsearch${limit}:${query}`],
+		"yt-dlp search failed",
+	);
 }
 
 export async function hydrateCandidate(

@@ -35,6 +35,9 @@ export interface ScoredCandidate {
  *     non-null.
  *   - rejectReason is `ScoredCandidate.rejectReason ?? null` → nullable.
  *   - rank is `number | null` (null for rejected candidates) → nullable.
+ *   - scoringVersion is optional (not nullable): rows written before versioning
+ *     simply lack the key, and absent means "pre-versioning policy" (see
+ *     SCORING_VERSION in scoring.ts).
  * This schema is the single source of truth for both the write path (jobs.ts)
  * and the read path (control-panel/server/audio-candidates.ts). A rename or
  * missing field in the writer will surface as a parse error at the read seam.
@@ -51,6 +54,7 @@ export const MatchCandidateSnapshotSchema = z.object({
 	rejected: z.boolean(),
 	rejectReason: z.string().nullable(),
 	rank: z.number().nullable(),
+	scoringVersion: z.number().optional(),
 });
 
 /**

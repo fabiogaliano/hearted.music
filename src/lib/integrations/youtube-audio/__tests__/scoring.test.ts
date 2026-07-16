@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	SCORING_VERSION,
 	scoreCandidate,
 	scoreCandidates,
 	stripVersionQualifier,
@@ -107,6 +108,17 @@ describe("scoreCandidates", () => {
 		expect(scored.rejected).toBe(false);
 	});
 
+	it("keeps a reject phrase that is a credited artist name", () => {
+		const scored = scoreCandidate(
+			{ ...SONG, artists: ["Cover Drive"] },
+			candidate({
+				title: "Cover Drive - Blinding Lights",
+				durationSeconds: 201,
+			}),
+		);
+		expect(scored.rejected).toBe(false);
+	});
+
 	it("rejects an instrumental upload only when the song isn't itself instrumental", () => {
 		const normalSong = scoreCandidate(
 			SONG,
@@ -186,6 +198,29 @@ describe("scoreCandidates", () => {
 		expect(withArtist.score).toBeGreaterThan(titleOnly.score);
 	});
 
+	it("softly penalizes unexplained title tokens", () => {
+		const song = { ...SONG, name: "Song", artists: ["Artist"] };
+		const exact = scoreCandidate(song, candidate({ title: "Artist - Song" }));
+		const noisy = scoreCandidate(
+			song,
+			candidate({ title: "Artist reacts to Song FULL BREAKDOWN" }),
+		);
+
+		expect(exact.score).toBe(0.75);
+		expect(noisy.rejected).toBe(false);
+		expect(noisy.score).toBeLessThan(exact.score);
+		expect(noisy.score).toBeGreaterThan(0.7);
+	});
+
+	it("does not penalize standard upload-format words", () => {
+		const song = { ...SONG, name: "Song", artists: ["Artist"] };
+		const scored = scoreCandidate(
+			song,
+			candidate({ title: "Artist - Song Official Audio 4K Lyrics" }),
+		);
+		expect(scored.score).toBe(0.85);
+	});
+
 	it("selects a remaster-named song against a plain YouTube upload", () => {
 		// The DB name carries a "- Remastered" tag the upload omits; without the
 		// qualifier strip the missing token drops title match below the floor.
@@ -237,6 +272,17 @@ describe("toCandidateSnapshots", () => {
 		expect(snaps.map((s) => s.videoId)).toEqual(["top", "mid", "rej"]);
 		expect(snaps.map((s) => s.rank)).toEqual([1, 2, null]);
 		expect(snaps[2]?.rejectReason).toBe('contains "live"');
+	});
+
+	it("stamps every snapshot (viable and rejected) with the current scoring version", () => {
+		const snaps = toCandidateSnapshots([
+			scored({ videoId: "ok", score: 0.8 }),
+			scored({ videoId: "bad", rejected: true, rejectReason: "x" }),
+		]);
+		expect(snaps.map((s) => s.scoringVersion)).toEqual([
+			SCORING_VERSION,
+			SCORING_VERSION,
+		]);
 	});
 
 	it("carries the full candidate provenance and null-defaults an absent reject reason", () => {
