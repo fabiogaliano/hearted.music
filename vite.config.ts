@@ -64,6 +64,10 @@ const domTestFiles = [
 	"src/lib/hooks/__tests__/useActiveJobs.test.ts",
 	"src/lib/hooks/__tests__/useLockedMutation.test.ts",
 	"src/features/matching/__tests__/useMatchDeckSession.test.ts",
+	// Control-panel localStorage-backed modules.
+	"control-panel/src/lib/__tests__/attention-thresholds.test.ts",
+	"control-panel/src/lib/__tests__/email-draft.test.ts",
+	"control-panel/src/lib/__tests__/saved-views.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {
@@ -216,7 +220,6 @@ export default defineConfig(({ command }) => {
 				"@tanstack/react-query",
 				"@tanstack/react-router",
 				"@tanstack/react-router-ssr-query",
-				"@tanstack/react-start",
 				"@tanstack/react-devtools",
 				"@tanstack/react-query-devtools",
 				"@tanstack/react-router-devtools",

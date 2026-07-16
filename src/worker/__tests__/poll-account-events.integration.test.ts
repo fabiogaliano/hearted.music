@@ -75,9 +75,13 @@ describeLocal("publishAccountEvents", () => {
 		// It should emit 1 coalesce NOTIFY since we called publishAccountEvents once
 		expect(wakePayloads).toHaveLength(1);
 		const wakePayload: unknown = JSON.parse(wakePayloads[0] ?? "{}");
-		expect(wakePayload).toMatchObject({
-			accountIds: [accountId],
-		});
+		// Other publishers can legitimately contribute pending events to this
+		// coalesced wake-up; this run must still include the account it published.
+		expect(wakePayload).toEqual(
+			expect.objectContaining({
+				accountIds: expect.arrayContaining([accountId]),
+			}),
+		);
 
 		// Verify rows
 		const rows = await sql<{ id: number; publish_id: number }[]>`
