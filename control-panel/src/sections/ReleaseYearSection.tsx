@@ -120,6 +120,7 @@ function useYearCandidates(albumIds: string[]) {
 		const missing = albumIds.filter((id) => !requested.current.has(id));
 		if (missing.length === 0) return;
 		for (const id of missing) requested.current.add(id);
+		const unresolved = new Set(missing);
 		let cancelled = false;
 		(async () => {
 			let ids = missing;
@@ -138,6 +139,10 @@ function useYearCandidates(albumIds: string[]) {
 					return;
 				}
 				if (cancelled) return;
+				const remaining = new Set(res.remaining);
+				for (const id of ids) {
+					if (!remaining.has(id)) unresolved.delete(id);
+				}
 				setEntries((prev) => ({ ...prev, ...res.candidates }));
 				if (res.throttled) {
 					for (const id of res.remaining) requested.current.delete(id);
@@ -149,6 +154,7 @@ function useYearCandidates(albumIds: string[]) {
 		})();
 		return () => {
 			cancelled = true;
+			for (const id of unresolved) requested.current.delete(id);
 		};
 	}, [key, tick]);
 
@@ -675,6 +681,7 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 			if (queue.focusIndex < rowCount - 1) {
 				queue.setFocusIndex(queue.focusIndex + 1);
 			} else if (queue.page < pageCount) {
+				queue.setFocusIndex(0);
 				queue.setPage(queue.page + 1);
 			}
 		} else if (queue.page < pageCount) {

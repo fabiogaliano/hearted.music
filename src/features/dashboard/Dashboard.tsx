@@ -4,6 +4,7 @@
  */
 import { useState } from "react";
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
+import { useExtensionAccountConflict } from "@/lib/extension/useExtensionAccountConflict";
 import { hasNavigatedThisSession } from "@/lib/navigation/session-navigation";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
@@ -27,6 +28,7 @@ export function Dashboard({
 	// user reached the dashboard by navigating in-app, render it plainly like
 	// Liked Songs and Playlists. Frozen at mount so it never replays on re-render.
 	const [animateEntrance] = useState(() => !hasNavigatedThisSession());
+	const { conflict, recheck } = useExtensionAccountConflict(linkedSpotifyId);
 
 	return (
 		<StaggeredContent
@@ -38,8 +40,9 @@ export function Dashboard({
 			<DashboardHeader accountId={accountId} stats={stats} handle={handle} />
 
 			<ExtensionAccountBanner
-				linkedSpotifyId={linkedSpotifyId}
+				conflict={conflict}
 				accountDisplayName={accountDisplayName}
+				recheck={recheck}
 			/>
 
 			<MatchReviewCTA
@@ -56,6 +59,7 @@ export function Dashboard({
 					<DashboardSyncStatus
 						accountId={accountId}
 						lastSyncText={lastSyncText}
+						accountConflict={conflict !== null}
 					/>
 				}
 			/>

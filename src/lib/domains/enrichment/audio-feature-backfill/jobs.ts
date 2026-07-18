@@ -42,6 +42,33 @@ export async function claimBackfillJobs(
 	return Result.ok((data ?? []) as BackfillJob[]);
 }
 
+/** Extends a claimed job's lease without allowing another worker to revive it. */
+export async function heartbeatBackfillJob(
+	jobId: string,
+	workerId: string,
+	leaseSeconds: number,
+): Promise<Result<void, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc(
+		"heartbeat_audio_feature_backfill_job",
+		{
+			p_job_id: jobId,
+			p_worker_id: workerId,
+			p_lease_seconds: leaseSeconds,
+		},
+	);
+	if (error) return Result.err(dbErr(error));
+	if (!data) {
+		return Result.err(
+			new DatabaseError({
+				code: "backfill_lease_lost",
+				message: `Audio feature backfill job ${jobId} is no longer leased by ${workerId}; this worker must not settle it.`,
+			}),
+		);
+	}
+	return Result.ok(undefined);
+}
+
 export async function enqueueSearchJob(
 	songId: string,
 	requestedByAccountId: string | null = null,

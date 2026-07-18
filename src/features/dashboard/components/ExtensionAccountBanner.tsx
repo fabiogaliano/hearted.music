@@ -6,17 +6,13 @@
  * library account, and a popup-side hearted disconnect. Renders nothing when
  * accounts agree, so it costs the layout nothing in the healthy path.
  *
- * Split view/container so Ladle can drive every state without the extension:
- * ExtensionAccountBannerView is pure props, ExtensionAccountBanner owns the
- * polling hook + re-pairing action.
+ * Split view/container so Ladle can drive every state without the extension.
+ * Dashboard owns the polling hook once and shares its result with sync readiness.
  */
 import { useState } from "react";
 import { pairExtension } from "@/lib/extension/connect";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
-import {
-	type ExtensionAccountConflict,
-	useExtensionAccountConflict,
-} from "@/lib/extension/useExtensionAccountConflict";
+import type { ExtensionAccountConflict } from "@/lib/extension/useExtensionAccountConflict";
 import { fonts } from "@/lib/theme/fonts";
 
 interface ExtensionAccountBannerViewProps {
@@ -94,15 +90,16 @@ export function ExtensionAccountBannerView({
 }
 
 interface ExtensionAccountBannerProps {
-	linkedSpotifyId: string | null;
+	conflict: ExtensionAccountConflict | null;
 	accountDisplayName: string | null;
+	recheck: () => void;
 }
 
 export function ExtensionAccountBanner({
-	linkedSpotifyId,
+	conflict,
 	accountDisplayName,
+	recheck,
 }: ExtensionAccountBannerProps) {
-	const { conflict, recheck } = useExtensionAccountConflict(linkedSpotifyId);
 	const [repairing, setRepairing] = useState(false);
 
 	if (conflict === null) return null;

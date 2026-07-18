@@ -32,8 +32,9 @@ export async function initLocalStore(
 		if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
 		const db = await openSqlite(path);
 		applyMigrations(db);
-		markStaleStartedInterrupted(db, new Date().toISOString());
-		markStaleBatchesInterrupted(db);
+		const nowIso = new Date().toISOString();
+		markStaleStartedInterrupted(db, nowIso);
+		markStaleBatchesInterrupted(db, nowIso);
 		driver = db;
 		ready = true;
 		initError = null;

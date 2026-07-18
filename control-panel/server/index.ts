@@ -22,6 +22,7 @@ import { cached } from "./cache";
 import { prodRef, warm } from "./db";
 import { HttpError } from "./http-error";
 import {
+	emailDraftHash,
 	previewStyledEmail,
 	renderStyledEmail,
 	sendStyledEmail,
@@ -81,7 +82,7 @@ import {
 } from "./batches";
 import { listActiveBatches } from "./local-store/batches";
 import {
-	deletePreview,
+	consumeValidPreview,
 	getValidPreview,
 	insertPreview,
 	PREVIEW_TTL_MS,
@@ -512,6 +513,15 @@ const server = Bun.serve({
 						409,
 					);
 				}
+				if (!consumeValidPreview(db, previewId, new Date().toISOString())) {
+					return json(
+						{
+							error:
+								"Preview expired or was already committed — run a new dry run before committing.",
+						},
+						409,
+					);
+				}
 				const facts = fresh.facts;
 				let runId: string | null = null;
 				const result = await recordAction({
@@ -540,7 +550,6 @@ const server = Bun.serve({
 						};
 					},
 				});
-				deletePreview(db, previewId);
 				return json({ ...result, runId });
 			}
 
@@ -568,11 +577,11 @@ const server = Bun.serve({
 			);
 			if (batchCommitMatch && req.method === "POST") {
 				const body = (await req.json().catch(() => ({}))) as {
-					testedBodyHash?: unknown;
+					testedDraftHash?: unknown;
 				};
-				const testedBodyHash =
-					typeof body.testedBodyHash === "string" ? body.testedBodyHash : null;
-				return json(commitBatch(batchCommitMatch[1]!, { testedBodyHash }));
+				const testedDraftHash =
+					typeof body.testedDraftHash === "string" ? body.testedDraftHash : null;
+				return json(commitBatch(batchCommitMatch[1]!, { testedDraftHash }));
 			}
 
 			const batchCancelMatch = path.match(
@@ -602,7 +611,7 @@ const server = Bun.serve({
 			}
 
 			// Email's batch test-send gate: one real send to the operator's own
-			// address, returning the body hash the batch commit must echo back.
+			// address, returning the complete draft hash the batch commit must echo back.
 			if (path === "/api/email/test" && req.method === "POST") {
 				const input = (await req.json().catch(() => ({}))) as Record<
 					string,
@@ -626,7 +635,7 @@ const server = Bun.serve({
 					},
 					summarize: (r) => ({ result: { to: r.to }, externalId: r.id }),
 				});
-				return json({ ...result, bodyHash: redactText(bodyText).sha256 });
+				return json({ ...result, draftHash: emailDraftHash(input) });
 			}
 
 			if (path === "/api/email/preview" && req.method === "POST") {

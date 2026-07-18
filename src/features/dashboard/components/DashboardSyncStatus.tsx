@@ -13,13 +13,15 @@ import { DashboardSyncControl } from "./DashboardSyncControl";
 interface DashboardSyncStatusProps {
 	accountId: string;
 	lastSyncText: string;
+	accountConflict: boolean;
 }
 
 export function DashboardSyncStatus({
 	accountId,
 	lastSyncText,
+	accountConflict,
 }: DashboardSyncStatusProps) {
-	const { state, onAction } = useDashboardSync(accountId);
+	const { state, onAction } = useDashboardSync(accountId, accountConflict);
 
 	return (
 		<div

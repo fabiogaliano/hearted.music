@@ -46,6 +46,7 @@ export type DashboardSyncUiState =
 	| { kind: "checking" }
 	| { kind: "install-required" }
 	| { kind: "spotify-reconnect-required" }
+	| { kind: "account-conflict" }
 	| { kind: "ready"; lastSyncAt: number | null }
 	| { kind: "triggering" }
 	| { kind: "syncing"; sync: ExtensionSyncState }
@@ -80,7 +81,10 @@ export interface UseDashboardSyncResult {
 	onAction: () => void;
 }
 
-export function useDashboardSync(accountId: string): UseDashboardSyncResult {
+export function useDashboardSync(
+	accountId: string,
+	accountConflict = false,
+): UseDashboardSyncResult {
 	const queryClient = useQueryClient();
 
 	const [phase, setPhase] = useState<ControlPhase>("idle");
@@ -307,6 +311,7 @@ export function useDashboardSync(accountId: string): UseDashboardSyncResult {
 		errorState,
 		cooldownRemaining,
 		syncedAt,
+		accountConflict,
 	});
 
 	const onAction = useCallback(() => {
@@ -345,6 +350,7 @@ function deriveState(input: {
 	errorState: { message: string; action: ErrorAction };
 	cooldownRemaining: number;
 	syncedAt: number;
+	accountConflict: boolean;
 }): DashboardSyncUiState {
 	const {
 		phase,
@@ -354,8 +360,10 @@ function deriveState(input: {
 		errorState,
 		cooldownRemaining,
 		syncedAt,
+		accountConflict,
 	} = input;
 
+	if (accountConflict) return { kind: "account-conflict" };
 	if (phase === "error") {
 		return {
 			kind: "error",

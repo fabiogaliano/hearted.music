@@ -29,7 +29,7 @@ export type TokenProvider = {
 	getCachedToken: () => SpotifyTokenPayload | null;
 	setCachedToken: (token: SpotifyTokenPayload) => void;
 	isTokenValid: () => boolean;
-	clearCachedToken?: () => void;
+	clearCachedToken?: () => void | Promise<void>;
 };
 
 type CommandResultMap = {
@@ -237,7 +237,7 @@ export async function handleSpotifyCommand(
 	} catch (err) {
 		const response = mapErrorToResponse(err, cmd.commandId);
 		if (!response.ok && response.errorCode === "AUTH_REQUIRED") {
-			tokenProvider.clearCachedToken?.();
+			await tokenProvider.clearCachedToken?.();
 		}
 		return response;
 	}

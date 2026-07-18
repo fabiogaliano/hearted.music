@@ -1,4 +1,5 @@
 import { read } from "./db";
+import { collectExportPages } from "./export";
 import { parseListQuery, type ListQuery, type PageResult } from "./query-params";
 
 export interface UserRow {
@@ -187,12 +188,10 @@ export async function usersListExport(url: URL): Promise<UserRow[]> {
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await usersListPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(url);
 		next.searchParams.set("page", String(page));
 		next.searchParams.set("pageSize", "100");
-		rows.push(...(await usersListPage(next)).rows);
-	}
-	return rows;
+		return usersListPage(next);
+	});
 }

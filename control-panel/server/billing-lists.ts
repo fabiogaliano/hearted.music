@@ -1,4 +1,5 @@
 import { read } from "./db";
+import { collectExportPages } from "./export";
 import { parseListQuery, type PageResult } from "./query-params";
 
 export interface GrantRow {
@@ -57,14 +58,12 @@ export async function grantsExport(url: URL): Promise<GrantRow[]> {
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await grantsPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(url);
 		next.searchParams.set("page", String(page));
 		next.searchParams.set("pageSize", "100");
-		rows.push(...(await grantsPage(next)).rows);
-	}
-	return rows;
+		return grantsPage(next);
+	});
 }
 
 export async function subscriptionsExport(url: URL): Promise<SubscriptionRow[]> {
@@ -73,14 +72,12 @@ export async function subscriptionsExport(url: URL): Promise<SubscriptionRow[]> 
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await subscriptionsPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(url);
 		next.searchParams.set("page", String(page));
 		next.searchParams.set("pageSize", "100");
-		rows.push(...(await subscriptionsPage(next)).rows);
-	}
-	return rows;
+		return subscriptionsPage(next);
+	});
 }
 
 export async function subscriptionsPage(url: URL): Promise<PageResult<SubscriptionRow>> {

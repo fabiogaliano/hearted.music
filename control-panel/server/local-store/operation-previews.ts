@@ -85,8 +85,18 @@ export function getValidPreview(
 	return record ? mapRecord(record) : null;
 }
 
-export function deletePreview(db: SqliteDriver, id: string): void {
-	db.run("delete from operation_preview where id = ?", [id]);
+/** Atomically consumes a still-valid preview so only one commit can proceed. */
+export function consumeValidPreview(
+	db: SqliteDriver,
+	id: string,
+	nowIso: string,
+): boolean {
+	return (
+		db.run(
+			"delete from operation_preview where id = ? and expires_at > ?",
+			[id, nowIso],
+		).changes === 1
+	);
 }
 
 /** Drop expired rows; returns how many were removed. */

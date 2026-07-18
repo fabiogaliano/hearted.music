@@ -1,3 +1,25 @@
+import type { PageResult } from "./query-params";
+import { HttpError } from "./http-error";
+
+export async function collectExportPages<T>(
+	first: PageResult<T>,
+	loadPage: (page: number) => Promise<PageResult<T>>,
+): Promise<T[]> {
+	const rows = [...first.rows];
+	const maxPages = Math.ceil(first.total / first.pageSize) + 1;
+	for (let page = 2; rows.length < first.total; page += 1) {
+		if (page > maxPages) {
+			throw new HttpError(409, "Export changed while reading; retry the export.");
+		}
+		const next = await loadPage(page);
+		if (next.rows.length === 0) {
+			throw new HttpError(409, "Export changed while reading; retry the export.");
+		}
+		rows.push(...next.rows);
+	}
+	return rows;
+}
+
 export function exportFilename(section: string, productionRef: string, extension: "csv" | "json"): string {
 	const timestamp = new Date().toISOString().replaceAll(":", "-").replaceAll(".", "-");
 	const ref = productionRef.replace(/[^a-zA-Z0-9_-]/g, "_");

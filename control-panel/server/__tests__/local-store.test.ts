@@ -16,7 +16,7 @@ import {
 } from "../local-store/action-runs";
 import { applyMigrations } from "../local-store/migrations";
 import {
-	deletePreview,
+	consumeValidPreview,
 	getValidPreview,
 	insertPreview,
 	PREVIEW_TTL_MS,
@@ -92,10 +92,14 @@ describe("operation_preview repository", () => {
 		expect(found).toBeNull();
 	});
 
-	it("deletes a consumed preview", () => {
+	it("consumes a valid preview only once", () => {
 		seed("1");
-		deletePreview(db, "1");
-		expect(getValidPreview(db, "1", "2026-07-15T10:02:00.000Z")).toBeNull();
+		expect(consumeValidPreview(db, "1", "2026-07-15T10:02:00.000Z")).toBe(
+			true,
+		);
+		expect(consumeValidPreview(db, "1", "2026-07-15T10:02:00.000Z")).toBe(
+			false,
+		);
 	});
 
 	it("prunes only expired rows", () => {

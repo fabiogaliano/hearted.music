@@ -9,6 +9,16 @@ import {
 } from "../lib/batch";
 import { registerOpenModal } from "../lib/modal-open";
 
+function stableStringify(value: unknown): string {
+	if (value === null || typeof value !== "object") return JSON.stringify(value);
+	if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+	return `{${Object.entries(value as Record<string, unknown>)
+		.filter(([, entry]) => entry !== undefined)
+		.toSorted(([a], [b]) => a.localeCompare(b))
+		.map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
+		.join(",")}}`;
+}
+
 /**
  * Batch preview → confirm → commit modal. Preview resolves the exact cohort
  * server-side and snapshots it; only then does Commit run it. Production and the
@@ -39,7 +49,7 @@ export function BatchLauncher({
 		getDraft: () => Record<string, unknown>;
 		// A composer test can satisfy this gate when it matches the unchanged
 		// draft. The server still verifies the hash at commit time.
-		testedBodyHash?: string | null;
+		testedDraftHash?: string | null;
 	};
 	onClose: () => void;
 	onCommitted?: () => void;
@@ -49,16 +59,24 @@ export function BatchLauncher({
 		document.activeElement as HTMLElement | null,
 	);
 	const [preview, setPreview] = useState<BatchPreview | null>(null);
+	const [previewFingerprint, setPreviewFingerprint] = useState<string | null>(
+		null,
+	);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [testAddress, setTestAddress] = useState("");
 	const [testedHash, setTestedHash] = useState<string | null>(
-		emailGate?.testedBodyHash ?? null,
+		emailGate?.testedDraftHash ?? null,
 	);
 	const titleId = useId();
+	const currentInput = buildInput();
+	const inputFingerprint = stableStringify({ actionType, input: currentInput });
+	const previewIsCurrent = previewFingerprint === inputFingerprint;
 
-	// The preview is invalidated by any input change, mirroring registry commits:
-	// a stale snapshot must never be committed. Bodies changing also void the test.
+	useEffect(() => {
+		if (!previewIsCurrent && testedHash !== null) setTestedHash(null);
+	}, [previewIsCurrent, testedHash]);
+
 	const busyRef = useRef(false);
 	busyRef.current = busy;
 
@@ -80,12 +98,15 @@ export function BatchLauncher({
 	}, [onClose]);
 
 	async function runPreview() {
+		const previewInput = buildInput();
+		const fingerprint = stableStringify({ actionType, input: previewInput });
 		setBusy(true);
 		setError(null);
-		setTestedHash(emailGate?.testedBodyHash ?? null);
+		setTestedHash(emailGate?.testedDraftHash ?? null);
 		try {
-			const result = await previewBatch({ ...buildInput(), actionType });
+			const result = await previewBatch({ ...previewInput, actionType });
 			setPreview(result);
+			setPreviewFingerprint(fingerprint);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
 		} finally {
@@ -102,7 +123,7 @@ export function BatchLauncher({
 				...emailGate.getDraft(),
 				to: testAddress.trim(),
 			});
-			setTestedHash(result.bodyHash);
+			setTestedHash(result.draftHash);
 			toast.success(`Test sent to ${testAddress.trim()}`);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : String(e));
@@ -113,6 +134,11 @@ export function BatchLauncher({
 
 	async function commit() {
 		if (!preview) return;
+		if (previewFingerprint !== inputFingerprint) {
+			setTestedHash(null);
+			setError("Inputs changed — preview again before committing.");
+			return;
+		}
 		setBusy(true);
 		setError(null);
 		try {
@@ -129,7 +155,11 @@ export function BatchLauncher({
 
 	const emailReady = !emailGate || testedHash !== null;
 	const canCommit =
-		!busy && preview !== null && preview.eligible > 0 && emailReady;
+		!busy &&
+		preview !== null &&
+		preview.eligible > 0 &&
+		previewIsCurrent &&
+		emailReady;
 
 	return (
 		<div className="modal-root">
@@ -210,6 +240,11 @@ export function BatchLauncher({
 								</ul>
 							</details>
 						)}
+						{!previewIsCurrent && (
+							<div className="result warn">
+								Inputs changed — re-preview before committing.
+							</div>
+						)}
 						{preview.eligible === 0 && (
 							<div className="result err">
 								Nothing eligible to run — adjust the selection.
@@ -218,7 +253,7 @@ export function BatchLauncher({
 					</div>
 				)}
 
-				{preview && preview.eligible > 0 && emailGate && (
+				{preview && preview.eligible > 0 && previewIsCurrent && emailGate && (
 					<div className="batch-email-test">
 						<div className="field">
 							<label htmlFor={`${titleId}-test`}>

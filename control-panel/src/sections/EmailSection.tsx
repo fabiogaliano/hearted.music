@@ -615,8 +615,8 @@ export function EmailSection() {
 					buildInput={() => ({ ...draft, templateId, accountIds })}
 					emailGate={{
 						getDraft: () => ({ ...draft, templateId }),
-						testedBodyHash: hasCurrentTest
-							? (testResult?.bodyHash ?? null)
+						testedDraftHash: hasCurrentTest
+							? (testResult?.draftHash ?? null)
 							: null,
 					}}
 					onClose={() => setBatchOpen(false)}

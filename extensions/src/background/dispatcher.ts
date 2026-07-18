@@ -43,7 +43,7 @@ export type DispatcherDeps = {
 	flushPendingSyncDiagnostics: () => void;
 	performSync: () => Promise<SyncResult>;
 	hasSpotifySession: () => Promise<boolean>;
-	clearSpotifyTokenCache: () => void;
+	clearSpotifyTokenCache: () => Promise<void>;
 	isTokenValid: () => boolean;
 	getCachedToken: () => SpotifyTokenPayload | null;
 	getSyncState: () => Promise<SyncState>;
@@ -152,7 +152,7 @@ export async function dispatchExtensionMessage(
 			const paired = await deps.isPaired();
 			const hasSession = await deps.hasSpotifySession();
 			if (!hasSession) {
-				deps.clearSpotifyTokenCache();
+				await deps.clearSpotifyTokenCache();
 				return { type: "SPOTIFY_STATUS", hasToken: false, paired };
 			}
 			await deps.rehydrateTokenIfMissing();
@@ -160,7 +160,7 @@ export async function dispatchExtensionMessage(
 			const hasUsableToken =
 				token !== null && deps.isTokenValid() && !token.isAnonymous;
 			if (!hasUsableToken && token) {
-				deps.clearSpotifyTokenCache();
+				await deps.clearSpotifyTokenCache();
 			}
 			return {
 				type: "SPOTIFY_STATUS",
@@ -237,7 +237,7 @@ export async function dispatchExtensionMessage(
 			// Mirror SPOTIFY_STATUS's session gate so a signed-out browser never
 			// reports a stale captured profile as the current Spotify account.
 			const hasSession = await deps.hasSpotifySession();
-			if (!hasSession) deps.clearSpotifyTokenCache();
+			if (!hasSession) await deps.clearSpotifyTokenCache();
 			await deps.rehydrateTokenIfMissing();
 			const spotify = hasSession ? await deps.getSpotifyProfile() : null;
 			const hearted = await deps.getHeartedAccountStatus();

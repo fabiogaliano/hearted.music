@@ -1,4 +1,5 @@
 import { read } from "./db";
+import { collectExportPages } from "./export";
 import { parseListQuery, type PageResult } from "./query-params";
 
 export interface AccountLikedRow {
@@ -86,11 +87,9 @@ export async function accountsByLikedExport(url: URL): Promise<AccountLikedRow[]
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await accountsByLikedPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(firstUrl);
 		next.searchParams.set("page", String(page));
-		rows.push(...(await accountsByLikedPage(next)).rows);
-	}
-	return rows;
+		return accountsByLikedPage(next);
+	});
 }

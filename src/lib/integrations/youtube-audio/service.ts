@@ -191,17 +191,16 @@ async function resolveCandidate(
 				retryQuery,
 				initial.value.videoIds,
 			);
-			if (Result.isOk(retry)) {
-				candidates = [...candidates, ...retry.value.candidates];
-				decision = scoreCandidates(input.song, candidates, {
-					minScore: audioFeatureBackfillConfig.minScore,
-				});
-				if (
-					decision.kind === "selected" &&
-					!initial.value.videoIds.has(decision.candidate.videoId)
-				) {
-					selectedQuery = retryQuery;
-				}
+			if (Result.isError(retry)) return Result.err(retry.error);
+			candidates = [...candidates, ...retry.value.candidates];
+			decision = scoreCandidates(input.song, candidates, {
+				minScore: audioFeatureBackfillConfig.minScore,
+			});
+			if (
+				decision.kind === "selected" &&
+				!initial.value.videoIds.has(decision.candidate.videoId)
+			) {
+				selectedQuery = retryQuery;
 			}
 		}
 	}

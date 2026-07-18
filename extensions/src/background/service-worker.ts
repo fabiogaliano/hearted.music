@@ -102,10 +102,11 @@ async function getBackendUrl(): Promise<string> {
 	return DEFAULT_BACKEND_URL;
 }
 
-function clearSpotifyTokenCache(): void {
+async function clearSpotifyTokenCache(): Promise<void> {
 	cachedToken = null;
 	cachedProfile = null;
-	browser.storage.local.remove(["spotifyToken", "spotifyProfile"]);
+	profileFetchFailedAtMs = 0;
+	await browser.storage.local.remove(["spotifyToken", "spotifyProfile"]);
 }
 
 async function hasSpotifySession(): Promise<boolean> {
@@ -399,7 +400,7 @@ async function disconnectHearted(): Promise<void> {
 async function disconnectSpotify(): Promise<void> {
 	// Drops the captured token + profile only — the browser's own Spotify
 	// session (sp_dc) is untouched, so opening Spotify reconnects immediately.
-	clearSpotifyTokenCache();
+	await clearSpotifyTokenCache();
 	console.log("[hearted.] Spotify session forgotten (token cache cleared)");
 }
 
@@ -878,8 +879,7 @@ dbg.fetchPlaylistTracks = async (playlistUri: string) => {
 // fetch on open.spotify.com is treated as a fresh login transition. Does NOT
 // touch the sp_dc cookie — the browser stays signed in.
 dbg.resetSpotify = async () => {
-	clearSpotifyTokenCache();
-	await browser.storage.local.remove("spotifyToken");
+	await clearSpotifyTokenCache();
 	console.log(
 		"[hearted.] Spotify token cache cleared — reload the Spotify tab to re-trigger login detection.",
 	);
@@ -964,6 +964,7 @@ async function handleSpotifyTokenMessage(
 
 	cachedToken = payload;
 	cachedProfile = null;
+	profileFetchFailedAtMs = 0;
 	// A new token can belong to a different Spotify account, so the persisted
 	// profile must be refetched, not reused.
 	await browser.storage.local.remove("spotifyProfile");
@@ -1277,7 +1278,9 @@ browser.cookies.onChanged.addListener((changeInfo) => {
 
 	// Ignore cookie refreshes implemented as overwrite remove+set events.
 	if (changeInfo.removed && changeInfo.cause !== "overwrite") {
-		clearSpotifyTokenCache();
+		void clearSpotifyTokenCache().catch((err) => {
+			console.warn("[hearted.] Failed to clear Spotify token cache:", err);
+		});
 		console.log("[hearted.] Spotify logout detected (sp_dc removed)");
 	}
 });

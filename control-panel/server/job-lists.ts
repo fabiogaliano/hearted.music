@@ -1,4 +1,5 @@
 import { read } from "./db";
+import { collectExportPages } from "./export";
 import { parseListQuery, type ListQuery, type PageResult } from "./query-params";
 
 export interface JobFailureRow {
@@ -81,14 +82,12 @@ export async function jobFailuresExport(url: URL): Promise<JobFailureRow[]> {
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await jobFailuresPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(url);
 		next.searchParams.set("page", String(page));
 		next.searchParams.set("pageSize", "100");
-		rows.push(...(await jobFailuresPage(next)).rows);
-	}
-	return rows;
+		return jobFailuresPage(next);
+	});
 }
 
 // One item-level failure history for a single job run — the drawer's "related
@@ -257,12 +256,10 @@ export async function jobRunsExport(url: URL): Promise<JobRunRow[]> {
 	firstUrl.searchParams.set("pageSize", "100");
 	const first = await jobRunsPage(firstUrl);
 	if (first.total > 25_000) throw new RangeError("Export exceeds the 25,000-row cap; narrow the filters and try again.");
-	const rows = [...first.rows];
-	for (let page = 2; rows.length < first.total; page += 1) {
+	return collectExportPages(first, async (page) => {
 		const next = new URL(url);
 		next.searchParams.set("page", String(page));
 		next.searchParams.set("pageSize", "100");
-		rows.push(...(await jobRunsPage(next)).rows);
-	}
-	return rows;
+		return jobRunsPage(next);
+	});
 }

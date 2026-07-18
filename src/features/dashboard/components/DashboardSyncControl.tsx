@@ -104,6 +104,8 @@ export function DashboardSyncControl({
 			);
 		case "ready":
 			return <ActionButton onClick={onAction}>Sync</ActionButton>;
+		case "account-conflict":
+			return <StatusText>sync paused</StatusText>;
 		case "triggering":
 			return <StatusText pulse>starting…</StatusText>;
 		case "syncing": {

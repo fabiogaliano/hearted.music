@@ -17,6 +17,7 @@
 
 import { createHash } from "node:crypto";
 import { prodRef } from "./db";
+import { emailDraftHash } from "./email";
 import { HttpError } from "./http-error";
 import { getBatchAdapter } from "./batch-adapters";
 import {
@@ -43,6 +44,7 @@ const activeRunners = new Set<string>();
 // Cancellation is checked between targets; cancelPendingTargets flips the rows in
 // SQLite, this stops the in-flight pool from starting any it already snapshotted.
 const cancelled = new Set<string>();
+const EMAIL_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function stableStringify(value: unknown): string {
 	if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -69,6 +71,32 @@ function requireStore(): SqliteDriver {
 		);
 	}
 	return getLocalStore();
+}
+
+function requireCurrentProdRef(batch: NonNullable<ReturnType<typeof getBatch>>): void {
+	if (batch.prodRef !== prodRef()) {
+		throw new HttpError(
+			409,
+			"Batch was previewed against a different production project — preview again.",
+		);
+	}
+}
+
+function requireSafeEmailRetry(
+	batch: NonNullable<ReturnType<typeof getBatch>>,
+): void {
+	if (batch.actionType !== "email-batch") return;
+	const committedAtMs =
+		batch.committedAt === null ? Number.NaN : Date.parse(batch.committedAt);
+	if (
+		!Number.isFinite(committedAtMs) ||
+		Date.now() - committedAtMs >= EMAIL_IDEMPOTENCY_WINDOW_MS
+	) {
+		throw new HttpError(
+			409,
+			"Email batch is outside Resend's 24-hour deduplication window. Reconcile interrupted recipients in Resend instead of retrying automatically.",
+		);
+	}
 }
 
 export interface BatchPreviewResponse {
@@ -208,6 +236,7 @@ async function runBatch(db: SqliteDriver, batchId: string): Promise<void> {
 				const outcome = await adapter.process(
 					{ targetId: target.targetId, targetLabel: target.targetLabel },
 					input,
+					{ batchId, ordinal: target.ordinal },
 				);
 				recordTargetOutcome(db, batchId, target.ordinal, {
 					status: "succeeded",
@@ -233,15 +262,13 @@ async function runBatch(db: SqliteDriver, batchId: string): Promise<void> {
 }
 
 /** Email's mandatory test-send gate: commit is refused unless a successful test
- * was sent for the batch's current draft (same body hash). */
+ * was sent for the batch's complete current draft. */
 function emailTestGate(
 	batch: NonNullable<ReturnType<typeof getBatch>>,
-	testedBodyHash: string | null,
+	testedDraftHash: string | null,
 ): void {
-	const body =
-		typeof batch.input?.body === "string" ? (batch.input.body as string) : "";
-	const expected = createHash("sha256").update(body, "utf8").digest("hex");
-	if (testedBodyHash !== expected) {
+	const expected = emailDraftHash(batch.input ?? {});
+	if (testedDraftHash !== expected) {
 		throw new HttpError(
 			409,
 			"Send a successful test to yourself after your latest draft change before sending the batch.",
@@ -250,19 +277,14 @@ function emailTestGate(
 }
 
 export interface CommitBody {
-	testedBodyHash?: string | null;
+	testedDraftHash?: string | null;
 }
 
 export function commitBatch(batchId: string, body: CommitBody): BatchView {
 	const db = requireStore();
 	const batch = getBatch(db, batchId);
 	if (!batch) throw new HttpError(404, "Batch not found.");
-	if (batch.prodRef !== prodRef()) {
-		throw new HttpError(
-			409,
-			"Batch was previewed against a different production project — preview again.",
-		);
-	}
+	requireCurrentProdRef(batch);
 	if (batch.status !== "preview") {
 		throw new HttpError(409, `Batch is already ${batch.status}; cannot commit.`);
 	}
@@ -273,7 +295,7 @@ export function commitBatch(batchId: string, body: CommitBody): BatchView {
 		throw new HttpError(409, "Batch is already running.");
 	}
 	if (batch.actionType === "email-batch") {
-		emailTestGate(batch, body.testedBodyHash ?? null);
+		emailTestGate(batch, body.testedDraftHash ?? null);
 	}
 
 	setBatchStatus(db, batchId, "running", {
@@ -287,6 +309,11 @@ export function resumeBatch(batchId: string): BatchView {
 	const db = requireStore();
 	const batch = getBatch(db, batchId);
 	if (!batch) throw new HttpError(404, "Batch not found.");
+	requireCurrentProdRef(batch);
+	if (batch.committedAt === null) {
+		throw new HttpError(409, "Batch was never committed — preview and commit again.");
+	}
+	requireSafeEmailRetry(batch);
 	if (activeRunners.has(batchId)) {
 		throw new HttpError(409, "Batch is already running.");
 	}
@@ -312,6 +339,8 @@ export function retryFailedBatch(batchId: string): BatchView {
 	const db = requireStore();
 	const batch = getBatch(db, batchId);
 	if (!batch) throw new HttpError(404, "Batch not found.");
+	requireCurrentProdRef(batch);
+	requireSafeEmailRetry(batch);
 	if (activeRunners.has(batchId)) {
 		throw new HttpError(409, "Batch is already running.");
 	}

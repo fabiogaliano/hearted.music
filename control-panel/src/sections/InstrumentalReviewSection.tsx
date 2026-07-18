@@ -563,6 +563,7 @@ export function InstrumentalReviewSection({
 		if (isFocus && queue.focusIndex < rows.length - 1) {
 			queue.setFocusIndex(queue.focusIndex + 1);
 		} else if (queue.page < pageCount) {
+			if (isFocus) queue.setFocusIndex(0);
 			queue.setPage(queue.page + 1);
 		}
 	}

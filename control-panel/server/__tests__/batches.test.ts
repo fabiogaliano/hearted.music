@@ -1,7 +1,6 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../db", () => ({ prodRef: () => "test-ref" }));
@@ -55,6 +54,7 @@ import {
 	resumableTargets,
 	setBatchStatus,
 } from "../local-store/batches";
+import { emailDraftHash } from "../email";
 import { applyMigrations } from "../local-store/migrations";
 import { openSqlite, type SqliteDriver } from "../local-store/sqlite";
 import {
@@ -118,11 +118,24 @@ describe("batch repository", () => {
 			status: "succeeded",
 			externalId: "resend-1",
 		});
-		// A crash leaves target 1 running → interrupted.
+		// A crash leaves target 1 running → interrupted after this committed batch.
+		setBatchStatus(db, "b1", "running", {
+			committedAt: "2026-07-15T10:01:00.000Z",
+		});
 		markTargetRunning(db, "b1", 1);
 		markStaleBatchesInterrupted(db);
 		const resumable = resumableTargets(db, "b1");
 		expect(resumable.map((t) => t.ordinal)).toEqual([1]);
+	});
+
+	it("cancels uncommitted previews during startup cleanup", () => {
+		seed();
+		markStaleBatchesInterrupted(db, "2026-07-15T10:05:00.000Z");
+		expect(getBatch(db, "b1")?.status).toBe("cancelled");
+		expect(batchProgress(db, "b1")).toMatchObject({
+			cancelled: 2,
+			skipped: 1,
+		});
 	});
 
 	it("requeues only failed targets without an external id", () => {
@@ -324,6 +337,46 @@ describe("batch orchestration", () => {
 		expect(getBatchView(preview.batchId).progress.succeeded).toBe(2);
 	});
 
+	it("refuses to resume an uncommitted interrupted batch", async () => {
+		registerFake();
+		const preview = await previewBatch("grant-batch", {});
+		const db = getLocalStore();
+		setBatchStatus(db, preview.batchId, "interrupted");
+		expect(() => resumeBatch(preview.batchId)).toThrow(/never committed/i);
+	});
+
+	it("refuses unsafe email resume and retry after Resend's deduplication window", async () => {
+		registerFake({ actionType: "email-batch" });
+		const preview = await previewBatch("email-batch", {});
+		const db = getLocalStore();
+		setBatchStatus(db, preview.batchId, "interrupted", {
+			committedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+		});
+		recordTargetOutcome(db, preview.batchId, 0, {
+			status: "failed",
+			errorMessage: "unknown provider outcome",
+		});
+
+		expect(() => resumeBatch(preview.batchId)).toThrow(/24-hour/i);
+		expect(() => retryFailedBatch(preview.batchId)).toThrow(/24-hour/i);
+	});
+
+	it("rejects resume and retry after the production project changes", async () => {
+		registerFake();
+		const preview = await previewBatch("grant-batch", {});
+		const db = getLocalStore();
+		db.run("update batch_run set prod_ref = 'other-project' where id = ?", [
+			preview.batchId,
+		]);
+		setBatchStatus(db, preview.batchId, "interrupted", {
+			committedAt: new Date().toISOString(),
+		});
+		expect(() => resumeBatch(preview.batchId)).toThrow(/different production/i);
+		expect(() => retryFailedBatch(preview.batchId)).toThrow(
+			/different production/i,
+		);
+	});
+
 	it("cancels an uncommitted preview", async () => {
 		registerFake();
 		const preview = await previewBatch("grant-batch", {});
@@ -331,14 +384,31 @@ describe("batch orchestration", () => {
 		expect(getBatchView(preview.batchId).batch?.status).toBe("cancelled");
 	});
 
-	it("gates email commit on a matching test-send hash", async () => {
+	it("gates email commit on an unchanged complete draft", async () => {
 		registerFake({ actionType: "email-batch" });
-		const preview = await previewBatch("email-batch", { body: "hello team" });
+		const input = {
+			body: "hello team",
+			subject: "Welcome",
+			headline: "Hello",
+			ctaLabel: "Listen",
+			ctaUrl: "https://hearted.music",
+		};
+		const preview = await previewBatch("email-batch", input);
 		expect(() => commitBatch(preview.batchId, {})).toThrow(/test/i);
-		const goodHash = createHash("sha256").update("hello team", "utf8").digest("hex");
-		commitBatch(preview.batchId, { testedBodyHash: goodHash });
+		commitBatch(preview.batchId, { testedDraftHash: emailDraftHash(input) });
 		await vi.waitFor(() =>
 			expect(getBatchView(preview.batchId).batch?.status).toBe("succeeded"),
 		);
+	});
+
+	it("rejects an email test hash when any rendered draft field changed", async () => {
+		registerFake({ actionType: "email-batch" });
+		const input = { body: "hello team", subject: "Welcome" };
+		const preview = await previewBatch("email-batch", input);
+		expect(() =>
+			commitBatch(preview.batchId, {
+				testedDraftHash: emailDraftHash({ ...input, subject: "Updated" }),
+			}),
+		).toThrow(/test/i);
 	});
 });

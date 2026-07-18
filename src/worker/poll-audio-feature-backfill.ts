@@ -12,6 +12,7 @@ import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
 import {
 	claimBackfillJobs,
+	heartbeatBackfillJob,
 	sweepStaleBackfillJobs,
 } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { processBackfillJob } from "@/lib/domains/enrichment/audio-feature-backfill/service";
@@ -30,6 +31,47 @@ const WORKER_ID = `audio-backfill-${hostname()}-${process.pid}`;
 // sweep reclaims anything whose lease expires (crash/kill).
 const CLAIM_LEASE_SECONDS = 900;
 
+export async function runClaimedAudioFeatureBackfillJob(
+	job: BackfillJob,
+): Promise<void> {
+	const heartbeat = setInterval(() => {
+		void heartbeatBackfillJob(job.id, WORKER_ID, CLAIM_LEASE_SECONDS).then(
+			(result) => {
+				if (Result.isError(result)) {
+					log.warn("audio-backfill-heartbeat-failed", {
+						jobId: job.id,
+						error: result.error.message,
+					});
+				}
+			},
+		);
+	}, workerConfig.heartbeatIntervalMs);
+
+	try {
+		const outcome = await processBackfillJob(
+			job,
+			WORKER_ID,
+			workerConfig.ytdlpProxy,
+		);
+		log.info("audio-backfill-job-settled", {
+			jobId: job.id,
+			songId: job.song_id,
+			outcome,
+		});
+	} catch (err) {
+		// processBackfillJob is defensive (defers on throw), but guard the loop.
+		log.error("audio-backfill-job-threw", {
+			jobId: job.id,
+			error: errorMessage(err),
+		});
+		Sentry.captureException(err, {
+			tags: { loop: "audio-feature-backfill" },
+		});
+	} finally {
+		clearInterval(heartbeat);
+	}
+}
+
 // The claim RPC returns a batch (limit=1 here); the shared poll loop expects
 // a single-job claim, so unwrap the array to preserve the pre-refactor
 // "claim one, dispatch immediately" shape.
@@ -44,31 +86,7 @@ const loop = createPollLoop<BackfillJob, DbError>({
 	onClaimError: (error) =>
 		log.error("audio-backfill-claim-error", { error: error.message }),
 	dispatch: (job, markDone) => {
-		void (async () => {
-			try {
-				const outcome = await processBackfillJob(
-					job,
-					WORKER_ID,
-					workerConfig.ytdlpProxy,
-				);
-				log.info("audio-backfill-job-settled", {
-					jobId: job.id,
-					songId: job.song_id,
-					outcome,
-				});
-			} catch (err) {
-				// processBackfillJob is defensive (defers on throw), but guard the loop.
-				log.error("audio-backfill-job-threw", {
-					jobId: job.id,
-					error: errorMessage(err),
-				});
-				Sentry.captureException(err, {
-					tags: { loop: "audio-feature-backfill" },
-				});
-			} finally {
-				markDone();
-			}
-		})();
+		void runClaimedAudioFeatureBackfillJob(job).finally(markDone);
 	},
 	pollIntervalMs: workerConfig.pollIntervalMs,
 	onLoopStart: () =>

@@ -4112,6 +4112,14 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			heartbeat_audio_feature_backfill_job: {
+				Args: {
+					p_job_id: string;
+					p_lease_seconds?: number;
+					p_worker_id: string;
+				};
+				Returns: boolean;
+			};
 			insert_queue_playlist_items: {
 				Args: { p_account_id: string; p_items: Json; p_session_id: string };
 				Returns: undefined;

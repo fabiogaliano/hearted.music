@@ -179,6 +179,26 @@ describe("useDashboardSync", () => {
 		expect(state.retryable).toBe(true);
 	});
 
+	it("blocks an error retry when an account conflict appears", async () => {
+		mockRequestExtensionSync.mockResolvedValue(null);
+		const { result, rerender } = renderHook(
+			({ accountConflict }: { accountConflict: boolean }) =>
+				useDashboardSync(ACCOUNT_ID, accountConflict),
+			{ initialProps: { accountConflict: false }, wrapper },
+		);
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+		await waitFor(() => expect(result.current.state.kind).toBe("error"));
+
+		rerender({ accountConflict: true });
+		expect(result.current.state.kind).toBe("account-conflict");
+		result.current.onAction();
+		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(1);
+	});
+
 	it("silently re-pairs and retries once when the backend rejects auth", async () => {
 		// The apiToken was revoked/cleared: first TRIGGER_SYNC 401s, pairExtension
 		// re-mints it, the retry succeeds. No user-facing reconnect step.

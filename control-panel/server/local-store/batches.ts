@@ -394,17 +394,37 @@ export function cancelPendingTargets(db: SqliteDriver, id: string): number {
 }
 
 /**
- * On startup, reclaim work abandoned by a process exit: `running` targets and any
- * `running` batch become `interrupted`, distinguishing a crash from a clean
- * terminal state so Resume can re-check them.
+ * On startup, reclaim committed work abandoned by a process exit. An uncommitted
+ * preview is never safe to resume, so discard it rather than exposing a Resume
+ * action that could bypass commit-time safeguards.
  */
-export function markStaleBatchesInterrupted(db: SqliteDriver): number {
-	db.run(
-		"update batch_target set status = 'interrupted' where status = 'running'",
-	);
-	return db.run(
-		"update batch_run set status = 'interrupted' where status in ('running', 'preview')",
-	).changes;
+export function markStaleBatchesInterrupted(
+	db: SqliteDriver,
+	nowIso: string = new Date().toISOString(),
+): number {
+	db.exec("begin");
+	try {
+		db.run(
+			"update batch_target set status = 'interrupted' where status = 'running'",
+		);
+		const uncommitted = db.all<{ id: string }>(
+			`select id from batch_run
+			 where status = 'preview'
+			    or (status = 'interrupted' and committed_at is null)`,
+		);
+		for (const { id } of uncommitted) {
+			cancelPendingTargets(db, id);
+			finalizeBatch(db, id, "cancelled", nowIso);
+		}
+		const interrupted = db.run(
+			"update batch_run set status = 'interrupted' where status = 'running'",
+		).changes;
+		db.exec("commit");
+		return interrupted + uncommitted.length;
+	} catch (error) {
+		db.exec("rollback");
+		throw error;
+	}
 }
 
 export interface BatchListRow {

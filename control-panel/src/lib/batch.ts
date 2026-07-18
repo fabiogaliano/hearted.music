@@ -98,10 +98,10 @@ export function previewBatch(
 
 export function commitBatch(
 	batchId: string,
-	testedBodyHash?: string | null,
+	testedDraftHash?: string | null,
 ): Promise<BatchView> {
 	return postJson<BatchView>(`/api/batches/${batchId}/commit`, {
-		testedBodyHash: testedBodyHash ?? null,
+		testedDraftHash: testedDraftHash ?? null,
 	});
 }
 
@@ -127,7 +127,7 @@ export function listActiveBatches(): Promise<{ batches: ActiveBatch[] }> {
 
 export interface EmailTestResult {
 	ok: boolean;
-	bodyHash: string;
+	draftHash: string;
 	externalId: string | null;
 }
 

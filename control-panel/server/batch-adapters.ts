@@ -51,6 +51,11 @@ export interface ProcessOutcome {
 	externalId?: string | null;
 }
 
+export interface BatchProcessContext {
+	batchId: string;
+	ordinal: number;
+}
+
 export interface BatchAdapter {
 	actionType: string;
 	targetType: string;
@@ -65,6 +70,7 @@ export interface BatchAdapter {
 	process(
 		target: { targetId: string; targetLabel: string | null },
 		input: Record<string, unknown>,
+		context: BatchProcessContext,
 	): Promise<ProcessOutcome>;
 }
 
@@ -387,12 +393,14 @@ const emailAdapter: BatchAdapter = {
 			estimatedActions: eligible,
 		};
 	},
-	async process(target, input) {
+	async process(target, input, context) {
 		// One Resend request per recipient — the resolved email is the target label.
 		const to = target.targetLabel;
 		if (!to) throw new Error("Recipient has no email address.");
 		const email = renderStyledEmail({ ...input, to });
-		const sent = await sendStyledEmail(email);
+		const sent = await sendStyledEmail(email, {
+			idempotencyKey: `hearted-control-panel/batch/${context.batchId}/target/${context.ordinal}`,
+		});
 		return {
 			result: { to: email.to, subject: email.subject },
 			externalId: sent.id,
