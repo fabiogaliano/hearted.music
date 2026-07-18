@@ -195,6 +195,23 @@ beforeEach(() => {
 afterEach(() => vi.clearAllMocks());
 
 describe("processBackfillJob", () => {
+	it("stops before provider work when the job lease is lost during acquisition", async () => {
+		const lease = new AbortController();
+		vi.mocked(acquireSource).mockImplementation(async () => {
+			lease.abort();
+			return Result.ok(acquiredSource());
+		});
+
+		const outcome = await processBackfillJob(makeJob(), WORKER, {
+			signal: lease.signal,
+		});
+
+		expect(outcome).toBe("skipped");
+		expect(jobs.acquireProviderLease).not.toHaveBeenCalled();
+		expect(jobs.settleBackfillJob).not.toHaveBeenCalled();
+		expect(jobs.deferJob).not.toHaveBeenCalled();
+	});
+
 	it("high-confidence search auto-approves (score ≥ autoApproveScore), then wakes", async () => {
 		const outcome = await processBackfillJob(makeJob(), WORKER);
 

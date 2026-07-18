@@ -78,10 +78,15 @@ describe("acquireSource youtube_search hydration", () => {
 		if (Result.isError(result)) throw result.error;
 		expect(result.value.kind).toBe("acquired");
 		// Scoring ran against hydrated metadata, not the bare flat hit.
-		expect(hydrateCandidate).toHaveBeenCalledWith("aaaaaaaaaaa", undefined);
+		expect(hydrateCandidate).toHaveBeenCalledWith(
+			"aaaaaaaaaaa",
+			undefined,
+			undefined,
+		);
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
 			"/tmp/job",
+			undefined,
 			undefined,
 		);
 	});
@@ -116,6 +121,7 @@ describe("acquireSource youtube_search hydration", () => {
 			"https://www.youtube.com/watch?v=bbbbbbbbbbb",
 			"/tmp/job",
 			undefined,
+			undefined,
 		);
 	});
 
@@ -140,15 +146,18 @@ describe("acquireSource youtube_search hydration", () => {
 			expect.any(String),
 			undefined,
 			"socks5://warp:1080",
+			undefined,
 		);
 		expect(hydrateCandidate).toHaveBeenCalledWith(
 			"aaaaaaaaaaa",
 			"socks5://warp:1080",
+			undefined,
 		);
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
 			"/tmp/job",
 			"socks5://warp:1080",
+			undefined,
 		);
 	});
 
@@ -200,10 +209,12 @@ describe("acquireSource youtube_search hydration", () => {
 			"Artist Song",
 			undefined,
 			undefined,
+			undefined,
 		);
 		expect(searchYouTube).toHaveBeenNthCalledWith(
 			2,
 			"Artist Song Album",
+			undefined,
 			undefined,
 			undefined,
 		);
@@ -237,7 +248,11 @@ describe("acquireSource youtube_search hydration", () => {
 		if (Result.isError(result) || result.value.kind !== "acquired")
 			throw new Error("expected acquired source");
 		expect(hydrateCandidate).toHaveBeenCalledTimes(2);
-		expect(hydrateCandidate).toHaveBeenCalledWith("retrywinner", undefined);
+		expect(hydrateCandidate).toHaveBeenCalledWith(
+			"retrywinner",
+			undefined,
+			undefined,
+		);
 		expect(result.value.candidate.videoId).toBe("retrywinner");
 		expect(result.value.searchQuery).toBe("Artist Song Album");
 	});

@@ -11,8 +11,15 @@ export type ExtensionAccountConflict =
 	| { kind: "spotify-mismatch"; extensionProfile: ExtensionSpotifyProfile }
 	| { kind: "unpaired" };
 
+export type ExtensionAccountCheck =
+	| { kind: "not-required" }
+	| { kind: "checking" }
+	| { kind: "verified" }
+	| { kind: "unavailable" }
+	| { kind: "conflict"; conflict: ExtensionAccountConflict };
+
 export interface ExtensionAccountConflictResult {
-	conflict: ExtensionAccountConflict | null;
+	check: ExtensionAccountCheck;
 	/** Re-run the check immediately (e.g. right after re-pairing) instead of
 	 * waiting out the poll interval. */
 	recheck: () => void;
@@ -33,55 +40,61 @@ export interface ExtensionAccountConflictResult {
 export function useExtensionAccountConflict(
 	linkedSpotifyId: string | null,
 ): ExtensionAccountConflictResult {
-	const [conflict, setConflict] = useState<ExtensionAccountConflict | null>(
-		null,
+	const [check, setCheck] = useState<ExtensionAccountCheck>(() =>
+		linkedSpotifyId === null ? { kind: "not-required" } : { kind: "checking" },
 	);
 	const [checkNonce, recheck] = useReducer((n: number) => n + 1, 0);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: checkNonce isn't read in the body — its presence is what re-runs the check on demand when recheck() fires (e.g. right after re-pairing).
 	useEffect(() => {
 		if (linkedSpotifyId === null) {
-			setConflict(null);
+			setCheck({ kind: "not-required" });
 			return;
 		}
 
+		setCheck({ kind: "checking" });
 		let cancelled = false;
-		const check = async () => {
+		const runCheck = async () => {
 			const installed = await isExtensionInstalled();
 			if (cancelled) return;
 			if (!installed) {
-				setConflict(null);
+				setCheck({ kind: "unavailable" });
 				return;
 			}
 			const status = await getSpotifyAccountStatus();
 			if (cancelled) return;
 			if (status === null) {
-				setConflict(null);
+				setCheck({ kind: "unavailable" });
 				return;
 			}
 			if (status.profile && status.profile.spotifyId !== linkedSpotifyId) {
-				setConflict({
-					kind: "spotify-mismatch",
-					extensionProfile: status.profile,
+				setCheck({
+					kind: "conflict",
+					conflict: {
+						kind: "spotify-mismatch",
+						extensionProfile: status.profile,
+					},
 				});
 				return;
 			}
-			// `paired: null` means the installed extension predates the field —
-			// treat as fine rather than flagging every not-yet-updated install.
 			if (status.paired === false) {
-				setConflict({ kind: "unpaired" });
+				setCheck({ kind: "conflict", conflict: { kind: "unpaired" } });
 				return;
 			}
-			setConflict(null);
+			if (status.paired !== true || status.profile === null) {
+				setCheck({ kind: "unavailable" });
+				return;
+			}
+			setCheck({ kind: "verified" });
 		};
 
-		void check();
-		const id = setInterval(() => void check(), CONFLICT_POLL_MS);
+		void runCheck();
+		const id = setInterval(() => void runCheck(), CONFLICT_POLL_MS);
 		return () => {
 			cancelled = true;
 			clearInterval(id);
 		};
 	}, [linkedSpotifyId, checkNonce]);
 
-	return { conflict, recheck: useCallback(() => recheck(), []) };
+	return { check, recheck: useCallback(() => recheck(), []) };
 }

@@ -79,6 +79,7 @@ interface AcquireInput {
 	jobDir: string;
 	/** Optional egress proxy for all yt-dlp calls (see buildProxyArgs). */
 	proxy?: string;
+	signal?: AbortSignal;
 }
 
 interface HydratedSearchCandidates {
@@ -91,7 +92,12 @@ async function searchAndHydrate(
 	query: string,
 	excludedVideoIds: ReadonlySet<string> = new Set(),
 ): Promise<Result<HydratedSearchCandidates, YtDlpError>> {
-	const searchResult = await searchYouTube(query, undefined, input.proxy);
+	const searchResult = await searchYouTube(
+		query,
+		undefined,
+		input.proxy,
+		input.signal,
+	);
 	if (Result.isError(searchResult)) return Result.err(searchResult.error);
 
 	const flat = searchResult.value;
@@ -106,7 +112,12 @@ async function searchAndHydrate(
 	// both, so hydrate each candidate's full metadata before scoring. Failed
 	// hydrations are dropped as long as at least one candidate survives.
 	for (const candidate of candidatesToHydrate) {
-		const result = await hydrateCandidate(candidate.videoId, input.proxy);
+		input.signal?.throwIfAborted();
+		const result = await hydrateCandidate(
+			candidate.videoId,
+			input.proxy,
+			input.signal,
+		);
 		if (Result.isOk(result)) hydrated.push(result.value);
 		else hydrateFailures.push(result.error);
 	}
@@ -159,7 +170,11 @@ async function resolveCandidate(
 				}),
 			);
 		}
-		const hydrated = await hydrateCandidate(parsed.videoId, input.proxy);
+		const hydrated = await hydrateCandidate(
+			parsed.videoId,
+			input.proxy,
+			input.signal,
+		);
 		if (Result.isError(hydrated)) return Result.err(hydrated.error);
 		return Result.ok({
 			candidate: hydrated.value,
@@ -260,24 +275,30 @@ export async function acquireSource(
 		provenance: SearchProvenance;
 	};
 
+	input.signal?.throwIfAborted();
 	const downloadResult = await downloadAudio(
 		candidate.url,
 		input.jobDir,
 		input.proxy,
+		input.signal,
 	);
 	if (Result.isError(downloadResult)) return Result.err(downloadResult.error);
 
+	input.signal?.throwIfAborted();
 	const probeResult = await probeAndValidate(
 		downloadResult.value,
 		audioFeatureBackfillConfig.maxDownloadMb * 1024 * 1024,
+		input.signal,
 	);
 	if (Result.isError(probeResult)) return Result.err(probeResult.error);
 
+	input.signal?.throwIfAborted();
 	const clipsResult = await extractClips(
 		downloadResult.value,
 		probeResult.value.durationSeconds,
 		input.jobDir,
 		audioFeatureBackfillConfig,
+		input.signal,
 	);
 	if (Result.isError(clipsResult)) return Result.err(clipsResult.error);
 

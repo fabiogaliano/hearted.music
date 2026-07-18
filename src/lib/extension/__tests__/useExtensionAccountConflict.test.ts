@@ -51,11 +51,27 @@ describe("useExtensionAccountConflict", () => {
 		});
 	}
 
-	it("stays null before the account has linked Spotify", async () => {
+	it("does not require an account check before Spotify is linked", async () => {
 		const { result } = renderHook(() => useExtensionAccountConflict(null));
 		await flush();
-		expect(result.current.conflict).toBeNull();
+		expect(result.current.check).toEqual({ kind: "not-required" });
 		expect(mockIsExtensionInstalled).not.toHaveBeenCalled();
+	});
+
+	it("fails closed while the first identity check is pending", () => {
+		mockIsExtensionInstalled.mockReturnValue(new Promise(() => {}));
+		const { result } = renderHook(() =>
+			useExtensionAccountConflict("linked-1"),
+		);
+		expect(result.current.check).toEqual({ kind: "checking" });
+	});
+
+	it("verifies matching Spotify and hearted identities", async () => {
+		const { result } = renderHook(() =>
+			useExtensionAccountConflict("linked-1"),
+		);
+		await flush();
+		expect(result.current.check).toEqual({ kind: "verified" });
 	});
 
 	it("flags a Spotify mismatch when the captured account differs", async () => {
@@ -68,17 +84,20 @@ describe("useExtensionAccountConflict", () => {
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toEqual({
-			kind: "spotify-mismatch",
-			extensionProfile: {
-				spotifyId: "other-2",
-				displayName: "alex",
-				avatarUrl: null,
+		expect(result.current.check).toEqual({
+			kind: "conflict",
+			conflict: {
+				kind: "spotify-mismatch",
+				extensionProfile: {
+					spotifyId: "other-2",
+					displayName: "alex",
+					avatarUrl: null,
+				},
 			},
 		});
 	});
 
-	it("flags unpaired when paired is explicitly false and Spotify matches", async () => {
+	it("flags unpaired when paired is explicitly false", async () => {
 		mockGetSpotifyAccountStatus.mockResolvedValue(
 			status({ paired: false, profile: null }),
 		);
@@ -86,10 +105,13 @@ describe("useExtensionAccountConflict", () => {
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toEqual({ kind: "unpaired" });
+		expect(result.current.check).toEqual({
+			kind: "conflict",
+			conflict: { kind: "unpaired" },
+		});
 	});
 
-	it("mismatch outranks unpaired", async () => {
+	it("keeps mismatch higher priority than an unpaired state", async () => {
 		mockGetSpotifyAccountStatus.mockResolvedValue(
 			status({
 				paired: false,
@@ -100,27 +122,32 @@ describe("useExtensionAccountConflict", () => {
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toMatchObject({ kind: "spotify-mismatch" });
+		expect(result.current.check).toMatchObject({
+			kind: "conflict",
+			conflict: { kind: "spotify-mismatch" },
+		});
 	});
 
-	it("treats a missing paired field (older extension) as no conflict", async () => {
-		mockGetSpotifyAccountStatus.mockResolvedValue(
-			status({ paired: null, profile: null }),
-		);
+	it.each([
+		["an unreachable extension status", null],
+		["a missing Spotify profile", status({ profile: null })],
+		["an extension without pairing status", status({ paired: null })],
+	] as const)("fails closed for %s", async (_label, accountStatus) => {
+		mockGetSpotifyAccountStatus.mockResolvedValue(accountStatus);
 		const { result } = renderHook(() =>
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toBeNull();
+		expect(result.current.check).toEqual({ kind: "unavailable" });
 	});
 
-	it("stays null when the extension isn't installed", async () => {
+	it("reports unavailable when the extension isn't installed", async () => {
 		mockIsExtensionInstalled.mockResolvedValue(false);
 		const { result } = renderHook(() =>
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toBeNull();
+		expect(result.current.check).toEqual({ kind: "unavailable" });
 		expect(mockGetSpotifyAccountStatus).not.toHaveBeenCalled();
 	});
 
@@ -134,7 +161,7 @@ describe("useExtensionAccountConflict", () => {
 			useExtensionAccountConflict("linked-1"),
 		);
 		await flush();
-		expect(result.current.conflict).toMatchObject({ kind: "spotify-mismatch" });
+		expect(result.current.check).toMatchObject({ kind: "conflict" });
 
 		mockGetSpotifyAccountStatus.mockResolvedValue(status({}));
 		await act(async () => {
@@ -142,6 +169,6 @@ describe("useExtensionAccountConflict", () => {
 			await Promise.resolve();
 			await Promise.resolve();
 		});
-		expect(result.current.conflict).toBeNull();
+		expect(result.current.check).toEqual({ kind: "verified" });
 	});
 });

@@ -28,7 +28,10 @@ export function Dashboard({
 	// user reached the dashboard by navigating in-app, render it plainly like
 	// Liked Songs and Playlists. Frozen at mount so it never replays on re-render.
 	const [animateEntrance] = useState(() => !hasNavigatedThisSession());
-	const { conflict, recheck } = useExtensionAccountConflict(linkedSpotifyId);
+	const { check: accountCheck, recheck } =
+		useExtensionAccountConflict(linkedSpotifyId);
+	const conflict =
+		accountCheck.kind === "conflict" ? accountCheck.conflict : null;
 
 	return (
 		<StaggeredContent
@@ -59,7 +62,7 @@ export function Dashboard({
 					<DashboardSyncStatus
 						accountId={accountId}
 						lastSyncText={lastSyncText}
-						accountConflict={conflict !== null}
+						accountCheck={accountCheck}
 					/>
 				}
 			/>

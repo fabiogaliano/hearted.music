@@ -34,25 +34,36 @@ const CLAIM_LEASE_SECONDS = 900;
 export async function runClaimedAudioFeatureBackfillJob(
 	job: BackfillJob,
 ): Promise<void> {
+	const lease = new AbortController();
 	const heartbeat = setInterval(() => {
-		void heartbeatBackfillJob(job.id, WORKER_ID, CLAIM_LEASE_SECONDS).then(
-			(result) => {
+		void heartbeatBackfillJob(job.id, WORKER_ID, CLAIM_LEASE_SECONDS)
+			.then((result) => {
 				if (Result.isError(result)) {
 					log.warn("audio-backfill-heartbeat-failed", {
 						jobId: job.id,
 						error: result.error.message,
 					});
+					if (
+						result.error._tag === "DatabaseError" &&
+						result.error.code === "backfill_lease_lost"
+					) {
+						lease.abort(result.error);
+					}
 				}
-			},
-		);
+			})
+			.catch((error: unknown) => {
+				log.warn("audio-backfill-heartbeat-threw", {
+					jobId: job.id,
+					error: errorMessage(error),
+				});
+			});
 	}, workerConfig.heartbeatIntervalMs);
 
 	try {
-		const outcome = await processBackfillJob(
-			job,
-			WORKER_ID,
-			workerConfig.ytdlpProxy,
-		);
+		const outcome = await processBackfillJob(job, WORKER_ID, {
+			proxy: workerConfig.ytdlpProxy,
+			signal: lease.signal,
+		});
 		log.info("audio-backfill-job-settled", {
 			jobId: job.id,
 			songId: job.song_id,

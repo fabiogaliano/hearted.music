@@ -155,10 +155,13 @@ export function summarizeYtDlpFailure(
 	return chosen.length > 300 ? `${chosen.slice(0, 299)}…` : chosen;
 }
 
-export async function checkYtDlpAvailable(): Promise<
-	Result<string, YtDlpError>
-> {
-	const res = await runCommand([YT_DLP, "--version"], { timeoutMs: 10_000 });
+export async function checkYtDlpAvailable(
+	signal?: AbortSignal,
+): Promise<Result<string, YtDlpError>> {
+	const res = await runCommand([YT_DLP, "--version"], {
+		timeoutMs: 10_000,
+		signal,
+	});
 	if (res.timedOut || res.exitCode !== 0) {
 		return Result.err(
 			new YtDlpError({
@@ -179,9 +182,11 @@ function musicSongsSearchUrl(query: string): string {
 async function runSearch(
 	args: string[],
 	message: string,
+	signal?: AbortSignal,
 ): Promise<Result<YoutubeCandidate[], YtDlpError>> {
 	const res = await runCommand(args, {
 		timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs,
+		signal,
 	});
 	if (res.timedOut) {
 		return Result.err(new YtDlpError({ message, code: "timeout" }));
@@ -203,6 +208,7 @@ export async function searchYouTube(
 	query: string,
 	limit: number = audioFeatureBackfillConfig.searchResults,
 	proxy?: string,
+	signal?: AbortSignal,
 ): Promise<Result<YoutubeCandidate[], YtDlpError>> {
 	const commonArgs = [
 		YT_DLP,
@@ -219,20 +225,24 @@ export async function searchYouTube(
 			musicSongsSearchUrl(query),
 		],
 		"yt-dlp YouTube Music search failed",
+		signal,
 	);
 	if (Result.isOk(music) && music.value.length > 0) return music;
+	signal?.throwIfAborted();
 
 	// Music is biased toward tracks, but regular uploads remain essential for
 	// releases missing from its catalogue and for extractor outages.
 	return runSearch(
 		[...commonArgs, `ytsearch${limit}:${query}`],
 		"yt-dlp search failed",
+		signal,
 	);
 }
 
 export async function hydrateCandidate(
 	videoId: string,
 	proxy?: string,
+	signal?: AbortSignal,
 ): Promise<Result<YoutubeCandidate, YtDlpError>> {
 	const res = await runCommand(
 		[
@@ -243,7 +253,7 @@ export async function hydrateCandidate(
 			"--no-playlist",
 			videoUrl(videoId),
 		],
-		{ timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs },
+		{ timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs, signal },
 	);
 
 	if (res.timedOut) {
@@ -283,6 +293,7 @@ export async function downloadAudio(
 	url: string,
 	jobDir: string,
 	proxy?: string,
+	signal?: AbortSignal,
 ): Promise<Result<string, YtDlpError>> {
 	await mkdir(jobDir, { recursive: true });
 
@@ -301,7 +312,7 @@ export async function downloadAudio(
 			`${jobDir}/source.%(ext)s`,
 			url,
 		],
-		{ timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs },
+		{ timeoutMs: audioFeatureBackfillConfig.requestTimeoutMs, signal },
 	);
 
 	if (res.timedOut) {

@@ -55,6 +55,11 @@ export type ProcessOutcome =
 	| "failed"
 	| "skipped";
 
+export interface BackfillProcessOptions {
+	proxy?: string;
+	signal?: AbortSignal;
+}
+
 interface SongRow {
 	id: string;
 	name: string;
@@ -99,10 +104,19 @@ async function deferAndMaybeWake(
 export async function processBackfillJob(
 	job: BackfillJob,
 	workerId: string,
-	proxy?: string,
+	options: BackfillProcessOptions = {},
 ): Promise<ProcessOutcome> {
 	const jobDir = `${audioFeatureBackfillConfig.tmpDir}/${job.id}`;
 	const supabase = createAdminSupabaseClient();
+	const { proxy, signal } = options;
+
+	const stopAfterLeaseLoss = (): ProcessOutcome => {
+		log.warn("youtube-audio-backfill-lease-lost", {
+			jobId: job.id,
+			songId: job.song_id,
+		});
+		return "skipped";
+	};
 
 	try {
 		const songResult = await supabase
@@ -112,6 +126,7 @@ export async function processBackfillJob(
 			)
 			.eq("id", job.song_id)
 			.single();
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		if (songResult.error || !songResult.data) {
 			await failJob(job.id, workerId, "source_missing", "song row not found");
 			await wakeEnrichmentForSong(job.song_id);
@@ -127,7 +142,8 @@ export async function processBackfillJob(
 
 		// A missing yt-dlp binary is an environment problem retries won't fix, so
 		// terminate as manual_needed (not db_write_failed) and surface it.
-		const ytDlp = await checkYtDlpAvailable();
+		const ytDlp = await checkYtDlpAvailable(signal);
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		if (Result.isError(ytDlp)) {
 			log.error("youtube-audio-yt-dlp-unavailable", {
 				jobId: job.id,
@@ -148,6 +164,7 @@ export async function processBackfillJob(
 			sourceType: job.source_type as "youtube_search" | "youtube_url",
 			sourceUrl: job.source_url,
 			proxy,
+			signal,
 			song: {
 				name: song.name,
 				artists: song.artists,
@@ -158,6 +175,7 @@ export async function processBackfillJob(
 			jobDir,
 		});
 
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		if (Result.isError(acquired)) {
 			return settleAcquisitionError(job, workerId, acquired.error);
 		}
@@ -192,6 +210,12 @@ export async function processBackfillJob(
 			workerId,
 			PROVIDER_LEASE_SECONDS,
 		);
+		if (signal?.aborted) {
+			if (Result.isOk(lease) && lease.value) {
+				await releaseProviderLease(RECCOBEATS_FILE_PROVIDER, workerId);
+			}
+			return stopAfterLeaseLoss();
+		}
 		if (Result.isError(lease) || !lease.value) {
 			// Couldn't acquire the ReccoBeats lease — the worker did zero song-specific
 			// work, and the lease's 600s TTL makes contention always transient. Re-queue
@@ -210,11 +234,12 @@ export async function processBackfillJob(
 
 		let analysis: Awaited<ReturnType<typeof analyzeClipsAll>>;
 		try {
-			analysis = await analyzeClipsAll(source.clips);
+			analysis = await analyzeClipsAll(source.clips, signal);
 		} finally {
 			await releaseProviderLease(RECCOBEATS_FILE_PROVIDER, workerId);
 		}
 
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		if (Result.isError(analysis)) {
 			return settleReccoBeatsError(job, workerId, analysis.error);
 		}
@@ -249,6 +274,7 @@ export async function processBackfillJob(
 			: autoApproved
 				? "auto-approve"
 				: null;
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		const settled = await settleBackfillJob({
 			jobId: job.id,
 			workerId,
@@ -334,6 +360,7 @@ export async function processBackfillJob(
 		await wakeEnrichmentForSong(job.song_id);
 		return "completed";
 	} catch (err) {
+		if (signal?.aborted) return stopAfterLeaseLoss();
 		log.error("youtube-audio-backfill-failed", {
 			jobId: job.id,
 			error: String(err),
