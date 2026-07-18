@@ -1,4 +1,5 @@
 import type { Story } from "@ladle/react";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { PaywallCTA } from "./PaywallCTA";
 
@@ -7,15 +8,7 @@ export default {
 };
 
 function makeFreeBillingState(creditBalance = 0): BillingState {
-	return {
-		plan: "free",
-		creditBalance,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-	};
+	return makeBillingState({ creditBalance });
 }
 
 export const Default: Story = () => (

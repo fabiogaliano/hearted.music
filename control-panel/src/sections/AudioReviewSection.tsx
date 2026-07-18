@@ -2,19 +2,28 @@ import {
 	ArrowSquareOutIcon,
 	CheckCircleIcon,
 	MagnifyingGlassIcon,
-	MusicNotesIcon,
 	PaperPlaneTiltIcon,
 	SwapIcon,
 	TrashIcon,
 	WarningCircleIcon,
 	WaveformIcon,
-	YoutubeLogoIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import type { MatchCandidateSnapshot } from "@/lib/integrations/youtube-audio/types";
-import { Badge, Card, ErrorState } from "../components/primitives";
+import {
+	AudioPlayer,
+	type AudioPlayerHandle,
+	type AudioSource,
+} from "../components/AudioPlayer";
+import { BatchLauncher } from "../components/BatchLauncher";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { Badge, ErrorState } from "../components/primitives";
+import { QueueToolbar } from "../components/QueueToolbar";
 import { postJson, useApi } from "../lib/api";
 import { noAutofill } from "../lib/form";
+import { useQueueKeyboard } from "../lib/queue-keyboard";
+import { type QueueState, useQueueState } from "../lib/queue-state";
+import type { PageResult } from "../lib/types";
 
 type AudioFeatureCandidate = MatchCandidateSnapshot;
 
@@ -85,7 +94,13 @@ interface QueueBuckets {
 	failed: number;
 }
 
-type Tab = "approval" | "needs_url" | "failed";
+type Tab = "pending" | "approved" | "rejected" | "needs_url" | "failed";
+type ReviewStatus = "pending" | "approved" | "rejected";
+type FilterKey = "sourceType" | "minMatchScore" | "maxDurationDelta";
+
+function isReviewTab(tab: Tab): tab is ReviewStatus {
+	return tab === "pending" || tab === "approved" || tab === "rejected";
+}
 
 // The shared duration() helper collapses to coarse units ("4m"), which is
 // useless when the whole point is comparing 3:42 against 3:39. Format precisely.
@@ -104,6 +119,68 @@ function durationDelta(spotifyMs: number | null, ytSec: number | null) {
 	const delta = Math.round(Math.abs(spotifyMs / 1000 - ytSec));
 	const tone = delta <= 2 ? "success" : delta <= 8 ? "warning" : "danger";
 	return { delta, tone };
+}
+
+// Verbal match-quality label from the 0–1 score, so the verdict reads as a
+// judgement ("Strong match") not just a number. Thresholds mirror the brand's
+// match-quality bands; tone drives the accent color of the hero.
+function matchQuality(score: number | null): {
+	label: string;
+	tone: "success" | "warning" | "danger";
+} {
+	if (score == null) return { label: "Unscored", tone: "warning" };
+	const pct = score * 100;
+	if (pct >= 90) return { label: "Perfect fit", tone: "success" };
+	if (pct >= 80) return { label: "Strong match", tone: "success" };
+	if (pct >= 70) return { label: "Good match", tone: "warning" };
+	if (pct >= 60) return { label: "Worth a look", tone: "warning" };
+	return { label: "Weak match", tone: "danger" };
+}
+
+// A playable source plus the display metadata the YouTube face and candidate
+// cards need to follow the selection.
+interface PlayableSource extends AudioSource {
+	title: string | null;
+	channel: string | null;
+	durationSeconds: number | null;
+	thumbnailUrl: string | null;
+	url: string | null;
+}
+
+// The accepted match plus every viable alternate, as playable sources — the
+// candidate filmstrip/table doubles as the player's source switch, so the
+// operator can flip "is it #1 or #2" without leaving. Rejected candidates and
+// ones missing a video id can't be played, so they're dropped here (they still
+// show in the candidate list, dimmed).
+function buildAudioSources(r: AudioFeatureReviewRow): PlayableSource[] {
+	const sources: PlayableSource[] = [];
+	const seen = new Set<string>();
+	if (r.youtubeVideoId) {
+		sources.push({
+			id: r.youtubeVideoId,
+			label: "Match",
+			title: r.youtubeTitle,
+			channel: r.youtubeChannel,
+			durationSeconds: r.youtubeDurationSeconds,
+			thumbnailUrl: r.youtubeThumbnailUrl,
+			url: r.youtubeUrl,
+		});
+		seen.add(r.youtubeVideoId);
+	}
+	for (const c of r.candidates) {
+		if (c.rejected || !c.videoId || seen.has(c.videoId)) continue;
+		seen.add(c.videoId);
+		sources.push({
+			id: c.videoId,
+			label: `#${c.rank ?? sources.length + 1}`,
+			title: c.title,
+			channel: c.channel,
+			durationSeconds: c.durationSeconds,
+			thumbnailUrl: c.thumbnailUrl,
+			url: c.url,
+		});
+	}
+	return sources;
 }
 
 const FEATURE_KEYS: {
@@ -147,86 +224,131 @@ function FeatureGrid({ r }: { r: AudioFeatureReviewRow }) {
 	);
 }
 
-// Em dash, not hyphen: song names here often already contain " - " (e.g.
-// "Some Might Say - Remastered"), so a hyphen separator would blur together.
-function songTitle(artistLabel: string, songName: string): string {
-	const name = songName || "Unknown song";
-	return artistLabel ? `${artistLabel} — ${name}` : name;
+// "Artists — Song", song title in the editorial serif italic. Shared by the
+// focus topline and the cockpit detail header so identity reads the same in both.
+function IdentityLine({
+	artists,
+	songName,
+}: {
+	artists: string[];
+	songName: string;
+}) {
+	const label = artists.join(", ");
+	return (
+		<span className="rv-ident">
+			{label && `${label} — `}
+			<span className="serif">{songName || "Unknown song"}</span>
+		</span>
+	);
 }
 
-function SpotifyPanel({ r }: { r: AudioFeatureReviewRow }) {
+// The match score as the card's verdict: a big serif number + quality label,
+// tinted by tone. This is the thing the operator is here to judge, so it leads.
+function VerdictPill({
+	score,
+	size = "lg",
+}: {
+	score: number | null;
+	size?: "lg" | "sm";
+}) {
+	const q = matchQuality(score);
+	const pct = score != null ? Math.round(score * 100) : null;
 	return (
-		<div className="ar-panel">
+		<span className={`rv-verdict ${q.tone} ${size}`}>
+			<span className="rv-verdict-num serif upright">{pct ?? "—"}</span>
+			<span className="rv-verdict-label">{q.label}</span>
+		</span>
+	);
+}
+
+// Spotify identity face — cover, source eyebrow, title/artist/duration. `size`
+// shrinks it for the cockpit's compare strip.
+function SpotifyFace({
+	r,
+	size = "lg",
+}: {
+	r: AudioFeatureReviewRow;
+	size?: "lg" | "sm";
+}) {
+	return (
+		<div className={`rv-panel sp ${size}`}>
 			{r.imageUrl ? (
-				<img className="ar-art cover" src={r.imageUrl} alt="" loading="lazy" />
+				<img className="rv-face-art" src={r.imageUrl} alt="" loading="lazy" />
 			) : (
-				<span className="ar-art cover placeholder" />
+				<span className="rv-face-art placeholder" />
 			)}
-			<div className="ar-body">
-				<div className="ar-eyebrow">
-					<MusicNotesIcon className="sp" size={12} weight="fill" />
-					Spotify song
+			<div className="rv-face-body">
+				<div className="rv-eye">
+					<span className="rv-dot sp" />
+					<span className="rv-tag">Spotify song</span>
 				</div>
-				<div className="ar-title">
-					{songTitle(r.artists.join(", "), r.songName)}
-				</div>
-				<div className="ar-sub">
-					{r.albumName ?? "—"}
-					{r.spotifyDurationMs != null && (
-						<>
-							{" · "}
-							<span className="ar-clock">
-								{clock(r.spotifyDurationMs / 1000)}
-							</span>
-						</>
+				<div className="rv-ptitle">{r.songName || "Unknown song"}</div>
+				<div className="rv-psub">
+					{[r.artists.join(", "), r.albumName].filter(Boolean).join(" · ") ||
+						"—"}
+					{size === "sm" && r.spotifyDurationMs != null && (
+						<span className="num"> · {clock(r.spotifyDurationMs / 1000)}</span>
 					)}
 				</div>
+				{size === "lg" && r.spotifyDurationMs != null && (
+					<div className="rv-pclock num">
+						{clock(r.spotifyDurationMs / 1000)}
+					</div>
+				)}
 			</div>
 		</div>
 	);
 }
 
-function YoutubePanel({ r }: { r: AudioFeatureReviewRow }) {
+// YouTube match face — thumbnail, source eyebrow, title/channel/duration, plus
+// the open-on-YouTube link (kept as a secondary escape hatch beside the player).
+// When the operator picks an alternate candidate to listen to, `active` swaps
+// the face to that candidate so the panel always describes what's playing.
+function YoutubeFace({
+	r,
+	active,
+	size = "lg",
+}: {
+	r: AudioFeatureReviewRow;
+	active?: PlayableSource | null;
+	size?: "lg" | "sm";
+}) {
 	const sourceLabel =
 		r.sourceType === "youtube_url" ? "manual url" : "via search";
+	const isAlternate = active != null && active.id !== r.youtubeVideoId;
+	const thumb = active ? active.thumbnailUrl : r.youtubeThumbnailUrl;
+	const title = active ? active.title : r.youtubeTitle;
+	const channel = active ? active.channel : r.youtubeChannel;
+	const durationSeconds = active
+		? active.durationSeconds
+		: r.youtubeDurationSeconds;
+	const url = active ? active.url : r.youtubeUrl;
 	return (
-		<div className="ar-panel">
-			{r.youtubeThumbnailUrl ? (
-				<img
-					className="ar-art thumb"
-					src={r.youtubeThumbnailUrl}
-					alt=""
-					loading="lazy"
-				/>
+		<div className={`rv-panel yt ${size}`}>
+			{thumb ? (
+				<img className="rv-face-art" src={thumb} alt="" loading="lazy" />
 			) : (
-				<span className="ar-art thumb placeholder" />
+				<span className="rv-face-art placeholder" />
 			)}
-			<div className="ar-body">
-				<div className="ar-eyebrow">
-					<YoutubeLogoIcon className="yt" size={13} weight="fill" />
-					YouTube match
-					<span className="tag">· {sourceLabel}</span>
+			<div className="rv-face-body">
+				<div className="rv-eye">
+					<span className="rv-dot yt" />
+					<span className="rv-tag">
+						{isAlternate
+							? `YouTube alternate · ${active.label}`
+							: `YouTube match · ${sourceLabel}`}
+					</span>
 				</div>
-				<div className="ar-title">{r.youtubeTitle ?? "(no title)"}</div>
-				<div className="ar-sub">
-					{r.youtubeChannel ?? "—"}
-					{r.youtubeDurationSeconds != null && (
-						<>
-							{" · "}
-							<span className="ar-clock">
-								{clock(r.youtubeDurationSeconds)}
-							</span>
-						</>
+				<div className="rv-ptitle">{title ?? "(no title)"}</div>
+				<div className="rv-psub">
+					{channel ?? "—"}
+					{durationSeconds != null && (
+						<span className="num"> · {clock(durationSeconds)}</span>
 					)}
 				</div>
-				{r.youtubeUrl && (
-					<a
-						href={r.youtubeUrl}
-						target="_blank"
-						rel="noreferrer"
-						className="user-link ar-link"
-					>
-						<ArrowSquareOutIcon size={13} weight="bold" /> open on YouTube
+				{size === "lg" && url && (
+					<a href={url} target="_blank" rel="noreferrer" className="rv-plink">
+						open on YouTube <ArrowSquareOutIcon size={11} weight="bold" />
 					</a>
 				)}
 			</div>
@@ -234,283 +356,359 @@ function YoutubePanel({ r }: { r: AudioFeatureReviewRow }) {
 	);
 }
 
-function Verdict({
-	r,
-	reasons,
-}: {
-	r: AudioFeatureReviewRow;
-	reasons: string[];
-}) {
-	const delta = durationDelta(r.spotifyDurationMs, r.youtubeDurationSeconds);
-	return (
-		<div className="ar-verdict">
-			<div className="ar-verdict-line">
-				{r.matchScore != null && (
-					<span className="ar-score">
-						{(r.matchScore * 100).toFixed(0)}% match
-					</span>
-				)}
-				{r.matchScore != null && delta && <span className="conn">·</span>}
-				{delta && (
-					<span className={`ar-delta ${delta.tone}`}>Δ {delta.delta}s</span>
-				)}
-			</div>
-			{reasons.length > 0 && (
-				<div className="ar-reasons">{reasons.join(" · ")}</div>
-			)}
-		</div>
-	);
-}
-
-function CandidateRow({
-	c,
-	spotifyDurationMs,
-	onUse,
-}: {
-	c: AudioFeatureCandidate;
-	spotifyDurationMs: number | null;
-	onUse?: (url: string) => void;
-}) {
-	const delta = durationDelta(spotifyDurationMs, c.durationSeconds);
-	// Rejected candidates carry a reject reason instead of positive signals; a
-	// viable one with no reasons still gets a legible fallback rather than blank.
-	const detail = c.rejected
-		? (c.rejectReason ?? "rejected")
-		: c.reasons.length > 0
-			? c.reasons.join(" · ")
-			: "no positive signals";
-	return (
-		<div className={`ar-cand${c.rejected ? " rejected" : ""}`}>
-			<div className="ar-cand-rank">{c.rejected ? "✕" : (c.rank ?? "•")}</div>
-			<div className="ar-cand-main">
-				<div className="ar-cand-title">{c.title ?? "(no title)"}</div>
-				<div className="ar-sub">
-					{c.channel ?? "—"}
-					{c.durationSeconds != null && (
-						<>
-							{" · "}
-							<span className="ar-clock">{clock(c.durationSeconds)}</span>
-						</>
-					)}
-					{delta && (
-						<>
-							{" · "}
-							<span className={`ar-delta ${delta.tone}`}>Δ {delta.delta}s</span>
-						</>
-					)}
-				</div>
-				<div className="ar-reasons">{detail}</div>
-			</div>
-			<div className="ar-cand-side">
-				<span className="ar-score">
-					{c.score != null ? `${Math.round(c.score * 100)}%` : "—"}
-				</span>
-				<div className="ar-cand-actions">
-					{c.url && (
-						<a
-							href={c.url}
-							target="_blank"
-							rel="noreferrer"
-							className="user-link"
-							style={{ fontSize: 12 }}
-							aria-label="Open candidate on YouTube"
-						>
-							<ArrowSquareOutIcon size={13} weight="bold" />
-						</a>
-					)}
-					{onUse && c.url && (
-						<button
-							type="button"
-							className="btn mini"
-							onClick={() => onUse(c.url)}
-						>
-							Use
-						</button>
-					)}
-				</div>
-			</div>
-		</div>
-	);
-}
-
-function CandidateList({
+// The scored candidates as a horizontal filmstrip (Direction A) — rank · title ·
+// score. Playable cards double as the player's source switch (click to listen,
+// outlined = playing); "Use this" stages the candidate as a replacement URL.
+function Filmstrip({
 	candidates,
 	spotifyDurationMs,
-	onUse,
+	onStage,
+	activeVideoId,
+	onSelect,
 }: {
 	candidates: AudioFeatureCandidate[];
 	spotifyDurationMs: number | null;
-	onUse?: (url: string) => void;
+	onStage?: (url: string) => void;
+	activeVideoId?: string | null;
+	onSelect?: (videoId: string) => void;
 }) {
 	if (candidates.length === 0) return null;
 	return (
-		<div className="ar-cands">
-			{candidates.map((c, i) => (
-				<CandidateRow
-					key={c.videoId ?? c.url ?? String(i)}
-					c={c}
-					spotifyDurationMs={spotifyDurationMs}
-					onUse={onUse}
-				/>
-			))}
+		<div className="rv-films">
+			{candidates.map((c, i) => {
+				const delta = durationDelta(spotifyDurationMs, c.durationSeconds);
+				const canUse = !c.rejected && Boolean(c.url) && Boolean(onStage);
+				const canPlay = !c.rejected && Boolean(c.videoId) && Boolean(onSelect);
+				const playing = c.videoId != null && c.videoId === activeVideoId;
+				// Spans, not divs: this body sits inside a <button> when playable, and
+				// the classes carry the block/flex display either way.
+				const body = (
+					<>
+						<span className="rv-cand-top">
+							<span className="rv-cand-rank num">
+								{c.rejected ? "✕" : `#${c.rank ?? i + 1}`}
+							</span>
+							<span className={`rv-cand-score num${c.rejected ? " rej" : ""}`}>
+								{c.score != null
+									? `${Math.round(c.score * 100)}%`
+									: c.rejected
+										? "rejected"
+										: "—"}
+							</span>
+						</span>
+						<span className="rv-cand-title">{c.title ?? "(no title)"}</span>
+						<span className="rv-cand-sub num">
+							{c.durationSeconds != null ? clock(c.durationSeconds) : "—"}
+							{delta && (
+								<span className={`rv-delta ${delta.tone}`}>
+									{" "}
+									· Δ{delta.delta}s
+								</span>
+							)}
+						</span>
+					</>
+				);
+				return (
+					<div
+						className={`rv-cand${c.rejected ? " rej" : ""}${canPlay ? " pick" : ""}${playing ? " on" : ""}`}
+						key={c.videoId ?? c.url ?? String(i)}
+					>
+						{canPlay ? (
+							<button
+								type="button"
+								className="rv-cand-main"
+								title="Listen to this candidate"
+								onClick={() => onSelect?.(c.videoId as string)}
+							>
+								{body}
+							</button>
+						) : (
+							body
+						)}
+						{canUse && (
+							<button
+								type="button"
+								className="btn mini"
+								onClick={() => onStage?.(c.url as string)}
+							>
+								Use this
+							</button>
+						)}
+					</div>
+				);
+			})}
 		</div>
+	);
+}
+
+// The scored candidates as a dense table (Direction C cockpit) — the same data
+// the filmstrip shows, sized for the side-by-side triage layout. The rank cell
+// of a playable row is a button that switches the player to that candidate.
+function CandidateTable({
+	candidates,
+	spotifyDurationMs,
+	onStage,
+	activeVideoId,
+	onSelect,
+}: {
+	candidates: AudioFeatureCandidate[];
+	spotifyDurationMs: number | null;
+	onStage?: (url: string) => void;
+	activeVideoId?: string | null;
+	onSelect?: (videoId: string) => void;
+}) {
+	if (candidates.length === 0) return null;
+	return (
+		<table className="rv-table">
+			<thead>
+				<tr>
+					<th>#</th>
+					<th>Candidate</th>
+					<th>Dur</th>
+					<th>Δ</th>
+					<th>Score</th>
+					<th />
+				</tr>
+			</thead>
+			<tbody>
+				{candidates.map((c, i) => {
+					const delta = durationDelta(spotifyDurationMs, c.durationSeconds);
+					const canUse = !c.rejected && Boolean(c.url) && Boolean(onStage);
+					const canPlay =
+						!c.rejected && Boolean(c.videoId) && Boolean(onSelect);
+					const playing = c.videoId != null && c.videoId === activeVideoId;
+					return (
+						<tr
+							key={c.videoId ?? c.url ?? String(i)}
+							className={
+								`${c.rejected ? "rej" : ""}${playing ? " on" : ""}`.trim() ||
+								undefined
+							}
+						>
+							<td className="num">
+								{canPlay ? (
+									<button
+										type="button"
+										className="btn mini"
+										title="Listen to this candidate"
+										onClick={() => onSelect?.(c.videoId as string)}
+									>
+										{c.rank ?? i + 1}
+									</button>
+								) : c.rejected ? (
+									"✕"
+								) : (
+									(c.rank ?? i + 1)
+								)}
+							</td>
+							<td>
+								{c.title ?? "(no title)"}
+								{c.channel && <span className="rv-td-ch"> · {c.channel}</span>}
+							</td>
+							<td className="num">
+								{c.durationSeconds != null ? clock(c.durationSeconds) : "—"}
+							</td>
+							<td className="num">
+								{delta ? (
+									<span className={`rv-delta ${delta.tone}`}>
+										Δ{delta.delta}s
+									</span>
+								) : (
+									"—"
+								)}
+							</td>
+							<td className={`num rv-td-score${c.rejected ? " rej" : ""}`}>
+								{c.score != null ? `${Math.round(c.score * 100)}%` : "—"}
+							</td>
+							<td>
+								{canUse && (
+									<button
+										type="button"
+										className="btn mini"
+										onClick={() => onStage?.(c.url as string)}
+									>
+										use
+									</button>
+								)}
+							</td>
+						</tr>
+					);
+				})}
+			</tbody>
+		</table>
 	);
 }
 
 function ReviewCard({
 	r,
-	onActioned,
+	variant,
+	position,
+	total,
+	busy,
+	error,
+	onApprove,
+	onReject,
+	onReplaced,
+	onSkip,
+	statusLabel,
+	playerRef,
 }: {
 	r: AudioFeatureReviewRow;
-	onActioned: () => void;
+	// "focus" = Direction A split stage (one card, hero verdict + filmstrip);
+	// "cockpit" = Direction C triage detail (compact, candidate table).
+	variant: "focus" | "cockpit";
+	// 1-based position + tab word for the "3 / 47 pending" readout (focus only —
+	// cockpit shows the count in its stat bar).
+	position?: number;
+	total?: number;
+	statusLabel?: string;
+	// Approve/reject are lifted to the queue so keyboard and advance-after-action
+	// stay consistent; replace stays local because it owns a URL-entry form.
+	busy: boolean;
+	error: string | null;
+	onApprove?: () => void;
+	onReject?: () => void;
+	onReplaced?: () => void;
+	// Advance without acting on the card (Direction A "Skip"); focus mode only.
+	onSkip?: () => void;
+	// The queue owns a single player ref (only one card is ever active) so Space
+	// can drive playback from the keyboard.
+	playerRef?: RefObject<AudioPlayerHandle | null>;
 }) {
-	const [busy, setBusy] = useState<null | "approve" | "reject" | "replace">(
-		null,
-	);
-	const [error, setError] = useState<string | null>(null);
+	const [replaceBusy, setReplaceBusy] = useState(false);
+	const [replaceError, setReplaceError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 	const [replaceOpen, setReplaceOpen] = useState(false);
 	const [replaceUrl, setReplaceUrl] = useState("");
+	const [confirmReplace, setConfirmReplace] = useState(false);
+	// The candidate the operator picked to LISTEN to (null = the accepted match).
+	// State is per-card — card() keys ReviewCard by review id, so advancing the
+	// queue resets the pick. The filmstrip/table drive it; the player follows.
+	const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
+	const actionable = Boolean(onApprove && onReject);
+	const sources = buildAudioSources(r);
+	const activeSourceIndex = Math.max(
+		0,
+		sources.findIndex((s) => s.id === activeSourceId),
+	);
+	const activeSource = sources[activeSourceIndex] ?? null;
+	const isCockpit = variant === "cockpit";
 
-	async function run(
-		action: "approve" | "reject" | "replace",
-		fn: () => Promise<unknown>,
-	) {
-		setBusy(action);
-		setError(null);
+	async function replace() {
+		setReplaceBusy(true);
+		setReplaceError(null);
 		setNotice(null);
 		try {
-			await fn();
-			onActioned();
+			const res = await postJson(
+				`/api/audio-feature-reviews/${r.id}/replace-youtube`,
+				{ url: replaceUrl },
+			);
+			setReplaceOpen(false);
+			setConfirmReplace(false);
+			setReplaceUrl("");
+			const job = (res as { manualJobId?: string }).manualJobId;
+			setNotice(`Replacement queued${job ? ` · job ${job.slice(0, 8)}` : ""}.`);
+			onReplaced?.();
 		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setReplaceError(e instanceof Error ? e.message : String(e));
+			throw e;
 		} finally {
-			setBusy(null);
+			setReplaceBusy(false);
 		}
 	}
 
-	function approve() {
-		void run("approve", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/approve`, {}),
-		);
+	// Clicking a candidate stages its URL into the replace form — the filmstrip
+	// and table double as a one-click "swap to this candidate" affordance.
+	function stageReplace(url: string) {
+		setReplaceUrl(url);
+		setReplaceOpen(true);
+		setNotice(null);
 	}
 
-	function reject() {
-		if (
-			!window.confirm(
-				`Reject and DELETE the live audio feature for "${r.songName}"?\n\nThis also invalidates any analysis/embedding generated from it and re-queues the song.`,
-			)
-		)
-			return;
-		void run("reject", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/reject`, {}),
-		);
-	}
+	const disabled = busy || replaceBusy;
 
-	function replace() {
-		if (
-			!window.confirm(
-				`Replace the feature for "${r.songName}" with this YouTube URL?\n\nThe current feature is deleted and a manual backfill job is queued.`,
-			)
-		)
-			return;
-		void run("replace", () =>
-			postJson(`/api/audio-feature-reviews/${r.id}/replace-youtube`, {
-				url: replaceUrl,
-			}).then((res) => {
-				setReplaceOpen(false);
-				setReplaceUrl("");
-				const job = (res as { manualJobId?: string }).manualJobId;
-				setNotice(
-					`Replacement queued${job ? ` · job ${job.slice(0, 8)}` : ""}.`,
-				);
-			}),
-		);
-	}
+	const actionsRow = actionable && (
+		<div className="rv-actions">
+			<button
+				type="button"
+				className="btn approve"
+				disabled={disabled}
+				onClick={onApprove}
+			>
+				<CheckCircleIcon size={14} weight="fill" />
+				{busy ? "Working…" : "Looks correct"}
+				<kbd>A</kbd>
+			</button>
+			<button
+				type="button"
+				className="btn reject"
+				disabled={disabled}
+				onClick={onReject}
+			>
+				<TrashIcon size={14} weight="bold" /> Reject
+				<kbd>R</kbd>
+			</button>
+			<button
+				type="button"
+				className="btn"
+				disabled={disabled}
+				onClick={() => setReplaceOpen((o) => !o)}
+			>
+				<SwapIcon size={14} weight="bold" /> Replace URL
+			</button>
+			{onSkip && (
+				<button type="button" className="btn" onClick={onSkip}>
+					Skip <kbd>J</kbd>
+				</button>
+			)}
+		</div>
+	);
 
-	return (
-		<Card
-			title="Audio match"
-			icon={WaveformIcon}
-			span={12}
-			action={<Badge tone="warning">pending · live</Badge>}
-		>
-			<div className="ar-compare">
-				<SpotifyPanel r={r} />
-				<YoutubePanel r={r} />
-			</div>
-
-			<Verdict r={r} reasons={r.matchReasons} />
-
-			<div className="btn-row" style={{ marginTop: 14 }}>
+	const replaceForm = actionable && replaceOpen && (
+		<div className="field" style={{ marginTop: 12 }}>
+			<label htmlFor={`replace-${r.id}`}>YouTube URL</label>
+			<input
+				id={`replace-${r.id}`}
+				className="input"
+				placeholder="https://www.youtube.com/watch?v=…"
+				value={replaceUrl}
+				{...noAutofill}
+				onChange={(e) => setReplaceUrl(e.target.value)}
+			/>
+			<div className="btn-row" style={{ marginTop: 8 }}>
 				<button
 					type="button"
 					className="btn primary"
-					disabled={busy !== null}
-					onClick={approve}
+					disabled={disabled || replaceUrl.trim().length === 0}
+					onClick={() => setConfirmReplace(true)}
 				>
-					<CheckCircleIcon size={14} weight="fill" />
-					{busy === "approve" ? "Approving…" : "Looks correct"}
-				</button>
-				<button
-					type="button"
-					className="btn"
-					disabled={busy !== null}
-					onClick={() => setReplaceOpen((o) => !o)}
-				>
-					<SwapIcon size={14} weight="bold" /> Replace URL
-				</button>
-				<button
-					type="button"
-					className="btn"
-					disabled={busy !== null}
-					onClick={reject}
-					style={{ color: "var(--danger)" }}
-				>
-					<TrashIcon size={14} weight="bold" />
-					{busy === "reject" ? "Rejecting…" : "Reject & delete"}
+					{replaceBusy ? "Queuing…" : "Queue replacement"}
 				</button>
 			</div>
+		</div>
+	);
 
-			{replaceOpen && (
-				<div className="field" style={{ marginTop: 12 }}>
-					<label htmlFor={`replace-${r.id}`}>YouTube URL</label>
-					<input
-						id={`replace-${r.id}`}
-						className="input"
-						placeholder="https://www.youtube.com/watch?v=…"
-						value={replaceUrl}
-						{...noAutofill}
-						onChange={(e) => setReplaceUrl(e.target.value)}
-					/>
-					<div className="btn-row" style={{ marginTop: 8 }}>
-						<button
-							type="button"
-							className="btn primary"
-							disabled={busy !== null || replaceUrl.trim().length === 0}
-							onClick={replace}
-						>
-							{busy === "replace" ? "Queuing…" : "Queue replacement"}
-						</button>
-					</div>
+	const feedback = (
+		<>
+			{(error || replaceError) && (
+				<div className="result err" style={{ marginTop: 10 }}>
+					{error ?? replaceError}
 				</div>
 			)}
+			{notice && (
+				<div className="result ok" style={{ marginTop: 10 }}>
+					{notice}
+				</div>
+			)}
+		</>
+	);
 
+	const extras = (
+		<>
 			<details className="ar-extra">
 				<summary>Audio features</summary>
 				<FeatureGrid r={r} />
 			</details>
-
-			{r.candidates.length > 0 && (
-				<details className="ar-extra">
-					<summary>All candidates ({r.candidates.length})</summary>
-					<CandidateList
-						candidates={r.candidates}
-						spotifyDurationMs={r.spotifyDurationMs}
-					/>
-				</details>
-			)}
-
 			{Object.keys(r.aggregationMetadata).length > 0 && (
 				<details className="ar-extra">
 					<summary>
@@ -528,18 +726,486 @@ function ReviewCard({
 					</pre>
 				</details>
 			)}
+		</>
+	);
 
-			{error && (
-				<div className="result err" style={{ marginTop: 10 }}>
-					{error}
+	const player = sources.length > 0 && (
+		<AudioPlayer
+			ref={playerRef}
+			sources={sources}
+			clipStarts={r.clipStartsSeconds}
+			compact={isCockpit}
+			activeIndex={activeSourceIndex}
+		/>
+	);
+
+	const confirmModal = confirmReplace && (
+		<ConfirmModal
+			title="Replace audio feature"
+			danger
+			confirmLabel="Queue replacement"
+			description={
+				<>
+					Replace the feature for <strong>{r.songName}</strong> with this
+					YouTube URL? This runs against <strong>production</strong>: the
+					current feature is deleted and a manual backfill job is queued. This
+					is <strong>not reversible</strong> from the panel.
+				</>
+			}
+			onConfirm={() => replace()}
+			onClose={() => setConfirmReplace(false)}
+		/>
+	);
+
+	// Cockpit detail (Direction C): compact header + compare strip + player +
+	// candidate table + actions. No Card chrome — it sits inside the cockpit grid.
+	if (isCockpit) {
+		return (
+			<div className="rv-cockpit-detail">
+				<div className="rv-dhead">
+					<IdentityLine artists={r.artists} songName={r.songName} />
+					<VerdictPill score={r.matchScore} size="sm" />
+				</div>
+				<div className="rv-cmp">
+					<SpotifyFace r={r} size="sm" />
+					<YoutubeFace r={r} active={activeSource} size="sm" />
+				</div>
+				{player}
+				<CandidateTable
+					candidates={r.candidates}
+					spotifyDurationMs={r.spotifyDurationMs}
+					onStage={actionable ? stageReplace : undefined}
+					activeVideoId={activeSource?.id ?? null}
+					onSelect={setActiveSourceId}
+				/>
+				{actionsRow}
+				{replaceForm}
+				{extras}
+				{feedback}
+				{confirmModal}
+			</div>
+		);
+	}
+
+	// Focus (Direction A): verdict-first split stage. A bare framed card — no
+	// "Audio match" chrome — so it reads exactly like the prototype.
+	return (
+		<div className="card rv-focus">
+			<div className="rv-focus-inner">
+				<div className="rv-topline">
+					<IdentityLine artists={r.artists} songName={r.songName} />
+					{position != null && total != null && (
+						<span className="rv-pos num">
+							{position} / {total}
+							{statusLabel ? ` ${statusLabel}` : ""}
+						</span>
+					)}
+					<VerdictPill score={r.matchScore} size="lg" />
+				</div>
+
+				<div className="rv-panels">
+					<SpotifyFace r={r} />
+					<YoutubeFace r={r} active={activeSource} />
+				</div>
+
+				{player}
+
+				<Filmstrip
+					candidates={r.candidates}
+					spotifyDurationMs={r.spotifyDurationMs}
+					onStage={actionable ? stageReplace : undefined}
+					activeVideoId={activeSource?.id ?? null}
+					onSelect={setActiveSourceId}
+				/>
+
+				{actionsRow}
+				{replaceForm}
+				{extras}
+				{feedback}
+				{confirmModal}
+			</div>
+		</div>
+	);
+}
+
+// One compact selectable row in the cockpit rail: art · song/artist · score
+// badge, with a batch checkbox when the pending tab is multi-selecting. Clicking
+// the body makes it the active detail card.
+function RailRow({
+	r,
+	active,
+	canSelect,
+	selected,
+	onToggle,
+	onSelect,
+}: {
+	r: AudioFeatureReviewRow;
+	active: boolean;
+	canSelect: boolean;
+	selected: boolean;
+	onToggle: () => void;
+	onSelect: () => void;
+}) {
+	const quality = matchQuality(r.matchScore);
+	const pct = r.matchScore != null ? Math.round(r.matchScore * 100) : null;
+	return (
+		<div className={`ar-railrow${active ? " on" : ""}`}>
+			{canSelect && (
+				<input
+					className="ar-railcheck"
+					type="checkbox"
+					checked={selected}
+					onChange={onToggle}
+					aria-label={`Select ${r.songName} for batch`}
+				/>
+			)}
+			<button type="button" className="ar-railrow-main" onClick={onSelect}>
+				{r.imageUrl ? (
+					<img src={r.imageUrl} alt="" loading="lazy" />
+				) : (
+					<span className="ar-railart" />
+				)}
+				<span className="ar-railtext">
+					<span className="ar-railname">{r.songName}</span>
+					<span className="ar-railsub">{r.artists.join(", ") || "—"}</span>
+				</span>
+				{pct != null && (
+					<span className={`ar-railscore ${quality.tone}`}>{pct}%</span>
+				)}
+			</button>
+		</div>
+	);
+}
+
+const REVIEW_EMPTY: Record<ReviewStatus, string> = {
+	pending: "No pending audio reviews.",
+	approved: "No approved audio reviews yet.",
+	rejected: "No rejected audio reviews yet.",
+};
+
+function AudioReviewsQueue({
+	queue,
+	refreshKey,
+	onActioned,
+}: {
+	queue: QueueState<Tab, FilterKey>;
+	refreshKey: number;
+	onActioned: () => void;
+}) {
+	const searchRef = useRef<HTMLInputElement>(null);
+	// Single player instance across the queue — only one card is ever active — so
+	// Space toggles playback wherever the operator is.
+	const playerRef = useRef<AudioPlayerHandle | null>(null);
+	const [actioning, setActioning] = useState<string | null>(null);
+	const [actionError, setActionError] = useState<{
+		id: string;
+		message: string;
+	} | null>(null);
+	// Reject deletes the live feature and its downstream artifacts, so it goes
+	// through the confirm modal with a mandatory reason.
+	const [rejectTarget, setRejectTarget] =
+		useState<AudioFeatureReviewRow | null>(null);
+
+	const status = queue.tab as ReviewStatus;
+	const params = new URLSearchParams(queue.listParams);
+	params.set("status", status);
+	const { data, error, loading, refreshing, refetch } = useApi<
+		PageResult<AudioFeatureReviewRow>
+	>(`/api/audio-feature-reviews?${params.toString()}`, refreshKey);
+
+	const rows = data?.rows ?? [];
+	const total = data?.total ?? 0;
+	const pageCount = Math.max(1, Math.ceil(total / queue.pageSize));
+	const { page, focusIndex, setPage, setFocusIndex } = queue;
+
+	useEffect(() => {
+		if (loading) return;
+		if (rows.length === 0) {
+			if (page > 1) setPage(page - 1);
+			return;
+		}
+		if (focusIndex > rows.length - 1) setFocusIndex(rows.length - 1);
+	}, [rows.length, loading, page, focusIndex, setPage, setFocusIndex]);
+
+	const globalIndex = (queue.page - 1) * queue.pageSize + queue.focusIndex;
+	const isFocus = queue.mode === "focus";
+	const isPending = status === "pending";
+	const canSelect = isPending && !isFocus;
+
+	// List-mode + pending selection for the safe approval batch; dropped when the
+	// operator leaves the pending tab or enters focus mode.
+	const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
+		new Set(),
+	);
+	const [batchOpen, setBatchOpen] = useState(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset-on-change; status/mode are the intended triggers
+	useEffect(() => {
+		setSelectedIds(new Set());
+	}, [status, queue.mode]);
+	function toggleSelect(id: string) {
+		setSelectedIds((current) => {
+			const next = new Set(current);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	}
+
+	function goNext() {
+		if (isFocus && queue.focusIndex < rows.length - 1) {
+			queue.setFocusIndex(queue.focusIndex + 1);
+		} else if (queue.page < pageCount) {
+			if (isFocus) queue.setFocusIndex(0);
+			queue.setPage(queue.page + 1);
+		}
+	}
+	function goPrev() {
+		if (isFocus && queue.focusIndex > 0) {
+			queue.setFocusIndex(queue.focusIndex - 1);
+		} else if (queue.page > 1) {
+			if (isFocus) queue.setFocusIndex(queue.pageSize - 1);
+			queue.setPage(queue.page - 1);
+		}
+	}
+
+	function afterAction() {
+		refetch();
+		onActioned();
+	}
+
+	async function approve(id: string) {
+		setActioning(id);
+		setActionError(null);
+		try {
+			await postJson(`/api/audio-feature-reviews/${id}/approve`, {});
+			afterAction();
+		} catch (e) {
+			setActionError({
+				id,
+				message: e instanceof Error ? e.message : String(e),
+			});
+		} finally {
+			setActioning(null);
+		}
+	}
+	async function confirmReject(r: AudioFeatureReviewRow, reason: string) {
+		setActioning(r.id);
+		setActionError(null);
+		try {
+			await postJson(`/api/audio-feature-reviews/${r.id}/reject`, { reason });
+			setRejectTarget(null);
+			afterAction();
+		} catch (e) {
+			setActionError({
+				id: r.id,
+				message: e instanceof Error ? e.message : String(e),
+			});
+			throw e;
+		} finally {
+			setActioning(null);
+		}
+	}
+
+	const focusRow = rows[Math.min(queue.focusIndex, rows.length - 1)];
+
+	useQueueKeyboard({
+		onNext: goNext,
+		onPrev: goPrev,
+		onSearch: () => searchRef.current?.focus(),
+		onPlayPause: () => playerRef.current?.toggle(),
+		// Approve/reject act on the active card in either mode (focus or cockpit).
+		// Reject only opens the confirm modal — a shortcut never commits a delete.
+		onApprove: () => {
+			if (isPending && focusRow && actioning === null)
+				void approve(focusRow.id);
+		},
+		onReject: () => {
+			if (isPending && focusRow && actioning === null)
+				setRejectTarget(focusRow);
+		},
+	});
+
+	const hasNext = isFocus ? globalIndex < total - 1 : queue.page < pageCount;
+	const hasPrev = isFocus ? globalIndex > 0 : queue.page > 1;
+
+	// Only the active detail card is rendered (focus mode = card alone, cockpit =
+	// card beside the rail), so it always owns the shared player ref. Batch
+	// selection lives on the rail rows, not here.
+	function card(r: AudioFeatureReviewRow, variant: "focus" | "cockpit") {
+		return (
+			<ReviewCard
+				key={r.id}
+				r={r}
+				variant={variant}
+				position={variant === "focus" ? globalIndex + 1 : undefined}
+				total={variant === "focus" ? total : undefined}
+				statusLabel={status}
+				busy={actioning === r.id}
+				error={actionError?.id === r.id ? actionError.message : null}
+				onApprove={isPending ? () => approve(r.id) : undefined}
+				onReject={isPending ? () => setRejectTarget(r) : undefined}
+				onReplaced={afterAction}
+				onSkip={variant === "focus" ? goNext : undefined}
+				playerRef={playerRef}
+			/>
+		);
+	}
+
+	if (error && !data) return <ErrorState message={error} />;
+
+	return (
+		<>
+			<QueueToolbar
+				searchRef={searchRef}
+				search={queue.q}
+				onSearchChange={queue.setSearch}
+				order={queue.order}
+				onOrderChange={queue.setOrder}
+				mode={queue.mode}
+				onModeChange={queue.setMode}
+				pageSize={queue.pageSize}
+				onPageSizeChange={queue.setPageSize}
+				onReset={queue.reset}
+				refreshing={refreshing}
+				activeFilterCount={queue.activeFilterCount}
+				filters={
+					<>
+						<select
+							className="select"
+							aria-label="Source type"
+							value={queue.filters.sourceType}
+							onChange={(e) => queue.setFilter("sourceType", e.target.value)}
+						>
+							<option value="all">Any source</option>
+							<option value="youtube_search">Auto search</option>
+							<option value="youtube_url">Manual URL</option>
+						</select>
+						<input
+							className="input"
+							type="number"
+							step="0.05"
+							min="0"
+							max="1"
+							aria-label="Min match score"
+							placeholder="Min score"
+							value={queue.filters.minMatchScore}
+							onChange={(e) => queue.setFilter("minMatchScore", e.target.value)}
+						/>
+						<input
+							className="input"
+							type="number"
+							min="0"
+							aria-label="Max duration delta (s)"
+							placeholder="Max Δs"
+							value={queue.filters.maxDurationDelta}
+							onChange={(e) =>
+								queue.setFilter("maxDurationDelta", e.target.value)
+							}
+						/>
+					</>
+				}
+				total={total}
+				page={queue.page}
+				focusIndex={isFocus ? queue.focusIndex : undefined}
+				onPrev={goPrev}
+				onNext={goNext}
+				hasPrev={hasPrev}
+				hasNext={hasNext}
+			/>
+
+			{canSelect && selectedIds.size > 0 && (
+				<div className="batch-bar span-12">
+					<span>{selectedIds.size} selected</span>
+					<button
+						type="button"
+						className="btn primary"
+						onClick={() => setBatchOpen(true)}
+					>
+						Approve {selectedIds.size} selected…
+					</button>
 				</div>
 			)}
-			{notice && (
-				<div className="result ok" style={{ marginTop: 10 }}>
-					{notice}
+
+			{batchOpen && (
+				<BatchLauncher
+					actionType="audio-approve-batch"
+					title="Approve audio reviews — batch"
+					description="Approves the selected pending matches. Rows no longer pending are skipped. Approval only — reject and replace stay single-item."
+					buildInput={() => ({ reviewIds: [...selectedIds] })}
+					onClose={() => setBatchOpen(false)}
+					onCommitted={() => {
+						setSelectedIds(new Set());
+						afterAction();
+					}}
+				/>
+			)}
+
+			{rows.length === 0 ? (
+				<div className="card span-12">
+					<div className="empty">
+						{queue.q ? "No songs match your search." : REVIEW_EMPTY[status]}
+					</div>
+				</div>
+			) : isFocus ? (
+				focusRow && (
+					<div className="ar-list solo span-12">{card(focusRow, "focus")}</div>
+				)
+			) : (
+				// Cockpit: a stat bar + selectable queue rail beside the active detail.
+				<div className="rv-cockpit span-12">
+					<div className="rv-statbar">
+						<span>
+							<b className="serif upright">{total}</b> {status}
+						</span>
+						<span className="rv-statbar-keys">
+							<span className="rv-tag">keyboard</span>
+							<kbd>J</kbd>
+							<kbd>K</kbd> move · <kbd>A</kbd> approve · <kbd>R</kbd> reject ·{" "}
+							<kbd>Space</kbd> play
+						</span>
+					</div>
+					<div className="rv-cols">
+						<div className="ar-rail">
+							{rows.map((r, i) => (
+								<RailRow
+									key={r.id}
+									r={r}
+									active={i === Math.min(queue.focusIndex, rows.length - 1)}
+									canSelect={canSelect}
+									selected={selectedIds.has(r.id)}
+									onToggle={() => toggleSelect(r.id)}
+									onSelect={() => queue.setFocusIndex(i)}
+								/>
+							))}
+						</div>
+						<div className="ar-detail">
+							{focusRow && card(focusRow, "cockpit")}
+						</div>
+					</div>
 				</div>
 			)}
-		</Card>
+
+			{rejectTarget && (
+				<ConfirmModal
+					title="Reject & delete audio feature"
+					danger
+					confirmLabel="Reject & delete"
+					requireReason
+					reasonPlaceholder="Why this match is wrong"
+					description={
+						<>
+							Reject and DELETE the live audio feature for{" "}
+							<strong>{rejectTarget.songName}</strong>? This runs against{" "}
+							<strong>production</strong>: it also invalidates any
+							analysis/embedding generated from it and re-queues the song. This
+							is <strong>not reversible</strong> from the panel.
+						</>
+					}
+					onConfirm={(reason) => confirmReject(rejectTarget, reason)}
+					onClose={() => setRejectTarget(null)}
+				/>
+			)}
+		</>
 	);
 }
 
@@ -553,11 +1219,74 @@ const REASON_COPY: Record<string, string> = {
 	lease_expired: "Worker lease expired after the max attempts.",
 };
 
+// Best auto-search score for a stuck job — the verdict number and its label.
+// Below the confidence floor, so it's tinted warning/danger, never success.
+function jobVerdict(r: AudioFeatureJobRow): {
+	pct: number | null;
+	label: string;
+	tone: "warning" | "danger";
+} {
+	const failed = r.status === "failed";
+	const bestScore = r.candidates.reduce<number | null>(
+		(m, c) => (c.score != null && (m == null || c.score > m) ? c.score : m),
+		null,
+	);
+	const pct = bestScore != null ? Math.round(bestScore * 100) : null;
+	const label = failed
+		? "Failed"
+		: pct != null
+			? "Low confidence"
+			: "Needs URL";
+	return { pct, label, tone: failed ? "danger" : "warning" };
+}
+
+// One compact selectable row in the job cockpit rail — art · song/artist ·
+// verdict chip. Mirrors RailRow so Focus/List feel identical across tabs.
+function JobRailRow({
+	r,
+	active,
+	onSelect,
+}: {
+	r: AudioFeatureJobRow;
+	active: boolean;
+	onSelect: () => void;
+}) {
+	const v = jobVerdict(r);
+	return (
+		<div className={`ar-railrow${active ? " on" : ""}`}>
+			<button type="button" className="ar-railrow-main" onClick={onSelect}>
+				{r.imageUrl ? (
+					<img src={r.imageUrl} alt="" loading="lazy" />
+				) : (
+					<span className="ar-railart" />
+				)}
+				<span className="ar-railtext">
+					<span className="ar-railname">{r.songName}</span>
+					<span className="ar-railsub">{r.artistLabel || "—"}</span>
+				</span>
+				<span className={`ar-railscore ${v.tone}`}>
+					{v.pct != null ? `${v.pct}%` : v.label}
+				</span>
+			</button>
+		</div>
+	);
+}
+
 function JobCard({
 	r,
+	variant,
+	position,
+	total,
+	statusLabel,
 	onActioned,
 }: {
 	r: AudioFeatureJobRow;
+	// "focus" = split-stage shell (like ReviewCard Direction A); "cockpit" = bare
+	// detail beside the rail (Direction C). Same body, different wrapper.
+	variant: "focus" | "cockpit";
+	position?: number;
+	total?: number;
+	statusLabel?: string;
 	onActioned: () => void;
 }) {
 	const [url, setUrl] = useState("");
@@ -565,7 +1294,6 @@ function JobCard({
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
 
-	const failed = r.status === "failed";
 	const reason = r.errorCode
 		? (REASON_COPY[r.errorCode] ?? r.errorCode)
 		: "No reason recorded.";
@@ -574,6 +1302,7 @@ function JobCard({
 	const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
 		`${r.artistLabel} ${r.songName}`.trim(),
 	)}`;
+	const v = jobVerdict(r);
 
 	function submit() {
 		setBusy(true);
@@ -594,76 +1323,90 @@ function JobCard({
 			.finally(() => setBusy(false));
 	}
 
-	return (
-		<Card
-			title="Song"
-			icon={MusicNotesIcon}
-			span={12}
-			action={
-				failed ? (
-					<Badge tone="danger">failed</Badge>
-				) : (
-					<Badge tone="warning">needs url</Badge>
-				)
-			}
-		>
-			<div className="ar-panel">
-				{r.imageUrl ? (
-					<img
-						className="ar-art cover"
-						src={r.imageUrl}
-						alt=""
-						loading="lazy"
-					/>
-				) : (
-					<span className="ar-art cover placeholder" />
+	const body = (
+		<>
+			<div className="rv-topline">
+				<IdentityLine artists={[r.artistLabel]} songName={r.songName} />
+				{variant === "focus" && position != null && total != null && (
+					<span className="rv-pos num">
+						{position} / {total}
+						{statusLabel ? ` ${statusLabel}` : ""}
+					</span>
 				)}
-				<div className="ar-body">
-					<div className="ar-eyebrow">
-						<MusicNotesIcon className="sp" size={12} weight="fill" />
-						Spotify song
-					</div>
-					<div className="ar-title">{songTitle(r.artistLabel, r.songName)}</div>
-					<div className="ar-sub">
-						{r.albumName ?? "—"}
-						{r.spotifyDurationMs != null && (
-							<>
-								{" · "}
-								<span className="ar-clock">
-									{clock(r.spotifyDurationMs / 1000)}
+				<span className={`rv-verdict ${v.tone}`}>
+					{v.pct != null && (
+						<span className="rv-verdict-num serif upright">{v.pct}</span>
+					)}
+					<span className="rv-verdict-label">{v.label}</span>
+				</span>
+			</div>
+
+			<div className="rv-panels">
+				<div className="rv-panel sp">
+					{r.imageUrl ? (
+						<img
+							className="rv-face-art"
+							src={r.imageUrl}
+							alt=""
+							loading="lazy"
+						/>
+					) : (
+						<span className="rv-face-art placeholder" />
+					)}
+					<div className="rv-face-body">
+						<div className="rv-eye">
+							<span className="rv-dot sp" />
+							<span className="rv-tag">Spotify song</span>
+						</div>
+						<div className="rv-ptitle">{r.songName || "Unknown song"}</div>
+						<div className="rv-psub">
+							{[r.artistLabel, r.albumName].filter(Boolean).join(" · ") || "—"}
+							{r.spotifyDurationMs != null && (
+								<span className="num">
+									{" "}
+									· {clock(r.spotifyDurationMs / 1000)}
 								</span>
-							</>
-						)}
+							)}
+						</div>
+					</div>
+				</div>
+				<div className="rv-panel yt">
+					<span className="rv-face-art placeholder" />
+					<div className="rv-face-body">
+						<div className="rv-eye">
+							<span className="rv-dot yt" />
+							<span className="rv-tag">YouTube match · none yet</span>
+						</div>
+						<div className="rv-ptitle">No confident match</div>
+						<div className="rv-psub">Paste a URL below to backfill by hand</div>
 					</div>
 				</div>
 			</div>
 
-			<div className="ar-verdict">
-				<div className="ar-verdict-line">
-					<WarningCircleIcon
-						size={13}
-						weight="fill"
-						style={{ color: failed ? "var(--danger)" : "var(--warning)" }}
-					/>
-					<span>{reason}</span>
+			<div className={`rv-why ${v.tone}`}>
+				<WarningCircleIcon size={14} weight="fill" />
+				<div>
+					<div className="rv-why-reason">{reason}</div>
+					{r.errorMessage && (
+						<div className="rv-why-detail">{r.errorMessage}</div>
+					)}
 				</div>
-				{r.errorMessage && <div className="ar-reasons">{r.errorMessage}</div>}
 			</div>
 
 			{r.candidates.length > 0 && (
-				<details className="ar-extra" open>
-					<summary>
-						Candidates the auto-search found ({r.candidates.length})
-					</summary>
-					<CandidateList
+				<>
+					<div className="rv-tag" style={{ marginTop: 4 }}>
+						Candidates the auto-search found
+					</div>
+					<Filmstrip
 						candidates={r.candidates}
 						spotifyDurationMs={r.spotifyDurationMs}
-						onUse={setUrl}
+						onStage={setUrl}
 					/>
-				</details>
+				</>
 			)}
 
-			<div className="field" style={{ marginTop: 12 }}>
+			<div className="field rv-job-form">
 				<label htmlFor={`url-${r.songId}`}>YouTube URL</label>
 				<input
 					id={`url-${r.songId}`}
@@ -676,7 +1419,7 @@ function JobCard({
 						if (e.key === "Enter" && url.trim().length > 0 && !busy) submit();
 					}}
 				/>
-				<div className="btn-row" style={{ marginTop: 8 }}>
+				<div className="rv-actions" style={{ marginTop: 8 }}>
 					<button
 						type="button"
 						className="btn primary"
@@ -702,107 +1445,202 @@ function JobCard({
 					{notice}
 				</div>
 			)}
-		</Card>
-	);
-}
-
-function ApprovalQueue({
-	refreshKey,
-	onActioned,
-}: {
-	refreshKey: number;
-	onActioned: () => void;
-}) {
-	const { data, error, refetch } = useApi<{ reviews: AudioFeatureReviewRow[] }>(
-		"/api/audio-feature-reviews?status=pending",
-		refreshKey,
+		</>
 	);
 
-	if (error) return <ErrorState message={error} />;
-	if (!data) {
-		return (
-			<div className="card span-12">
-				<div className="empty">Loading…</div>
-			</div>
-		);
-	}
-
-	if (data.reviews.length === 0) {
-		return (
-			<div className="card span-12">
-				<div className="empty">No pending audio reviews.</div>
-			</div>
-		);
+	if (variant === "cockpit") {
+		return <div className="rv-cockpit-detail">{body}</div>;
 	}
 	return (
-		<div className="ar-list span-12">
-			{data.reviews.map((r) => (
-				<ReviewCard
-					key={r.id}
-					r={r}
-					onActioned={() => {
-						refetch();
-						onActioned();
-					}}
-				/>
-			))}
+		<div className="card rv-focus">
+			<div className="rv-focus-inner rv-job">{body}</div>
 		</div>
 	);
 }
 
-const JOB_EMPTY: Record<Exclude<Tab, "approval">, string> = {
+const JOB_EMPTY: Record<"needs_url" | "failed", string> = {
 	needs_url: "No songs waiting on a URL — nothing to match by hand.",
 	failed: "No terminally-failed backfills.",
 };
 
 function JobQueue({
-	filter,
+	queue,
 	refreshKey,
 	onActioned,
 }: {
-	filter: Exclude<Tab, "approval">;
+	queue: QueueState<Tab, FilterKey>;
 	refreshKey: number;
 	onActioned: () => void;
 }) {
-	const { data, error, refetch } = useApi<{ jobs: AudioFeatureJobRow[] }>(
-		`/api/audio-feature-jobs?filter=${filter}`,
-		refreshKey,
+	const filter = queue.tab as "needs_url" | "failed";
+	const searchRef = useRef<HTMLInputElement>(null);
+	const { data, error, refreshing, refetch } = useApi<{
+		jobs: AudioFeatureJobRow[];
+	}>(`/api/audio-feature-jobs?filter=${filter}`, refreshKey);
+
+	// The jobs endpoint returns the whole bucket unpaged, so search, sort, and
+	// paging are all client-side here — the toolbar drives the same knobs it does
+	// for reviews, just applied in memory.
+	const q = queue.q.trim().toLowerCase();
+	const jobs = (data?.jobs ?? [])
+		.filter((j) =>
+			q ? `${j.artistLabel} ${j.songName}`.toLowerCase().includes(q) : true,
+		)
+		.sort((a, b) => {
+			const cmp = a.createdAt.localeCompare(b.createdAt);
+			return queue.order === "newest" ? -cmp : cmp;
+		});
+
+	const total = jobs.length;
+	const pageCount = Math.max(1, Math.ceil(total / queue.pageSize));
+	const isFocus = queue.mode === "focus";
+	const start = (queue.page - 1) * queue.pageSize;
+	const pageRows = jobs.slice(start, start + queue.pageSize);
+	const localIndex = Math.min(
+		queue.focusIndex,
+		Math.max(0, pageRows.length - 1),
 	);
+	const focusRow = pageRows[localIndex];
+	const globalIndex = start + localIndex;
 
-	if (error) return <ErrorState message={error} />;
-	if (!data) {
+	const { page, focusIndex, setPage, setFocusIndex } = queue;
+	useEffect(() => {
+		if (pageRows.length === 0) {
+			if (page > 1) setPage(page - 1);
+			return;
+		}
+		if (focusIndex > pageRows.length - 1) setFocusIndex(pageRows.length - 1);
+	}, [pageRows.length, page, focusIndex, setPage, setFocusIndex]);
+
+	function goNext() {
+		if (isFocus && queue.focusIndex < pageRows.length - 1) {
+			queue.setFocusIndex(queue.focusIndex + 1);
+		} else if (queue.page < pageCount) {
+			queue.setPage(queue.page + 1);
+			if (isFocus) queue.setFocusIndex(0);
+		}
+	}
+	function goPrev() {
+		if (isFocus && queue.focusIndex > 0) {
+			queue.setFocusIndex(queue.focusIndex - 1);
+		} else if (queue.page > 1) {
+			if (isFocus) queue.setFocusIndex(queue.pageSize - 1);
+			queue.setPage(queue.page - 1);
+		}
+	}
+
+	useQueueKeyboard({
+		onNext: goNext,
+		onPrev: goPrev,
+		onSearch: () => searchRef.current?.focus(),
+	});
+
+	const hasNext = isFocus ? globalIndex < total - 1 : queue.page < pageCount;
+	const hasPrev = isFocus ? globalIndex > 0 : queue.page > 1;
+
+	function actioned() {
+		refetch();
+		onActioned();
+	}
+	function card(r: AudioFeatureJobRow, variant: "focus" | "cockpit") {
 		return (
-			<div className="card span-12">
-				<div className="empty">Loading…</div>
-			</div>
+			<JobCard
+				key={r.jobId}
+				r={r}
+				variant={variant}
+				position={variant === "focus" ? globalIndex + 1 : undefined}
+				total={variant === "focus" ? total : undefined}
+				statusLabel={filter === "needs_url" ? "to match" : "failed"}
+				onActioned={actioned}
+			/>
 		);
 	}
 
-	if (data.jobs.length === 0) {
-		return (
-			<div className="card span-12">
-				<div className="empty">{JOB_EMPTY[filter]}</div>
-			</div>
-		);
-	}
+	if (error && !data) return <ErrorState message={error} />;
+
 	return (
-		<div className="ar-list span-12">
-			{data.jobs.map((r) => (
-				<JobCard
-					key={r.jobId}
-					r={r}
-					onActioned={() => {
-						refetch();
-						onActioned();
-					}}
-				/>
-			))}
-		</div>
+		<>
+			<QueueToolbar
+				searchRef={searchRef}
+				search={queue.q}
+				onSearchChange={queue.setSearch}
+				order={queue.order}
+				onOrderChange={queue.setOrder}
+				mode={queue.mode}
+				onModeChange={queue.setMode}
+				pageSize={queue.pageSize}
+				onPageSizeChange={queue.setPageSize}
+				onReset={queue.reset}
+				refreshing={refreshing}
+				total={total}
+				page={queue.page}
+				focusIndex={isFocus ? localIndex : undefined}
+				onPrev={goPrev}
+				onNext={goNext}
+				hasPrev={hasPrev}
+				hasNext={hasNext}
+			/>
+
+			{!data ? (
+				<div className="card span-12">
+					<div className="empty">Loading…</div>
+				</div>
+			) : total === 0 ? (
+				<div className="card span-12">
+					<div className="empty">
+						{queue.q ? "No songs match your search." : JOB_EMPTY[filter]}
+					</div>
+				</div>
+			) : isFocus ? (
+				focusRow && (
+					<div className="ar-list solo span-12">{card(focusRow, "focus")}</div>
+				)
+			) : (
+				<div className="rv-cockpit span-12">
+					<div className="rv-statbar">
+						<span>
+							<b className="serif upright">{total}</b>{" "}
+							{filter === "needs_url" ? "to match" : "failed"}
+						</span>
+						<span className="rv-statbar-keys">
+							<span className="rv-tag">keyboard</span>
+							<kbd>J</kbd>
+							<kbd>K</kbd> move · <kbd>/</kbd> search
+						</span>
+					</div>
+					<div className="rv-cols">
+						<div className="ar-rail">
+							{pageRows.map((r, i) => (
+								<JobRailRow
+									key={r.jobId}
+									r={r}
+									active={i === localIndex}
+									onSelect={() => queue.setFocusIndex(i)}
+								/>
+							))}
+						</div>
+						<div className="ar-detail">
+							{focusRow && card(focusRow, "cockpit")}
+						</div>
+					</div>
+				</div>
+			)}
+		</>
 	);
 }
 
 export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
-	const [tab, setTab] = useState<Tab>("approval");
+	const queue = useQueueState<Tab, FilterKey>({
+		storageKey: "audio",
+		tabs: ["pending", "approved", "rejected", "needs_url", "failed"],
+		defaultTab: "pending",
+		filterKeys: ["sourceType", "minMatchScore", "maxDurationDelta"],
+		filterDefaults: {
+			sourceType: "all",
+			minMatchScore: "",
+			maxDurationDelta: "",
+		},
+	});
 	const counts = useApi<QueueBuckets>(
 		"/api/audio-feature-queue/counts",
 		refreshKey,
@@ -814,59 +1652,65 @@ export function AudioReviewSection({ refreshKey }: { refreshKey: number }) {
 		n === undefined ? base : `${base} · ${n}`;
 
 	return (
-		<div className="grid">
-			<Card
-				title="Audio queue"
-				icon={WaveformIcon}
-				span={12}
-				action={
-					total > 0 ? (
-						<Badge tone="accent">{total} need attention</Badge>
-					) : (
-						<Badge tone="success">all clear</Badge>
-					)
-				}
-			>
-				<p className="muted-text">
-					Everything blocking a song's audio features, in one place.{" "}
-					<strong>Needs approval</strong> are auto-matched features that went
-					live and want a confirm/reject. <strong>Needs URL</strong> are songs
-					the auto-search couldn't match confidently — paste the right YouTube
-					video and a manual backfill is queued. <strong>Failed</strong> are
-					terminally-failed backfills; a URL fixes them the same way.
-				</p>
-				<div className="btn-row" style={{ marginTop: 12 }}>
+		<div className="queue-page">
+			<div className="card queue-head span-12">
+				<WaveformIcon className="icon" size={15} weight="bold" />
+				<h2>Audio queue</h2>
+				<div className="queue-head-tabs">
 					<button
 						type="button"
-						className={`btn ${tab === "approval" ? "primary" : ""}`}
-						onClick={() => setTab("approval")}
+						className={`btn ${queue.tab === "pending" ? "primary" : ""}`}
+						onClick={() => queue.setTab("pending")}
 					>
 						{label("Needs approval", b?.approval)}
 					</button>
 					<button
 						type="button"
-						className={`btn ${tab === "needs_url" ? "primary" : ""}`}
-						onClick={() => setTab("needs_url")}
+						className={`btn ${queue.tab === "approved" ? "primary" : ""}`}
+						onClick={() => queue.setTab("approved")}
+					>
+						Approved
+					</button>
+					<button
+						type="button"
+						className={`btn ${queue.tab === "rejected" ? "primary" : ""}`}
+						onClick={() => queue.setTab("rejected")}
+					>
+						Rejected
+					</button>
+					<button
+						type="button"
+						className={`btn ${queue.tab === "needs_url" ? "primary" : ""}`}
+						onClick={() => queue.setTab("needs_url")}
 					>
 						{label("Needs URL", b?.needsUrl)}
 					</button>
 					<button
 						type="button"
-						className={`btn ${tab === "failed" ? "primary" : ""}`}
-						onClick={() => setTab("failed")}
+						className={`btn ${queue.tab === "failed" ? "primary" : ""}`}
+						onClick={() => queue.setTab("failed")}
 					>
 						{label("Failed", b?.failed)}
 					</button>
 				</div>
-			</Card>
+				{total > 0 ? (
+					<Badge tone="accent">{total} need attention</Badge>
+				) : (
+					<Badge tone="success">all clear</Badge>
+				)}
+			</div>
 
 			{counts.error && <ErrorState message={counts.error} />}
 
-			{tab === "approval" ? (
-				<ApprovalQueue refreshKey={refreshKey} onActioned={counts.refetch} />
+			{isReviewTab(queue.tab) ? (
+				<AudioReviewsQueue
+					queue={queue}
+					refreshKey={refreshKey}
+					onActioned={counts.refetch}
+				/>
 			) : (
 				<JobQueue
-					filter={tab}
+					queue={queue}
 					refreshKey={refreshKey}
 					onActioned={counts.refetch}
 				/>

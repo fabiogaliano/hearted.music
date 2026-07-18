@@ -336,6 +336,16 @@ bun run dev:embeddings
 bun run ext:dev
 ```
 
+#### Audio-feature backfill (prod-only)
+
+The worker's yt-dlp audio-feature backfill loop downloads real audio from YouTube
+and uploads clips to the rate-limited ReccoBeats API. It's gated on
+`NODE_ENV === "production"`, which `Dockerfile.worker` bakes into the prod image
+(not a Coolify env var, so it can't be forgotten). So it runs **automatically in
+production** and stays **off in local dev** — running it against an offline
+snapshot just burns YouTube/ReccoBeats quota. The worker logs
+`audio-backfill-disabled` on boot when it's off.
+
 ---
 
 ## Scripts

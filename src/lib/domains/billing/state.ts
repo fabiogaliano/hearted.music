@@ -87,7 +87,7 @@ export interface BillingState {
  * and as the degradation fallback when a billing read fails. Keep this as the
  * single source so the two paths can never drift.
  */
-export const FREE_BILLING_STATE: BillingState = {
+export const FREE_BILLING_STATE: BillingState = Object.freeze<BillingState>({
 	plan: "free",
 	creditBalance: 0,
 	subscriptionStatus: "none",
@@ -95,7 +95,7 @@ export const FREE_BILLING_STATE: BillingState = {
 	subscriptionPeriodEnd: null,
 	unlimitedAccess: { kind: "none" },
 	queueBand: "low",
-};
+});
 
 /**
  * Display state for a single song in an account's library.

@@ -19,9 +19,15 @@
  *   - optionsState "loading"/"error" or isSaving freezes value-editing controls.
  *   - Removal (per-row ✕ and Clear all) stays live while loading so a filter can
  *     be dropped before options arrive, and only freezes during a save in flight.
+ *
+ * Register: rows sit at a quiet grammar — 12px regular labels, muted icons, no
+ * row rules, chip-scale dashed Add pills — so the one surface reads calmly in
+ * both homes it now serves: the narrow create-studio config rail and the
+ * Spotlight editor. Full editors (From/To fields, language palette) stay intact
+ * at both widths.
  */
 
-import { CaretRightIcon } from "@phosphor-icons/react";
+import { XIcon } from "@phosphor-icons/react";
 import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { languageLabel } from "@/lib/domains/taste/match-filters/languages";
@@ -49,8 +55,6 @@ import "../playlist-ui.css";
 
 export type OptionsState = "ready" | "loading" | "error";
 
-const EASE = "var(--ease-out-expo)";
-
 // Stable empty fallback so an unselected language facet doesn't hand a fresh []
 // to LanguagePicker each render, which would recompute its ordered/display lists.
 const EMPTY_CODES: string[] = [];
@@ -65,35 +69,15 @@ const c = {
 	onPrimary: "var(--t-text-on-primary)",
 } as const;
 
-function Icon({ icon: Glyph, active }: { icon: FacetIcon; active: boolean }) {
-	// Color via CSS (Phosphor fills with currentColor) so the active flip
-	// transitions; weight="regular" matches the rest of the app's icon set.
+// Always muted (no active→primary flip): in the rail register the value text's
+// presence is the active signal, so a tinted icon would just re-shout it.
+function Icon({ icon: Glyph, size = 13 }: { icon: FacetIcon; size?: number }) {
 	return (
 		<Glyph
-			size={16}
+			size={size}
 			weight="regular"
 			aria-hidden="true"
-			style={{
-				flexShrink: 0,
-				color: active ? c.primary : c.muted,
-				transition: `color 200ms ${EASE}`,
-			}}
-		/>
-	);
-}
-
-function Chevron({ open }: { open: boolean }) {
-	return (
-		<CaretRightIcon
-			size={14}
-			weight="regular"
-			aria-hidden="true"
-			style={{
-				flexShrink: 0,
-				color: c.muted,
-				transform: open ? "rotate(90deg)" : "rotate(0deg)",
-				transition: `transform 200ms ${EASE}`,
-			}}
+			style={{ flexShrink: 0, color: c.muted }}
 		/>
 	);
 }
@@ -107,7 +91,8 @@ function Expand({ open, children }: { open: boolean; children: ReactNode }) {
 			style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
 		>
 			<div className="min-h-0 overflow-hidden" inert={!open}>
-				<div style={{ padding: "4px 0 12px 28px" }}>{children}</div>
+				{/* Indent = the row's icon column (13px glyph + 8px gap). */}
+				<div style={{ padding: "4px 0 10px 21px" }}>{children}</div>
 			</div>
 		</div>
 	);
@@ -134,12 +119,7 @@ function FacetRow({
 }) {
 	const active = value !== null;
 	return (
-		<div
-			style={{
-				borderBottom:
-					"1px solid color-mix(in srgb, var(--t-text) 9%, transparent)",
-			}}
-		>
+		<div>
 			<div style={{ display: "flex", alignItems: "center" }}>
 				<button
 					type="button"
@@ -148,10 +128,10 @@ function FacetRow({
 					style={{
 						display: "flex",
 						alignItems: "center",
-						gap: 12,
+						gap: 8,
 						flex: 1,
 						minWidth: 0,
-						padding: "12px 4px",
+						padding: "6px 2px",
 						background: "transparent",
 						border: "none",
 						cursor: "pointer",
@@ -160,13 +140,11 @@ function FacetRow({
 						font: "inherit",
 					}}
 				>
-					<Icon icon={icon} active={active} />
-					<span style={{ flex: 1, fontSize: 14, fontWeight: 500 }}>
-						{label}
-					</span>
+					<Icon icon={icon} />
+					<span style={{ flex: 1, fontSize: 12, color: c.muted }}>{label}</span>
 					<span
 						style={{
-							fontSize: 13,
+							fontSize: 12,
 							color: active ? c.text : c.muted,
 							fontVariantNumeric: "tabular-nums",
 							maxWidth: "55%",
@@ -177,7 +155,6 @@ function FacetRow({
 					>
 						{value ?? "Any"}
 					</span>
-					<Chevron open={open} />
 				</button>
 				{active && onRemove && (
 					<button
@@ -190,18 +167,17 @@ function FacetRow({
 							display: "grid",
 							placeItems: "center",
 							flexShrink: 0,
-							width: 28,
-							height: 28,
+							width: 20,
+							height: 20,
 							marginLeft: 4,
 							borderRadius: 999,
 							border: "none",
 							background: "transparent",
 							font: "inherit",
-							fontSize: 15,
 							lineHeight: 1,
 						}}
 					>
-						✕
+						<XIcon size={11} weight="bold" aria-hidden="true" />
 					</button>
 				)}
 			</div>
@@ -733,7 +709,7 @@ export function MatchFiltersFieldList({
 							aria-label={`Add ${f.label} filter`}
 							className="mf-add"
 						>
-							<Icon icon={f.icon} active={false} />
+							<Icon icon={f.icon} size={11} />
 							{f.label}
 						</button>
 					))}
@@ -758,7 +734,7 @@ export function MatchFiltersFieldList({
 						background: "transparent",
 						border: "none",
 						color: c.muted,
-						fontSize: 12,
+						fontSize: 11,
 						cursor: isSaving ? "default" : "pointer",
 						opacity: isSaving ? 0.5 : 1,
 						textDecoration: "underline",

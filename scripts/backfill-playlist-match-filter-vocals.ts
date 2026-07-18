@@ -32,7 +32,7 @@ import {
 } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { errorMessage } from "@/lib/shared/errors/error-message";
-import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
+import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 // PostgREST caps responses at max_rows (1000); page past it.

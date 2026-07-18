@@ -188,7 +188,9 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 
 		expect(outcome.status).toBe("completed");
 		expect(outcome.workflow).toBe("match_snapshot_refresh");
-		expect(outcome.settlement).toBe("settled");
+		expect(outcome.status === "retrying" ? null : outcome.settlement).toBe(
+			"settled",
+		);
 		if (
 			outcome.status === "completed" &&
 			outcome.workflow === "match_snapshot_refresh"
@@ -207,7 +209,9 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
 
-		expect(outcome.settlement).toBe("settled");
+		expect(outcome.status === "retrying" ? null : outcome.settlement).toBe(
+			"settled",
+		);
 		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
 		const changeArg = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
 		expect(changeArg?.kind).toBe("match_snapshot_superseded");

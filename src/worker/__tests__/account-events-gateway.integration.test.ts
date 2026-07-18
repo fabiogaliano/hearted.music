@@ -203,6 +203,92 @@ describeLocal("account-events-gateway integration", () => {
 		}
 	});
 
+	it("skips history on cursor-less connects but still delivers new events", async () => {
+		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+
+		// Pre-existing history that a fresh page load must NOT replay
+		await sql`INSERT INTO account_event (account_id, publish_id, type, payload) VALUES
+			(${accountId}, nextval('account_event_publish_seq'), 'job_started', '{"jobId":"1"}'::jsonb),
+			(${accountId}, nextval('account_event_publish_seq'), 'job_completed', '{"jobId":"1"}'::jsonb)
+		`;
+
+		const sessionId = crypto.randomUUID();
+		const sessionToken = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at)
+			VALUES (${sessionId}, ${userId}, ${sessionToken}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const ver = new Date(sessionInsert[0].created_at).getTime();
+
+		const token = await signEventToken({
+			sub: accountId,
+			sid: sessionId,
+			ver,
+			iat: Date.now() / 1000,
+			exp: Date.now() / 1000 + 300,
+			jti: "jti-cursorless",
+		});
+
+		const controller = new AbortController();
+		// No last-event-id header — a fresh page load
+		const req = new Request(`http://127.0.0.1:${port}/account-events/stream`, {
+			headers: { Authorization: `Bearer ${token}` },
+			signal: controller.signal,
+		});
+
+		const res = await capturedFetch(req, mockServer);
+
+		// The gateway announces the head it skipped to, so the client can seed
+		// its Last-Event-ID and reconnects don't skip the gap as a fresh load.
+		const [{ head }] = await sql<{ head: string }[]>`
+			SELECT max(publish_id)::text AS head FROM account_event
+			WHERE account_id = ${accountId}
+		`;
+		expect(res.headers.get("x-account-events-cursor")).toBe(head);
+
+		const reader = res.body?.getReader();
+		expect(reader).toBeDefined();
+		if (!reader) return;
+
+		const { value: first } = await reader.read();
+		const firstText =
+			typeof first === "string" ? first : new TextDecoder().decode(first);
+		expect(firstText).toContain("event: active_jobs_snapshot");
+		expect(firstText).not.toContain("event: job_started");
+		expect(firstText).not.toContain("id:");
+
+		// A new event published after connect must still arrive: the skip
+		// initializes the cursor to the account's head, not past it.
+		await sql.begin(async (tx) => {
+			await writeAccountEvent(tx, {
+				accountId,
+				type: "billing_state_changed",
+				payload: {},
+			});
+		});
+		await publishAccountEvents(sql);
+
+		let sawNewEvent = false;
+		for (let i = 0; i < 10 && !sawNewEvent; i++) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			const text =
+				typeof value === "string" ? value : new TextDecoder().decode(value);
+			expect(text).not.toContain("event: job_started");
+			expect(text).not.toContain("event: job_completed");
+			if (text.includes("event: billing_state_changed")) {
+				sawNewEvent = true;
+			}
+		}
+		expect(sawNewEvent).toBe(true);
+
+		await reader.cancel();
+	});
+
 	it("replays outbox rows through the publisher and gateway", async () => {
 		const accountId = crypto.randomUUID();
 		const userId = crypto.randomUUID();

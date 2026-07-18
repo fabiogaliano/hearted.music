@@ -21,6 +21,7 @@ import {
 } from "@/lib/domains/library/liked-songs/queries";
 import { getPlaylistCount } from "@/lib/domains/library/playlists/queries";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
 import { resolvePreferredMatchReviewSummary } from "@/lib/server/match-review-queue.functions";
@@ -66,12 +67,31 @@ async function fetchDashboardStats(
 			getPlaylistCount(accountId),
 		]);
 
+	// Degrade per slice: capture the failure but keep composing so the dashboard
+	// still renders whatever stats did come back, mirroring the seed-stage
+	// degrade pattern in playlists.functions.ts#getTasteProfile.
+	const degrade = (stage: string, error: unknown) => {
+		captureServerError(error, {
+			area: "dashboard",
+			operation: "fetch_dashboard_stats",
+			accountId,
+			extra: { stage },
+		});
+	};
+
 	const totalSongs = Result.isOk(totalResult) ? totalResult.value : 0;
+	if (Result.isError(totalResult)) degrade("total_songs", totalResult.error);
 	const analyzedCount = Result.isOk(analyzedResult) ? analyzedResult.value : 0;
+	if (Result.isError(analyzedResult))
+		degrade("analyzed_count", analyzedResult.error);
 	const lastSync = Result.isOk(lastSyncResult) ? lastSyncResult.value : null;
+	if (Result.isError(lastSyncResult))
+		degrade("last_sync", lastSyncResult.error);
 	const playlistCount = Result.isOk(playlistCountResult)
 		? playlistCountResult.value
 		: 0;
+	if (Result.isError(playlistCountResult))
+		degrade("playlist_count", playlistCountResult.error);
 
 	return {
 		totalSongs,
@@ -88,6 +108,20 @@ async function fetchRecentActivity(accountId: string): Promise<ActivityItem[]> {
 	const [likedResult] = await Promise.allSettled([
 		getRecentWithDetails(accountId, 5),
 	]);
+
+	if (likedResult.status === "rejected") {
+		captureServerError(likedResult.reason, {
+			area: "dashboard",
+			operation: "fetch_recent_activity",
+			accountId,
+		});
+	} else if (Result.isError(likedResult.value)) {
+		captureServerError(likedResult.value.error, {
+			area: "dashboard",
+			operation: "fetch_recent_activity",
+			accountId,
+		});
+	}
 
 	const likedActivities: ActivityItem[] =
 		likedResult.status === "fulfilled" && Result.isOk(likedResult.value)

@@ -1,5 +1,6 @@
 import type { Story } from "@ladle/react";
 import { useCallback, useState } from "react";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { BillingState } from "@/lib/domains/billing/state";
 import type { UnlockFlowState } from "../hooks/useSongUnlock";
 import { UnlockConfirmDialog } from "./UnlockConfirmDialog";
@@ -8,15 +9,7 @@ export default {
 	title: "Liked Songs/UnlockConfirmDialog",
 };
 
-const freeBillingState: BillingState = {
-	plan: "free",
-	creditBalance: 0,
-	subscriptionStatus: "none",
-	cancelAtPeriodEnd: false,
-	subscriptionPeriodEnd: null,
-	unlimitedAccess: { kind: "none" },
-	queueBand: "low",
-};
+const freeBillingState: BillingState = makeBillingState();
 
 const SONG_IDS = ["id-1", "id-2", "id-3"];
 

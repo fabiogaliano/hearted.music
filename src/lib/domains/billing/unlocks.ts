@@ -13,7 +13,7 @@ import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
+import { BillingChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 type UnlockError =

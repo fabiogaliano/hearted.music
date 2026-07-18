@@ -1,21 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
+import { makeBillingState as billing } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500, UNLIMITED_YEARLY } from "@/lib/domains/billing/offers";
-import type { BillingState } from "@/lib/domains/billing/state";
 import { isCheckoutFulfilled } from "../checkout-fulfillment";
-
-function billing(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
-	};
-}
 
 describe("isCheckoutFulfilled", () => {
 	const packIntent: CheckoutIntent = {

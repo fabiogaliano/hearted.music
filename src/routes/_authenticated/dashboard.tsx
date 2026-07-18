@@ -42,6 +42,8 @@ function DashboardHome() {
 		<Dashboard
 			accountId={session.accountId}
 			handle={account?.handle ?? null}
+			linkedSpotifyId={account?.spotify_id ?? null}
+			accountDisplayName={account?.display_name ?? null}
 			stats={{
 				totalSongs: stats.totalSongs,
 				analyzedPercent: stats.analyzedPercent,

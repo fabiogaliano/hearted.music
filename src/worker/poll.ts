@@ -1,13 +1,11 @@
-import { Result } from "better-result";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
+import type { Job } from "@/lib/platform/jobs/repository";
 import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
-
-let shouldPoll = true;
-const activeJobs = new Set<string>();
+import { createPollLoop } from "./poll-loop";
 
 function describeWork(type: string): string {
 	switch (type) {
@@ -20,26 +18,12 @@ function describeWork(type: string): string {
 	}
 }
 
-export function stopPolling() {
-	shouldPoll = false;
-}
-
-export function getActiveJobCount() {
-	return activeJobs.size;
-}
-
-export async function claimAndDispatchLibraryProcessingJobs(): Promise<void> {
-	while (shouldPoll && activeJobs.size < workerConfig.concurrency) {
-		const claimResult = await claimLibraryProcessingJob();
-		if (Result.isError(claimResult)) {
-			log.error("claim-error", { error: claimResult.error.message });
-			return;
-		}
-
-		const job = claimResult.value;
-		if (!job) return;
-
-		activeJobs.add(job.id);
+const loop = createPollLoop<Job, { message: string }>({
+	concurrency: () => workerConfig.concurrency,
+	claim: claimLibraryProcessingJob,
+	jobId: (job) => job.id,
+	onClaimError: (error) => log.error("claim-error", { error: error.message }),
+	dispatch: async (job, markDone) => {
 		const actor = await resolveAccountLabel(job.account_id);
 		log.info("job-claimed", {
 			actor,
@@ -64,23 +48,31 @@ export async function claimAndDispatchLibraryProcessingJobs(): Promise<void> {
 				// Already logged + marked failed inside runner
 			} finally {
 				heartbeat.stop();
-				activeJobs.delete(job.id);
+				markDone();
 			}
 		})();
-	}
+	},
+	pollIntervalMs: workerConfig.pollIntervalMs,
+	onLoopStart: () =>
+		log.info("polling-start", {
+			concurrency: workerConfig.concurrency,
+			intervalMs: workerConfig.pollIntervalMs,
+		}),
+	onLoopStop: () => log.info("polling-stopped"),
+});
+
+export function stopPolling() {
+	loop.stop();
+}
+
+export function getActiveJobCount() {
+	return loop.getActiveCount();
+}
+
+export async function claimAndDispatchLibraryProcessingJobs(): Promise<void> {
+	return loop.claimAndDispatch();
 }
 
 export async function startPolling(): Promise<void> {
-	shouldPoll = true;
-	log.info("polling-start", {
-		concurrency: workerConfig.concurrency,
-		intervalMs: workerConfig.pollIntervalMs,
-	});
-
-	while (shouldPoll) {
-		await claimAndDispatchLibraryProcessingJobs();
-		await Bun.sleep(workerConfig.pollIntervalMs);
-	}
-
-	log.info("polling-stopped");
+	return loop.start();
 }

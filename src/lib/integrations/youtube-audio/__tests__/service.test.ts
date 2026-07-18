@@ -78,10 +78,15 @@ describe("acquireSource youtube_search hydration", () => {
 		if (Result.isError(result)) throw result.error;
 		expect(result.value.kind).toBe("acquired");
 		// Scoring ran against hydrated metadata, not the bare flat hit.
-		expect(hydrateCandidate).toHaveBeenCalledWith("aaaaaaaaaaa", undefined);
+		expect(hydrateCandidate).toHaveBeenCalledWith(
+			"aaaaaaaaaaa",
+			undefined,
+			undefined,
+		);
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
 			"/tmp/job",
+			undefined,
 			undefined,
 		);
 	});
@@ -116,6 +121,7 @@ describe("acquireSource youtube_search hydration", () => {
 			"https://www.youtube.com/watch?v=bbbbbbbbbbb",
 			"/tmp/job",
 			undefined,
+			undefined,
 		);
 	});
 
@@ -140,15 +146,18 @@ describe("acquireSource youtube_search hydration", () => {
 			expect.any(String),
 			undefined,
 			"socks5://warp:1080",
+			undefined,
 		);
 		expect(hydrateCandidate).toHaveBeenCalledWith(
 			"aaaaaaaaaaa",
 			"socks5://warp:1080",
+			undefined,
 		);
 		expect(downloadAudio).toHaveBeenCalledWith(
 			"https://www.youtube.com/watch?v=aaaaaaaaaaa",
 			"/tmp/job",
 			"socks5://warp:1080",
+			undefined,
 		);
 	});
 
@@ -175,5 +184,76 @@ describe("acquireSource youtube_search hydration", () => {
 		expect(result.error.code).toBe("hydrate_failed");
 		// Never auto-inserts off weak flat data.
 		expect(downloadAudio).not.toHaveBeenCalled();
+	});
+
+	it("retries an empty search with the album query", async () => {
+		vi.mocked(searchYouTube)
+			.mockResolvedValueOnce(Result.ok([]))
+			.mockResolvedValueOnce(Result.ok([flat("retrywinner")]));
+		vi.mocked(hydrateCandidate).mockResolvedValue(
+			Result.ok(strong("retrywinner")),
+		);
+
+		const result = await acquireSource({
+			sourceType: "youtube_search",
+			sourceUrl: null,
+			song: SONG,
+			jobDir: "/tmp/job",
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (Result.isError(result) || result.value.kind !== "acquired")
+			throw new Error("expected acquired source");
+		expect(searchYouTube).toHaveBeenNthCalledWith(
+			1,
+			"Artist Song",
+			undefined,
+			undefined,
+			undefined,
+		);
+		expect(searchYouTube).toHaveBeenNthCalledWith(
+			2,
+			"Artist Song Album",
+			undefined,
+			undefined,
+			undefined,
+		);
+		expect(result.value.searchQuery).toBe("Artist Song Album");
+	});
+
+	it("retries low confidence, dedupes the first batch, and records the winner query", async () => {
+		vi.mocked(searchYouTube)
+			.mockResolvedValueOnce(Result.ok([flat("firstresult")]))
+			.mockResolvedValueOnce(
+				Result.ok([flat("firstresult"), flat("retrywinner")]),
+			);
+		vi.mocked(hydrateCandidate).mockImplementation(async (videoId: string) =>
+			videoId === "firstresult"
+				? Result.ok({
+						...strong(videoId),
+						title: "Artist - Different",
+						channel: "Artist",
+					})
+				: Result.ok(strong(videoId)),
+		);
+
+		const result = await acquireSource({
+			sourceType: "youtube_search",
+			sourceUrl: null,
+			song: SONG,
+			jobDir: "/tmp/job",
+		});
+
+		expect(Result.isOk(result)).toBe(true);
+		if (Result.isError(result) || result.value.kind !== "acquired")
+			throw new Error("expected acquired source");
+		expect(hydrateCandidate).toHaveBeenCalledTimes(2);
+		expect(hydrateCandidate).toHaveBeenCalledWith(
+			"retrywinner",
+			undefined,
+			undefined,
+		);
+		expect(result.value.candidate.videoId).toBe("retrywinner");
+		expect(result.value.searchQuery).toBe("Artist Song Album");
 	});
 });

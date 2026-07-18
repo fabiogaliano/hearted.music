@@ -1,8 +1,8 @@
 /**
  * HuggingFace ML Provider Adapter.
  *
- * Wraps the existing HuggingFace integration to conform to the MLProvider interface.
- * Maps HuggingFace-specific errors to domain ML errors.
+ * Conforms the HuggingFace Inference API (embeddings only, free tier) to the
+ * MLProvider interface. Maps HuggingFace-specific errors to domain ML errors.
  *
  * Models:
  * - Embedding: sentence-transformers/all-MiniLM-L6-v2 (384 dims)
@@ -12,14 +12,9 @@
  * but has lower rate limits than DeepInfra.
  */
 
+import { InferenceClient } from "@huggingface/inference";
 import { Result } from "better-result";
-import {
-	embedBatch,
-	embedText,
-	getEmbeddingDims,
-	getEmbeddingModel,
-	isAvailable,
-} from "@/lib/integrations/huggingface/service";
+import { env } from "@/env";
 import {
 	MLApiError,
 	type MLProviderError,
@@ -42,6 +37,154 @@ import type {
 	RerankResult,
 } from "../types";
 
+// ============================================================================
+// Configuration
+// ============================================================================
+
+/**
+ * Model: sentence-transformers/all-MiniLM-L6-v2
+ * - 384 dimensions (smaller than E5-large's 1024)
+ * - Fast inference
+ * - Free on HuggingFace
+ * - Good for testing
+ */
+const HF_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
+const HF_EMBEDDING_DIMS = 384;
+
+interface HfEmbedOptions {
+	/** Optional prefix for instruction-tuned models */
+	prefix?: string;
+}
+
+interface HfEmbedResult {
+	embedding: number[];
+	dims: number;
+}
+
+// ============================================================================
+// Client
+// ============================================================================
+
+let hfClient: InferenceClient | null = null;
+
+function getClient(): InferenceClient {
+	if (!hfClient) {
+		// HF_TOKEN is optional - free tier works without it but has lower limits
+		const token = env.HF_TOKEN;
+		hfClient = new InferenceClient(token);
+	}
+	return hfClient;
+}
+
+// ============================================================================
+// HuggingFace API calls
+// ============================================================================
+
+/**
+ * Embeds a single text string.
+ */
+async function hfEmbedText(
+	text: string,
+	options?: HfEmbedOptions,
+): Promise<Result<HfEmbedResult, HuggingFaceError>> {
+	try {
+		const client = getClient();
+		const input = options?.prefix ? `${options.prefix} ${text}` : text;
+
+		const response = await client.featureExtraction({
+			model: HF_EMBEDDING_MODEL,
+			inputs: input,
+		});
+
+		// HuggingFace returns number[] for single input
+		const embedding = response as number[];
+
+		return Result.ok({
+			embedding,
+			dims: embedding.length,
+		});
+	} catch (error) {
+		if (error instanceof Error) {
+			// Check for rate limit
+			if (
+				error.message.includes("rate limit") ||
+				error.message.includes("429")
+			) {
+				return Result.err(new HuggingFaceRateLimitError(undefined));
+			}
+
+			return Result.err(
+				new HuggingFaceApiError("huggingface/embed", undefined, error.message),
+			);
+		}
+
+		return Result.err(
+			new HuggingFaceApiError("huggingface/embed", undefined, "Unknown error"),
+		);
+	}
+}
+
+/**
+ * Embeds multiple texts in a batch.
+ * HuggingFace Inference API supports batch requests.
+ */
+async function hfEmbedBatch(
+	texts: string[],
+	options?: HfEmbedOptions,
+): Promise<Result<HfEmbedResult[], HuggingFaceError>> {
+	try {
+		const client = getClient();
+		const inputs = options?.prefix
+			? texts.map((t) => `${options.prefix} ${t}`)
+			: texts;
+
+		const response = await client.featureExtraction({
+			model: HF_EMBEDDING_MODEL,
+			inputs,
+		});
+
+		// HuggingFace returns number[][] for batch input
+		const embeddings = response as number[][];
+
+		return Result.ok(
+			embeddings.map((embedding) => ({
+				embedding,
+				dims: embedding.length,
+			})),
+		);
+	} catch (error) {
+		if (error instanceof Error) {
+			// Check for rate limit
+			if (
+				error.message.includes("rate limit") ||
+				error.message.includes("429")
+			) {
+				return Result.err(new HuggingFaceRateLimitError(undefined));
+			}
+
+			return Result.err(
+				new HuggingFaceApiError(
+					"huggingface/embed-batch",
+					undefined,
+					error.message,
+				),
+			);
+		}
+
+		return Result.err(
+			new HuggingFaceApiError(
+				"huggingface/embed-batch",
+				undefined,
+				"Unknown error",
+			),
+		);
+	}
+}
+
+// ============================================================================
+// MLProvider Adapter
+// ============================================================================
+
 /**
  * HuggingFace provider adapter.
  */
@@ -51,8 +194,8 @@ class HuggingFaceProvider implements MLProvider {
 	constructor() {
 		this.metadata = {
 			name: "huggingface",
-			embeddingModel: getEmbeddingModel(),
-			embeddingDims: getEmbeddingDims(),
+			embeddingModel: HF_EMBEDDING_MODEL,
+			embeddingDims: HF_EMBEDDING_DIMS,
 			embeddingInstructionTuned: false, // MiniLM is symmetric
 			rerankerModel: undefined, // No reranking support
 		};
@@ -63,7 +206,7 @@ class HuggingFaceProvider implements MLProvider {
 		_options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult, MLProviderError>> {
 		// MiniLM is symmetric (no instruct prefix), so the retrieval role is moot.
-		const result = await embedText(text);
+		const result = await hfEmbedText(text);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embed"));
@@ -82,7 +225,7 @@ class HuggingFaceProvider implements MLProvider {
 		_options?: EmbedOptions,
 	): Promise<Result<EmbeddingResult[], MLProviderError>> {
 		// MiniLM is symmetric (no instruct prefix), so the retrieval role is moot.
-		const result = await embedBatch(texts);
+		const result = await hfEmbedBatch(texts);
 
 		if (Result.isError(result)) {
 			return Result.err(this.mapError(result.error, "embedBatch"));
@@ -110,7 +253,7 @@ class HuggingFaceProvider implements MLProvider {
 
 	async isAvailable(): Promise<boolean> {
 		// HuggingFace is always available (no API key required for free tier)
-		return isAvailable();
+		return true;
 	}
 
 	getMetadata(): ProviderMetadata {

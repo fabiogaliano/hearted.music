@@ -19,6 +19,7 @@ import {
 } from "@/lib/domains/library/accounts/handle-rules";
 import type { OnboardingAuthPayload } from "@/lib/domains/library/accounts/onboarding-session";
 import { isOnboardingStepBefore } from "@/lib/domains/library/accounts/onboarding-steps";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { loadOnboardingSession } from "@/lib/server/onboarding-session";
 
@@ -139,6 +140,13 @@ export const checkHandleAvailability = createServerFn({ method: "GET" })
 					.maybeSingle();
 
 				if (takenError) {
+					// console.error never reaches Sentry with enableLogs:false; capture explicitly
+					captureServerError(takenError, {
+						area: "account_handle",
+						operation: "check_handle_availability",
+						accountId,
+						extra: { stage: "taken_lookup" },
+					});
 					console.error(
 						"[checkHandleAvailability] DB lookup failed:",
 						takenError,
@@ -152,6 +160,11 @@ export const checkHandleAvailability = createServerFn({ method: "GET" })
 
 				return { status: "available" };
 			} catch (err) {
+				captureServerError(err, {
+					area: "account_handle",
+					operation: "check_handle_availability",
+					accountId,
+				});
 				console.error("[checkHandleAvailability] Unexpected failure:", err);
 				return { status: "error" };
 			}
@@ -243,6 +256,11 @@ export const claimHandleAndAdvance = createServerFn({ method: "POST" })
 				return { status: "unavailable", reason: "taken" };
 			}
 			// Any other DB/transport failure is operational — let it surface as a toast.
+			captureServerError(rpcResult.error, {
+				area: "account_handle",
+				operation: "claim_handle_and_advance",
+				accountId,
+			});
 			throw rpcResult.error;
 		}
 

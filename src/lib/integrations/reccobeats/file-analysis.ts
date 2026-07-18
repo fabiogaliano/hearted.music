@@ -86,12 +86,14 @@ const RETRY_OPTIONS = {
 
 async function analyzeClipOnce(
 	filePath: string,
+	signal?: AbortSignal,
 ): Promise<Result<RawClipFeatures, ReccoBeatsError>> {
 	const bytesResult = await Result.tryPromise({
 		try: () => readFile(filePath),
 		catch: (e) => new ReccoBeatsApiError(0, errorMessage(e), e),
 	});
 	if (Result.isError(bytesResult)) return Result.err(bytesResult.error);
+	signal?.throwIfAborted();
 
 	const form = new FormData();
 	form.append(
@@ -105,11 +107,16 @@ async function analyzeClipOnce(
 			fetch(FILE_ANALYSIS_URL, {
 				method: "POST",
 				body: form,
-				signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				signal: signal
+					? AbortSignal.any([signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)])
+					: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 			}),
 		catch: (e) => new ReccoBeatsApiError(0, errorMessage(e), e),
 	});
-	if (Result.isError(fetchResult)) return Result.err(fetchResult.error);
+	if (Result.isError(fetchResult)) {
+		signal?.throwIfAborted();
+		return Result.err(fetchResult.error);
+	}
 
 	const response = fetchResult.value;
 
@@ -146,8 +153,12 @@ async function analyzeClipOnce(
 
 export function analyzeClip(
 	filePath: string,
+	signal?: AbortSignal,
 ): Promise<Result<RawClipFeatures, ReccoBeatsError>> {
-	return withRetry(() => analyzeClipOnce(filePath), RETRY_OPTIONS);
+	return withRetry(() => {
+		signal?.throwIfAborted();
+		return analyzeClipOnce(filePath, signal);
+	}, RETRY_OPTIONS);
 }
 
 /**
@@ -158,10 +169,12 @@ export function analyzeClip(
  */
 export async function analyzeClipsAll(
 	clips: { path: string; durationSeconds: number }[],
+	signal?: AbortSignal,
 ): Promise<Result<ClipAnalysis[], ReccoBeatsError>> {
 	const out: ClipAnalysis[] = [];
 	for (const clip of clips) {
-		const result = await analyzeClip(clip.path);
+		signal?.throwIfAborted();
+		const result = await analyzeClip(clip.path, signal);
 		if (Result.isError(result)) return Result.err(result.error);
 		out.push({ features: result.value, durationSeconds: clip.durationSeconds });
 	}

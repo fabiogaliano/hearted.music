@@ -54,6 +54,10 @@ export interface MatchPreview {
 export interface DashboardProps {
 	accountId: string;
 	handle: string | null;
+	// Linked Spotify identity of the account, for the extension account-conflict
+	// banner (null before first sync — banner stays hidden then).
+	linkedSpotifyId: string | null;
+	accountDisplayName: string | null;
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];
 	stats: DashboardStats;

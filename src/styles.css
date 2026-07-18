@@ -410,6 +410,33 @@ code {
     border-color: var(--t-text-muted);
   }
 
+  /* Split-and-stagger enter for the ideas grid: each card fades up from a
+     small offset, delayed by its position, so the board assembles instead of
+     snapping in. One-shot, so keyframes (not a transition) are correct;
+     `backwards` holds the start frame during the delay so nothing flashes
+     before its turn. --enter-index is set per-card inline. */
+  .idea-enter {
+    animation: idea-enter 400ms cubic-bezier(0.215, 0.61, 0.355, 1) backwards;
+    animation-delay: calc(var(--enter-index, 0) * 60ms);
+  }
+  @keyframes idea-enter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .idea-enter {
+      animation: none;
+    }
+  }
+
   /* Subtle 1px image outline that adapts to light/dark surfaces. Inset
      box-shadow paints the line inside the image edge — no layout shift, and
      it shows through cropped covers. Color stays pure black/white per
@@ -1149,6 +1176,89 @@ code {
   /* Provide basic crossfade on panel open/close */
   [data-panel-animating="true"] {
     transition: opacity 300ms var(--ease-out-quart);
+  }
+}
+
+/* ── MaxSongsSlider ───────────────────────────────────────────────────── */
+/* Native range input styled to match the flat/bordered hearted materiality.
+   --pct (set via inline style) drives the filled-track gradient so no JS
+   measurement is needed. Thumb hit area is ≥40px via padding + line-height. */
+
+.max-songs-slider {
+  /* 40px total touch target via line-height; visible track is thinner via
+     clip/border in the vendor pseudo-elements below. */
+  height: 40px;
+  padding: 0;
+}
+
+.max-songs-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    var(--t-primary) 0%,
+    var(--t-primary) var(--pct, 0%),
+    color-mix(in oklch, var(--t-text) 20%, transparent) var(--pct, 0%),
+    color-mix(in oklch, var(--t-text) 20%, transparent) 100%
+  );
+}
+
+.max-songs-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 0;
+  background: color-mix(in oklch, var(--t-text) 20%, transparent);
+}
+
+.max-songs-slider::-moz-range-progress {
+  height: 2px;
+  background: var(--t-primary);
+}
+
+.max-songs-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--t-primary);
+  border: 2px solid var(--t-bg);
+  outline: 1.5px solid var(--t-primary);
+  margin-top: -6px;
+  transition: transform 150ms var(--ease-out-quart);
+  cursor: pointer;
+}
+
+.max-songs-slider::-moz-range-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--t-primary);
+  border: 2px solid var(--t-bg);
+  outline: 1.5px solid var(--t-primary);
+  cursor: pointer;
+  transition: transform 150ms var(--ease-out-quart);
+}
+
+.max-songs-slider:hover::-webkit-slider-thumb,
+.max-songs-slider:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.2);
+}
+
+.max-songs-slider:hover::-moz-range-thumb,
+.max-songs-slider:focus-visible::-moz-range-thumb {
+  transform: scale(1.2);
+}
+
+.max-songs-slider:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .max-songs-slider::-webkit-slider-thumb,
+  .max-songs-slider::-moz-range-thumb {
+    transition: none;
   }
 }
 

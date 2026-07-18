@@ -9,7 +9,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { log } from "@/lib/observability/logger";
-import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
+import { BillingChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 export async function wakeEnrichmentForSong(songId: string): Promise<string[]> {

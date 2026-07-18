@@ -106,9 +106,11 @@ interface FfprobeJson {
 
 export async function probeAudio(
 	sourcePath: string,
+	signal?: AbortSignal,
 ): Promise<Result<ProbeResult, FfmpegError>> {
 	const res = await runCommand(buildProbeArgs(sourcePath), {
 		timeoutMs: 30_000,
+		signal,
 	});
 	if (res.timedOut || res.exitCode !== 0) {
 		return Result.err(
@@ -168,8 +170,9 @@ export async function probeAudio(
 export async function probeAndValidate(
 	sourcePath: string,
 	maxDownloadBytes: number,
+	signal?: AbortSignal,
 ): Promise<Result<ProbeResult, FfmpegError>> {
-	const probeResult = await probeAudio(sourcePath);
+	const probeResult = await probeAudio(sourcePath, signal);
 	if (Result.isError(probeResult)) return probeResult;
 	const probe = probeResult.value;
 
@@ -202,11 +205,13 @@ export async function extractClips(
 	durationSeconds: number,
 	jobDir: string,
 	config: { clipSeconds: number; clipCount: number; clipBitrateKbps: number },
+	signal?: AbortSignal,
 ): Promise<Result<ClipFile[], FfmpegError>> {
 	const specs = computeClipStarts(durationSeconds, config);
 	const clips: ClipFile[] = [];
 
 	for (const [i, spec] of specs.entries()) {
+		signal?.throwIfAborted();
 		const destPath = `${jobDir}/clip_${i}.mp3`;
 		const res = await runCommand(
 			buildClipArgs({
@@ -216,7 +221,7 @@ export async function extractClips(
 				destPath,
 				bitrateKbps: config.clipBitrateKbps,
 			}),
-			{ timeoutMs: 60_000 },
+			{ timeoutMs: 60_000, signal },
 		);
 
 		if (res.timedOut || res.exitCode !== 0) {

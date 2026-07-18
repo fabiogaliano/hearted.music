@@ -6,6 +6,11 @@
  * liked-song access grant, replicating scripts/ops/grant-liked-song-access.ts:
  * resolve account → preview (dry run) → grantLikedSongAccessForAccount.
  *
+ * Preview and commit share one fact-gathering pass. A preview shapes those facts
+ * into structured impact rows and fingerprints (see ./operation-preview.ts); a
+ * commit re-gathers facts, the route re-checks the fingerprints against the
+ * stored preview, and only then does `commitGrant*` perform the write.
+ *
  * We call the shared grantLikedSongAccessForAccount (not the bare RPC) so the
  * grant fires the exact same library-processing side effect the website does —
  * the songs_unlocked change that kicks off enrichment for the newly-unlocked
@@ -19,6 +24,16 @@ import { grantLikedSongAccessForAccount } from "@/lib/domains/billing/liked-song
 import { giftUnlimitedSubscriptionForAccount } from "@/lib/domains/billing/unlimited-subscription-gift";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { Result } from "better-result";
+import {
+	type BackstageFacts,
+	backstageFingerprints,
+	buildBackstagePreview,
+	buildGrantSongsPreview,
+	type GrantSongsFacts,
+	grantSongsFingerprints,
+	type OperationFingerprints,
+	type OperationPreview,
+} from "./operation-preview";
 import { prodSupabase } from "./supabase";
 
 export interface OperationField {
@@ -180,7 +195,6 @@ interface GrantInput {
 	selectorValue?: string;
 	reason?: string;
 	requestedBy?: string;
-	dryRun?: boolean;
 }
 
 function resolveLimit(raw: number | string | undefined): number {
@@ -203,44 +217,138 @@ async function resolveTargetAccount(
 	return findAccount(input.selectorKind ?? "email", value);
 }
 
-async function runGrantLikedAccess(
+async function gatherGrantSongsFacts(
 	input: GrantInput,
-): Promise<OperationResult> {
-	const limit = resolveLimit(input.limit);
-
-	const account = await resolveTargetAccount(input);
-	if (!account) {
-		return { ok: false, status: "not_found", message: "Account not found." };
-	}
-
+	account: TargetAccount,
+): Promise<GrantSongsFacts> {
 	const [existing, likedCount] = await Promise.all([
 		readExistingGrant(account.id),
 		countActiveLiked(account.id),
 	]);
-
-	const who = account.display_name || account.email || account.id;
-	const base = {
+	return {
+		kind: "songs",
 		accountId: account.id,
 		email: account.email,
 		spotifyId: account.spotify_id,
 		displayName: account.display_name,
 		activeLikedSongs: likedCount,
-		requestedLimit: limit,
+		requestedLimit: resolveLimit(input.limit),
+		existingGrantExists: existing !== null,
+		existingGrantAppliedAt: existing?.applied_at ?? null,
 	};
+}
 
-	if (input.dryRun) {
-		let message: string;
-		if (existing?.applied_at) {
-			message = `Dry run: ${who} was already granted — nothing would change.`;
-		} else if (likedCount === 0) {
-			message = existing
-				? `Dry run: pending row already exists; no active liked songs yet.`
-				: `Dry run: would create a pending grant (no active liked songs yet).`;
-		} else {
-			message = `Dry run: would ${existing ? "apply the pending row" : "apply"} and unlock the top ${Math.min(likedCount, limit)} liked songs (cap ${limit}).`;
-		}
-		return { ok: true, status: "dry_run", message, details: base };
+async function gatherBackstageFacts(
+	account: TargetAccount,
+): Promise<BackstageFacts> {
+	const [{ data, error }, activeLikedSongs] = await Promise.all([
+		prodSupabase()
+			.from("account_billing")
+			.select("unlimited_access_source, subscription_status")
+			.eq("account_id", account.id)
+			.maybeSingle(),
+		countActiveLiked(account.id),
+	]);
+	if (error) throw new Error(`Failed to read billing: ${error.message}`);
+
+	const billing = data as {
+		unlimited_access_source: string | null;
+		subscription_status: string | null;
+	} | null;
+	const source = billing?.unlimited_access_source ?? null;
+	const status = billing?.subscription_status ?? null;
+	const alreadyUnlimited =
+		source === "self_hosted" || (source === "subscription" && status === "active");
+	const periodEnd = new Date(
+		Date.now() + BACKSTAGE_GIFT_DAYS * 24 * 60 * 60 * 1000,
+	).toISOString();
+
+	return {
+		kind: "backstage",
+		accountId: account.id,
+		email: account.email,
+		spotifyId: account.spotify_id,
+		displayName: account.display_name,
+		activeLikedSongs,
+		alreadyUnlimited,
+		unlimitedSource: source,
+		subscriptionStatus: status,
+		periodEnd,
+	};
+}
+
+export interface OperationPreviewOutcome {
+	ok: boolean;
+	// null when the target could not be resolved (nothing to commit).
+	preview: OperationPreview;
+	fingerprints: OperationFingerprints | null;
+	facts: GrantSongsFacts | BackstageFacts | null;
+}
+
+function notFoundPreview(id: string, message: string): OperationPreview {
+	return {
+		action: id,
+		title: "Operation",
+		targetLabel: "—",
+		targetId: null,
+		willChange: false,
+		rows: [{ kind: "warning", label: "Cannot preview", value: message, tone: "danger" }],
+		raw: {},
+	};
+}
+
+/**
+ * Resolve the target and shape a preview. Shared by the preview route (persist +
+ * return) and the commit route (re-gather facts to re-check fingerprints).
+ */
+export async function previewOperation(
+	id: string,
+	input: Record<string, unknown>,
+): Promise<OperationPreviewOutcome> {
+	if (id !== "grant-access") throw new Error(`Unknown operation: ${id}`);
+	const grantInput = input as GrantInput;
+	const account = await resolveTargetAccount(grantInput);
+	if (!account) {
+		return {
+			ok: false,
+			preview: notFoundPreview(id, "Account not found."),
+			fingerprints: null,
+			facts: null,
+		};
 	}
+
+	if (grantInput.grantType === "backstage") {
+		const facts = await gatherBackstageFacts(account);
+		return {
+			ok: true,
+			preview: buildBackstagePreview(facts),
+			fingerprints: backstageFingerprints(facts),
+			facts,
+		};
+	}
+
+	const facts = await gatherGrantSongsFacts(grantInput, account);
+	return {
+		ok: true,
+		preview: buildGrantSongsPreview(facts),
+		fingerprints: grantSongsFingerprints(facts),
+		facts,
+	};
+}
+
+async function commitGrantSongs(
+	facts: GrantSongsFacts,
+	input: GrantInput,
+): Promise<OperationResult> {
+	const who = facts.displayName || facts.email || facts.accountId;
+	const base = {
+		accountId: facts.accountId,
+		email: facts.email,
+		spotifyId: facts.spotifyId,
+		displayName: facts.displayName,
+		activeLikedSongs: facts.activeLikedSongs,
+		requestedLimit: facts.requestedLimit,
+	};
 
 	// The grant commits in the RPC, but its songs_unlocked enrichment trigger is a
 	// best-effort tail the domain helper swallows. This console is never deployed
@@ -251,9 +359,9 @@ async function runGrantLikedAccess(
 	const grantResult = await grantLikedSongAccessForAccount(
 		createAdminSupabaseClient(),
 		{
-			accountId: account.id,
+			accountId: facts.accountId,
 			origin: "operator_manual",
-			limit,
+			limit: facts.requestedLimit,
 			requestedBy: input.requestedBy ?? null,
 			note: input.reason ?? null,
 		},
@@ -261,7 +369,7 @@ async function runGrantLikedAccess(
 			onOperationalError: (error, context) => {
 				sideEffectError = error;
 				console.error(
-					`[operations] grant side effect failed (stage=${context.stage}) for ${account.id}:`,
+					`[operations] grant side effect failed (stage=${context.stage}) for ${facts.accountId}:`,
 					error,
 				);
 			},
@@ -296,54 +404,26 @@ async function runGrantLikedAccess(
 	return { ok: true, status: payload.status, message, details };
 }
 
-async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
-	const account = await resolveTargetAccount(input);
-	if (!account) {
-		return { ok: false, status: "not_found", message: "Account not found." };
-	}
-
-	const who = account.display_name || account.email || account.id;
-	const { data, error } = await prodSupabase()
-		.from("account_billing")
-		.select("unlimited_access_source, subscription_status")
-		.eq("account_id", account.id)
-		.maybeSingle();
-	if (error) throw new Error(`Failed to read billing: ${error.message}`);
-
-	const billing = data as {
-		unlimited_access_source: string | null;
-		subscription_status: string | null;
-	} | null;
-	const source = billing?.unlimited_access_source ?? null;
-	const status = billing?.subscription_status ?? null;
-	const alreadyUnlimited =
-		source === "self_hosted" || (source === "subscription" && status === "active");
-
-	const periodEnd = new Date(
-		Date.now() + BACKSTAGE_GIFT_DAYS * 24 * 60 * 60 * 1000,
-	).toISOString();
-
+async function commitBackstage(
+	facts: BackstageFacts,
+	input: GrantInput,
+): Promise<OperationResult> {
+	const who = facts.displayName || facts.email || facts.accountId;
 	const base: Record<string, unknown> = {
-		accountId: account.id,
-		email: account.email,
-		spotifyId: account.spotify_id,
-		displayName: account.display_name,
+		accountId: facts.accountId,
+		email: facts.email,
+		spotifyId: facts.spotifyId,
+		displayName: facts.displayName,
 		plan: "yearly",
-		subscriptionPeriodEnd: periodEnd,
+		subscriptionPeriodEnd: facts.periodEnd,
+		activeLikedSongs: facts.activeLikedSongs,
 		...(input.reason ? { reason: input.reason } : {}),
 		...(input.requestedBy ? { requestedBy: input.requestedBy } : {}),
 	};
 
-	if (input.dryRun) {
-		const message = alreadyUnlimited
-			? `Dry run: ${who} already has unlimited access (${source}) — nothing would change.`
-			: `Dry run: would gift ${who} a 1-year Backstage Pass (yearly unlimited) through ${periodEnd}. Note: it does not auto-expire — revoke manually at expiry.`;
-		return { ok: true, status: "dry_run", message, details: base };
-	}
-
 	const result = await giftUnlimitedSubscriptionForAccount(
 		createAdminSupabaseClient(),
-		{ accountId: account.id },
+		{ accountId: facts.accountId },
 	);
 	if (Result.isError(result)) {
 		throw new Error(`Gift failed: ${result.error.message}`);
@@ -362,7 +442,7 @@ async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
 	return {
 		ok: true,
 		status: "gifted",
-		message: `Gifted ${who} a 1-year Backstage Pass — ${payload.unlockedSongCount} songs unlocked, valid through ${payload.subscriptionPeriodEnd}. Enrichment + match refresh queued. Does not auto-expire; revoke manually at expiry.`,
+		message: `Gifted ${who} a 1-year Backstage Pass — unlimited access to all ${facts.activeLikedSongs.toLocaleString("en-US")} liked songs, effective now. ${payload.unlockedSongCount.toLocaleString("en-US")} content-activated so far; the rest unlock automatically as enrichment completes. Enrichment + match refresh queued. Does not auto-expire; revoke manually at expiry.`,
 		details: {
 			...base,
 			subscriptionPeriodEnd: payload.subscriptionPeriodEnd,
@@ -371,18 +451,13 @@ async function runGiftBackstage(input: GrantInput): Promise<OperationResult> {
 	};
 }
 
-export async function runOperation(
-	id: string,
+/** Perform the write from facts already gathered (and fingerprint-checked). */
+export async function commitOperationFromFacts(
+	facts: GrantSongsFacts | BackstageFacts,
 	input: Record<string, unknown>,
 ): Promise<OperationResult> {
-	switch (id) {
-		case "grant-access": {
-			const grantInput = input as GrantInput;
-			return grantInput.grantType === "backstage"
-				? runGiftBackstage(grantInput)
-				: runGrantLikedAccess(grantInput);
-		}
-		default:
-			throw new Error(`Unknown operation: ${id}`);
-	}
+	const grantInput = input as GrantInput;
+	return facts.kind === "backstage"
+		? commitBackstage(facts, grantInput)
+		: commitGrantSongs(facts, grantInput);
 }

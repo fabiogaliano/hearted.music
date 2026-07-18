@@ -1,23 +1,26 @@
-import { PaperPlaneTiltIcon } from "@phosphor-icons/react";
+import { PaperPlaneTiltIcon, XIcon } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AccountPicker } from "../components/AccountPicker";
+import { BatchLauncher } from "../components/BatchLauncher";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { Card } from "../components/primitives";
 import { postJson } from "../lib/api";
+import { type EmailTestResult, sendEmailTest } from "../lib/batch";
+import {
+	type EmailDraft,
+	isDraftEmpty,
+	readEmailDraft,
+	readEmailHistoryDraft,
+	rememberEmailHistoryDraft,
+	writeEmailDraft,
+} from "../lib/email-draft";
 import { noAutofill } from "../lib/form";
+import type { AccountSearchResult } from "../lib/types";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-interface Draft {
-	subject: string;
-	headline: string;
-	body: string;
-	ctaLabel: string;
-	ctaUrl: string;
-	preheader: string;
-	footnote: string;
-}
-
-const EMPTY: Draft = {
+const EMPTY: EmailDraft = {
 	subject: "",
 	headline: "",
 	body: "",
@@ -27,13 +30,10 @@ const EMPTY: Draft = {
 	footnote: "",
 };
 
-// Pick-and-send presets. Each fills the whole draft; the operator still sets the
-// recipient and can tweak any field before sending. Body uses blank lines for
-// paragraphs (the server turns them into <p>), matching Fábio's letter voice.
 interface Template {
 	id: string;
 	label: string;
-	draft: Draft;
+	draft: EmailDraft;
 }
 
 const TEMPLATES: Template[] = [
@@ -54,52 +54,113 @@ It's still rough around the edges, and far from perfect. If you ever want to tel
 	},
 ];
 
+interface Recipient {
+	accountId: string;
+	email: string;
+	label: string;
+}
+
 interface SendResult {
 	to: string;
 	subject: string;
 	id: string | null;
+	runId: string | null;
+}
+
+function currentDraftFingerprint(draft: EmailDraft, templateId: string | null) {
+	return JSON.stringify({ draft, templateId });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isPreviewResponse(
+	value: unknown,
+): value is { html: string; text: string } {
+	return (
+		isRecord(value) &&
+		typeof value.html === "string" &&
+		typeof value.text === "string"
+	);
+}
+
+function previewErrorMessage(value: unknown, status: number): string {
+	if (isRecord(value) && typeof value.error === "string") {
+		return value.error;
+	}
+	return `Preview request failed (${status}).`;
+}
+
+function knownTemplateId(templateId: string | null | undefined): string | null {
+	return TEMPLATES.some((template) => template.id === templateId)
+		? (templateId ?? null)
+		: null;
+}
+
+function readInitialState() {
+	const stored = readEmailDraft();
+	const params = new URL(window.location.href).searchParams;
+	const duplicateRun = params.get("duplicateRun");
+	const duplicate = duplicateRun ? readEmailHistoryDraft(duplicateRun) : null;
+	if (duplicateRun) {
+		const next = new URL(window.location.href);
+		next.searchParams.delete("duplicateRun");
+		window.history.replaceState({ controlPanel: true }, "", next);
+	}
+	const to = params.get("to") ?? "";
+	const toLabel = params.get("toLabel") ?? "";
+	if (to) {
+		const next = new URL(window.location.href);
+		next.searchParams.delete("to");
+		next.searchParams.delete("toLabel");
+		window.history.replaceState({ controlPanel: true }, "", next);
+	}
+	return {
+		draft: duplicate?.draft ?? stored?.draft ?? EMPTY,
+		templateId: knownTemplateId(duplicate?.templateId ?? stored?.templateId),
+		to,
+		toLabel,
+		duplicateUnavailable: duplicateRun !== null && duplicate === null,
+	};
 }
 
 export function EmailSection() {
-	const [draft, setDraft] = useState<Draft>(EMPTY);
-	const [to, setTo] = useState("");
-	const [toLabel, setToLabel] = useState("");
+	const [initial] = useState(readInitialState);
+	const [draft, setDraft] = useState<EmailDraft>(initial.draft);
+	const [templateId, setTemplateId] = useState<string | null>(
+		initial.templateId,
+	);
+	const [to, setTo] = useState(initial.to);
+	const [toLabel, setToLabel] = useState(initial.toLabel);
+	const [toAccountId, setToAccountId] = useState<string | null>(null);
+	const [additionalRecipients, setAdditionalRecipients] = useState<Recipient[]>(
+		[],
+	);
+	const [recipientPickerKey, setRecipientPickerKey] = useState(0);
 	const [previewHtml, setPreviewHtml] = useState("");
-	const [tab, setTab] = useState<"html" | "text">("html");
 	const [previewText, setPreviewText] = useState("");
+	const [previewError, setPreviewError] = useState<string | null>(null);
+	const [previewStale, setPreviewStale] = useState(true);
+	const [tab, setTab] = useState<"html" | "text">("html");
 	const [sending, setSending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [sent, setSent] = useState<SendResult | null>(null);
+	const [testAddress, setTestAddress] = useState("");
+	const [testResult, setTestResult] = useState<EmailTestResult | null>(null);
+	const [testFingerprint, setTestFingerprint] = useState<string | null>(null);
+	const [testing, setTesting] = useState(false);
+	const [clearOpen, setClearOpen] = useState(false);
+	const [sendConfirmOpen, setSendConfirmOpen] = useState(false);
+	const [batchOpen, setBatchOpen] = useState(false);
 
-	function set<K extends keyof Draft>(key: K, value: string) {
-		setDraft((d) => ({ ...d, [key]: value }));
-	}
-
-	// Debounced live render: the server renders the same envelope it would send
-	// (leniently, so half-typed drafts still preview). AbortController drops
-	// in-flight renders so the iframe always reflects the latest keystroke.
-	useEffect(() => {
-		const controller = new AbortController();
-		const timer = setTimeout(() => {
-			fetch("/api/email/preview", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(draft),
-				signal: controller.signal,
-			})
-				.then((r) => r.json())
-				.then((res: { html?: string; text?: string }) => {
-					setPreviewHtml(res.html ?? "");
-					setPreviewText(res.text ?? "");
-				})
-				.catch(() => {});
-		}, 200);
-		return () => {
-			controller.abort();
-			clearTimeout(timer);
-		};
-	}, [draft]);
-
+	const fingerprint = currentDraftFingerprint(draft, templateId);
+	const hasCurrentTest = testResult !== null && testFingerprint === fingerprint;
+	const recipientCount = (to ? 1 : 0) + additionalRecipients.length;
+	const accountIds = [
+		...(toAccountId ? [toAccountId] : []),
+		...additionalRecipients.map((recipient) => recipient.accountId),
+	];
 	const canSend =
 		EMAIL_RE.test(to) &&
 		!!draft.subject.trim() &&
@@ -107,58 +168,168 @@ export function EmailSection() {
 		!!draft.body.trim() &&
 		!!draft.ctaLabel.trim() &&
 		!!draft.ctaUrl.trim();
+	const canBatch =
+		canSend && recipientCount > 1 && accountIds.length === recipientCount;
+
+	useEffect(() => {
+		writeEmailDraft({ draft, templateId });
+	}, [draft, templateId]);
+
+	useEffect(() => {
+		const controller = new AbortController();
+		setPreviewStale(true);
+		const timer = window.setTimeout(() => {
+			fetch("/api/email/preview", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(draft),
+				signal: controller.signal,
+			})
+				.then(async (response) => {
+					const result: unknown = await response.json();
+					if (!response.ok) {
+						throw new Error(previewErrorMessage(result, response.status));
+					}
+					if (!isPreviewResponse(result)) {
+						throw new Error("Preview response was invalid.");
+					}
+					return result;
+				})
+				.then((result) => {
+					setPreviewHtml(result.html);
+					setPreviewText(result.text);
+					setPreviewError(null);
+					setPreviewStale(false);
+				})
+				.catch((reason: unknown) => {
+					if (controller.signal.aborted) return;
+					setPreviewError(
+						reason instanceof Error ? reason.message : String(reason),
+					);
+					setPreviewStale(true);
+				});
+		}, 200);
+		return () => {
+			controller.abort();
+			window.clearTimeout(timer);
+		};
+	}, [draft]);
+
+	function set<K extends keyof EmailDraft>(key: K, value: string) {
+		setDraft((current) => ({ ...current, [key]: value }));
+	}
+
+	function applyTemplate(template: Template) {
+		setDraft(template.draft);
+		setTemplateId(template.id);
+	}
+
+	function clearDraft() {
+		if (isDraftEmpty(draft)) {
+			setDraft(EMPTY);
+			setTemplateId(null);
+			return;
+		}
+		setClearOpen(true);
+	}
+
+	async function sendTest() {
+		if (!EMAIL_RE.test(testAddress) || !canSend) return;
+		setTesting(true);
+		setError(null);
+		try {
+			const result = await sendEmailTest({
+				...draft,
+				templateId,
+				to: testAddress.trim(),
+			});
+			setTestResult(result);
+			setTestFingerprint(fingerprint);
+			toast.success(`Test sent to ${testAddress.trim()}`);
+		} catch (reason) {
+			setError(reason instanceof Error ? reason.message : String(reason));
+		} finally {
+			setTesting(false);
+		}
+	}
 
 	async function send() {
-		const who = toLabel || to;
-		if (
-			!window.confirm(
-				`Send "${draft.subject}" to ${who} via Resend?\n\nThis is a real email and cannot be unsent.`,
-			)
-		)
-			return;
 		setSending(true);
 		setError(null);
 		setSent(null);
 		try {
-			const res = await postJson<SendResult>("/api/email/send", {
+			const result = await postJson<SendResult>("/api/email/send", {
 				...draft,
+				templateId,
 				to,
 			});
-			setSent(res);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+			setSent(result);
+			if (result.runId) {
+				rememberEmailHistoryDraft(result.runId, { draft, templateId });
+			}
+			toast.success(`Email sent to ${result.to}`);
+		} catch (reason) {
+			setError(reason instanceof Error ? reason.message : String(reason));
+			throw reason;
 		} finally {
 			setSending(false);
 		}
+	}
+
+	function addRecipient(
+		_value: string,
+		_label: string,
+		account?: AccountSearchResult,
+	) {
+		if (!account) return;
+		const email = account.email;
+		if (!email) return;
+		if (additionalRecipients.length >= 49) {
+			setError("Email batches are limited to 50 verified recipients.");
+			return;
+		}
+		if (
+			account.id === toAccountId ||
+			additionalRecipients.some((r) => r.accountId === account.id)
+		) {
+			setError(`${account.label} is already a recipient.`);
+			return;
+		}
+		setAdditionalRecipients((current) => [
+			...current,
+			{ accountId: account.id, email, label: account.label },
+		]);
+		setRecipientPickerKey((key) => key + 1);
 	}
 
 	return (
 		<div className="email-layout">
 			<Card title="Compose" icon={PaperPlaneTiltIcon} span={12}>
 				<p className="muted-text" style={{ marginBottom: 16 }}>
-					Sends a transactional email in Hearted's house style (the same
-					envelope as the verify/reset flows) via Resend. The preview updates as
-					you type.
+					Sends a transactional email in Hearted&apos;s house style via Resend.
+					The preview updates as you type.
 				</p>
+				{initial.duplicateUnavailable && (
+					<div className="result warn">
+						This email&apos;s body is not available in this browser. Action
+						history stores only a body hash and length.
+					</div>
+				)}
 
 				<div className="field">
 					<label htmlFor="email-template">Start from a template</label>
 					<div className="btn-row" id="email-template">
-						{TEMPLATES.map((t) => (
+						{TEMPLATES.map((template) => (
 							<button
-								key={t.id}
+								key={template.id}
 								type="button"
-								className="btn"
-								onClick={() => setDraft(t.draft)}
+								className={`btn ${templateId === template.id ? "active" : ""}`}
+								onClick={() => applyTemplate(template)}
 							>
-								{t.label}
+								{template.label}
 							</button>
 						))}
-						<button
-							type="button"
-							className="btn"
-							onClick={() => setDraft(EMPTY)}
-						>
+						<button type="button" className="btn" onClick={clearDraft}>
 							Clear
 						</button>
 					</div>
@@ -174,17 +345,60 @@ export function EmailSection() {
 						value={to}
 						label={toLabel}
 						allowRawEmail
-						selectValue={(r) => r.email ?? ""}
-						onChange={(value, label) => {
-							if (!value) {
-								setTo("");
-								setToLabel("");
-								return;
-							}
+						selectValue={(account) => account.email ?? ""}
+						onChange={(value, label, account) => {
 							setTo(value);
 							setToLabel(label);
+							setToAccountId(account?.id ?? null);
 						}}
 					/>
+				</div>
+
+				<div className="field">
+					<label htmlFor="email-add-recipient">
+						Add verified batch recipient
+					</label>
+					<AccountPicker
+						key={recipientPickerKey}
+						inputId="email-add-recipient"
+						placeholder="Search verified Hearted users…"
+						value=""
+						label=""
+						onChange={addRecipient}
+					/>
+					{additionalRecipients.length > 0 && (
+						<ul
+							className="email-recipient-list"
+							aria-label="Additional recipients"
+						>
+							{additionalRecipients.map((recipient) => (
+								<li key={recipient.accountId}>
+									<span>
+										{recipient.label} · {recipient.email}
+									</span>
+									<button
+										type="button"
+										className="icon-btn"
+										aria-label={`Remove ${recipient.label}`}
+										onClick={() =>
+											setAdditionalRecipients((current) =>
+												current.filter(
+													(candidate) =>
+														candidate.accountId !== recipient.accountId,
+												),
+											)
+										}
+									>
+										<XIcon size={14} weight="bold" />
+									</button>
+								</li>
+							))}
+						</ul>
+					)}
+					<span className="field-hint">
+						Multiple recipients use the verified-recipient batch flow (maximum
+						50).
+					</span>
 				</div>
 
 				<TextField
@@ -193,7 +407,7 @@ export function EmailSection() {
 					required
 					placeholder="your liked songs have something to tell you"
 					value={draft.subject}
-					onChange={(v) => set("subject", v)}
+					onChange={(value) => set("subject", value)}
 				/>
 				<TextField
 					id="email-headline"
@@ -201,7 +415,7 @@ export function EmailSection() {
 					required
 					placeholder="One step left."
 					value={draft.headline}
-					onChange={(v) => set("headline", v)}
+					onChange={(value) => set("headline", value)}
 				/>
 
 				<div className="field">
@@ -219,7 +433,7 @@ export function EmailSection() {
 						placeholder="Write the message in plain prose…"
 						value={draft.body}
 						{...noAutofill}
-						onChange={(e) => set("body", e.target.value)}
+						onChange={(event) => set("body", event.target.value)}
 					/>
 				</div>
 
@@ -230,7 +444,7 @@ export function EmailSection() {
 						required
 						placeholder="Open hearted."
 						value={draft.ctaLabel}
-						onChange={(v) => set("ctaLabel", v)}
+						onChange={(value) => set("ctaLabel", value)}
 					/>
 					<TextField
 						id="email-cta-url"
@@ -238,37 +452,81 @@ export function EmailSection() {
 						required
 						placeholder="https://hearted.music"
 						value={draft.ctaUrl}
-						onChange={(v) => set("ctaUrl", v)}
+						onChange={(value) => set("ctaUrl", value)}
 					/>
 				</div>
-
 				<TextField
 					id="email-preheader"
 					label="Inbox preview"
 					placeholder="Defaults to the subject"
 					value={draft.preheader}
-					onChange={(v) => set("preheader", v)}
+					onChange={(value) => set("preheader", value)}
 				/>
 				<TextField
 					id="email-footnote"
 					label="Footnote"
 					placeholder="— ♡ hearted.music"
 					value={draft.footnote}
-					onChange={(v) => set("footnote", v)}
+					onChange={(value) => set("footnote", value)}
 				/>
 
-				<div className="btn-row">
-					<button
-						type="button"
-						className="btn primary"
-						disabled={!canSend || sending}
-						onClick={send}
-					>
-						<PaperPlaneTiltIcon size={14} weight="fill" />
-						{sending ? "Sending…" : "Send email"}
-					</button>
+				<div className="field email-test-send">
+					<label htmlFor="email-test-address">Send a test to yourself</label>
+					<div className="btn-row">
+						<input
+							id="email-test-address"
+							className="input"
+							type="email"
+							placeholder="you@hearted.music"
+							value={testAddress}
+							onChange={(event) => setTestAddress(event.target.value)}
+						/>
+						<button
+							type="button"
+							className="btn"
+							disabled={!canSend || !EMAIL_RE.test(testAddress) || testing}
+							onClick={sendTest}
+						>
+							{testing ? "Sending test…" : "Send test"}
+						</button>
+					</div>
+					{testResult && (
+						<span className={hasCurrentTest ? "dim" : "result warn"}>
+							{hasCurrentTest
+								? "Test sent for this draft."
+								: "Draft changed after this test; send another test before batching."}
+						</span>
+					)}
 				</div>
 
+				<div className="btn-row">
+					{recipientCount <= 1 ? (
+						<button
+							type="button"
+							className="btn primary"
+							disabled={!canSend || sending}
+							onClick={() => setSendConfirmOpen(true)}
+						>
+							<PaperPlaneTiltIcon size={14} weight="fill" />
+							{sending ? "Sending…" : "Send email"}
+						</button>
+					) : (
+						<button
+							type="button"
+							className="btn primary"
+							disabled={!canBatch}
+							onClick={() => setBatchOpen(true)}
+						>
+							<PaperPlaneTiltIcon size={14} weight="fill" />
+							Preview email batch ({recipientCount})
+						</button>
+					)}
+				</div>
+				{recipientCount > 1 && !canBatch && (
+					<div className="result warn">
+						Every batch recipient must be a verified Hearted account.
+					</div>
+				)}
 				{error && <div className="result err">{error}</div>}
 				{sent && (
 					<div className="result ok">
@@ -280,7 +538,9 @@ export function EmailSection() {
 
 			<div className="email-preview">
 				<div className="email-preview-head">
-					<span className="email-preview-title">Preview</span>
+					<span className="email-preview-title">
+						Preview{previewStale ? " · stale" : ""}
+					</span>
 					<div className="seg">
 						<button
 							type="button"
@@ -298,6 +558,12 @@ export function EmailSection() {
 						</button>
 					</div>
 				</div>
+				{previewError && (
+					<div className="result err">
+						Preview could not update: {previewError}. Showing the last
+						successful preview.
+					</div>
+				)}
 				{tab === "html" ? (
 					<iframe
 						title="Email preview"
@@ -309,6 +575,53 @@ export function EmailSection() {
 					<pre className="email-preview-text">{previewText}</pre>
 				)}
 			</div>
+
+			{clearOpen && (
+				<ConfirmModal
+					title="Clear email draft"
+					description="Clear every draft field? This does not change the selected recipients."
+					confirmLabel="Clear draft"
+					onConfirm={async () => {
+						setDraft(EMPTY);
+						setTemplateId(null);
+						setClearOpen(false);
+					}}
+					onClose={() => setClearOpen(false)}
+				/>
+			)}
+			{sendConfirmOpen && (
+				<ConfirmModal
+					title="Send email to production recipient"
+					description={
+						<>
+							Send <strong>{draft.subject}</strong> to{" "}
+							<strong>{toLabel || to}</strong> via Resend? This email cannot be
+							unsent.
+						</>
+					}
+					confirmLabel="Send email"
+					onConfirm={async () => {
+						await send();
+						setSendConfirmOpen(false);
+					}}
+					onClose={() => setSendConfirmOpen(false)}
+				/>
+			)}
+			{batchOpen && (
+				<BatchLauncher
+					actionType="email-batch"
+					title="Send email — batch"
+					description="Sends one email per verified recipient through Resend. This writes to production and cannot be undone."
+					buildInput={() => ({ ...draft, templateId, accountIds })}
+					emailGate={{
+						getDraft: () => ({ ...draft, templateId }),
+						testedDraftHash: hasCurrentTest
+							? (testResult?.draftHash ?? null)
+							: null,
+					}}
+					onClose={() => setBatchOpen(false)}
+				/>
+			)}
 		</div>
 	);
 }
@@ -340,7 +653,7 @@ function TextField({
 				placeholder={placeholder}
 				value={value}
 				{...noAutofill}
-				onChange={(e) => onChange(e.target.value)}
+				onChange={(event) => onChange(event.target.value)}
 			/>
 		</div>
 	);

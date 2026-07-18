@@ -10,27 +10,14 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: vi.fn(),
 }));
 
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { readBillingState } from "@/lib/domains/billing/queries";
-import type { BillingState } from "@/lib/domains/billing/state";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
 import { grantFreeAllocation, requestSongUnlock } from "../unlocks";
 
 const mockedReadBillingState = vi.mocked(readBillingState);
 const mockedApplyChange = vi.mocked(applyLibraryProcessingChange);
-
-function makeBillingState(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 10,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "standard",
-		...overrides,
-	};
-}
 
 function makeApplyOutcome(): LibraryProcessingApplyOutcome {
 	return {

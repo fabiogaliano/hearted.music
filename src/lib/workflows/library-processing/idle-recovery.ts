@@ -4,7 +4,7 @@ import { getActiveEnrichmentJob } from "@/lib/platform/jobs/library-processing-q
 import { getLatestJob } from "@/lib/platform/jobs/repository";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { hasMoreSongsNeedingEnrichmentWork } from "@/lib/workflows/enrichment-pipeline/batch";
-import { MaintenanceChanges } from "./changes/maintenance";
+import { MaintenanceChanges } from "./changes";
 import { findStatesWithoutEnrichmentActiveJob } from "./queries";
 import { applyLibraryProcessingChange } from "./service";
 import type {

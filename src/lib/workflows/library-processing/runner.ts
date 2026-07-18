@@ -18,10 +18,10 @@ import {
 } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import { captureWorkerEvent } from "@/worker/posthog-capture";
-import { EnrichmentChanges } from "./changes/enrichment";
-import { MatchSnapshotChanges } from "./changes/match-snapshot";
+import { EnrichmentChanges, MatchSnapshotChanges } from "./changes";
 import { applyLibraryProcessingChange } from "./service";
 import {
+	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
 	settleMatchSnapshotRefreshJobTerminal,
 } from "./settlement";
@@ -50,7 +50,38 @@ export type RunJobOutcome =
 			workflow: "enrichment" | "match_snapshot_refresh";
 			error: string;
 			settlement: SettlementStatus;
+	  }
+	| {
+			status: "retrying";
+			workflow: "enrichment" | "match_snapshot_refresh";
+			error: string;
 	  };
+
+// App-thrown errors consume the same retry budget as worker crashes: requeue
+// while attempts remain (the claim RPC already counted this attempt), and only
+// settle as terminally failed once max_attempts is exhausted — or when the
+// requeue itself can't land (job no longer running, or the write failed).
+async function tryRequeueForRetry(
+	job: Job,
+	actor: string,
+	workflow: "enrichment" | "match_snapshot_refresh",
+	message: string,
+): Promise<boolean> {
+	if (job.attempts >= job.max_attempts) return false;
+
+	const requeued = await requeueLibraryProcessingJobForRetry(job, message);
+	if (Result.isError(requeued)) {
+		log.error("requeue-for-retry-failed", {
+			actor,
+			jobId: job.id,
+			accountId: job.account_id,
+			workflow,
+			error: requeued.error.message,
+		});
+		return false;
+	}
+	return requeued.value;
+}
 
 export async function runClaimedJob(
 	job: Job,
@@ -199,6 +230,13 @@ async function runEnrichmentJob(
 			accountId: job.account_id,
 		});
 
+		if (await tryRequeueForRetry(job, actor, "enrichment", message)) {
+			await writeMeasurement(job, actor, "enrichment", startedAt, "error", {
+				retrying: true,
+			});
+			return { status: "retrying", workflow: "enrichment", error: message };
+		}
+
 		await settleEnrichmentJobTerminal(job, "failed", "failed", message).catch(
 			(markError) => {
 				log.error("mark-failed-error", {
@@ -342,6 +380,25 @@ async function runMatchSnapshotRefreshJob(
 			jobId: job.id,
 			accountId: job.account_id,
 		});
+
+		if (
+			await tryRequeueForRetry(job, actor, "match_snapshot_refresh", message)
+		) {
+			await writeMeasurement(
+				job,
+				actor,
+				"match_snapshot_refresh",
+				startedAt,
+				"error",
+				{ retrying: true },
+			);
+			return {
+				status: "retrying",
+				workflow: "match_snapshot_refresh",
+				error: message,
+			};
+		}
+
 		await writeMeasurement(
 			job,
 			actor,

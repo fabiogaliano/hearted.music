@@ -39,4 +39,9 @@ export const workerConfig = {
 	// clean-reputation proxy (e.g. a Cloudflare WARP SOCKS5 sidecar). Unset =
 	// direct, and only yt-dlp is routed through it — not the worker's other egress.
 	ytdlpProxy: process.env.YTDLP_PROXY?.trim() || undefined,
+	// yt-dlp audio-feature backfill hits real YouTube and the rate-limited
+	// ReccoBeats API, so it only belongs in prod. NODE_ENV=production is baked
+	// into Dockerfile.worker (not a Coolify env var — can't be forgotten), so
+	// prod runs it automatically and local dev never touches those services.
+	isProduction: process.env.NODE_ENV === "production",
 };

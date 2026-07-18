@@ -11,6 +11,7 @@ const storyOrder = [
 	"match*",
 	"settings*",
 	"billing*",
+	"extension*",
 	"app-shell*",
 	"foundations*",
 	"*",
@@ -18,7 +19,9 @@ const storyOrder = [
 
 /** @type {import('@ladle/react').UserConfig} */
 export default {
-	stories: "src/**/*.stories.tsx",
+	// The extension popup lives in its own package; scan it too so its
+	// presentational stories (e.g. the accounts panel) appear alongside app UI.
+	stories: "{src,extensions/src}/**/*.stories.tsx",
 	storyOrder,
 	viteConfig: process.cwd() + "/ladle-vite.config.ts",
 	appendToHead: `<style>

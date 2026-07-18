@@ -9,6 +9,7 @@
  * `@/env`, no DB client, so it can't split reads between prod and the local db.
  */
 
+import { createHash } from "node:crypto";
 import { Resend } from "resend";
 import { envelopeHtml } from "../../src/lib/platform/email/templates";
 import { getResendApiKey } from "./prod-creds";
@@ -27,6 +28,30 @@ export interface StyledEmailInput {
 	ctaUrl?: string;
 	preheader?: string;
 	footnote?: string;
+	templateId?: string | null;
+}
+
+function normalizedDraftField(input: StyledEmailInput, key: keyof StyledEmailInput): string {
+	const value = input[key];
+	return typeof value === "string" ? value.trim() : "";
+}
+
+/** Fingerprint every rendered draft field so a test send authorizes only that content. */
+export function emailDraftHash(input: StyledEmailInput): string {
+	return createHash("sha256")
+		.update(
+			JSON.stringify({
+				subject: normalizedDraftField(input, "subject"),
+				headline: normalizedDraftField(input, "headline"),
+				body: normalizedDraftField(input, "body"),
+				ctaLabel: normalizedDraftField(input, "ctaLabel"),
+				ctaUrl: normalizedDraftField(input, "ctaUrl"),
+				preheader: normalizedDraftField(input, "preheader"),
+				footnote: normalizedDraftField(input, "footnote") || DEFAULT_FOOTNOTE,
+				templateId: normalizedDraftField(input, "templateId"),
+			}),
+		)
+		.digest("hex");
 }
 
 export interface RenderedEmail {
@@ -158,15 +183,21 @@ export interface SentEmail {
 	id: string | null;
 }
 
-export async function sendStyledEmail(email: RenderedEmail): Promise<SentEmail> {
+export async function sendStyledEmail(
+	email: RenderedEmail,
+	options: { idempotencyKey?: string } = {},
+): Promise<SentEmail> {
 	const resend = new Resend(getResendApiKey());
-	const { data, error } = await resend.emails.send({
-		from: email.from,
-		to: email.to,
-		subject: email.subject,
-		html: email.html,
-		text: email.text,
-	});
+	const { data, error } = await resend.emails.send(
+		{
+			from: email.from,
+			to: email.to,
+			subject: email.subject,
+			html: email.html,
+			text: email.text,
+		},
+		options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : undefined,
+	);
 	if (error) throw new Error(`Resend send failed: ${error.message}`);
 	return { id: data?.id ?? null };
 }

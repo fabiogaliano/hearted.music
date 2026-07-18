@@ -6,6 +6,7 @@
  * useDashboardSync wiring so the surrounding layout stays presentational.
  */
 
+import type { ExtensionAccountCheck } from "@/lib/extension/useExtensionAccountConflict";
 import { fonts } from "@/lib/theme/fonts";
 import { useDashboardSync } from "../hooks/useDashboardSync";
 import { DashboardSyncControl } from "./DashboardSyncControl";
@@ -13,13 +14,15 @@ import { DashboardSyncControl } from "./DashboardSyncControl";
 interface DashboardSyncStatusProps {
 	accountId: string;
 	lastSyncText: string;
+	accountCheck: ExtensionAccountCheck;
 }
 
 export function DashboardSyncStatus({
 	accountId,
 	lastSyncText,
+	accountCheck,
 }: DashboardSyncStatusProps) {
-	const { state, onAction } = useDashboardSync(accountId);
+	const { state, onAction } = useDashboardSync(accountId, accountCheck);
 
 	return (
 		<div

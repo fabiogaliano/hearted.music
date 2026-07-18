@@ -11,7 +11,7 @@
  * Models:
  * - Embedding: Qwen/Qwen3-Embedding-0.6B via the onnx-community ONNX export
  *   (last-token pooling, fp32, MRL-truncated to 512 dims)
- * - Reranking: Qwen/Qwen3-Reranker-0.6B via the zhiqing ONNX export
+ * - Reranking: Qwen/Qwen3-Reranker-0.6B via the onnx-community ONNX export
  *   (decoder-only LM, yes/no logit scoring at last token position)
  *
  * NOTE: production embeds/reranks via DeepInfra; this in-process path is for
@@ -71,14 +71,14 @@ const EMBEDDING_PIPELINE_OPTIONS = {
 	use_external_data_format: true,
 } as const;
 
-// zhiqing's ONNX export ships model.onnx at the repo root (not under onnx/).
-// We override subfolder="" so transformers.js resolves model.onnx correctly.
-// dtype "fp32" + suffix "" → model.onnx (the only file in this repo).
-// The download is ~1.2 GB (single-file fp32, first run only).
-const RERANKER_ONNX_REPO = "zhiqing/Qwen3-Reranker-0.6B-ONNX";
+// q8 (dtype "q8" → onnx/model_quantized.onnx, ~1.2 GB, first run only).
+// fp32 (zhiqing/Qwen3-Reranker-0.6B-ONNX) was too slow on CPU: reranking
+// topN=50 candidates blew past the 120s HTTP timeout, so matches silently
+// fell back to embedding order. q8 trades a little accuracy for staying
+// well inside the window in local dev.
+const RERANKER_ONNX_REPO = "onnx-community/Qwen3-Reranker-0.6B-ONNX";
 const RERANKER_MODEL_OPTIONS = {
-	dtype: "fp32",
-	subfolder: "",
+	dtype: "q8",
 } as const;
 
 // System prompt from the Qwen3-Reranker model card — must not be altered.
@@ -231,7 +231,7 @@ export class LocalProvider implements MLProvider {
 						"@huggingface/transformers"
 					);
 					console.log(
-						`[Local Provider] Loading reranker: ${RERANKER_ONNX_REPO} (~1.2GB fp32, first time only)`,
+						`[Local Provider] Loading reranker: ${RERANKER_ONNX_REPO} (~1.2GB q8, first time only)`,
 					);
 					const [model, tokenizer] = await Promise.all([
 						AutoModelForCausalLM.from_pretrained(
@@ -398,11 +398,10 @@ export class LocalProvider implements MLProvider {
 			// handling; sequential is simpler and fast enough for this workload.
 			const rawScores: number[] = [];
 			for (const doc of documents) {
-				// Build the prompt manually using the Qwen3 chatml format.
-				// The zhiqing tokenizer_config.json does not include chat_template,
-				// so apply_chat_template() fails without passing the template
-				// string explicitly. Manual construction is more robust and matches
-				// the Qwen3-Reranker model card exactly.
+				// Build the prompt manually using the Qwen3 chatml format rather
+				// than apply_chat_template() — manual construction is robust to
+				// repos that omit chat_template in tokenizer_config.json and
+				// matches the Qwen3-Reranker model card exactly.
 				//
 				// Full input structure:
 				//   <|im_start|>system\n{system}<|im_end|>\n

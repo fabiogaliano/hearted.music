@@ -16,7 +16,7 @@ export function isSearchFilter(value: string): value is SearchFilter {
 export function toQueryFilter(filter: SearchFilter): FilterOption {
 	// `locked` is a client-only filter projection over `displayState`. The
 	// server has no `locked` enum value, so fetch the full set and let
-	// useLikedSongsListModel filter visible rows + auto-paginate until matches
+	// useLikedSongsList filter visible rows + auto-paginate until matches
 	// surface (same pattern as selection mode).
 	if (filter === "locked") return "all";
 	return filter;

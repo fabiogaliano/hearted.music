@@ -4,6 +4,7 @@ import {
 	hasFirstVisibleReviewSubject,
 	resolveReadinessConservative,
 } from "@/lib/domains/taste/match-review-queue/readiness";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import {
 	type ParsedJobProgress,
@@ -48,6 +49,14 @@ export async function buildActiveJobsSnapshot(
 	const firstVisibleMatchReady =
 		resolveReadinessConservative(firstVisibleResult);
 
+	if (Result.isError(stateResult)) {
+		captureServerError(stateResult.error, {
+			area: "jobs",
+			operation: "build_active_jobs_snapshot",
+			accountId,
+		});
+	}
+
 	let enrichment: ActiveJobInfo | null = null;
 	let matchSnapshotRefresh: ActiveJobInfo | null = null;
 
@@ -86,7 +95,16 @@ async function resolveJobInfo(
 	accountId: string,
 ): Promise<ActiveJobInfo | null> {
 	const result = await getJobById(jobId, accountId);
-	if (Result.isError(result) || !result.value) return null;
+	if (Result.isError(result)) {
+		captureServerError(result.error, {
+			area: "jobs",
+			operation: "resolve_job_info",
+			accountId,
+			extra: { jobId },
+		});
+		return null;
+	}
+	if (!result.value) return null;
 
 	const job = result.value;
 	if (job.status !== "pending" && job.status !== "running") return null;

@@ -81,7 +81,13 @@ describe("useAccountEvents", () => {
 
 	let createdStreams: ReturnType<typeof createMockStream>[] = [];
 
-	function setupMockFetch(options: { ok?: boolean; status?: number } = {}) {
+	function setupMockFetch(
+		options: {
+			ok?: boolean;
+			status?: number;
+			headers?: Record<string, string>;
+		} = {},
+	) {
 		mockFetch.mockImplementation(async (_url, fetchOptions) => {
 			return new Promise((resolve, reject) => {
 				const onAbort = () => reject(new DOMException("Aborted", "AbortError"));
@@ -98,7 +104,7 @@ describe("useAccountEvents", () => {
 					body = mockStream.stream;
 				}
 
-				resolve({ ok, status, body });
+				resolve({ ok, status, body, headers: new Headers(options.headers) });
 			});
 		});
 	}
@@ -282,7 +288,7 @@ describe("useAccountEvents", () => {
 		});
 	});
 
-	it("invalidates active jobs when a refresh settles without a snapshot", async () => {
+	it("applies the trailing snapshot instead of refetching active jobs on job-change frames", async () => {
 		setupMockFetch();
 		const { result } = renderHook(() => useAccountEvents(ACCOUNT_ID), {
 			wrapper,
@@ -293,6 +299,12 @@ describe("useAccountEvents", () => {
 		});
 
 		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+		const settledSnapshot = {
+			enrichment: null,
+			matchSnapshotRefresh: null,
+			firstMatchReady: true,
+			firstVisibleMatchReady: true,
+		};
 
 		act(() => {
 			for (const stream of createdStreams) {
@@ -308,15 +320,19 @@ describe("useAccountEvents", () => {
 						303,
 					),
 				);
+				// Gateway contract: every replay batch ends with a snapshot frame.
+				stream.push(buildFrame("active_jobs_snapshot", settledSnapshot));
 			}
 		});
 
 		await waitFor(() => {
-			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: ["active-jobs", ACCOUNT_ID],
-			});
+			expect(queryClient.getQueryData(["active-jobs", ACCOUNT_ID])).toEqual(
+				settledSnapshot,
+			);
 		});
-		expect(invalidateSpy).toHaveBeenCalledTimes(2);
+		expect(invalidateSpy).not.toHaveBeenCalledWith({
+			queryKey: ["active-jobs", ACCOUNT_ID],
+		});
 	});
 
 	it("does not promote Last-Event-ID from live frames across reconnects", async () => {
@@ -350,6 +366,32 @@ describe("useAccountEvents", () => {
 			| Record<string, string>
 			| undefined;
 		expect(reconnectHeaders?.["Last-Event-ID"]).toBeUndefined();
+	});
+
+	it("seeds Last-Event-ID from the connect response cursor header", async () => {
+		setupMockFetch({ headers: { "x-account-events-cursor": "42" } });
+
+		renderHook(() => useAccountEvents(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(createdStreams).toHaveLength(1);
+		});
+
+		act(() => {
+			createdStreams[0]?.close();
+		});
+
+		await waitFor(
+			() => {
+				expect(mockFetch).toHaveBeenCalledTimes(2);
+			},
+			{ timeout: 2500 },
+		);
+
+		const reconnectHeaders = mockFetch.mock.calls[1]?.[1]?.headers as
+			| Record<string, string>
+			| undefined;
+		expect(reconnectHeaders?.["Last-Event-ID"]).toBe("42");
 	});
 
 	it("stops on 403 and sets state to forbidden", async () => {

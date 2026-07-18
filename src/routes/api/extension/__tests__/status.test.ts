@@ -97,7 +97,12 @@ describe("/api/extension/status", () => {
 		};
 
 		mockSingle.mockResolvedValue({
-			data: { display_name: "Hearted", email: "hello@hearted.test" },
+			data: {
+				display_name: "Hearted",
+				email: "hello@hearted.test",
+				spotify_id: "spotify-user-1",
+				image_url: "https://i.scdn.co/image/avatar",
+			},
 		});
 		mockUpsert.mockResolvedValue({ error: null });
 		mockCreateAdminSupabaseClient.mockReturnValue({
@@ -173,6 +178,8 @@ describe("/api/extension/status", () => {
 			accountId: "acct-1",
 			displayName: "Hearted",
 			email: "hello@hearted.test",
+			spotifyId: "spotify-user-1",
+			imageUrl: "https://i.scdn.co/image/avatar",
 			likedSongCount: 12,
 			playlistCount: 3,
 		});

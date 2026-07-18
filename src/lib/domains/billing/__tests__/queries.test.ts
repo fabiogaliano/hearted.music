@@ -1,7 +1,15 @@
 import { Result } from "better-result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "@/lib/data/client";
-import { readBillingState } from "../queries";
+
+const mockCaptureServerError = vi.fn();
+
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: (...args: unknown[]) => mockCaptureServerError(...args),
+}));
+
+import { readBillingState, readBillingStateOrFreeTier } from "../queries";
+import { FREE_BILLING_STATE } from "../state";
 
 /**
  * Builds a mock AdminSupabaseClient that returns the given row from
@@ -291,5 +299,52 @@ describe("readBillingState", () => {
 		if (!Result.isOk(result)) return;
 
 		expect(result.value.unlimitedAccess).toEqual({ kind: "none" });
+	});
+});
+
+describe("readBillingStateOrFreeTier", () => {
+	beforeEach(() => {
+		mockCaptureServerError.mockClear();
+	});
+
+	it("returns the resolved value on success without capturing an error", async () => {
+		const { client } = mockSupabase(makeRow({ credit_balance: 5 }));
+
+		const result = await readBillingStateOrFreeTier(
+			client,
+			"acc-1",
+			"some_operation",
+		);
+
+		expect(result.creditBalance).toBe(5);
+		expect(mockCaptureServerError).not.toHaveBeenCalled();
+	});
+
+	it("degrades to FREE_BILLING_STATE and captures the error on read failure", async () => {
+		const singleFn = vi.fn().mockResolvedValue({
+			data: null,
+			error: { code: "PGRST500", message: "connection lost" },
+		});
+		const eqFn = vi.fn().mockReturnValue({ single: singleFn });
+		const selectFn = vi.fn().mockReturnValue({ eq: eqFn });
+		const fromFn = vi.fn().mockReturnValue({ select: selectFn });
+		const client = { from: fromFn } as unknown as AdminSupabaseClient;
+
+		const result = await readBillingStateOrFreeTier(
+			client,
+			"acc-1",
+			"some_operation",
+		);
+
+		expect(result).toEqual(FREE_BILLING_STATE);
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
+		expect(mockCaptureServerError).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				area: "billing",
+				operation: "some_operation",
+				accountId: "acc-1",
+			}),
+		);
 	});
 });

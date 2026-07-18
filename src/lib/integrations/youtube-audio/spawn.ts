@@ -13,7 +13,7 @@ export interface SpawnResult {
 
 export async function runCommand(
 	cmd: string[],
-	opts: { timeoutMs: number },
+	opts: { timeoutMs: number; signal?: AbortSignal },
 ): Promise<SpawnResult> {
 	let proc: Bun.Subprocess<"ignore", "pipe", "pipe">;
 	try {
@@ -41,6 +41,9 @@ export async function runCommand(
 		timedOut = true;
 		proc.kill(9);
 	}, opts.timeoutMs);
+	const abort = () => proc.kill(9);
+	if (opts.signal?.aborted) abort();
+	else opts.signal?.addEventListener("abort", abort, { once: true });
 
 	try {
 		const [stdout, stderr] = await Promise.all([
@@ -51,5 +54,6 @@ export async function runCommand(
 		return { stdout, stderr, exitCode, timedOut };
 	} finally {
 		clearTimeout(timer);
+		opts.signal?.removeEventListener("abort", abort);
 	}
 }

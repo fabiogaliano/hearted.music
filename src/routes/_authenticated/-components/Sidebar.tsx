@@ -46,12 +46,8 @@ export function Sidebar({
 }: SidebarProps) {
 	const matchRoute = useMatchRoute();
 
-	const isRouteActive = (to: string) => {
-		if (to === "/dashboard") {
-			return matchRoute({ to, fuzzy: false }) !== false;
-		}
-		return matchRoute({ to, fuzzy: true }) !== false;
-	};
+	const isRouteActive = (to: string) =>
+		matchRoute({ to, fuzzy: true }) !== false;
 
 	const isMatchActive = isRouteActive("/match");
 	const hasBadge = unsortedCount > 0;
@@ -90,13 +86,8 @@ export function Sidebar({
 
 			<nav aria-label="Primary" className="mt-10 flex-1">
 				<ul className="space-y-1">
-					<li>
-						<NavItem
-							to="/dashboard"
-							label="Home"
-							isActive={isRouteActive("/dashboard")}
-						/>
-					</li>
+					{/* No "Home" item — the hearted. wordmark above is the way back to
+					    /dashboard, so the nav lists only the three working destinations. */}
 					{/* Match link rendered directly — NavItem's generic `to: string`
 					    cannot carry typed route search params, so we replicate its DOM
 					    structure here to pass search={{ mode: "song" }} type-safely. */}

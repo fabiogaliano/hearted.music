@@ -7,7 +7,18 @@ import {
 	getLikedAtAggregates,
 	getReleaseYearAggregates,
 } from "@/lib/domains/library/liked-songs/filter-options-queries";
-import { getAccountTopGenres as queryAccountTopGenres } from "@/lib/domains/library/liked-songs/queries";
+import {
+	getStats,
+	getAccountTopGenres as queryAccountTopGenres,
+} from "@/lib/domains/library/liked-songs/queries";
+import {
+	getAccountReleaseYearAggregates,
+	getLikedWindowAggregates,
+	getTopArtists,
+	rollUpDecades,
+	searchLikedArtistsByName,
+	type TasteProfile,
+} from "@/lib/domains/library/liked-songs/taste-profile-queries";
 import {
 	deletePlaylist,
 	getPlaylistById,
@@ -23,6 +34,7 @@ import {
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
+import { loadPhase1Candidates } from "@/lib/domains/playlists/candidate-loader";
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import {
 	isLanguageCatalogCode,
@@ -51,8 +63,10 @@ import { captureProductEventBestEffort } from "@/lib/observability/capture-produ
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
-import { FirstMatchSetupChanges } from "@/lib/workflows/library-processing/changes/first-match-setup";
-import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
+import {
+	FirstMatchSetupChanges,
+	PlaylistManagementChanges,
+} from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 
 const SPOTIFY_PLAYLIST_URI_RE = /^spotify:playlist:([a-zA-Z0-9]+)$/;
@@ -1227,3 +1241,196 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 			},
 		};
 	});
+
+// ============================================================================
+// Taste profile read (seed stage)
+// ============================================================================
+
+/**
+ * Raw-count taste profile for the playlist-creation seed stage — the numbers
+ * the mad-lib starting templates are built from. Composes the per-slice domain
+ * queries at this layer only; each slice degrades to empty on failure so one
+ * broken aggregation can't blank the whole landing (the seed stage always keeps
+ * its from-scratch path and growth note). Genres/artists/windows aggregate the
+ * full active library; decades use the matching-eligible release-year RPC — an
+ * intentional, harmless population skew for a "starting point" hint.
+ */
+export const getTasteProfile = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.handler(async ({ context }): Promise<TasteProfile> => {
+		const { accountId } = context.session;
+
+		const [
+			statsResult,
+			genresResult,
+			artistsResult,
+			windowsResult,
+			yearsResult,
+		] = await Promise.all([
+			getStats(accountId),
+			queryAccountTopGenres(accountId),
+			getTopArtists(accountId),
+			getLikedWindowAggregates(accountId),
+			getAccountReleaseYearAggregates(accountId),
+		]);
+
+		// Degrade per slice: capture the failure but keep composing so the seed
+		// stage still renders whatever signal did come back.
+		const degrade = (stage: string, error: unknown) => {
+			captureServerError(error, {
+				area: "playlists",
+				operation: "get_taste_profile",
+				accountId,
+				extra: { stage },
+			});
+		};
+
+		let totalLikedCount = 0;
+		if (Result.isOk(statsResult)) {
+			totalLikedCount = statsResult.value.total;
+		} else {
+			degrade("stats", statsResult.error);
+		}
+
+		const topGenres: TasteProfile["topGenres"] = [];
+		if (Result.isOk(genresResult)) {
+			for (const g of genresResult.value) {
+				topGenres.push({ name: g.genre, count: g.occurrences });
+			}
+		} else {
+			degrade("genres", genresResult.error);
+		}
+
+		let topArtists: TasteProfile["topArtists"] = [];
+		if (Result.isOk(artistsResult)) {
+			topArtists = artistsResult.value;
+		} else {
+			degrade("artists", artistsResult.error);
+		}
+
+		let likedWindows: TasteProfile["likedWindows"] = [];
+		if (Result.isOk(windowsResult)) {
+			likedWindows = windowsResult.value;
+		} else {
+			degrade("windows", windowsResult.error);
+		}
+
+		let decades: TasteProfile["decades"] = [];
+		if (Result.isOk(yearsResult)) {
+			decades = rollUpDecades(yearsResult.value);
+		} else {
+			degrade("releaseYears", yearsResult.error);
+		}
+
+		return { totalLikedCount, topGenres, topArtists, likedWindows, decades };
+	});
+
+/**
+ * The account's liked artists (name + count), filtered by a query string and
+ * ranked by count — the type-to-search source for the studio's ArtistConfig
+ * panel. Counts are PREVIEW-ELIGIBLE likes (Phase-1 enriched, within the
+ * candidate loader's recency cap), not total likes: the number shown here is
+ * a promise of what anchoring the artist yields, so it must equal what
+ * resolveLikedArtistSongs later resolves the chip to. Two paths:
+ * - Empty query (browse mode): the ranked top-N aggregate. A cap is correct
+ *   here — browsing is inherently "my top artists".
+ * - Non-empty query: the match runs inside the RPC over every artist in that
+ *   population (searchLikedArtistsByName), so an artist outside any top-N
+ *   pool is still findable. Truncating before matching was the bug this
+ *   replaces.
+ * Degrades to an empty list on failure — search simply finds nothing rather
+ * than breaking the panel.
+ */
+const SearchLikedArtistsSchema = z.object({
+	query: z.string().max(400).default(""),
+});
+
+// Browse-mode ceiling only; typed searches run over the full artist population.
+const LIKED_ARTIST_BROWSE_POOL = 1000;
+
+export const searchLikedArtists = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => SearchLikedArtistsSchema.parse(data))
+	.handler(
+		async ({
+			data,
+			context,
+		}): Promise<{ artists: { name: string; count: number }[] }> => {
+			const { accountId } = context.session;
+
+			const query = data.query.trim();
+			const result =
+				query.length === 0
+					? await getTopArtists(accountId, LIKED_ARTIST_BROWSE_POOL)
+					: await searchLikedArtistsByName(accountId, query);
+			if (Result.isError(result)) {
+				captureServerError(result.error, {
+					area: "playlists",
+					operation: "search_liked_artists",
+					accountId,
+				});
+				return { artists: [] };
+			}
+
+			return { artists: result.value };
+		},
+	);
+
+/**
+ * Filter-INDEPENDENT resolution of the studio's selected artists into
+ * pinnable song ids: each artist's preview-eligible liked songs — Phase-1
+ * enriched candidates within the loader's recency cap — most-recently-liked
+ * first (the candidate loader's order). Anchor pins are filter-exempt
+ * commitments (D2 in docs/playlist-creation/pin-semantics-decisions.md), so
+ * match filters play no part here; the pools only change when the artist
+ * selection does.
+ *
+ * Resolving against the same Phase-1 candidate population the preview engine
+ * ranks keeps chip counts and the balanced allocation honest by construction:
+ * an artist pin can only reference a song the engine could actually place.
+ * The artist-count RPCs behind searchLikedArtists count this same population,
+ * so the number shown before selecting an artist is the number its chip
+ * resolves to.
+ */
+const ResolveLikedArtistSongsSchema = z.object({
+	artists: z.array(z.string().min(1).max(400)).min(1).max(100),
+});
+
+export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => ResolveLikedArtistSongsSchema.parse(data))
+	.handler(
+		async ({
+			data,
+			context,
+		}): Promise<{ artists: { name: string; songIds: string[] }[] }> => {
+			const { accountId } = context.session;
+
+			const candidates = await loadPhase1Candidates(accountId);
+
+			// Group every preview-eligible candidate under each requested artist —
+			// deliberately NOT filter-aware. An anchor artist is a filter-exempt
+			// commitment (its songs are pinned and survive filter changes, like a
+			// hand-added pin), so match filters must not shape this pool.
+			// Candidates arrive most-recently-liked first, so each bucket inherits
+			// the recency order the balanced allocator expects. A song crediting
+			// several of the requested artists lands in every matching bucket; the
+			// allocator dedupes at take time.
+			const buckets = new Map<string, string[]>(
+				data.artists.map((name) => [name, []]),
+			);
+			for (const candidate of candidates) {
+				for (const artistName of candidate.song.artists) {
+					buckets.get(artistName)?.push(candidate.song.id);
+				}
+			}
+
+			return {
+				artists: data.artists.map((name) => ({
+					name,
+					songIds: buckets.get(name) ?? [],
+				})),
+			};
+		},
+	);

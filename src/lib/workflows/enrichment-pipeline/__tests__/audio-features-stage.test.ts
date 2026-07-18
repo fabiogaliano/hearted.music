@@ -68,7 +68,6 @@ function makeCtx(): EnrichmentContext {
 	return {
 		accountId: "account-1",
 		embeddingService: {} as EnrichmentContext["embeddingService"],
-		profilingService: {} as EnrichmentContext["profilingService"],
 		jobId: "job-1",
 	};
 }

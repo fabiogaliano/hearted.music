@@ -7,10 +7,15 @@
  */
 
 :root {
+	/* Five-step elevation ladder, ~7 RGB points apart so each layer reads as a
+	   distinct shade on real displays: page < card < nested panel < hover <
+	   floating overlay. Depth comes from these surface shifts plus 1px borders,
+	   never drop shadows. */
 	--bg: #08090a;
-	--surface: #0c0d0e;
-	--surface-raised: #111213;
-	--surface-hover: #16171a;
+	--surface: #0f1113;
+	--surface-raised: #16181b;
+	--surface-hover: #1c1f23;
+	--surface-overlay: #24272d;
 
 	--border: rgba(255, 255, 255, 0.08);
 	--border-strong: rgba(255, 255, 255, 0.13);
@@ -38,6 +43,23 @@
 	--mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 	--sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui,
 		sans-serif;
+	/* Editorial display face for the review surfaces — big hero scores, song
+	   titles, group numbers. Loaded from Google Fonts in index.html; the serif
+	   stack degrades to Georgia if the webfont is blocked. */
+	--serif: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+}
+
+/* Editorial display type — italic by default reads as the sideshow prototype's
+   hero voice. Weight stays 400; the face has no bolder cut. */
+.serif {
+	font-family: var(--serif);
+	font-weight: 400;
+	font-style: italic;
+	letter-spacing: 0.01em;
+}
+
+.serif.upright {
+	font-style: normal;
 }
 
 * {
@@ -66,6 +88,47 @@ body {
 	font-family: var(--mono);
 	font-variant-numeric: tabular-nums;
 	font-feature-settings: "tnum";
+}
+
+/* Visually hidden but reachable by screen readers — used for icon-only labels. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/*
+ * Keyboard focus — one consistent accent ring on every interactive control.
+ * Mouse clicks stay ring-free (:focus-visible), so this only appears for
+ * keyboard operators, which is who this panel is built for.
+ */
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* Inputs already show an inset accent glow on focus; don't double the ring. */
+.input:focus-visible,
+.select:focus-visible,
+.textarea:focus-visible {
+	outline: none;
+}
+
+/* Full-bleed rows read better with an inset ring that hugs their own radius. */
+.nav-item:focus-visible,
+.command-palette-item:focus-visible,
+.saved-view-item:focus-visible,
+.picker-option:focus-visible,
+.alert-btn:focus-visible,
+.bar-btn:focus-visible,
+.data-table-sort:focus-visible {
+	outline-offset: -2px;
 }
 
 /* ── Shell ──────────────────────────────────────────────────────────────── */
@@ -123,6 +186,7 @@ body {
 }
 
 .nav-item {
+	position: relative;
 	display: inline-flex;
 	align-items: center;
 	gap: 10px;
@@ -148,6 +212,19 @@ body {
 .nav-item.active {
 	background: var(--surface-raised);
 	color: var(--fg);
+}
+
+/* Linear-style active marker: a short accent bar hugging the item's left edge. */
+.nav-item.active::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 50%;
+	width: 2px;
+	height: 15px;
+	border-radius: 999px;
+	background: var(--accent);
+	transform: translateY(-50%);
 }
 
 .nav-item .count {
@@ -180,9 +257,13 @@ body {
 
 /* ── Main ───────────────────────────────────────────────────────────────── */
 
+/* Flex column so review sections can claim the exact leftover viewport height
+   (topbar + content are the only children); the sticky topbar is unaffected. */
 .main {
 	overflow-y: auto;
 	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 .topbar {
@@ -208,13 +289,21 @@ body {
 	flex: 1;
 }
 
-.updated {
+.updated,
+.refreshing {
 	font-size: 12px;
 	color: var(--fg-faint);
 }
 
+.refreshing {
+	color: var(--accent);
+}
+
 .content {
 	padding: 24px;
+	flex: 1 0 auto;
+	display: flex;
+	flex-direction: column;
 }
 
 /* ── Grid + cards ───────────────────────────────────────────────────────── */
@@ -731,10 +820,10 @@ body {
 	list-style: none;
 	max-height: 260px;
 	overflow-y: auto;
-	background: var(--surface-raised);
+	background: var(--surface-overlay);
 	border: 1px solid var(--border-strong);
 	border-radius: var(--radius-sm);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
 
 .picker-empty {
@@ -869,10 +958,11 @@ body {
 	background: var(--surface);
 	color: var(--fg-muted);
 	cursor: pointer;
-	transition: background 150ms ease, color 150ms ease;
+	transition: background 150ms ease, color 150ms ease, transform 100ms ease;
 }
 
 .icon-btn:hover { background: var(--surface-hover); color: var(--fg); }
+.icon-btn:active { transform: scale(0.96); }
 .icon-btn .spin { animation: spin 700ms linear infinite; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -945,6 +1035,31 @@ body {
 	border: 1px solid var(--border);
 	border-radius: var(--radius-sm);
 	background: #fff;
+}
+
+.email-recipient-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 8px;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+}
+
+.email-recipient-list li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 5px 8px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	color: var(--fg-muted);
+}
+
+.email-test-send {
+	margin-top: 16px;
 }
 
 .email-preview-text {
@@ -1026,7 +1141,11 @@ body {
 /* ── Entrance ───────────────────────────────────────────────────────────── */
 
 .enter {
-	animation: fade-up 240ms var(--ease) both;
+	/* `backwards` (not `both`): apply the from-state before the run to avoid an
+	   opacity flash, but revert afterward so no residual `transform` lingers.
+	   A persistent transform makes every card its own stacking context, which
+	   traps popover `z-index` inside the card and lets neighbours paint over it. */
+	animation: fade-up 240ms var(--ease) backwards;
 }
 
 @keyframes fade-up {
@@ -1060,15 +1179,26 @@ body {
    span-* grid-column is meaningless here — let auto-flow place them. */
 .ar-list > .card { grid-column: auto; }
 
-.ar-compare {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 12px;
+/* Focus mode renders a single card. The auto-fill track above would strand it
+   in the first 560px column and leave the rest of the row empty. In a
+   .queue-page (flexed section), solo instead grows to exactly the leftover
+   viewport height — never more (no hardcoded offsets to overflow), never less
+   than its content (flex-shrink 0, the page scrolls on short windows), so the
+   action row stays put while the operator J/K-advances. */
+.ar-list.solo {
+	display: flex;
+	flex-direction: column;
+	flex: 1 0 auto;
 }
-
-@media (max-width: 720px) {
-	.ar-compare { grid-template-columns: 1fr; }
+.ar-list.solo > .card {
+	width: 100%;
+	max-width: 1240px;
+	margin-inline: auto;
+	flex: 1 0 auto;
+	display: flex;
+	flex-direction: column;
 }
+.ar-list.solo > .card > .rv-focus-inner { flex: 1; }
 
 .ar-panel {
 	display: flex;
@@ -1279,4 +1409,2038 @@ body {
 	padding: 3px 9px;
 	font-size: 11px;
 	min-height: 0;
+}
+
+/* ── Embedded audio player (AudioPlayer) ──────────────────────────────────── */
+
+/* Slim shared transport per the approved split-stage prototype: this is an
+   ear-check tool, so the YouTube iframe is parked offscreen (audio only) and
+   the visible surface is a play button + waveform scrub strip. */
+.ap {
+	position: relative;
+	margin-top: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-width: 0;
+}
+
+/* Keep the iframe rendered (display:none can stall the YT API) but invisible
+   and out of the layout. */
+.ap-mount {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+}
+
+.ap-mount iframe { width: 1px; height: 1px; border: 0; }
+
+.ap-transport {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 9px 12px;
+	border-radius: var(--radius);
+	background: var(--surface-raised);
+	border: 1px solid var(--border);
+	min-width: 0;
+}
+
+.ap-play {
+	flex-shrink: 0;
+	width: 38px;
+	height: 38px;
+	display: grid;
+	place-items: center;
+	border-radius: 999px;
+	border: 1px solid var(--border-strong);
+	background: var(--surface-hover);
+	color: var(--fg);
+	cursor: pointer;
+	transition: transform 100ms var(--ease), background 150ms ease;
+}
+
+.ap-play:hover { background: var(--surface-overlay); }
+.ap-play:active { transform: scale(0.96); }
+.ap-play:disabled { opacity: 0.4; cursor: not-allowed; }
+.ap.compact .ap-play { width: 30px; height: 30px; }
+
+.ap-wave {
+	position: relative;
+	flex: 1;
+	height: 38px;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+	overflow: hidden;
+}
+
+.ap-wave:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.ap-wave i {
+	flex: 1;
+	min-width: 1px;
+	border-radius: 2px;
+	background: var(--surface-overlay);
+	transition: background 100ms ease;
+	pointer-events: none;
+}
+
+.ap-wave i.on { background: var(--fg-secondary); }
+
+.ap.compact .ap-wave { height: 28px; }
+
+.ap-tick {
+	position: absolute;
+	top: 2px;
+	bottom: 2px;
+	width: 2px;
+	border-radius: 2px;
+	background: var(--warning);
+	opacity: 0.7;
+	transform: translateX(-1px);
+	pointer-events: none;
+}
+
+.ap-time {
+	flex-shrink: 0;
+	font-size: 12px;
+	color: var(--fg-muted);
+	min-width: 82px;
+	text-align: right;
+}
+
+.ap.compact .ap-time { min-width: 74px; font-size: 11px; }
+
+.ap-ab {
+	flex-shrink: 0;
+	display: inline-flex;
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+	border: 1px solid var(--border);
+	/* fieldset resets */
+	margin: 0;
+	padding: 0;
+	min-inline-size: 0;
+}
+
+.ap-ab button {
+	padding: 5px 10px;
+	font-size: 11px;
+	font-weight: 500;
+	border: none;
+	background: var(--surface);
+	color: var(--fg-muted);
+	cursor: pointer;
+	transition: background 150ms ease, color 150ms ease;
+}
+
+.ap-ab button + button { border-left: 1px solid var(--border); }
+.ap-ab button:hover { color: var(--fg-secondary); }
+.ap-ab button.on { background: var(--accent-dim); color: var(--fg); }
+
+.ap-clips {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 7px;
+	align-self: start;
+	min-width: 0;
+}
+
+.ap-clips-label {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--fg-faint);
+}
+
+/* ── Audio cockpit queue rail (Direction C) ───────────────────────────────── */
+
+/* A selectable queue rail beside the active detail card, so the operator keeps
+   the whole page in view and blasts through with J/K. The editorial verdict
+   hero, panels, and filmstrip live in the "Editorial review surfaces" block. */
+.ar-rail {
+	position: sticky;
+	top: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: calc(100vh - 120px);
+	overflow-y: auto;
+	padding-right: 4px;
+}
+
+.ar-railrow {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 8px;
+	border-radius: var(--radius-sm);
+	border: 1px solid transparent;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+	width: 100%;
+	color: inherit;
+	transition: background 120ms ease, border-color 120ms ease;
+}
+
+.ar-railrow:hover { background: var(--surface-raised); }
+.ar-railrow.on { background: var(--surface-raised); border-color: var(--accent-border); }
+
+.ar-railrow-main {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	flex: 1;
+	min-width: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	color: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.ar-railrow img,
+.ar-railrow .ar-railart {
+	width: 34px;
+	height: 34px;
+	flex-shrink: 0;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	background: var(--surface-hover);
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	outline-offset: -1px;
+}
+
+/* Column flex (not bare spans): stacks name over sub and makes their
+   nowrap+ellipsis actually apply — inline spans ignore text-overflow. */
+.ar-railtext {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.ar-railname {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--fg);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ar-railsub {
+	font-size: 11px;
+	color: var(--fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.ar-railscore {
+	flex-shrink: 0;
+	font-family: var(--mono);
+	font-variant-numeric: tabular-nums;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 2px 6px;
+	border-radius: var(--radius-sm);
+}
+
+.ar-railscore.success { color: var(--success); background: rgba(76, 195, 138, 0.12); }
+.ar-railscore.warning { color: var(--warning); background: rgba(226, 179, 64, 0.12); }
+.ar-railscore.danger { color: var(--danger); background: var(--danger-dim); }
+
+.ar-railcheck { flex-shrink: 0; }
+
+/* ── Inline lyrics finder + editor (LyricsReviewSection) ──────────────────── */
+
+.ly-finder {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.ly-finder-status { font-size: 13px; }
+
+.ly-sources { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ly-sources button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	font-size: 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+	color: var(--fg-muted);
+	cursor: pointer;
+	transition: color 150ms ease, border-color 150ms ease;
+}
+
+.ly-sources button:hover { color: var(--fg-secondary); }
+.ly-sources button.on {
+	color: var(--fg);
+	border-color: var(--accent-border);
+	background: var(--accent-dim);
+}
+
+.ly-badge {
+	font-size: 10px;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	padding: 1px 6px;
+	border-radius: 999px;
+	background: var(--surface-hover);
+	color: var(--fg-faint);
+}
+
+.ly-badge.synced { background: rgba(76, 195, 138, 0.14); color: var(--success); }
+
+.ly-preview {
+	margin: 0;
+	max-height: 220px;
+	overflow: auto;
+	padding: 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+	font-family: var(--sans);
+	font-size: 13px;
+	line-height: 1.65;
+	white-space: pre-wrap;
+	color: var(--fg-secondary);
+}
+
+.ly-srcmeta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.ly-editor { margin-top: 14px; }
+
+.ly-editor-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ap-play,
+	.ar-railrow,
+	.ly-sources button { transition: none; }
+	.ap-play:active { transform: none; }
+}
+
+/* ── Drawer (read-only detail panel) ──────────────────────────────────────── */
+
+.drawer-root {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	justify-content: flex-end;
+	z-index: 100;
+}
+
+.drawer-backdrop {
+	position: absolute;
+	inset: 0;
+	border: none;
+	padding: 0;
+	background: rgba(0, 0, 0, 0.5);
+	cursor: default;
+	animation: drawer-fade 150ms var(--ease) both;
+}
+
+.drawer-panel {
+	position: relative;
+	width: min(480px, 100vw);
+	height: 100%;
+	background: var(--surface);
+	border-left: 1px solid var(--border);
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	animation: drawer-slide 200ms var(--ease) both;
+}
+
+.drawer-panel:focus { outline: none; }
+
+.drawer-head {
+	position: sticky;
+	top: 0;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 16px 20px;
+	border-bottom: 1px solid var(--border);
+	background: var(--surface);
+}
+
+.drawer-head h2 {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+.drawer-body {
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.drawer-section h3 {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--fg-muted);
+	margin-bottom: 8px;
+}
+
+.drawer-kv {
+	display: grid;
+	grid-template-columns: 140px 1fr;
+	gap: 6px 12px;
+	font-size: 13px;
+}
+
+.drawer-kv dt { color: var(--fg-muted); }
+.drawer-kv dd { color: var(--fg-secondary); word-break: break-word; }
+
+.drawer-error {
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--danger);
+	background: var(--danger-dim);
+	border-radius: var(--radius-sm);
+	padding: 10px 12px;
+}
+
+.drawer-json {
+	white-space: pre-wrap;
+	word-break: break-word;
+	font-family: var(--mono);
+	font-size: 12px;
+	color: var(--fg-secondary);
+	background: var(--surface-raised);
+	border-radius: var(--radius-sm);
+	padding: 10px 12px;
+	margin: 0;
+}
+
+@keyframes drawer-fade {
+	from { opacity: 0; }
+}
+
+@keyframes drawer-slide {
+	from { transform: translateX(24px); opacity: 0; }
+}
+
+/* ── Confirmation modal ────────────────────────────────────────────────────── */
+
+.modal-root {
+	position: fixed;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	z-index: 120;
+	padding: 24px;
+}
+
+.modal-backdrop {
+	position: absolute;
+	inset: 0;
+	border: none;
+	padding: 0;
+	background: rgba(0, 0, 0, 0.55);
+	cursor: default;
+	animation: drawer-fade 150ms var(--ease) both;
+}
+
+.modal-backdrop:disabled { cursor: default; }
+
+.modal-panel {
+	position: relative;
+	width: min(440px, 100%);
+	background: var(--surface);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	animation: modal-pop 160ms var(--ease) both;
+}
+
+.modal-panel:focus { outline: none; }
+
+.modal-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+.modal-desc {
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--fg-secondary);
+}
+
+.modal-desc strong { color: var(--fg); font-weight: 600; }
+
+.modal-actions {
+	justify-content: flex-end;
+	margin-top: 4px;
+}
+
+.btn.danger {
+	background: var(--danger-dim);
+	border-color: rgba(235, 111, 111, 0.4);
+	color: var(--danger);
+}
+
+.btn.danger:hover { background: rgba(235, 111, 111, 0.2); }
+
+@keyframes modal-pop {
+	from { transform: scale(0.97); opacity: 0; }
+}
+
+/* ── Keyboard shortcuts overlay (?) ────────────────────────────────────────── */
+
+.shortcuts-panel {
+	width: min(480px, 100%);
+	gap: 16px;
+}
+
+.shortcuts-groups {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.shortcuts-group h3 {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: var(--fg-muted);
+	margin-bottom: 4px;
+}
+
+.shortcuts-group dl {
+	display: flex;
+	flex-direction: column;
+}
+
+.shortcuts-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 5px 0;
+}
+
+.shortcuts-row dt {
+	font-size: 13px;
+	color: var(--fg-secondary);
+}
+
+.shortcuts-row dd {
+	display: inline-flex;
+	gap: 4px;
+	margin: 0;
+}
+
+.shortcuts-row kbd {
+	min-width: 22px;
+	padding: 2px 6px;
+	text-align: center;
+	border: 1px solid var(--border-strong);
+	border-radius: 5px;
+	background: var(--surface-raised);
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--fg-secondary);
+}
+
+/* ── Operation preview verdict / ack (shared by the change ledger) ──────────── */
+/* The ledger layout itself lives in the "Editorial review surfaces" block; these
+   are the verdict pill, warning acknowledgement, and debug toggle it reuses. */
+
+.op-verdict {
+	font-size: 12px;
+	font-weight: 600;
+	padding: 4px 10px;
+	border-radius: var(--radius-sm);
+}
+
+.op-verdict.change { color: var(--success); background: rgba(76, 195, 138, 0.12); }
+.op-verdict.noop { color: var(--fg-muted); background: var(--surface-hover); }
+
+.op-ack {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	color: var(--warning);
+	cursor: pointer;
+}
+
+.op-ack input { accent-color: var(--warning); }
+
+.op-debug-toggle {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 10px;
+	padding: 2px 0;
+	background: none;
+	border: none;
+	color: var(--fg-muted);
+	font: inherit;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	cursor: pointer;
+}
+
+.op-debug-toggle:hover { color: var(--fg-secondary); }
+
+/* ── Saved views menu (topbar) ─────────────────────────────────────────────── */
+
+.saved-views-menu { position: relative; }
+.saved-views-menu summary { list-style: none; cursor: pointer; }
+.saved-views-menu summary::-webkit-details-marker { display: none; }
+
+.saved-views-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	width: 280px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 12px;
+	z-index: 50;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.saved-views-save {
+	display: flex;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+
+.saved-views-save .input { flex: 1; }
+
+.saved-views-list {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	max-height: 260px;
+	overflow-y: auto;
+}
+
+.saved-views-list li {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.saved-view-item {
+	flex: 1;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border: none;
+	background: none;
+	border-radius: var(--radius-sm);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+	transition: background 150ms ease;
+}
+
+.saved-view-item:hover { background: var(--surface-hover); }
+
+/* ── Attention thresholds popover (Overview) ──────────────────────────────── */
+
+.threshold-popover { position: relative; }
+.threshold-popover summary { list-style: none; cursor: pointer; }
+.threshold-popover summary::-webkit-details-marker { display: none; }
+
+.threshold-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	width: 260px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 12px;
+	z-index: 50;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.threshold-field {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	font-size: 12px;
+	color: var(--fg-muted);
+}
+
+.threshold-field .input {
+	width: 64px;
+	text-align: right;
+}
+
+/* ── Data-table + review-queue toolbars ─────────────────────────────────── */
+
+.data-table-toolbar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+/* ── Queue header + toolbar, single-bar layout ────────────────────────────── */
+
+/* Review-section root: same 16px rhythm as .grid, but a flex column so the
+   solo focus card can grow to the exact leftover viewport height. Children are
+   all full-width (span-12) in these sections, so nothing loses grid placement. */
+.queue-page {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 16px;
+	flex: 1 0 auto;
+}
+
+/* Section header as one row: icon · title · bucket tabs · status badge. No
+   blurb, no second row — the tab names carry the explanation. */
+.queue-head {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px 12px;
+}
+.queue-head h2 {
+	font-size: 13px;
+	font-weight: 600;
+	margin: 0 10px 0 4px;
+	white-space: nowrap;
+}
+.queue-head > .icon { color: var(--fg-muted); flex: none; }
+.queue-head-tabs {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+.queue-head > .badge { margin-left: auto; }
+
+/* The queue explainer lives behind a small ⓘ popover instead of a standing
+   paragraph — new operators can read it once, regulars never scroll past it. */
+.queue-info { position: relative; display: inline-flex; flex: none; }
+.queue-info summary {
+	list-style: none;
+	display: grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	border-radius: var(--radius-sm);
+	color: var(--fg-faint);
+	cursor: pointer;
+	transition: background 150ms ease, color 150ms ease;
+}
+.queue-info summary::-webkit-details-marker { display: none; }
+.queue-info summary:hover { background: var(--surface-hover); color: var(--fg-secondary); }
+.queue-info[open] summary { background: var(--surface-hover); color: var(--fg-secondary); }
+.queue-info-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	width: 340px;
+	padding: 12px 14px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+	z-index: 50;
+	font-size: 12.5px;
+	line-height: 1.55;
+	color: var(--fg-secondary);
+}
+.queue-info-panel strong { color: var(--fg); font-weight: 500; }
+
+/* The toolbar is its own compact card-bar: search · filters · order · mode ·
+   pagesize · position · prev/next · reset on one wrapping row. Controls are one
+   step denser than the app default so the bar stays low. */
+.queue-bar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
+	padding: 8px 12px;
+}
+/* Every control in the bar shares one 30px height so the row reads as a single
+   aligned strip — the global .select/.input are taller and full-width. */
+.queue-bar .input,
+.queue-bar .select,
+.queue-bar .btn {
+	height: 30px;
+	padding-top: 0;
+	padding-bottom: 0;
+	font-size: 12px;
+}
+.queue-bar .select { width: auto; }
+.queue-head .btn {
+	padding-top: 5px;
+	padding-bottom: 5px;
+	font-size: 12px;
+}
+.queue-search {
+	flex: 1 1 160px;
+	min-width: 140px;
+	max-width: 320px;
+}
+.queue-search .input { width: 100%; }
+.queue-pos {
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+	font-size: 12px;
+	margin-left: auto;
+}
+.queue-sep {
+	width: 1px;
+	align-self: stretch;
+	min-height: 20px;
+	background: var(--border-strong);
+	margin: 0 2px;
+}
+.queue-pagesize { display: inline-flex; }
+.queue-nav { display: inline-flex; gap: 4px; }
+/* Icon-only prev/next + Focus/List need a full hit target despite the tight
+   bar; the words live in aria-label/title. */
+.queue-nav .btn,
+.queue-mode .btn {
+	min-width: 34px;
+	justify-content: center;
+	display: inline-flex;
+	align-items: center;
+}
+/* The mode group draws its own 1px frame, so its inner buttons are 2px shorter
+   than freestanding controls to keep the group's outer height at 30px. */
+.queue-bar .queue-mode { height: 30px; }
+.queue-bar .queue-mode .btn { height: 28px; }
+
+.data-table-search {
+	flex: 1 1 220px;
+	min-width: 180px;
+}
+
+.data-table-search .input {
+	width: 100%;
+}
+
+.data-table-filters {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.data-table-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-left: auto;
+}
+
+.data-table-footer {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 12px;
+}
+
+.data-table-footer .dim {
+	margin-left: auto;
+}
+
+/* Popover-anchoring wrapper for the toolbar menus (Filters, Columns, Export).
+   `position: relative` scopes each menu panel to its own trigger. */
+.table-menu { position: relative; }
+
+.data-table-column-menu,
+.table-menu-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 160px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 8px;
+	z-index: 50;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+	font-size: 12px;
+	color: var(--fg-muted);
+}
+
+.data-table-column-menu { padding: 10px 12px; gap: 6px; }
+
+.table-menu-label {
+	padding: 2px 8px 4px;
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--fg-muted);
+}
+
+.table-menu-item {
+	display: flex;
+	align-items: center;
+	padding: 6px 8px;
+	border-radius: var(--radius-sm);
+	font-size: 13px;
+	color: var(--fg);
+	text-decoration: none;
+	transition: background 120ms ease;
+}
+
+.table-menu-item:hover { background: var(--surface-hover); }
+
+/* ── Table filter popover ───────────────────────────────────────────────── */
+
+.filter-popover { position: relative; }
+
+.filter-panel {
+	position: absolute;
+	top: calc(100% + 6px);
+	left: 0;
+	width: 260px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	background: var(--surface-overlay);
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius);
+	padding: 12px;
+	z-index: 50;
+	box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+
+.filter-field {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.filter-field > span {
+	font-size: 11px;
+	font-weight: 600;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: var(--fg-muted);
+}
+
+/* Sections that pass raw controls (not `.filter-field`) still stack full-width
+   inside the popover instead of overflowing the fixed-width panel. */
+.filter-panel .select,
+.filter-panel .input,
+.filter-field .select,
+.filter-field .input {
+	width: 100%;
+}
+
+.data-table-skeleton {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.data-table-skeleton .skeleton {
+	height: 34px;
+	border-radius: 6px;
+	background: linear-gradient(90deg, var(--surface) 0%, var(--surface-raised) 50%, var(--surface) 100%);
+	background-size: 200% 100%;
+	animation: queue-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes queue-shimmer {
+	from { background-position: 200% 0; }
+	to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.data-table-skeleton .skeleton {
+		animation: none;
+	}
+}
+
+.data-table-sort {
+	background: none;
+	border: none;
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	padding: 0;
+}
+
+/* Focus ⇄ List as a joined segmented switch, so it reads unmistakably as a
+   toggle between the two review layouts (Direction A focus / C list). */
+.queue-mode {
+	display: inline-flex;
+	gap: 0;
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+.queue-mode .btn {
+	border: none;
+	border-radius: 0;
+	background: transparent;
+	color: var(--fg-muted);
+}
+.queue-mode .btn:hover { background: var(--surface-hover); color: var(--fg-secondary); }
+.queue-mode .btn + .btn { border-left: 1px solid var(--border-strong); }
+.queue-mode .btn.primary { background: var(--accent); color: #0a0a14; }
+.queue-mode .btn.primary:hover { background: #8a91ef; }
+
+/* ── Batch execution ────────────────────────────────────────────────────── */
+
+.result.warn {
+	border-color: rgba(226, 179, 64, 0.35);
+	background: rgba(226, 179, 64, 0.08);
+}
+
+.batch-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 12px;
+	padding: 10px 14px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--accent-border);
+	background: var(--accent-dim);
+	font-size: 13px;
+}
+
+.batch-select {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: var(--fg-muted);
+}
+
+.batch-launcher {
+	max-width: 560px;
+	width: 100%;
+}
+
+.batch-form {
+	margin: 12px 0;
+}
+
+.batch-preview {
+	margin-top: 14px;
+	padding: 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+	font-size: 13px;
+}
+
+.batch-preview-summary {
+	margin-bottom: 8px;
+}
+
+.batch-preview-buckets,
+.batch-preview-skipped {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	margin: 8px 0;
+	padding: 0;
+	list-style: none;
+	font-size: 12px;
+}
+
+.batch-preview-targets {
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.batch-preview-targets ul {
+	margin: 6px 0 0;
+	padding-left: 18px;
+	max-height: 160px;
+	overflow-y: auto;
+}
+
+.batch-email-test {
+	margin-top: 14px;
+}
+
+.command-palette {
+	position: fixed;
+	top: min(18vh, 160px);
+	left: 50%;
+	z-index: 110;
+	width: min(620px, calc(100vw - 32px));
+	max-height: min(68vh, 620px);
+	overflow: hidden;
+	transform: translateX(-50%);
+	transform-origin: top center;
+	border: 1px solid var(--border-strong);
+	border-radius: var(--radius-lg);
+	background: var(--surface-raised);
+	box-shadow: 0 18px 64px rgba(0, 0, 0, 0.56);
+	animation: command-palette-in 150ms var(--ease) both;
+}
+
+/* The centering translateX(-50%) has to ride along in every keyframe. */
+@keyframes command-palette-in {
+	from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.98); }
+	to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.command-palette-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 12px;
+	border-bottom: 1px solid var(--border);
+	color: var(--fg-faint);
+}
+
+.command-palette-search .input {
+	width: 100%;
+	border: 0;
+	background: transparent;
+}
+
+.command-palette-search .input:focus {
+	box-shadow: none;
+}
+
+.command-palette-list {
+	max-height: calc(min(68vh, 620px) - 60px);
+	overflow-y: auto;
+	padding: 8px;
+}
+
+.command-palette-list section + section {
+	margin-top: 12px;
+}
+
+.command-palette-list h2 {
+	padding: 4px 8px;
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--fg-faint);
+}
+
+.command-palette-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	padding: 8px;
+	border: 0;
+	border-radius: var(--radius-sm);
+	background: transparent;
+	color: var(--fg-secondary);
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.command-palette-item:hover,
+.command-palette-item.is-active {
+	background: var(--surface-hover);
+	color: var(--fg);
+}
+
+.command-palette-item kbd {
+	padding: 1px 5px;
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	font-family: var(--mono);
+	font-size: 11px;
+	color: var(--fg-faint);
+}
+
+.command-palette-empty {
+	padding: 8px;
+	color: var(--fg-faint);
+	font-size: 13px;
+}
+
+.batch-drawer-root {
+	position: fixed;
+	bottom: 16px;
+	right: 16px;
+	z-index: 60;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+}
+
+.batch-drawer-pill {
+	padding: 8px 14px;
+	border-radius: 999px;
+	border: 1px solid var(--border-strong);
+	background: var(--surface-raised);
+	color: var(--fg);
+	font-size: 12px;
+	cursor: pointer;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+.batch-drawer-pill.active {
+	border-color: var(--accent-border);
+	color: var(--accent);
+}
+
+.batch-drawer {
+	width: 360px;
+	max-height: 70vh;
+	overflow-y: auto;
+	padding: 14px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border-strong);
+	background: var(--surface-raised);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.batch-drawer-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 12px;
+}
+
+.batch-drawer-item {
+	padding: 10px 0;
+	border-top: 1px solid var(--border);
+	font-size: 12px;
+}
+
+.batch-drawer-item-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 6px;
+}
+
+.batch-drawer-progress {
+	height: 6px;
+	border-radius: 3px;
+	background: var(--surface-hover);
+	overflow: hidden;
+}
+
+.batch-drawer-bar {
+	height: 100%;
+	background: var(--accent);
+	transition: width 0.3s ease;
+}
+
+.batch-drawer-counts,
+.batch-drawer-current {
+	margin: 6px 0;
+}
+
+/* ═══ Editorial review surfaces (sideshow port) ═════════════════════════════ */
+/*
+ * Instrument Serif display + editorial spacing for the audio / lyrics / preview
+ * review screens, recomposed to the approved sideshow prototypes. Everything
+ * drives off the panel's own tokens so it re-themes with the rest of the app;
+ * the serif is the one imported face (Google Fonts, index.html).
+ */
+
+.rv-tag {
+	font-size: 10px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--fg-faint);
+}
+
+/* Small keycap hints inside review action rows / the cockpit stat bar. */
+.rv-actions kbd,
+.ly-acts kbd,
+.rv-statbar kbd {
+	font-family: var(--mono);
+	font-size: 10px;
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--surface-hover);
+	border: 1px solid var(--border);
+	color: var(--fg-muted);
+}
+
+/* ── Identity + verdict (shared audio focus/cockpit) ──────────────────────── */
+
+.rv-ident {
+	font-size: 15px;
+	color: var(--fg);
+	line-height: 1.2;
+}
+.rv-ident .serif { font-size: 22px; color: var(--fg); }
+
+.rv-verdict {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 8px;
+	flex: none;
+	padding: 5px 12px;
+	border-radius: var(--radius);
+	background: rgba(76, 195, 138, 0.12);
+	color: var(--success);
+}
+.rv-verdict.warning { background: rgba(226, 179, 64, 0.12); color: var(--warning); }
+.rv-verdict.danger { background: var(--danger-dim); color: var(--danger); }
+.rv-verdict-num {
+	font-size: 26px;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+}
+.rv-verdict-label { font-size: 12px; }
+.rv-verdict.sm { padding: 4px 10px; }
+.rv-verdict.sm .rv-verdict-num { font-size: 21px; }
+.rv-verdict.sm .rv-verdict-label { font-size: 11px; }
+
+/* ── Identity faces (Spotify / YouTube), hairline-split two-up ────────────── */
+
+.rv-panels,
+.rv-cmp {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1px;
+	background: var(--border);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+.rv-panels { margin: 12px 0 0; }
+.rv-cmp { margin-bottom: 12px; }
+
+@media (max-width: 720px) {
+	.rv-panels,
+	.rv-cmp { grid-template-columns: 1fr; }
+}
+
+.rv-panel {
+	/* One ladder step above the host card so the identity block reads as a
+	   raised panel, not a bordered hole. */
+	background: var(--surface-raised);
+	padding: 10px 12px;
+	display: flex;
+	gap: 12px;
+	min-width: 0;
+}
+.rv-panel.sm { padding: 9px; }
+
+.rv-face-art {
+	width: 52px;
+	height: 52px;
+	flex: none;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	background: var(--surface-hover);
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	outline-offset: -1px;
+}
+.rv-panel.sm .rv-face-art { width: 44px; height: 44px; }
+.rv-face-art.placeholder { outline: none; border: 1px solid var(--border); }
+
+.rv-face-body { min-width: 0; flex: 1; }
+
+.rv-eye { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.rv-dot { width: 6px; height: 6px; border-radius: 9px; flex: none; }
+.rv-dot.sp { background: var(--success); }
+.rv-dot.yt { background: var(--danger); }
+
+.rv-ptitle {
+	font-size: 14px;
+	line-height: 1.2;
+	color: var(--fg);
+	margin-bottom: 2px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.rv-panel.sm .rv-ptitle { font-size: 13px; }
+
+.rv-psub {
+	font-size: 12px;
+	color: var(--fg-muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.rv-panel.sm .rv-psub { font-size: 11px; }
+
+.rv-pclock { margin-top: 3px; font-size: 12px; color: var(--fg-secondary); }
+
+.rv-plink {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 6px;
+	font-size: 11px;
+	color: var(--fg-secondary);
+	text-decoration: none;
+	border-bottom: 1px solid var(--border-strong);
+}
+.rv-plink:hover { color: var(--accent); border-bottom-color: var(--accent-border); }
+
+/* ── Focus — Direction A "split stage" ─────────────────────────────────────── */
+
+.rv-topline {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid var(--border);
+}
+
+/* The focus card is stretched to the viewport (see .ar-list.solo) so the action
+   row stays put while the operator J/K-advances; with the slim transport (no
+   video) the surplus simply falls after the content instead of resizing it. */
+.rv-focus-inner {
+	display: flex;
+	flex-direction: column;
+}
+
+/* Job cards (Needs URL / Failed) have no player to absorb the stretch, so the
+   URL form anchors to the card's bottom edge like a composer. margin-top:auto
+   collapses to the padding when the card isn't stretched (cockpit). */
+.rv-job-form {
+	margin-top: auto;
+	padding-top: 14px;
+}
+/* Split the focus-stretch surplus between "above the identity block" and
+   "above the form" so a sparse job card reads composed, not one giant hole. */
+.rv-job > .rv-panels { margin-top: auto; }
+.rv-pos { margin-left: auto; font-size: 12px; color: var(--fg-muted); }
+
+.rv-films {
+	display: flex;
+	gap: 8px;
+	overflow-x: auto;
+	padding-bottom: 4px;
+	margin: 12px 0 0;
+}
+
+.rv-cand {
+	flex: none;
+	width: 158px;
+	padding: 9px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	text-align: left;
+	background: none;
+	color: inherit;
+	transition: border-color 120ms ease, background 120ms ease;
+}
+.rv-cand.rej { opacity: 0.55; }
+/* Playable candidates double as the player's source switch: click to listen. */
+.rv-cand.pick { cursor: pointer; }
+.rv-cand.pick:hover { background: var(--surface-raised); }
+.rv-cand.on { border-color: var(--fg-secondary); }
+
+/* The card body as a real <button> (a11y), unstyled so the card chrome wins. */
+.rv-cand-main {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
+	cursor: pointer;
+}
+
+.rv-cand-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.rv-cand-rank { font-size: 10px; color: var(--fg-faint); }
+.rv-cand-score { font-size: 11px; color: var(--success); }
+.rv-cand-score.rej { color: var(--danger); }
+
+.rv-cand-title {
+	font-size: 12px;
+	line-height: 1.25;
+	color: var(--fg);
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	min-height: 30px;
+}
+.rv-cand-sub { font-size: 11px; color: var(--fg-muted); }
+
+.rv-cand .btn.mini { align-self: flex-start; margin-top: 1px; }
+
+.rv-delta { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.rv-delta.success { color: var(--success); }
+.rv-delta.warning { color: var(--warning); }
+.rv-delta.danger { color: var(--danger); }
+
+.rv-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 12px;
+}
+.rv-actions .btn { gap: 8px; }
+
+.btn.approve { background: var(--success); border-color: transparent; color: #06120c; }
+.btn.approve:hover { background: #5ccf97; }
+.btn.reject { color: var(--danger); }
+.btn.reject:hover { background: var(--danger-dim); }
+
+/* ── Cockpit — Direction C "triage" ────────────────────────────────────────── */
+
+.rv-cockpit {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 16px;
+}
+/* List mode fills the leftover viewport too, so Focus and List share the same
+   full-height footprint. */
+.queue-page > .rv-cockpit { flex: 1 0 auto; }
+
+.rv-statbar {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+	flex-wrap: wrap;
+	padding-bottom: 10px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--border);
+	font-size: 12px;
+	color: var(--fg-muted);
+}
+.rv-statbar b {
+	font-size: 18px;
+	color: var(--fg);
+	font-variant-numeric: tabular-nums;
+	margin-right: 2px;
+}
+.rv-statbar-keys {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+.rv-cols {
+	display: grid;
+	grid-template-columns: 230px 1fr;
+	gap: 16px;
+	align-items: start;
+}
+@media (max-width: 900px) {
+	.rv-cols { grid-template-columns: 1fr; }
+}
+
+.rv-cockpit-detail { display: flex; flex-direction: column; min-width: 0; }
+
+.rv-dhead {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-bottom: 12px;
+}
+.rv-dhead .rv-ident { flex: 1; min-width: 0; }
+.rv-dhead .rv-ident .serif { font-size: 20px; }
+
+.rv-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 12px;
+	margin: 12px 0;
+}
+.rv-table th {
+	text-align: left;
+	font-weight: 400;
+	font-size: 10px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--fg-faint);
+	padding: 4px 6px;
+	border-bottom: 1px solid var(--border);
+}
+.rv-table td {
+	padding: 5px 6px;
+	border-bottom: 1px solid var(--border);
+	color: var(--fg-secondary);
+}
+.rv-table tr:last-child td { border-bottom: none; }
+.rv-table tr.rej td { color: var(--fg-faint); }
+/* The row whose candidate is loaded in the player. */
+.rv-table tr.on td { background: var(--surface-raised); }
+.rv-td-ch { color: var(--fg-faint); }
+.rv-td-score { color: var(--success); }
+.rv-td-score.rej { color: var(--danger); }
+
+/* ── Lyrics — Direction A (source + editor) / B (listen & confirm) ─────────── */
+
+.ly-head {
+	display: flex;
+	align-items: center;
+	gap: 11px;
+	padding-bottom: 11px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--border);
+}
+.ly-head.centered {
+	justify-content: center;
+	border-bottom: none;
+	padding-bottom: 0;
+}
+
+.ly-art {
+	width: 44px;
+	height: 44px;
+	flex: none;
+	border-radius: var(--radius-sm);
+	object-fit: cover;
+	background: var(--surface-hover);
+	outline: 1px solid rgba(255, 255, 255, 0.1);
+	outline-offset: -1px;
+}
+.ly-art.placeholder { outline: none; border: 1px solid var(--border); }
+
+.ly-head-id { min-width: 0; }
+.ly-song { font-size: 19px; color: var(--fg); line-height: 1.15; }
+.ly-hs { font-size: 12px; color: var(--fg-muted); margin-top: 1px; }
+.ly-pos { margin-left: auto; font-size: 12px; color: var(--fg-muted); }
+
+.ly-listen {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin: 12px 0 2px;
+	font-size: 12px;
+	color: var(--fg-secondary);
+	text-decoration: none;
+	border-bottom: 1px solid var(--border-strong);
+}
+.ly-listen:hover { color: var(--accent); border-bottom-color: var(--accent-border); }
+
+.ly-cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+	margin-top: 14px;
+}
+@media (max-width: 720px) {
+	.ly-cols { grid-template-columns: 1fr; }
+}
+
+/* Direction A source tabs use the inverse (ink) active state from the prototype;
+   the preview + editor sit at a matched fixed height so the split reads as one
+   two-column pane. */
+.ly-sources button.on {
+	background: var(--fg);
+	border-color: var(--fg);
+	color: var(--bg);
+}
+.ly-preview { height: 210px; max-height: none; }
+.ly-editor { margin-top: 0; }
+.ly-editor .textarea {
+	height: 210px;
+	min-height: 210px;
+	font-family: var(--mono);
+	font-size: 12.5px;
+	line-height: 1.7;
+}
+
+/* Solo focus stretches the lyrics card to the viewport (see .ar-list.solo);
+   the source-preview and editor panes are the flexible region, so surplus
+   screen becomes reading/typing room instead of dead space. */
+.ar-list.solo .ly-a {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+.ar-list.solo .ly-a .ly-cols { flex: 1; }
+.ar-list.solo .ly-a .ly-cols > div {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+.ar-list.solo .ly-a .ly-finder { flex: 1; }
+.ar-list.solo .ly-a .ly-preview {
+	flex: 1;
+	height: auto;
+	min-height: 210px;
+}
+.ar-list.solo .ly-a .ly-editor {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+.ar-list.solo .ly-a .ly-editor .textarea {
+	flex: 1;
+	height: auto;
+	min-height: 210px;
+}
+/* The instrumental listen-&-confirm card is sparse by design — center it in
+   the stretched card rather than pinning it to the top edge. */
+.ar-list.solo .ly-b {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+/* Same treatment for the other sparse verdict cards (instrumental guess,
+   release year): the whole card narrows to a one-decision stage and the body
+   centers in the stretched height instead of leaving a void below the actions. */
+.ar-list.solo > .card:has(.rv-sparse) { max-width: 760px; }
+.ar-list.solo .rv-sparse {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.ly-use {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 11px;
+	font-size: 11px;
+	font-weight: 500;
+	border: 1px solid transparent;
+	border-radius: var(--radius-sm);
+	background: var(--success);
+	color: #06120c;
+	cursor: pointer;
+	transition: background 150ms ease;
+}
+.ly-use:hover { background: #5ccf97; }
+.ly-use:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.ly-websearch {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	margin-top: 8px;
+	font-size: 11px;
+	color: var(--fg-muted);
+	text-decoration: none;
+}
+.ly-websearch:hover { color: var(--accent); }
+
+.ly-acts {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 12px;
+}
+.btn.save { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.btn.save:hover { background: #fff; }
+.btn.inst {
+	color: var(--warning);
+	border-color: rgba(226, 179, 64, 0.4);
+	margin-left: auto;
+}
+.btn.inst:hover { background: rgba(226, 179, 64, 0.12); }
+.btn.warn-primary {
+	background: var(--warning);
+	border-color: transparent;
+	color: #1a1400;
+}
+.btn.warn-primary:hover { background: #e9c25f; }
+
+.ly-confirm { text-align: center; padding: 12px 0 4px; }
+.ly-confirm-big { font-size: 20px; color: var(--fg); margin: 6px 0; }
+.ly-confirm-q { font-size: 12px; color: var(--fg-muted); }
+.ly-confirm-acts {
+	display: flex;
+	justify-content: center;
+	gap: 10px;
+	margin-top: 12px;
+}
+
+/* ── Preview — Direction A "single-target change ledger" ───────────────────── */
+
+.op-ledger {
+	display: flex;
+	flex-direction: column;
+	gap: 11px;
+	padding: 14px;
+	border-radius: var(--radius);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+}
+
+.op-ledger-head { display: flex; align-items: baseline; gap: 10px; }
+.op-ledger-title { font-size: 20px; color: var(--fg); }
+.op-ledger-head .op-verdict { margin-left: auto; }
+.op-ledger-target { font-size: 12px; color: var(--fg-muted); margin-top: -6px; }
+
+.op-fresh {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	border-radius: var(--radius-sm);
+	font-size: 11.5px;
+	background: rgba(76, 195, 138, 0.12);
+	color: var(--success);
+}
+.op-fresh.stale { background: rgba(226, 179, 64, 0.12); color: var(--warning); }
+.op-fresh-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 9px;
+	background: currentColor;
+	flex: none;
+}
+.op-fresh .btn { margin-left: auto; }
+
+.op-ledger-rows { display: flex; flex-direction: column; gap: 12px; }
+.op-grp .rv-tag { display: block; margin-bottom: 6px; }
+.op-rows {
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+.op-r {
+	display: grid;
+	grid-template-columns: 150px 1fr;
+	gap: 10px;
+	align-items: center;
+	padding: 8px 11px;
+	border-bottom: 1px solid var(--border);
+}
+.op-r:last-child { border-bottom: none; }
+.op-k { color: var(--fg-muted); font-size: 12px; }
+.op-v { color: var(--fg-secondary); word-break: break-word; font-variant-numeric: tabular-nums; }
+.op-r.tone-success .op-v { color: var(--success); }
+.op-r.tone-warning .op-v { color: var(--warning); }
+.op-r.tone-danger .op-v { color: var(--danger); }
+.op-r.kind-warning { background: rgba(226, 179, 64, 0.1); }
+.op-r.kind-warning .op-k,
+.op-r.kind-warning .op-v { color: var(--warning); }
+.op-r.kind-skip .op-v { color: var(--fg-faint); }
+
+.op-ledger-foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 3px;
+	padding-top: 13px;
+	border-top: 1px solid var(--border);
+}
+.btn.commit { background: var(--danger); border-color: transparent; color: #1a0808; }
+.btn.commit:hover { background: #ef8383; }
+.btn.commit:disabled { opacity: 0.4; }
+.op-ledger-foot .op-debug-toggle { margin-left: auto; margin-top: 0; }
+
+/* ── Job cards (Needs URL / Failed) — same editorial family ────────────────── */
+
+/* One-sided identity: a stuck song has only its Spotify face (no YT match yet). */
+.rv-panels.solo { grid-template-columns: 1fr; }
+
+.rv-why {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+	margin: 14px 0;
+	padding: 10px 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+	font-size: 13px;
+}
+.rv-why svg { flex: none; margin-top: 1px; }
+.rv-why.warning svg { color: var(--warning); }
+.rv-why.danger svg { color: var(--danger); }
+.rv-why-reason { color: var(--fg-secondary); line-height: 1.45; }
+.rv-why-detail { margin-top: 4px; font-size: 12px; color: var(--fg-muted); }
+
+/* ── Release year — album-grouped review ──────────────────────────────────── */
+
+.ry-songs {
+	margin-top: 8px;
+	font-size: 12px;
+	color: var(--fg-muted);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+details.ry-songs { display: block; }
+.ry-songs summary {
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	user-select: none;
+}
+.ry-songs summary:hover { color: var(--fg-secondary); }
+.ry-song-list {
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.ry-song-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 6px 8px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	background: var(--surface-raised);
+}
+
+.ry-song-thumb {
+	width: 36px;
+	height: 36px;
+	border-radius: 4px;
+	object-fit: cover;
+	flex: none;
+}
+.ry-song-thumb.placeholder {
+	display: inline-block;
+	border: 1px solid var(--border);
+}
+
+.ry-song-body {
+	min-width: 0;
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+.ry-song-title {
+	font-size: 12px;
+	color: var(--fg);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.ry-song-sub {
+	font-size: 11px;
+	color: var(--fg-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ry-song-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex: none;
+}
+.ry-song-actions .input {
+	width: 72px;
+	padding: 4px 8px;
+	font-size: 12px;
+}
+
+.ry-cands {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px;
+	margin-top: 10px;
+	font-size: 12px;
+}
+.ry-cands button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 10px;
+	font-size: 12px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border);
+	background: var(--surface-raised);
+	color: var(--fg-muted);
+	cursor: pointer;
+	transition: color 150ms ease, border-color 150ms ease;
+}
+.ry-cands button:hover { color: var(--fg-secondary); }
+.ry-cands button.on {
+	color: var(--fg);
+	border-color: var(--accent-border);
+	background: var(--accent-dim);
+}
+
+.ry-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 10px;
+}
+
+.ry-shape { margin-left: 8px; }
+
+.ry-stalled {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ry-cands button { transition: none; }
 }

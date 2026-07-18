@@ -56,10 +56,19 @@ const domTestFiles = [
 	"src/lib/extension/__tests__/reconnect-link.test.ts",
 	"src/lib/consent/__tests__/consent-storage.test.ts",
 	"src/lib/extension/__tests__/useSpotifyReconnectState.test.ts",
+	"src/lib/extension/__tests__/useExtensionAccountConflict.test.ts",
+	"src/features/playlists/create/__tests__/useSpotifyGate.test.ts",
+	"src/features/playlists/create/__tests__/usePublishPlaylist.test.ts",
 	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",
 	"src/lib/extension/__tests__/transport.test.ts",
 	// useActiveJobs hook tests use renderHook and require a DOM environment.
 	"src/lib/hooks/__tests__/useActiveJobs.test.ts",
+	"src/lib/hooks/__tests__/useLockedMutation.test.ts",
+	"src/features/matching/__tests__/useMatchDeckSession.test.ts",
+	// Control-panel localStorage-backed modules.
+	"control-panel/src/lib/__tests__/attention-thresholds.test.ts",
+	"control-panel/src/lib/__tests__/email-draft.test.ts",
+	"control-panel/src/lib/__tests__/saved-views.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {
@@ -194,8 +203,43 @@ export default defineConfig(({ command }) => {
 		// covers the workerd SSR environment (the deps_ssr optimizer); the
 		// top-level block covers the client. Add any package named in a
 		// `[optimizer] bundling` dev log.
+		//
+		// The client list must cover every dep reachable from route chunks, not
+		// just the root entry: TanStack Start code-splits routes, so the initial
+		// crawl never sees deps imported only by lazy route modules. Each one
+		// discovered on first navigation forces a client re-optimize + full page
+		// reload ("optimized dependencies changed"), which shows up as constant
+		// blinking/flashing while browsing in dev.
 		optimizeDeps: {
-			include: ["@sentry/cloudflare", "@sentry/tanstackstart-react"],
+			include: [
+				"@sentry/cloudflare",
+				"@sentry/tanstackstart-react",
+				"@sentry/react",
+				"react",
+				"react-dom",
+				"react-dom/client",
+				"@tanstack/react-query",
+				"@tanstack/react-router",
+				"@tanstack/react-router-ssr-query",
+				"@tanstack/react-devtools",
+				"@tanstack/react-query-devtools",
+				"@tanstack/react-router-devtools",
+				"@phosphor-icons/react",
+				"@number-flow/react",
+				"framer-motion",
+				"gsap",
+				"@gsap/react",
+				"sonner",
+				"zod",
+				"clsx",
+				"tailwind-merge",
+				"better-result",
+				"@supabase/supabase-js",
+				"posthog-js",
+				"@posthog/react",
+				"better-auth/react",
+				"better-auth/tanstack-start",
+			],
 		},
 		ssr: {
 			optimizeDeps: {

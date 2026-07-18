@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
-import { BillingChanges } from "@/lib/workflows/library-processing/changes/billing";
+import { BillingChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import type { LibraryProcessingChange } from "@/lib/workflows/library-processing/types";
 

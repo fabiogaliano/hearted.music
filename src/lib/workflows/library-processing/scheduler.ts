@@ -1,7 +1,6 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readBillingState } from "@/lib/domains/billing/queries";
-import { FREE_BILLING_STATE } from "@/lib/domains/billing/state";
+import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylistSongs,
@@ -29,7 +28,7 @@ import {
 } from "@/lib/workflows/enrichment-pipeline/progress";
 import { resolveEnrichmentBand, resolveRefreshBand } from "./band-policy";
 import { resolveMatchRefreshAvailableAt } from "./match-refresh-debounce";
-import { bandToNumeric, resolveQueuePriority } from "./queue-priority";
+import { bandToNumeric } from "./queue-priority";
 import type {
 	LibraryProcessingApplyCause,
 	LibraryProcessingApplyError,
@@ -238,10 +237,12 @@ export async function executeEffect(
 > {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const billingResult = await readBillingState(supabase, effect.accountId);
-		const billingBand = resolveQueuePriority(
-			Result.isOk(billingResult) ? billingResult.value : FREE_BILLING_STATE,
+		const billingState = await readBillingStateOrFreeTier(
+			supabase,
+			effect.accountId,
+			"library_processing_execute_effect",
 		);
+		const billingBand = billingState.queueBand;
 		const band = resolveEnrichmentBand(billingBand, change.kind);
 		const queuePriority = bandToNumeric(band);
 		const actor = await resolveAccountLabel(effect.accountId);

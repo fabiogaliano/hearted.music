@@ -10,6 +10,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
+import type { ExtensionAccountCheck } from "@/lib/extension/useExtensionAccountConflict";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
@@ -177,6 +178,47 @@ describe("useDashboardSync", () => {
 		if (state.kind !== "error") throw new Error("expected error state");
 		expect(state.action).toBe("retry");
 		expect(state.retryable).toBe(true);
+	});
+
+	it.each([
+		[{ kind: "checking" }, "account-checking"],
+		[{ kind: "unavailable" }, "account-unavailable"],
+	] as const)("blocks sync while account verification is $kind", async (accountCheck, expectedKind) => {
+		const { result } = renderHook(
+			() => useDashboardSync(ACCOUNT_ID, accountCheck),
+			{ wrapper },
+		);
+		await waitFor(() => expect(result.current.state.kind).toBe(expectedKind));
+		result.current.onAction();
+		expect(mockRequestExtensionSync).not.toHaveBeenCalled();
+	});
+
+	it("blocks an error retry when an account conflict appears", async () => {
+		mockRequestExtensionSync.mockResolvedValue(null);
+		const initialProps: { accountCheck: ExtensionAccountCheck } = {
+			accountCheck: { kind: "verified" },
+		};
+		const { result, rerender } = renderHook(
+			({ accountCheck }: { accountCheck: ExtensionAccountCheck }) =>
+				useDashboardSync(ACCOUNT_ID, accountCheck),
+			{ initialProps, wrapper },
+		);
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+		await waitFor(() => expect(result.current.state.kind).toBe("error"));
+
+		rerender({
+			accountCheck: {
+				kind: "conflict",
+				conflict: { kind: "unpaired" },
+			},
+		});
+		expect(result.current.state.kind).toBe("account-conflict");
+		result.current.onAction();
+		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(1);
 	});
 
 	it("silently re-pairs and retries once when the backend rejects auth", async () => {

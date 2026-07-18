@@ -1,8 +1,10 @@
 /**
  * Ladle stub for @/lib/server/onboarding.functions.
  *
- * Re-exports types/interfaces verbatim and replaces server function callables
- * with async rejects so components fall to their error/unavailable states.
+ * Type-only imports the real module's result types (erased before module
+ * resolution, so the real module's server graph never reaches the Ladle
+ * bundle) and replaces server function callables with async rejects so
+ * components fall to their error/unavailable states.
  */
 
 import type {
@@ -10,51 +12,25 @@ import type {
 	OnboardingSession,
 	WalkthroughSong,
 } from "@/lib/domains/library/accounts/onboarding-session";
+import type {
+	OnboardingData,
+	OnboardingPlaylist,
+	ReadyCopyVariant,
+	SyncStats,
+} from "@/lib/server/onboarding.functions";
 import type { ThemeColor } from "@/lib/theme/types";
 
-// ── Types (re-exported as-is) ──────────────────────────────────────────
-
-export interface OnboardingPlaylist {
-	id: string;
-	name: string;
-	matchIntent: string | null;
-	imageUrl: string | null;
-	songCount: number | null;
-	isTarget: boolean;
-	genrePills: string[];
-}
-
-export interface SyncStats {
-	songs: number;
-	playlists: number;
-	playlistSongs: number;
-	artists: number;
-}
-
-export type ReadyCopyVariant = "free" | "pack" | "unlimited";
-
-export interface OnboardingData extends OnboardingAuthPayload {
-	playlists: OnboardingPlaylist[];
-	phaseJobIds: Record<string, string> | null;
-	syncStats: SyncStats | null;
-	readyCopyVariant: ReadyCopyVariant;
-	landingSongs: Array<{
-		id: number;
-		spotifyTrackId: string;
-		name: string;
-		artist: string;
-		album: string;
-		albumArtUrl: string;
-		artistImageUrl?: string;
-		spotifyArtistId: string;
-		genres: string[];
-		detailPath: string;
-	}>;
-}
-
-// Re-export shared session types so downstream ladle stories can consume
-// them through this stub without knowing the domain module path.
-export type { OnboardingAuthPayload, OnboardingSession, WalkthroughSong };
+// Re-export shared session + page-data types so downstream ladle stories can
+// consume them through this stub without knowing the domain module path.
+export type {
+	OnboardingAuthPayload,
+	OnboardingData,
+	OnboardingPlaylist,
+	OnboardingSession,
+	ReadyCopyVariant,
+	SyncStats,
+	WalkthroughSong,
+};
 
 // ── Stub callables ─────────────────────────────────────────────────────
 

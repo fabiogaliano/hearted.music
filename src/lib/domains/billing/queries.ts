@@ -17,6 +17,7 @@ import {
 	FREE_BILLING_STATE,
 	STRIPE_STATUS_TO_NORMALIZED,
 } from "@/lib/domains/billing/state";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { BillingBand } from "@/lib/shared/queue/band";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -150,4 +151,24 @@ export async function readBillingState(
 		unlimitedAccess,
 		queueBand,
 	});
+}
+
+/**
+ * Reads billing state, degrading to `FREE_BILLING_STATE` on any read failure.
+ *
+ * The single home for "billing unreadable → assume free tier": every caller
+ * that would otherwise hand-author the free-tier fallback (and silently drop
+ * the error) should go through this instead, so a billing-read outage is
+ * both safe (never over-grants access) and visible (captured to Sentry).
+ */
+export async function readBillingStateOrFreeTier(
+	supabase: AdminSupabaseClient,
+	accountId: string,
+	operation: string,
+): Promise<BillingState> {
+	const result = await readBillingState(supabase, accountId);
+	if (Result.isOk(result)) return result.value;
+
+	captureServerError(result.error, { area: "billing", operation, accountId });
+	return FREE_BILLING_STATE;
 }

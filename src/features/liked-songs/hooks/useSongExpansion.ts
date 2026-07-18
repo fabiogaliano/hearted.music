@@ -242,7 +242,7 @@ export function useSongExpansion(
 	// Open a song's panel without a card rect — no FLIP, mirroring the deep-link
 	// path (where startRect is null and the panel simply appears). Used after an
 	// unlock completes to reveal the song that was just paid for; the list centers
-	// it separately (see useLikedSongsListController.centerSongInList).
+	// it separately (see useLikedSongsList's centerSongInList action).
 	const openSong = useCallback(
 		(song: LikedSong) => {
 			const slug = generateSongSlug(song.track.artist, song.track.name);

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	MAX_LIKED_SONGS,
 	SyncPayloadSchema,
-} from "@/lib/workflows/spotify-sync/payload-schema";
+} from "../../../../../shared/spotify-sync-payload-schema";
 
 function aTrack(id: string) {
 	return {

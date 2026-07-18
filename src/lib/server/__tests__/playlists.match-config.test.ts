@@ -2,7 +2,7 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes/playlist-management";
+import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes";
 import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
 import {
 	savePlaylistMatchConfig,

@@ -2,11 +2,13 @@ import {
 	ArrowLeftIcon,
 	ArrowsClockwiseIcon,
 	CalendarBlankIcon,
+	ClockCounterClockwiseIcon,
 	CreditCardIcon,
 	EnvelopeSimpleIcon,
 	GaugeIcon,
 	HeartIcon,
 	type Icon,
+	KeyboardIcon,
 	MicrophoneStageIcon,
 	PulseIcon,
 	SparkleIcon,
@@ -14,9 +16,20 @@ import {
 	UsersIcon,
 	WaveformIcon,
 } from "@phosphor-icons/react";
-import { type ReactElement, useState } from "react";
-import { useApi } from "./lib/api";
+import { type ReactElement, useEffect, useRef, useState } from "react";
+import { BatchProgressDrawer } from "./components/BatchProgressDrawer";
+import { CommandPalette } from "./components/CommandPalette";
+import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
+import { SavedViewsMenu } from "./components/SavedViewsMenu";
+import { invalidateApiCache, useApi } from "./lib/api";
+import { isModalOpen } from "./lib/modal-open";
 import { NavContext } from "./lib/navigation";
+import {
+	canonicalUrl,
+	parseUrlState,
+	type SectionKey,
+	sameUrl,
+} from "./lib/url-state";
 import {
 	type AccountListQuery,
 	SelectUserContext,
@@ -27,6 +40,7 @@ import { AudioReviewSection } from "./sections/AudioReviewSection";
 import { BillingSection } from "./sections/BillingSection";
 import { EmailSection } from "./sections/EmailSection";
 import { EnrichmentSection } from "./sections/EnrichmentSection";
+import { HistorySection } from "./sections/HistorySection";
 import { InstrumentalReviewSection } from "./sections/InstrumentalReviewSection";
 import { JobsSection } from "./sections/JobsSection";
 import { LibrarySection } from "./sections/LibrarySection";
@@ -38,10 +52,29 @@ import { UserDetail } from "./sections/UserDetail";
 import { UsersSection } from "./sections/UsersSection";
 
 interface NavEntry {
-	key: string;
+	key: SectionKey;
 	label: string;
 	icon: Icon;
 	render: (refreshKey: number) => ReactElement;
+}
+
+function isTypingTarget(target: EventTarget | null): boolean {
+	if (!(target instanceof HTMLElement)) return false;
+	return (
+		target.tagName === "INPUT" ||
+		target.tagName === "TEXTAREA" ||
+		target.tagName === "SELECT" ||
+		target.isContentEditable
+	);
+}
+
+function formatUpdated(ageMs: number): string {
+	const ageSeconds = Math.max(0, Math.floor(ageMs / 1000));
+	if (ageSeconds < 10) return "just now";
+	if (ageSeconds < 60) return `${ageSeconds}s ago`;
+	const ageMinutes = Math.floor(ageSeconds / 60);
+	if (ageMinutes < 60) return `${ageMinutes}m ago`;
+	return `${Math.floor(ageMinutes / 60)}h ago`;
 }
 
 const NAV: NavEntry[] = [
@@ -117,37 +150,162 @@ const NAV: NavEntry[] = [
 		icon: EnvelopeSimpleIcon,
 		render: () => <EmailSection />,
 	},
+	{
+		key: "history",
+		label: "Action history",
+		icon: ClockCounterClockwiseIcon,
+		render: (k) => <HistorySection refreshKey={k} />,
+	},
 ];
 
 export function App() {
-	const [active, setActive] = useState("overview");
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [userId, setUserId] = useState<string | null>(null);
-	const [tier, setTier] = useState<AccountListQuery | null>(null);
+	const [url, setUrl] = useState(() =>
+		canonicalUrl(new URL(window.location.href)),
+	);
+	const [now, setNow] = useState(() => Date.now());
+	const [paletteOpen, setPaletteOpen] = useState(false);
+	const [shortcutsOpen, setShortcutsOpen] = useState(false);
+	const previousRef = useRef<string | null>(null);
 	const health = useApi<{ ref: string }>("/api/health");
+	const location = parseUrlState(url);
+	const active: SectionKey = location.section;
+	const userId = location.userId;
+	const tier =
+		location.tierMin === null
+			? null
+			: ({
+					title: "Library accounts",
+					minLiked: location.tierMin,
+					maxLiked: location.tierMax,
+				} satisfies AccountListQuery);
 
-	const entry = NAV.find((n) => n.key === active) ?? NAV[0];
+	useEffect(() => {
+		const initial = canonicalUrl(new URL(window.location.href));
+		if (!sameUrl(initial, new URL(window.location.href))) {
+			window.history.replaceState({ controlPanel: true }, "", initial);
+		}
+		window.history.replaceState({ controlPanel: true }, "", initial);
+		setUrl(initial);
+		const onPopState = () => {
+			const next = canonicalUrl(new URL(window.location.href));
+			if (!sameUrl(next, new URL(window.location.href))) {
+				window.history.replaceState({ controlPanel: true }, "", next);
+			}
+			setUrl(next);
+		};
+		window.addEventListener("popstate", onPopState);
+		return () => window.removeEventListener("popstate", onPopState);
+	}, []);
 
-	function go(key: string) {
-		setUserId(null);
-		setTier(null);
-		setActive(key);
+	useEffect(() => {
+		const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+		return () => window.clearInterval(timer);
+	}, []);
+
+	useEffect(() => {
+		function onKeyDown(event: KeyboardEvent) {
+			if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+				if (isTypingTarget(event.target)) return;
+				if (paletteOpen) {
+					event.preventDefault();
+					setPaletteOpen(false);
+					return;
+				}
+				if (isModalOpen()) return;
+				event.preventDefault();
+				setPaletteOpen(true);
+				return;
+			}
+			// "?" (Shift+/) opens the shortcuts cheat-sheet — the convention operators
+			// reach for. Never hijack it while typing or over another open overlay.
+			if (event.key === "?" && !event.metaKey && !event.ctrlKey) {
+				if (isTypingTarget(event.target)) return;
+				if (shortcutsOpen) {
+					event.preventDefault();
+					setShortcutsOpen(false);
+					return;
+				}
+				if (isModalOpen()) return;
+				event.preventDefault();
+				setShortcutsOpen(true);
+			}
+		}
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [paletteOpen, shortcutsOpen]);
+
+	useEffect(() => {
+		if (!health.data?.ref) return;
+		if (previousRef.current && previousRef.current !== health.data.ref) {
+			invalidateApiCache();
+		}
+		previousRef.current = health.data.ref;
+	}, [health.data?.ref]);
+
+	function commitUrl(next: URL, replace = false, overlay = false) {
+		const canonical = canonicalUrl(next);
+		window.history[replace ? "replaceState" : "pushState"](
+			{ controlPanel: true, overlay },
+			"",
+			canonical,
+		);
+		setUrl(canonical);
 	}
 
-	// Opening a user from inside a tier list keeps the tier so Back returns to it.
+	function go(key: SectionKey, params?: Record<string, string>) {
+		const next = new URL(window.location.href);
+		next.search = "";
+		next.searchParams.set("section", key);
+		for (const [name, value] of Object.entries(params ?? {})) {
+			next.searchParams.set(name, value);
+		}
+		commitUrl(next);
+	}
+
+	// Opening a user from inside a tier list keeps the source URL so Back restores it.
 	function selectUser(id: string | null) {
-		setUserId(id);
+		if (id === null) {
+			back();
+			return;
+		}
+		const next = new URL(window.location.href);
+		next.searchParams.set("user", id);
+		commitUrl(next, false, true);
 	}
 
 	function showAccounts(query: AccountListQuery | null) {
-		setUserId(null);
-		setTier(query);
+		if (query === null) return;
+		const next = new URL(window.location.href);
+		next.search = "";
+		next.searchParams.set("section", "library");
+		next.searchParams.set("tierMin", String(query.minLiked));
+		if (query.maxLiked !== null)
+			next.searchParams.set("tierMax", String(query.maxLiked));
+		commitUrl(next, false, true);
 	}
 
 	const overlayTitle = userId ? "User detail" : tier ? tier.title : null;
 	function back() {
-		if (userId) setUserId(null);
-		else setTier(null);
+		if (window.history.state?.controlPanel && window.history.state.overlay)
+			window.history.back();
+		else {
+			const next = new URL(window.location.href);
+			next.searchParams.delete("user");
+			next.searchParams.delete("tierMin");
+			next.searchParams.delete("tierMax");
+			commitUrl(next, true);
+		}
+	}
+
+	const entry = NAV.find((n) => n.key === active) ?? NAV[0];
+	const updated =
+		health.fetchedAt === null ? null : formatUpdated(now - health.fetchedAt);
+
+	function focusCurrentTableSearch() {
+		document
+			.querySelector<HTMLInputElement>(".content .data-table-search input")
+			?.focus();
 	}
 
 	return (
@@ -224,6 +382,28 @@ export function App() {
 									<h1>{entry.label}</h1>
 								)}
 								<div className="spacer" />
+								{updated && <span className="updated">Updated {updated}</span>}
+								{health.refreshing && (
+									<span className="refreshing">Refreshing…</span>
+								)}
+								{!overlayTitle && <SavedViewsMenu />}
+								<button
+									type="button"
+									className="btn command-palette-trigger"
+									title="Open command palette (Cmd/Ctrl+K)"
+									onClick={() => setPaletteOpen(true)}
+								>
+									⌘ K
+								</button>
+								<button
+									type="button"
+									className="icon-btn"
+									title="Keyboard shortcuts (?)"
+									aria-label="Keyboard shortcuts"
+									onClick={() => setShortcutsOpen(true)}
+								>
+									<KeyboardIcon size={15} weight="bold" />
+								</button>
 								<button
 									type="button"
 									className="icon-btn"
@@ -234,22 +414,27 @@ export function App() {
 								</button>
 							</div>
 							<div className="content">
-								{/* key forces a fresh mount so entrance animations replay */}
 								{userId ? (
-									<div key={`user-${userId}`}>
-										<UserDetail accountId={userId} />
-									</div>
+									<UserDetail accountId={userId} />
 								) : tier ? (
-									<div key={`tier-${tier.minLiked}-${tier.maxLiked}`}>
-										<AccountList query={tier} />
-									</div>
+									<AccountList query={tier} />
 								) : (
-									<div key={`${entry.key}-${refreshKey}`}>
-										{entry.render(refreshKey)}
-									</div>
+									entry.render(refreshKey)
 								)}
 							</div>
 						</main>
+						<BatchProgressDrawer />
+						{paletteOpen && (
+							<CommandPalette
+								sections={NAV.map(({ key, label }) => ({ key, label }))}
+								onNavigate={go}
+								onClose={() => setPaletteOpen(false)}
+								onFocusTableSearch={focusCurrentTableSearch}
+							/>
+						)}
+						{shortcutsOpen && (
+							<KeyboardShortcuts onClose={() => setShortcutsOpen(false)} />
+						)}
 					</div>
 				</ShowAccountsContext.Provider>
 			</SelectUserContext.Provider>

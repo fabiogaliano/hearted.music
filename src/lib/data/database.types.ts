@@ -3908,6 +3908,35 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			get_account_liked_song_ids_by_artist: {
+				Args: { p_account_id: string; p_artist: string };
+				Returns: {
+					song_id: string;
+				}[];
+			};
+			get_account_liked_window_counts: {
+				Args: { p_account_id: string };
+				Returns: {
+					end_at: string | null;
+					occurrences: number;
+					start_at: string;
+					window_id: string;
+				}[];
+			};
+			get_account_release_year_counts: {
+				Args: { p_account_id: string };
+				Returns: {
+					occurrences: number;
+					release_year: number;
+				}[];
+			};
+			get_account_top_artists: {
+				Args: { p_account_id: string; p_limit?: number };
+				Returns: {
+					artist: string;
+					occurrences: number;
+				}[];
+			};
 			get_account_top_genres: {
 				Args: { p_account_id: string; p_limit?: number };
 				Returns: {
@@ -4082,6 +4111,14 @@ export type Database = {
 					p_requested_by?: string;
 				};
 				Returns: Json;
+			};
+			heartbeat_audio_feature_backfill_job: {
+				Args: {
+					p_job_id: string;
+					p_lease_seconds?: number;
+					p_worker_id: string;
+				};
+				Returns: boolean;
 			};
 			insert_queue_playlist_items: {
 				Args: { p_account_id: string; p_items: Json; p_session_id: string };
@@ -4444,6 +4481,13 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			search_account_liked_artists: {
+				Args: { p_account_id: string; p_limit?: number; p_query?: string };
+				Returns: {
+					artist: string;
+					occurrences: number;
+				}[];
+			};
 			select_data_enriched_liked_song_ids: {
 				Args: { p_account_id: string };
 				Returns: {
@@ -4481,6 +4525,14 @@ export type Database = {
 			select_liked_song_ids_needing_pipeline_processing: {
 				Args: { p_account_id: string; p_limit: number };
 				Returns: {
+					song_id: string;
+				}[];
+			};
+			select_phase1_song_ids_needing_enrichment_work: {
+				Args: { p_account_id: string; p_limit: number };
+				Returns: {
+					needs_audio_features: boolean;
+					needs_genre_tagging: boolean;
 					song_id: string;
 				}[];
 			};

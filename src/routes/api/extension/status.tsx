@@ -136,7 +136,7 @@ export const Route = createFileRoute("/api/extension/status")({
 				const supabase = createAdminSupabaseClient();
 				const { data: account } = await supabase
 					.from("account")
-					.select("display_name, email")
+					.select("display_name, email, spotify_id, image_url")
 					.eq("id", accountId)
 					.single();
 
@@ -151,6 +151,8 @@ export const Route = createFileRoute("/api/extension/status")({
 						accountId,
 						displayName: account?.display_name ?? null,
 						email: account?.email ?? null,
+						spotifyId: account?.spotify_id ?? null,
+						imageUrl: account?.image_url ?? null,
 						likedSongCount: Result.isOk(likedCountResult)
 							? likedCountResult.value
 							: 0,

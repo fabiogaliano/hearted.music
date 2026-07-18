@@ -89,7 +89,7 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 		mockApplyLibraryProcessingChange(...a),
 }));
 
-vi.mock("@/lib/workflows/library-processing/changes/sync", () => ({
+vi.mock("@/lib/workflows/library-processing/changes", () => ({
 	SyncChanges: { librarySynced: (...a: unknown[]) => mockLibrarySynced(...a) },
 }));
 

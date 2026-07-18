@@ -1,5 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { makeBillingState } from "@/lib/domains/billing/fixtures";
+import { FREE_BILLING_STATE } from "@/lib/domains/billing/state";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
 const ensureEnrichmentJobMock = vi.fn();
@@ -23,10 +25,11 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 		hasFirstVisibleReviewSubjectMock(...args),
 }));
 
-const readBillingStateMock = vi.fn();
+const readBillingStateOrFreeTierMock = vi.fn();
 
 vi.mock("@/lib/domains/billing/queries", () => ({
-	readBillingState: (...args: unknown[]) => readBillingStateMock(...args),
+	readBillingStateOrFreeTier: (...args: unknown[]) =>
+		readBillingStateOrFreeTierMock(...args),
 }));
 
 const getLikedSongCountMock = vi.fn();
@@ -85,16 +88,8 @@ function makeState(
 describe("scheduler", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		readBillingStateMock.mockResolvedValue(
-			Result.ok({
-				plan: "free",
-				creditBalance: 0,
-				subscriptionStatus: "none",
-				cancelAtPeriodEnd: false,
-				subscriptionPeriodEnd: null,
-				unlimitedAccess: { kind: "none" },
-				queueBand: "standard",
-			}),
+		readBillingStateOrFreeTierMock.mockResolvedValue(
+			makeBillingState({ queueBand: "standard" }),
 		);
 		getLikedSongCountMock.mockResolvedValue(Result.ok(100));
 		getTargetPlaylistsMock.mockResolvedValue(Result.ok([]));
@@ -482,11 +477,10 @@ describe("scheduler", () => {
 
 	describe("billing priority fallback", () => {
 		it("falls back to free/low priority when billing read fails", async () => {
-			readBillingStateMock.mockResolvedValue(
-				Result.err(
-					new DatabaseError({ code: "PGRST", message: "billing read failed" }),
-				),
-			);
+			// readBillingStateOrFreeTier owns the degrade-on-error behavior itself
+			// (covered by its own unit tests); this simulates what it returns when
+			// the underlying read fails.
+			readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
 			ensureEnrichmentJobMock.mockResolvedValue(
 				Result.ok({ id: "job-fallback", status: "pending" }),
 			);
@@ -521,17 +515,7 @@ describe("scheduler", () => {
 		});
 
 		it("uses priority band for onboarding_target_selection_confirmed regardless of billing", async () => {
-			readBillingStateMock.mockResolvedValue(
-				Result.ok({
-					plan: "free",
-					creditBalance: 0,
-					subscriptionStatus: "none",
-					cancelAtPeriodEnd: false,
-					subscriptionPeriodEnd: null,
-					unlimitedAccess: { kind: "none" },
-					queueBand: "low",
-				}),
-			);
+			readBillingStateOrFreeTierMock.mockResolvedValue(makeBillingState());
 			ensureEnrichmentJobMock.mockResolvedValue(
 				Result.ok({ id: "job-onboard", status: "pending" }),
 			);

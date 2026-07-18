@@ -58,6 +58,24 @@ describe("hashMatchingConfig", () => {
 		expect(tweaked).not.toBe(baseline);
 	});
 
+	it("changing noEmbeddingMode changes the hash", async () => {
+		// noEmbeddingMode selects the free-tier scoring path (embedding weight
+		// redistributed onto audio/genre). It rides the whole-config serialization
+		// like skipVectorScoring, so enabling it must bust the snapshot cache —
+		// a cached entitled-user snapshot must never be served to the no-embedding
+		// engine and vice versa.
+		const baseline = await hashMatchingConfig(
+			DEFAULT_MATCHING_CONFIG as unknown as Record<string, unknown>,
+		);
+
+		const tweaked = await hashMatchingConfig({
+			...DEFAULT_MATCHING_CONFIG,
+			noEmbeddingMode: true,
+		} as unknown as Record<string, unknown>);
+
+		expect(tweaked).not.toBe(baseline);
+	});
+
 	it("changing fallbackSimilarityBaseline changes the hash", async () => {
 		const baseline = await hashMatchingConfig(
 			DEFAULT_MATCHING_CONFIG as unknown as Record<string, unknown>,

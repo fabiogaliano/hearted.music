@@ -4,6 +4,7 @@ import {
 	type AccountEventEnvelope,
 	type AllFrameType,
 	CURSOR_HEADER,
+	CURSOR_RESPONSE_HEADER,
 	HEARTBEAT_INTERVAL_MS,
 	NOTIFY_CHANNEL_WAKE,
 } from "@/lib/account-events/contract";
@@ -410,9 +411,23 @@ export function startAccountEventsGateway() {
 				});
 			}
 
+			const cursorStr =
+				req.headers.get(CURSOR_HEADER) ?? req.headers.get("last-event-id");
+			const requestedCursor =
+				cursorStr && cursorStr !== "?" ? parseInt(cursorStr, 10) : Number.NaN;
+
+			let cursor: number;
 			try {
-				const [sessionRow] = await querySql<{ created_at: string }[]>`
-					SELECT created_at FROM session WHERE id = ${claims.sid}
+				// The account head rides along with the session check (a cheap
+				// index-only peek) so cursor-less connects don't pay a second
+				// sequential round trip or gain a failure mode the session check
+				// didn't already have.
+				const [sessionRow] = await querySql<
+					{ created_at: string; head: string | null }[]
+				>`
+					SELECT created_at,
+						(SELECT max(publish_id) FROM account_event WHERE account_id = ${claims.sub}) AS head
+					FROM session WHERE id = ${claims.sid}
 				`;
 
 				if (!sessionRow) {
@@ -429,6 +444,20 @@ export function startAccountEventsGateway() {
 						headers: corsHeaders,
 					});
 				}
+
+				// Cursor-less connect = fresh page load: the route loaders just
+				// fetched everything, so replaying the account's full history would
+				// only re-fire stale invalidations client-side. Start the cursor at
+				// the account's head so replay yields nothing and the client gets
+				// just the snapshot. Explicit cursors (including 0) still replay
+				// from that point. Resolving head before the client registers is
+				// race-free: the connect-time replay runs after registration and
+				// picks up anything published past head in the meantime.
+				cursor = Number.isNaN(requestedCursor)
+					? sessionRow.head == null
+						? 0
+						: Number(sessionRow.head)
+					: requestedCursor;
 			} catch (err) {
 				log.error("gateway-session-check-error", { error: String(err) });
 				return new Response("Internal Server Error", {
@@ -436,11 +465,6 @@ export function startAccountEventsGateway() {
 					headers: corsHeaders,
 				});
 			}
-
-			const cursorStr =
-				req.headers.get(CURSOR_HEADER) ?? req.headers.get("last-event-id");
-			const cursor =
-				cursorStr && cursorStr !== "?" ? parseInt(cursorStr, 10) : 0;
 
 			// Cap concurrent streams per account
 			const accountClients = getOrCreateAccountClients(claims.sub);
@@ -464,25 +488,38 @@ export function startAccountEventsGateway() {
 				"Content-Type": "text/event-stream",
 				"Cache-Control": "no-cache",
 				"X-Accel-Buffering": "no",
+				// Announce the effective starting cursor so a cursor-less client can
+				// seed its Last-Event-ID; otherwise a reconnect before the first
+				// durable frame would present as another fresh page load and skip
+				// events published in the gap.
+				[CURSOR_RESPONSE_HEADER]: String(cursor),
 			};
 
 			let streamClient: AccountEventClient | null = null;
 			return new Response(
-				new ReadableStream({
-					start: async (controller) => {
-						streamClient = await initializeClientStream(
-							controller,
-							accountClients,
-							claims.sub,
-							req.signal,
-							cursor,
-							claims.exp,
-						);
+				new ReadableStream(
+					{
+						start: async (controller) => {
+							streamClient = await initializeClientStream(
+								controller,
+								accountClients,
+								claims.sub,
+								req.signal,
+								cursor,
+								claims.exp,
+							);
+						},
+						cancel() {
+							streamClient?.close();
+						},
 					},
-					cancel() {
-						streamClient?.close();
-					},
-				}),
+					// The default highWaterMark of 1 makes the backpressure guard in
+					// sendEnvelope trip on any multi-frame burst — connect-time replay
+					// (backlog rows + snapshot) enqueues faster than the socket drains,
+					// killing healthy connections. Real headroom keeps the guard for
+					// genuinely stuck consumers only.
+					new CountQueuingStrategy({ highWaterMark: 256 }),
+				),
 				{ headers: responseHeaders },
 			);
 		},

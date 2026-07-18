@@ -9,6 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { sendWaitlistConfirmation } from "@/lib/email/waitlist-confirmation";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 const waitlistSchema = z.object({
 	email: z.email(),
@@ -30,13 +31,23 @@ export const joinWaitlist = createServerFn({ method: "POST" })
 			if (error.code === "23505") {
 				return { success: true };
 			}
+			captureServerError(error, {
+				area: "waitlist",
+				operation: "join_waitlist",
+				extra: { stage: "insert" },
+			});
 			console.error("[waitlist] insert failed:", error.message);
 			return { success: false, error: "Something went wrong. Try again." };
 		}
 
-		await sendWaitlistConfirmation(email).catch((err: unknown) =>
-			console.error("[waitlist] email failed:", err),
-		);
+		await sendWaitlistConfirmation(email).catch((err: unknown) => {
+			captureServerError(err, {
+				area: "waitlist",
+				operation: "join_waitlist",
+				extra: { stage: "confirmation_email" },
+			});
+			console.error("[waitlist] email failed:", err);
+		});
 
 		return { success: true };
 	});

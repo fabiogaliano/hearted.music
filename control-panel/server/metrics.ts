@@ -608,6 +608,111 @@ export async function billingMetrics(): Promise<BillingMetrics> {
 	};
 }
 
+// ── Overview period comparisons ──────────────────────────────────────────────
+
+export type OverviewRange = "24h" | "7d" | "14d" | "30d";
+export const OVERVIEW_RANGES = ["24h", "7d", "14d", "30d"] as const satisfies readonly OverviewRange[];
+
+// Each range's current window plus the immediately preceding equal-length
+// window, expressed as fixed interval literals (not user input) so they can be
+// interpolated directly into SQL.
+const RANGE_INTERVALS: Record<OverviewRange, { single: string; double: string }> = {
+	"24h": { single: "1 day", double: "2 days" },
+	"7d": { single: "7 days", double: "14 days" },
+	"14d": { single: "14 days", double: "28 days" },
+	"30d": { single: "30 days", double: "60 days" },
+};
+
+export function parseOverviewRange(value: string | null): OverviewRange {
+	return OVERVIEW_RANGES.find((r) => r === value) ?? "14d";
+}
+
+export interface RangeComparison {
+	current: number;
+	previous: number;
+	deltaAbsolute: number;
+	// null when the previous period was zero — an infinite/undefined percent is
+	// not a meaningful signal, so the UI falls back to the absolute delta.
+	deltaPercent: number | null;
+}
+
+export interface OverviewComparisons {
+	range: OverviewRange;
+	signups: RangeComparison;
+	jobsCreated: RangeComparison;
+	jobsCompleted: RangeComparison;
+	jobsFailed: RangeComparison;
+	analysesCreated: RangeComparison;
+	analysisSpendUsd: RangeComparison;
+}
+
+export function comparison(current: number, previous: number): RangeComparison {
+	return {
+		current,
+		previous,
+		deltaAbsolute: current - previous,
+		deltaPercent: previous === 0 ? null : Math.round(((current - previous) / previous) * 100),
+	};
+}
+
+export async function overviewComparisons(range: OverviewRange): Promise<OverviewComparisons> {
+	const { single, double } = RANGE_INTERVALS[range];
+	const [[signups], [jobs], [analyses]] = await Promise.all([
+		read(`
+			select
+				count(*) filter (where created_at >= now() - interval '${single}') as current,
+				count(*) filter (where created_at >= now() - interval '${double}' and created_at < now() - interval '${single}') as previous
+			from account
+		`),
+		read(`
+			select
+				count(*) filter (where created_at >= now() - interval '${single}') as created,
+				count(*) filter (where created_at >= now() - interval '${double}' and created_at < now() - interval '${single}') as created_prev,
+				count(*) filter (where status = 'completed' and completed_at >= now() - interval '${single}') as completed,
+				count(*) filter (where status = 'completed' and completed_at >= now() - interval '${double}' and completed_at < now() - interval '${single}') as completed_prev,
+				count(*) filter (where status = 'failed' and updated_at >= now() - interval '${single}') as failed,
+				count(*) filter (where status = 'failed' and updated_at >= now() - interval '${double}' and updated_at < now() - interval '${single}') as failed_prev
+			from job
+		`),
+		read(`
+			select
+				count(*) filter (where created_at >= now() - interval '${single}') as created,
+				count(*) filter (where created_at >= now() - interval '${double}' and created_at < now() - interval '${single}') as created_prev,
+				coalesce(sum(cost_usd) filter (where created_at >= now() - interval '${single}'), 0) as spend,
+				coalesce(sum(cost_usd) filter (where created_at >= now() - interval '${double}' and created_at < now() - interval '${single}'), 0) as spend_prev
+			from song_analysis
+		`),
+	]);
+
+	return {
+		range,
+		signups: comparison(num(signups?.current), num(signups?.previous)),
+		jobsCreated: comparison(num(jobs?.created), num(jobs?.created_prev)),
+		jobsCompleted: comparison(num(jobs?.completed), num(jobs?.completed_prev)),
+		jobsFailed: comparison(num(jobs?.failed), num(jobs?.failed_prev)),
+		analysesCreated: comparison(num(analyses?.created), num(analyses?.created_prev)),
+		analysisSpendUsd: comparison(Number(analyses?.spend ?? 0), Number(analyses?.spend_prev ?? 0)),
+	};
+}
+
+// Powers the Overview "no-library accounts" attention row, whose age threshold
+// is an editable local operator preference — so, unlike the other cached
+// aggregates, this takes the threshold as a parameter rather than baking in a
+// fixed window.
+export async function accountsWithoutLibraryOlderThan(hours: number): Promise<number> {
+	const clamped = Number.isFinite(hours) ? Math.max(0, Math.min(8760, Math.floor(hours))) : 24;
+	const [row] = await read<{ total: string }>(
+		`
+		select count(*) as total
+		from account a
+		where a.created_at < now() - interval '1 hour' * $1
+			and not exists (select 1 from liked_song l where l.account_id = a.id and l.unliked_at is null)
+	`,
+		[clamped],
+	);
+	return num(row?.total);
+}
+
 // ── Account search (operation pickers) ───────────────────────────────────────
 
 export interface AccountSearchResult {
@@ -735,9 +840,8 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 		(acct.unlimited_access_source === "subscription" &&
 			acct.subscription_status === "active");
 
-	// counts / enrichment / grant / songs are independent — run them together so
-	// the detail view waits on the slowest query, not the sum of all four.
-	const [[counts], [enrich], [grant], songs] = await Promise.all([
+	// Counts, enrichment, and grants are independent, so run them together.
+	const [[counts], [enrich], [grant]] = await Promise.all([
 		read(
 			`
 		select
@@ -788,23 +892,6 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 	`,
 			[accountId],
 		),
-		read(
-			`
-		select l.song_id, s.name, array_to_string(s.artists, ', ') as artist, s.image_url,
-			to_char(l.liked_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as liked_at,
-			exists (select 1 from account_song_unlock u where u.account_id = $1 and u.song_id = l.song_id and u.revoked_at is null) as unlocked,
-			exists (select 1 from song_audio_feature f where f.song_id = l.song_id) as has_audio,
-			exists (select 1 from song_lyrics ly where ly.song_id = l.song_id and ly.fetch_status in ('lyrics', 'instrumental')) as has_lyrics,
-			exists (select 1 from song_analysis an where an.song_id = l.song_id) as has_analysis,
-			exists (select 1 from song_embedding e where e.song_id = l.song_id) as has_embedding
-		from liked_song l
-		join song s on s.id = l.song_id
-		where l.account_id = $1 and l.unliked_at is null
-		order by l.liked_at desc
-		limit 60
-	`,
-			[accountId],
-		),
 	]);
 
 	return {
@@ -841,17 +928,6 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 					note: grant.note ? String(grant.note) : null,
 				}
 			: null,
-		songs: songs.map((r) => ({
-			songId: String(r.song_id),
-			name: String(r.name),
-			artist: r.artist ? String(r.artist) : "Unknown",
-			imageUrl: r.image_url ? String(r.image_url) : null,
-			likedAt: String(r.liked_at),
-			unlocked: Boolean(r.unlocked),
-			hasAudio: Boolean(r.has_audio),
-			hasLyrics: Boolean(r.has_lyrics),
-			hasAnalysis: Boolean(r.has_analysis),
-			hasEmbedding: Boolean(r.has_embedding),
-		})),
+		songs: [],
 	};
 }

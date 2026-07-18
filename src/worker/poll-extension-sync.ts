@@ -11,7 +11,6 @@
  * safety net at a relaxed interval.
  */
 
-import { Result } from "better-result";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import { claimExtensionSyncJob } from "@/lib/platform/jobs/extension-sync-jobs";
@@ -19,21 +18,10 @@ import type { Job } from "@/lib/platform/jobs/repository";
 import { runExtensionSyncJob } from "@/lib/workflows/extension-sync/runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
+import { createPollLoop } from "./poll-loop";
 
-let shouldPoll = true;
-const activeJobs = new Set<string>();
-
-export function stopExtensionSyncPolling() {
-	shouldPoll = false;
-}
-
-export function getActiveExtensionSyncJobCount() {
-	return activeJobs.size;
-}
-
-function dispatch(job: Job, actor: string): void {
+function dispatch(job: Job, actor: string, markDone: () => void): void {
 	const { id: jobId, account_id: accountId } = job;
-	activeJobs.add(jobId);
 	(async () => {
 		const heartbeat = startHeartbeat(jobId);
 		try {
@@ -57,9 +45,41 @@ function dispatch(job: Job, actor: string): void {
 			});
 		} finally {
 			heartbeat.stop();
-			activeJobs.delete(jobId);
+			markDone();
 		}
 	})();
+}
+
+const loop = createPollLoop<Job, { message: string }>({
+	concurrency: () => workerConfig.concurrency,
+	claim: claimExtensionSyncJob,
+	jobId: (job) => job.id,
+	onClaimError: (error) =>
+		log.error("extension-sync-claim-error", { error: error.message }),
+	dispatch: async (job, markDone) => {
+		const actor = await resolveAccountLabel(job.account_id);
+		log.info("extension-sync-job-claimed", {
+			actor,
+			jobId: job.id,
+			accountId: job.account_id,
+		});
+		dispatch(job, actor, markDone);
+	},
+	pollIntervalMs: workerConfig.extensionSyncPollIntervalMs,
+	onLoopStart: () =>
+		log.info("extension-sync-polling-start", {
+			concurrency: workerConfig.concurrency,
+			intervalMs: workerConfig.extensionSyncPollIntervalMs,
+		}),
+	onLoopStop: () => log.info("extension-sync-polling-stopped"),
+});
+
+export function stopExtensionSyncPolling() {
+	loop.stop();
+}
+
+export function getActiveExtensionSyncJobCount() {
+	return loop.getActiveCount();
 }
 
 /**
@@ -69,39 +89,9 @@ function dispatch(job: Job, actor: string): void {
  * is dispatched at most once. Never throws.
  */
 export async function claimAndDispatchExtensionSyncJobs(): Promise<void> {
-	while (shouldPoll && activeJobs.size < workerConfig.concurrency) {
-		const claimResult = await claimExtensionSyncJob();
-		if (Result.isError(claimResult)) {
-			log.error("extension-sync-claim-error", {
-				error: claimResult.error.message,
-			});
-			return;
-		}
-
-		const job = claimResult.value;
-		if (!job) return;
-
-		const actor = await resolveAccountLabel(job.account_id);
-		log.info("extension-sync-job-claimed", {
-			actor,
-			jobId: job.id,
-			accountId: job.account_id,
-		});
-		dispatch(job, actor);
-	}
+	return loop.claimAndDispatch();
 }
 
 export async function startExtensionSyncPolling(): Promise<void> {
-	shouldPoll = true;
-	log.info("extension-sync-polling-start", {
-		concurrency: workerConfig.concurrency,
-		intervalMs: workerConfig.extensionSyncPollIntervalMs,
-	});
-
-	while (shouldPoll) {
-		await claimAndDispatchExtensionSyncJobs();
-		await Bun.sleep(workerConfig.extensionSyncPollIntervalMs);
-	}
-
-	log.info("extension-sync-polling-stopped");
+	return loop.start();
 }

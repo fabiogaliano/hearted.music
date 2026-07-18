@@ -7,8 +7,7 @@ import {
 } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { errorMessage } from "@/lib/shared/errors/error-message";
-import { EnrichmentChanges } from "./changes/enrichment";
-import { MatchSnapshotChanges } from "./changes/match-snapshot";
+import { EnrichmentChanges, MatchSnapshotChanges } from "./changes";
 import { findTerminalActiveRefs, type TerminalActiveRef } from "./queries";
 import { applyLibraryProcessingChange } from "./service";
 import type {

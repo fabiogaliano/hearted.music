@@ -15,6 +15,7 @@ import {
 } from "@/lib/platform/jobs/progress/types";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type BeginExtensionSyncOutcome =
 	| { kind: "queued"; jobId: string; phaseJobIds: PhaseJobIds }
@@ -116,22 +117,13 @@ export async function claimExtensionSyncJob(): Promise<
 > {
 	const supabase = createAdminSupabaseClient();
 
-	const { data, error } = await supabase.rpc(
-		"claim_pending_extension_sync_job",
+	// The RPC is a SETOF function — always an array (0 or 1 rows) per the
+	// generated Database types — so fromSupabaseMany's `T[]` shape applies
+	// directly; no single-vs-array hedge needed.
+	const rowsResult = await fromSupabaseMany<Job>(
+		supabase.rpc("claim_pending_extension_sync_job"),
 	);
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	if (!data || (Array.isArray(data) && data.length === 0)) {
-		return Result.ok(null);
-	}
-
-	const job = Array.isArray(data) ? data[0] : data;
-	return Result.ok(job as Job);
+	return Result.map(rowsResult, (rows) => rows[0] ?? null);
 }
 
 /**
@@ -143,16 +135,11 @@ export async function sweepStaleExtensionSyncJobs(
 	staleThreshold: string,
 ): Promise<Result<Job[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc(
-		"sweep_stale_extension_sync_jobs",
-		{ stale_threshold: staleThreshold },
+	return fromSupabaseMany<Job>(
+		supabase.rpc("sweep_stale_extension_sync_jobs", {
+			stale_threshold: staleThreshold,
+		}),
 	);
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	return Result.ok((data ?? []) as Job[]);
 }
 
 /**
@@ -191,13 +178,9 @@ export async function markDeadExtensionSyncJobs(
 	staleThreshold: string,
 ): Promise<Result<Job[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("mark_dead_extension_sync_jobs", {
-		stale_threshold: staleThreshold,
-	});
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	return Result.ok((data ?? []) as Job[]);
+	return fromSupabaseMany<Job>(
+		supabase.rpc("mark_dead_extension_sync_jobs", {
+			stale_threshold: staleThreshold,
+		}),
+	);
 }

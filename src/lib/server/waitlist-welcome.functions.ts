@@ -10,6 +10,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
 export interface WaitlistWelcome {
@@ -29,6 +30,11 @@ export const getWaitlistWelcome = createServerFn({ method: "GET" })
 		// Best-effort: a read failure should never surface the dialog. Better to
 		// stay silent than to greet someone who may not be a waitlist member.
 		if (error) {
+			captureServerError(error, {
+				area: "waitlist_welcome",
+				operation: "get_waitlist_welcome",
+				accountId: context.session.accountId,
+			});
 			console.error(
 				"[waitlist-welcome] Failed to read grant row:",
 				error.message,

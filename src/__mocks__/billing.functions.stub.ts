@@ -1,52 +1,28 @@
 /**
  * Ladle stub for @/lib/server/billing.functions.
  *
- * Re-exports types/interfaces verbatim and replaces server function callables
- * with async rejects so components fall to their error/unavailable states.
+ * Type-only imports the real module's result types (erased before module
+ * resolution, so the real module's server graph never reaches the Ladle
+ * bundle) and replaces server function callables with async rejects so
+ * components fall to their error/unavailable states.
  */
 
 import type { BillingState } from "@/lib/domains/billing/state";
+import type {
+	CreateCheckoutSessionResponse,
+	CreatePortalSessionResponse,
+	PlanSelectionConfig,
+	RequestSongUnlockResponse,
+	SubscriptionUpgradeQuote,
+} from "@/lib/server/billing.functions";
 
-// ── Types (re-exported as-is) ──────────────────────────────────────────
-
-export type RequestSongUnlockResponse =
-	| {
-			success: true;
-			newlyUnlockedIds: string[];
-			alreadyUnlockedIds: string[];
-			remainingBalance: number;
-	  }
-	| {
-			success: false;
-			error: "insufficient_balance";
-			required: number;
-			available: number;
-	  }
-	| { success: false; error: "billing_service_error"; message: string };
-
-export type CreateCheckoutSessionResponse =
-	| { success: true; checkoutUrl: string }
-	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "billing_unavailable" }
-	| { success: false; error: "invalid_billing_redirect" }
-	| { success: false; error: "rate_limited" };
-
-export type CreatePortalSessionResponse =
-	| { success: true; portalUrl: string }
-	| { success: false; error: "billing_disabled" }
-	| { success: false; error: "billing_unavailable" }
-	| { success: false; error: "invalid_billing_redirect" }
-	| { success: false; error: "rate_limited" };
-
-export interface PlanSelectionConfig {
-	billingEnabled: boolean;
-	quarterlyPlanEnabled: boolean;
-}
-
-export interface SubscriptionUpgradeQuote {
-	convertedCredits: number;
-	discountCents: number;
-}
+export type {
+	CreateCheckoutSessionResponse,
+	CreatePortalSessionResponse,
+	PlanSelectionConfig,
+	RequestSongUnlockResponse,
+	SubscriptionUpgradeQuote,
+};
 
 // ── Stub callables ─────────────────────────────────────────────────────
 

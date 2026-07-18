@@ -1,5 +1,5 @@
 import type { Story } from "@ladle/react";
-import type { BillingState } from "@/lib/domains/billing/state";
+import { makeBillingState as billing } from "@/lib/domains/billing/fixtures";
 import { BillingSection } from "./BillingSection";
 
 export default {
@@ -12,19 +12,6 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 			{children}
 		</div>
 	);
-}
-
-function billing(overrides: Partial<BillingState> = {}): BillingState {
-	return {
-		plan: "free",
-		creditBalance: 0,
-		subscriptionStatus: "none",
-		cancelAtPeriodEnd: false,
-		subscriptionPeriodEnd: null,
-		unlimitedAccess: { kind: "none" },
-		queueBand: "low",
-		...overrides,
-	};
 }
 
 // ── Free ────────────────────────────────────────────────────────────

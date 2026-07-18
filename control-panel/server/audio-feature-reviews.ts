@@ -26,6 +26,12 @@ import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-ba
 import { extractYoutubeVideoId } from "@/lib/integrations/youtube-audio/url";
 import { type AudioFeatureCandidate, asCandidates } from "./audio-candidates";
 import { read, tx } from "./db";
+import {
+	type PageResult,
+	type PageSize,
+	parseQueueQuery,
+	type QueueOrder,
+} from "./query-params";
 
 export interface AudioFeatureReviewRow {
 	id: string;
@@ -128,7 +134,8 @@ function asStringArray(v: unknown): string[] {
 	return [];
 }
 
-function asNumberArray(v: unknown): number[] {
+// Exported for instrumental-audio.ts, which reads the same numeric[] columns.
+export function asNumberArray(v: unknown): number[] {
 	if (Array.isArray(v)) return v.map((x) => Number(x));
 	if (typeof v === "string") return parsePgArrayLiteral(v).map(Number);
 	return [];
@@ -198,14 +205,110 @@ const REVIEW_SELECT = `
 	left join public.song_audio_feature saf on saf.id = r.audio_feature_id
 `;
 
-export async function listAudioReviews(
-	status: AudioFeatureReviewRow["status"] = "pending",
-): Promise<AudioFeatureReviewRow[]> {
-	const rows = await read(
-		`${REVIEW_SELECT} where r.status = $1 order by r.created_at desc limit 200`,
-		[status],
+function escapeLike(value: string): string {
+	return value.replace(/([\\%_])/g, "\\$1");
+}
+
+export type AudioSourceType = "youtube_search" | "youtube_url" | "all";
+
+export interface AudioListParams {
+	status: AudioFeatureReviewRow["status"];
+	q: string;
+	order: QueueOrder;
+	page: number;
+	pageSize: PageSize;
+	sourceType: AudioSourceType;
+	// Match score is 0–1; minMatchScore keeps only accepted matches at/above it.
+	minMatchScore: number | null;
+	// Seconds; keep only rows whose Spotify↔YouTube duration gap is within this.
+	maxDurationDelta: number | null;
+}
+
+function parseStatus(value: string | null): AudioFeatureReviewRow["status"] {
+	return value === "approved" || value === "rejected" ? value : "pending";
+}
+
+function parseUnitInterval(value: string | null): number | null {
+	if (value === null || value.trim() === "") return null;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1 ? parsed : null;
+}
+
+function parseNonNegative(value: string | null): number | null {
+	if (value === null || value.trim() === "") return null;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+export function parseAudioQuery(url: URL): AudioListParams {
+	const base = parseQueueQuery(url, "newest");
+	const sourceType = url.searchParams.get("sourceType");
+	return {
+		status: parseStatus(url.searchParams.get("status")),
+		q: base.q,
+		order: base.order,
+		page: base.page,
+		pageSize: base.pageSize,
+		sourceType:
+			sourceType === "youtube_search" || sourceType === "youtube_url"
+				? sourceType
+				: "all",
+		minMatchScore: parseUnitInterval(url.searchParams.get("minMatchScore")),
+		maxDurationDelta: parseNonNegative(url.searchParams.get("maxDurationDelta")),
+	};
+}
+
+export async function audioReviewsPage(
+	url: URL,
+): Promise<PageResult<AudioFeatureReviewRow>> {
+	const query = parseAudioQuery(url);
+	const params: unknown[] = [query.status];
+	const where: string[] = ["r.status = $1"];
+	if (query.q) {
+		params.push(`%${escapeLike(query.q)}%`);
+		where.push(
+			`(s.name ilike $${params.length} or array_to_string(s.artists, ', ') ilike $${params.length})`,
+		);
+	}
+	if (query.sourceType !== "all") {
+		params.push(query.sourceType);
+		where.push(`r.source_type = $${params.length}`);
+	}
+	if (query.minMatchScore != null) {
+		params.push(query.minMatchScore);
+		where.push(`r.match_score >= $${params.length}`);
+	}
+	if (query.maxDurationDelta != null) {
+		params.push(query.maxDurationDelta);
+		where.push(
+			`(r.youtube_duration_seconds is not null and s.duration_ms is not null
+			  and abs(s.duration_ms / 1000.0 - r.youtube_duration_seconds) <= $${params.length})`,
+		);
+	}
+	const predicate = where.join(" and ");
+	const direction = query.order === "oldest" ? "asc" : "desc";
+	const countRows = await read<{ total: string }>(
+		`select count(*) as total
+		 from public.audio_feature_source_review r
+		 join public.song s on s.id = r.song_id
+		 where ${predicate}`,
+		params,
 	);
-	return rows.map(mapRow);
+	const total = Number(countRows[0]?.total ?? 0);
+	const offset = (query.page - 1) * query.pageSize;
+	const rowParams = [...params, query.pageSize, offset];
+	const rows = await read(
+		`${REVIEW_SELECT} where ${predicate}
+		 order by r.created_at ${direction}, r.id asc
+		 limit $${rowParams.length - 1} offset $${rowParams.length}`,
+		rowParams,
+	);
+	return {
+		rows: rows.map(mapRow),
+		total,
+		page: query.page,
+		pageSize: query.pageSize,
+	};
 }
 
 export interface ApproveResult {

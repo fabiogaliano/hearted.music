@@ -22,6 +22,34 @@ Object.defineProperty(window, "matchMedia", {
 	})),
 });
 
+// jsdom's default origin ("about:blank") is opaque, which leaves
+// window.localStorage undefined. Polyfill it with a real in-memory Storage so
+// localStorage-backed modules (control-panel saved views, attention
+// thresholds) can be tested like a real browser tab.
+if (typeof window.localStorage === "undefined") {
+	const store = new Map<string, string>();
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		value: {
+			getItem: (key: string) =>
+				store.has(key) ? (store.get(key) as string) : null,
+			setItem: (key: string, value: string) => {
+				store.set(key, String(value));
+			},
+			removeItem: (key: string) => {
+				store.delete(key);
+			},
+			clear: () => {
+				store.clear();
+			},
+			key: (index: number) => Array.from(store.keys())[index] ?? null,
+			get length() {
+				return store.size;
+			},
+		} satisfies Storage,
+	});
+}
+
 vi.mock("framer-motion", async () => {
 	const actual =
 		await vi.importActual<typeof import("framer-motion")>("framer-motion");

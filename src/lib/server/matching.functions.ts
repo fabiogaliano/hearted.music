@@ -23,7 +23,9 @@ import {
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
 import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import type { DbError } from "@/lib/shared/errors/database";
 
 // ============================================================================
 // Shared types
@@ -140,18 +142,47 @@ async function doPlaylistsBelongToAccount(
 		.eq("account_id", accountId)
 		.in("id", uniquePlaylistIds);
 
-	return !error && (data?.length ?? 0) === uniquePlaylistIds.length;
+	if (error) {
+		// Fails closed (ownership unproven → not owned), but a DB error here is
+		// distinct from "genuinely not owned" and was previously invisible.
+		captureServerError(error, {
+			area: "matching",
+			operation: "do_playlists_belong_to_account",
+			accountId,
+		});
+		return false;
+	}
+
+	return (data?.length ?? 0) === uniquePlaylistIds.length;
 }
 
+/**
+ * Result-typed so callers can distinguish a genuine DB failure (captured here,
+ * for telemetry) from the valid "no matches yet" case — both used to collapse
+ * to an untyped `null`, which silently swallowed real errors.
+ */
 async function getMatchSnapshotData(
 	snapshotId: string,
 	accountId: string,
-): Promise<{
-	matchResults: MatchResultRow[];
-	decisions: MatchDecision[];
-} | null> {
+): Promise<
+	Result<
+		{
+			matchResults: MatchResultRow[];
+			decisions: MatchDecision[];
+		},
+		DbError
+	>
+> {
 	const matchResultsResult = await getMatchResults(snapshotId);
-	if (Result.isError(matchResultsResult)) return null;
+	if (Result.isError(matchResultsResult)) {
+		captureServerError(matchResultsResult.error, {
+			area: "matching",
+			operation: "get_match_snapshot_data",
+			accountId,
+			extra: { stage: "match_results", snapshotId },
+		});
+		return matchResultsResult;
+	}
 
 	const matchResults = matchResultsResult.value;
 	const matchedSongIds = [...new Set(matchResults.map((mr) => mr.song_id))];
@@ -159,12 +190,20 @@ async function getMatchSnapshotData(
 		accountId,
 		matchedSongIds,
 	);
-	if (Result.isError(decisionsResult)) return null;
+	if (Result.isError(decisionsResult)) {
+		captureServerError(decisionsResult.error, {
+			area: "matching",
+			operation: "get_match_snapshot_data",
+			accountId,
+			extra: { stage: "decisions", snapshotId },
+		});
+		return decisionsResult;
+	}
 
-	return {
+	return Result.ok({
 		matchResults,
 		decisions: decisionsResult.value,
-	};
+	});
 }
 
 /**
@@ -219,11 +258,12 @@ export async function getUndecidedSongs(
 	minScore: number,
 ): Promise<Array<{ songId: string; maxScore: number }>> {
 	const snapshotData = await getMatchSnapshotData(snapshotId, accountId);
-	if (!snapshotData) return [];
+	// getMatchSnapshotData already captured the error; degrade to empty here.
+	if (Result.isError(snapshotData)) return [];
 
 	return deriveUndecidedSongs(
-		snapshotData.matchResults,
-		snapshotData.decisions,
+		snapshotData.value.matchResults,
+		snapshotData.value.decisions,
 		minScore,
 	);
 }
@@ -257,7 +297,17 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 		const supabase = createAdminSupabaseClient();
 
 		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
-		if (Result.isError(snapshotResult) || !snapshotResult.value) return null;
+		if (Result.isError(snapshotResult)) {
+			captureServerError(snapshotResult.error, {
+				area: "matching",
+				operation: "get_song_suggestions",
+				accountId: session.accountId,
+				extra: { stage: "latest_snapshot", songId: data.songId },
+			});
+			return null;
+		}
+		// No snapshot yet — not an error, just nothing to suggest from.
+		if (!snapshotResult.value) return null;
 
 		const matchSnapshot = snapshotResult.value;
 
@@ -265,7 +315,17 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 			p_account_id: session.accountId,
 			p_song_id: data.songId,
 		});
-		if (entitledCheck.error || !entitledCheck.data) {
+		if (entitledCheck.error) {
+			captureServerError(entitledCheck.error, {
+				area: "matching",
+				operation: "get_song_suggestions",
+				accountId: session.accountId,
+				extra: { stage: "entitlement_check", songId: data.songId },
+			});
+			return null;
+		}
+		// Song not entitled (locked) — expected business state, not a failure.
+		if (!entitledCheck.data) {
 			return null;
 		}
 
@@ -280,12 +340,33 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 				resolveMinMatchScore(session.accountId),
 			]);
 
-		if (
-			Result.isError(pairsResult) ||
-			Result.isError(rankingsResult) ||
-			Result.isError(decisionsResult)
-		)
+		if (Result.isError(pairsResult)) {
+			captureServerError(pairsResult.error, {
+				area: "matching",
+				operation: "get_song_suggestions",
+				accountId: session.accountId,
+				extra: { stage: "pairs", songId: data.songId },
+			});
 			return { snapshotId: matchSnapshot.id, matches: [] };
+		}
+		if (Result.isError(rankingsResult)) {
+			captureServerError(rankingsResult.error, {
+				area: "matching",
+				operation: "get_song_suggestions",
+				accountId: session.accountId,
+				extra: { stage: "rankings", songId: data.songId },
+			});
+			return { snapshotId: matchSnapshot.id, matches: [] };
+		}
+		if (Result.isError(decisionsResult)) {
+			captureServerError(decisionsResult.error, {
+				area: "matching",
+				operation: "get_song_suggestions",
+				accountId: session.accountId,
+				extra: { stage: "decisions", songId: data.songId },
+			});
+			return { snapshotId: matchSnapshot.id, matches: [] };
+		}
 
 		const decidedPairKeys = new Set(
 			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),

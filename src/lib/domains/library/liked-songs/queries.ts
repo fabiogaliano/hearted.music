@@ -18,6 +18,10 @@ import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
+// RPC results are typed via LikedSongPageRow (derived from the generated
+// Database["public"]["Functions"] return type), so fromSupabaseMany's
+// generic `T[] | null` shape is reused as-is instead of adding a parallel
+// zod-validated RPC wrapper — the generated types already are the schema.
 import { generateSongSlug } from "@/lib/utils/slug";
 import {
 	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
@@ -134,6 +138,51 @@ export async function isSongOwnedByAccount(
 }
 
 /**
+ * Filters `songIds` down to the ones the account currently likes (un-unliked
+ * `liked_song` rows). Used as a server-side ownership guard before resolving
+ * track URIs or recording match decisions from a client-supplied draft:
+ * callers MUST drop any id not in the returned set, so a tampered request can't
+ * act on songs the account never liked.
+ *
+ * `songIds` is an externally-sourced (request) list, so chunked `.in()` reads
+ * are the sanctioned path here — the CLAUDE.md ban targets DB-derived id sets,
+ * not caller-supplied ones. Returns an error Result on any chunk failure so
+ * callers fail closed rather than under-filter.
+ */
+export async function selectOwnedSongIds(
+	accountId: string,
+	songIds: string[],
+): Promise<Result<Set<string>, DbError>> {
+	if (songIds.length === 0) {
+		return Result.ok(new Set<string>());
+	}
+
+	const supabase = createAdminSupabaseClient();
+	const owned = new Set<string>();
+
+	for (const chunk of chunkArray(songIds, DB_IN_FILTER_CHUNK_SIZE)) {
+		const { data, error } = await supabase
+			.from("liked_song")
+			.select("song_id")
+			.eq("account_id", accountId)
+			.is("unliked_at", null)
+			.in("song_id", chunk);
+
+		if (error) {
+			return Result.err(
+				new DatabaseError({ code: error.code, message: error.message }),
+			);
+		}
+
+		for (const row of data ?? []) {
+			owned.add(row.song_id);
+		}
+	}
+
+	return Result.ok(owned);
+}
+
+/**
  * Gets recent liked songs with song details for activity feed.
  * Uses Supabase foreign key join to fetch song name, artists, and image.
  */
@@ -232,23 +281,23 @@ export async function getPageWithDetails(
 
 	const { likedAt: cursorLikedAt, id: cursorId } = decodeCursor(options.cursor);
 
-	const { data, error } = await supabase.rpc("get_liked_songs_page", {
-		p_account_id: accountId,
-		p_cursor: cursorLikedAt,
-		p_cursor_id: cursorId,
-		p_limit: limit,
-		p_filter: options.filter ?? "all",
-		p_search: search,
-		p_min_score: options.minScore ?? 0,
-	});
+	const rowsResult = await fromSupabaseMany<LikedSongPageRow>(
+		supabase.rpc("get_liked_songs_page", {
+			p_account_id: accountId,
+			p_cursor: cursorLikedAt,
+			p_cursor_id: cursorId,
+			p_limit: limit,
+			p_filter: options.filter ?? "all",
+			p_search: search,
+			p_min_score: options.minScore ?? 0,
+		}),
+	);
 
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
+	if (Result.isError(rowsResult)) {
+		return rowsResult;
 	}
 
-	const rows = (data ?? []) as LikedSongPageRow[];
+	const rows = rowsResult.value;
 	const hasMore = rows.length > limit;
 	const items = hasMore ? rows.slice(0, limit) : rows;
 	const lastItem = items[items.length - 1];
@@ -274,20 +323,15 @@ export async function getPageRowBySlug(
 	minScore = 0,
 ): Promise<Result<LikedSongPageRow | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc("get_liked_song_by_slug", {
-		p_account_id: accountId,
-		p_slug: slug,
-		p_min_score: minScore,
-	});
+	const rowsResult = await fromSupabaseMany<LikedSongPageRow>(
+		supabase.rpc("get_liked_song_by_slug", {
+			p_account_id: accountId,
+			p_slug: slug,
+			p_min_score: minScore,
+		}),
+	);
 
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	const rows = (data ?? []) as LikedSongPageRow[];
-	return Result.ok(rows[0] ?? null);
+	return Result.map(rowsResult, (rows) => rows[0] ?? null);
 }
 
 /** Single source of truth for the deep-link slug a page row resolves to. */
@@ -362,23 +406,20 @@ export async function getBootstrapPagesBySlug(
 	minScore = 0,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc(
-		"get_liked_songs_bootstrap_by_slug",
-		{
+	const rowsResult = await fromSupabaseMany<LikedSongPageRow>(
+		supabase.rpc("get_liked_songs_bootstrap_by_slug", {
 			p_account_id: accountId,
 			p_slug: slug,
 			p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
 			p_min_score: minScore,
-		},
+		}),
 	);
 
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
+	if (Result.isError(rowsResult)) {
+		return rowsResult;
 	}
 
-	const rows = (data ?? []) as LikedSongPageRow[];
+	const rows = rowsResult.value;
 	const matchIndex = rows.findIndex((row) => pageRowMatchesSlug(row, slug));
 
 	if (matchIndex === -1) {
