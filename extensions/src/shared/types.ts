@@ -55,6 +55,8 @@ export type PathfinderHashPayload = {
  *   - the web app → `runtime.onMessageExternal` on Chrome, or the app-bridge
  *     envelope on Firefox (PING, CONNECT, TRIGGER_SYNC, SPOTIFY_STATUS,
  *     EXPECT_LOGIN_RETURN, GET_STATUS, SpotifyCommand)
+ *   - account visibility (popup primarily, web app allowed): GET_ACCOUNTS,
+ *     DISCONNECT_SPOTIFY, DISCONNECT_HEARTED
  * Declared once here so there is exactly one typed vocabulary and one
  * exhaustive dispatcher, instead of two independently-typed message unions
  * routed through two separate handlers.
@@ -71,6 +73,9 @@ export type ExtensionWireMessage =
 	| { type: "SPOTIFY_TOKEN"; payload: SpotifyTokenPayload }
 	| { type: "PATHFINDER_HASH"; payload: PathfinderHashPayload }
 	| { type: "ARM_TOKEN_PRESENT"; token: string }
+	| { type: "GET_ACCOUNTS" }
+	| { type: "DISCONNECT_SPOTIFY" }
+	| { type: "DISCONNECT_HEARTED" }
 	| SpotifyCommand;
 
 export type ExtensionWireMessageType = ExtensionWireMessage["type"];
@@ -86,6 +91,34 @@ export type UserProfile = {
 	displayName: string;
 	username: string;
 	avatarUrl: string | null;
+};
+
+/** Identity of the hearted account the stored apiToken acts as, as reported by
+ * GET /api/extension/status. All-null when the backend was unreachable and no
+ * cached identity exists. */
+export type HeartedIdentity = {
+	displayName: string | null;
+	imageUrl: string | null;
+	spotifyId: string | null;
+};
+
+/**
+ * Pairing status for the hearted side of the extension.
+ *  - disconnected: no apiToken stored (never paired, or explicitly forgotten)
+ *  - revoked: backend rejected the stored apiToken (401) — re-pair from the app
+ *  - connected: apiToken present; `verified` is false when the backend could
+ *    not be reached, in which case `account` comes from the last cached check
+ */
+export type HeartedAccountStatus =
+	| { state: "disconnected" }
+	| { state: "revoked" }
+	| { state: "connected"; account: HeartedIdentity; verified: boolean };
+
+/** Response payload for GET_ACCOUNTS. */
+export type AccountsResponse = {
+	type: "ACCOUNTS";
+	spotify: UserProfile | null;
+	hearted: HeartedAccountStatus;
 };
 
 /** Derived from the shared sync payload schema — see import comment above. */

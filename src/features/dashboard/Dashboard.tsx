@@ -7,6 +7,7 @@ import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { hasNavigatedThisSession } from "@/lib/navigation/session-navigation";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
+import { ExtensionAccountBanner } from "./components/ExtensionAccountBanner";
 import { CreatePlaylistCTA } from "./sections/CreatePlaylistCTA";
 import { DashboardHeader } from "./sections/DashboardHeader";
 import { MatchReviewCTA } from "./sections/MatchReviewCTA";
@@ -15,6 +16,8 @@ import type { DashboardProps } from "./types";
 export function Dashboard({
 	accountId,
 	handle,
+	linkedSpotifyId,
+	accountDisplayName,
 	recentActivity,
 	matchPreviews,
 	stats,
@@ -33,6 +36,11 @@ export function Dashboard({
 			initialDelay={0.05}
 		>
 			<DashboardHeader accountId={accountId} stats={stats} handle={handle} />
+
+			<ExtensionAccountBanner
+				linkedSpotifyId={linkedSpotifyId}
+				accountDisplayName={accountDisplayName}
+			/>
 
 			<MatchReviewCTA
 				reviewCount={stats.reviewCount}

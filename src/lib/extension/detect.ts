@@ -58,6 +58,43 @@ export async function getSpotifyConnectionStatus(): Promise<boolean> {
 	return response?.type === "SPOTIFY_STATUS" && response.hasToken === true;
 }
 
+/** Spotify identity the extension captured from the browser's session. */
+export type ExtensionSpotifyProfile = {
+	spotifyId: string;
+	displayName: string;
+	avatarUrl: string | null;
+};
+
+export type SpotifyAccountStatus = {
+	connected: boolean;
+	/** Whether the extension holds a hearted apiToken (pairing presence, not
+	 * validity — validity is only observable via a backend round-trip). Null
+	 * when the installed extension predates the field, so callers don't read
+	 * "field missing" as "unpaired". */
+	paired: boolean | null;
+	profile: ExtensionSpotifyProfile | null;
+};
+
+/**
+ * Identity-aware variant of `getSpotifyConnectionStatus`. Same SPOTIFY_STATUS
+ * command; also reads the profile + pairing fields newer extensions attach.
+ * Returns null when the extension is unreachable.
+ */
+export async function getSpotifyAccountStatus(): Promise<SpotifyAccountStatus | null> {
+	const response = await sendExtensionCommand<{
+		type?: string;
+		hasToken?: boolean;
+		paired?: boolean;
+		profile?: ExtensionSpotifyProfile | null;
+	}>({ type: "SPOTIFY_STATUS" });
+	if (response?.type !== "SPOTIFY_STATUS") return null;
+	return {
+		connected: response.hasToken === true,
+		paired: typeof response.paired === "boolean" ? response.paired : null,
+		profile: response.profile ?? null,
+	};
+}
+
 export async function getExtensionStatus(): Promise<ExtensionStatusResponse | null> {
 	return sendExtensionCommand<ExtensionStatusResponse>({ type: "GET_STATUS" });
 }

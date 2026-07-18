@@ -6,7 +6,12 @@ import data from "./fixtures.json";
 import matchExperienceData from "./match-experience.json";
 
 export const allLikedSongs: LikedSong[] = data.likedSongs as LikedSong[];
-const dashboardData = data.dashboard as Omit<DashboardProps, "accountId">;
+// The JSON fixture predates the extension account-conflict props; supply them
+// in simulateDashboard rather than duplicating them across the fixture file.
+const dashboardData = data.dashboard as Omit<
+	DashboardProps,
+	"accountId" | "linkedSpotifyId" | "accountDisplayName"
+>;
 
 export const matchingSongs: Array<{
 	song: SongForMatching;
@@ -72,6 +77,8 @@ export function simulateDashboard(
 	return {
 		...dashboardData,
 		accountId: "story-account",
+		linkedSpotifyId: "story-spotify-id",
+		accountDisplayName: "story",
 		stats: {
 			...dashboardData.stats,
 			totalSongs: songs.length,

@@ -14,7 +14,9 @@ import type {
 import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
 import type { SyncState } from "../shared/storage";
 import type {
+	AccountsResponse,
 	ExtensionWireMessage,
+	HeartedAccountStatus,
 	SpotifyTokenPayload,
 	StatusResponse,
 	UserProfile,
@@ -69,6 +71,15 @@ export type DispatcherDeps = {
 	closeAndFocusHearted: (
 		sender: chrome.runtime.MessageSender,
 	) => Promise<{ ok: true } | { ok: false; error: string }>;
+	/** Cached-or-fetched Spotify profile for the current token; null when the
+	 * token is missing/anonymous/expired or the profile fetch failed. */
+	getSpotifyProfile: () => Promise<UserProfile | null>;
+	/** Live pairing check against the backend (GET /api/extension/status). */
+	getHeartedAccountStatus: () => Promise<HeartedAccountStatus>;
+	/** apiToken presence — cheap storage read, no network. */
+	isPaired: () => Promise<boolean>;
+	disconnectSpotify: () => Promise<void>;
+	disconnectHearted: () => Promise<void>;
 	tokenProvider: TokenProvider;
 };
 
@@ -135,10 +146,14 @@ export async function dispatchExtensionMessage(
 			return dispatchTriggerSync(deps);
 
 		case "SPOTIFY_STATUS": {
+			// `paired` rides along so the web app can spot a popup-side hearted
+			// disconnect from the poll it already runs, without the backend hit
+			// GET_ACCOUNTS implies.
+			const paired = await deps.isPaired();
 			const hasSession = await deps.hasSpotifySession();
 			if (!hasSession) {
 				deps.clearSpotifyTokenCache();
-				return { type: "SPOTIFY_STATUS", hasToken: false };
+				return { type: "SPOTIFY_STATUS", hasToken: false, paired };
 			}
 			await deps.rehydrateTokenIfMissing();
 			const token = deps.getCachedToken();
@@ -151,6 +166,8 @@ export async function dispatchExtensionMessage(
 				type: "SPOTIFY_STATUS",
 				hasToken: hasUsableToken,
 				hasSession: true,
+				paired,
+				profile: hasUsableToken ? await deps.getSpotifyProfile() : null,
 			};
 		}
 
@@ -216,6 +233,30 @@ export async function dispatchExtensionMessage(
 			return { ok: true };
 		}
 
+		case "GET_ACCOUNTS": {
+			// Mirror SPOTIFY_STATUS's session gate so a signed-out browser never
+			// reports a stale captured profile as the current Spotify account.
+			const hasSession = await deps.hasSpotifySession();
+			if (!hasSession) deps.clearSpotifyTokenCache();
+			await deps.rehydrateTokenIfMissing();
+			const spotify = hasSession ? await deps.getSpotifyProfile() : null;
+			const hearted = await deps.getHeartedAccountStatus();
+			const response: AccountsResponse = {
+				type: "ACCOUNTS",
+				spotify,
+				hearted,
+			};
+			return response;
+		}
+
+		case "DISCONNECT_SPOTIFY":
+			await deps.disconnectSpotify();
+			return { ok: true };
+
+		case "DISCONNECT_HEARTED":
+			await deps.disconnectHearted();
+			return { ok: true };
+
 		case "SPOTIFY_COMMAND":
 			return handleSpotifyCommand(message, deps.tokenProvider);
 
@@ -277,6 +318,12 @@ export function parseExtensionWireMessage(
 		case "ARM_TOKEN_PRESENT":
 			if (typeof v.token !== "string") return null;
 			return { type: "ARM_TOKEN_PRESENT", token: v.token };
+		case "GET_ACCOUNTS":
+			return { type: "GET_ACCOUNTS" };
+		case "DISCONNECT_SPOTIFY":
+			return { type: "DISCONNECT_SPOTIFY" };
+		case "DISCONNECT_HEARTED":
+			return { type: "DISCONNECT_HEARTED" };
 		case "SPOTIFY_COMMAND": {
 			const parsed = parseSpotifyCommand(input);
 			return parsed.ok ? parsed.value : null;

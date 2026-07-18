@@ -57,6 +57,13 @@ function makeDeps(overrides: Partial<DispatcherDeps> = {}): DispatcherDeps {
 		updatePathfinderHash: vi.fn(),
 		handleArmTokenPresent: vi.fn().mockResolvedValue(undefined),
 		closeAndFocusHearted: vi.fn().mockResolvedValue({ ok: true }),
+		getSpotifyProfile: vi.fn().mockResolvedValue(null),
+		getHeartedAccountStatus: vi
+			.fn()
+			.mockResolvedValue({ state: "disconnected" }),
+		isPaired: vi.fn().mockResolvedValue(false),
+		disconnectSpotify: vi.fn().mockResolvedValue(undefined),
+		disconnectHearted: vi.fn().mockResolvedValue(undefined),
 		tokenProvider: makeTokenProvider(true),
 		...overrides,
 	};
@@ -208,6 +215,7 @@ describe("dispatchExtensionMessage", () => {
 	it("SPOTIFY_STATUS reports no session", async () => {
 		const deps = makeDeps({
 			hasSpotifySession: vi.fn().mockResolvedValue(false),
+			isPaired: vi.fn().mockResolvedValue(true),
 		});
 		const result = await dispatchExtensionMessage(
 			{ type: "SPOTIFY_STATUS" },
@@ -215,7 +223,100 @@ describe("dispatchExtensionMessage", () => {
 			deps,
 		);
 		expect(deps.clearSpotifyTokenCache).toHaveBeenCalled();
-		expect(result).toEqual({ type: "SPOTIFY_STATUS", hasToken: false });
+		expect(result).toEqual({
+			type: "SPOTIFY_STATUS",
+			hasToken: false,
+			paired: true,
+		});
+	});
+
+	it("SPOTIFY_STATUS attaches the profile + pairing when a session is usable", async () => {
+		const profile = {
+			spotifyId: "u1",
+			displayName: "fabio",
+			username: "fabio",
+			avatarUrl: null,
+		};
+		const deps = makeDeps({
+			isPaired: vi.fn().mockResolvedValue(true),
+			getSpotifyProfile: vi.fn().mockResolvedValue(profile),
+		});
+		const result = await dispatchExtensionMessage(
+			{ type: "SPOTIFY_STATUS" },
+			sender,
+			deps,
+		);
+		expect(result).toEqual({
+			type: "SPOTIFY_STATUS",
+			hasToken: true,
+			hasSession: true,
+			paired: true,
+			profile,
+		});
+	});
+
+	it("GET_ACCOUNTS returns Spotify profile + hearted status", async () => {
+		const profile = {
+			spotifyId: "u1",
+			displayName: "fabio",
+			username: "fabio",
+			avatarUrl: null,
+		};
+		const hearted = {
+			state: "connected" as const,
+			verified: true,
+			account: { displayName: "fabio", imageUrl: null, spotifyId: "u1" },
+		};
+		const deps = makeDeps({
+			getSpotifyProfile: vi.fn().mockResolvedValue(profile),
+			getHeartedAccountStatus: vi.fn().mockResolvedValue(hearted),
+		});
+		const result = await dispatchExtensionMessage(
+			{ type: "GET_ACCOUNTS" },
+			sender,
+			deps,
+		);
+		expect(result).toEqual({ type: "ACCOUNTS", spotify: profile, hearted });
+	});
+
+	it("GET_ACCOUNTS omits a stale Spotify profile once the session is gone", async () => {
+		const deps = makeDeps({
+			hasSpotifySession: vi.fn().mockResolvedValue(false),
+			getSpotifyProfile: vi.fn().mockResolvedValue({
+				spotifyId: "u1",
+				displayName: "fabio",
+				username: "fabio",
+				avatarUrl: null,
+			}),
+		});
+		const result = await dispatchExtensionMessage(
+			{ type: "GET_ACCOUNTS" },
+			sender,
+			deps,
+		);
+		expect(deps.clearSpotifyTokenCache).toHaveBeenCalled();
+		expect(deps.getSpotifyProfile).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ type: "ACCOUNTS", spotify: null });
+	});
+
+	it("DISCONNECT_SPOTIFY / DISCONNECT_HEARTED delegate and ack", async () => {
+		const deps = makeDeps();
+		expect(
+			await dispatchExtensionMessage(
+				{ type: "DISCONNECT_SPOTIFY" },
+				sender,
+				deps,
+			),
+		).toEqual({ ok: true });
+		expect(deps.disconnectSpotify).toHaveBeenCalled();
+		expect(
+			await dispatchExtensionMessage(
+				{ type: "DISCONNECT_HEARTED" },
+				sender,
+				deps,
+			),
+		).toEqual({ ok: true });
+		expect(deps.disconnectHearted).toHaveBeenCalled();
 	});
 
 	it("GET_STATUS returns token + sync state", async () => {
@@ -293,6 +394,18 @@ describe("parseExtensionWireMessage", () => {
 	it("parses a well-formed message", () => {
 		expect(parseExtensionWireMessage({ type: "PING" })).toEqual({
 			type: "PING",
+		});
+	});
+
+	it("parses the account messages", () => {
+		expect(parseExtensionWireMessage({ type: "GET_ACCOUNTS" })).toEqual({
+			type: "GET_ACCOUNTS",
+		});
+		expect(parseExtensionWireMessage({ type: "DISCONNECT_SPOTIFY" })).toEqual({
+			type: "DISCONNECT_SPOTIFY",
+		});
+		expect(parseExtensionWireMessage({ type: "DISCONNECT_HEARTED" })).toEqual({
+			type: "DISCONNECT_HEARTED",
 		});
 	});
 

@@ -14,6 +14,10 @@ export default defineConfig({
 		exclude: ["@tanstack/react-start/server"],
 	},
 	resolve: {
+		// The extension popup stories live under extensions/, which has its own
+		// node_modules/react. Force a single React copy so those components share
+		// the app's renderer instead of tripping the duplicate-React hook checks.
+		dedupe: ["react", "react-dom"],
 		alias: [
 			// Stub server-only modules that can't run in the browser.
 			// TanStack Start's Vite plugin normally strips these from client

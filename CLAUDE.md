@@ -20,5 +20,5 @@ sessions (which clone only the repo, not `~/.claude`) follow the same rules.
 - Comments explain WHY only — no section dividers, restate-code, or JSX labels.
 - Build only what's asked. No speculative features.
 - Never disable/skip tests. Find root cause, fix the issue.
-- Tests → `tests/` or `__tests__/`. Scripts → `scripts/`. Analysis notes → `claudedocs/`.
+- Tests → `tests/` or `__tests__/`. Scripts → `scripts/`. Analysis notes → `docs/tmp/`. Never create `claudedocs/`.
 - Read files before Write/Edit. Absolute paths only. Parallel tool calls by default.

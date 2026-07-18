@@ -56,6 +56,7 @@ const domTestFiles = [
 	"src/lib/extension/__tests__/reconnect-link.test.ts",
 	"src/lib/consent/__tests__/consent-storage.test.ts",
 	"src/lib/extension/__tests__/useSpotifyReconnectState.test.ts",
+	"src/lib/extension/__tests__/useExtensionAccountConflict.test.ts",
 	"src/features/playlists/create/__tests__/useSpotifyGate.test.ts",
 	"src/features/playlists/create/__tests__/usePublishPlaylist.test.ts",
 	"src/features/playlists/__tests__/usePlaylistVoices.test.ts",

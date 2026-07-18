@@ -36,7 +36,12 @@ import {
 	enqueueSyncDiagnostic,
 	flushPendingSyncDiagnostics,
 } from "../shared/sync-diagnostics";
-import type { SpotifyTokenPayload, UserProfile } from "../shared/types";
+import type {
+	HeartedAccountStatus,
+	HeartedIdentity,
+	SpotifyTokenPayload,
+	UserProfile,
+} from "../shared/types";
 import type { DispatcherDeps } from "./dispatcher";
 import { handleInboundMessage } from "./dispatcher";
 import {
@@ -100,7 +105,7 @@ async function getBackendUrl(): Promise<string> {
 function clearSpotifyTokenCache(): void {
 	cachedToken = null;
 	cachedProfile = null;
-	browser.storage.local.remove("spotifyToken");
+	browser.storage.local.remove(["spotifyToken", "spotifyProfile"]);
 }
 
 async function hasSpotifySession(): Promise<boolean> {
@@ -303,6 +308,101 @@ async function debugBroadcastShowReturnBanner(): Promise<void> {
 	}
 }
 
+// Throttle failed profileAttributes fetches so a broken pathfinder hash or a
+// flaky network doesn't turn every SPOTIFY_STATUS poll into a Spotify request.
+let profileFetchFailedAtMs = 0;
+const PROFILE_FETCH_RETRY_MS = 60_000;
+
+/**
+ * Cached-or-fetched Spotify profile for the current token. Persisted so the
+ * popup and the web app's status poll get an instant answer; refetched only
+ * when a new token arrives (the account behind it may have changed).
+ */
+async function getSpotifyProfile(): Promise<UserProfile | null> {
+	await rehydrateTokenIfMissing();
+	if (!isUsableToken(cachedToken)) return null;
+	if (cachedProfile) return cachedProfile;
+	const { spotifyProfile } = await browser.storage.local.get("spotifyProfile");
+	if (spotifyProfile) {
+		cachedProfile = spotifyProfile as UserProfile;
+		return cachedProfile;
+	}
+	if (Date.now() - profileFetchFailedAtMs < PROFILE_FETCH_RETRY_MS) return null;
+	try {
+		const profile = await fetchProfile(
+			(cachedToken as SpotifyTokenPayload).accessToken,
+		);
+		cachedProfile = profile;
+		await browser.storage.local.set({ spotifyProfile: profile });
+		return profile;
+	} catch (err) {
+		profileFetchFailedAtMs = Date.now();
+		console.warn("[hearted.] Spotify profile fetch failed:", err);
+		return null;
+	}
+}
+
+/**
+ * Who does the stored apiToken act as? Verified live against
+ * GET /api/extension/status (which 401s on a revoked token); falls back to the
+ * last cached identity when the backend is unreachable so the popup can still
+ * name the account.
+ */
+async function getHeartedAccountStatus(): Promise<HeartedAccountStatus> {
+	const { apiToken, heartedAccount } = await browser.storage.local.get([
+		"apiToken",
+		"heartedAccount",
+	]);
+	if (!apiToken) return { state: "disconnected" };
+	const backendUrl = await getBackendUrl();
+	try {
+		// The popup awaits this before rendering — cap the wait so a hung
+		// backend degrades to the cached identity instead of a stuck spinner.
+		const res = await fetch(`${backendUrl}/api/extension/status`, {
+			headers: { Authorization: `Bearer ${apiToken}` },
+			signal: AbortSignal.timeout(4_000),
+		});
+		if (res.status === 401) return { state: "revoked" };
+		if (!res.ok) throw new Error(`Backend HTTP ${res.status}`);
+		const body = (await res.json()) as {
+			displayName?: string | null;
+			imageUrl?: string | null;
+			spotifyId?: string | null;
+		};
+		const account: HeartedIdentity = {
+			displayName: body.displayName ?? null,
+			imageUrl: body.imageUrl ?? null,
+			spotifyId: body.spotifyId ?? null,
+		};
+		await browser.storage.local.set({ heartedAccount: account });
+		return { state: "connected", account, verified: true };
+	} catch {
+		const cached = (heartedAccount ?? null) as HeartedIdentity | null;
+		return {
+			state: "connected",
+			account: cached ?? { displayName: null, imageUrl: null, spotifyId: null },
+			verified: false,
+		};
+	}
+}
+
+async function isPaired(): Promise<boolean> {
+	const { apiToken } = await browser.storage.local.get("apiToken");
+	return Boolean(apiToken);
+}
+
+async function disconnectHearted(): Promise<void> {
+	await browser.storage.local.remove(["apiToken", "heartedAccount"]);
+	console.log("[hearted.] Hearted pairing forgotten (apiToken cleared)");
+}
+
+async function disconnectSpotify(): Promise<void> {
+	// Drops the captured token + profile only — the browser's own Spotify
+	// session (sp_dc) is untouched, so opening Spotify reconnects immediately.
+	clearSpotifyTokenCache();
+	console.log("[hearted.] Spotify session forgotten (token cache cleared)");
+}
+
 async function getApiToken(): Promise<string> {
 	const { apiToken } = await browser.storage.local.get("apiToken");
 	if (!apiToken) {
@@ -447,6 +547,7 @@ async function performSync(): Promise<SyncResult> {
 	try {
 		if (!cachedProfile) {
 			cachedProfile = await fetchProfile(token);
+			await browser.storage.local.set({ spotifyProfile: cachedProfile });
 			console.log(`[hearted.] Current user: ${cachedProfile.displayName}`);
 		}
 		// local ref survives cachedProfile being nulled by incoming SPOTIFY_TOKEN messages
@@ -863,6 +964,9 @@ async function handleSpotifyTokenMessage(
 
 	cachedToken = payload;
 	cachedProfile = null;
+	// A new token can belong to a different Spotify account, so the persisted
+	// profile must be refetched, not reused.
+	await browser.storage.local.remove("spotifyProfile");
 	await browser.storage.local.set({ spotifyToken: payload });
 	const expiresIn = Math.round((payload.expiresAtMs - Date.now()) / 1000);
 	console.log(`[hearted.] Token received (expires in ${expiresIn}s)`);
@@ -962,6 +1066,9 @@ const dispatcherDeps: DispatcherDeps = {
 		const storagePayload: Record<string, string> = { apiToken };
 		if (backendUrl !== undefined) storagePayload.backendUrl = backendUrl;
 		await browser.storage.local.set(storagePayload);
+		// A fresh pairing may act as a different hearted account — drop the
+		// cached identity so GET_ACCOUNTS re-verifies against the backend.
+		await browser.storage.local.remove("heartedAccount");
 		console.log(
 			`[hearted.] Connected with API token from web app (${backendUrl ?? DEFAULT_BACKEND_URL})`,
 		);
@@ -1017,6 +1124,11 @@ const dispatcherDeps: DispatcherDeps = {
 	},
 	handleArmTokenPresent,
 	closeAndFocusHearted,
+	getSpotifyProfile,
+	getHeartedAccountStatus,
+	isPaired,
+	disconnectSpotify,
+	disconnectHearted,
 	tokenProvider,
 };
 
