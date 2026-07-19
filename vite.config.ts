@@ -69,6 +69,8 @@ const domTestFiles = [
 	"control-panel/src/lib/__tests__/attention-thresholds.test.ts",
 	"control-panel/src/lib/__tests__/email-draft.test.ts",
 	"control-panel/src/lib/__tests__/saved-views.test.ts",
+	// Stale-chunk recovery drives sessionStorage and location.reload.
+	"src/lib/platform/routing/__tests__/stale-chunk.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {

@@ -28,6 +28,10 @@ import {
 } from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
 import { captureRouteError } from "@/lib/observability/sentry";
+import {
+	clearStaleChunkMarker,
+	recoverFromStaleChunk,
+} from "@/lib/platform/routing/stale-chunk";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
@@ -302,6 +306,12 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
+	// Rendering means the current build loaded, so a later deploy gets its own
+	// one-shot reload.
+	useEffect(() => {
+		clearStaleChunkMarker();
+	}, []);
+
 	return (
 		<ThemeHueProvider>
 			<KeyboardShortcutProvider>
@@ -313,6 +323,12 @@ function RootComponent() {
 
 function RootErrorComponent({ error }: ErrorComponentProps) {
 	useEffect(() => {
+		// A tab open across a deploy asks for asset files that no longer exist.
+		// Reloading recovers the user, so don't report a failure that is about to
+		// fix itself — if the reload already happened, it isn't staleness and the
+		// error falls through to be reported normally.
+		if (recoverFromStaleChunk(error)) return;
+
 		console.error("[RootError]", error);
 		captureRouteError(error, { route: "__root" });
 	}, [error]);
