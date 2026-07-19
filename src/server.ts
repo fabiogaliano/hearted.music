@@ -35,6 +35,16 @@ function validateSentryEnv(env: WorkerEnv): {
 		throw new Error("SENTRY_DSN must be a valid URL");
 	}
 
+	// `bun run dev` loads the same .env as prod, so a DSN left set locally sends
+	// every dev-server error to the production project — that leak was ~98% of
+	// this project's Sentry volume. Gate on the build-time DEV flag rather than
+	// SENTRY_ENVIRONMENT: the environment string defaults to "production" when
+	// unset, so trusting it would let one missing var reopen the leak. Validation
+	// above still runs, so a malformed DSN fails loudly in dev where it's seen.
+	if (import.meta.env.DEV) {
+		return { environment };
+	}
+
 	return { dsn, environment };
 }
 

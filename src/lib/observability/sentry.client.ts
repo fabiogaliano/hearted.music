@@ -13,9 +13,13 @@ let sentryInitialized = false;
 let replayIntegration: ReturnType<typeof Sentry.replayIntegration> | null =
 	null;
 
+// PROD is part of the predicate, not just a replay concern: a DSN left set in a
+// local .env would otherwise report every dev error to the production project.
 function isSentryEnabled(): boolean {
 	return (
-		typeof window !== "undefined" && clientEnv.VITE_SENTRY_DSN !== undefined
+		typeof window !== "undefined" &&
+		import.meta.env.PROD &&
+		clientEnv.VITE_SENTRY_DSN !== undefined
 	);
 }
 
@@ -67,12 +71,7 @@ export function initSentry(router: AnyRouter): void {
 }
 
 export function enableSentryReplay(): void {
-	if (
-		!isSentryEnabled() ||
-		!sentryInitialized ||
-		!import.meta.env.PROD ||
-		replayIntegration !== null
-	) {
+	if (!isSentryEnabled() || !sentryInitialized || replayIntegration !== null) {
 		return;
 	}
 
