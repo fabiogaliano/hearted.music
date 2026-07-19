@@ -561,4 +561,79 @@ describe("grantFreeAllocation", () => {
 		if (!Result.isError(result)) return;
 		expect(result.error.kind).toBe("db_error");
 	});
+
+	// A lock wait used to lose the grant outright, leaving a free-plan user with
+	// zero unlocked songs and no error shown.
+	describe("lock timeout retry", () => {
+		const lockTimeout = {
+			data: null,
+			error: {
+				code: "55P03",
+				message: "canceling statement due to lock timeout",
+			},
+		};
+
+		function allocatableFrom() {
+			return mockFrom({
+				account_song_unlock: { selectResult: { data: [], error: null } },
+				liked_song: {
+					selectResult: { data: [{ song_id: "s1" }], error: null },
+				},
+			});
+		}
+
+		it("retries and succeeds after a transient lock timeout", async () => {
+			const rpcFn = vi
+				.fn()
+				.mockResolvedValueOnce(lockTimeout)
+				.mockResolvedValueOnce({ data: [{ song_id: "s1" }], error: null });
+
+			const client = {
+				from: allocatableFrom(),
+				rpc: rpcFn,
+			} as unknown as AdminSupabaseClient;
+
+			const result = await grantFreeAllocation(client, "acc-1");
+
+			expect(Result.isOk(result)).toBe(true);
+			if (!Result.isOk(result)) return;
+			expect(result.value.unlockedIds).toEqual(["s1"]);
+			expect(rpcFn).toHaveBeenCalledTimes(2);
+		});
+
+		it("gives up as db_error once the retry budget is exhausted", async () => {
+			const rpcFn = vi.fn().mockResolvedValue(lockTimeout);
+
+			const client = {
+				from: allocatableFrom(),
+				rpc: rpcFn,
+			} as unknown as AdminSupabaseClient;
+
+			const result = await grantFreeAllocation(client, "acc-1");
+
+			expect(Result.isError(result)).toBe(true);
+			if (!Result.isError(result)) return;
+			expect(result.error.kind).toBe("db_error");
+			expect(rpcFn).toHaveBeenCalledTimes(3);
+		});
+
+		// Only the transient class is safe to repeat; a real failure must surface
+		// on the first attempt rather than being retried three times.
+		it("does not retry a non-lock error", async () => {
+			const rpcFn = vi.fn().mockResolvedValue({
+				data: null,
+				error: { code: "P0001", message: "rpc failed" },
+			});
+
+			const client = {
+				from: allocatableFrom(),
+				rpc: rpcFn,
+			} as unknown as AdminSupabaseClient;
+
+			const result = await grantFreeAllocation(client, "acc-1");
+
+			expect(Result.isError(result)).toBe(true);
+			expect(rpcFn).toHaveBeenCalledTimes(1);
+		});
+	});
 });

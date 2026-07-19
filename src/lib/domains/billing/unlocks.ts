@@ -164,6 +164,59 @@ export async function requestSongUnlock(
 
 const FREE_ALLOCATION_LIMIT = 10;
 
+const LOCK_TIMEOUT_SQLSTATE = "55P03";
+const FREE_ALLOCATION_RETRY_DELAYS_MS = [50, 200];
+
+// A lock wait is transient — a concurrent writer or a migration holding a lock
+// on account_song_unlock — and the grant is the last step of onboarding, so
+// failing it leaves a free-plan user with zero unlocked songs and no error
+// shown. The RPC is idempotent (ON CONFLICT ... WHERE revoked_at IS NOT NULL),
+// so a retry can never double-grant.
+//
+// Matched on message as well as SQLSTATE: the one production occurrence was
+// captured before wrapped errors carried a db_code tag, so 55P03 is inferred
+// from the message rather than observed. The message check keeps the retry
+// working if the real code differs.
+function isLockTimeout(error: { code?: string; message?: string } | null) {
+	if (!error) return false;
+	return (
+		error.code === LOCK_TIMEOUT_SQLSTATE ||
+		(error.message?.includes("lock timeout") ?? false)
+	);
+}
+
+async function insertFreeUnlocksWithRetry(
+	supabase: AdminSupabaseClient,
+	accountId: string,
+	songIds: string[],
+) {
+	for (
+		let attempt = 0;
+		attempt <= FREE_ALLOCATION_RETRY_DELAYS_MS.length;
+		attempt++
+	) {
+		const response = await supabase.rpc("insert_song_unlocks_without_charge", {
+			p_account_id: accountId,
+			p_song_ids: songIds,
+			p_source: "free_auto",
+		});
+
+		if (
+			!isLockTimeout(response.error) ||
+			attempt === FREE_ALLOCATION_RETRY_DELAYS_MS.length
+		) {
+			return response;
+		}
+
+		await new Promise((resolve) =>
+			setTimeout(resolve, FREE_ALLOCATION_RETRY_DELAYS_MS[attempt]),
+		);
+	}
+
+	// Unreachable: the loop returns on its final iteration.
+	throw new Error("insertFreeUnlocksWithRetry: exhausted without a response");
+}
+
 export async function grantFreeAllocation(
 	supabase: AdminSupabaseClient,
 	accountId: string,
@@ -219,14 +272,8 @@ export async function grantFreeAllocation(
 		return Result.ok({ unlockedIds: [] });
 	}
 
-	const { data: unlockRows, error: unlockError } = await supabase.rpc(
-		"insert_song_unlocks_without_charge",
-		{
-			p_account_id: accountId,
-			p_song_ids: candidateIds,
-			p_source: "free_auto",
-		},
-	);
+	const { data: unlockRows, error: unlockError } =
+		await insertFreeUnlocksWithRetry(supabase, accountId, candidateIds);
 
 	if (unlockError) {
 		return Result.err({

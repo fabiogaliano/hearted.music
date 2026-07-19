@@ -47,6 +47,40 @@ describe("captureServerError", () => {
 		});
 	});
 
+	// UnlockError's shape. Before this was handled, a production lock timeout
+	// reported with no db_code at all — nothing to group or alert on.
+	it("reads db_* tags from a wrapped error's cause", () => {
+		const cause = new DatabaseError({
+			code: "55P03",
+			message: "canceling statement due to lock timeout",
+		});
+		captureServerError(
+			{ kind: "db_error", cause },
+			{ operation: "grant_free_allocation", area: "onboarding" },
+		);
+
+		const [, context] = mockCaptureException.mock.calls[0] ?? [];
+		expect(context).toMatchObject({
+			tags: {
+				operation: "grant_free_allocation",
+				area: "onboarding",
+				db_error: "DatabaseError",
+				db_code: "55P03",
+			},
+		});
+	});
+
+	it("prefers the error's own tags over its cause's", () => {
+		const cause = new DatabaseError({ code: "55P03", message: "inner" });
+		captureServerError(
+			Object.assign(new Error("outer"), { code: "PGRST202", cause }),
+			{ operation: "get_billing_state" },
+		);
+
+		const [, context] = mockCaptureException.mock.calls[0] ?? [];
+		expect(context.tags.db_code).toBe("PGRST202");
+	});
+
 	it("omits db_* tags and user for a plain error with no account", () => {
 		const err = new Error("network down");
 		captureServerError(err, { operation: "create_checkout_session" });
