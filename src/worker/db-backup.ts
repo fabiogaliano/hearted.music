@@ -20,6 +20,29 @@ const DEFAULT_BACKUP_RETENTION_DAYS = 7;
 const DEFAULT_BACKUP_SCHEDULE_HOUR_UTC = 3;
 const DEFAULT_BACKUP_SCHEDULE_MINUTE_UTC = 0;
 
+// The worker and Postgres start as separate containers, so a boot-time
+// catch-up can reach pg_dump before the database accepts connections. The next
+// scheduled run is up to a day out, so dropping this one leaves a real gap in
+// coverage — worth waiting out a slow database start.
+const STARTUP_CATCH_UP_RETRY_DELAYS_MS = [5_000, 15_000, 45_000];
+
+/**
+ * Whether a pg_dump failure was the database being unreachable rather than the
+ * dump itself failing. Only this class is worth retrying: a permission error or
+ * a version mismatch will fail identically on every attempt.
+ */
+export function isDatabaseUnreachable(stderr: string | undefined): boolean {
+	if (!stderr) return false;
+	return [
+		"server closed the connection unexpectedly",
+		"could not connect to server",
+		"Connection refused",
+		"could not translate host name",
+		"the database system is starting up",
+		"Operation timed out",
+	].some((marker) => stderr.includes(marker));
+}
+
 type BackupConnectionKind = "direct" | "session-pooler" | "transaction-pooler";
 
 type BackupTrigger = "scheduled" | "startup-catch-up";
@@ -573,6 +596,36 @@ export function startDatabaseBackupScheduler(): { stop: () => void } {
 		stopCurrentProcess = kill;
 	};
 
+	// Only the startup catch-up retries. A scheduled run that finds the database
+	// down has another attempt tomorrow, and holding backupInFlight for a minute
+	// would delay it for no gain.
+	const runWithStartupRetries = async (trigger: BackupTrigger) => {
+		for (let attempt = 0; ; attempt++) {
+			const result = await runBackup(config, trigger, setCurrentProcess);
+
+			const shouldRetry =
+				trigger === "startup-catch-up" &&
+				result.kind === "error" &&
+				isDatabaseUnreachable(result.stderr) &&
+				attempt < STARTUP_CATCH_UP_RETRY_DELAYS_MS.length &&
+				!stopped;
+
+			if (!shouldRetry) return result;
+
+			log.warn("db-backup-database-unreachable-retrying", {
+				attempt: attempt + 1,
+				delayMs: STARTUP_CATCH_UP_RETRY_DELAYS_MS[attempt],
+				trigger,
+			});
+			await new Promise((resolve) =>
+				setTimeout(resolve, STARTUP_CATCH_UP_RETRY_DELAYS_MS[attempt]),
+			);
+
+			// A stop during the wait must not start another pg_dump.
+			if (stopped) return result;
+		}
+	};
+
 	const executeBackup = async (trigger: BackupTrigger) => {
 		if (backupInFlight) {
 			log.warn("db-backup-skipped-already-running", { trigger });
@@ -581,7 +634,7 @@ export function startDatabaseBackupScheduler(): { stop: () => void } {
 
 		backupInFlight = true;
 		try {
-			const result = await runBackup(config, trigger, setCurrentProcess);
+			const result = await runWithStartupRetries(trigger);
 			if (result.kind === "error") {
 				log.error("db-backup-failed", {
 					message: result.message,

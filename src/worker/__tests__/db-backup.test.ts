@@ -3,6 +3,7 @@ import {
 	classifyDatabaseConnection,
 	createDatabaseBackupConfig,
 	getLatestScheduledSlotAtOrBefore,
+	isDatabaseUnreachable,
 	msUntilNextScheduledBackup,
 	shouldRunStartupCatchUp,
 } from "../db-backup";
@@ -88,5 +89,42 @@ describe("db backup scheduling", () => {
 		expect(
 			shouldRunStartupCatchUp(Date.UTC(2026, 4, 26, 3, 0, 1), now, schedule),
 		).toBe(false);
+	});
+});
+
+describe("db backup unreachable-database classification", () => {
+	// Verbatim from the production failure: the worker booted before Postgres
+	// was accepting connections and the catch-up backup was lost.
+	it("recognises the observed startup connection failure", () => {
+		expect(
+			isDatabaseUnreachable(
+				'pg_dump: error: connection to server at "supabase.hearted.music" ' +
+					"(57.129.63.224), port 5432 failed: server closed the connection " +
+					"unexpectedly\n\tThis probably means the server terminated abnormally",
+			),
+		).toBe(true);
+	});
+
+	it.each([
+		"pg_dump: error: could not connect to server",
+		"pg_dump: error: connection failed: Connection refused",
+		'pg_dump: error: could not translate host name "db" to address',
+		"pg_dump: error: the database system is starting up",
+	])("treats %s as unreachable", (stderr) => {
+		expect(isDatabaseUnreachable(stderr)).toBe(true);
+	});
+
+	// These fail identically on every attempt, so retrying only delays the report.
+	it.each([
+		"pg_dump: error: permission denied for table song",
+		"pg_dump: error: server version 17.2; pg_dump version 15.1",
+		"pg_dump: error: no matching tables were found",
+	])("treats %s as permanent", (stderr) => {
+		expect(isDatabaseUnreachable(stderr)).toBe(false);
+	});
+
+	it("treats missing stderr as permanent", () => {
+		expect(isDatabaseUnreachable(undefined)).toBe(false);
+		expect(isDatabaseUnreachable("")).toBe(false);
 	});
 });
