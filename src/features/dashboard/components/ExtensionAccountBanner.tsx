@@ -34,8 +34,8 @@ export function ExtensionAccountBannerView({
 		<div
 			role="status"
 			aria-live="polite"
-			className="theme-surface-bg theme-border-color -mx-4 mb-10 border border-l-2 px-4 py-4"
-			style={{ borderLeftColor: "var(--t-primary)" }}
+			className="theme-surface-bg -mx-4 mb-10 border border-l-2 px-4 py-4"
+			style={{ borderColor: "var(--t-primary)" }}
 		>
 			<p
 				className="theme-text-muted mb-1 text-xs tracking-widest uppercase"
@@ -78,7 +78,7 @@ export function ExtensionAccountBannerView({
 						type="button"
 						onClick={onReconnect}
 						disabled={repairing}
-						className="hover-border-brighten inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:opacity-50"
+						className="hover-border-brighten inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 						style={{ fontFamily: fonts.body }}
 					>
 						{repairing ? "Reconnecting…" : "Reconnect"}
