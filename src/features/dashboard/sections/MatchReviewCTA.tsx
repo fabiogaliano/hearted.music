@@ -35,7 +35,7 @@ export function MatchReviewCTA({
 		<Link
 			to="/match"
 			search={search}
-			className="theme-surface-bg group -mx-4 mb-10 block px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
+			className="theme-border-color hover-border-brighten group -mx-4 mb-10 block border px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
 		>
 			<p
 				className="theme-text-muted mb-2 text-xs tracking-widest uppercase"
