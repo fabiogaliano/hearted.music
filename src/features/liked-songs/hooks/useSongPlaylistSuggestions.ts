@@ -91,6 +91,12 @@ export function useSongPlaylistSuggestions(
 				return;
 			}
 			if (outcome.status === "error") return;
+			// NETWORK_ERROR can mean "extension gone" OR "extension fine, its
+			// fetch to Spotify failed" — the wire code can't distinguish, so no
+			// reportExtensionUnreachable push (a false sticky "install the
+			// extension" state is worse than a missing push). Bail like `error`:
+			// the Spotify write didn't happen, so the DB must not record it.
+			if (outcome.status === "extension-unavailable") return;
 			if (outcome.status === "success") {
 				reportSpotifyAuthSuccess(queryClient);
 			}

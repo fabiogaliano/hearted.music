@@ -8,6 +8,9 @@ interface PublishResultRegionProps {
 	result: PublishPlaylistResult;
 	isRetryingUnsynced: boolean;
 	onRetryUnsynced: () => void;
+	/** See UnsyncedState — blocks the created-unsynced Retry while the
+	 * extension is signed into the wrong Spotify account. */
+	retryUnsyncedBlocked: boolean;
 }
 
 /** Own the terminal publish-state switch and its focus/live-region contract. */
@@ -15,6 +18,7 @@ export function PublishResultRegion({
 	result,
 	isRetryingUnsynced,
 	onRetryUnsynced,
+	retryUnsyncedBlocked,
 }: PublishResultRegionProps) {
 	const regionRef = useRef<HTMLDivElement>(null);
 	const focusedStatusRef = useRef<PublishPlaylistResult["status"] | null>(null);
@@ -51,6 +55,7 @@ export function PublishResultRegion({
 					spotifyId={result.spotifyId}
 					isRetrying={isRetryingUnsynced}
 					onRetry={onRetryUnsynced}
+					retryBlocked={retryUnsyncedBlocked}
 				/>
 			);
 			break;

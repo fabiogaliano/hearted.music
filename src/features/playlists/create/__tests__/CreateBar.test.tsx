@@ -23,7 +23,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -402,7 +402,12 @@ describe("PartialState — no duplicate-create path", () => {
 describe("UnsyncedState — safe retry path", () => {
 	it("offers a Retry alongside Open in Spotify and Done", () => {
 		render(
-			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={vi.fn()} />,
+			<UnsyncedState
+				spotifyId="abc123"
+				isRetrying={false}
+				onRetry={vi.fn()}
+				retryBlocked={false}
+			/>,
 		);
 		expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
 		expect(
@@ -415,7 +420,12 @@ describe("UnsyncedState — safe retry path", () => {
 		const user = userEvent.setup();
 		const onRetry = vi.fn();
 		render(
-			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={onRetry} />,
+			<UnsyncedState
+				spotifyId="abc123"
+				isRetrying={false}
+				onRetry={onRetry}
+				retryBlocked={false}
+			/>,
 		);
 		await user.click(screen.getByRole("button", { name: /retry/i }));
 		expect(onRetry).toHaveBeenCalledTimes(1);
@@ -423,7 +433,12 @@ describe("UnsyncedState — safe retry path", () => {
 
 	it("disables Retry (aria-busy) while a retry is in flight", () => {
 		render(
-			<UnsyncedState spotifyId="abc123" isRetrying={true} onRetry={vi.fn()} />,
+			<UnsyncedState
+				spotifyId="abc123"
+				isRetrying={true}
+				onRetry={vi.fn()}
+				retryBlocked={false}
+			/>,
 		);
 		const btn = screen.getByRole("button", { name: /retrying/i });
 		expect(btn).toBeDisabled();
@@ -432,11 +447,32 @@ describe("UnsyncedState — safe retry path", () => {
 
 	it("links to the correct Spotify playlist URL", () => {
 		render(
-			<UnsyncedState spotifyId="abc123" isRetrying={false} onRetry={vi.fn()} />,
+			<UnsyncedState
+				spotifyId="abc123"
+				isRetrying={false}
+				onRetry={vi.fn()}
+				retryBlocked={false}
+			/>,
 		);
 		expect(
 			screen.getByRole("link", { name: /open in spotify/i }),
 		).toHaveAttribute("href", "https://open.spotify.com/playlist/abc123");
+	});
+
+	it("blocks Retry while the extension account is mismatched (invariant 2)", () => {
+		const onRetry = vi.fn();
+		render(
+			<UnsyncedState
+				spotifyId="abc123"
+				isRetrying={false}
+				onRetry={onRetry}
+				retryBlocked={true}
+			/>,
+		);
+		const btn = screen.getByRole("button", { name: /retry/i });
+		expect(btn).toBeDisabled();
+		fireEvent.click(btn);
+		expect(onRetry).not.toHaveBeenCalled();
 	});
 });
 

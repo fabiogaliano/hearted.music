@@ -207,6 +207,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								suggestions={songSuggestions}
 								playback={playback}
 								addedTo={addedTo}
+								reconnectNeeded={reconnectNeeded}
 								mismatchProfile={mismatchProfile}
 								onRecheckConnection={onRecheckConnection}
 								navigationDisabled={navigationDisabled}

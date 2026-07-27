@@ -368,6 +368,35 @@ describe("SongSuggestionsSection", () => {
 		expect(addedLabels).toHaveLength(2);
 	});
 
+	// Mirrors MatchesSection's song-mode treatment of the shared verdict:
+	// playlist-mode rows previously showed no reconnect affordance at all for
+	// spotify-disconnected (the prop was never wired through this orientation).
+	describe("reconnect affordance (spotify-disconnected)", () => {
+		it("renders a reconnect link instead of Add when reconnectNeeded is true", () => {
+			renderWithQuery(
+				<SongSuggestionsSection {...DEFAULT_PROPS} reconnectNeeded />,
+			);
+			expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+			expect(
+				screen.getAllByRole("link", { name: /Reconnect to Spotify/i }),
+			).toHaveLength(2);
+		});
+
+		it("keeps 'Added' rows as Added rather than swapping them for the reconnect link", () => {
+			renderWithQuery(
+				<SongSuggestionsSection
+					{...DEFAULT_PROPS}
+					reconnectNeeded
+					addedTo={["song-1"]}
+				/>,
+			);
+			expect(screen.getByText("Added")).toBeDefined();
+			expect(
+				screen.getAllByRole("link", { name: /Reconnect to Spotify/i }),
+			).toHaveLength(1);
+		});
+	});
+
 	// UI-level half of invariant 2's two-layer defense (see docs/plans/
 	// extension-connection-service/README.md): the hook-level guard blocks the
 	// write, this branch blocks the row from ever mounting an Add button.

@@ -67,7 +67,8 @@ interface AddOutcome {
 		| "reconnect-required"
 		| "spotify-error"
 		| "rejected"
-		| "account-mismatch";
+		| "account-mismatch"
+		| "extension-unavailable";
 	suggestionId: string;
 	analyticsPayload?: Record<string, unknown>;
 	/** Id folded into songsWithAdditions on a successful add. */
@@ -138,6 +139,13 @@ async function addSuggestion({
 			if (outcome.status === "error") {
 				return { status: "spotify-error", suggestionId };
 			}
+			// NETWORK_ERROR conflates "extension gone" with "extension fine, its
+			// fetch to Spotify failed", so no reportExtensionUnreachable push (a
+			// false sticky one is worse than none) — but the Spotify write did
+			// NOT happen, so the deck decision must not be recorded either.
+			if (outcome.status === "extension-unavailable") {
+				return { status: "extension-unavailable", suggestionId };
+			}
 			if (outcome.status === "success") {
 				reportSpotifyAuthSuccess(queryClient);
 			}
@@ -184,6 +192,13 @@ async function addSuggestion({
 		}
 		if (outcome.status === "error") {
 			return { status: "spotify-error", suggestionId };
+		}
+		// NETWORK_ERROR conflates "extension gone" with "extension fine, its
+		// fetch to Spotify failed", so no reportExtensionUnreachable push (a
+		// false sticky one is worse than none) — but the Spotify write did NOT
+		// happen, so the deck decision must not be recorded either.
+		if (outcome.status === "extension-unavailable") {
+			return { status: "extension-unavailable", suggestionId };
 		}
 		if (outcome.status === "success") {
 			reportSpotifyAuthSuccess(queryClient);

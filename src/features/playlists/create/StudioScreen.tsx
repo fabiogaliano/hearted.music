@@ -388,7 +388,15 @@ export function StudioScreen({
 					<PublishResultRegion
 						result={flow.result}
 						isRetryingUnsynced={flow.isRetryingUnsynced}
-						onRetryUnsynced={() => void flow.retryUnsynced()}
+						onRetryUnsynced={() => {
+							// Invariant 2 defense-in-depth behind the disabled button:
+							// resuming a created-unsynced playlist adds tracks through
+							// the extension's live token, which under a mismatch belongs
+							// to the wrong Spotify account.
+							if (gateState === "account-mismatch") return;
+							void flow.retryUnsynced();
+						}}
+						retryUnsyncedBlocked={gateState === "account-mismatch"}
 					/>
 				) : (
 					<CreateBar

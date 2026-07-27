@@ -1,10 +1,11 @@
 import { XIcon } from "@phosphor-icons/react";
 import { AnimatePresence, useReducedMotion } from "framer-motion";
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
+import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestionRow, SongSuggestionsSectionProps } from "../types";
@@ -33,6 +34,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	addedTo,
 	mismatchProfile,
 	onRecheckConnection,
+	reconnectNeeded,
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
@@ -51,6 +53,9 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	onPrevious,
 }: SongSuggestionsSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
+	const reconnectAction = reconnectNeeded ? (
+		<SpotifyReconnectLink label="Reconnect to Spotify" />
+	) : undefined;
 
 	// A load-more error stops the auto-observer (retry is manual) but keeps
 	// hasMoreSuggestions true so the empty-state gate below stays suppressed —
@@ -140,6 +145,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 									key={row.song.id}
 									row={row}
 									added={addedTo.includes(row.song.id)}
+									reconnectNode={reconnectAction}
 									navigationDisabled={navigationDisabled ?? false}
 									onAdd={onAdd}
 									onDismiss={onDismissSuggestion}
@@ -175,6 +181,8 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 interface SongSuggestionRowItemProps {
 	row: SongSuggestionRow;
 	added: boolean;
+	/** Reconnect CTA shown in place of Add when a Spotify reconnect is needed. */
+	reconnectNode?: ReactNode;
 	navigationDisabled: boolean;
 	onAdd: (suggestionId: string) => void;
 	onDismiss?: (suggestionId: string) => void | Promise<void>;
@@ -191,6 +199,7 @@ interface SongSuggestionRowItemProps {
 function SongSuggestionRowItem({
 	row,
 	added,
+	reconnectNode,
 	navigationDisabled,
 	onAdd,
 	onDismiss,
@@ -261,6 +270,8 @@ function SongSuggestionRowItem({
 						>
 							Added
 						</span>
+					) : reconnectNode ? (
+						reconnectNode
 					) : (
 						<Button
 							variant="secondary"

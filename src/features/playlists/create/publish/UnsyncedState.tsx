@@ -20,12 +20,18 @@ interface UnsyncedStateProps {
 	spotifyId: string;
 	onRetry: () => void;
 	isRetrying: boolean;
+	/** Blocks Retry while the extension is signed into the wrong Spotify
+	 * account (gate state "account-mismatch") — the resume would add tracks
+	 * through the wrong account's token. The studio header's mismatch notice
+	 * explains why; this button just refuses until it clears. */
+	retryBlocked: boolean;
 }
 
 export function UnsyncedState({
 	spotifyId,
 	onRetry,
 	isRetrying,
+	retryBlocked,
 }: UnsyncedStateProps) {
 	const navigate = useNavigate();
 	return (
@@ -60,7 +66,7 @@ export function UnsyncedState({
 						<Button
 							variant="primary"
 							size="sm"
-							disabled={isRetrying}
+							disabled={isRetrying || retryBlocked}
 							aria-busy={isRetrying}
 							onClick={onRetry}
 						>

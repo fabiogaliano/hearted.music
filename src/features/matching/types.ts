@@ -133,6 +133,9 @@ export interface SongSuggestionsSectionProps {
 	/** Re-runs the shared connection check; resolves once it settles. Powers
 	 *  AccountMismatchPrompt's "Check again" affordance. */
 	onRecheckConnection?: () => Promise<void>;
+	/** Swaps each row's Add for a Spotify reconnect link, mirroring
+	 *  MatchesSection's song-mode treatment of the same shared verdict. */
+	reconnectNeeded?: boolean;
 }
 
 type MatchingSessionCommonProps = {

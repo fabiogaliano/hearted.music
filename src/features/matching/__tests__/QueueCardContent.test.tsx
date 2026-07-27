@@ -569,6 +569,33 @@ describe("QueueCardContent whole-card action handlers", () => {
 			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
 			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
 		});
+
+		it("an extension-unavailable outcome bails before the deck write — no phantom resolved decision for a Spotify call that never happened", async () => {
+			const { onAdd } = await renderCard("item-1", {
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+			mockAddToPlaylist.mockResolvedValue({
+				ok: false,
+				errorCode: "NETWORK_ERROR",
+			});
+			mockOutcomeFromCommandResponse.mockReturnValue({
+				status: "extension-unavailable",
+			});
+
+			await onAdd("pl-1");
+
+			// No push either way: NETWORK_ERROR can't distinguish "extension
+			// gone" from "extension fine, Spotify unreachable", so neither
+			// sticky flag gets a trustworthy signal here.
+			expect(mockReportSpotifyAuthFailure).not.toHaveBeenCalled();
+			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
+		});
 	});
 
 	// Post-review fix (CRITICAL, invariant 2): phase 05 threaded a real

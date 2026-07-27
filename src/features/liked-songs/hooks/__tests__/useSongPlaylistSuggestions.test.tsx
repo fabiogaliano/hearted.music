@@ -206,6 +206,34 @@ describe("useSongPlaylistSuggestions — onAdd auth-failure push", () => {
 		expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
 		expect(mockAddSongToPlaylist).not.toHaveBeenCalled();
 	});
+
+	it("an extension-unavailable outcome bails before the DB write — no phantom 'added' row for a Spotify call that never happened", async () => {
+		mockAddToPlaylist.mockResolvedValue({
+			ok: false,
+			errorCode: "NETWORK_ERROR",
+		});
+		mockOutcomeFromCommandResponse.mockReturnValue({
+			status: "extension-unavailable",
+		});
+		const { Wrapper } = makeWrapper();
+		const { result } = renderHook(
+			() => useSongPlaylistSuggestions(SONG, true, "linked-spotify-id"),
+			{ wrapper: Wrapper },
+		);
+		await waitFor(() => expect(result.current).toBeDefined());
+
+		await act(async () => {
+			await result.current?.onAdd("pl-1");
+		});
+
+		// No push either way: NETWORK_ERROR can't distinguish "extension gone"
+		// from "extension fine, Spotify unreachable", so neither sticky flag
+		// gets a trustworthy signal here.
+		expect(mockReportSpotifyAuthFailure).not.toHaveBeenCalled();
+		expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+		expect(mockAddSongToPlaylist).not.toHaveBeenCalled();
+		expect(result.current?.addedTo).toEqual([]);
+	});
 });
 
 // Post-review fix (CRITICAL, invariant 2): threading the real linkedSpotifyId

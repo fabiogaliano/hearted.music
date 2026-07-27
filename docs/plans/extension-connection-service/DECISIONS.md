@@ -1347,3 +1347,43 @@ Run baseline: `4ef7d715`
   fake-timer regression test; the restored `not.toHaveBeenCalled()`
   assertion lives inside an existing test, not a new one. `bun run
   typecheck` (tsgo --noEmit): clean, zero errors.
+
+## Post-run follow-ups (2026-07-27)
+
+Three of the run's disclosed leftovers closed in a follow-up pass; the rest
+remain open (last bullet).
+
+- **Phantom-success on `extension-unavailable` — fixed on both surfaces.**
+  `useSongPlaylistSuggestions.onAdd` and `QueueCardContent.addSuggestion`
+  (both orientation branches; `AddOutcome` gained an `"extension-unavailable"`
+  status) now bail before the DB write when `outcomeFromCommandResponse`
+  returns `extension-unavailable`, exactly like the `error` branch — the row
+  stays actionable instead of being falsely recorded as added. Deliberately
+  **no `reportExtensionUnreachable` push**: `NETWORK_ERROR` has two producers
+  with opposite meanings (`spotify-client.ts:72` synthesizes it when the
+  extension never answers; the extension's `command-handler.ts` emits it when
+  the extension is fine but its own fetch to Spotify failed), so the signal
+  can't be classified — same "a missing push is far less harmful than a false
+  sticky one" rule phase 03 applied to `failSync`. Both regression guards
+  verified non-vacuous (the matching one caught a genuinely missing song-mode
+  guard on first run; the liked-songs one was bug-injected and failed as
+  required).
+- **`retryUnsynced` mismatch bypass — closed.** `StudioScreen` now blocks the
+  created-unsynced Retry while `gateState === "account-mismatch"`: a
+  `retryUnsyncedBlocked`/`retryBlocked` prop threaded through
+  `PublishResultRegion` → `UnsyncedState` disables the button (the studio
+  header's existing mismatch notice explains why), with a handler-level guard
+  as defense-in-depth. `usePublishPlaylist` itself is untouched — it has no
+  view of the gate, and the only production caller is the screen that does.
+- **Playlist-mode `reconnectNeeded` gap — closed.** `SongSuggestionsSectionProps`
+  gained `reconnectNeeded`; `SongSuggestionRowItem` swaps Add for
+  `SpotifyReconnectLink` exactly like `MatchRow` does in song mode, and
+  `MatchingSession`'s playlist branch now forwards the prop it already had in
+  scope.
+- **Still open, unchanged:** the extension-side HTTP-200 false-success
+  (`mutations.ts` forwards Pathfinder `__typename` unchecked — the root
+  enabler, needs its own extension fix), the "Switch Spotify account" logout
+  URL decision, `accountDisplayName` threading into the liked-songs/matching
+  mismatch prompts, the Settings row stale-window trade-off, auto-clearing
+  `authFailedAt` (needs an extension bump), and the manual verification
+  script (needs a real browser + extension).

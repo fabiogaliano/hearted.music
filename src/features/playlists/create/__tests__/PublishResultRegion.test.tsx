@@ -39,6 +39,7 @@ function renderRegion(result: PublishPlaylistResult) {
 			result={result}
 			isRetryingUnsynced={false}
 			onRetryUnsynced={vi.fn()}
+			retryUnsyncedBlocked={false}
 		/>,
 	);
 }
@@ -67,9 +68,23 @@ describe("PublishResultRegion", () => {
 				result={successResult}
 				isRetryingUnsynced={false}
 				onRetryUnsynced={vi.fn()}
+				retryUnsyncedBlocked={false}
 			/>,
 		);
 
 		expect(screen.getByRole("status")).toHaveFocus();
+	});
+
+	it("disables the created-unsynced Retry while the extension account is mismatched", () => {
+		render(
+			<PublishResultRegion
+				result={unsyncedResult}
+				isRetryingUnsynced={false}
+				onRetryUnsynced={vi.fn()}
+				retryUnsyncedBlocked={true}
+			/>,
+		);
+
+		expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();
 	});
 });
