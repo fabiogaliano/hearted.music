@@ -116,6 +116,17 @@ Each task ships independently with green `bun run test`.
   returns `spotifyConnected: true` and erases the failure within ~200 ms, i.e.
   the reconnect prompt never survives long enough to click. Resolved by making
   the push sticky (`authFailedAt`) rather than by refetching harder.
+  Implementation went one step further: `authFailedAt` was moved out of the
+  polled query payload entirely, into its own store the poll's `queryFn`
+  never touches (see task 01's `auth-failed-store.ts`). That makes a
+  confirming refetch *safe* again — it can no longer land on the field that
+  matters — so `reportSpotifyAuthFailure` deliberately invalidates the
+  connection query after stamping the store. That invalidate isn't the
+  original "confirm the failure" refetch this bullet warns against; it exists
+  to rearm `refetchInterval` on any observer that was idle-and-healthy when
+  the push landed (otherwise polling silently never resumes) and to refresh
+  `paired`/`profile`. The sticky flag, not this refetch, is still what makes
+  the prompt survive.
 - **The inverse: a stale sticky failure that never clears.** Bounded by
   clearing `authFailedAt` on explicit repair and on the next Spotify command
   that succeeds. Fully automatic clearing would need the extension to expose

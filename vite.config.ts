@@ -71,6 +71,15 @@ const domTestFiles = [
 	"control-panel/src/lib/__tests__/saved-views.test.ts",
 	// Stale-chunk recovery drives sessionStorage and location.reload.
 	"src/lib/platform/routing/__tests__/stale-chunk.test.ts",
+	// TanStack Query's refetchInterval scheduling no-ops when `window` is
+	// undefined (query-core treats that as SSR) — the real QueryObserver
+	// subscribe/unsubscribe lifecycle test needs a DOM to actually exercise it.
+	"src/lib/extension/connection/__tests__/connection-state.test.ts",
+	// auth-failed-store.ts's setAuthFailedAt no-ops when `window` is undefined
+	// (SSR guard, see that file's header) — this suite calls it through
+	// reportSpotifyAuthFailure and needs a DOM so those writes aren't silently
+	// dropped.
+	"src/lib/extension/connection/__tests__/report-failure.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {
