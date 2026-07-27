@@ -80,6 +80,9 @@ const domTestFiles = [
 	// reportSpotifyAuthFailure and needs a DOM so those writes aren't silently
 	// dropped.
 	"src/lib/extension/connection/__tests__/report-failure.test.ts",
+	// repair.ts calls window.open synchronously (invariant 1) and
+	// setAuthFailedAt, both of which need a real `window`.
+	"src/lib/extension/connection/__tests__/repair.test.ts",
 ];
 
 function embeddingSidecarPlugin(): Plugin {

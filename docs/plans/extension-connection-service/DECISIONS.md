@@ -239,6 +239,47 @@ Run baseline: `4ef7d715`
 
 ## Phase 02
 
+- **`setAuthFailedAt(null)` called directly from `auth-failed-store.ts`, not
+  via `reportSpotifyAuthSuccess(queryClient)`.** Both clear the same field;
+  `reportSpotifyAuthSuccess` exists for symmetry with the other two
+  `report-failure.ts` exports and takes an unused `queryClient` param purely
+  for call-site shape. Calling the store setter directly avoids passing a
+  `queryClient` argument through a function that ignores it, and keeps
+  `repair.ts`'s only `report-failure.ts`-adjacent dependency limited to the
+  store it actually needs.
+- **Pairing step gated per-verdict with a literal `unpaired | spotify-disconnected
+  | unverifiable` check, not a "verdict !== mismatch" catch-all.** The spec
+  names exactly these three verdicts; a catch-all would also silently fire
+  pairing for `ok`/`checking`/`extension-missing`, which the spec's step 3
+  explicitly calls a no-op path. Spelling out the three keeps the no-op list
+  the single source of truth for "nothing happens here."
+  - Note `unverifiable` fires the pairing step, not the Spotify-login step
+    (`paired !== true` with a healthy `spotifyConnected` — a login popup would
+    be wrong for a token that's already fine).
+- **Return type `Promise<void>` achieved via `.then(() => undefined)` after
+  `.finally(...)`**, not by declaring `repairConnection` `async`. An `async`
+  function body still compiles to "no `await`" here, but a plain function
+  returning promise chains makes the "never an internal await" constraint
+  visible at the type/shape level, not just by convention — matches how the
+  spec phrases it ("the promise is a return value, never an internal await").
+  A rejecting `pairExtension()` still propagates as a rejection through
+  `.then` (only `.catch`/second-arg would swallow it); left un-swallowed since
+  the spec doesn't ask for that and task 03 (which consumes the return value
+  for a `repairing` UI state) is better placed to decide whether to display a
+  pairing-failed state or not.
+- **Test for invariant 1 asserts a synchronous call-order log, not just
+  "`window.open` was called".** Calls `repairConnection(...)` without
+  awaiting, then immediately (same microtask) asserts `window.open` already
+  fired before `pairExtension` had a chance to. A version with `await
+  pairExtension()` inserted before `window.open` would leave `open-called`
+  absent from the log at that checkpoint, so the test fails specifically on
+  the ordering the invariant protects, not on end-state call counts.
+- **New test file added to `vite.config.ts`'s `domTestFiles` list.**
+  `repair.ts` calls `window.open` and `setAuthFailedAt` (which no-ops without
+  a real `window`, per `auth-failed-store.ts`'s SSR guard from phase 01);
+  `repair.test.ts` needed jsdom for the same reason
+  `report-failure.test.ts`/`connection-state.test.ts` did.
+
 ## Phase 03
 
 ## Phase 04
