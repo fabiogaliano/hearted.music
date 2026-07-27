@@ -1,12 +1,14 @@
-import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement, ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SpotifyAccountStatus } from "@/lib/extension/detect";
 import { setupOnboardingNavigationMock, setupShortcutMock } from "@/test/mocks";
-import { fireEvent, render, screen, waitFor } from "@/test/utils/render";
+import { act, fireEvent, render, screen, waitFor } from "@/test/utils/render";
 import { InstallExtensionStep } from "../components/InstallExtensionStep";
 
 const mockConnectExtension = vi.fn();
-const mockGetSpotifyConnectionStatus = vi.fn();
 const mockIsExtensionInstalled = vi.fn();
+const mockGetSpotifyAccountStatus = vi.fn();
 const mockTriggerExtensionSync = vi.fn();
 const mockResetSyncJobs = vi.fn();
 const mockArmLoginReturn = vi.fn();
@@ -18,6 +20,12 @@ const CAPABLE = {
 	wizardFits: true,
 	canOnboardHere: true,
 };
+
+function notConnectedStatus(
+	overrides?: Partial<SpotifyAccountStatus>,
+): SpotifyAccountStatus {
+	return { connected: false, paired: null, profile: null, ...overrides };
+}
 
 vi.mock("@/lib/keyboard/useShortcut", () => setupShortcutMock());
 vi.mock("../hooks/useOnboardingNavigation", () =>
@@ -32,11 +40,15 @@ vi.mock("../hooks/useOnboardingCapability", () => ({
 vi.mock("@/lib/server/onboarding.functions", () => ({
 	resetSyncJobs: () => mockResetSyncJobs(),
 }));
+// isExtensionInstalled/getSpotifyAccountStatus sit at the seam the shared
+// connection query (useExtensionConnection) reads through — same seam
+// connection-state.test.ts/useSpotifyGate.test.tsx mock, now that this
+// component reads the shared verdict instead of its own detection poll.
 vi.mock("@/lib/extension/detect", () => ({
 	connectExtension: (...args: unknown[]) => mockConnectExtension(...args),
 	expectLoginReturn: (armToken: string) => mockArmLoginReturn(armToken),
-	getSpotifyConnectionStatus: () => mockGetSpotifyConnectionStatus(),
 	isExtensionInstalled: () => mockIsExtensionInstalled(),
+	getSpotifyAccountStatus: () => mockGetSpotifyAccountStatus(),
 	triggerExtensionSync: () => mockTriggerExtensionSync(),
 }));
 vi.mock("@/components/ui/StaggeredContent", () => ({
@@ -46,11 +58,18 @@ vi.mock("../components/ExtensionSetupTrail", () => ({
 	ExtensionSetupTrail: () => null,
 }));
 
+function withQueryClient(ui: ReactElement) {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	return <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>;
+}
+
 describe("InstallExtensionStep", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockIsExtensionInstalled.mockResolvedValue(true);
-		mockGetSpotifyConnectionStatus.mockResolvedValue(false);
+		mockGetSpotifyAccountStatus.mockResolvedValue(notConnectedStatus());
 		mockArmLoginReturn.mockResolvedValue(true);
 		mockUseOnboardingCapability.mockReturnValue(CAPABLE);
 	});
@@ -63,14 +82,46 @@ describe("InstallExtensionStep", () => {
 			canOnboardHere: false,
 		});
 
-		render(<InstallExtensionStep />);
+		render(withQueryClient(<InstallExtensionStep />));
 
 		expect(await screen.findByText(/finish setting up/i)).toBeInTheDocument();
 		// The install CTA must be gone — that dead-end is exactly what the gate fixes.
 		expect(
 			screen.queryByRole("link", { name: /log in to spotify/i }),
 		).toBeNull();
+		// Regression guard: the capability gate is checked before the
+		// connection-consuming body mounts, so a device that can never finish
+		// onboarding here never subscribes to the shared connection query and
+		// never pings the extension — see InstallExtensionStep.tsx's comment on
+		// why this must hold (an unbounded 6s poll on a phone otherwise).
 		expect(mockIsExtensionInstalled).not.toHaveBeenCalled();
+	});
+
+	it("never polls the extension on a device that can't onboard here, even across multiple poll intervals", async () => {
+		vi.useFakeTimers();
+		mockUseOnboardingCapability.mockReturnValue({
+			engine: "unsupported",
+			engineSupported: false,
+			wizardFits: false,
+			canOnboardHere: false,
+		});
+
+		render(withQueryClient(<InstallExtensionStep />));
+
+		// connection-state.ts's UNHEALTHY_REFETCH_INTERVAL_MS is 6s; advance well
+		// past several ticks. A regression that mounts the connection-consuming
+		// body before the capability check (or that widens the shared query with
+		// a per-consumer `enabled` flag left mis-wired) would show up here as a
+		// nonzero call count — the extension can structurally never answer on a
+		// handheld, so `useExtensionConnection`'s verdict would sit permanently
+		// at extension-missing and the shared query would ping forever.
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(30_000);
+		});
+
+		expect(mockIsExtensionInstalled).not.toHaveBeenCalled();
+		expect(mockGetSpotifyAccountStatus).not.toHaveBeenCalled();
+		vi.useRealTimers();
 	});
 
 	it("renders a stable login href and arms a tokenized continue destination on click", async () => {
@@ -79,7 +130,7 @@ describe("InstallExtensionStep", () => {
 			.mockReturnValue("11111111-2222-3333-4444-555555555555");
 		const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
-		render(<InstallExtensionStep />);
+		render(withQueryClient(<InstallExtensionStep />));
 
 		const loginLink = await screen.findByRole("link", {
 			name: /log in to spotify/i,

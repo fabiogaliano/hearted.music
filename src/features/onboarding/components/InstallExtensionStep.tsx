@@ -24,11 +24,8 @@ import {
 	refineBrowserName,
 } from "@/lib/extension/browser-target";
 import { pairExtension } from "@/lib/extension/connect";
-import {
-	getSpotifyConnectionStatus,
-	isExtensionInstalled,
-	triggerExtensionSync,
-} from "@/lib/extension/detect";
+import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
+import { triggerExtensionSync } from "@/lib/extension/detect";
 import { armReconnectOnActivation } from "@/lib/extension/reconnect-link";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
@@ -178,11 +175,40 @@ function ActionContent({
 
 // ── InstallExtensionStep ──────────────────────────────────────────────────
 
+// The capability gate is checked here, before InstallExtensionStepBody (and
+// its useExtensionConnection subscription) ever mounts — not as an early
+// return inside the body. A handheld's canOnboardHere is permanently false
+// (it's a media-query capability, not a transient "not answered yet" state),
+// so a verdict computed from inside the body would sit at extension-missing
+// forever, and connection-state.ts's refetchInterval treats that as
+// permanently unhealthy: the shared query would ping the extension every 6s
+// indefinitely while the phone sits on this handoff screen — a structurally
+// unwinnable poll, since a phone can never run the extension. Gating here
+// instead means the body — and its hook — simply never mounts on such a
+// device, so no subscription is ever created to poll from.
 export function InstallExtensionStep() {
-	const { goToStep } = useOnboardingNavigation();
 	const capability = useOnboardingCapability();
-	const [isExtensionDetected, setIsExtensionDetected] = useState(false);
-	const [isSpotifyConnected, setIsSpotifyConnected] = useState(false);
+
+	// SSR and hydration render optimistically capable; useSyncExternalStore
+	// re-syncs the real capability before paint, so neither branch flashes. An
+	// unsupported engine or a too-small screen gets the "finish on a computer"
+	// handoff instead of the perpetual "Add to <browser>" dead-end.
+	if (!capability.canOnboardHere) {
+		return <OnboardingHandoff />;
+	}
+
+	return <InstallExtensionStepBody />;
+}
+
+function InstallExtensionStepBody() {
+	const { goToStep } = useOnboardingNavigation();
+	// Pre-link: account.spotify_id is null until first sync (see
+	// createAccountForBetterAuthUser's doc comment) — there is no real linked
+	// id yet to pass here, unlike the studio/dashboard/liked-songs surfaces.
+	const { verdict } = useExtensionConnection(null);
+	const isExtensionDetected =
+		verdict.kind !== "checking" && verdict.kind !== "extension-missing";
+	const isSpotifyConnected = verdict.kind === "ok";
 	const [isAdvancing, setIsAdvancing] = useState(false);
 
 	// Seeded to the SSR-safe Chromium defaults so server and first client render
@@ -252,46 +278,6 @@ export function InstallExtensionStep() {
 		}
 	}, [goToStep]);
 
-	// Extension polling (2s). Once detected, switches to Spotify polling (3s).
-	// The Spotify branch also re-checks the extension so disabling mid-flow resets state.
-	useEffect(() => {
-		// No point pinging from a device that can't finish the sync here — it
-		// renders the handoff instead of the install flow.
-		if (!capability.canOnboardHere) return;
-
-		if (!isExtensionDetected) {
-			let cancelled = false;
-			const check = async () => {
-				const detected = await isExtensionInstalled();
-				if (!cancelled && detected) setIsExtensionDetected(true);
-			};
-			check();
-			const id = setInterval(check, 2_000);
-			return () => {
-				cancelled = true;
-				clearInterval(id);
-			};
-		}
-
-		let cancelled = false;
-		const check = async () => {
-			const stillInstalled = await isExtensionInstalled();
-			if (!cancelled && !stillInstalled) {
-				setIsExtensionDetected(false);
-				setIsSpotifyConnected(false);
-				return;
-			}
-			const connected = await getSpotifyConnectionStatus();
-			if (!cancelled) setIsSpotifyConnected(connected);
-		};
-		check();
-		const intervalId = setInterval(check, 3_000);
-		return () => {
-			cancelled = true;
-			clearInterval(intervalId);
-		};
-	}, [isExtensionDetected, capability.canOnboardHere]);
-
 	useShortcut({
 		key: "enter",
 		handler: handleAccept,
@@ -299,14 +285,6 @@ export function InstallExtensionStep() {
 		scope: "onboarding-extension",
 		enabled: isExtensionDetected && isSpotifyConnected && !isAdvancing,
 	});
-
-	// SSR and hydration render optimistically capable; useSyncExternalStore
-	// re-syncs the real capability before paint, so neither branch flashes. An
-	// unsupported engine or a too-small screen gets the "finish on a computer"
-	// handoff instead of the perpetual "Add to <browser>" dead-end.
-	if (!capability.canOnboardHere) {
-		return <OnboardingHandoff />;
-	}
 
 	return (
 		<>

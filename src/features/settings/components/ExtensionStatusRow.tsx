@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { isExtensionInstalled } from "@/lib/extension/detect";
+import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
 import { fonts } from "@/lib/theme/fonts";
 
 type Status = "checking" | "connected" | "not-found";
@@ -25,21 +24,27 @@ const STATUS_LABEL: Record<Status, string> = {
 /**
  * Renders only the *contents* of the Connections row. The enclosing editorial
  * heading + microcopy live in SettingsPage's SettingsSection.
+ *
+ * Reads the shared connection query instead of checking once on mount — the
+ * old version never re-checked, so installing the extension while this page
+ * was open still showed "not detected" for the life of the page. Pre-link
+ * (`useExtensionConnection(null)`, same reasoning as onboarding's
+ * InstallExtensionStep): this row only reports install status, not identity,
+ * so there is nothing gained by threading a linked Spotify id through it.
  */
 export function ExtensionStatusRow() {
-	const [status, setStatus] = useState<Status>("checking");
-
-	useEffect(() => {
-		let cancelled = false;
-
-		isExtensionInstalled().then((installed) => {
-			if (!cancelled) setStatus(installed ? "connected" : "not-found");
-		});
-
-		return () => {
-			cancelled = true;
-		};
-	}, []);
+	const { verdict } = useExtensionConnection(null);
+	// verdict.kind is checking | extension-missing | spotify-disconnected | ok
+	// pre-link (mismatch/unpaired/unverifiable are unreachable with a null id
+	// — see verdict.ts) — every non-missing, non-checking kind means the
+	// extension answered PING, which is all this row reports (invariant 6: a
+	// PING that answers but SPOTIFY_STATUS that doesn't is still installed).
+	const status: Status =
+		verdict.kind === "checking"
+			? "checking"
+			: verdict.kind === "extension-missing"
+				? "not-found"
+				: "connected";
 
 	return (
 		<div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">

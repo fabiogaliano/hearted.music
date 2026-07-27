@@ -20,6 +20,19 @@ vi.mock("@tanstack/react-query", () => ({
 	useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 
+// ExtensionStatusRow (rendered by the Connections section) reads the shared
+// connection query via useExtensionConnection, which needs a real useQuery —
+// this file's blanket @tanstack/react-query mock above doesn't provide one.
+// This suite is about the Account section's identity display, not extension
+// status, so stub the hook directly rather than wiring up a QueryClient.
+vi.mock("@/lib/extension/connection/useExtensionConnection", () => ({
+	useExtensionConnection: () => ({
+		connection: undefined,
+		verdict: { kind: "checking" },
+		refetch: vi.fn(),
+	}),
+}));
+
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 
 vi.mock("@/lib/server/settings.functions", () => ({

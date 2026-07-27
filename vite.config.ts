@@ -55,7 +55,6 @@ const domTestFiles = [
 	"src/features/billing/__tests__/useCheckoutFlow.test.ts",
 	"src/lib/extension/__tests__/reconnect-link.test.ts",
 	"src/lib/consent/__tests__/consent-storage.test.ts",
-	"src/lib/extension/__tests__/useExtensionAccountConflict.test.ts",
 	// useSpotifyGate.test.tsx is picked up by the dom project's `**/*.test.tsx`
 	// glob automatically (renamed from .test.ts in phase 04 — it now needs a
 	// QueryClientProvider, which is JSX) — no entry needed here.

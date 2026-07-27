@@ -1048,3 +1048,302 @@ Run baseline: `4ef7d715`
 - **`bun run test` (full suite, after adding coverage): 389 test files passed / 1 skipped (390), 4250 tests passed / 8 skipped / 11 todo (4269) — +6 over the prior phase-05 count (6 new tests: 2 per surface × 3 surfaces). `bun run typecheck` (tsgo --noEmit): clean, zero errors.**
 
 ## Phase 06
+
+- **`src/lib/extension/useExtensionAccountConflict.ts` deleted, along with its
+  test.** Repo-wide grep (`src/`, `extensions/`) confirmed zero importers
+  before deletion — the only remaining hits were a doc-comment in
+  `verdict.ts` ("ordering carried over from useExtensionAccountConflict.ts")
+  and the hook's own file/test, both expected. Diffed the deleted test's
+  scenarios against the new suite case-by-case before deleting, per the task
+  doc's instruction, rather than assuming parity:
+  - "does not require an account check before Spotify is linked" → `verdict.test.ts`'s
+    "short-circuits to ok pre-link, before the identity checks".
+  - "fails closed while the first identity check is pending" (checking) →
+    "reports checking while the query hasn't settled".
+  - "verifies matching Spotify and hearted identities" (verified) → "reports
+    ok when everything checks out".
+  - "flags a Spotify mismatch..." / "keeps mismatch higher priority than an
+    unpaired state" → "reports mismatch when the captured profile differs..."
+    / "keeps mismatch outranking unpaired when both are true".
+  - "flags unpaired when paired is explicitly false" → "reports unpaired for
+    an explicit popup-side disconnect".
+  - it.each unavailable-for-3-reasons: "a missing Spotify profile" and "an
+    extension without pairing status" (`profile: null` / `paired: null`) →
+    `verdict.test.ts`'s "reports unverifiable, never unpaired, when %s"
+    it.each. The third case, "an unreachable extension status" (PING
+    answered but `getSpotifyAccountStatus()` returned `null`), isn't a
+    `deriveConnectionVerdict` case at all in the new architecture — it's
+    handled one layer down, at the fetcher, by
+    `connection-state.ts`'s `INSTALLED_BUT_UNANSWERING` shape (invariant 6),
+    and is covered by `connection-state.test.ts`'s "reports installed: true
+    when PING answers but SPOTIFY_STATUS doesn't" test. Confirmed the new
+    behavior is a deliberate, invariant-6-mandated improvement over the old
+    one: the old hook mapped this case to `unavailable` (same bucket as "not
+    installed"), which the phase-01 revision log calls out as exactly the bug
+    invariant 6 exists to prevent ("would have shown 'Install extension' to
+    existing users"). Not a gap to port — the old behavior was the thing
+    being fixed.
+  - "reports unavailable when the extension isn't installed" → "reports
+    extension-missing when PING never answered".
+  - "clears a conflict once the accounts agree on the next poll" — this
+    exercised the old hook's own `setInterval` re-poll, not a derivation
+    rule; `deriveConnectionVerdict` is a pure function (recomputes from
+    scratch on every call by construction, nothing to "clear"), and the
+    re-poll mechanics it depended on live in `connection-state.test.ts`'s
+    lifecycle tests (subscribe/interval/unsubscribe) instead. No gap to port.
+  - No gaps found; nothing ported. Removed the file's `vite.config.ts`
+    `domTestFiles` entry alongside the test file (dangling otherwise).
+- **`useSpotifyReconnectState.ts` — already deleted in phase 05**, per that
+  phase's own log entry ("deleted... in this phase, not deferred to 06").
+  Confirmed by grep: only comment references remain (`useSongPlaylistSuggestions.ts`'s
+  doc comment, two test files' descriptive comments), no import anywhere.
+  Nothing left for this phase to do here.
+- **`useDashboardSync.ts`'s "dead exports" (`reconnectSpotify` internals,
+  removed state kinds) and orphaned `ExtensionAccountCheck` types — already
+  fully cleaned up in phase 03.** Read the current file end-to-end:
+  `reconnectSpotify`/`expectLoginReturn`/`buildArmedSpotifyUrl` don't exist
+  anywhere in it (phase 03's log already records replacing that bespoke
+  sequence with `repairConnection`), and `ExtensionAccountCheck`/
+  `ExtensionAccountConflict` (the types deleted above) were never imported by
+  this file — it always used its own `DashboardSyncUiState`/`ControlPhase`
+  vocabulary. Grepped repo-wide for `reconnectSpotify` post-deletion: zero
+  hits. Nothing to delete here; the task doc's bullet describes work phase 03
+  already did, not a gap phase 06 needed to close.
+- **Stories/fixtures (`src/stories/fixtures/index.ts`, banner/control
+  stories) — already current, no removed states referenced.** Read all
+  three files named in the task doc
+  (`ExtensionAccountBanner.stories.tsx`, `DashboardSyncControl.stories.tsx`,
+  `fixtures/index.ts`): every story exercises a verdict/state kind that
+  still exists (`mismatch`/`unpaired`/`spotify-disconnected`/`unverifiable`
+  for the banner; `checking`/`install-required`/`spotify-reconnect-required`/
+  `paused`/`ready`/etc. for the control), and `simulateDashboard` already
+  supplies `linkedSpotifyId`/`accountDisplayName` per phase 03's fixture
+  update. No edits needed.
+- **Sweep discrepancy, not a bug: `06-cleanup.md`'s literal sweep instruction
+  ("`rg 'spotify-reconnect-required|account-unavailable|account-conflict' src/`
+  — zero hits") does not hold for `spotify-reconnect-required` — and should
+  not.** That state kind is alive and load-bearing in `DashboardSyncUiState`
+  (`useDashboardSync.ts`) and its stories/tests: phase 03 deliberately kept
+  it as the pre-link sync control's own reconnect CTA (see this doc's Phase
+  03 section, "the pre-link `spotify-reconnect-required` CTA... kept in the
+  sync control per spec", and the README's revision log, "Pre-link
+  (`linkedSpotifyId === null`) banner suppression, and the resulting
+  narrowing of 'the banner is the only reconnect home' to linked accounts").
+  The cleanup doc's sweep line reads as leftover from an earlier draft of the
+  plan, written before phase 03 finalized that design decision. Verified the
+  other two terms in the same sweep (`account-unavailable`, `account-conflict`
+  as literal string values) genuinely return zero hits — only
+  `spotify-reconnect-required` is a real, current, intentional identifier.
+  Recorded here rather than silently "fixing" it by renaming a correct,
+  tested, in-use state kind to satisfy a stale grep in a planning doc.
+- **Onboarding `InstallExtensionStep.tsx` migrated to
+  `useExtensionConnection(null)`**, replacing its private
+  `isExtensionInstalled`/`getSpotifyConnectionStatus` polling effect (2s/3s
+  intervals) with `verdict.kind !== "checking" && verdict.kind !==
+  "extension-missing"` (→ `isExtensionDetected`) and `verdict.kind === "ok"`
+  (→ `isSpotifyConnected`) — the same `extensionInstalled` derivation
+  `useDashboardSync.ts` already uses, reused verbatim rather than
+  reinvented. `handleAccept` (pairExtension + resetSyncJobs +
+  triggerExtensionSync + goToStep) is untouched, per the task doc's explicit
+  "UX unchanged... this is read-path unification only."
+  - **`null` is deliberately correct here, not the phase-04 mistake
+    repeated.** The brief flagged this explicitly: phase 04 passed `null`
+    where a real `account.spotify_id` was available and unused (a CRITICAL
+    wrong-account bug), so this had to be checked, not assumed. Traced it:
+    `createAccountForBetterAuthUser`'s doc comment
+    (`src/lib/domains/library/accounts/queries.ts:151-154`) states
+    "`spotify_id` is null until first extension sync" — and
+    `InstallExtensionStep` is the screen that *triggers* that first sync
+    (`handleAccept` → `triggerExtensionSync`). Unlike the studio/dashboard/
+    liked-songs/matching surfaces (which all read an already-linked
+    `account.spotify_id` out of route context), there is no real linked id
+    in existence yet at this point in the flow — `null` isn't a shortcut
+    that skips a check, it's the only value that could ever be true here.
+    This also matches why `deriveConnectionVerdict` never needs to reach
+    mismatch/unpaired/unverifiable for this consumer: those branches require
+    a linked id to compare against, and pre-link there is nothing to compare.
+  - **Deviation (original first pass, later fixed — see "Post-review fix:
+    unbounded poll on a device that can never onboard here" at the end of
+    this section): the shared query polled even when
+    `!capability.canOnboardHere`, which the old bespoke effect explicitly
+    avoided** (`"No point pinging from a device that can't finish the sync
+    here — it renders the handoff instead of the install flow"`). At the
+    time this was accepted as a minor, low-risk behavior change on the
+    reasoning that `isExtensionInstalled()`/`getSpotifyAccountStatus()` are
+    cheap `postMessage` round-trips that no-op quickly when nothing answers.
+    That reasoning missed that `canOnboardHere` is a media-query capability,
+    not a transient "hasn't answered yet" state — on a real handheld it is
+    permanently false, so the verdict this hook derives sits at
+    `extension-missing` forever, and `connection-state.ts`'s
+    `refetchInterval` treats that as permanently unhealthy: not a brief poll
+    but an **indefinite** 6s-interval ping for the entire time a phone sits
+    on the handoff screen, on battery. Re-flagged by review and fixed below.
+  - **Test file updated to mock at the connection-state seam**
+    (`isExtensionInstalled`/`getSpotifyAccountStatus` from `@/lib/extension/detect`,
+    same seam `connection-state.test.ts`/`useSpotifyGate.test.tsx` mock)
+    instead of the deleted `getSpotifyConnectionStatus`, and wrapped both
+    `render()` calls in a local `QueryClientProvider` (component now calls
+    `useQuery` transitively). The "renders the finish-on-a-computer
+    handoff..." test's `expect(mockIsExtensionInstalled).not.toHaveBeenCalled()`
+    assertion was removed in this first pass (it asserted the exact thing the
+    deviation above changed) and later **restored** once the post-review fix
+    below made it true again.
+- **Settings `ExtensionStatusRow.tsx` migrated to `useExtensionConnection(null)`.**
+  Copy/markup untouched, per the task doc. Mapping: `checking` →
+  `"checking"`, `extension-missing` → `"not-found"`, everything else
+  (`spotify-disconnected`/`ok` — the only two other verdicts reachable
+  pre-link) → `"connected"`, matching the task doc's literal three-way split
+  ("checking → ..., extension-missing → ..., everything else → connected").
+  This row only ever reported install status, never Spotify-auth status, so
+  collapsing `spotify-disconnected` into "connected" here is not a
+  regression — it's the same thing the old `isExtensionInstalled()`-only
+  check always reported. `null` for the same reason as `InstallExtensionStep`:
+  this row has no identity to check, only install presence, so there's
+  nothing a linked id would add.
+  - **No test existed for this component before this phase** (grepped for
+    "ExtensionStatusRow" under `*.test.ts(x)`: zero hits). Added
+    `src/features/settings/components/__tests__/ExtensionStatusRow.test.tsx`
+    covering the three-way copy mapping plus, most importantly, a **"stays
+    fresh" regression test** that is the actual point of this migration
+    (the README literally names this component "the sixth detection path"
+    for going stale for the life of the page): renders with the extension
+    not detected, lets it settle, then — without unmounting or
+    re-rendering from the test — flips the mocks to "installed" and
+    advances the shared query's fake-timer poll interval (6s, per
+    `connection-state.ts`'s `UNHEALTHY_REFETCH_INTERVAL_MS`) and asserts the
+    row flips to "connected" on its own. **Verified non-vacuous the same way
+    prior phases verify their regression guards**: temporarily hardcoded
+    `extensionConnectionQueryOptions()`'s `refetchInterval` to `() => false`
+    (simulating "never re-checks"), reran just this test file — the "stays
+    fresh" test failed (stuck on "not detected"), the other three still
+    passed. Reverted; full file green again (4/4). This is a from-scratch
+    test file, not a modified existing expectation.
+  - **`SettingsPage.test.tsx` broke as a side effect and needed a mock
+    added, not a test-expectation change.** That file blanket-mocks
+    `@tanstack/react-query` down to a bare `{ useQueryClient: () => ... }`
+    stub (it's testing the Account section's identity display, unrelated to
+    extensions), and `ExtensionStatusRow` — rendered inside `SettingsPage` —
+    now transitively calls `useQuery` via `useExtensionConnection`, which
+    doesn't exist on that stub: `Error: [vitest] No "useQuery" export is
+    defined on the "@tanstack/react-query" mock`, reproduced first, then
+    fixed. Fix: mocked `@/lib/extension/connection/useExtensionConnection`
+    directly to a static `{ kind: "checking" }` verdict, rather than
+    building out a real `QueryClientProvider` in a suite that has nothing to
+    do with extension status. This is a mechanical fixture fix for a
+    consumer this phase's migration newly touches, not a behavior-spec
+    change — none of `SettingsPage.test.tsx`'s six assertions changed.
+- **Final sweeps, all clean:**
+  - `useExtensionAccountConflict|useSpotifyReconnectState`: zero import
+    hits (comment-only references in `verdict.ts`, `useSongPlaylistSuggestions.ts`,
+    and two test-file comments naming the old hook for context).
+  - `"account-unavailable"|"account-conflict"` (literal strings): zero hits.
+    (`spotify-reconnect-required` deliberately excluded from this claim —
+    see the dedicated bullet above.)
+  - `getSpotifyConnectionStatus|isExtensionInstalled`: remaining non-test
+    hits are exactly `connection-state.ts` (the fetcher),
+    `create-playlist-from-draft.ts` (kept by design, task 04's preflight),
+    `detect.ts` (the definitions), and the two documented false positives
+    (`ExtensionSetupTrail.tsx`, `IconComparison.stories.tsx` — prop name,
+    not import) *plus one new false positive of the same shape*:
+    `InstallExtensionStep.tsx` now also passes `isExtensionInstalled=
+    {isExtensionDetected}` as an `ExtensionSetupTrail` prop — same pattern,
+    not a leftover import.
+  - `getSpotifyAccountStatus`: only `connection-state.ts` and `detect.ts`
+    outside test files.
+  - `spotify-reconnect-required|account-unavailable|account-conflict`: see
+    the dedicated bullet above for why this one doesn't fully clear.
+- **`bun run test`: 389 test files passed / 1 skipped (390), 4243 tests
+  passed / 8 skipped / 11 todo (4262) — net −7 vs. the phase-05 end count
+  (4250/4269): −11 from deleting `useExtensionAccountConflict.test.ts`, +4
+  from the new `ExtensionStatusRow.test.tsx`. `bun run typecheck` (tsgo
+  --noEmit): clean, zero errors. `bun run lint` (biome): clean, zero
+  issues, 1188 files checked.**
+- **Did not perform the manual verification script** (06-cleanup.md's
+  "Manual verification script (with the real extension)") — no real
+  extension/browser available in this environment; scoped to the automated
+  acceptance criteria (tests, typecheck, dead-code sweeps) the task was
+  actually run against. Flagging explicitly rather than silently skipping
+  it, per the "anything from the plan you deliberately did NOT do" report
+  requirement.
+
+### Post-review fix: unbounded poll on a device that can never onboard here (IMPORTANT)
+
+- **Root cause:** `InstallExtensionStep`'s first pass called
+  `useExtensionConnection(null)` unconditionally, above the
+  `if (!capability.canOnboardHere) return <OnboardingHandoff />` early
+  return, because rules-of-hooks forbids calling a hook after an early
+  return and the shared foundation (`extensionConnectionQueryOptions` /
+  `useExtensionConnection`) has no per-consumer `enabled` flag. On a real
+  handheld (`useOnboardingCapability`'s `HANDHELD_QUERY`:
+  `(max-width: 767px) and (pointer: coarse) and (hover: none)`), the
+  extension can structurally never answer — the verdict is permanently
+  `extension-missing`, which `connection-state.ts`'s `refetchInterval`
+  treats as permanently unhealthy, so the shared query pinged the extension
+  every 6s **indefinitely** for the entire time the phone sat on the
+  "finish on a computer" handoff screen. This is a direct regression versus
+  the pre-migration bespoke effect, which made zero calls on that screen for
+  exactly this reason (see its own comment, quoted above).
+- **Route chosen: (b), restructure so the capability check happens before
+  the connection-consuming body ever mounts — not (a), widen the foundation
+  with an `enabled` flag.** `InstallExtensionStep` was split into two
+  components in the same file: the exported `InstallExtensionStep` now only
+  calls `useOnboardingCapability()`, returns `<OnboardingHandoff />`
+  immediately when `!canOnboardHere`, and otherwise renders a new,
+  unexported `InstallExtensionStepBody` — which is where
+  `useExtensionConnection(null)` and every other hook the step needs now
+  live. On a handheld, `InstallExtensionStepBody` (and therefore the
+  `useQuery` subscription inside it) is never mounted, so there is no
+  observer for `refetchInterval` to ever schedule against — no widening of
+  the shared foundation was needed, and no other consumer's cache semantics
+  are touched. Chose (b) over (a) because: the capability check was already
+  structurally an early return one line above the hook call (a `!==
+  false` media-query result, not a value that changes mid-flight the way an
+  in-flight fetch would), so lifting it above the hook was a same-file,
+  mechanical split with zero risk to `useExtensionConnection`'s other five
+  call sites (dashboard, studio gate, liked songs/matching, settings); (a)
+  would have added an `enabled`-style parameter to a foundation the plan
+  explicitly calls "stable" and used by every other surface in this
+  migration, for a need only one consumer (a screen with no connection UI
+  to render in the first place) has, and would have required auditing that
+  a disabled observer can't evict/clobber the shared `['extension',
+  'connection']` cache entry other subscribed surfaces still read.
+- **Proof of no polling on a handoff device:** two tests in
+  `InstallExtensionStep.test.tsx`. First, "renders the finish-on-a-computer
+  handoff..." now (again) asserts `mockIsExtensionInstalled` was never
+  called, right after mounting with `canOnboardHere: false`. Second, a new
+  test, "never polls the extension on a device that can't onboard here,
+  even across multiple poll intervals," mounts the same way under
+  `vi.useFakeTimers()` and advances 30s — five times past
+  `connection-state.ts`'s 6s `UNHEALTHY_REFETCH_INTERVAL_MS` — then asserts
+  both `mockIsExtensionInstalled` and `mockGetSpotifyAccountStatus` are
+  still never called. This is the stronger of the two guards: the first
+  test would still pass if the hook fired once on mount and merely hadn't
+  resolved yet; the second proves no interval-driven fetch happens either,
+  which is the actual unbounded-poll failure mode the finding described.
+- **Normal (desktop) onboarding path confirmed unaffected:** the existing
+  "renders a stable login href..." test (unchanged, `canOnboardHere: true`
+  via the `beforeEach` default) still exercises the full body —
+  `useExtensionConnection` mounts, `mockIsExtensionInstalled`/
+  `mockGetSpotifyAccountStatus` resolve, and state 2 ("log in to Spotify")
+  renders — proving the split didn't change behavior for the device class
+  the step is actually built for.
+- **No other consumer affected — confirmed by construction, not just by
+  inspection.** The fix touches only `InstallExtensionStep.tsx` (a
+  same-file component split) and its own test file; `connection-state.ts`,
+  `useExtensionConnection.ts`, and every other call site
+  (`useDashboardSync.ts`, `useSpotifyGate.ts`, the liked-songs/matching
+  surfaces, `ExtensionStatusRow.tsx`) are byte-for-byte unchanged, so there
+  is no shared-cache eviction/clobber risk to audit for route (a) that route
+  (b) could have introduced — route (b) has no interaction with the shared
+  cache at all beyond simply not creating an observer.
+- **Explicitly not touched, per the review's scope note:** the settings
+  row's remaining stale-window behavior when the extension is uninstalled
+  while the page sits focused (the shared query stops polling once healthy
+  and leans on `refetchOnWindowFocus`). That is a separate, already-
+  documented trade-off in the README's Risks section, not this finding.
+- **Test consequence:** `bun run test` — 389 files passed / 1 skipped (390),
+  4244 tests passed / 8 skipped / 11 todo (4263), net +1 versus the
+  pre-fix Phase 06 end count (4243/8/11 → 4262 total) — the one new
+  fake-timer regression test; the restored `not.toHaveBeenCalled()`
+  assertion lives inside an existing test, not a new one. `bun run
+  typecheck` (tsgo --noEmit): clean, zero errors.
