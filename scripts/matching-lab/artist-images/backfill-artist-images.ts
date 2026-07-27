@@ -12,15 +12,15 @@
  * null. That's fine for an occasional manual backfill, but means it isn't
  * resumable/skip-already-tried the way backfill-band-gender.ts is.
  * Artists confirmed to have no Pathfinder image are logged to
- * docs/tmp/artist-image-backfill-missing-<target>.jsonl for review.
+ * artist-image-backfill-missing-<target>.jsonl (beside this script) for review.
  *
  * local uses direct SQL (scripts/db/prod.ts sql --url <local>); prod uses
  * REST (scripts/db/prod.ts rest) since the direct Postgres port isn't
  * reachable from every machine, while the PostgREST HTTPS endpoint is.
  *
  * Usage:
- *   SPOTIFY_TOKEN="BQ..." bun run scripts/matching-lab/backfill-artist-images.ts --target=local
- *   SPOTIFY_TOKEN="BQ..." CLIENT_TOKEN="AAA..." bun run scripts/matching-lab/backfill-artist-images.ts --target=prod [--limit 200] [--dry-run]
+ *   SPOTIFY_TOKEN="BQ..." bun run scripts/matching-lab/artist-images/backfill-artist-images.ts --target=local
+ *   SPOTIFY_TOKEN="BQ..." CLIENT_TOKEN="AAA..." bun run scripts/matching-lab/artist-images/backfill-artist-images.ts --target=prod [--limit 200] [--dry-run]
  */
 
 import { appendFile } from "node:fs/promises";
@@ -53,9 +53,11 @@ const target = targetArg;
 const dryRun = args.includes("--dry-run");
 const limitArg = args.indexOf("--limit") !== -1 ? args[args.indexOf("--limit") + 1] : null;
 const LIMIT = limitArg ? Number(limitArg) : null;
+// Kept beside the script rather than in docs/tmp so the log lives with the
+// tooling that writes and consumes it, and stays cwd-independent.
 const MISSING_LOG_PATH = resolve(
-	REPO_ROOT,
-	`docs/tmp/artist-image-backfill-missing-${target}.jsonl`,
+	import.meta.dir,
+	`artist-image-backfill-missing-${target}.jsonl`,
 );
 
 const token = process.env.SPOTIFY_TOKEN;

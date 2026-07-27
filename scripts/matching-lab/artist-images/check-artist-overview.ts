@@ -3,8 +3,8 @@
  * whatever image/bio data it returns. Diagnostic only — no DB writes.
  *
  * Usage:
- *   SPOTIFY_TOKEN="BQ..." bun run scripts/matching-lab/check-artist-overview.ts [spotifyArtistId]
- *   SPOTIFY_TOKEN="BQ..." CLIENT_TOKEN="AAA..." bun run scripts/matching-lab/check-artist-overview.ts
+ *   SPOTIFY_TOKEN="BQ..." bun run scripts/matching-lab/artist-images/check-artist-overview.ts [spotifyArtistId]
+ *   SPOTIFY_TOKEN="BQ..." CLIENT_TOKEN="AAA..." bun run scripts/matching-lab/artist-images/check-artist-overview.ts
  *
  * Defaults to Tiffany Day (5D5Qbe1lf3aMnLsPSzXItu) if no id is given.
  */

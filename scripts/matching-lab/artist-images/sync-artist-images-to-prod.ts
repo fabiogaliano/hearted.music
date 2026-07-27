@@ -6,7 +6,7 @@
  * this safe to rerun: it only ever fills gaps, never overwrites.
  *
  * Usage:
- *   bun run scripts/matching-lab/sync-artist-images-to-prod.ts [--dry-run] [--limit 500]
+ *   bun run scripts/matching-lab/artist-images/sync-artist-images-to-prod.ts [--dry-run] [--limit 500]
  */
 
 import { resolve } from "node:path";
