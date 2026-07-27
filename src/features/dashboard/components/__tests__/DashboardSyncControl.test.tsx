@@ -62,6 +62,12 @@ describe("DashboardSyncControl", () => {
 		expect(onAction).toHaveBeenCalledTimes(1);
 	});
 
+	it("renders status-only for a paused (linked-account) verdict — no reconnect button here, the dashboard banner owns it", () => {
+		renderState({ kind: "paused" });
+		expect(screen.getByText(/sync paused/i)).toBeInTheDocument();
+		expect(screen.queryByRole("button")).not.toBeInTheDocument();
+	});
+
 	it("renders the live phase label and percent while syncing", () => {
 		renderState({
 			kind: "syncing",

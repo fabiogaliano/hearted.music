@@ -95,7 +95,21 @@ function ReadyExtensionStub({ children }: { children: ReactNode }) {
 					return;
 				}
 				if (type === "SPOTIFY_STATUS") {
-					callback({ type: "SPOTIFY_STATUS", hasToken: true });
+					// paired + a matching profile so the shared connection verdict
+					// resolves to "ok" — otherwise it reads unverifiable (paired/profile
+					// missing) and the banner renders unexpectedly in this "everything is
+					// healthy" integration story. spotifyId matches simulateDashboard's
+					// linkedSpotifyId ("story-spotify-id").
+					callback({
+						type: "SPOTIFY_STATUS",
+						hasToken: true,
+						paired: true,
+						profile: {
+							spotifyId: "story-spotify-id",
+							displayName: "Story User",
+							avatarUrl: null,
+						},
+					});
 					return;
 				}
 				if (type === "GET_STATUS") {

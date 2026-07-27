@@ -14,15 +14,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { pairExtension } from "@/lib/extension/connect";
+import { repairConnection } from "@/lib/extension/connection/repair";
+import { reportSpotifyAuthSuccess } from "@/lib/extension/connection/report-failure";
+import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import {
 	type ExtensionSyncState,
-	expectLoginReturn,
-	getSpotifyConnectionStatus,
-	isExtensionInstalled,
 	requestExtensionSync,
 } from "@/lib/extension/detect";
-import { buildArmedSpotifyUrl } from "@/lib/extension/reconnect-link";
-import type { ExtensionAccountCheck } from "@/lib/extension/useExtensionAccountConflict";
 import { useExtensionSyncStatus } from "@/lib/extension/useExtensionSyncStatus";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
@@ -33,23 +31,26 @@ const EXTENSION_STORE_URL =
 	"https://chromewebstore.google.com/detail/everything-you-ever-heart/ohaaafmgbbfohhjhogonolonpjhhfohk";
 
 // Wrapped login URL so the token survives the accounts.spotify.com → open
-// redirect, matching onboarding's InstallExtensionStep. buildArmedSpotifyUrl
-// arms the eventual `continue` destination.
+// redirect, matching onboarding's InstallExtensionStep. repairConnection arms
+// the eventual `continue` destination itself.
 const SPOTIFY_LOGIN_URL =
 	"https://accounts.spotify.com/en-GB/login?continue=https%3A%2F%2Fopen.spotify.com%2F";
 
 const SUCCESS_LINGER_MS = 4_000;
-const DETECT_POLL_MS = 4_000;
 const ACTIVE_POLL_MS = 1_500;
 const IDLE_POLL_MS = 6_000;
 
 export type DashboardSyncUiState =
 	| { kind: "checking" }
 	| { kind: "install-required" }
+	// Pre-link accounts only (linkedSpotifyId === null) — before first sync
+	// onboarding owns the connect UX and there's no banner to carry the
+	// reconnect action, so the control keeps its own CTA (see deriveState).
 	| { kind: "spotify-reconnect-required" }
-	| { kind: "account-checking" }
-	| { kind: "account-unavailable" }
-	| { kind: "account-conflict" }
+	// Linked accounts with a non-ok verdict (spotify-disconnected / mismatch /
+	// unpaired / unverifiable) — the dashboard banner is the single reconnect
+	// home for all of these; the control only shows status.
+	| { kind: "paused" }
 	| { kind: "ready"; lastSyncAt: number | null }
 	| { kind: "triggering" }
 	| { kind: "syncing"; sync: ExtensionSyncState }
@@ -66,13 +67,13 @@ export type DashboardSyncUiState =
 /** Which recovery CTA an error should surface, by detected cause. */
 export type ErrorAction = "retry" | "install";
 
-// Internal control phase. The public UI state is *derived* from this plus live
-// detection + extension sync state, so transient transitions (e.g. triggering
-// before the extension reports "syncing") never leak a stale CTA.
+// Internal control phase. The public UI state is *derived* from this plus the
+// shared connection verdict + extension sync state, so transient transitions
+// (e.g. triggering before the extension reports "syncing") never leak a stale
+// CTA.
 type ControlPhase =
 	| "idle"
 	| "triggering"
-	| "needs-spotify"
 	| "cooldown"
 	| "already-running"
 	| "error"
@@ -84,19 +85,14 @@ export interface UseDashboardSyncResult {
 	onAction: () => void;
 }
 
-const DEFAULT_ACCOUNT_CHECK: ExtensionAccountCheck = { kind: "not-required" };
-
 export function useDashboardSync(
 	accountId: string,
-	accountCheck: ExtensionAccountCheck = DEFAULT_ACCOUNT_CHECK,
+	verdict: ConnectionVerdict = { kind: "ok" },
+	linkedSpotifyId: string | null = null,
 ): UseDashboardSyncResult {
 	const queryClient = useQueryClient();
 
 	const [phase, setPhase] = useState<ControlPhase>("idle");
-	const [extensionInstalled, setExtensionInstalled] = useState<boolean | null>(
-		null,
-	);
-	const [spotifyConnected, setSpotifyConnected] = useState(false);
 	const [errorState, setErrorState] = useState<{
 		message: string;
 		action: ErrorAction;
@@ -105,31 +101,18 @@ export function useDashboardSync(
 	const [syncedAt, setSyncedAt] = useState(0);
 	const [statusPollMs, setStatusPollMs] = useState(IDLE_POLL_MS);
 
+	// "extension-missing" is the only verdict that means "confirmed absent";
+	// "checking" means the shared connection query hasn't settled yet. Both are
+	// cases where GET_STATUS polling should stay off — mirrors the old
+	// `extensionInstalled === true` gate, now read off the verdict instead of a
+	// private detection poll.
+	const extensionInstalled =
+		verdict.kind !== "checking" && verdict.kind !== "extension-missing";
+
 	const { sync } = useExtensionSyncStatus({
-		enabled: extensionInstalled === true,
+		enabled: extensionInstalled,
 		pollMs: statusPollMs,
 	});
-
-	useEffect(() => {
-		let cancelled = false;
-		const check = async () => {
-			const installed = await isExtensionInstalled();
-			if (cancelled) return;
-			setExtensionInstalled(installed);
-			if (!installed) {
-				setSpotifyConnected(false);
-				return;
-			}
-			const connected = await getSpotifyConnectionStatus();
-			if (!cancelled) setSpotifyConnected(connected);
-		};
-		void check();
-		const id = setInterval(() => void check(), DETECT_POLL_MS);
-		return () => {
-			cancelled = true;
-			clearInterval(id);
-		};
-	}, []);
 
 	useEffect(() => {
 		// Keep a low-frequency GET_STATUS poll alive while installed so the control
@@ -163,23 +146,6 @@ export function useDashboardSync(
 		setErrorState({ message, action });
 		setPhase("error");
 	}, []);
-
-	const failSync = useCallback(
-		async (message: string) => {
-			// A dead Spotify session has no dedicated failure code, so check it
-			// directly at failure time — the background SPOTIFY_STATUS poll lags and
-			// would briefly mis-route. If Spotify is the cause, point there; a
-			// generic Retry would just fail the same way. Otherwise offer Retry.
-			const spotifyOk = await getSpotifyConnectionStatus();
-			if (!spotifyOk) {
-				setSpotifyConnected(false);
-				setPhase("needs-spotify");
-				return;
-			}
-			fail(message, "retry");
-		},
-		[fail],
-	);
 
 	const trigger = useCallback(async () => {
 		setPhase("triggering");
@@ -226,35 +192,39 @@ export function useDashboardSync(
 					return;
 				}
 
-				await failSync(
+				// No structured signal here distinguishes "Spotify session actually
+				// died" from any other sync failure (see the deviation log, Phase 03,
+				// finding 2): the wire contract only carries a free-text message, and
+				// re-probing SPOTIFY_STATUS would suffer the same local `hasToken`
+				// blind spot invariant 7 already flags for the connection *poll* —
+				// not better evidence, just a second read of the same unreliable
+				// signal. Pushing a sticky, app-wide auth failure off that guess can
+				// strand a healthy user in "reconnect Spotify" with nothing to clear
+				// it, so this call site doesn't push at all; genuine
+				// AUTH_REQUIRED/TOKEN_EXPIRED pushes belong at command call sites that
+				// actually carry that errorCode (playlist/matching, tasks 04/05).
+				fail(
 					backendFailure.message ??
 						`Sync couldn't finish: backend HTTP ${backendFailure.status}`,
+					"retry",
 				);
 				return;
 			}
 
-			await failSync(result.error);
+			fail(result.error, "retry");
 			return;
 		}
 
 		setSyncedAt(Date.now());
 		setPhase("success");
 		invalidateDashboard();
-	}, [fail, failSync, invalidateDashboard]);
-
-	const reconnectSpotify = useCallback(() => {
-		// The Spotify session expired — re-auth by opening Spotify so the extension
-		// content script recaptures the token, exactly as onboarding's "log in to
-		// Spotify" step does. Fire-and-open synchronously so the popup stays
-		// attributed to this click.
-		const armToken = crypto.randomUUID();
-		void expectLoginReturn(armToken).catch(() => {});
-		window.open(
-			buildArmedSpotifyUrl(SPOTIFY_LOGIN_URL, armToken),
-			"_blank",
-			"noopener,noreferrer",
-		);
-	}, []);
+		// A completed sync is itself a Spotify command that succeeded (it read
+		// liked songs/playlists through the extension's live token), so it's
+		// exactly the "next Spotify command that succeeds" bound the README's
+		// Risks section promises for any sticky auth failure pushed elsewhere
+		// (e.g. a future playlist/matching call site).
+		reportSpotifyAuthSuccess(queryClient);
+	}, [fail, invalidateDashboard, queryClient]);
 
 	// Success lingers briefly, then settles back to the derived readiness state.
 	useEffect(() => {
@@ -262,14 +232,6 @@ export function useDashboardSync(
 		const timer = setTimeout(() => setPhase("idle"), SUCCESS_LINGER_MS);
 		return () => clearTimeout(timer);
 	}, [phase]);
-
-	// Once Spotify reconnects (detected by the SPOTIFY_STATUS poll), drop the
-	// needs-spotify lockout so the control settles back to ready/Sync.
-	useEffect(() => {
-		if (phase === "needs-spotify" && spotifyConnected) {
-			setPhase("idle");
-		}
-	}, [phase, spotifyConnected]);
 
 	// Cooldown counts down once per second, then returns to ready.
 	useEffect(() => {
@@ -310,13 +272,12 @@ export function useDashboardSync(
 
 	const state = deriveState({
 		phase,
-		extensionInstalled,
-		spotifyConnected,
+		verdict,
+		linkedSpotifyId,
 		sync,
 		errorState,
 		cooldownRemaining,
 		syncedAt,
-		accountCheck,
 	});
 
 	const onAction = useCallback(() => {
@@ -325,7 +286,19 @@ export function useDashboardSync(
 				window.open(EXTENSION_STORE_URL, "_blank", "noopener,noreferrer");
 				break;
 			case "spotify-reconnect-required":
-				reconnectSpotify();
+				// Only reachable pre-link (see deriveState) — everywhere else the
+				// banner is the reconnect home. repairConnection opens Spotify
+				// synchronously (invariant 1), so it must fire directly from this
+				// click, never behind an await.
+				repairConnection({
+					verdict,
+					queryClient,
+					spotifyLoginUrl: SPOTIFY_LOGIN_URL,
+				}).catch(() => {
+					// pairExtension() can reject (network, extension gone mid-flight).
+					// Nothing more to do here — the next poll/focus refetch re-derives
+					// the verdict; this only exists so the rejection isn't unhandled.
+				});
 				break;
 			case "ready":
 				void trigger();
@@ -338,45 +311,56 @@ export function useDashboardSync(
 				}
 				break;
 			default:
-				// checking / triggering / syncing / already-running / cooldown /
-				// success are non-actionable status states.
+				// checking / paused / triggering / syncing / already-running /
+				// cooldown / success are non-actionable status states.
 				break;
 		}
-	}, [state, reconnectSpotify, trigger]);
+	}, [state, verdict, queryClient, trigger]);
 
 	return { state, onAction };
 }
 
 function deriveState(input: {
 	phase: ControlPhase;
-	extensionInstalled: boolean | null;
-	spotifyConnected: boolean;
+	verdict: ConnectionVerdict;
+	linkedSpotifyId: string | null;
 	sync: ExtensionSyncState | null;
 	errorState: { message: string; action: ErrorAction };
 	cooldownRemaining: number;
 	syncedAt: number;
-	accountCheck: ExtensionAccountCheck;
 }): DashboardSyncUiState {
 	const {
 		phase,
-		extensionInstalled,
-		spotifyConnected,
+		verdict,
+		linkedSpotifyId,
 		sync,
 		errorState,
 		cooldownRemaining,
 		syncedAt,
-		accountCheck,
 	} = input;
 
-	if (accountCheck.kind === "conflict") {
-		return { kind: "account-conflict" };
+	// A broken, identity-verified connection on a linked account (mismatch /
+	// unpaired / spotify-disconnected / unverifiable) outranks every phase, not
+	// just the readiness fallback at the bottom of this function. These are
+	// exactly the verdicts the dashboard banner renders its own Reconnect CTA
+	// for (see ExtensionAccountBanner) — if a stale phase like "error" won
+	// instead, the control would show a second, competing affordance (its own
+	// Retry) right below the banner's, and that Retry would be doomed: the
+	// connection is genuinely broken, so retrying can't succeed. Extension-
+	// missing is deliberately excluded — the banner never renders for it (it's
+	// a setup CTA, not a reconnect one), so there's no second affordance for a
+	// stale phase to collide with, and it keeps behaving like the
+	// pre-migration code (a stale phase can still show through it; see
+	// DECISIONS.md Phase 03, finding 1).
+	const brokenForLinkedAccount =
+		linkedSpotifyId !== null &&
+		verdict.kind !== "ok" &&
+		verdict.kind !== "checking" &&
+		verdict.kind !== "extension-missing";
+	if (brokenForLinkedAccount) {
+		return { kind: "paused" };
 	}
-	if (extensionInstalled === true && spotifyConnected) {
-		if (accountCheck.kind === "checking") return { kind: "account-checking" };
-		if (accountCheck.kind === "unavailable") {
-			return { kind: "account-unavailable" };
-		}
-	}
+
 	if (phase === "error") {
 		return {
 			kind: "error",
@@ -384,11 +368,6 @@ function deriveState(input: {
 			retryable: true,
 			action: errorState.action,
 		};
-	}
-	// A failed sync resolves its own cause (failSync checks Spotify directly), so
-	// this phase is already the verified "Spotify is the problem" verdict.
-	if (phase === "needs-spotify") {
-		return { kind: "spotify-reconnect-required" };
 	}
 	if (phase === "cooldown") {
 		return { kind: "cooldown", retryAfterSeconds: cooldownRemaining };
@@ -409,20 +388,26 @@ function deriveState(input: {
 			: { kind: "triggering" };
 	}
 
-	// Idle: the CTA reflects what's missing to be able to sync — the same two
-	// gates onboarding's setup trail checks (extension found, Spotify connected).
-	if (extensionInstalled === null) {
+	// Idle: readiness comes straight from the shared verdict — the same two
+	// gates onboarding's setup trail checks (extension found, Spotify
+	// connected), now unified with the identity checks (mismatch/unpaired/
+	// unverifiable) that used to be a separate poll.
+	if (verdict.kind === "checking") {
 		return { kind: "checking" };
 	}
-	if (!extensionInstalled) {
+	if (verdict.kind === "extension-missing") {
 		return { kind: "install-required" };
 	}
-	if (!spotifyConnected) {
+	if (verdict.kind !== "ok") {
+		// Only reachable pre-link (linkedSpotifyId === null) — the same verdicts
+		// for a linked account were already handled by brokenForLinkedAccount
+		// above, unconditionally on phase. Pre-link accounts have no banner
+		// (onboarding owns that UX before first sync), so the control keeps the
+		// one reconnect CTA it's always had.
 		return { kind: "spotify-reconnect-required" };
 	}
-	// Installed and Spotify-connected — if a sync is already live, show its
-	// extension-reported phase/progress instead of collapsing it to a generic
-	// lockout message.
+	// ok — if a sync is already live, show its extension-reported phase/progress
+	// instead of collapsing it to a generic lockout message.
 	if (sync?.status === "syncing") {
 		return { kind: "syncing", sync };
 	}

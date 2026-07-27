@@ -73,6 +73,10 @@ export const SpotifyReconnectRequired = StoryFor({
 	kind: "spotify-reconnect-required",
 });
 export const ReadyIdle = StoryFor({ kind: "ready", lastSyncAt: Date.now() });
+// Linked account with a non-ok verdict (spotify-disconnected / mismatch /
+// unpaired / unverifiable) — the dashboard banner owns the reconnect action,
+// so the control renders status only (the fix for the two-reconnects bug).
+export const Paused = StoryFor({ kind: "paused" });
 export const Triggering = StoryFor({ kind: "triggering" });
 
 export const SyncingLikedSongs = StoryFor({

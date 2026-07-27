@@ -6,7 +6,7 @@
  * useDashboardSync wiring so the surrounding layout stays presentational.
  */
 
-import type { ExtensionAccountCheck } from "@/lib/extension/useExtensionAccountConflict";
+import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import { fonts } from "@/lib/theme/fonts";
 import { useDashboardSync } from "../hooks/useDashboardSync";
 import { DashboardSyncControl } from "./DashboardSyncControl";
@@ -14,15 +14,23 @@ import { DashboardSyncControl } from "./DashboardSyncControl";
 interface DashboardSyncStatusProps {
 	accountId: string;
 	lastSyncText: string;
-	accountCheck: ExtensionAccountCheck;
+	verdict: ConnectionVerdict;
+	/** null before first sync — narrows which reconnect CTA the control keeps
+	 * (see useDashboardSync's deriveState: pre-link has no banner to own it). */
+	linkedSpotifyId: string | null;
 }
 
 export function DashboardSyncStatus({
 	accountId,
 	lastSyncText,
-	accountCheck,
+	verdict,
+	linkedSpotifyId,
 }: DashboardSyncStatusProps) {
-	const { state, onAction } = useDashboardSync(accountId, accountCheck);
+	const { state, onAction } = useDashboardSync(
+		accountId,
+		verdict,
+		linkedSpotifyId,
+	);
 
 	return (
 		<div

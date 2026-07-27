@@ -282,6 +282,271 @@ Run baseline: `4ef7d715`
 
 ## Phase 03
 
+- **`deriveState` checks `phase` before the verdict, uniformly — the old
+  "account-conflict overrides even an in-flight phase" quirk is dropped.**
+  The old `deriveState` checked `accountCheck.kind === "conflict"` (and, when
+  installed+connected, `checking`/`unavailable`) *before* any phase branch, so
+  a conflict could interrupt an `error`/`triggering`/etc. mid-flight. The spec's
+  instruction for `failSync` — "It must also `setPhase("idle")`... the push
+  alone doesn't fix that — `deriveState` checks `phase` before it looks at
+  readiness" — only makes sense if phase uniformly outranks the verdict in the
+  new `deriveState`; otherwise the push (`reportSpotifyAuthFailure`, which
+  flips the shared verdict to `spotify-disconnected`) would already unstick a
+  `triggering` phase on its own, and the explicit `setPhase("idle")` call would
+  be redundant. So `deriveState` now checks `error → cooldown → success →
+  already-running → triggering` first, then falls through to the
+  verdict-derived `checking / install-required / paused|spotify-reconnect-
+  required / ready|syncing`, exactly mirroring the old phase-then-fallback
+  skeleton but with every "verdict-like" case (not just conflict) demoted to
+  the fallback.
+  - **Test expectation changed as a direct consequence:** `useDashboardSync.test.tsx`'s
+    old `"blocks an error retry when an account conflict appears"` asserted
+    that a conflict rerender flips an in-flight `error` state straight to
+    `account-conflict` and blocks the pending retry. Replaced with
+    `"phase (an in-flight error) is checked before the verdict, so a verdict
+    change alone can't override it — retry still works and re-triggers"`,
+    which asserts the opposite: the `error` state survives a verdict rerender
+    to `unpaired`, and clicking retry still calls `requestExtensionSync` again.
+    This is the direct, unavoidable flip side of the ordering change above —
+    without it, `failSync`'s `setPhase("idle")` requirement wouldn't be
+    load-bearing, so I'm confident this is what the spec intends rather than
+    an oversight.
+- **The pre-link `spotify-reconnect-required` CTA (kept in the sync control
+  per spec) now delegates to `repairConnection` instead of a bespoke
+  `expectLoginReturn`/`buildArmedSpotifyUrl`/`window.open` sequence.** The spec
+  only explicitly routes the *banner's* three actionable verdicts through
+  `repairConnection`, but the pre-link control CTA is still a reconnect
+  affordance calling the exact same `spotify-disconnected` verdict path — using
+  the shared primitive here removes ~10 duplicated lines from
+  `useDashboardSync.ts` and means there's only one place `window.open`/arming
+  logic for Spotify reconnects lives outside `repair.ts` and
+  `SpotifyReconnectLink`/`reconnect-link.ts`. Consequence: this CTA now also
+  silently re-pairs (since `spotify-disconnected` is in `repairConnection`'s
+  `needsPairing` set), which the old `reconnectSpotify` deliberately did not do
+  (its comment said "not re-pair"). Harmless (re-pairing is idempotent) and
+  arguably a fix in its own right (the fresh-install pre-link case now also
+  resolves in one click), but it *is* a behavior change from the old code, so
+  I changed `useDashboardSync.test.tsx`'s corresponding test
+  (`"prompts to reconnect Spotify..."` → `"pre-link: prompts to reconnect
+  Spotify from the control itself, and a click repairs in one gesture"`) to
+  assert `pairExtension` **is** called, where the old test asserted it was
+  **not**.
+- **`repairConnection`'s rejection (carried forward from phase 02's review) is
+  caught at both of its two call sites, not centralized in `repair.ts`
+  itself.** Phase 02 left the returned promise able to reject on purpose,
+  deferring the decision to this task. Both the banner's `onReconnect` and the
+  sync control's pre-link `onAction` now attach a `.catch(() => {})` (banner
+  also has a `.finally(() => setRepairing(false))` to guarantee the disabled
+  state never sticks). Chose call-site handling over swallowing inside
+  `repair.ts` because the two callers need different follow-through (the
+  banner drives a `repairing` UI flag; the control's CTA is fire-and-forget) —
+  centralizing would either force a UI concern into a connection-layer
+  primitive or lose the control call site's need to avoid an unhandled
+  rejection. Verified with a dedicated test
+  (`ExtensionAccountBanner.test.tsx`'s `"does not leave the button stuck
+  disabled when pairExtension rejects"`) that mocks `pairExtension` to reject
+  and asserts the button returns to its enabled, non-"Reconnecting…" state.
+- **"Switch Spotify account" now calls `repairConnection` (a plain button)
+  instead of rendering `SpotifyReconnectLink` (an anchor).** Matches the
+  spec's table exactly ("mismatch → 'Switch Spotify account' →
+  `repairConnection`"). Per the open decision the plan explicitly left to this
+  task: **kept current behavior, did not add a logout URL.**
+  `repairConnection`'s mismatch branch opens the same
+  `accounts.spotify.com/.../login` wrapper used for `spotify-disconnected`
+  (not `open.spotify.com` the way the old `SpotifyReconnectLink` did) — it
+  still can't force a different Spotify account if the browser already holds a
+  live session for the wrong one (Spotify redirects straight through, per
+  `02-repair-action.md`'s inherited-caveat note), so the button is
+  functionally still "instructional" for that hole, matching the plan's
+  "pre-existing, not introduced here" framing. Not building a logout-based fix
+  is a deliberate scope decision, not an oversight: the plan explicitly frames
+  it as optional ("Decide explicitly... whether to fix this here or keep the
+  affordance instructional") and a logout redirect is a bigger behavioral
+  change (it would sign the user out of Spotify entirely in that tab) that
+  deserves its own review, not a drive-by inside this migration.
+- **New copy for `spotify-disconnected` and `unverifiable`** (the spec asked
+  for new copy but didn't dictate wording): "Your Spotify session expired, so
+  syncing is paused." / "Reconnect Spotify" for the former (mirrors the
+  existing `unpaired` copy's structure); "We can't verify your Spotify account
+  right now — this can happen with an older version of the extension. Syncing
+  is paused until it's confirmed." with no button for the latter (invariant
+  6 — explicitly nothing to repair with a click).
+- **`useDashboardSync`'s new `verdict`/`linkedSpotifyId` params default to
+  `{ kind: "ok" }` / `null`.** Not required by any real caller (`DashboardSyncStatus`
+  always passes both explicitly) — kept purely so trigger/cooldown/retry tests
+  that don't care about connection state can still call
+  `useDashboardSync(ACCOUNT_ID)` without boilerplate, mirroring the old
+  `DEFAULT_ACCOUNT_CHECK` pattern.
+- **`extensionInstalled` (the `useExtensionSyncStatus` `enabled` gate, orphaned
+  by the detection-poll deletion) is derived from `verdict.kind`, not passed as
+  a separate prop.** `verdict.kind !== "checking" && verdict.kind !==
+  "extension-missing"` is exactly `connection?.installed === true` by
+  construction (verdict.ts's rules 1–2 return `checking`/`extension-missing`
+  precisely when the connection is unsettled/absent, and every other verdict
+  requires `connection.installed` to be true to be reached at all) — passing
+  `connection.installed` through as a fourth hook parameter would duplicate
+  information the verdict already encodes and widen the hook's surface for no
+  behavioral gain.
+- **Dashboard.stories.tsx's `ReadyExtensionStub` SPOTIFY_STATUS response
+  updated to include `paired: true` and a `profile` matching
+  `simulateDashboard`'s `linkedSpotifyId` ("story-spotify-id").** Not
+  spec-mandated, but without it the shared verdict now resolves to
+  `unverifiable` (paired/profile both missing from the stub) instead of `ok`,
+  so `ReadyWhileEnrichmentRunning` — an integration story explicitly meant to
+  show an all-healthy dashboard — would unexpectedly render the new banner.
+  The old `useExtensionAccountConflict` treated the same missing fields as
+  `unavailable` (banner hidden), so this stub was accidentally "correct" only
+  because the old hook's coarser states happened not to surface it; the new,
+  more precise verdict exposes the gap. Fixed by completing the stub's fake
+  response rather than special-casing the story.
+- **New tests added, not required by name but requested in spirit:**
+  `ExtensionAccountBanner.test.tsx` (verdict → copy/button mapping, one-click
+  fresh-install repair for both `unpaired` and `spotify-disconnected`,
+  mismatch never pairs, unverifiable has no button, pre-link suppression, the
+  repair-rejection recovery) and
+  `src/features/dashboard/__tests__/reconnect-affordance.test.tsx` — the
+  explicit two-reconnects regression guard the task calls for, rendering
+  `ExtensionAccountBanner` and `DashboardSyncStatus` together under the same
+  injected verdict and asserting exactly one reconnect-shaped button ever
+  appears (and none once the verdict is `ok`).
+- **Left in place for phase 06:** `useExtensionAccountConflict.ts` and its
+  test (`src/lib/extension/__tests__/useExtensionAccountConflict.test.ts`) are
+  now unused by the dashboard but not deleted — the task doc explicitly defers
+  that ("superseded; verify coverage parity before deleting in 06"). Also
+  `SpotifyReconnectLink`/`reconnect-link.ts`'s `armReconnectOnActivation` path
+  is untouched (still used by matching/liked-songs/playlists surfaces — task
+  05's territory), and `DashboardProps`'s comment referencing "the extension
+  account-conflict banner" is now slightly dated terminology but still
+  accurate in substance, left as-is to avoid unrelated churn.
+
+### Post-review fix: verdict-vs-phase ordering over-generalized (finding 1, IMPORTANT)
+
+- **Root cause:** the task doc's instruction — "`failSync` must also
+  `setPhase("idle")`, or `deriveState` (which checks `phase` before it looks
+  at readiness) leaves the control stuck rendering `triggering` forever" —
+  was read as license to make *every* phase check unconditionally outrank the
+  verdict, uniformly. That's a bigger change than the plan asked for: the old
+  `deriveState` (`git show 2d08f070`) only let one thing skip ahead of the
+  phase branches — `accountCheck.kind === "conflict"` (today's `mismatch`),
+  checked before any phase, plus `checking`/`unavailable` when the raw
+  connectivity already looked fine. A stale `error`/`cooldown`/
+  `already-running`/`success` phase could still mask an unpaired/mismatched/
+  disconnected account under that design; the migration removed that masking
+  entirely instead of preserving it, which is what let a stale `error` phase
+  render its own Retry button directly alongside the banner's Reconnect for
+  the same broken connection — two affordances, and the Retry one doomed
+  (retrying a connection that's known broken can't succeed).
+- **Chosen ordering rule:** `deriveState` now checks, in order: (1) is the
+  verdict broken (`!== "ok"`, `!== "checking"`, `!== "extension-missing"`)
+  *and* is the account linked (`linkedSpotifyId !== null`)? If so, return
+  `paused` unconditionally — before any phase branch. (2) Otherwise, the
+  existing phase ladder (`error → cooldown → success → already-running →
+  triggering`). (3) Otherwise, the verdict-derived fallback
+  (`checking`/`extension-missing`/pre-link `spotify-reconnect-required`/
+  `ready`/`syncing`). Rule (1)'s verdict set is exactly the set the dashboard
+  banner (`ExtensionAccountBanner`, per `03-dashboard.md`'s table) renders its
+  own Reconnect CTA for — `mismatch` / `unpaired` / `spotify-disconnected` /
+  `unverifiable` — so "outranks phase" is scoped to precisely the verdicts
+  that would otherwise collide with the banner's button. `extension-missing`
+  is deliberately excluded from rule (1): the banner never renders for it (it
+  keeps the control's own "Install extension" CTA, a *setup* affordance, not
+  a reconnect one), so there is no second affordance for a stale phase to
+  collide with there, and excluding it also matches the old code (raw
+  "not installed" was checked *after* the phase ladder, at the very bottom).
+  This can't reproduce the two-affordance bug because the only banner-owned
+  verdicts are exactly the ones that now short-circuit before the control can
+  render anything with a button (`error` is the only phase state with one);
+  it can't reproduce a doomed retry because `onAction`'s `"error"` case is
+  simply never reached while the verdict is broken — `deriveState` returns
+  `paused` instead, whose `onAction` branch is a no-op.
+- **`failSync`'s `setPhase("idle")` requirement is superseded, not dropped —
+  because finding 2 (below) deletes the function it lived in.** Finding 2
+  removes the `reportSpotifyAuthFailure` push this call site made (no
+  reliable signal to gate it on), and without a push there's no shared-verdict
+  escape hatch for rule (1) above to route through — so the literal
+  `setPhase("idle")` instruction (written for a design where the shared
+  verdict, not the local phase, would carry the resolution) doesn't have
+  anywhere to attach. What's preserved is the *invariant* the instruction was
+  protecting — "never leave the control stuck rendering `triggering`
+  forever" — which now holds structurally: every path out of `trigger()`
+  (including the former `failSync` cases) calls `fail()`, which always sets a
+  terminal, non-stuck phase (`error`), never leaves `triggering` in place
+  un-resolved. Setting phase to `idle` specifically would have been actively
+  wrong here anyway — with no push, `idle` resolves straight back to `ready`,
+  silently hiding a real sync failure from the user.
+- **Test consequence:** replaced `useDashboardSync.test.tsx`'s
+  `"pushes a shared auth failure and resets phase to idle..."` test (finding
+  2 deleted the behavior it covered) with two tests — one asserting a
+  dead-session sync failure now surfaces as a plain retryable `error` with no
+  push, one asserting a successful sync calls `reportSpotifyAuthSuccess`.
+  Replaced the `"phase (an in-flight error) is checked before the verdict..."`
+  test — which asserted the exact bug this finding reports (a verdict change
+  to `unpaired` failing to override a stale `error` phase) — with
+  `"a broken verdict on a linked account outranks a stale error phase..."`,
+  which asserts the opposite and is the explicit verdict×phase regression
+  guard the finding asked for: renders `error`, rerenders with verdict
+  `unpaired`, asserts the state collapses to `paused` and a click doesn't
+  call `requestExtensionSync` again: then rerenders back to verdict `ok` and
+  confirms the original stale `error` phase (never reset, since this path
+  doesn't go through the deleted push) resurfaces and retry still works —
+  proving rule (1) only *masks* the phase while the verdict is broken, it
+  doesn't destroy it.
+
+### Post-review fix: unbounded sticky auth failure (finding 2, IMPORTANT)
+
+- **Removed the push entirely rather than reclassifying it.** The task doc
+  asked `failSync` to call `reportSpotifyAuthFailure` whenever a fresh
+  `getSpotifyConnectionStatus()` probe read `hasToken: false` after a sync
+  failure. That probe is the exact same local `hasToken` check invariant 7
+  documents as unreliable for the *poll* (`token !== null && isTokenValid() &&
+  !isAnonymous`, `dispatcher.ts:160`) — re-running it at failure time doesn't
+  make it authoritative, it's a second read of the same blind-spot signal.
+  Checked whether `TRIGGER_SYNC`'s wire contract carries anything better:
+  `ExtensionSyncRequestResult`'s `source: "extension"` failure branch
+  (`shared/extension-sync-contract.ts`) is a free-text `error: string` thrown
+  from `performSync()` (`extensions/src/background/service-worker.ts:508-511`)
+  — including `throw new Error("No valid token")`, which is itself just the
+  same local `isTokenValid()` check, not a live Spotify-side rejection. There
+  is no `AUTH_REQUIRED`/`TOKEN_EXPIRED`-style structured code anywhere in this
+  contract (unlike `CommandResponse`/`SpotifyErrorCode`, which
+  `spotify-action-outcome.ts`/`spotify-reconnect.ts` already classify
+  correctly for the command shape playlist/matching actions use). So per the
+  finding's own fallback ("if classification genuinely cannot be made
+  reliably at this call site, do not push here at all — a missing push is far
+  less harmful than a false sticky one"): **no push from this call site.**
+  Deleted `failSync` outright (it existed only to run the probe + branch
+  between push and `fail()`) and call `fail(message, "retry")` directly from
+  both of `trigger()`'s failure branches (backend and extension-sourced).
+  `reportSpotifyAuthFailure` now has zero call sites anywhere in the repo
+  (confirmed by grep) — expected and correct: genuine pushes belong at
+  command call sites that carry a real `errorCode`, which is tasks 04/05's
+  territory, not this one.
+- **Wired `reportSpotifyAuthSuccess`** at `trigger()`'s success path
+  (immediately after `invalidateDashboard()`), the one "a Spotify command
+  succeeded" moment in this hook's scope — a completed `TRIGGER_SYNC` read
+  liked songs/playlists through the extension's live Spotify token, so it's
+  legitimate evidence the token is good. This is also the first production
+  call site for `reportSpotifyAuthSuccess` (previously zero, confirmed by
+  grep — the exact gap the finding flagged: the README's Risks section
+  promises `authFailedAt` "cleared on... the next Spotify command that
+  succeeds," but nothing ever called the function that clears it). Did *not*
+  wire it off `useExtensionSyncStatus`'s `GET_STATUS` poll — that reads
+  `hasToken` from the same local, unauthoritative check this finding is about
+  removing reliance on, so treating it as "success evidence" would just
+  reintroduce the same class of false signal on the clearing side.
+  Deliberately scoped to phase 03 only, per the brief — no call site added to
+  the `useExtensionSyncStatus`/`useExtensionConnection` poll layer (phase 01)
+  or to playlist/matching command paths (phases 04/05); those will wire their
+  own genuinely-classified success/failure pushes against structured
+  `errorCode`s.
+- **Test consequence:** removed `mockGetSpotifyConnectionStatus`/
+  `mockReportSpotifyAuthFailure` from `useDashboardSync.test.tsx` (the
+  production code no longer calls either) and added
+  `mockReportSpotifyAuthSuccess`. Added two tests: a dead-session sync
+  failure now asserts a plain `error`/`retry` state with the raw message
+  surfaced, and a successful sync asserts `reportSpotifyAuthSuccess` was
+  called exactly once.
+
 ## Phase 04
 
 ## Phase 05

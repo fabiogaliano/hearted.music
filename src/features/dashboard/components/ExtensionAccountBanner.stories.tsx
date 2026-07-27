@@ -1,7 +1,9 @@
 import type { Story } from "@ladle/react";
 import type { ReactNode } from "react";
-import type { ExtensionAccountConflict } from "@/lib/extension/useExtensionAccountConflict";
-import { ExtensionAccountBannerView } from "./ExtensionAccountBanner";
+import {
+	type ActionableConnectionVerdict,
+	ExtensionAccountBannerView,
+} from "./ExtensionAccountBanner";
 
 export default {
 	title: "Dashboard/ExtensionAccountBanner",
@@ -20,8 +22,8 @@ function DashboardContext({ children }: { children: ReactNode }) {
 	);
 }
 
-const MISMATCH: ExtensionAccountConflict = {
-	kind: "spotify-mismatch",
+const MISMATCH: ActionableConnectionVerdict = {
+	kind: "mismatch",
 	extensionProfile: {
 		spotifyId: "spotify-user-other",
 		displayName: "alex@work",
@@ -29,14 +31,18 @@ const MISMATCH: ExtensionAccountConflict = {
 	},
 };
 
-const UNPAIRED: ExtensionAccountConflict = { kind: "unpaired" };
+const UNPAIRED: ActionableConnectionVerdict = { kind: "unpaired" };
+const SPOTIFY_DISCONNECTED: ActionableConnectionVerdict = {
+	kind: "spotify-disconnected",
+};
+const UNVERIFIABLE: ActionableConnectionVerdict = { kind: "unverifiable" };
 
 // The Spotify session in the browser belongs to a different account than the
 // one this library was built from — the headline conflict.
 export const SpotifyMismatch: Story = () => (
 	<DashboardContext>
 		<ExtensionAccountBannerView
-			conflict={MISMATCH}
+			verdict={MISMATCH}
 			accountDisplayName="fabio"
 			repairing={false}
 			onReconnect={noop}
@@ -49,7 +55,7 @@ export const SpotifyMismatch: Story = () => (
 export const SpotifyMismatchUnknownAccount: Story = () => (
 	<DashboardContext>
 		<ExtensionAccountBannerView
-			conflict={MISMATCH}
+			verdict={MISMATCH}
 			accountDisplayName={null}
 			repairing={false}
 			onReconnect={noop}
@@ -61,7 +67,7 @@ export const SpotifyMismatchUnknownAccount: Story = () => (
 export const Unpaired: Story = () => (
 	<DashboardContext>
 		<ExtensionAccountBannerView
-			conflict={UNPAIRED}
+			verdict={UNPAIRED}
 			accountDisplayName="fabio"
 			repairing={false}
 			onReconnect={noop}
@@ -73,7 +79,7 @@ export const Unpaired: Story = () => (
 export const UnpairedReconnecting: Story = () => (
 	<DashboardContext>
 		<ExtensionAccountBannerView
-			conflict={UNPAIRED}
+			verdict={UNPAIRED}
 			accountDisplayName="fabio"
 			repairing={true}
 			onReconnect={noop}
@@ -81,10 +87,35 @@ export const UnpairedReconnecting: Story = () => (
 	</DashboardContext>
 );
 
-// Single interactive story: toggle conflict kind + repairing from the Controls
+// The Spotify session expired (token gone) — the extension is still paired.
+export const SpotifyDisconnected: Story = () => (
+	<DashboardContext>
+		<ExtensionAccountBannerView
+			verdict={SPOTIFY_DISCONNECTED}
+			accountDisplayName="fabio"
+			repairing={false}
+			onReconnect={noop}
+		/>
+	</DashboardContext>
+);
+
+// paired: null (old extension) or profile: null (hiccup) — never conflated
+// with the explicit unpaired disconnect (invariant 6), so no button.
+export const Unverifiable: Story = () => (
+	<DashboardContext>
+		<ExtensionAccountBannerView
+			verdict={UNVERIFIABLE}
+			accountDisplayName="fabio"
+			repairing={false}
+			onReconnect={noop}
+		/>
+	</DashboardContext>
+);
+
+// Single interactive story: toggle verdict kind + repairing from the Controls
 // panel to compare states without switching stories.
 type PlaygroundProps = {
-	kind: "spotify-mismatch" | "unpaired";
+	kind: "mismatch" | "unpaired" | "spotify-disconnected" | "unverifiable";
 	extensionDisplayName: string;
 	accountDisplayName: string;
 	repairing: boolean;
@@ -96,21 +127,21 @@ export const Playground: Story<PlaygroundProps> = ({
 	accountDisplayName,
 	repairing,
 }) => {
-	const conflict: ExtensionAccountConflict =
-		kind === "spotify-mismatch"
+	const verdict: ActionableConnectionVerdict =
+		kind === "mismatch"
 			? {
-					kind: "spotify-mismatch",
+					kind: "mismatch",
 					extensionProfile: {
 						spotifyId: "spotify-user-other",
 						displayName: extensionDisplayName,
 						avatarUrl: null,
 					},
 				}
-			: { kind: "unpaired" };
+			: { kind };
 	return (
 		<DashboardContext>
 			<ExtensionAccountBannerView
-				conflict={conflict}
+				verdict={verdict}
 				accountDisplayName={accountDisplayName || null}
 				repairing={repairing}
 				onReconnect={noop}
@@ -120,7 +151,7 @@ export const Playground: Story<PlaygroundProps> = ({
 };
 
 Playground.args = {
-	kind: "spotify-mismatch",
+	kind: "mismatch",
 	extensionDisplayName: "alex@work",
 	accountDisplayName: "fabio",
 	repairing: false,
@@ -128,7 +159,7 @@ Playground.args = {
 
 Playground.argTypes = {
 	kind: {
-		options: ["spotify-mismatch", "unpaired"],
+		options: ["mismatch", "unpaired", "spotify-disconnected", "unverifiable"],
 		control: { type: "radio" },
 	},
 	extensionDisplayName: { control: { type: "text" } },

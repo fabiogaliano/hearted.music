@@ -1,34 +1,32 @@
 /**
  * Tests for useDashboardSync — the orchestration behind the dashboard sync
- * control: detection → CTA mapping, idle vs active GET_STATUS polling,
- * awaited trigger outcomes, and exact 429 handling from structured backend
- * failures forwarded through the extension.
+ * control: verdict → CTA mapping (the connection state is now injected, not
+ * self-detected — see docs/plans/extension-connection-service/03-dashboard.md),
+ * idle vs active GET_STATUS polling, awaited trigger outcomes, and exact 429
+ * handling from structured backend failures forwarded through the extension.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
-import type { ExtensionAccountCheck } from "@/lib/extension/useExtensionAccountConflict";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
 } from "../../../../../shared/extension-sync-contract";
 import { useDashboardSync } from "../useDashboardSync";
 
-const mockIsExtensionInstalled = vi.fn();
-const mockGetSpotifyConnectionStatus = vi.fn();
 const mockRequestExtensionSync = vi.fn();
 const mockExpectLoginReturn = vi.fn();
 const mockPairExtension = vi.fn();
 const mockUseExtensionSyncStatus = vi.fn();
+const mockReportSpotifyAuthSuccess = vi.fn();
 
 vi.mock("@/lib/extension/detect", () => ({
-	isExtensionInstalled: () => mockIsExtensionInstalled(),
-	getSpotifyConnectionStatus: () => mockGetSpotifyConnectionStatus(),
 	requestExtensionSync: () => mockRequestExtensionSync(),
-	expectLoginReturn: () => mockExpectLoginReturn(),
+	expectLoginReturn: (armToken: string) => mockExpectLoginReturn(armToken),
 }));
 
 vi.mock("@/lib/extension/connect", () => ({
@@ -38,6 +36,14 @@ vi.mock("@/lib/extension/connect", () => ({
 vi.mock("@/lib/extension/useExtensionSyncStatus", () => ({
 	useExtensionSyncStatus: (options: unknown) =>
 		mockUseExtensionSyncStatus(options),
+}));
+
+// The push/clear channel — asserted as "was it called", not re-tested for its
+// own internals (that's report-failure.test.ts's job). `useDashboardSync` no
+// longer pushes a failure from this hook (see DECISIONS.md Phase 03, finding
+// 2 — no reliable signal at this call site), only clears one on success.
+vi.mock("@/lib/extension/connection/report-failure", () => ({
+	reportSpotifyAuthSuccess: (qc: unknown) => mockReportSpotifyAuthSuccess(qc),
 }));
 
 function makeSync(overrides?: Partial<ExtensionSyncState>): ExtensionSyncState {
@@ -72,9 +78,7 @@ describe("useDashboardSync", () => {
 		queryClient = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
-		// Default: installed, paired, connected, no live sync → ready.
-		mockIsExtensionInstalled.mockResolvedValue(true);
-		mockGetSpotifyConnectionStatus.mockResolvedValue(true);
+		// Default: verdict ok, no live sync → ready.
 		mockUseExtensionSyncStatus.mockReturnValue({ sync: null, hasToken: true });
 		mockRequestExtensionSync.mockResolvedValue({ ok: true, count: 10 });
 		mockExpectLoginReturn.mockResolvedValue(true);
@@ -85,61 +89,67 @@ describe("useDashboardSync", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("reports install-required when the extension is absent", async () => {
-		mockIsExtensionInstalled.mockResolvedValue(false);
-		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
-			wrapper,
-		});
-		await waitFor(() =>
-			expect(result.current.state.kind).toBe("install-required"),
+	it("reports install-required when the verdict is extension-missing", () => {
+		const { result } = renderHook(
+			() => useDashboardSync(ACCOUNT_ID, { kind: "extension-missing" }),
+			{ wrapper },
 		);
+		expect(result.current.state.kind).toBe("install-required");
 	});
 
-	it("prompts to reconnect Spotify (open Spotify, not re-pair) when the session is gone", async () => {
-		mockGetSpotifyConnectionStatus.mockResolvedValue(false);
-		const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
-		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
-			wrapper,
-		});
-		await waitFor(() =>
-			expect(result.current.state.kind).toBe("spotify-reconnect-required"),
+	it("reports checking while the verdict hasn't settled", () => {
+		const { result } = renderHook(
+			() => useDashboardSync(ACCOUNT_ID, { kind: "checking" }),
+			{ wrapper },
 		);
+		expect(result.current.state.kind).toBe("checking");
+	});
+
+	it("pre-link: prompts to reconnect Spotify from the control itself, and a click repairs in one gesture (opens Spotify + re-pairs)", async () => {
+		const openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+		const { result } = renderHook(
+			() =>
+				useDashboardSync(ACCOUNT_ID, { kind: "spotify-disconnected" }, null),
+			{ wrapper },
+		);
+		expect(result.current.state.kind).toBe("spotify-reconnect-required");
 
 		await act(async () => {
 			result.current.onAction();
 		});
 
-		// Opens Spotify so the extension recaptures the token — re-pairing the
-		// hearted apiToken would not restore the expired Spotify session.
+		// repairConnection opens Spotify so the extension recaptures the token,
+		// and silently re-pairs alongside it — the fresh-install case (both
+		// credentials gone) now resolves in a single click. (Deviation from the
+		// old behavior, which asserted pairExtension was *not* called here — see
+		// DECISIONS.md Phase 03.)
 		expect(openSpy).toHaveBeenCalledTimes(1);
 		expect(openSpy.mock.calls[0]?.[0]).toContain("spotify.com");
-		expect(mockPairExtension).not.toHaveBeenCalled();
+		expect(mockPairExtension).toHaveBeenCalledTimes(1);
 	});
 
-	it("routes a failed sync to Spotify reconnect when Spotify is disconnected", async () => {
-		// Ready first (Spotify reported connected), then the post-failure check
-		// finds Spotify gone — so the recovery points at Spotify, not a Retry loop.
-		mockGetSpotifyConnectionStatus
-			.mockResolvedValueOnce(true)
-			.mockResolvedValue(false);
-		mockRequestExtensionSync.mockResolvedValue({
-			ok: false,
-			source: "extension",
-			error: "no spotify token",
-		});
-
-		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
-			wrapper,
-		});
-		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
-
-		await act(async () => {
-			result.current.onAction();
-		});
-
-		await waitFor(() =>
-			expect(result.current.state.kind).toBe("spotify-reconnect-required"),
+	it.each([
+		{ kind: "checking" as const },
+		{ kind: "spotify-disconnected" as const },
+		{
+			kind: "mismatch" as const,
+			extensionProfile: {
+				spotifyId: "wrong-id",
+				displayName: "Wrong Person",
+				avatarUrl: null,
+			},
+		},
+		{ kind: "unpaired" as const },
+		{ kind: "unverifiable" as const },
+	])("blocks sync for a linked account's $kind verdict (checking renders its own status; every other non-ok verdict collapses to paused, letting the banner own the action)", (verdict) => {
+		const { result } = renderHook(
+			() => useDashboardSync(ACCOUNT_ID, verdict, "spotify-1"),
+			{ wrapper },
 		);
+		const expectedKind = verdict.kind === "checking" ? "checking" : "paused";
+		expect(result.current.state.kind).toBe(expectedKind);
+		result.current.onAction();
+		expect(mockRequestExtensionSync).not.toHaveBeenCalled();
 	});
 
 	it("requests a sync and invalidates dashboard queries exactly once on success", async () => {
@@ -180,28 +190,56 @@ describe("useDashboardSync", () => {
 		expect(state.retryable).toBe(true);
 	});
 
-	it.each([
-		[{ kind: "checking" }, "account-checking"],
-		[{ kind: "unavailable" }, "account-unavailable"],
-	] as const)("blocks sync while account verification is $kind", async (accountCheck, expectedKind) => {
+	it("a dead-session sync failure surfaces as a plain retryable error and never pushes a shared auth failure — no reliable signal at this call site (DECISIONS.md Phase 03, finding 2)", async () => {
+		mockRequestExtensionSync.mockResolvedValue({
+			ok: false,
+			source: "extension",
+			error: "no spotify token",
+		});
+
 		const { result } = renderHook(
-			() => useDashboardSync(ACCOUNT_ID, accountCheck),
+			() => useDashboardSync(ACCOUNT_ID, { kind: "ok" }, "spotify-1"),
 			{ wrapper },
 		);
-		await waitFor(() => expect(result.current.state.kind).toBe(expectedKind));
-		result.current.onAction();
-		expect(mockRequestExtensionSync).not.toHaveBeenCalled();
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+
+		await waitFor(() => expect(result.current.state.kind).toBe("error"));
+		const state = result.current.state;
+		if (state.kind !== "error") throw new Error("expected error state");
+		expect(state.action).toBe("retry");
+		expect(state.message).toBe("no spotify token");
 	});
 
-	it("blocks an error retry when an account conflict appears", async () => {
-		mockRequestExtensionSync.mockResolvedValue(null);
-		const initialProps: { accountCheck: ExtensionAccountCheck } = {
-			accountCheck: { kind: "verified" },
-		};
+	it("clears a sticky auth failure when a sync completes successfully — the bound the README's Risks section promises", async () => {
+		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
+			wrapper,
+		});
+		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
+
+		await act(async () => {
+			result.current.onAction();
+		});
+
+		await waitFor(() => expect(result.current.state.kind).toBe("success"));
+		expect(mockReportSpotifyAuthSuccess).toHaveBeenCalledTimes(1);
+	});
+
+	it("a broken verdict on a linked account outranks a stale error phase — no competing affordance next to the banner's, and no doomed retry", async () => {
+		mockRequestExtensionSync
+			.mockResolvedValueOnce(null)
+			.mockResolvedValue({ ok: true, count: 10 });
+
 		const { result, rerender } = renderHook(
-			({ accountCheck }: { accountCheck: ExtensionAccountCheck }) =>
-				useDashboardSync(ACCOUNT_ID, accountCheck),
-			{ initialProps, wrapper },
+			({ verdict }: { verdict: ConnectionVerdict }) =>
+				useDashboardSync(ACCOUNT_ID, verdict, "spotify-1"),
+			{
+				initialProps: { verdict: { kind: "ok" } as ConnectionVerdict },
+				wrapper,
+			},
 		);
 		await waitFor(() => expect(result.current.state.kind).toBe("ready"));
 
@@ -210,15 +248,30 @@ describe("useDashboardSync", () => {
 		});
 		await waitFor(() => expect(result.current.state.kind).toBe("error"));
 
-		rerender({
-			accountCheck: {
-				kind: "conflict",
-				conflict: { kind: "unpaired" },
-			},
-		});
-		expect(result.current.state.kind).toBe("account-conflict");
+		// The connection goes genuinely bad (e.g. another surface pushed a
+		// failure, or the shared poll now sees the account unpaired) while this
+		// control is still sitting on a stale "error" phase from an earlier,
+		// unrelated failure. The banner is about to render its own Reconnect CTA
+		// for this same verdict — the control must collapse to status-only
+		// ("paused") instead of keeping its Retry button up alongside it, and
+		// that Retry must not be wired to fire: retrying a connection that's
+		// known broken can't succeed.
+		rerender({ verdict: { kind: "unpaired" } });
+		expect(result.current.state.kind).toBe("paused");
+
 		result.current.onAction();
 		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(1);
+
+		// Once the connection genuinely recovers, the stale phase resurfaces
+		// exactly as it did before — nothing here ever reset it, so there's
+		// still a real error to show, and retry still works.
+		rerender({ verdict: { kind: "ok" } });
+		expect(result.current.state.kind).toBe("error");
+
+		await act(async () => {
+			result.current.onAction();
+		});
+		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(2);
 	});
 
 	it("silently re-pairs and retries once when the backend rejects auth", async () => {

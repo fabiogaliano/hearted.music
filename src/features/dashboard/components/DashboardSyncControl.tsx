@@ -104,11 +104,10 @@ export function DashboardSyncControl({
 			);
 		case "ready":
 			return <ActionButton onClick={onAction}>Sync</ActionButton>;
-		case "account-checking":
-			return <StatusText pulse>checking account…</StatusText>;
-		case "account-unavailable":
-			return <StatusText>sync paused · account check unavailable</StatusText>;
-		case "account-conflict":
+		case "paused":
+			// The dashboard banner owns the reconnect action for every linked-account
+			// case (spotify-disconnected / mismatch / unpaired / unverifiable) — this
+			// is status-only so the control never renders a second reconnect button.
 			return <StatusText>sync paused</StatusText>;
 		case "triggering":
 			return <StatusText pulse>starting…</StatusText>;
