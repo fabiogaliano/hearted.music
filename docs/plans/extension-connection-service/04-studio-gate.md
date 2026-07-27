@@ -25,10 +25,13 @@ focus/visibility listeners.
   on "fetching". Add a test pinning it.
 - Focus/visibility rechecks: delete the manual `focus`/`visibilitychange`
   listeners and debounce — `refetchOnWindowFocus` on the shared query covers
-  it. The "stop checking once ok" optimization inverts (the shared query keeps
-  its lazy interval while subscribed); acceptable — one lightweight wire call
-  every ~6s while the studio is open, and it's the same query every other
-  surface shares.
+  it. The "stop checking once ok" optimization inverts only while
+  unhealthy: the shared query's `refetchInterval` polls every ~6s only until
+  the connection is fully healthy, then stops (`refetchInterval: false`) and
+  leans on `refetchOnWindowFocus` + the failure push instead — it is not a
+  forever-poll while the studio is open. Acceptable either way: it's the same
+  query every other surface shares, so the studio pays no cadence cost beyond
+  what's already running for the rest of the app.
 - `recheck()` → `refetch()` on the shared query.
 - `reportGateFailure(failure)`:
   - `reconnect-required` → `reportSpotifyAuthFailure(queryClient)` (push —

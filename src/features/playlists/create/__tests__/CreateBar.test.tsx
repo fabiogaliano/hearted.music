@@ -18,12 +18,27 @@
  *  - onSubmit called on click when the CTA is enabled.
  *  - gate state extension-unavailable → renders ExtensionUnavailablePrompt.
  *  - gate state reconnect-required → renders ReconnectPrompt / SpotifyReconnectLink.
+ *  - gate state account-mismatch → renders AccountMismatchPrompt, never the CTA
+ *    (findings 1+2 regression guard).
  */
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CreateBar } from "../publish/CreateBar";
+
+// AccountMismatchPrompt's "Switch Spotify account" button reads useQueryClient
+// (it calls repairConnection, which invalidates the shared connection query).
+function withQueryClient(children: ReactNode) {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	return (
+		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+	);
+}
 
 // Mock browser-target so ExtensionUnavailablePrompt renders without navigator.
 vi.mock("@/lib/extension/browser-target", () => ({
@@ -74,6 +89,8 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 		isArtistResolutionError: false,
 		isSubmitting: false,
 		gateState: "ok" as const,
+		mismatchProfile: null,
+		accountDisplayName: null,
 		recheck: vi.fn(async () => {}),
 		onSubmit: vi.fn(),
 		...overrides,
@@ -229,6 +246,47 @@ describe("CreateBar — gate states", () => {
 	it("renders reconnect affordance when reconnect-required", () => {
 		render(<CreateBar {...makeProps({ gateState: "reconnect-required" })} />);
 		expect(screen.getByText(/reconnect to spotify/i)).toBeInTheDocument();
+	});
+
+	// Findings 1+2 regression guard: a mismatched extension account must never
+	// be able to publish. Before the fix, useSpotifyGate always passed
+	// linkedSpotifyId: null, so the verdict could never even become "mismatch"
+	// — the gate reported "ok" regardless of which Spotify account the
+	// extension was signed into, and the Create CTA rendered enabled.
+	it("renders the account-mismatch affordance, never the Create CTA, when gateState is account-mismatch", () => {
+		render(
+			withQueryClient(
+				<CreateBar
+					{...makeProps({
+						gateState: "account-mismatch",
+						mismatchProfile: {
+							spotifyId: "someone-elses-id",
+							displayName: "Not You",
+							avatarUrl: null,
+						},
+						accountDisplayName: "Fabio",
+					})}
+				/>,
+			),
+		);
+		expect(screen.getByText(/not you/i)).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /switch spotify account/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
+	});
+
+	it("still blocks the CTA for account-mismatch even if mismatchProfile is unexpectedly null (defensive)", () => {
+		render(
+			<CreateBar
+				{...makeProps({ gateState: "account-mismatch", mismatchProfile: null })}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
 	});
 });
 

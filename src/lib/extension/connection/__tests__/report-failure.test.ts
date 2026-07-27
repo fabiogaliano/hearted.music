@@ -27,6 +27,10 @@ import {
 	reportSpotifyAuthFailure,
 	reportSpotifyAuthSuccess,
 } from "../report-failure";
+import {
+	getUnreachableAt,
+	resetUnreachableAtForTests,
+} from "../unreachable-store";
 
 function connected(): {
 	installed: boolean;
@@ -51,6 +55,7 @@ afterEach(() => {
 	mockIsExtensionInstalled.mockReset();
 	mockGetSpotifyAccountStatus.mockReset();
 	resetAuthFailedAtForTests();
+	resetUnreachableAtForTests();
 });
 
 describe("reportSpotifyAuthFailure", () => {
@@ -172,6 +177,36 @@ describe("reportExtensionUnreachable", () => {
 		expect(qc.getQueryData(extensionConnectionKey)).toMatchObject({
 			paired: true,
 			profile: { spotifyId: "linked-1" },
+		});
+	});
+
+	it("stamps unreachableAt in its own store (finding 4)", () => {
+		const qc = client();
+		qc.setQueryData(extensionConnectionKey, connected());
+
+		reportExtensionUnreachable(qc);
+
+		expect(getUnreachableAt()).toEqual(expect.any(Number));
+	});
+
+	it("still stamps unreachableAt when the connection has never been fetched (no prior cache entry)", () => {
+		const qc = client();
+
+		reportExtensionUnreachable(qc);
+
+		expect(qc.getQueryData(extensionConnectionKey)).toBeUndefined();
+		expect(getUnreachableAt()).toEqual(expect.any(Number));
+	});
+
+	it("invalidates the connection query — load-bearing for resuming an idle poll, same as reportSpotifyAuthFailure (finding 4)", () => {
+		const qc = client();
+		qc.setQueryData(extensionConnectionKey, connected());
+		const invalidateSpy = vi.spyOn(qc, "invalidateQueries");
+
+		reportExtensionUnreachable(qc);
+
+		expect(invalidateSpy).toHaveBeenCalledWith({
+			queryKey: extensionConnectionKey,
 		});
 	});
 });

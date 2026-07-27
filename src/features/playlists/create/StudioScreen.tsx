@@ -56,12 +56,21 @@ interface StudioScreenProps {
 	accountId: string;
 	billingState: BillingState;
 	seed: StudioSeed;
+	/** account.spotify_id — the Spotify identity hearted has linked, used to
+	 * detect a mismatched extension account (see useSpotifyGate.ts). null
+	 * pre-link (before the account's first sync). */
+	linkedSpotifyId: string | null;
+	/** account.display_name — for the mismatch prompt's "this library belongs
+	 * to…" copy, same field Dashboard.tsx threads for its own banner. */
+	accountDisplayName: string | null;
 }
 
 export function StudioScreen({
 	accountId,
 	billingState,
 	seed,
+	linkedSpotifyId,
+	accountDisplayName,
 }: StudioScreenProps) {
 	const navigate = useNavigate();
 
@@ -89,11 +98,14 @@ export function StudioScreen({
 	const [focusArtistSearch] = useState(() => seed.focusArtistSearch ?? false);
 	const [focusGenreSearch] = useState(() => seed.focusGenreSearch ?? false);
 
-	// Proactively surface the reconnect/install affordance at page load so the
-	// user knows about a disconnected Spotify session before attempting to create.
-	// The gate keeps re-checking while unhealthy (focus/visibility + a manual
-	// "Check again" in the prompts) so recovering in another tab isn't a dead end.
-	const { gateState, recheck, reportGateFailure } = useSpotifyGate();
+	// Proactively surface the reconnect/install/mismatch affordance at page
+	// load so the user knows about a broken or wrong-account Spotify session
+	// before attempting to create. The gate keeps re-checking while unhealthy
+	// (focus/visibility + a manual "Check again" in the prompts) so recovering
+	// in another tab isn't a dead end. linkedSpotifyId is what lets the gate
+	// actually detect a mismatched extension account — see useSpotifyGate.ts.
+	const { gateState, mismatchProfile, recheck, reportGateFailure } =
+		useSpotifyGate(linkedSpotifyId);
 
 	// Owns the publish lifecycle (submit → success/partial/created-unsynced,
 	// gate-failure routing, isSubmitting). Declared before `playback` below
@@ -228,6 +240,19 @@ export function StudioScreen({
 							Spotify disconnected
 						</span>
 						<SpotifyReconnectLink />
+					</div>
+				)}
+
+				{gateState === "account-mismatch" && (
+					<div className="flex items-center gap-3 pt-1">
+						<span
+							className="theme-text-muted text-xs"
+							style={{ fontFamily: fonts.body }}
+						>
+							{mismatchProfile
+								? `Signed in to Spotify as ${mismatchProfile.displayName}`
+								: "Wrong Spotify account signed in"}
+						</span>
 					</div>
 				)}
 			</header>
@@ -374,6 +399,8 @@ export function StudioScreen({
 						isArtistResolutionError={draft.isArtistResolutionError}
 						isSubmitting={flow.isSubmitting}
 						gateState={gateState}
+						mismatchProfile={mismatchProfile}
+						accountDisplayName={accountDisplayName}
 						recheck={recheck}
 						onSubmit={handleSubmit}
 					/>

@@ -24,7 +24,14 @@ import {
 	fetchExtensionConnection,
 	type PolledConnection,
 } from "../connection-state";
-import { reportSpotifyAuthFailure } from "../report-failure";
+import {
+	reportExtensionUnreachable,
+	reportSpotifyAuthFailure,
+} from "../report-failure";
+import {
+	getUnreachableAt,
+	resetUnreachableAtForTests,
+} from "../unreachable-store";
 import { deriveConnectionVerdict } from "../verdict";
 
 function status(
@@ -42,6 +49,7 @@ afterEach(() => {
 	mockIsExtensionInstalled.mockReset();
 	mockGetSpotifyAccountStatus.mockReset();
 	resetAuthFailedAtForTests();
+	resetUnreachableAtForTests();
 });
 
 describe("fetchExtensionConnection", () => {
@@ -154,6 +162,31 @@ describe("extensionConnectionQueryOptions", () => {
 			profile: null,
 		});
 		reportSpotifyAuthFailure(qc);
+
+		expect(
+			refetchInterval({
+				installed: true,
+				spotifyConnected: true,
+				paired: true,
+				profile: null,
+			}),
+		).toBe(6_000);
+	});
+
+	it("keeps polling while unreachableAt is sticky in its own store, even with installed/spotifyConnected: true on the polled data (finding 4)", () => {
+		const refetchInterval = refetchIntervalOf(
+			extensionConnectionQueryOptions(),
+		);
+		const qc = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		qc.setQueryData(extensionConnectionKey, {
+			installed: true,
+			spotifyConnected: true,
+			paired: true,
+			profile: null,
+		});
+		reportExtensionUnreachable(qc);
 
 		expect(
 			refetchInterval({
@@ -321,6 +354,76 @@ describe("extensionConnectionQueryOptions + reportSpotifyAuthFailure (lost-updat
 		// And polling must not have stopped: a "healthy" reading purely off the
 		// poll's own fields would otherwise turn refetchInterval off, which is
 		// exactly how the original bug went silent (stuck reporting "ok" forever).
+		const { refetchInterval } = extensionConnectionQueryOptions();
+		if (typeof refetchInterval !== "function") {
+			throw new Error("expected refetchInterval to be a function");
+		}
+		expect(
+			refetchInterval({ state: { data: polled } } as Parameters<
+				typeof refetchInterval
+			>[0]),
+		).toBe(6_000);
+	});
+});
+
+// Finding 4 regression guard: the sticky unreachableAt must survive a push
+// landing while the connection query's own fetch is still in flight — the
+// exact race the reviewer flagged (reportExtensionUnreachable had no
+// sticky-store protection, unlike reportSpotifyAuthFailure). Before the fix,
+// the forced installed:false/spotifyConnected:false lived only on the polled
+// cache entry via setQueryData; an in-flight fetch resolving afterward with
+// healthy data replaced that entry wholesale and silently clobbered it back
+// to "ok".
+describe("extensionConnectionQueryOptions + reportExtensionUnreachable (lost-update regression guard, finding 4)", () => {
+	it("a push landing mid-flight survives the in-flight fetch's commit", async () => {
+		const qc = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+		qc.setQueryData(extensionConnectionKey, {
+			installed: true,
+			spotifyConnected: true,
+			paired: true,
+			profile: { spotifyId: "linked-1", displayName: "fabio", avatarUrl: null },
+		});
+
+		mockIsExtensionInstalled.mockImplementation(async () => {
+			// A first-hand PING failure elsewhere (e.g. the studio gate's submit
+			// preflight) pushes straight into shared state while this poll's own
+			// PING is still in flight.
+			reportExtensionUnreachable(qc);
+			// The poll's own PING still answers "installed" — it started before
+			// the push and has no way to know about it. This is exactly the
+			// scenario the sticky store exists for.
+			return true;
+		});
+		mockGetSpotifyAccountStatus.mockResolvedValue(status({}));
+
+		// staleTime: 0 forces an actual fetch despite the just-seeded, still-fresh
+		// cache entry — seeds healthy data, then starts a fetch that races the
+		// push, mirroring the authFailedAt regression guard above.
+		await qc.fetchQuery({ ...extensionConnectionQueryOptions(), staleTime: 0 });
+
+		const unreachableAt = getUnreachableAt();
+		expect(unreachableAt).not.toBeNull();
+
+		const polled = qc.getQueryData<PolledConnection>(extensionConnectionKey);
+		expect(polled).toBeDefined();
+		// Mirrors useExtensionConnection's merge: the sticky override forces
+		// installed/spotifyConnected false regardless of what the raced fetch
+		// committed to the polled cache.
+		const connection = polled && {
+			...polled,
+			installed: false,
+			spotifyConnected: false,
+			authFailedAt: getAuthFailedAt(),
+		};
+		expect(deriveConnectionVerdict(connection, "linked-1")).toEqual({
+			kind: "extension-missing",
+		});
+
+		// And polling must not have stopped: a "healthy" reading purely off the
+		// poll's own fields would otherwise turn refetchInterval off, silently
+		// going quiet the same way the original bug did.
 		const { refetchInterval } = extensionConnectionQueryOptions();
 		if (typeof refetchInterval !== "function") {
 			throw new Error("expected refetchInterval to be a function");

@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/playlists/new/studio")({
 });
 
 function StudioPage() {
-	const { session, billingState } = Route.useRouteContext();
+	const { session, billingState, account } = Route.useRouteContext();
 	// Stable ref: history state doesn't change under a mounted studio, and the
 	// EMPTY_SEED fallback is a module constant, so re-seeding is a fresh mount
 	// rather than a mid-life prop change.
@@ -29,6 +29,12 @@ function StudioPage() {
 			accountId={session.accountId}
 			billingState={billingState}
 			seed={seed}
+			// Same account.spotify_id Dashboard.tsx threads for its own mismatch
+			// protection (see useSpotifyGate.ts) — required so the gate can
+			// actually detect a mismatched extension account instead of silently
+			// short-circuiting to "ok".
+			linkedSpotifyId={account?.spotify_id ?? null}
+			accountDisplayName={account?.display_name ?? null}
 		/>
 	);
 }

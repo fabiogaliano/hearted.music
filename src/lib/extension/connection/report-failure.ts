@@ -31,6 +31,7 @@ import {
 	extensionConnectionKey,
 	type PolledConnection,
 } from "./connection-state";
+import { setUnreachableAt } from "./unreachable-store";
 
 export function reportSpotifyAuthFailure(queryClient: QueryClient): void {
 	// The sticky flag write is unconditional — it lives in its own store (see
@@ -63,10 +64,31 @@ export function reportSpotifyAuthSuccess(_queryClient: QueryClient): void {
 /** First-hand "the extension didn't answer" observation (e.g. the studio
  * gate's PING failing outright). Writes synchronously so the surface doesn't
  * keep rendering a stale `installed: true` while an invalidate-triggered
- * refetch is still in flight. */
+ * refetch is still in flight.
+ *
+ * The sticky write goes to `unreachable-store.ts`, not the polled cache
+ * entry — same reasoning as `reportSpotifyAuthFailure`'s `authFailedAt`
+ * (see that store's header): a fetch already in flight when this push lands
+ * would otherwise resolve afterward with stale "healthy" data and silently
+ * clobber this observation, because TanStack Query replaces a query's cache
+ * entry wholesale on fetch commit rather than merging onto it. The
+ * `setQueryData` merge below is kept as a purely optimistic, non-load-bearing
+ * cosmetic update (same pattern `reportSpotifyAuthFailure` uses for
+ * `spotifyConnected`) — `useExtensionConnection` is what actually forces
+ * `installed`/`spotifyConnected` false for as long as the store is sticky. */
 export function reportExtensionUnreachable(queryClient: QueryClient): void {
+	setUnreachableAt(Date.now());
 	queryClient.setQueryData<PolledConnection>(
 		extensionConnectionKey,
 		(prev) => prev && { ...prev, installed: false, spotifyConnected: false },
 	);
+	// Load-bearing for the same reason as reportSpotifyAuthFailure's
+	// invalidate (see this module's header): rearms `refetchInterval` for any
+	// observer that was idle-and-healthy when this push landed. Safe to add
+	// here for the same reason it's safe there — the sticky store write above
+	// already makes the verdict correct synchronously (useExtensionConnection
+	// reads it via useSyncExternalStore, not gated on any query state), so
+	// this invalidate can only ever refresh cosmetic fields, never race away
+	// the observation itself.
+	queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
 }

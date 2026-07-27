@@ -549,6 +549,323 @@ Run baseline: `4ef7d715`
 
 ## Phase 04
 
+- **`useSpotifyGate` is now a pure selector plus two thin wrappers, nothing
+  else.** All detection, cadence, and focus/visibility handling was deleted
+  from the hook body — it reads `useExtensionConnection(null)` and maps
+  `verdict.kind` to `SpotifyGateState` with a `switch` (see
+  `gateStateForVerdict`), wraps `refetch` back to the existing
+  `Promise<void>` `recheck()` contract, and routes `reportGateFailure` to
+  `reportSpotifyAuthFailure`/`reportExtensionUnreachable`. No local state, no
+  request-id ref, no effects — matches the task's "thin selector" framing
+  literally rather than leaving any transitional detection code behind.
+- **Passing `linkedSpotifyId: null` collapses the verdict space the gate can
+  ever see.** Traced `deriveConnectionVerdict`: with `linkedSpotifyId ===
+  null` it returns `ok` immediately after the `spotifyConnected`/
+  `authFailedAt` check, before the `mismatch`/`unpaired`/`unverifiable`
+  branches run — so in practice `gateStateForVerdict` only ever receives
+  `checking`, `extension-missing`, `spotify-disconnected`, or `ok`. Kept the
+  `switch` exhaustive over the *full* `ConnectionVerdict` union anyway (with
+  a `default: verdict satisfies never` guard, mirroring
+  `usePublishPlaylist.ts`'s existing idiom) rather than narrowing the
+  parameter type, so a future verdict kind is a compile error here instead
+  of silently falling through to `ok`.
+- **Invariant 4 needed no bespoke code, only a bespoke test.** The spec
+  itself says this ("TanStack Query already gives this... Add a test pinning
+  it"), but confirmed it by tracing: `useExtensionConnection`'s `verdict` is
+  derived from `query.data` alone, never `query.isFetching`, and
+  `useQuery`'s `data` stays populated with the previous result for the
+  entire duration of a refetch. The pin is
+  `useSpotifyGate.test.tsx`'s "a settled ok never downgrades to checking
+  while a background refetch is in flight" test: hangs the connection
+  fetch's `getSpotifyAccountStatus` call mid-flight via a deferred promise,
+  calls `recheck()`, and asserts `gateState` is still `"ok"` before the
+  fetch resolves. A second test in the same block resolves that same
+  in-flight refetch to an unhealthy result and asserts the gate lands
+  directly on `reconnect-required` — proving the transition skips `checking`
+  even when the *new* data is unhealthy, not just when it's healthy.
+- **`extension-unavailable` → `reportExtensionUnreachable`, confirmed
+  synchronous by testing it under a frozen `isExtensionInstalled` mock.** Set
+  `mockIsExtensionInstalled` to return a promise that never resolves right
+  before calling `reportGateFailure("extension-unavailable")`, then asserted
+  the gate still reaches `extension-unavailable` — if the code path depended
+  on any refetch landing, this test would hang/timeout instead of passing.
+  (The assertion itself still needs `waitFor`, not a bare synchronous
+  expect — see next bullet — but nothing in the awaited window is the frozen
+  mock resolving.)
+- **Test-file consequence I didn't anticipate going in: TanStack Query's
+  `notifyManager` schedules observer re-renders via `setTimeout(…, 0)`, not
+  synchronously.** Two tests originally asserted `gateState` immediately
+  after a plain (non-awaited) `act(() => { ... })` wrapping a `setQueryData`-
+  based push (the "resolves unhealthy" anti-flicker test and the
+  `extension-unavailable` synchronous-push test above) and both failed with
+  the *previous* `gateState` still showing. Root-caused via
+  `notifyManager.js`: `defaultScheduler = systemSetTimeoutZero`, so a cache
+  write's observer notification is deferred a macrotask even for a
+  synchronous `setQueryData` call. Fixed by swapping the trailing bare
+  `expect` for `await waitFor(() => expect(...))` in both tests — this does
+  not weaken what's being proven (the *production* code path is still the
+  synchronous `setQueryData` write; the `waitFor` only accounts for React's
+  own re-render timing, not for the push depending on any additional async
+  work).
+- **Test file needed `.tsx`, not `.ts`.** The plan's existing test file
+  (`useSpotifyGate.test.ts`) had no JSX; testing this phase properly requires
+  a `QueryClientProvider` wrapper (see next bullet), which is JSX. Renamed
+  via `git mv` to `useSpotifyGate.test.tsx`, matching the convention already
+  used by `useDashboardSync.test.tsx`/`useLikedSongsList.test.tsx` for the
+  same reason.
+- **Reworked the test file to mock at the `detect.ts` seam and drive a real
+  `QueryClient`, not to mock `useExtensionConnection` itself.** The task doc
+  says "against a mocked connection query," which reads two ways: mock the
+  hook's return value, or mock the query's own dependencies and let the real
+  query run. Chose the latter (same seam `connection-state.test.ts` mocks:
+  `isExtensionInstalled`/`getSpotifyAccountStatus`) because invariant 4 and
+  the refetchOnWindowFocus re-expression are both claims about *real*
+  TanStack Query behavior (data persistence across a refetch; focus-driven
+  refetch gated by `staleTime`) — asserting them against a hand-stubbed
+  verdict would prove nothing about the actual selector composed with the
+  actual query. Cost: tests need a `QueryClientProvider` wrapper and, for the
+  focus test, `@tanstack/react-query`'s exported `focusManager` (imported
+  directly rather than dispatching raw DOM events — traced
+  `FocusManager`'s default `setup` in `focusManager.js` and confirmed it
+  listens for `visibilitychange` on `window`, not `focus`; the *old* deleted
+  hook listened to both `focus`/`visibilitychange` directly, so calling
+  `focusManager.setFocused(false)`/`setFocused(true)` to force a listener
+  notification is more direct than reverse-engineering which raw event the
+  library's internal listener actually responds to, and is the pattern
+  TanStack Query's own test suite uses).
+- **Added a "does not re-check on focus while the query is still fresh"
+  test** alongside the "re-checks... once stale" one. Not asked for
+  explicitly, but the stale-gated test alone doesn't prove the `staleTime`
+  gate is actually doing anything (it could pass even if focus refetched
+  unconditionally) — the negative case is the one that would catch a
+  regression to `refetchOnWindowFocus: "always"` or `staleTime: 0`.
+- **Did not wire `reportSpotifyAuthSuccess` anywhere in this phase.** Task
+  04's spec only maps `reportGateFailure`'s two failure kinds to pushes; it
+  never mentions a success push, and per CLAUDE.md ("build only what's
+  asked, no speculative features") plus phase 03's own note in this log
+  ("those [reportSpotifyAuthSuccess call sites] will wire their own
+  genuinely-classified success/failure pushes... — phase 04/05's territory"),
+  left it for wherever a phase 04/05 change actually observes a live Spotify
+  command succeed with a structured result (e.g. `create-playlist-from-
+  draft.ts`'s command outcomes) — no such call site was touched in this
+  phase since the spec explicitly says steps 1–2 there stay as-is and no
+  other edit was needed.
+- **`repairConnection` rejection handling: nothing new to add in this
+  phase.** Task 04 doesn't call `repairConnection` from `useSpotifyGate`
+  itself — `ReconnectPrompt`/`ExtensionUnavailablePrompt` only take
+  `recheck`, and the actual Spotify-login affordance is
+  `SpotifyReconnectLink` (untouched, out of scope per the spec's "leave it
+  in this task" note). Confirmed no new `repairConnection` call site was
+  introduced by this phase, so the `.catch(() => {})` discipline documented
+  in `02-repair-action.md`/demonstrated in `ExtensionAccountBanner.tsx` has
+  nothing new to apply to here.
+
+### Post-review fix: `useSpotifyGate(null)` silently skipped mismatch detection (findings 1+2, CRITICAL — wrong-account data integrity)
+
+- **The plan's stated rationale for passing `null` was factually wrong, and the
+  original phase-04 log entry above ("Passing `linkedSpotifyId: null` collapses
+  the verdict space the gate can ever see") repeated that error instead of
+  catching it.** Both the task doc (`04-studio-gate.md`: "the gate doesn't do
+  identity checks (no linked Spotify account to compare against)") and my own
+  first-pass comment in `useSpotifyGate.ts` asserted there was no linked
+  Spotify id available to compare against. That's false: `account.spotify_id`
+  is already resolved server-side into the `_authenticated` route's context
+  (`src/routes/_authenticated/route.tsx`, destructured as `account` and used
+  by that very layout for PostHog identify calls) and Dashboard.tsx already
+  threads the identical field (`account?.spotify_id ?? null`) into
+  `<Dashboard linkedSpotifyId=…>` for its own mismatch banner
+  (`src/routes/_authenticated/dashboard.tsx:45`). The studio route
+  (`playlists.new.studio.tsx`) simply never read `account` from its own
+  `Route.useRouteContext()` and never threaded it down — a wiring gap, not a
+  structural limitation. Recorded prominently here per the review's explicit
+  request, since this directly contradicts what task 04's spec and my own
+  phase-04 log entry claimed.
+- **Consequence traced end-to-end before fixing:** with `linkedSpotifyId ===
+  null`, `deriveConnectionVerdict` (`verdict.ts:33`) returns `{ kind: "ok" }`
+  immediately after the `spotifyConnected`/`authFailedAt` check — before the
+  `mismatch`/`unpaired`/`unverifiable` branches ever run. So if the browser
+  extension was signed into a Spotify account different from
+  `account.spotify_id`, the studio gate reported `ok`, `CreateBar` rendered an
+  enabled Create button, `createPlaylistFromDraft` → `createPlaylistAcknowledged`
+  → the extension's `CREATE_PLAYLIST` command created the playlist on
+  Spotify under whichever account the extension's live token belonged to (not
+  `account.spotify_id`), and the follow-up DB acknowledge/rootlist-add rides
+  the app session for the *intended* account — landing an orphaned playlist on
+  the wrong Spotify account with no DB row, surfaced to the user only as a
+  generic error toast (or, worse, indistinguishable from success if
+  `createPlaylistAcknowledged`'s ack happened to succeed against a mismatched
+  `userId`/playlist owner — not verified further since the fix removes the
+  path entirely rather than characterizing every downstream failure mode).
+- **Fix: threaded `account.spotify_id`/`account.display_name` through
+  `playlists.new.studio.tsx` → `StudioScreen` → `useSpotifyGate(linkedSpotifyId)`
+  → `useExtensionConnection(linkedSpotifyId)`**, so `deriveConnectionVerdict`
+  now actually reaches its mismatch/unpaired/unverifiable branches for the
+  studio the same way it already did for the dashboard. No changes needed to
+  `verdict.ts` itself — the derivation was already correct; only the caller
+  was short-circuiting it.
+- **New `SpotifyGateState` value: `"account-mismatch"`.** Considered reusing
+  the existing `"reconnect-required"` state (zero vocabulary growth, and it
+  already blocks the CTA) but rejected it: `ReconnectPrompt`'s copy ("Spotify
+  is disconnected — reconnect to create your playlist") is factually wrong for
+  a mismatch — the extension IS connected, just as the wrong person — and its
+  repair affordance (a bare `SpotifyReconnectLink` anchor) can't express "sign
+  in as someone else" the way the dashboard banner's mismatch copy does. The
+  task brief explicitly allowed a minimal new state for exactly this reason
+  ("if you must add a state, keep it minimal and update every consumer").
+  Kept `unpaired`/`unverifiable` mapped to `"ok"` (unchanged from before, but
+  now genuinely reachable instead of theoretical): per the README, pairing
+  (the hearted `apiToken`) only gates extension→backend *sync upload*, never
+  the extension→Spotify commands the studio issues, and DB writes ride the
+  app session cookie, not the pairing — so neither state can produce the
+  wrong-account failure mode this fix closes. `unverifiable` specifically
+  stays non-blocking per invariant 6 ("never a hard conflict... nothing a
+  click here could silently repair") — a transient profile-read hiccup
+  shouldn't scare a user with "wrong account" copy on a linked account that's
+  actually fine. Updated every consumer of the type: `useSpotifyGate.ts`
+  (`gateStateForVerdict`, new `mismatchProfile` field on the return so
+  consumers get the extension's live profile without re-deriving the verdict
+  themselves), `CreateBar.tsx` (new `mismatchProfile`/`accountDisplayName`
+  props, new branch that blocks the CTA — including a defensive fallback to
+  `ReconnectPrompt` if `mismatchProfile` were ever unexpectedly null, so a
+  type-system violation can't silently re-enable Create), `StudioScreen.tsx`
+  (threads the two new props, adds a header notice mirroring the existing
+  extension-unavailable/reconnect-required ones), and a new
+  `AccountMismatchPrompt.tsx` (mirrors `ReconnectPrompt`/
+  `ExtensionUnavailablePrompt`'s "Check again" structure; primary action calls
+  `repairConnection` — the same primitive `ExtensionAccountBanner.tsx` uses for
+  the dashboard's mismatch case — with the inline `open.spotify.com` login URL
+  `SpotifyReconnectLink` already uses for this surface, not the dashboard
+  banner's `accounts.spotify.com` wrapper). `ReconnectPrompt.tsx`/
+  `ExtensionUnavailablePrompt.tsx` themselves needed no code changes (neither
+  switches on `gateState` internally), only re-verification that `CreateBar`'s
+  new branch can't fall through into either of theirs for a mismatch.
+- **Tests added** (`useSpotifyGate.test.tsx`'s new "account mismatch (findings
+  1+2)" block and `CreateBar.test.tsx`'s new "account-mismatch" cases): a real
+  `linkedSpotifyId` that differs from the extension's polled profile resolves
+  to `"account-mismatch"` (never `"ok"`) with `mismatchProfile` populated; a
+  matching profile still resolves `"ok"`; `unpaired`/`unverifiable` on a linked
+  account still resolve `"ok"` (regression guard for the paragraph above); and
+  `CreateBar` renders `AccountMismatchPrompt` — never the Create button — for
+  `"account-mismatch"`, including the defensive null-profile fallback.
+
+### Post-review fix: vacuous anti-flicker test (finding 3, IMPORTANT)
+
+- **Both "invariant 4" tests in `useSpotifyGate.test.tsx` asserted the
+  mid-flight state with a bare, non-`waitFor` `expect` immediately after
+  triggering `recheck()` — vacuous, and reproduced exactly as the review
+  described.** TanStack Query's `notifyManager` defers a query update's
+  observer notification via `setTimeout(…, 0)`
+  (`node_modules/@tanstack/query-core/build/modern/notifyManager.js`), so
+  calling `recheck()` inside a bare `act(() => {...})` and asserting on the
+  very next line only ever reads the PRE-recheck render — React hasn't
+  re-rendered with the query's in-flight `isFetching: true` state yet by that
+  point, regardless of whether the production selector correctly ignores
+  `isFetching` or wrongly derives `"checking"` from it.
+- **Verified exactly the way the review did.** Temporarily changed
+  `useExtensionConnection.ts`'s `verdict` to `query.isFetching ? { kind:
+  "checking" } : deriveConnectionVerdict(...)` — precisely the bug invariant 4
+  forbids — and reran `useSpotifyGate.test.tsx` unmodified: 3 of 11 tests
+  failed (the three `reportGateFailure` tests, which do use `waitFor`), but
+  **both anti-flicker tests still passed**, confirming the review's finding
+  exactly. Reverted the injection, rewrote the two tests (below), re-injected
+  the same bug, and this time **both rewritten tests failed too** (5/11
+  failing total) — confirmed the rewrite actually pins the invariant. Reverted
+  the injection again; full file back to green (16/16 after also adding the
+  findings-1+2 mismatch tests and the finding-4 recheck-clears-it test).
+- **Fix:** switched both tests to fake timers and explicitly
+  `await act(async () => { await vi.advanceTimersByTimeAsync(0); })`
+  immediately after triggering `recheck()` — BEFORE resolving the pending
+  fetch — to flush the deferred notify and force a genuine React re-render
+  reflecting the query's in-flight state (`data` still the previous `ok`
+  result, `isFetching: true`), then assert. This is the same
+  fake-timer-plus-`advanceTimersByTimeAsync` pattern already used by this
+  file's `refetchOnWindowFocus` tests, not a new technique. The mid-flight
+  assertion is no longer symbolic — it can now fail, and does, on the
+  regression it exists to catch.
+
+### Post-review fix: clobberable `reportExtensionUnreachable` push (finding 4, IMPORTANT)
+
+- **`reportExtensionUnreachable` had no sticky-store protection, unlike
+  `reportSpotifyAuthFailure` — the exact lost-update race phase 01 eliminated
+  for `authFailedAt`, reopened for the extension-unreachable case.** It wrote
+  `installed: false, spotifyConnected: false` directly onto the polled
+  `['extension','connection']` cache entry via `setQueryData`. A poll fetch
+  already in flight when that push landed would resolve afterward with
+  "healthy" pre-push data and — because TanStack Query replaces a query's
+  cache entry wholesale on fetch commit, it does not merge onto a
+  `setQueryData` write made mid-flight — silently clobber the forced
+  `extension-unavailable` back to `ok`.
+- **Fix, structurally identical to phase 01's `auth-failed-store.ts`:** added
+  `unreachable-store.ts`, a module-level sticky store (`unreachableAt: number
+  | null`) the polled query's `queryFn` never touches, read via
+  `useSyncExternalStore`. `reportExtensionUnreachable` now stamps this store
+  unconditionally (in addition to the existing, now-cosmetic `setQueryData`
+  merge, kept for the same "instant read for any raw-field consumer" reason
+  phase 01 kept the analogous merge for `authFailedAt`) and calls
+  `queryClient.invalidateQueries(...)`, mirroring `reportSpotifyAuthFailure`'s
+  own addition from the second-round review above — safe for the identical
+  reason: the sticky store write is what makes the verdict correct
+  synchronously, so the invalidate can only ever refresh cosmetic fields, not
+  race away the observation. `useExtensionConnection` now merges
+  `unreachableAt` the same way it merges `authFailedAt`: while sticky, it
+  forces `installed`/`spotifyConnected` to `false` regardless of what the
+  polled cache says. `connection-state.ts`'s `isHealthy`/`refetchInterval`
+  also now read `getUnreachableAt()`, so a pushed unreachable observation
+  keeps the poll alive exactly like a pushed auth failure does.
+- **Verified the regression guard actually catches the bug**, the same way
+  finding-4's own fix for `authFailedAt` was verified in phase 01: temporarily
+  removed the `setUnreachableAt(Date.now())` call from
+  `reportExtensionUnreachable` and reran the connection-layer suite — 4 tests
+  failed (`connection-state.test.ts`'s new mid-flight lost-update guard,
+  `report-failure.test.ts`'s three new `reportExtensionUnreachable` store
+  assertions). Restored the line; all 48 connection-layer tests passed again.
+- **Deliberate asymmetry from `authFailedAt`, recorded because it's easy to
+  mistake for an inconsistency: `unreachableAt` CAN be cleared by an explicit,
+  consumer-triggered `refetch()` call (wired into `useExtensionConnection`'s
+  returned `refetch`); `authFailedAt` cannot.** This isn't an oversight —
+  `reportExtensionUnreachable` has no `repairConnection` branch of its own
+  (verdict `extension-missing` isn't in either of `repair.ts`'s
+  `needsSpotifyLogin`/`needsPairing` sets — there's nothing code can do to fix
+  a missing extension), so the studio's "Check again" button is the *only*
+  available recovery affordance once this fires. Leaving the store
+  permanently sticky (mirroring `authFailedAt` verbatim) would mean "Check
+  again" stops working forever after the first push, for the rest of the
+  page's life — worse than the pre-fix clobbering bug it replaces. Clearing on
+  explicit refetch is principled, not just convenient: invariant 7 keeps
+  `authFailedAt` sticky against confirming refetches specifically because the
+  extension's local `hasToken` check is structurally blind to a Spotify-side
+  token rejection (a dead token reads "valid" locally forever, so no refetch
+  can ever produce trustworthy counter-evidence); a PING re-check has no
+  analogous blind spot — it either answers or it doesn't, so a fresh,
+  explicitly-requested PING is exactly as trustworthy as the one that
+  originally failed. `refetch()`'s default `cancelRefetch: true` also
+  guarantees the clear can't reopen the mid-flight race itself: it always
+  starts a brand-new fetch, never reuses one that began before the clear, and
+  the race this store exists to prevent is specifically about the *ambient*
+  ~6s background poll's in-flight fetch, not an explicit user click. Pinned
+  with `useSpotifyGate.test.tsx`'s new "sticky override is cleared by an
+  explicit recheck" test.
+
+### Post-review fix: doc drift on studio polling cadence (finding 5, MINOR)
+
+- `04-studio-gate.md` claimed the shared query polls "every ~6s while the
+  studio is open." Corrected to say the interval only runs while the
+  connection is unhealthy and stops (`refetchInterval: false`) once fully
+  healthy, leaning on `refetchOnWindowFocus` + the failure push otherwise —
+  matching `connection-state.ts`'s actual `extensionConnectionQueryOptions`
+  and the README's own "Always-on polling replaces today's 'stop once
+  healthy' optimization" risk note, which this task doc's line had drifted
+  from.
+
+### Housekeeping alongside the above
+
+- `vite.config.ts`'s `domTestFiles` still listed
+  `useSpotifyGate.test.ts` (the pre-rename filename) after the phase-04
+  `git mv` to `.test.tsx` — dead (it excludes a non-existent path from the
+  node project; the dom project already picks the renamed file up via its
+  `**/*.test.tsx` glob), but removed and replaced with an explanatory comment
+  so a future reader doesn't wonder whether the rename was missed here.
+
 ## Phase 05
 
 ## Phase 06

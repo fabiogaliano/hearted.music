@@ -20,14 +20,17 @@
  * ArtistConfig panel where the actual retry affordance lives.
  *
  * Gated by the Spotify gate state already computed by the parent screen — if
- * reconnect or extension is needed, the CTA is replaced by the appropriate
- * inline affordance instead of a broken submit. Those affordances get the
- * gate's recheck so the user can recover in place without a page reload.
+ * reconnect, extension, or account-mismatch is needed, the CTA is replaced by
+ * the appropriate inline affordance instead of a broken (or, for mismatch,
+ * wrong-account) submit. Those affordances get the gate's recheck so the user
+ * can recover in place without a page reload.
  */
 
 import { Button } from "@/components/ui/Button";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
 import type { SpotifyGateState } from "../useSpotifyGate";
+import { AccountMismatchPrompt } from "./AccountMismatchPrompt";
 import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
 import { ReconnectPrompt } from "./ReconnectPrompt";
 
@@ -60,6 +63,11 @@ export interface CreateBarProps {
 	isSubmitting: boolean;
 	/** Gate state computed by the parent — avoids re-checking on every render. */
 	gateState: SpotifyGateState;
+	/** Populated only when gateState === "account-mismatch" (see useSpotifyGate). */
+	mismatchProfile: ExtensionSpotifyProfile | null;
+	/** Display name of the hearted account's linked Spotify identity, for the
+	 * mismatch prompt's "this library belongs to…" copy. */
+	accountDisplayName: string | null;
 	/** Re-runs the gate detection; wired to the gate-failure affordances. */
 	recheck: () => Promise<void>;
 	/** Called when the user submits — the screen assembles the payload. */
@@ -74,6 +82,8 @@ export function CreateBar({
 	isArtistResolutionError,
 	isSubmitting,
 	gateState,
+	mismatchProfile,
+	accountDisplayName,
 	recheck,
 	onSubmit,
 }: CreateBarProps) {
@@ -92,6 +102,24 @@ export function CreateBar({
 	}
 	if (gateState === "reconnect-required") {
 		return <ReconnectPrompt onRecheck={recheck} />;
+	}
+	if (gateState === "account-mismatch") {
+		// mismatchProfile is unconditionally populated whenever gateState is
+		// "account-mismatch" (verdict.ts always attaches extensionProfile to a
+		// mismatch verdict) — the `null` branch below is defensive only. It
+		// still blocks with ReconnectPrompt rather than falling through to the
+		// CTA: this state exists specifically to prevent publishing to the
+		// wrong Spotify account, so an unexpectedly-missing profile must never
+		// silently re-enable Create.
+		return mismatchProfile ? (
+			<AccountMismatchPrompt
+				extensionProfile={mismatchProfile}
+				accountDisplayName={accountDisplayName}
+				onRecheck={recheck}
+			/>
+		) : (
+			<ReconnectPrompt onRecheck={recheck} />
+		);
 	}
 
 	const songCount = songIds.length;

@@ -16,6 +16,7 @@ import {
 	isExtensionInstalled,
 } from "../detect";
 import { getAuthFailedAt } from "./auth-failed-store";
+import { getUnreachableAt } from "./unreachable-store";
 
 export interface ExtensionConnection {
 	/** PING answered. */
@@ -70,9 +71,13 @@ const STALE_TIME_MS = 3_000;
 function isHealthy(
 	connection: PolledConnection,
 	authFailedAt: number | null,
+	unreachableAt: number | null,
 ): boolean {
 	return (
-		connection.installed && connection.spotifyConnected && authFailedAt === null
+		connection.installed &&
+		connection.spotifyConnected &&
+		authFailedAt === null &&
+		unreachableAt === null
 	);
 }
 
@@ -103,10 +108,11 @@ export function extensionConnectionQueryOptions() {
 		refetchInterval: (query) => {
 			const data = query.state.data;
 			if (!data) return UNHEALTHY_REFETCH_INTERVAL_MS;
-			// Reads the sticky flag straight from its own store (not from `data`,
-			// which structurally cannot carry it) so a pushed failure keeps the
-			// interval alive even when the poll's own fields still look healthy.
-			return isHealthy(data, getAuthFailedAt())
+			// Reads both sticky flags straight from their own stores (not from
+			// `data`, which structurally cannot carry either) so a pushed failure —
+			// auth or reachability — keeps the interval alive even when the poll's
+			// own fields still look healthy.
+			return isHealthy(data, getAuthFailedAt(), getUnreachableAt())
 				? false
 				: UNHEALTHY_REFETCH_INTERVAL_MS;
 		},

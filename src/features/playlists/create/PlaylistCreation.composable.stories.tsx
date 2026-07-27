@@ -497,6 +497,8 @@ function FullScreenHarness({
 						isArtistResolutionError={false}
 						isSubmitting={false}
 						gateState={gateState}
+						mismatchProfile={null}
+						accountDisplayName={null}
 						recheck={async () => {}}
 						onSubmit={() => {}}
 					/>
