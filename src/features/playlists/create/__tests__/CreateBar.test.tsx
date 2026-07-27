@@ -29,8 +29,10 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CreateBar } from "../publish/CreateBar";
 
-// AccountMismatchPrompt's "Switch Spotify account" button reads useQueryClient
-// (it calls repairConnection, which invalidates the shared connection query).
+// AccountMismatchPrompt's "Switch Spotify account" button and
+// SpotifyReconnectLink (rendered by ReconnectPrompt for reconnect-required)
+// both read useQueryClient — they call repairConnection, which invalidates
+// the shared connection query.
 function withQueryClient(children: ReactNode) {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false } },
@@ -244,7 +246,14 @@ describe("CreateBar — gate states", () => {
 	});
 
 	it("renders reconnect affordance when reconnect-required", () => {
-		render(<CreateBar {...makeProps({ gateState: "reconnect-required" })} />);
+		// Phase 05: SpotifyReconnectLink's activation handler now reads
+		// useQueryClient() (routes through repairConnection) — needs a provider
+		// in the tree even though this test never clicks the link.
+		render(
+			withQueryClient(
+				<CreateBar {...makeProps({ gateState: "reconnect-required" })} />,
+			),
+		);
 		expect(screen.getByText(/reconnect to spotify/i)).toBeInTheDocument();
 	});
 
@@ -279,10 +288,17 @@ describe("CreateBar — gate states", () => {
 	});
 
 	it("still blocks the CTA for account-mismatch even if mismatchProfile is unexpectedly null (defensive)", () => {
+		// Falls back to ReconnectPrompt / SpotifyReconnectLink, which (like the
+		// reconnect-required case above) reads useQueryClient() — needs a provider.
 		render(
-			<CreateBar
-				{...makeProps({ gateState: "account-mismatch", mismatchProfile: null })}
-			/>,
+			withQueryClient(
+				<CreateBar
+					{...makeProps({
+						gateState: "account-mismatch",
+						mismatchProfile: null,
+					})}
+				/>,
+			),
 		);
 		expect(
 			screen.queryByRole("button", { name: /create playlist/i }),

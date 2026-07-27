@@ -1,10 +1,26 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
 	SongForMatching,
 	SongSuggestionRow,
 } from "@/features/matching/types";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { render, screen } from "@/test/utils/render";
 import { SongSuggestionsSection } from "../components/SongSuggestionsSection";
+
+// AccountMismatchPrompt reads useQueryClient (repairConnection's cache
+// invalidation), so the mismatch-branch tests need a provider in scope —
+// mirrors MatchesSection.test.tsx's renderWithQuery.
+function makeQueryClient() {
+	return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+function renderWithQuery(ui: ReactElement) {
+	return render(
+		<QueryClientProvider client={makeQueryClient()}>{ui}</QueryClientProvider>,
+	);
+}
 
 // jsdom has no IntersectionObserver; the footer sentinel wires one via
 // useInfiniteScroll whenever hasMoreSuggestions is true. These tests only
@@ -70,6 +86,17 @@ const DEFAULT_PROPS = {
 	onDismiss: vi.fn(),
 	onNext: vi.fn(),
 };
+
+function makeMismatchProfile(
+	overrides?: Partial<ExtensionSpotifyProfile>,
+): ExtensionSpotifyProfile {
+	return {
+		spotifyId: "sp-mismatch",
+		displayName: "Someone Else",
+		avatarUrl: null,
+		...overrides,
+	};
+}
 
 describe("SongSuggestionsSection", () => {
 	it("renders the section heading", () => {
@@ -339,5 +366,31 @@ describe("SongSuggestionsSection", () => {
 		expect(screen.getByText("Comfortably Numb")).toBeDefined();
 		const addedLabels = screen.getAllByText("Added");
 		expect(addedLabels).toHaveLength(2);
+	});
+
+	// UI-level half of invariant 2's two-layer defense (see docs/plans/
+	// extension-connection-service/README.md): the hook-level guard blocks the
+	// write, this branch blocks the row from ever mounting an Add button.
+	describe("account mismatch guard (invariant 2)", () => {
+		it("renders AccountMismatchPrompt instead of suggestion rows when mismatchProfile is set", () => {
+			renderWithQuery(
+				<SongSuggestionsSection
+					{...DEFAULT_PROPS}
+					mismatchProfile={makeMismatchProfile()}
+				/>,
+			);
+			expect(screen.getByRole("status")).toBeDefined();
+			expect(screen.getByText(/Switch Spotify account/i)).toBeDefined();
+			expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+			expect(screen.queryByText("Echoes")).toBeNull();
+			expect(screen.queryByText("Comfortably Numb")).toBeNull();
+		});
+
+		it("renders suggestion rows (no AccountMismatchPrompt) when mismatchProfile is absent", () => {
+			renderWithQuery(<SongSuggestionsSection {...DEFAULT_PROPS} />);
+			expect(screen.queryByRole("status")).toBeNull();
+			expect(screen.queryByText(/Switch Spotify account/i)).toBeNull();
+			expect(screen.getAllByRole("button", { name: "Add" })).toHaveLength(2);
+		});
 	});
 });

@@ -39,6 +39,11 @@ interface LikedSongsPageProps {
 	accountId: string;
 	billingState?: BillingState;
 	onboardingSession?: OnboardingSession;
+	/** hearted's linked Spotify account id — threaded down to
+	 * useSongPlaylistSuggestions so the shared connection verdict can actually
+	 * detect a mismatched extension account instead of silently short-circuiting
+	 * to "ok" (see useSpotifyGate.ts's identical fix for the studio gate). */
+	linkedSpotifyId?: string | null;
 }
 
 export function LikedSongsPage({
@@ -48,6 +53,7 @@ export function LikedSongsPage({
 	accountId,
 	billingState,
 	onboardingSession,
+	linkedSpotifyId = null,
 }: LikedSongsPageProps) {
 	const queryClient = useQueryClient();
 	const { isEnrichmentRunning } = useActiveJobs(accountId);
@@ -247,6 +253,7 @@ export function LikedSongsPage({
 			? { id: conceptSong.id, spotifyTrackId: conceptSong.spotifyTrackId }
 			: null,
 		!isWalkthrough,
+		linkedSpotifyId,
 	);
 
 	const lockedSongCount = stats?.success ? stats.locked : 0;

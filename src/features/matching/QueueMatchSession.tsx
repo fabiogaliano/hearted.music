@@ -27,6 +27,9 @@ interface QueueMatchContentProps {
 	/** Navigates to the canonical URL for the new mode and persists the preference. */
 	onModeChange: (mode: MatchViewMode) => void;
 	queryClient: ReturnType<typeof useQueryClient>;
+	/** hearted's linked Spotify account id — forwarded to QueueCardContent's
+	 * shared connection verdict (see that component's doc comment). */
+	linkedSpotifyId: string | null;
 }
 
 export function QueueMatchContent({
@@ -36,6 +39,7 @@ export function QueueMatchContent({
 	onExit,
 	onModeChange,
 	queryClient,
+	linkedSpotifyId,
 }: QueueMatchContentProps) {
 	const analytics = useAnalytics();
 
@@ -149,6 +153,7 @@ export function QueueMatchContent({
 			onExit={onExit}
 			analytics={analytics}
 			queryClient={queryClient}
+			linkedSpotifyId={linkedSpotifyId}
 		/>
 	);
 }

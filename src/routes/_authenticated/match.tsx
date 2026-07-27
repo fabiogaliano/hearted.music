@@ -189,7 +189,7 @@ function MatchPage() {
 }
 
 function QueueMatchPage() {
-	const { session } = Route.useRouteContext();
+	const { session, account } = Route.useRouteContext();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	// Read mode from validated URL search. The loader seeded the deck query under
@@ -408,6 +408,11 @@ function QueueMatchPage() {
 				onExit={handleExit}
 				onModeChange={handleModeChange}
 				queryClient={queryClient}
+				// Same account.spotify_id the studio/liked-songs routes thread for
+				// their own gate/verdict — required so a mismatched extension
+				// account is actually derivable instead of silently "ok" (see
+				// QueueCardContent's doc comment).
+				linkedSpotifyId={account?.spotify_id ?? null}
 			/>
 		</div>
 	);

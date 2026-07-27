@@ -105,6 +105,8 @@ export const WithPlaylists: Story = () => (
 			],
 			addedTo: ["2"],
 			reconnectNeeded: false,
+			mismatch: null,
+			onRecheck: async () => {},
 			onAdd: noop,
 		}}
 	/>

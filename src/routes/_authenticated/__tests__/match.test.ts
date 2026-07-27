@@ -120,8 +120,12 @@ async function loadRoute(): Promise<MatchRoute> {
 	vi.doMock("@/lib/extension/spotify-action-outcome", () => ({
 		outcomeFromCommandResponse: vi.fn(),
 	}));
-	vi.doMock("@/lib/extension/useSpotifyReconnectState", () => ({
-		useSpotifyReconnectState: vi.fn(),
+	vi.doMock("@/lib/extension/connection/useExtensionConnection", () => ({
+		useExtensionConnection: vi.fn(),
+	}));
+	vi.doMock("@/lib/extension/connection/report-failure", () => ({
+		reportSpotifyAuthFailure: vi.fn(),
+		reportSpotifyAuthSuccess: vi.fn(),
 	}));
 	vi.doMock("@/lib/observability/useAnalytics", () => ({
 		useAnalytics: vi.fn(),

@@ -9,6 +9,7 @@ import type {
 	SongRead,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { SongAnalysisInstrumentalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import type { ThemeColor } from "@/lib/theme/types";
 
 export type { ReadArcBeat, ReadLineBeat, SongRead };
@@ -75,5 +76,16 @@ export interface PlaylistsPanel {
 	addedTo: string[];
 	// A Spotify add failed for auth reasons; rows offer a reconnect link, not Add.
 	reconnectNeeded: boolean;
+	// The extension's live Spotify session belongs to a DIFFERENT account than
+	// this library's linked one (README invariant 2 — mismatch outranks
+	// unpaired and is never silently repairable). Non-null blocks every row's
+	// Add — writing through the extension's live token here would add the
+	// song to a playlist on the WRONG Spotify account while this UI records it
+	// as added on the right one. Mirrors useSpotifyGate's "account-mismatch"
+	// gate state / AccountMismatchPrompt for the studio create flow.
+	mismatch: { extensionProfile: ExtensionSpotifyProfile } | null;
+	// Re-runs the shared connection check; resolves once it settles. Powers
+	// AccountMismatchPrompt's "Check again" affordance.
+	onRecheck: () => Promise<void>;
 	onAdd: (playlistId: string) => void;
 }

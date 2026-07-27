@@ -17,6 +17,7 @@
 import { LockSimpleIcon } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useStepNavigation } from "@/features/onboarding/hooks/useStepNavigation";
+import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { themes } from "@/lib/theme/colors";
@@ -1710,17 +1711,31 @@ function PlaylistsLayer({
 			>
 				Where it fits
 			</div>
-			{playlists.matches.map((match, i) => (
-				<PlaylistRow
-					key={match.playlistId}
-					match={match}
-					colors={colors}
-					isFirst={i === 0}
-					added={playlists.addedTo.includes(match.playlistId)}
-					reconnectNeeded={playlists.reconnectNeeded}
-					onAdd={playlists.onAdd}
+			{playlists.mismatch ? (
+				// Invariant 2: the extension is signed into a different Spotify
+				// account than this library's linked one — writing through it would
+				// add the song to a playlist on the WRONG account, so no row here
+				// offers Add at all while mismatched. Same prompt/copy the studio's
+				// CreateBar swaps in for its own account-mismatch gate state, reused
+				// here rather than inventing a second "wrong account" UI.
+				<AccountMismatchPrompt
+					extensionProfile={playlists.mismatch.extensionProfile}
+					accountDisplayName={null}
+					onRecheck={playlists.onRecheck}
 				/>
-			))}
+			) : (
+				playlists.matches.map((match, i) => (
+					<PlaylistRow
+						key={match.playlistId}
+						match={match}
+						colors={colors}
+						isFirst={i === 0}
+						added={playlists.addedTo.includes(match.playlistId)}
+						reconnectNeeded={playlists.reconnectNeeded}
+						onAdd={playlists.onAdd}
+					/>
+				))
+			)}
 		</section>
 	);
 }

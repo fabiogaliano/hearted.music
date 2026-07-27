@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/features/matching/types";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { render, screen } from "@/test/utils/render";
 import { MatchesSection } from "../components/MatchesSection";
 
@@ -32,6 +33,17 @@ const PLAYLISTS: Playlist[] = [
 	makePlaylist({ id: "pl-1", name: "Chill Vibes" }),
 	makePlaylist({ id: "pl-2", name: "Late Night Drive", matchScore: 0.75 }),
 ];
+
+function makeMismatchProfile(
+	overrides?: Partial<ExtensionSpotifyProfile>,
+): ExtensionSpotifyProfile {
+	return {
+		spotifyId: "sp-mismatch",
+		displayName: "Someone Else",
+		avatarUrl: null,
+		...overrides,
+	};
+}
 
 const DEFAULT_PROPS = {
 	songKey: "song-1",
@@ -214,5 +226,31 @@ describe("MatchesSection", () => {
 		for (let i = 0; i < 10; i++) {
 			expect(screen.getByText(`Playlist ${i}`)).toBeDefined();
 		}
+	});
+
+	// UI-level half of invariant 2's two-layer defense (see docs/plans/
+	// extension-connection-service/README.md): the hook-level guard blocks the
+	// write, this branch blocks the row from ever mounting an Add button.
+	describe("account mismatch guard (invariant 2)", () => {
+		it("renders AccountMismatchPrompt instead of suggestion rows when mismatchProfile is set", () => {
+			renderWithQuery(
+				<MatchesSection
+					{...DEFAULT_PROPS}
+					mismatchProfile={makeMismatchProfile()}
+				/>,
+			);
+			expect(screen.getByRole("status")).toBeDefined();
+			expect(screen.getByText(/Switch Spotify account/i)).toBeDefined();
+			expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+			expect(screen.queryByText("Chill Vibes")).toBeNull();
+			expect(screen.queryByText("Late Night Drive")).toBeNull();
+		});
+
+		it("renders suggestion rows (no AccountMismatchPrompt) when mismatchProfile is absent", () => {
+			renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
+			expect(screen.queryByRole("status")).toBeNull();
+			expect(screen.queryByText(/Switch Spotify account/i)).toBeNull();
+			expect(screen.getAllByRole("button", { name: "Add" })).toHaveLength(2);
+		});
 	});
 });

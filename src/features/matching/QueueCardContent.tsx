@@ -23,9 +23,13 @@ import {
 } from "@/features/matching/queue-helpers";
 import { seedBakedDeckCardReads } from "@/features/matching/seed-deck-cards";
 import { useMatchReviewCard } from "@/features/matching/useMatchReviewCard";
+import {
+	reportSpotifyAuthFailure,
+	reportSpotifyAuthSuccess,
+} from "@/lib/extension/connection/report-failure";
+import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
-import { useSpotifyReconnectState } from "@/lib/extension/useSpotifyReconnectState";
 import { useLockedMutation } from "@/lib/hooks/useLockedMutation";
 import type { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
@@ -58,7 +62,12 @@ const STALE_REJECTION_STATUSES = new Set(["already_resolved", "not_found"]);
  * branch used to repeat for the submit-then-classify-then-update-stats shape).
  */
 interface AddOutcome {
-	status: "added" | "reconnect-required" | "spotify-error" | "rejected";
+	status:
+		| "added"
+		| "reconnect-required"
+		| "spotify-error"
+		| "rejected"
+		| "account-mismatch";
 	suggestionId: string;
 	analyticsPayload?: Record<string, unknown>;
 	/** Id folded into songsWithAdditions on a successful add. */
@@ -79,6 +88,8 @@ async function addSuggestion({
 	currentSong,
 	currentPlaylist,
 	itemId,
+	queryClient,
+	isAccountMismatched,
 }: {
 	suggestionId: string;
 	currentReviewItem: MatchingReviewItem | null;
@@ -90,7 +101,20 @@ async function addSuggestion({
 		name: string;
 	} | null;
 	itemId: string;
+	queryClient: ReturnType<typeof useQueryClient>;
+	/** True when the shared connection verdict is `mismatch` — the extension's
+	 * live Spotify session belongs to a different account than this deck
+	 * (README invariant 2). Checked once, ahead of both orientation branches,
+	 * so neither can reach addToPlaylist or submitMatchDeckAction: writing
+	 * through the extension's live (wrong) token here would mutate playlist
+	 * membership on someone else's Spotify account while this deck records
+	 * the decision as resolved on the linked one. */
+	isAccountMismatched: boolean;
 }): Promise<AddOutcome> {
+	if (isAccountMismatched) {
+		return { status: "account-mismatch", suggestionId };
+	}
+
 	if (currentReviewItem?.mode === "song") {
 		// Song mode: suggestionId is a playlist id; add the review song to that playlist.
 		const currentMatches = currentSuggestions
@@ -108,10 +132,14 @@ async function addSuggestion({
 			);
 			const outcome = outcomeFromCommandResponse(result);
 			if (outcome.status === "reconnect-required") {
+				reportSpotifyAuthFailure(queryClient);
 				return { status: "reconnect-required", suggestionId };
 			}
 			if (outcome.status === "error") {
 				return { status: "spotify-error", suggestionId };
+			}
+			if (outcome.status === "success") {
+				reportSpotifyAuthSuccess(queryClient);
 			}
 		}
 
@@ -151,10 +179,14 @@ async function addSuggestion({
 		);
 		const outcome = outcomeFromCommandResponse(result);
 		if (outcome.status === "reconnect-required") {
+			reportSpotifyAuthFailure(queryClient);
 			return { status: "reconnect-required", suggestionId };
 		}
 		if (outcome.status === "error") {
 			return { status: "spotify-error", suggestionId };
+		}
+		if (outcome.status === "success") {
+			reportSpotifyAuthSuccess(queryClient);
 		}
 	}
 
@@ -246,6 +278,11 @@ interface QueueCardContentProps {
 	onExit: () => void;
 	analytics: ReturnType<typeof useAnalytics>;
 	queryClient: ReturnType<typeof useQueryClient>;
+	/** hearted's linked Spotify account id — threaded down so the shared
+	 * connection verdict can actually derive a mismatch instead of silently
+	 * short-circuiting to "ok" for a null id (same fix as useSpotifyGate.ts /
+	 * useSongPlaylistSuggestions for the studio/liked-songs writes). */
+	linkedSpotifyId: string | null;
 }
 
 export function QueueCardContent({
@@ -264,6 +301,7 @@ export function QueueCardContent({
 	onExit,
 	analytics,
 	queryClient,
+	linkedSpotifyId,
 }: QueueCardContentProps) {
 	// Authoritative card render: a pure read over captured pair rows (plan §7).
 	// The loader seeded current+next and a whole-card action seeds the promoted
@@ -316,10 +354,22 @@ export function QueueCardContent({
 	const currentPlaylist =
 		currentReviewItem?.mode === "playlist" ? currentReviewItem.playlist : null;
 
-	const songId =
-		currentReviewItem?.mode === "song" ? currentReviewItem.song.id : "";
-	const { reconnectNeeded, setReconnectNeeded } =
-		useSpotifyReconnectState(songId);
+	// Mirrors the shared connection verdict rather than a per-song local flag
+	// (see 05-liked-songs-matching.md): a dead token is global truth, so the
+	// prompt shows on whichever card is open, not just the one that failed.
+	const { verdict, refetch } = useExtensionConnection(linkedSpotifyId);
+	const reconnectNeeded = verdict.kind === "spotify-disconnected";
+	// Invariant 2: mismatch outranks unpaired and is never silently
+	// repairable — see AccountMismatchPrompt/useSpotifyGate's studio gate for
+	// the same distinction. Threaded down to Matching so the suggestion
+	// sections can swap Add rows for AccountMismatchPrompt, and consulted by
+	// addSuggestion below so a mismatched write can never reach Spotify or the
+	// DB even if a stale render slipped a click through.
+	const mismatchProfile =
+		verdict.kind === "mismatch" ? verdict.extensionProfile : null;
+	const onRecheckConnection = async () => {
+		await refetch();
+	};
 
 	// Header progress: position within the whole session, NOT within the shrinking
 	// navigable list. Resolved cards drop out of unresolvedIds, so currentIndex is
@@ -464,17 +514,17 @@ export function QueueCardContent({
 			onLockNavigation: sessionActions.lockNavigation,
 			onReleaseNavigation: sessionActions.releaseNavigation,
 			releaseOnSuccess: true,
-			mutationFn: (suggestionId) => {
-				setReconnectNeeded(false);
-				return addSuggestion({
+			mutationFn: (suggestionId) =>
+				addSuggestion({
 					suggestionId,
 					currentReviewItem,
 					currentSuggestions,
 					currentSong,
 					currentPlaylist,
 					itemId,
-				});
-			},
+					queryClient,
+					isAccountMismatched: mismatchProfile !== null,
+				}),
 			isSuccess: (outcome) => outcome.status === "added",
 			onSuccess: (outcome) => {
 				if (outcome.analyticsPayload) {
@@ -485,9 +535,9 @@ export function QueueCardContent({
 					outcome.addedStatKey,
 				);
 			},
-			onRetryableFailure: (outcome) => {
-				if (outcome.status === "reconnect-required") setReconnectNeeded(true);
-			},
+			// reconnectNeeded now mirrors the shared verdict (set above); the push
+			// inside addSuggestion (reportSpotifyAuthFailure) is what makes that
+			// verdict flip — nothing left for this callback to do locally.
 		},
 	);
 
@@ -686,6 +736,8 @@ export function QueueCardContent({
 			completionStats={completionStats}
 			recentItems={pastItems}
 			reconnectNeeded={reconnectNeeded}
+			mismatchProfile={mismatchProfile}
+			onRecheckConnection={onRecheckConnection}
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}
 			onModeChange={onModeChange}

@@ -1,4 +1,5 @@
 import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 
 /**
  * UI/route-layer toggle mode (B2). Distinct from MatchOrientation (domain/server).
@@ -123,6 +124,15 @@ export interface SongSuggestionsSectionProps {
 	loadMoreSuggestions?: () => void;
 	loadMoreError?: Error | null;
 	retryLoadMore?: () => void;
+	/** Non-null while the extension's live Spotify session is signed into a
+	 *  DIFFERENT account than this deck's linked one (README invariant 2).
+	 *  Present replaces the suggestion rows with AccountMismatchPrompt — no
+	 *  row offers Add while this is set, mirroring useSpotifyGate's
+	 *  "account-mismatch" gate state for the studio's create flow. */
+	mismatchProfile?: ExtensionSpotifyProfile | null;
+	/** Re-runs the shared connection check; resolves once it settles. Powers
+	 *  AccountMismatchPrompt's "Check again" affordance. */
+	onRecheckConnection?: () => Promise<void>;
 }
 
 type MatchingSessionCommonProps = {
@@ -130,6 +140,10 @@ type MatchingSessionCommonProps = {
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
+	/** See SongSuggestionsSectionProps — same invariant-2 gate, threaded to
+	 *  both orientations. */
+	mismatchProfile?: ExtensionSpotifyProfile | null;
+	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	/** True when this is the last unresolved item in the session — drives
 	 *  "Finish matching" vs "Skip Song/Playlist" in the controls. Renamed from
@@ -205,6 +219,9 @@ export interface MatchingProps {
 	completionStats: CompletionStats;
 	recentItems: ReviewedItem[];
 	reconnectNeeded?: boolean;
+	/** See SongSuggestionsSectionProps — same invariant-2 gate. */
+	mismatchProfile?: ExtensionSpotifyProfile | null;
+	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	/** Current UI view mode threaded to MatchingHeader toggle. Defaults to 'song'. */
 	mode?: MatchViewMode;

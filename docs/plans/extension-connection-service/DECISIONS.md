@@ -868,4 +868,183 @@ Run baseline: `4ef7d715`
 
 ## Phase 05
 
+- **`SpotifyReconnectLink`'s activation handler always repairs under a
+  hardcoded `{ kind: "spotify-disconnected" }` verdict**, not the caller's
+  actual verdict (the component takes no verdict prop). Traced every
+  production render site before deciding this was safe: `MatchesSection.tsx`
+  only renders it when `reconnectNeeded` is true (now `spotify-disconnected`
+  specifically — see below), `ReconnectPrompt.tsx` (studio) is only mounted
+  by `CreateBar` for `gateState === "reconnect-required"`, and the liked-songs
+  panel (`SongDetailPanelSurface.tsx:1789`) gates it the same way. No call
+  site ever renders this anchor for `mismatch`/`unpaired`/`unverifiable` — the
+  spec's own file list for those (`AccountMismatchPrompt`, the dashboard
+  banner) already has its own `repairConnection` call with the real verdict.
+  `repairConnection`'s `spotify-disconnected` branch is exactly "open the
+  armed Spotify login + silently re-pair," which is what every current
+  consumer needs. Documented the assumption directly in the component's doc
+  comment so a future caller adding a new render site for a different verdict
+  doesn't inherit a silent mismatch.
+- **`addSuggestion` (QueueCardContent.tsx) takes `queryClient` as a new
+  parameter and pushes `reportSpotifyAuthFailure`/`reportSpotifyAuthSuccess`
+  inline, at the same two `outcomeFromCommandResponse` call sites** (song-mode
+  and playlist-mode branches), rather than centralizing the failure push in
+  the mutation's existing `onRetryableFailure` callback (which would also
+  have worked — it already receives the unified `AddOutcome` regardless of
+  which branch produced it). Chose the inline/duplicated-but-symmetric form
+  because the task doc explicitly calls out "QueueCardContent has **two**
+  `outcomeFromCommandResponse` call sites (:109 and :152), not one — both
+  route to the push," which reads as a warning against exactly the
+  single-editing-site mistake a reviewer might make; keeping both pushes
+  colocated with their outcome check makes "both branches push" verifiable by
+  reading either branch in isolation, and the success push needs a per-branch
+  home anyway (there's no single "the write succeeded" callback the
+  `AddOutcome`-consuming side can hook — `isSuccess` only fires for the
+  overall `"added"` status, which a skipped-Spotify-write add-suggestion also
+  satisfies; see next bullet). Removed the mutation's old
+  `onRetryableFailure` entirely — nothing left for it to do once reconnectNeeded
+  stopped being a local flag.
+- **`reportSpotifyAuthSuccess` fires only when the Spotify write itself
+  returns `outcome.status === "success"`, not whenever `addSuggestion`
+  resolves `"added"`.** `addSuggestion` can reach `"added"` two ways: a real
+  Spotify write succeeded, or `playlist?.spotifyId`/`currentSong?.spotifyId`
+  was missing so the Spotify call was skipped entirely (falls straight to
+  `submitMatchDeckAction`). Calling `reportSpotifyAuthSuccess` in the latter
+  case would be a false attestation — no live command ran, so nothing evidences
+  the token is still good. Same rule applied to `useSongPlaylistSuggestions`'s
+  `onAdd`. Mirrors the existing pre-phase-05 asymmetry already in this code:
+  an `extension-unavailable` outcome (NETWORK_ERROR) was never classified as
+  `error`/`reconnect-required` before this phase either, and still isn't —
+  it silently falls through to the DB write, which is pre-existing behavior
+  ("Behaviors to preserve": only `reconnect-required` routes to the push) and
+  out of scope to fix here.
+- **`reconnectNeeded` checks `verdict.kind === "spotify-disconnected"`
+  exclusively — not `verdict.kind !== "ok"`** — in both
+  `useSongPlaylistSuggestions` and `QueueCardContent`, matching the task doc's
+  literal wording ("`reconnectNeeded` for the panel derives from the shared
+  verdict (`spotify-disconnected`)"). A `mismatch`/`unpaired`/`unverifiable`
+  verdict on these surfaces renders nothing special — no reconnect prompt, no
+  block on Add. This is a real, deliberately-left gap (see next bullet), not
+  an oversight: building a mismatch-specific UI for liked-songs/matching
+  (an `AccountMismatchPrompt`-equivalent per suggestion row, or a whole-panel
+  gate) is a bigger change than "swap the push mechanism" and isn't asked for
+  by this task's spec or its "Done when" checklist.
+- **Passed the real `account.spotify_id` as `linkedSpotifyId` into
+  `useSongPlaylistSuggestions` (liked songs) and `QueueCardContent`
+  (matching)** — threaded `_authenticated`'s `account` context through
+  `liked-songs.tsx`/`LikedSongsPage.tsx` and `match.tsx`/`QueueMatchSession.tsx`,
+  the same field Dashboard.tsx and the studio route already thread (per this
+  task's "Identity matters" brief and phase 04's CRITICAL wrong-account
+  finding for the same `null`-id mistake). Consequence, recorded explicitly
+  per the brief: this makes `deriveConnectionVerdict` structurally capable of
+  returning `mismatch` for these two surfaces for the first time (previously
+  impossible — `null` short-circuited straight to `ok`), but — unlike phase
+  04's studio gate — **nothing here blocks the write or shows different UI
+  for `mismatch`**; `reconnectNeeded` stays keyed to `spotify-disconnected`
+  only (previous bullet), so an add-to-playlist while the extension is
+  correctly-but-wrongly signed in still fires with no special warning. This
+  is the same class of gap phase 04 closed for the studio's Create button,
+  left open here because: (a) the task spec doesn't ask for it, (b) unlike a
+  playlist *create* (one write, one obvious moment to gate), add-to-playlist
+  here is a per-row action with no single "gate" surface to block, and (c)
+  CLAUDE.md's "build only what's asked" — this would be new,
+  spec-unrequested surface area. Flagging for whoever owns 06 or a follow-up:
+  a wrong-account add-to-playlist write from these two surfaces silently
+  succeeds against the extension's live (mismatched) Spotify account with no
+  user-visible signal beyond what already existed pre-phase-05.
+- **`repairConnection`'s rejection is caught at `SpotifyReconnectLink`'s own
+  activation handler** (`.catch(() => {})`), matching the discipline every
+  other `repairConnection` call site in this codebase already follows
+  (`ExtensionAccountBanner`, `AccountMismatchPrompt`). Nothing to release
+  afterward — this component carries no local "repairing" state (unlike the
+  banner), so there's no stuck-disabled-button failure mode to guard against;
+  the catch exists purely so a rejected `pairExtension()` can't surface as an
+  unhandled promise rejection.
+- **Did not touch `armReconnectOnActivation`/`shouldArmOnEvent` in
+  `reconnect-link.ts`, and did not touch onboarding's `InstallExtensionStep`**,
+  which still calls `armReconnectOnActivation` directly (its own bespoke
+  arm+`window.open` sequence, no `repairConnection`/silent-pair). Both stay
+  exactly as `shouldArmOnEvent` unchanged, `armReconnectOnActivation`
+  unchanged) because `InstallExtensionStep` is explicitly out of scope here —
+  the README's task table assigns "onboarding reads shared state" to phase 06,
+  not 05 — and `shouldArmOnEvent` is still the correct primitive
+  `SpotifyReconnectLink`'s new handler reuses (see the component's own
+  changes) so it couldn't be deleted even if onboarding weren't deferred.
+- **No pairing logic added to the liked-songs/matching add-to-playlist
+  paths**, per the README's own scoping note ("a pairing failure cannot occur
+  in the playlist/matching flows, so no re-pair logic is added there") — the
+  DB writes (`addSongToPlaylist`, `submitMatchDeckAction`) ride the app
+  session, never the extension pairing. Only `reportSpotifyAuthFailure`/
+  `reportSpotifyAuthSuccess` were wired at these call sites; the recovery
+  route stays the shared query's own poll/focus refetch plus whatever
+  `repairConnection` a user-facing prompt elsewhere ultimately triggers.
+- **Deleted `src/lib/extension/useSpotifyReconnectState.ts` and its test in
+  this phase** (not deferred to 06) — the task doc's own "Delete" section
+  lists it under task 05 ("here or in 06 once nothing imports it"), and after
+  this phase's edits nothing imports it (confirmed by repo-wide grep). Also
+  removed the now-dangling `vite.config.ts` `domTestFiles` entry for the
+  deleted test file.
+- **Test-file consequences of `SpotifyReconnectLink` now reading
+  `useQueryClient()`:** two `CreateBar.test.tsx` tests that render it
+  transitively (`reconnect-required` gate state, and the defensive
+  `account-mismatch` + `mismatchProfile: null` fallback path, which renders
+  `ReconnectPrompt`/`SpotifyReconnectLink` too) previously rendered with no
+  `QueryClientProvider` in the tree and would now throw
+  ("No QueryClient set"). Wrapped both in the file's existing
+  `withQueryClient` helper (updated its header comment to name
+  `SpotifyReconnectLink` alongside `AccountMismatchPrompt` as a reason a
+  provider is required) — verified both fail without the fix, pass with it.
+- **`match.test.ts`'s stale `vi.doMock("@/lib/extension/useSpotifyReconnectState", ...)`
+  swapped for mocks of `@/lib/extension/connection/useExtensionConnection`
+  and `@/lib/extension/connection/report-failure`.** This test only exercises
+  `Route.options.beforeLoad`/`loader` (the route's `component` — and therefore
+  `QueueCardContent` — is never rendered), so the mock isn't strictly required
+  for the test to pass (importing the real modules would have been inert:
+  `connection-state.ts`/`report-failure.ts` do nothing at module-eval time,
+  only inside functions that are never called here); kept it anyway to match
+  the pre-existing convention of mocking every extension-layer module this
+  test's import graph transitively touches, and because leaving a mock for a
+  deleted module while silently not-mocking its replacement would read as an
+  oversight to a future reader diffing this file.
+- **New tests added, not required verbatim but requested in spirit** (mirrors
+  phase 03/04's "new tests... requested in spirit" precedent): a
+  `QueueCardContent.test.tsx` "05 — shared connection verdict..." block
+  (reconnectNeeded mirrors the verdict incl. a mismatch-is-NOT-reconnectNeeded
+  regression guard; the auth-failure push bails before the deck write; the
+  auth-success push still submits the deck decision; a non-auth error neither
+  pushes nor submits); a new `src/lib/extension/__tests__/SpotifyReconnectLink.test.tsx`
+  (left-click opens Spotify + re-pairs, right-click doesn't arm, a rejecting
+  `pairExtension` doesn't throw); a new
+  `src/features/liked-songs/hooks/__tests__/useSongPlaylistSuggestions.test.tsx`
+  (no test file existed for this hook before this phase, despite the task
+  doc's "Update `useSongPlaylistSuggestions` tests" bullet — created one
+  covering the same shape: reconnectNeeded mirrors the verdict, linkedSpotifyId
+  is threaded to `useExtensionConnection`, the auth-failure push bails before
+  `addSongToPlaylist`, the auth-success push still records the decision, and a
+  non-auth error does neither).
+- **`bun run test`: 388 test files passed / 1 skipped (389), 4236 tests
+  passed / 8 skipped / 11 todo (4255). `bun run typecheck` (tsgo --noEmit):
+  clean, zero errors. `bun run lint` (biome): clean, zero issues.**
+
+### Post-review fix: mismatch never blocked the write on either surface (CRITICAL, invariant 2 — same phantom-write class as phase 04)
+
+- **Root cause:** the bullet above ("`reconnectNeeded` checks `spotify-disconnected` exclusively... a `mismatch`/`unpaired`/`unverifiable` verdict on these surfaces renders nothing special — no reconnect prompt, no block on Add") and the one after it (threading the real `linkedSpotifyId`) were both accurate about what phase 05 shipped, but their combination is exactly phase 04's CRITICAL finding recurring on two new surfaces: threading a real `linkedSpotifyId` makes `deriveConnectionVerdict` capable of returning `mismatch` for the first time on these two surfaces, and nothing gated the write on it. Traced the reachable path: `onAdd` (liked songs) / `addSuggestion` (matching) call `addToPlaylist` against a playlist id that belongs to `linkedSpotifyId`, using whatever token the extension's live session actually holds — under `mismatch` that's a *different* Spotify account. `extensions/src/shared/spotify-client/mutations.ts:14-36` forwards Spotify's Pathfinder `__typename` without checking it against a known-success value, and `extensions/src/background/command-handler.ts:180-194` wraps any non-throwing executor result as `{ok:true, data}` — so a permission-denied response delivered as HTTP 200 with an error-variant `__typename` reports as SUCCESS to the app, which then calls `reportSpotifyAuthSuccess` (clearing a legitimate sticky failure) and writes a DB row asserting the song/decision was added, while the target playlist on the *linked* account never received it. Even when Spotify does reject at the HTTP layer, the prior code showed no reconnect-shaped affordance for a mismatch on either surface — the row's Add button just sat there — which independently violates invariant 2 ("mismatch outranks unpaired... must surface").
+- **This overrides the task doc's literal wording on purpose.** `05-liked-songs-matching.md` only asks for `reconnectNeeded` to mirror `spotify-disconnected` and says nothing about `mismatch`; the previous log entry framed leaving it unblocked as an explicit, spec-compliant scope decision. That framing is wrong once invariant 2 is read as load-bearing rather than aspirational: the README states it as a hard rule ("Mismatch outranks unpaired... a wrong Spotify session is not [repairable]. When both are true, surface the mismatch"), not a task-05-specific suggestion, and phase 04 already established that a `null`-collapsed identity check is a CRITICAL data-integrity bug, not a style preference. A narrower task doc cannot waive a README invariant — the task doc under-specified this, it didn't authorize skipping it.
+- **Fix, mirroring `useSpotifyGate`/`AccountMismatchPrompt` (the studio's existing mismatch handling) rather than inventing a second "wrong account" UI:**
+  - `useSongPlaylistSuggestions.ts`'s `onAdd` and `QueueCardContent.tsx`'s `addSuggestion` both now check the verdict/an `isAccountMismatched` flag *before* anything else runs and return without calling `addToPlaylist` or the DB write when it's `mismatch` — same "bail before the DB write, row stays actionable" shape the `reconnect-required` path already had. `addSuggestion`'s check sits once, ahead of both the song-mode and playlist-mode branches, so a single check point covers both orientations (unlike the `outcomeFromCommandResponse` push, which the task doc correctly notes needs duplicating at two call sites — the mismatch gate needs no such duplication because it runs before either branch's Spotify call).
+  - `PlaylistsPanel` (liked songs) and the matching prop chain (`QueueCardContentProps` → `MatchingProps` → `MatchingSessionCommonProps`/`SongSuggestionsSectionProps` → `MatchesSectionProps`) gained `mismatch`/`mismatchProfile` (the extension's live `ExtensionSpotifyProfile`, non-null only under `mismatch`) and `onRecheck`/`onRecheckConnection` (wraps `useExtensionConnection`'s `refetch`). This is the same `refetch`-wrapping pattern `useSpotifyGate.recheck` already uses, not a new primitive.
+  - UI: both `PlaylistsLayer` (liked songs' "Where it fits" section) and `MatchesSection`/`SongSuggestionsSection` (matching's song- and playlist-mode suggestion columns) now render `AccountMismatchPrompt` — the exact component `CreateBar` already swaps in for the studio's `account-mismatch` gate state — in place of the entire suggestion-rows list when mismatched, rather than a per-row swap. Chose "replace the whole list" over "swap each row's Add for something else" because `AccountMismatchPrompt` is a full sentence + two buttons, sized for a section-level slot (mirroring `CreateBar`'s whole-bar swap), not a compact per-row action slot the way `SpotifyReconnectLink` is for `reconnectNeeded`. This also means the write is structurally unreachable from the UI while mismatched (no Add button renders at all) — the hook/component-level `mismatch`/`isAccountMismatched` check is therefore defense-in-depth against a stale render slipping a click through, not the only guard.
+  - `accountDisplayName` is passed as `null` to every new `AccountMismatchPrompt` call site on these two surfaces (falls back to its existing "which isn't the account this library was built from" copy) rather than threading `account.display_name` down through `LikedSongsPage`/`QueueMatchSession` the way the studio route does for its own `AccountMismatchPrompt`. Threading it would mean widening `useSongPlaylistSuggestions`'/`QueueCardContent`'s already-large parameter lists for a copy nicety, not a correctness requirement — the component's null-safe fallback exists precisely for callers that don't have the display name handy. Left as a documented follow-up, not a gap in the fix itself.
+  - Confirmed `reportSpotifyAuthSuccess` cannot fire on a blocked write: the mismatch check returns before the `addToPlaylist` call and its `outcome.status === "success"` branch even runs, on both surfaces — there is no code path from a blocked write to either push. Pinned by tests (below) asserting neither push fires when mismatched, including a defense-in-depth variant that pre-stubs `addToPlaylist`/`outcomeFromCommandResponse` to return success and confirms the mismatch check still short-circuits before either mock is ever called.
+  - `SongSuggestionsSection` (playlist-mode matching) did not previously receive `reconnectNeeded` at all — `MatchingSessionCommonProps` declares it but `MatchingSession.tsx`'s playlist branch never forwarded it to `SongSuggestionsSection`, so playlist-mode `spotify-disconnected` has shown no reconnect affordance since phase 05 landed. That's a separate, pre-existing gap from this finding (not introduced by this fix, and not required to fix it — the `mismatch` gate that blocks the *write* runs inside the shared `addSuggestion` function regardless of orientation, so playlist-mode is still protected against phantom writes even though this specific UI gap is untouched). `mismatchProfile`/`onRecheckConnection` were wired into *both* `MatchesSection` and `SongSuggestionsSection` correctly (unlike the pre-existing `reconnectNeeded` gap) because this fix's brief explicitly requires both surfaces to block and surface mismatch — recorded here so a future reader doesn't mistake the asymmetry (mismatch wired to both branches, reconnectNeeded still only wired to one) for an oversight in this fix; it's inherited from before it.
+- **Tests added** (both files' new "post-review fix" / "account mismatch" describe blocks): `useSongPlaylistSuggestions.test.tsx` — a mismatch verdict never calls `addToPlaylist`/`addSongToPlaylist` and neither push fires; the same holds even when `addToPlaylist`/`outcomeFromCommandResponse` are stubbed to report success (defense-in-depth); `mismatch`/`onRecheck` are exposed correctly and `onRecheck` drives the shared `refetch`; `mismatch` is `null` for every other verdict. `QueueCardContent.test.tsx` — the mirror set, plus asserting `mockSubmitMatchDeckAction` (the DB write) is never called. **Verified both regression-guard tests actually catch the bug**: temporarily neutralized both guards (`if (verdict.kind === "mismatch") return` → `if (false) return` in the hook; `if (isAccountMismatched)` → `if (false && isAccountMismatched)` in `addSuggestion`), reran both files — 2 failures each, both on the `not.toHaveBeenCalled()` assertion for `addToPlaylist`/`mockAddToPlaylist` with the actual write args logged (confirming the write really would have gone through). Restored both guards; full suite reconfirmed green.
+- **Recorded, not fixed — pre-existing gap, ticket-worthy:** in both `onAdd`/`addSuggestion`, an `extension-unavailable` (`NETWORK_ERROR`) outcome matches none of the `reconnect-required`/`error`/`success` branches and falls straight through to the DB write (`addSongToPlaylist`/`submitMatchDeckAction`), marking the row "added" even though the Spotify call never happened — the same phantom-success shape as this finding, just triggered by the extension being unreachable instead of a wrong account. Confirmed pre-existing (predates phase 05 entirely — `outcomeFromCommandResponse` has returned `{status: "extension-unavailable"}` since before this plan, and neither call site has ever checked for it) and out of this fix's scope (the brief for this pass was specifically the mismatch CRITICAL finding). Not fixed here per instruction; flagging explicitly so it gets its own ticket rather than being rediscovered as a surprise later.
+- **`bun run test` (full suite, after this fix): 388 test files passed / 1 skipped (389), 4244 tests passed / 8 skipped / 11 todo (4263) — +8 over the prior phase-05 count, exactly the 8 new tests added above. `bun run typecheck` (tsgo --noEmit): clean, zero errors. `bun run lint` (biome): clean, zero issues.**
+
+### Post-review: UI-level mismatch guard was untested (test-coverage gap)
+
+- **Root cause:** the fix above's own text calls the UI-level swap "defense-in-depth against a stale render slipping a click through" alongside the hook-level guard, but only the hook-level guard (`useSongPlaylistSuggestions.test.tsx`, `QueueCardContent.test.tsx`) had tests. Neither `MatchesSection.test.tsx` nor `SongSuggestionsSection.test.tsx` mentioned "mismatch" at all, and no test existed for `SongDetailPanelSurface`'s `PlaylistsLayer` branch — a future edit to any of the three `mismatchProfile`/`playlists.mismatch` ternaries could silently regress the UI half with nothing failing.
+- **Tests added**, one new "account mismatch guard (invariant 2)" describe block per surface, each asserting both directions (`AccountMismatchPrompt` renders + no Add affordance when mismatched; normal rows render + no prompt when not): `MatchesSection.test.tsx`, `SongSuggestionsSection.test.tsx` (both now wrap renders in a `QueryClientProvider` — `AccountMismatchPrompt` calls `useQueryClient()`), and a new `SongDetailPanelSurface.playlists-mismatch.test.tsx` (topic-suffixed, following `SongDetailPanelSurface.unread-state.test.tsx`'s convention) covering `PlaylistsLayer`. Note: `PlaylistRow`'s Add button's accessible name is `"Add to {playlist name}"` (aria-label), not `"Add"` — the new SongDetailPanelSurface test matches `/^Add to/` rather than the exact "Add" name `MatchesSection`/`SongSuggestionsSection`'s rows use.
+- **Verified non-vacuous:** temporarily replaced `MatchesSection.tsx`'s `{mismatchProfile ? (` with `{false ? (`, reran `MatchesSection.test.tsx` — the new "renders AccountMismatchPrompt..." test failed (`getByRole("status")` found nothing), all other tests still passed. Restored the original ternary; confirmed the diff against the file's pre-existing (uncommitted) phase-05 state showed no residual change.
+- **`bun run test` (full suite, after adding coverage): 389 test files passed / 1 skipped (390), 4250 tests passed / 8 skipped / 11 todo (4269) — +6 over the prior phase-05 count (6 new tests: 2 per surface × 3 surfaces). `bun run typecheck` (tsgo --noEmit): clean, zero errors.**
+
 ## Phase 06

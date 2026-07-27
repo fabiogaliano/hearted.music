@@ -133,7 +133,8 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 function LikedSongsRoute() {
 	const { filter, song } = Route.useSearch();
 	const activeFilter = filter ?? DEFAULT_FILTER;
-	const { session, billingState, onboardingSession } = Route.useRouteContext();
+	const { session, billingState, onboardingSession, account } =
+		Route.useRouteContext();
 	const navigate = Route.useNavigate();
 
 	return (
@@ -149,6 +150,11 @@ function LikedSongsRoute() {
 			accountId={session.accountId}
 			billingState={billingState}
 			onboardingSession={onboardingSession}
+			// Same account.spotify_id the studio route threads for its gate
+			// (playlists.new.studio.tsx) — required so add-to-playlist's shared
+			// connection verdict can actually derive a mismatch instead of
+			// silently short-circuiting to "ok" for a null id.
+			linkedSpotifyId={account?.spotify_id ?? null}
 		/>
 	);
 }

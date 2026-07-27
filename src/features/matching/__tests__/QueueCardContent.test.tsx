@@ -19,14 +19,22 @@ const {
 	mockUseQueryClient,
 	mockUseSuspenseQuery,
 	mockUseMatchReviewCard,
-	mockUseSpotifyReconnectState,
+	mockUseExtensionConnection,
+	mockReportSpotifyAuthFailure,
+	mockReportSpotifyAuthSuccess,
 	mockSubmitMatchDeckAction,
+	mockOutcomeFromCommandResponse,
+	mockAddToPlaylist,
 } = vi.hoisted(() => ({
 	mockUseQueryClient: vi.fn(),
 	mockUseSuspenseQuery: vi.fn(),
 	mockUseMatchReviewCard: vi.fn(),
-	mockUseSpotifyReconnectState: vi.fn(),
+	mockUseExtensionConnection: vi.fn(),
+	mockReportSpotifyAuthFailure: vi.fn(),
+	mockReportSpotifyAuthSuccess: vi.fn(),
 	mockSubmitMatchDeckAction: vi.fn(),
+	mockOutcomeFromCommandResponse: vi.fn(),
+	mockAddToPlaylist: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -74,15 +82,20 @@ vi.mock("@/features/matching/useMatchReviewCard", () => ({
 }));
 
 vi.mock("@/lib/extension/spotify-action-outcome", () => ({
-	outcomeFromCommandResponse: vi.fn(),
+	outcomeFromCommandResponse: mockOutcomeFromCommandResponse,
 }));
 
 vi.mock("@/lib/extension/spotify-client", () => ({
-	addToPlaylist: vi.fn(),
+	addToPlaylist: mockAddToPlaylist,
 }));
 
-vi.mock("@/lib/extension/useSpotifyReconnectState", () => ({
-	useSpotifyReconnectState: mockUseSpotifyReconnectState,
+vi.mock("@/lib/extension/connection/useExtensionConnection", () => ({
+	useExtensionConnection: mockUseExtensionConnection,
+}));
+
+vi.mock("@/lib/extension/connection/report-failure", () => ({
+	reportSpotifyAuthFailure: mockReportSpotifyAuthFailure,
+	reportSpotifyAuthSuccess: mockReportSpotifyAuthSuccess,
 }));
 
 vi.mock("@/lib/observability/sentry", () => ({
@@ -153,23 +166,38 @@ interface CardTestHarness {
 	queryClient: ReturnType<typeof makeQueryClient>;
 	sessionActions: ReturnType<typeof makeSessionActions>;
 	onNext: () => Promise<void>;
+	onAdd: (suggestionId: string) => Promise<void>;
+	reconnectNeeded: boolean;
+	mismatchProfile: unknown;
+	onRecheckConnection: () => Promise<void>;
+	refetch: ReturnType<typeof vi.fn>;
 }
 
-async function renderCard(itemId = "item-1"): Promise<CardTestHarness> {
+function makeSongReviewItem() {
+	return {
+		mode: "song" as const,
+		song: {
+			id: "song-1",
+			spotifyId: "sp-song-1",
+			name: "Test Song",
+			artist: "Test Artist",
+		},
+	};
+}
+
+async function renderCard(
+	itemId = "item-1",
+	options?: {
+		verdict?: { kind: string; extensionProfile?: unknown };
+		currentSuggestions?: unknown[];
+	},
+): Promise<CardTestHarness> {
 	const { QueueCardContent } = await import("../QueueCardContent");
 
 	mockUseSuspenseQuery.mockReturnValue({ data: makeReadyItemData(itemId) });
 	mockUseMatchReviewCard.mockReturnValue({
-		currentReviewItem: {
-			mode: "song",
-			song: {
-				id: "song-1",
-				spotifyId: "sp-song-1",
-				name: "Test Song",
-				artist: "Test Artist",
-			},
-		},
-		currentSuggestions: [],
+		currentReviewItem: makeSongReviewItem(),
+		currentSuggestions: options?.currentSuggestions ?? [],
 		suggestionTotal: undefined,
 		hasMoreSuggestions: false,
 		isLoadingMoreSuggestions: false,
@@ -179,9 +207,11 @@ async function renderCard(itemId = "item-1"): Promise<CardTestHarness> {
 		dismissSuggestion: vi.fn(),
 		waitForPendingDismisses: vi.fn().mockResolvedValue(undefined),
 	});
-	mockUseSpotifyReconnectState.mockReturnValue({
-		reconnectNeeded: false,
-		setReconnectNeeded: vi.fn(),
+	const refetch = vi.fn().mockResolvedValue(undefined);
+	mockUseExtensionConnection.mockReturnValue({
+		connection: undefined,
+		verdict: options?.verdict ?? { kind: "ok" },
+		refetch,
 	});
 
 	const queryClient = makeQueryClient();
@@ -203,13 +233,31 @@ async function renderCard(itemId = "item-1"): Promise<CardTestHarness> {
 		onExit: vi.fn(),
 		analytics: { capture: vi.fn() } as never,
 		queryClient: queryClient as never,
+		linkedSpotifyId: null,
 	});
 
-	const onNext = (
-		element as unknown as { props: { onNext: () => Promise<void> } }
-	).props.onNext;
+	const props = (
+		element as unknown as {
+			props: {
+				onNext: () => Promise<void>;
+				onAdd: (suggestionId: string) => Promise<void>;
+				reconnectNeeded: boolean;
+				mismatchProfile: unknown;
+				onRecheckConnection: () => Promise<void>;
+			};
+		}
+	).props;
 
-	return { queryClient, sessionActions, onNext };
+	return {
+		queryClient,
+		sessionActions,
+		onNext: props.onNext,
+		onAdd: props.onAdd,
+		reconnectNeeded: props.reconnectNeeded,
+		mismatchProfile: props.mismatchProfile,
+		onRecheckConnection: props.onRecheckConnection,
+		refetch,
+	};
 }
 
 describe("QueueCardContent whole-card action handlers", () => {
@@ -217,8 +265,12 @@ describe("QueueCardContent whole-card action handlers", () => {
 		mockUseQueryClient.mockReset();
 		mockUseSuspenseQuery.mockReset();
 		mockUseMatchReviewCard.mockReset();
-		mockUseSpotifyReconnectState.mockReset();
+		mockUseExtensionConnection.mockReset();
+		mockReportSpotifyAuthFailure.mockReset();
+		mockReportSpotifyAuthSuccess.mockReset();
 		mockSubmitMatchDeckAction.mockReset();
+		mockOutcomeFromCommandResponse.mockReset();
+		mockAddToPlaylist.mockReset();
 	});
 
 	describe("M7 — rejected finish-card reconciliation", () => {
@@ -413,6 +465,192 @@ describe("QueueCardContent whole-card action handlers", () => {
 			expect(queryClient.cancelQueries).not.toHaveBeenCalledWith({
 				queryKey: ["match-deck", "deck", "acct-1", "playlist"],
 			});
+		});
+	});
+
+	// 05-liked-songs-matching.md: the per-song useSpotifyReconnectState poll is
+	// gone — reconnectNeeded now mirrors the shared connection verdict, and a
+	// failed/successful add-to-playlist pushes into that shared state instead
+	// of a local flag.
+	describe("05 — shared connection verdict replaces per-song reconnect state", () => {
+		it("reconnectNeeded mirrors the shared verdict instead of a local flag", async () => {
+			const disconnected = await renderCard("item-1", {
+				verdict: { kind: "spotify-disconnected" },
+			});
+			expect(disconnected.reconnectNeeded).toBe(true);
+
+			const ok = await renderCard("item-1", { verdict: { kind: "ok" } });
+			expect(ok.reconnectNeeded).toBe(false);
+
+			// mismatch/unpaired/unverifiable/checking are deliberately NOT treated
+			// as reconnectNeeded here — only spotify-disconnected is. Mismatch gets
+			// its own signal (mismatchProfile, see the block below) rather than
+			// reusing reconnectNeeded: ReconnectPrompt's copy/repair path is wrong
+			// for "connected, just as the wrong person" (see useSpotifyGate.ts).
+			const mismatch = await renderCard("item-1", {
+				verdict: { kind: "mismatch", extensionProfile: { spotifyId: "x" } },
+			});
+			expect(mismatch.reconnectNeeded).toBe(false);
+		});
+
+		it("pushes reportSpotifyAuthFailure on a reconnect-required Spotify outcome, and bails before the deck write", async () => {
+			const { queryClient, onAdd } = await renderCard("item-1", {
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+			mockAddToPlaylist.mockResolvedValue({
+				ok: false,
+				errorCode: "AUTH_REQUIRED",
+			});
+			mockOutcomeFromCommandResponse.mockReturnValue({
+				status: "reconnect-required",
+			});
+
+			await onAdd("pl-1");
+
+			expect(mockReportSpotifyAuthFailure).toHaveBeenCalledWith(queryClient);
+			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+			// Spotify write first, DB decision only on success (behavior preserved
+			// from before this phase) — a reconnect bails before submitting.
+			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
+		});
+
+		it("pushes reportSpotifyAuthSuccess when the Spotify write itself comes back ok, then still submits the deck decision", async () => {
+			const { queryClient, onAdd } = await renderCard("item-1", {
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+			mockAddToPlaylist.mockResolvedValue({ ok: true });
+			mockOutcomeFromCommandResponse.mockReturnValue({ status: "success" });
+			mockSubmitMatchDeckAction.mockResolvedValue({ actionStatus: "added" });
+
+			await onAdd("pl-1");
+
+			expect(mockReportSpotifyAuthSuccess).toHaveBeenCalledWith(queryClient);
+			expect(mockReportSpotifyAuthFailure).not.toHaveBeenCalled();
+			expect(mockSubmitMatchDeckAction).toHaveBeenCalledWith({
+				data: {
+					type: "add-suggestion",
+					itemId: "item-1",
+					suggestionId: "pl-1",
+				},
+			});
+		});
+
+		it("a non-auth Spotify error neither pushes nor submits the deck decision", async () => {
+			const { onAdd } = await renderCard("item-1", {
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+			mockAddToPlaylist.mockResolvedValue({
+				ok: false,
+				errorCode: "INVALID_TARGET",
+			});
+			mockOutcomeFromCommandResponse.mockReturnValue({
+				status: "error",
+				errorCode: "INVALID_TARGET",
+			});
+
+			await onAdd("pl-1");
+
+			expect(mockReportSpotifyAuthFailure).not.toHaveBeenCalled();
+			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
+		});
+	});
+
+	// Post-review fix (CRITICAL, invariant 2): phase 05 threaded a real
+	// linkedSpotifyId into this hook, which made `mismatch` reachable here for
+	// the first time — but nothing blocked the write under it. A mismatched
+	// write would land on Spotify under whichever account the extension's live
+	// token belongs to (not the deck's linked account) while this deck records
+	// the decision as resolved — the same phantom/orphan-write class as phase
+	// 04's studio CRITICAL finding, now closed here the same way: addSuggestion
+	// refuses the write outright under `mismatch`, and Matching is handed
+	// `mismatchProfile` so the suggestion sections render AccountMismatchPrompt
+	// instead of an Add button in the first place.
+	describe("post-review fix — account mismatch blocks the write (CRITICAL, invariant 2)", () => {
+		const MISMATCH_PROFILE = {
+			spotifyId: "wrong-id",
+			displayName: "Someone Else",
+		};
+
+		it("never calls addToPlaylist or submits the deck decision, and neither push fires", async () => {
+			const { onAdd } = await renderCard("item-1", {
+				verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+
+			await onAdd("pl-1");
+
+			expect(mockAddToPlaylist).not.toHaveBeenCalled();
+			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
+			// A blocked write is not "the token failed" — it must not stamp a
+			// fresh authFailedAt, and it must not clear a real sticky failure
+			// either (no live command ran to evidence anything).
+			expect(mockReportSpotifyAuthFailure).not.toHaveBeenCalled();
+			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+		});
+
+		it("blocks the write even when the Spotify command would have reported success (defense-in-depth: the gate, not the outcome, decides)", async () => {
+			const { onAdd } = await renderCard("item-1", {
+				verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
+				currentSuggestions: [
+					{
+						mode: "song",
+						playlist: { id: "pl-1", spotifyId: "sp-pl-1", name: "Chill" },
+					},
+				],
+			});
+			// Even if addToPlaylist were somehow called and returned ok, the
+			// mismatch check runs first and short-circuits before any of this.
+			mockAddToPlaylist.mockResolvedValue({ ok: true });
+			mockOutcomeFromCommandResponse.mockReturnValue({ status: "success" });
+
+			await onAdd("pl-1");
+
+			expect(mockAddToPlaylist).not.toHaveBeenCalled();
+			expect(mockSubmitMatchDeckAction).not.toHaveBeenCalled();
+			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
+		});
+
+		it("exposes the extension's live profile to Matching so the suggestion sections can render AccountMismatchPrompt, and wires onRecheckConnection to the shared refetch", async () => {
+			const { mismatchProfile, onRecheckConnection, refetch } =
+				await renderCard("item-1", {
+					verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
+				});
+
+			expect(mismatchProfile).toEqual(MISMATCH_PROFILE);
+
+			await onRecheckConnection();
+			expect(refetch).toHaveBeenCalledTimes(1);
+		});
+
+		it("mismatchProfile is null for every other verdict", async () => {
+			const ok = await renderCard("item-1", { verdict: { kind: "ok" } });
+			expect(ok.mismatchProfile).toBeNull();
+
+			const disconnected = await renderCard("item-1", {
+				verdict: { kind: "spotify-disconnected" },
+			});
+			expect(disconnected.mismatchProfile).toBeNull();
 		});
 	});
 });

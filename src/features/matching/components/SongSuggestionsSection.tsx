@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Button } from "@/components/ui/Button";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
+import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestionRow, SongSuggestionsSectionProps } from "../types";
@@ -30,6 +31,8 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	suggestions,
 	playback,
 	addedTo,
+	mismatchProfile,
+	onRecheckConnection,
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
@@ -119,7 +122,17 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 					</p>
 
 					<ReviewListScroll footer={suggestionsFooter}>
-						{suggestions.length === 0 && !hasMoreSuggestions ? (
+						{mismatchProfile ? (
+							// Invariant 2: block every row's Add rather than a per-row
+							// swap — mirrors MatchesSection's song-mode treatment and
+							// the studio CreateBar's account-mismatch gate state, one
+							// prompt/copy reused across every surface.
+							<AccountMismatchPrompt
+								extensionProfile={mismatchProfile}
+								accountDisplayName={null}
+								onRecheck={onRecheckConnection ?? (async () => {})}
+							/>
+						) : suggestions.length === 0 && !hasMoreSuggestions ? (
 							<ReviewEmptyState />
 						) : (
 							suggestions.map((row) => (

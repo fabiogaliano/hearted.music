@@ -2,6 +2,8 @@ import { AnimatePresence, useReducedMotion } from "framer-motion";
 import { memo, type ReactNode } from "react";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { Cover } from "@/features/playlists/components/Cover";
+import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
+import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
@@ -23,6 +25,12 @@ interface MatchesSectionProps {
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
+	/** Non-null while the extension's live Spotify session belongs to a
+	 *  DIFFERENT account than this deck's linked one (README invariant 2).
+	 *  Replaces the suggestion rows with AccountMismatchPrompt — no row
+	 *  offers Add while this is set. */
+	mismatchProfile?: ExtensionSpotifyProfile | null;
+	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	isLastItem?: boolean;
 	/** Swap songs instantly (no slide) while the card-level reject animation runs. */
@@ -47,6 +55,8 @@ export const MatchesSection = memo(function MatchesSection({
 	isDemo,
 	realAvailable,
 	reconnectNeeded,
+	mismatchProfile,
+	onRecheckConnection,
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
@@ -97,7 +107,17 @@ export const MatchesSection = memo(function MatchesSection({
 					/>
 
 					<ReviewListScroll>
-						{playlists.length === 0 ? (
+						{mismatchProfile ? (
+							// Invariant 2: block every row's Add rather than a per-row
+							// reconnect swap — a mismatch isn't silently repairable, so
+							// the same prompt/copy the studio's CreateBar uses for its
+							// own account-mismatch gate state renders once here instead.
+							<AccountMismatchPrompt
+								extensionProfile={mismatchProfile}
+								accountDisplayName={null}
+								onRecheck={onRecheckConnection ?? (async () => {})}
+							/>
+						) : playlists.length === 0 ? (
 							<ReviewEmptyState />
 						) : (
 							playlists.map((playlist) => (
