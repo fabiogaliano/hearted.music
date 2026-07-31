@@ -67,7 +67,7 @@ function PreviewRegionHarness({
 			)}
 
 			{showNotEnoughNote && (
-				<NotEnoughSongsNote totalEligible={totalEligible} />
+				<NotEnoughSongsNote totalEligible={totalEligible} maxSongs={15} />
 			)}
 		</div>
 	);
@@ -110,7 +110,7 @@ describe("CreatePlaylistScreen preview region", () => {
 		expect(
 			screen.getByText(/no songs match the current filters/i),
 		).toBeInTheDocument();
-		expect(screen.queryByText(/still warming up/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/warming up/i)).not.toBeInTheDocument();
 		// Nothing meaningful to report yet — the count span stays hidden.
 		expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
 	});
@@ -125,7 +125,7 @@ describe("CreatePlaylistScreen preview region", () => {
 			/>,
 		);
 
-		expect(screen.getByText(/still warming up/i)).toBeInTheDocument();
+		expect(screen.getByText(/warming up/i)).toBeInTheDocument();
 		expect(
 			screen.queryByText(/no songs match the current filters/i),
 		).not.toBeInTheDocument();

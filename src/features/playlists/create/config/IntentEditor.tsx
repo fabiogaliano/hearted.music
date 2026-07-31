@@ -90,7 +90,7 @@ function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 					type="button"
 					onClick={onOpenPaywall}
 					aria-describedby={LOCKED_DESC_ID}
-					className="theme-border-color flex w-full cursor-pointer items-center gap-3 border px-4 py-3 text-left transition-colors duration-150 group-hover:border-[var(--t-text-muted)]"
+					className="theme-border-color theme-surface-bg flex w-full cursor-pointer items-center gap-3 border px-4 py-3 text-left transition-colors duration-150 group-hover:border-[var(--t-text-muted)]"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="theme-text-muted min-w-0 flex-1 truncate text-sm leading-relaxed opacity-50">

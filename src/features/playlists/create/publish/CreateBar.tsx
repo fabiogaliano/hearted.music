@@ -27,12 +27,8 @@
  */
 
 import { Button } from "@/components/ui/Button";
-import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
 import type { SpotifyGateState } from "../useSpotifyGate";
-import { AccountMismatchPrompt } from "./AccountMismatchPrompt";
-import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
-import { ReconnectPrompt } from "./ReconnectPrompt";
 
 export interface CreateBarProps {
 	/** The playlist name, owned by the screen's title input. */
@@ -63,15 +59,10 @@ export interface CreateBarProps {
 	isSubmitting: boolean;
 	/** Gate state computed by the parent — avoids re-checking on every render. */
 	gateState: SpotifyGateState;
-	/** Populated only when gateState === "account-mismatch" (see useSpotifyGate). */
-	mismatchProfile: ExtensionSpotifyProfile | null;
-	/** Display name of the hearted account's linked Spotify identity, for the
-	 * mismatch prompt's "this library belongs to…" copy. */
-	accountDisplayName: string | null;
-	/** Re-runs the gate detection; wired to the gate-failure affordances. */
-	recheck: () => Promise<void>;
 	/** Called when the user submits — the screen assembles the payload. */
 	onSubmit: () => void;
+	/** Retries the failed artist song resolution from the footer. */
+	onRetryArtistResolution?: () => void;
 }
 
 export function CreateBar({
@@ -82,45 +73,21 @@ export function CreateBar({
 	isArtistResolutionError,
 	isSubmitting,
 	gateState,
-	mismatchProfile,
-	accountDisplayName,
-	recheck,
 	onSubmit,
+	onRetryArtistResolution,
 }: CreateBarProps) {
 	const trimmedName = name.trim();
+	const isGateBlocked = gateState !== "ok" && gateState !== "checking";
+	const isGateChecking = gateState === "checking";
 	const canSubmit =
 		songIds.length > 0 &&
 		trimmedName.length > 0 &&
 		!isSubmitting &&
 		!isPreviewStale &&
 		!isResolvingArtists &&
-		!isArtistResolutionError;
-
-	// Show the relevant inline affordance for gate failures instead of the CTA.
-	if (gateState === "extension-unavailable") {
-		return <ExtensionUnavailablePrompt onRecheck={recheck} />;
-	}
-	if (gateState === "reconnect-required") {
-		return <ReconnectPrompt onRecheck={recheck} />;
-	}
-	if (gateState === "account-mismatch") {
-		// mismatchProfile is unconditionally populated whenever gateState is
-		// "account-mismatch" (verdict.ts always attaches extensionProfile to a
-		// mismatch verdict) — the `null` branch below is defensive only. It
-		// still blocks with ReconnectPrompt rather than falling through to the
-		// CTA: this state exists specifically to prevent publishing to the
-		// wrong Spotify account, so an unexpectedly-missing profile must never
-		// silently re-enable Create.
-		return mismatchProfile ? (
-			<AccountMismatchPrompt
-				extensionProfile={mismatchProfile}
-				accountDisplayName={accountDisplayName}
-				onRecheck={recheck}
-			/>
-		) : (
-			<ReconnectPrompt onRecheck={recheck} />
-		);
-	}
+		!isArtistResolutionError &&
+		!isGateChecking &&
+		!isGateBlocked;
 
 	const songCount = songIds.length;
 	const ctaLabel =
@@ -128,21 +95,49 @@ export function CreateBar({
 			? "Create playlist"
 			: `Create playlist · ${songCount} ${songCount === 1 ? "song" : "songs"}`;
 
-	// Explains a disabled CTA now that the name field lives in the page title.
-	// The artist-resolution error takes precedence over the generic "updating"
-	// hint: it's the one case where waiting doesn't help — the user needs to
-	// go retry in the ArtistConfig panel instead.
-	const hint =
-		trimmedName.length === 0
-			? "Name your playlist above to create"
-			: isArtistResolutionError
-				? "Couldn't load one or more artists — retry in the Artists panel"
+	if (isArtistResolutionError) {
+		return (
+			<div
+				className="flex items-center justify-between gap-4 px-5 py-3.5"
+				style={{ borderLeft: "2px solid var(--t-primary)" }}
+			>
+				<span
+					className="theme-text-muted text-xs"
+					style={{ fontFamily: fonts.body }}
+					aria-live="polite"
+				>
+					Could not load artist songs
+				</span>
+				{onRetryArtistResolution && (
+					<button
+						type="button"
+						onClick={onRetryArtistResolution}
+						className="hover-border-brighten inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
+					>
+						Retry
+					</button>
+				)}
+			</div>
+		);
+	}
+
+	const hint = isGateBlocked
+		? "Connect Spotify above to create"
+		: isGateChecking
+			? "Checking your Spotify connection…"
+			: trimmedName.length === 0
+				? "Name your playlist above to create"
 				: isPreviewStale || isResolvingArtists
 					? "Updating preview…"
-					: null;
+					: isSubmitting
+						? "Creating on Spotify…"
+						: songCount === 0
+							? "Nothing selected yet"
+							: "Saves to your Spotify";
 
 	return (
-		<div className="flex items-center justify-between gap-4 px-6 py-4">
+		<div className="flex items-center justify-between gap-4 px-5 py-3.5">
 			<span
 				className="theme-text-muted text-xs"
 				style={{ fontFamily: fonts.body }}
@@ -157,7 +152,7 @@ export function CreateBar({
 				aria-busy={isSubmitting}
 				onClick={onSubmit}
 			>
-				{ctaLabel}
+				{isSubmitting ? "Creating…" : ctaLabel}
 			</Button>
 		</div>
 	);

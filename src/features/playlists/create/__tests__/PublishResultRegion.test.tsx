@@ -48,7 +48,7 @@ describe("PublishResultRegion", () => {
 	it.each([
 		[successResult, "Playlist created"],
 		[partialResult, "Playlist created — songs couldn't be added"],
-		[unsyncedResult, "Playlist created — couldn't finish setup"],
+		[unsyncedResult, "Created, not synced back"],
 	] as const)("focuses each terminal result when it appears", (result, copy) => {
 		renderRegion(result);
 

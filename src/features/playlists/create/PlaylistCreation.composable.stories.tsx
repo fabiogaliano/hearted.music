@@ -454,7 +454,7 @@ function FullScreenHarness({
 
 					{showNotEnoughNote && (
 						<div className="mt-3">
-							<NotEnoughSongsNote totalEligible={totalEligible} />
+							<NotEnoughSongsNote totalEligible={totalEligible} maxSongs={15} />
 						</div>
 					)}
 				</section>
@@ -497,9 +497,6 @@ function FullScreenHarness({
 						isArtistResolutionError={false}
 						isSubmitting={false}
 						gateState={gateState}
-						mismatchProfile={null}
-						accountDisplayName={null}
-						recheck={async () => {}}
 						onSubmit={() => {}}
 					/>
 				</div>

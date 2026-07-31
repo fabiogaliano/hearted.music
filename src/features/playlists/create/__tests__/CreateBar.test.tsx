@@ -22,25 +22,10 @@
  *    (findings 1+2 regression guard).
  */
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { CreateBar } from "../publish/CreateBar";
-
-// AccountMismatchPrompt's "Switch Spotify account" button and
-// SpotifyReconnectLink (rendered by ReconnectPrompt for reconnect-required)
-// both read useQueryClient — they call repairConnection, which invalidates
-// the shared connection query.
-function withQueryClient(children: ReactNode) {
-	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
-	});
-	return (
-		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-	);
-}
 
 // Mock browser-target so ExtensionUnavailablePrompt renders without navigator.
 vi.mock("@/lib/extension/browser-target", () => ({
@@ -91,9 +76,6 @@ function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 		isArtistResolutionError: false,
 		isSubmitting: false,
 		gateState: "ok" as const,
-		mismatchProfile: null,
-		accountDisplayName: null,
-		recheck: vi.fn(async () => {}),
 		onSubmit: vi.fn(),
 		...overrides,
 	};
@@ -137,7 +119,7 @@ describe("CreateBar — CTA disabled states", () => {
 
 	it("is disabled (and aria-busy) while isSubmitting is true", () => {
 		render(<CreateBar {...makeProps({ isSubmitting: true })} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
+		const btn = screen.getByRole("button", { name: /creating…/i });
 		expect(btn).toBeDisabled();
 		expect(btn).toHaveAttribute("aria-busy", "true");
 	});
@@ -151,71 +133,32 @@ describe("CreateBar — CTA disabled states", () => {
 		expect(screen.getByText("Updating preview…")).toBeInTheDocument();
 	});
 
-	it("is disabled on an artist resolution error, with a hint pointing at the retry", () => {
-		render(<CreateBar {...makeProps({ isArtistResolutionError: true })} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		expect(btn).toBeDisabled();
-		expect(
-			screen.getByText(/couldn't load one or more artists/i),
-		).toBeInTheDocument();
-	});
-
-	it("the artist-resolution-error hint takes precedence over the generic preview-stale hint", () => {
-		render(
-			<CreateBar
-				{...makeProps({ isArtistResolutionError: true, isPreviewStale: true })}
-			/>,
-		);
-		expect(
-			screen.getByText(/couldn't load one or more artists/i),
-		).toBeInTheDocument();
-		expect(screen.queryByText("Updating preview…")).not.toBeInTheDocument();
-	});
-
-	it("is unaffected when there are no artist selections (both flags false)", () => {
+	it("renders a Retry button instead of the CTA on artist resolution error", () => {
+		const onRetry = vi.fn();
 		render(
 			<CreateBar
 				{...makeProps({
-					isResolvingArtists: false,
-					isArtistResolutionError: false,
+					isArtistResolutionError: true,
+					onRetryArtistResolution: onRetry,
 				})}
 			/>,
 		);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		expect(btn).not.toBeDisabled();
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
 	});
 
 	it("is enabled again once isSubmitting flips back to false — the stuck-CTA fix", () => {
-		// Regression coverage at the presentational layer: the bar just renders
-		// whatever isSubmitting it's given, so a caller (usePublishPlaylist)
-		// that resets isSubmitting in every terminal branch un-sticks the CTA.
 		const { rerender } = render(
 			<CreateBar {...makeProps({ isSubmitting: true })} />,
 		);
-		expect(
-			screen.getByRole("button", { name: /create playlist/i }),
-		).toBeDisabled();
+		expect(screen.getByRole("button", { name: /creating…/i })).toBeDisabled();
 
 		rerender(<CreateBar {...makeProps({ isSubmitting: false })} />);
 		expect(
 			screen.getByRole("button", { name: /create playlist/i }),
 		).not.toBeDisabled();
-	});
-});
-
-describe("CreateBar — CTA label", () => {
-	it("shows song count in the CTA label", () => {
-		render(<CreateBar {...makeProps({ songIds: ["a", "b", "c"] })} />);
-		expect(
-			screen.getByRole("button", { name: /create playlist · 3 songs/i }),
-		).toBeInTheDocument();
-	});
-
-	it("uses singular 'song' for a single song", () => {
-		render(<CreateBar {...makeProps({ songIds: ["a"] })} />);
-		expect(
-			screen.getByRole("button", { name: /create playlist · 1 song/i }),
-		).toBeInTheDocument();
 	});
 });
 
@@ -237,107 +180,25 @@ describe("CreateBar — onSubmit", () => {
 	});
 });
 
-describe("CreateBar — gate states", () => {
-	it("renders install-extension affordance when extension-unavailable", () => {
+describe("CreateBar — gate states disable the CTA", () => {
+	it("disables the CTA when gate is extension-unavailable", () => {
 		render(
 			<CreateBar {...makeProps({ gateState: "extension-unavailable" })} />,
 		);
-		expect(screen.getByText(/install extension/i)).toBeInTheDocument();
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
 	});
 
-	it("renders reconnect affordance when reconnect-required", () => {
-		// Phase 05: SpotifyReconnectLink's activation handler now reads
-		// useQueryClient() (routes through repairConnection) — needs a provider
-		// in the tree even though this test never clicks the link.
-		render(
-			withQueryClient(
-				<CreateBar {...makeProps({ gateState: "reconnect-required" })} />,
-			),
-		);
-		expect(screen.getByText(/reconnect to spotify/i)).toBeInTheDocument();
+	it("disables the CTA when gate is reconnect-required", () => {
+		render(<CreateBar {...makeProps({ gateState: "reconnect-required" })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
 	});
 
-	// Findings 1+2 regression guard: a mismatched extension account must never
-	// be able to publish. Before the fix, useSpotifyGate always passed
-	// linkedSpotifyId: null, so the verdict could never even become "mismatch"
-	// — the gate reported "ok" regardless of which Spotify account the
-	// extension was signed into, and the Create CTA rendered enabled.
-	it("renders the account-mismatch affordance, never the Create CTA, when gateState is account-mismatch", () => {
-		render(
-			withQueryClient(
-				<CreateBar
-					{...makeProps({
-						gateState: "account-mismatch",
-						mismatchProfile: {
-							spotifyId: "someone-elses-id",
-							displayName: "Not You",
-							avatarUrl: null,
-						},
-						accountDisplayName: "Fabio",
-					})}
-				/>,
-			),
-		);
-		expect(screen.getByText(/not you/i)).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /switch spotify account/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.queryByRole("button", { name: /create playlist/i }),
-		).not.toBeInTheDocument();
-	});
-
-	it("still blocks the CTA for account-mismatch even if mismatchProfile is unexpectedly null (defensive)", () => {
-		// Falls back to ReconnectPrompt / SpotifyReconnectLink, which (like the
-		// reconnect-required case above) reads useQueryClient() — needs a provider.
-		render(
-			withQueryClient(
-				<CreateBar
-					{...makeProps({
-						gateState: "account-mismatch",
-						mismatchProfile: null,
-					})}
-				/>,
-			),
-		);
-		expect(
-			screen.queryByRole("button", { name: /create playlist/i }),
-		).not.toBeInTheDocument();
-	});
-});
-
-describe("Library state helpers", () => {
-	it("empty state logic: totalEligible === 0 and not loading → genuinely empty", () => {
-		// This is a unit test of the condition logic that CreatePlaylistScreen uses.
-		const totalEligible = 0;
-		const isLoading = false;
-		const isWarming = totalEligible === 0 && isLoading;
-		const isEmpty = totalEligible === 0 && !isLoading;
-		expect(isEmpty).toBe(true);
-		expect(isWarming).toBe(false);
-	});
-
-	it("warming state logic: totalEligible === 0 and isLoading → warming", () => {
-		const totalEligible = 0;
-		const isLoading = true;
-		const isWarming = totalEligible === 0 && isLoading;
-		expect(isWarming).toBe(true);
-	});
-
-	it("not-enough logic: 0 < totalEligible < maxSongs", () => {
-		const totalEligible = 8;
-		const maxSongs = 15;
-		const isLoading = false;
-		const showNote =
-			totalEligible > 0 && totalEligible < maxSongs && !isLoading;
-		expect(showNote).toBe(true);
-	});
-
-	it("not-enough note is suppressed when totalEligible >= maxSongs", () => {
-		const totalEligible = 20;
-		const maxSongs = 15;
-		const showNote = totalEligible > 0 && totalEligible < maxSongs;
-		expect(showNote).toBe(false);
+	it("disables the CTA when gate is account-mismatch", () => {
+		render(<CreateBar {...makeProps({ gateState: "account-mismatch" })} />);
+		const btn = screen.getByRole("button", { name: /create playlist/i });
+		expect(btn).toBeDisabled();
 	});
 });
 

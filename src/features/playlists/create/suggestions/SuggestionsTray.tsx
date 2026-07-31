@@ -138,28 +138,26 @@ export function SuggestionsTray({
 				ease: "easeInOut",
 			}}
 		>
-			{/* Quiet header */}
-			<div className="mb-3 flex items-center justify-between gap-4 px-1">
+			<div className="mb-3 flex items-center justify-between gap-4">
 				<span
-					className="theme-text-muted text-xs tabular-nums"
+					className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
 					style={{ fontFamily: fonts.body }}
 				>
-					{visible.length} suggestion{visible.length !== 1 ? "s" : ""}
+					Suggested to add
 				</span>
 				<button
 					type="button"
 					onClick={onRefresh}
+					aria-label="Refresh suggestions"
 					className={cn(
-						"theme-text-muted flex cursor-pointer items-center gap-1.5 rounded-full px-2 py-1.5",
-						"text-[11px] tracking-widest uppercase",
+						"theme-text-muted flex cursor-pointer items-center rounded-full p-1.5",
 						"transition-opacity duration-150 hover:opacity-70 active:scale-[0.98]",
 						"focus-visible:outline-2 focus-visible:outline-offset-2",
 						"[outline-color:var(--t-primary)]",
 					)}
-					style={{ fontFamily: fonts.body, minHeight: 40 }}
+					style={{ minHeight: 32 }}
 				>
-					<ArrowsClockwiseIcon size={12} weight="regular" aria-hidden />
-					Refresh
+					<ArrowsClockwiseIcon size={13} weight="regular" aria-hidden />
 				</button>
 			</div>
 

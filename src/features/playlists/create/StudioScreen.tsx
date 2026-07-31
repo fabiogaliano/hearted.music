@@ -23,11 +23,6 @@ import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { BillingState } from "@/lib/domains/billing/state";
-import {
-	getBrowserTarget,
-	getExtensionStoreUrl,
-} from "@/lib/extension/browser-target";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import { ArtistConfig } from "./config/ArtistConfig";
 import { FiltersConfig } from "./config/FiltersConfig";
@@ -35,11 +30,14 @@ import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { LibraryEmptyState } from "./LibraryEmptyState";
-import { MaxSongsSlider } from "./MaxSongsSlider";
+import { approximateDuration, MaxSongsSlider } from "./MaxSongsSlider";
 import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
 import { PreviewList } from "./preview/PreviewList";
+import { AccountMismatchPrompt } from "./publish/AccountMismatchPrompt";
 import { CreateBar } from "./publish/CreateBar";
+import { ExtensionUnavailablePrompt } from "./publish/ExtensionUnavailablePrompt";
 import { PublishResultRegion } from "./publish/PublishResultRegion";
+import { ReconnectPrompt } from "./publish/ReconnectPrompt";
 import { getStudioPreviewState } from "./studioPreviewState";
 import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
 import { buildStudioSubmitInput } from "./studioSubmitInput";
@@ -180,6 +178,11 @@ export function StudioScreen({
 			isLoading: draft.isLoading,
 		});
 
+	const handleClearFilters = useCallback(() => {
+		draft.setGenrePills([]);
+		draft.setMatchFilters({ version: 1 });
+	}, [draft.setGenrePills, draft.setMatchFilters]);
+
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
 			<header className="mb-10 flex items-start justify-between gap-6">
@@ -207,64 +210,160 @@ export function StudioScreen({
 						style={{ fontFamily: fonts.display }}
 					/>
 				</div>
-
-				{gateState === "extension-unavailable" && (
-					<div className="flex items-center gap-3 pt-1">
-						<span
-							className="theme-text-muted text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							Extension not detected
-						</span>
-						<a
-							href={getExtensionStoreUrl(getBrowserTarget())}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="hover-border-brighten inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
-							style={{ fontFamily: fonts.body }}
-						>
-							Install extension
-							<span className="text-xs" style={{ opacity: 0.45 }}>
-								↗
-							</span>
-						</a>
-					</div>
-				)}
-
-				{gateState === "reconnect-required" && (
-					<div className="flex items-center gap-3 pt-1">
-						<span
-							className="theme-text-muted text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							Spotify disconnected
-						</span>
-						<SpotifyReconnectLink />
-					</div>
-				)}
-
-				{gateState === "account-mismatch" && (
-					<div className="flex items-center gap-3 pt-1">
-						<span
-							className="theme-text-muted text-xs"
-							style={{ fontFamily: fonts.body }}
-						>
-							{mismatchProfile
-								? `Signed in to Spotify as ${mismatchProfile.displayName}`
-								: "Wrong Spotify account signed in"}
-						</span>
-					</div>
-				)}
 			</header>
 
-			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[300px_1fr] lg:items-start">
-				<aside className="flex flex-col gap-7 lg:sticky lg:top-8">
-					<IntentEditor
-						isEligible={isIntentEligible}
-						value={draft.config.intent}
-						onChange={draft.setIntent}
-						onOpenPaywall={() => setShowPaywall(true)}
-					/>
+			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_220px] lg:items-start">
+				<main>
+					<div className="mb-5">
+						<IntentEditor
+							isEligible={isIntentEligible}
+							value={draft.config.intent}
+							onChange={draft.setIntent}
+							onOpenPaywall={() => setShowPaywall(true)}
+						/>
+					</div>
+
+					{gateState !== "ok" && gateState !== "checking" && (
+						<div className="theme-surface-bg theme-border-color mb-5 border">
+							{gateState === "extension-unavailable" && (
+								<ExtensionUnavailablePrompt onRecheck={recheck} />
+							)}
+							{gateState === "reconnect-required" && (
+								<ReconnectPrompt onRecheck={recheck} />
+							)}
+							{gateState === "account-mismatch" &&
+								(mismatchProfile ? (
+									<AccountMismatchPrompt
+										extensionProfile={mismatchProfile}
+										accountDisplayName={accountDisplayName}
+										onRecheck={recheck}
+									/>
+								) : (
+									<ReconnectPrompt onRecheck={recheck} />
+								))}
+						</div>
+					)}
+
+					{/* Unified playlist panel — bordered container holding the preview,
+					    suggestions, and create footer as one visual unit. */}
+					<div className="theme-surface-bg theme-border-color border">
+						{/* Panel header — count + duration left, "of N matching" + loading right */}
+						<div className="theme-border-color flex items-end justify-between border-b px-5 py-3.5">
+							<div>
+								<span
+									className="theme-text-muted mb-1 block text-[11px] tracking-[0.18em] uppercase"
+									style={{ fontFamily: fonts.body }}
+								>
+									Your playlist
+								</span>
+								{!tracklistIsEmpty && (
+									<span
+										className="theme-text block leading-none"
+										style={{
+											fontFamily: fonts.display,
+											fontSize: "1.25rem",
+										}}
+									>
+										{draft.tracklist.length}{" "}
+										{draft.tracklist.length === 1 ? "song" : "songs"} &middot;{" "}
+										{approximateDuration(draft.tracklist.length)}
+									</span>
+								)}
+							</div>
+							<div className="text-right">
+								{draft.isLoading ? (
+									<span
+										className="theme-text-muted text-[11px] tracking-widest uppercase"
+										style={{ fontFamily: fonts.body }}
+									>
+										Updating…
+									</span>
+								) : (
+									draft.totalEligible > 0 && (
+										<span
+											className="theme-text-muted text-xs tabular-nums"
+											style={{ fontFamily: fonts.body }}
+										>
+											of {draft.totalEligible} matching
+										</span>
+									)
+								)}
+							</div>
+						</div>
+
+						{/* Panel body — preview songs with zone labels */}
+						<div className="px-5 py-2.5">
+							{tracklistIsEmpty ? (
+								<LibraryEmptyState
+									isWarming={isWarming}
+									onClearFilters={handleClearFilters}
+								/>
+							) : (
+								<PreviewList
+									songs={draft.tracklist}
+									isLoading={draft.isLoading}
+									onRemoveSong={draft.removeSong}
+									onRestoreSong={draft.restoreSong}
+									onTogglePin={draft.togglePin}
+									newSongIds={newSongIds}
+									pinnedSongIds={draft.effectivePinnedSongIds}
+									playback={playback}
+								/>
+							)}
+
+							{showNotEnoughNote && (
+								<NotEnoughSongsNote
+									totalEligible={draft.totalEligible}
+									maxSongs={draft.committedConfig.maxSongs}
+									onClearFilters={handleClearFilters}
+								/>
+							)}
+						</div>
+
+						{/* Suggestions section — inside the panel, separated by a border */}
+						{draft.suggestions.length > 0 && (
+							<div className="theme-border-color border-t px-5 py-2.5">
+								<SuggestionsTray
+									suggestions={draft.suggestions}
+									onAddSong={handleAddSong}
+									onDismissSong={handleDismissSuggestion}
+									onRefresh={draft.refreshSuggestions}
+									playback={playback}
+								/>
+							</div>
+						)}
+
+						{/* Create footer — inside the panel */}
+						<div className="theme-border-color border-t">
+							{flow.result ? (
+								<PublishResultRegion
+									result={flow.result}
+									isRetryingUnsynced={flow.isRetryingUnsynced}
+									onRetryUnsynced={() => {
+										if (gateState === "account-mismatch") return;
+										void flow.retryUnsynced();
+									}}
+									retryUnsyncedBlocked={gateState === "account-mismatch"}
+									mismatchDisplayName={mismatchProfile?.displayName}
+								/>
+							) : (
+								<CreateBar
+									name={name}
+									songIds={draft.tracklist.map((s) => s.id)}
+									isPreviewStale={draft.isConfigStale}
+									isResolvingArtists={draft.isResolvingArtists}
+									isArtistResolutionError={draft.isArtistResolutionError}
+									isSubmitting={flow.isSubmitting}
+									gateState={gateState}
+									onSubmit={handleSubmit}
+									onRetryArtistResolution={draft.retryArtistResolution}
+								/>
+							)}
+						</div>
+					</div>
+				</main>
+
+				<aside className="flex flex-col gap-7 pt-1.5 lg:sticky lg:top-8">
 					<GenreConfig
 						accountId={accountId}
 						value={draft.config.genrePills}
@@ -290,129 +389,6 @@ export function StudioScreen({
 						onChange={draft.setMaxSongs}
 					/>
 				</aside>
-
-				<main>
-					<section className="mb-10">
-						<div className="mb-6 flex items-center justify-between gap-4 px-1">
-							<div className="flex items-center gap-4">
-								<h2
-									className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
-									style={{ fontFamily: fonts.body }}
-								>
-									Preview
-								</h2>
-								<div className="theme-border-color h-px w-20 border-t" />
-								{/* Selected count and filter-eligible count are separate facts:
-								    a manual pin outside the filters is valid, so "N of M" phrasing
-								    could read "11 of 10 eligible" and look like a bug. Shown
-								    whenever either number has something to say — including the
-								    "1 selected · 0 match filters" case where pins alone survive
-								    a filter set nothing else clears. */}
-								{(!tracklistIsEmpty || draft.totalEligible > 0) && (
-									<span
-										className="theme-text-muted text-xs tabular-nums"
-										style={{ fontFamily: fonts.body }}
-									>
-										{draft.tracklist.length} selected · {draft.totalEligible}{" "}
-										match filters
-									</span>
-								)}
-							</div>
-							{draft.isLoading && (
-								<span
-									className="theme-text-muted text-[11px] tracking-widest uppercase"
-									style={{ fontFamily: fonts.body }}
-								>
-									Updating…
-								</span>
-							)}
-						</div>
-
-						{tracklistIsEmpty ? (
-							<LibraryEmptyState isWarming={isWarming} />
-						) : (
-							<PreviewList
-								songs={draft.tracklist}
-								isLoading={draft.isLoading}
-								onRemoveSong={draft.removeSong}
-								onRestoreSong={draft.restoreSong}
-								onTogglePin={draft.togglePin}
-								newSongIds={newSongIds}
-								pinnedSongIds={draft.effectivePinnedSongIds}
-								playback={playback}
-							/>
-						)}
-
-						{showNotEnoughNote && (
-							<div className="mt-3">
-								<NotEnoughSongsNote totalEligible={draft.totalEligible} />
-							</div>
-						)}
-					</section>
-
-					{draft.suggestions.length > 0 && (
-						<section>
-							<div className="mb-6 flex items-center gap-4 px-1">
-								<h2
-									className="theme-text-muted m-0 text-xs font-normal tracking-[0.2em] uppercase"
-									style={{ fontFamily: fonts.body }}
-								>
-									Suggested to add
-								</h2>
-								<div className="theme-border-color h-px flex-1 border-t" />
-							</div>
-							<SuggestionsTray
-								suggestions={draft.suggestions}
-								onAddSong={handleAddSong}
-								onDismissSong={handleDismissSuggestion}
-								onRefresh={draft.refreshSuggestions}
-								playback={playback}
-							/>
-						</section>
-					)}
-				</main>
-			</div>
-
-			{/* Create section — flat bordered footer anchored below the studio grid */}
-			<div className="theme-border-color mt-10 border">
-				<div className="theme-border-color border-b px-6 py-3">
-					<span
-						className="theme-text-muted text-[11px] tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Create
-					</span>
-				</div>
-
-				{flow.result ? (
-					<PublishResultRegion
-						result={flow.result}
-						isRetryingUnsynced={flow.isRetryingUnsynced}
-						onRetryUnsynced={() => {
-							// Invariant 2 defense-in-depth behind the disabled button:
-							// resuming a created-unsynced playlist adds tracks through
-							// the extension's live token, which under a mismatch belongs
-							// to the wrong Spotify account.
-							if (gateState === "account-mismatch") return;
-							void flow.retryUnsynced();
-						}}
-						retryUnsyncedBlocked={gateState === "account-mismatch"}
-					/>
-				) : (
-					<CreateBar
-						name={name}
-						songIds={draft.tracklist.map((s) => s.id)}
-						isPreviewStale={draft.isConfigStale}
-						isResolvingArtists={draft.isResolvingArtists}
-						isArtistResolutionError={draft.isArtistResolutionError}
-						isSubmitting={flow.isSubmitting}
-						gateState={gateState}
-						mismatchProfile={mismatchProfile}
-						accountDisplayName={accountDisplayName}
-						recheck={recheck}
-						onSubmit={handleSubmit}
-					/>
-				)}
 			</div>
 
 			{showPaywall && (

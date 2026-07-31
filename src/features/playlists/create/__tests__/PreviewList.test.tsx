@@ -74,41 +74,18 @@ describe("PreviewList", () => {
 		expect(screen.getByText(/no songs matched/i)).toBeInTheDocument();
 	});
 
-	it("renders the correct song count in the header", () => {
+	it("splits songs into Kept and Matched zones based on pinnedSongIds", () => {
 		render(
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
 				onRemoveSong={vi.fn()}
 				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1"]}
 			/>,
 		);
-		expect(screen.getByText("3 songs")).toBeInTheDocument();
-	});
-
-	it("renders duration hint in the header", () => {
-		render(
-			<PreviewList
-				songs={SONGS}
-				isLoading={false}
-				onRemoveSong={vi.fn()}
-				onRestoreSong={vi.fn()}
-			/>,
-		);
-		// 3 × 3.3 = ~10 min
-		expect(screen.getByText(/about \d+ minutes/i)).toBeInTheDocument();
-	});
-
-	it("uses singular 'song' for a single-item list", () => {
-		render(
-			<PreviewList
-				songs={[SONGS[0]]}
-				isLoading={false}
-				onRemoveSong={vi.fn()}
-				onRestoreSong={vi.fn()}
-			/>,
-		);
-		expect(screen.getByText("1 song")).toBeInTheDocument();
+		expect(screen.getByText(/kept/i)).toBeInTheDocument();
+		expect(screen.getByText(/matched/i)).toBeInTheDocument();
 	});
 
 	it("has an aria-live polite region", () => {

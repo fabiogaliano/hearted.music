@@ -57,8 +57,6 @@ export function SuggestionRow({
 				// Distinct suggestion treatment: muted border, slightly faded text
 				"theme-border-color",
 			)}
-			// Left accent: dashed left border signals "suggested, not pinned"
-			style={{ borderLeft: "2px dashed var(--t-border)" }}
 		>
 			{/* Album art — dimmed vs. preview rows to reinforce secondary status.
 			The dimming only applies at rest (not while actively playing), so an

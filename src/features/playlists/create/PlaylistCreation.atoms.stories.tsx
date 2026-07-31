@@ -311,9 +311,6 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 					isArtistResolutionError={false}
 					isSubmitting={false}
 					gateState="ok"
-					mismatchProfile={null}
-					accountDisplayName={null}
-					recheck={async () => {}}
 					onSubmit={() => {}}
 				/>
 			</div>
@@ -327,88 +324,6 @@ CreateBarReady.argTypes = {
 		control: { type: "range", min: 0, max: SONG_FIXTURES.length, step: 1 },
 	},
 };
-
-export const CreateBarReconnect: Story = () => (
-	<div className="mx-auto max-w-2xl">
-		<div className="theme-border-color border border-t-0">
-			<div className="theme-border-color border-b px-6 py-3">
-				<span className="theme-text-muted text-[11px] tracking-[0.2em] uppercase">
-					Create
-				</span>
-			</div>
-			<CreateBar
-				name="New playlist"
-				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
-				isPreviewStale={false}
-				isResolvingArtists={false}
-				isArtistResolutionError={false}
-				isSubmitting={false}
-				gateState="reconnect-required"
-				mismatchProfile={null}
-				accountDisplayName={null}
-				recheck={async () => {}}
-				onSubmit={() => {}}
-			/>
-		</div>
-	</div>
-);
-CreateBarReconnect.storyName = "Create Bar — Reconnect";
-
-export const CreateBarExtensionMissing: Story = () => (
-	<div className="mx-auto max-w-2xl">
-		<div className="theme-border-color border border-t-0">
-			<div className="theme-border-color border-b px-6 py-3">
-				<span className="theme-text-muted text-[11px] tracking-[0.2em] uppercase">
-					Create
-				</span>
-			</div>
-			<CreateBar
-				name="New playlist"
-				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
-				isPreviewStale={false}
-				isResolvingArtists={false}
-				isArtistResolutionError={false}
-				isSubmitting={false}
-				gateState="extension-unavailable"
-				mismatchProfile={null}
-				accountDisplayName={null}
-				recheck={async () => {}}
-				onSubmit={() => {}}
-			/>
-		</div>
-	</div>
-);
-CreateBarExtensionMissing.storyName = "Create Bar — Extension Missing";
-
-export const CreateBarAccountMismatch: Story = () => (
-	<div className="mx-auto max-w-2xl">
-		<div className="theme-border-color border border-t-0">
-			<div className="theme-border-color border-b px-6 py-3">
-				<span className="theme-text-muted text-[11px] tracking-[0.2em] uppercase">
-					Create
-				</span>
-			</div>
-			<CreateBar
-				name="New playlist"
-				songIds={SONG_FIXTURES.slice(0, 15).map((s) => s.id)}
-				isPreviewStale={false}
-				isResolvingArtists={false}
-				isArtistResolutionError={false}
-				isSubmitting={false}
-				gateState="account-mismatch"
-				mismatchProfile={{
-					spotifyId: "story-other-spotify-id",
-					displayName: "Someone Else",
-					avatarUrl: null,
-				}}
-				accountDisplayName="Fabio"
-				recheck={async () => {}}
-				onSubmit={() => {}}
-			/>
-		</div>
-	</div>
-);
-CreateBarAccountMismatch.storyName = "Create Bar — Account Mismatch";
 
 // ─── SuccessState ─────────────────────────────────────────────────────────────
 
@@ -512,7 +427,7 @@ export const NotEnoughSongs: Story<{ totalEligible: number }> = ({
 	totalEligible,
 }) => (
 	<div className="mx-auto max-w-lg p-8">
-		<NotEnoughSongsNote totalEligible={totalEligible} />
+		<NotEnoughSongsNote totalEligible={totalEligible} maxSongs={15} />
 	</div>
 );
 NotEnoughSongs.storyName = "Not Enough Songs";

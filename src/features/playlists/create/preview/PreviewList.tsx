@@ -19,12 +19,11 @@
  */
 
 import { AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { fonts } from "@/lib/theme/fonts";
-import { approximateDuration } from "../MaxSongsSlider";
 import { PreviewSongRow } from "./PreviewSongRow";
 
 interface PreviewListProps {
@@ -67,11 +66,20 @@ export function PreviewList({
 }: PreviewListProps) {
 	const pinnedSet = new Set(pinnedSongIds ?? []);
 	const songCount = songs.length;
-	const durationHint = approximateDuration(songCount);
 
-	// Only announce count changes after the initial mount — avoid reading out
-	// the full count on page load. The live region is always in the DOM but
-	// stays empty until a real add/remove occurs.
+	// Split songs into kept (pinned) and matched (fill) zones so the zone
+	// labels can show accurate counts. The tracklist is already ordered
+	// pins-first by the draft engine, so we partition by the pinned set.
+	const { kept, matched } = useMemo(() => {
+		const k: SongVM[] = [];
+		const m: SongVM[] = [];
+		for (const song of songs) {
+			if (pinnedSet.has(song.id)) k.push(song);
+			else m.push(song);
+		}
+		return { kept: k, matched: m };
+	}, [songs, pinnedSet]);
+
 	const prevCountRef = useRef<number | null>(null);
 	const [announcement, setAnnouncement] = useState("");
 
@@ -91,9 +99,6 @@ export function PreviewList({
 	}, [songCount]);
 
 	function handleRemove(song: SongVM) {
-		// A removed row that's mid-preview would otherwise leave the coordinator
-		// pointing at a playbackId that no longer exists — deactivate first so a
-		// stale active id can't block the next row from taking over.
 		if (playback?.activePlaybackId === song.id) {
 			playback.deactivatePlayback();
 		}
@@ -129,54 +134,67 @@ export function PreviewList({
 		);
 	}
 
+	function renderRow(song: SongVM) {
+		return (
+			<li key={song.id} style={{ listStyle: "none" }}>
+				<PreviewSongRow
+					song={song}
+					onRemove={() => handleRemove(song)}
+					isPinned={pinnedSet.has(song.id)}
+					onTogglePin={onTogglePin ? () => onTogglePin(song.id) : undefined}
+					isNew={newSongIds?.has(song.id) ?? false}
+					playback={playback}
+				/>
+			</li>
+		);
+	}
+
 	return (
 		<div>
-			{/* Screen-reader live region: only fires on actual add/remove, not initial mount */}
 			<div aria-live="polite" aria-atomic="true" className="sr-only">
 				{announcement}
 			</div>
 
-			{/* Count + duration header */}
-			<div className="mb-3 flex items-baseline gap-2 px-1">
-				<span
-					className="theme-text-muted text-xs tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					{songCount} {songCount === 1 ? "song" : "songs"}
-				</span>
-				<span
-					className="theme-text-muted text-xs opacity-40"
-					aria-hidden="true"
-				>
-					·
-				</span>
-				<span
-					className="theme-text-muted text-xs tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					{durationHint}
-				</span>
-			</div>
-
-			{/* Song rows — AnimatePresence manages enter/exit per row. Picks (pinned)
-			    lead the tracklist with a filled pin; matched fill follows unfilled.
-			    No zone labels: the pin marker alone carries the distinction. */}
 			<ul aria-label="Preview playlist songs" className="flex flex-col">
 				<AnimatePresence initial={false}>
-					{songs.map((song) => (
-						<li key={song.id} style={{ listStyle: "none" }}>
-							<PreviewSongRow
-								song={song}
-								onRemove={() => handleRemove(song)}
-								isPinned={pinnedSet.has(song.id)}
-								onTogglePin={
-									onTogglePin ? () => onTogglePin(song.id) : undefined
-								}
-								isNew={newSongIds?.has(song.id) ?? false}
-								playback={playback}
-							/>
+					{kept.length > 0 && (
+						<li
+							key="zone-kept"
+							style={{ listStyle: "none" }}
+							className="flex items-center gap-2.5 pb-1 pt-2"
+						>
+							<span
+								className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								Kept &middot; {kept.length}
+							</span>
+							<span
+								className="theme-text-muted text-[10px] normal-case tracking-normal"
+								style={{ fontFamily: fonts.body, opacity: 0.65 }}
+							>
+								survive filter changes
+							</span>
+							<span className="theme-border-color h-px flex-1 border-t" />
 						</li>
-					))}
+					)}
+					{kept.map(renderRow)}
+					{matched.length > 0 && (
+						<li
+							key="zone-matched"
+							style={{ listStyle: "none" }}
+							className="flex items-center gap-2.5 pb-1 pt-3.5"
+						>
+							<span
+								className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								Matched &middot; {matched.length}
+							</span>
+							<span className="theme-border-color h-px flex-1 border-t" />
+						</li>
+					)}
+					{matched.map(renderRow)}
 				</AnimatePresence>
 			</ul>
 		</div>

@@ -1,19 +1,8 @@
-/**
- * ReconnectPrompt — inline affordance for the create touchpoint when Spotify
- * is disconnected. Uses the shared SpotifyReconnectLink so the token-refresh
- * flow works identically to other surfaces.
- *
- * Reconnecting opens Spotify in a new tab/popup, so the original tab may never
- * fire a focus/visibility event on return. The "Check again" button lets the
- * user re-run the gate detection by hand once the token is back.
- */
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 
 interface ReconnectPromptProps {
-	/** Re-runs the gate detection; resolves once the check settles. */
 	onRecheck: () => Promise<void>;
 }
 
@@ -21,8 +10,6 @@ export function ReconnectPrompt({ onRecheck }: ReconnectPromptProps) {
 	const [isChecking, setIsChecking] = useState(false);
 	const mountedRef = useRef(true);
 	useEffect(() => {
-		// Reset on effect re-run so StrictMode's mount→cleanup→mount cycle
-		// doesn't leave the ref permanently false.
 		mountedRef.current = true;
 		return () => {
 			mountedRef.current = false;
@@ -40,15 +27,14 @@ export function ReconnectPrompt({ onRecheck }: ReconnectPromptProps) {
 
 	return (
 		<div
-			className="flex items-center gap-4 px-6 py-5"
+			className="flex items-center gap-4 px-5 py-4"
 			role="status"
 			aria-live="polite"
+			style={{ borderLeft: "2px solid var(--t-primary)" }}
 		>
-			<p
-				className="theme-text-muted text-xs"
-				style={{ fontFamily: fonts.body }}
-			>
-				Spotify is disconnected — reconnect to create your playlist.
+			<p className="theme-text text-xs" style={{ fontFamily: fonts.body }}>
+				<strong className="font-medium">Spotify disconnected.</strong>{" "}
+				<span className="theme-text-muted">Reconnect to keep creating.</span>
 			</p>
 			<SpotifyReconnectLink />
 			<button

@@ -1,15 +1,3 @@
-/**
- * UnsyncedState — shown when the playlist was created on Spotify but the local
- * setup couldn't finish: the DB acknowledge write failed even after retries, so
- * no local row, config, or tracks were persisted yet.
- *
- * Unlike PartialState, a Retry IS offered here and is safe: it resumes from the
- * acknowledge/config steps against the EXISTING Spotify playlist (via
- * resumePlaylistCreateFromDraft), so it can never create a duplicate. The retry
- * re-drives the draft's config + track adds so the original draft settings are
- * preserved rather than silently lost.
- */
-
 import { WarningIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/Button";
@@ -20,11 +8,9 @@ interface UnsyncedStateProps {
 	spotifyId: string;
 	onRetry: () => void;
 	isRetrying: boolean;
-	/** Blocks Retry while the extension is signed into the wrong Spotify
-	 * account (gate state "account-mismatch") — the resume would add tracks
-	 * through the wrong account's token. The studio header's mismatch notice
-	 * explains why; this button just refuses until it clears. */
 	retryBlocked: boolean;
+	/** When retryBlocked, the extension's display name explains why. */
+	mismatchDisplayName?: string | null;
 }
 
 export function UnsyncedState({
@@ -32,10 +18,16 @@ export function UnsyncedState({
 	onRetry,
 	isRetrying,
 	retryBlocked,
+	mismatchDisplayName,
 }: UnsyncedStateProps) {
 	const navigate = useNavigate();
 	return (
-		<div className="px-6 py-6">
+		<div
+			className="px-5 py-5"
+			style={
+				retryBlocked ? { borderLeft: "2px solid var(--t-primary)" } : undefined
+			}
+		>
 			<div className="flex items-start gap-4">
 				<WarningIcon
 					size={18}
@@ -50,15 +42,15 @@ export function UnsyncedState({
 							className="theme-text-muted mb-1 text-[11px] tracking-widest uppercase"
 							style={{ fontFamily: fonts.body }}
 						>
-							Playlist created — couldn't finish setup
+							Created, not synced back
 						</p>
 						<p
 							className="theme-text-muted text-xs"
 							style={{ fontFamily: fonts.body }}
 						>
-							The playlist was created on Spotify, but we couldn't finish
-							setting it up here. Retry to add your songs and settings to the
-							same playlist — this won't create a duplicate.
+							{retryBlocked && mismatchDisplayName
+								? `Retry is paused. Spotify is signed in as ${mismatchDisplayName}, not the account this library belongs to.`
+								: "It's on Spotify, but hearted could not record it. Retrying is safe."}
 						</p>
 					</div>
 

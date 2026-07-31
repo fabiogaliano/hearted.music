@@ -1,48 +1,46 @@
-/**
- * LibraryEmptyState — shown when totalEligible === 0.
- *
- * Two distinct sub-states surfaced via the `isWarming` flag:
- *  - warming: Phase-1 enrichment is still running after the lazy backfill
- *    triggered in the route loader. Nudge the user to wait a moment.
- *  - genuinely empty: The library has songs but none pass Phase-1 enrichment
- *    or the user has no liked songs at all. Nudge to like more songs or
- *    broaden filters.
- */
-
 import { fonts } from "@/lib/theme/fonts";
 
 interface LibraryEmptyStateProps {
-	/**
-	 * True when the Phase-1 enrichment backfill is still in progress and
-	 * totalEligible === 0 because nothing has cleared enrichment yet.
-	 * False (default) when the enrichment pass is done but matched nothing.
-	 */
 	isWarming?: boolean;
+	onClearFilters?: () => void;
 }
 
 export function LibraryEmptyState({
 	isWarming = false,
+	onClearFilters,
 }: LibraryEmptyStateProps) {
 	return (
-		<div className="px-1 py-6" role="status" aria-live="polite">
-			<p
-				className="theme-text-muted text-sm"
+		<div className="py-6" role="status" aria-live="polite">
+			<span
+				className="theme-text-muted mb-1 block text-[11px] tracking-[0.18em] uppercase"
 				style={{ fontFamily: fonts.body }}
 			>
-				{isWarming ? (
-					<>Still warming up your library&hellip;</>
-				) : (
-					<>No songs match the current filters.</>
-				)}
-			</p>
+				Your playlist
+			</span>
+			<span
+				className="theme-text block leading-none"
+				style={{ fontFamily: fonts.display, fontSize: "1.125rem" }}
+			>
+				{isWarming ? "Warming up" : "Nothing matches"}
+			</span>
 			<p
-				className="theme-text-muted mt-1 text-xs"
-				style={{ fontFamily: fonts.body, opacity: 0.7 }}
+				className="theme-text-muted mt-2 text-xs"
+				style={{ fontFamily: fonts.body }}
 			>
 				{isWarming
-					? "hearted is preparing your library for the first time. Try again in a moment."
-					: "Like more songs on Spotify, or broaden your genre and filter settings."}
+					? "Preparing your library for the first time."
+					: "No songs match the current filters."}
 			</p>
+			{!isWarming && onClearFilters && (
+				<button
+					type="button"
+					onClick={onClearFilters}
+					className="hover-border-brighten mt-3 inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+					style={{ fontFamily: fonts.body }}
+				>
+					Clear filters
+				</button>
+			)}
 		</div>
 	);
 }

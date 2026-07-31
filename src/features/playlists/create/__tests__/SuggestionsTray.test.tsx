@@ -45,32 +45,6 @@ describe("SuggestionsTray", () => {
 		expect(screen.getByText(/no suggestions yet/i)).toBeInTheDocument();
 	});
 
-	it("renders all suggestion rows", () => {
-		render(
-			<SuggestionsTray
-				suggestions={SUGGESTIONS}
-				onAddSong={vi.fn()}
-				onDismissSong={vi.fn()}
-				onRefresh={vi.fn()}
-			/>,
-		);
-		expect(screen.getByText("Sunday")).toBeInTheDocument();
-		expect(screen.getByText("Jaded")).toBeInTheDocument();
-		expect(screen.getByText("Fair")).toBeInTheDocument();
-	});
-
-	it("renders the suggestion count in the header", () => {
-		render(
-			<SuggestionsTray
-				suggestions={SUGGESTIONS}
-				onAddSong={vi.fn()}
-				onDismissSong={vi.fn()}
-				onRefresh={vi.fn()}
-			/>,
-		);
-		expect(screen.getByText(/3 suggestions/i)).toBeInTheDocument();
-	});
-
 	it("calls onAddSong with the correct id when an add button is clicked", async () => {
 		const user = userEvent.setup();
 		const onAddSong = vi.fn();
