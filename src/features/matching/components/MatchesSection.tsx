@@ -30,7 +30,6 @@ interface MatchesSectionProps {
 	 *  Replaces the suggestion rows with AccountMismatchPrompt — no row
 	 *  offers Add while this is set. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
-	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	isLastItem?: boolean;
 	/** Swap songs instantly (no slide) while the card-level reject animation runs. */
@@ -56,7 +55,6 @@ export const MatchesSection = memo(function MatchesSection({
 	realAvailable,
 	reconnectNeeded,
 	mismatchProfile,
-	onRecheckConnection,
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
@@ -115,7 +113,6 @@ export const MatchesSection = memo(function MatchesSection({
 							<AccountMismatchPrompt
 								extensionProfile={mismatchProfile}
 								accountDisplayName={null}
-								onRecheck={onRecheckConnection ?? (async () => {})}
 							/>
 						) : playlists.length === 0 ? (
 							<ReviewEmptyState />

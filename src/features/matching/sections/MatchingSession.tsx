@@ -28,7 +28,6 @@ export function MatchingSession(props: MatchingSessionProps) {
 		realAvailable,
 		reconnectNeeded,
 		mismatchProfile,
-		onRecheckConnection,
 		navigationDisabled,
 		isLastItem,
 		animateReject,
@@ -181,7 +180,6 @@ export function MatchingSession(props: MatchingSessionProps) {
 								realAvailable={realAvailable}
 								reconnectNeeded={reconnectNeeded}
 								mismatchProfile={mismatchProfile}
-								onRecheckConnection={onRecheckConnection}
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}
 								suppressTransition={rejecting}
@@ -209,7 +207,6 @@ export function MatchingSession(props: MatchingSessionProps) {
 								addedTo={addedTo}
 								reconnectNeeded={reconnectNeeded}
 								mismatchProfile={mismatchProfile}
-								onRecheckConnection={onRecheckConnection}
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}
 								suppressTransition={rejecting}

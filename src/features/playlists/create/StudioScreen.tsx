@@ -228,18 +228,15 @@ export function StudioScreen({
 							{gateState === "extension-unavailable" && (
 								<ExtensionUnavailablePrompt onRecheck={recheck} />
 							)}
-							{gateState === "reconnect-required" && (
-								<ReconnectPrompt onRecheck={recheck} />
-							)}
+							{gateState === "reconnect-required" && <ReconnectPrompt />}
 							{gateState === "account-mismatch" &&
 								(mismatchProfile ? (
 									<AccountMismatchPrompt
 										extensionProfile={mismatchProfile}
 										accountDisplayName={accountDisplayName}
-										onRecheck={recheck}
 									/>
 								) : (
-									<ReconnectPrompt onRecheck={recheck} />
+									<ReconnectPrompt />
 								))}
 						</div>
 					)}

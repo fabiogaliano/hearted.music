@@ -57,7 +57,7 @@ export function useSongPlaylistSuggestions(
 		songSuggestionsQueryOptions(enabled ? songId : null),
 	);
 	const queryClient = useQueryClient();
-	const { verdict, refetch } = useExtensionConnection(linkedSpotifyId);
+	const { verdict } = useExtensionConnection(linkedSpotifyId);
 	const [added, setAdded] = useState<{ key: string; ids: string[] }>({
 		key: songId ?? "",
 		ids: [],
@@ -124,9 +124,6 @@ export function useSongPlaylistSuggestions(
 			verdict.kind === "mismatch"
 				? { extensionProfile: verdict.extensionProfile }
 				: null,
-		onRecheck: async () => {
-			await refetch();
-		},
 		onAdd,
 	};
 }

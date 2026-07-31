@@ -245,7 +245,7 @@ describe("useSongPlaylistSuggestions — onAdd auth-failure push", () => {
 // someone else's Spotify account, the same class of bug phase 04's studio
 // CRITICAL finding closed for playlist create. Closed here the same way:
 // onAdd refuses the write outright under `mismatch`, and the panel exposes
-// `mismatch`/`onRecheck` so SongDetailPanelSurface can render
+// `mismatch` so SongDetailPanelSurface can render
 // AccountMismatchPrompt instead of Add.
 describe("useSongPlaylistSuggestions — account mismatch blocks the write (post-review fix)", () => {
 	const MISMATCH_PROFILE = {
@@ -299,13 +299,7 @@ describe("useSongPlaylistSuggestions — account mismatch blocks the write (post
 		expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
 	});
 
-	it("exposes the extension's live profile via `mismatch`, and `onRecheck` drives the shared refetch", async () => {
-		const refetch = vi.fn().mockResolvedValue(undefined);
-		mockUseExtensionConnection.mockReset().mockReturnValue({
-			connection: undefined,
-			verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
-			refetch,
-		});
+	it("exposes the extension's live profile via `mismatch`", async () => {
 		const { Wrapper } = makeWrapper();
 		const { result } = renderHook(
 			() => useSongPlaylistSuggestions(SONG, true, "linked-spotify-id"),
@@ -317,11 +311,6 @@ describe("useSongPlaylistSuggestions — account mismatch blocks the write (post
 			extensionProfile: MISMATCH_PROFILE,
 		});
 		expect(result.current?.reconnectNeeded).toBe(false);
-
-		await act(async () => {
-			await result.current?.onRecheck();
-		});
-		expect(refetch).toHaveBeenCalledTimes(1);
 	});
 
 	it("`mismatch` is null for every other verdict", async () => {

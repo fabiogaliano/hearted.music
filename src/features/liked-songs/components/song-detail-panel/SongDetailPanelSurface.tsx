@@ -1721,7 +1721,6 @@ function PlaylistsLayer({
 				<AccountMismatchPrompt
 					extensionProfile={playlists.mismatch.extensionProfile}
 					accountDisplayName={null}
-					onRecheck={playlists.onRecheck}
 				/>
 			) : (
 				playlists.matches.map((match, i) => (

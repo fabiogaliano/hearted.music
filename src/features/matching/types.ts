@@ -130,9 +130,6 @@ export interface SongSuggestionsSectionProps {
 	 *  row offers Add while this is set, mirroring useSpotifyGate's
 	 *  "account-mismatch" gate state for the studio's create flow. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
-	/** Re-runs the shared connection check; resolves once it settles. Powers
-	 *  AccountMismatchPrompt's "Check again" affordance. */
-	onRecheckConnection?: () => Promise<void>;
 	/** Swaps each row's Add for a Spotify reconnect link, mirroring
 	 *  MatchesSection's song-mode treatment of the same shared verdict. */
 	reconnectNeeded?: boolean;
@@ -146,7 +143,6 @@ type MatchingSessionCommonProps = {
 	/** See SongSuggestionsSectionProps — same invariant-2 gate, threaded to
 	 *  both orientations. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
-	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	/** True when this is the last unresolved item in the session — drives
 	 *  "Finish matching" vs "Skip Song/Playlist" in the controls. Renamed from
@@ -224,7 +220,6 @@ export interface MatchingProps {
 	reconnectNeeded?: boolean;
 	/** See SongSuggestionsSectionProps — same invariant-2 gate. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
-	onRecheckConnection?: () => Promise<void>;
 	navigationDisabled?: boolean;
 	/** Current UI view mode threaded to MatchingHeader toggle. Defaults to 'song'. */
 	mode?: MatchViewMode;

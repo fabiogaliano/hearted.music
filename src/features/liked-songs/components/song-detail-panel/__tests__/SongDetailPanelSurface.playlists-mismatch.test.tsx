@@ -74,7 +74,6 @@ function makePlaylists(overrides?: Partial<PlaylistsPanel>): PlaylistsPanel {
 		addedTo: [],
 		reconnectNeeded: false,
 		mismatch: null,
-		onRecheck: vi.fn(async () => {}),
 		onAdd: vi.fn(),
 		...overrides,
 	};

@@ -39,6 +39,8 @@ interface ExtensionAccountBannerViewProps {
 	accountDisplayName: string | null;
 	repairing: boolean;
 	onReconnect: () => void;
+	/** When true, drops the dashboard-specific negative margins and bottom spacing. */
+	flush?: boolean;
 }
 
 export function ExtensionAccountBannerView({
@@ -46,20 +48,15 @@ export function ExtensionAccountBannerView({
 	accountDisplayName,
 	repairing,
 	onReconnect,
+	flush,
 }: ExtensionAccountBannerViewProps) {
 	return (
 		<div
 			role="status"
 			aria-live="polite"
-			className="theme-surface-bg -mx-4 mb-10 border border-l-2 px-4 py-4"
-			style={{ borderColor: "var(--t-primary)" }}
+			className={`theme-surface-bg px-5 py-4${flush ? "" : " -mx-4 mb-10"}`}
+			style={{ borderLeft: "2px solid var(--t-primary)" }}
 		>
-			<p
-				className="theme-text-muted mb-1 text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body }}
-			>
-				Account check
-			</p>
 			{verdict.kind === "mismatch" ? (
 				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
 					<p

@@ -372,7 +372,7 @@ export function QueueCardContent({
 	// Mirrors the shared connection verdict rather than a per-song local flag
 	// (see 05-liked-songs-matching.md): a dead token is global truth, so the
 	// prompt shows on whichever card is open, not just the one that failed.
-	const { verdict, refetch } = useExtensionConnection(linkedSpotifyId);
+	const { verdict } = useExtensionConnection(linkedSpotifyId);
 	const reconnectNeeded = verdict.kind === "spotify-disconnected";
 	// Invariant 2: mismatch outranks unpaired and is never silently
 	// repairable — see AccountMismatchPrompt/useSpotifyGate's studio gate for
@@ -382,9 +382,6 @@ export function QueueCardContent({
 	// DB even if a stale render slipped a click through.
 	const mismatchProfile =
 		verdict.kind === "mismatch" ? verdict.extensionProfile : null;
-	const onRecheckConnection = async () => {
-		await refetch();
-	};
 
 	// Header progress: position within the whole session, NOT within the shrinking
 	// navigable list. Resolved cards drop out of unresolvedIds, so currentIndex is
@@ -752,7 +749,6 @@ export function QueueCardContent({
 			recentItems={pastItems}
 			reconnectNeeded={reconnectNeeded}
 			mismatchProfile={mismatchProfile}
-			onRecheckConnection={onRecheckConnection}
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}
 			onModeChange={onModeChange}

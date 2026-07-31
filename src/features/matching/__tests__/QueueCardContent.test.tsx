@@ -169,7 +169,6 @@ interface CardTestHarness {
 	onAdd: (suggestionId: string) => Promise<void>;
 	reconnectNeeded: boolean;
 	mismatchProfile: unknown;
-	onRecheckConnection: () => Promise<void>;
 	refetch: ReturnType<typeof vi.fn>;
 }
 
@@ -243,7 +242,6 @@ async function renderCard(
 				onAdd: (suggestionId: string) => Promise<void>;
 				reconnectNeeded: boolean;
 				mismatchProfile: unknown;
-				onRecheckConnection: () => Promise<void>;
 			};
 		}
 	).props;
@@ -255,7 +253,6 @@ async function renderCard(
 		onAdd: props.onAdd,
 		reconnectNeeded: props.reconnectNeeded,
 		mismatchProfile: props.mismatchProfile,
-		onRecheckConnection: props.onRecheckConnection,
 		refetch,
 	};
 }
@@ -658,16 +655,12 @@ describe("QueueCardContent whole-card action handlers", () => {
 			expect(mockReportSpotifyAuthSuccess).not.toHaveBeenCalled();
 		});
 
-		it("exposes the extension's live profile to Matching so the suggestion sections can render AccountMismatchPrompt, and wires onRecheckConnection to the shared refetch", async () => {
-			const { mismatchProfile, onRecheckConnection, refetch } =
-				await renderCard("item-1", {
-					verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
-				});
+		it("exposes the extension's live profile to Matching so the suggestion sections can render AccountMismatchPrompt", async () => {
+			const { mismatchProfile } = await renderCard("item-1", {
+				verdict: { kind: "mismatch", extensionProfile: MISMATCH_PROFILE },
+			});
 
 			expect(mismatchProfile).toEqual(MISMATCH_PROFILE);
-
-			await onRecheckConnection();
-			expect(refetch).toHaveBeenCalledTimes(1);
 		});
 
 		it("mismatchProfile is null for every other verdict", async () => {

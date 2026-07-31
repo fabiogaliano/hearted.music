@@ -84,8 +84,5 @@ export interface PlaylistsPanel {
 	// as added on the right one. Mirrors useSpotifyGate's "account-mismatch"
 	// gate state / AccountMismatchPrompt for the studio create flow.
 	mismatch: { extensionProfile: ExtensionSpotifyProfile } | null;
-	// Re-runs the shared connection check; resolves once it settles. Powers
-	// AccountMismatchPrompt's "Check again" affordance.
-	onRecheck: () => Promise<void>;
 	onAdd: (playlistId: string) => void;
 }

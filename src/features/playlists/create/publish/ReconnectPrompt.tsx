@@ -1,52 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
-import { fonts } from "@/lib/theme/fonts";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { ExtensionAccountBannerView } from "@/features/dashboard/components/ExtensionAccountBanner";
+import { repairConnection } from "@/lib/extension/connection/repair";
 
-interface ReconnectPromptProps {
-	onRecheck: () => Promise<void>;
-}
+const SPOTIFY_LOGIN_URL = "https://open.spotify.com/";
 
-export function ReconnectPrompt({ onRecheck }: ReconnectPromptProps) {
-	const [isChecking, setIsChecking] = useState(false);
-	const mountedRef = useRef(true);
-	useEffect(() => {
-		mountedRef.current = true;
-		return () => {
-			mountedRef.current = false;
-		};
-	}, []);
+export function ReconnectPrompt() {
+	const queryClient = useQueryClient();
+	const [repairing, setRepairing] = useState(false);
 
-	const handleRecheck = useCallback(async () => {
-		setIsChecking(true);
-		try {
-			await onRecheck();
-		} finally {
-			if (mountedRef.current) setIsChecking(false);
-		}
-	}, [onRecheck]);
+	const onReconnect = useCallback(() => {
+		setRepairing(true);
+		repairConnection({
+			verdict: { kind: "spotify-disconnected" },
+			queryClient,
+			spotifyLoginUrl: SPOTIFY_LOGIN_URL,
+		})
+			.catch(() => {})
+			.finally(() => setRepairing(false));
+	}, [queryClient]);
 
 	return (
-		<div
-			className="flex items-center gap-4 px-5 py-4"
-			role="status"
-			aria-live="polite"
-			style={{ borderLeft: "2px solid var(--t-primary)" }}
-		>
-			<p className="theme-text text-xs" style={{ fontFamily: fonts.body }}>
-				<strong className="font-medium">Spotify disconnected.</strong>{" "}
-				<span className="theme-text-muted">Reconnect to keep creating.</span>
-			</p>
-			<SpotifyReconnectLink />
-			<button
-				type="button"
-				onClick={handleRecheck}
-				disabled={isChecking}
-				aria-busy={isChecking}
-				className="theme-text-muted inline-flex cursor-pointer items-center whitespace-nowrap text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-default disabled:opacity-40"
-				style={{ fontFamily: fonts.body }}
-			>
-				{isChecking ? "Checking…" : "Check again"}
-			</button>
-		</div>
+		<ExtensionAccountBannerView
+			verdict={{ kind: "spotify-disconnected" }}
+			accountDisplayName={null}
+			repairing={repairing}
+			onReconnect={onReconnect}
+			flush
+		/>
 	);
 }

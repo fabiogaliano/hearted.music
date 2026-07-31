@@ -383,7 +383,7 @@ export const ReconnectPromptStory: Story = () => (
 					Create
 				</span>
 			</div>
-			<ReconnectPrompt onRecheck={async () => {}} />
+			<ReconnectPrompt />
 		</div>
 	</div>
 );

@@ -33,7 +33,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	playback,
 	addedTo,
 	mismatchProfile,
-	onRecheckConnection,
 	reconnectNeeded,
 	navigationDisabled,
 	isLastItem,
@@ -135,7 +134,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 							<AccountMismatchPrompt
 								extensionProfile={mismatchProfile}
 								accountDisplayName={null}
-								onRecheck={onRecheckConnection ?? (async () => {})}
 							/>
 						) : suggestions.length === 0 && !hasMoreSuggestions ? (
 							<ReviewEmptyState />
