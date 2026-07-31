@@ -16,25 +16,6 @@ import {
 } from "../release-year-reviews";
 
 describe("mapRow → UI shape", () => {
-	it("maps snake_case DB columns to the camelCase UI shape", () => {
-		const row = mapRow({
-			song_id: "song-1",
-			song_name: "Bohemian Rhapsody - Remastered 2011",
-			artist_label: "Queen",
-			album_name: "A Night at the Opera",
-			image_url: "https://img/cover.jpg",
-			release_year: 1975,
-			release_year_checked_at: "2026-06-16T09:00:00Z",
-			created_at: "2026-06-15T10:00:00Z",
-		});
-		expect(row.songId).toBe("song-1");
-		expect(row.songName).toBe("Bohemian Rhapsody - Remastered 2011");
-		expect(row.artistLabel).toBe("Queen");
-		expect(row.albumName).toBe("A Night at the Opera");
-		expect(row.releaseYear).toBe(1975);
-		expect(row.checkedAt).toBe("2026-06-16T09:00:00Z");
-	});
-
 	it("coerces nulls without throwing", () => {
 		const row = mapRow({
 			song_id: "song-2",

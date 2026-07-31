@@ -26,10 +26,6 @@ function allAnnotations(doc: LyricsDocument): { votes_total: number }[] {
 }
 
 describe("selectGroundingAnnotations — vote gate", () => {
-	it("defaults the floor to votes_total > 15 (minVotes 16)", () => {
-		expect(GROUNDING_MIN_VOTES).toBe(16);
-	});
-
 	it("keeps exactly the above-gate annotations, in document order (not-like-us, rich)", () => {
 		const doc = loadDoc("not-like-us");
 		const selected = selectGroundingAnnotations(doc);

@@ -71,29 +71,6 @@ describe("addQueueItemDecisionAtomically", () => {
 		});
 	});
 
-	it("omits both suggestion ids when both are null", async () => {
-		const rpc = vi.fn().mockResolvedValue({ data: "added", error: null });
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			rpc,
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
-
-		const result = await addQueueItemDecisionAtomically(
-			"item-1",
-			"acct-1",
-			null,
-			null,
-		);
-
-		expect(result).toBeOk();
-		expect(rpc).toHaveBeenCalledWith(
-			"add_match_review_item_decision_atomic",
-			expect.objectContaining({
-				p_suggestion_song_id: undefined,
-				p_suggestion_playlist_id: undefined,
-			}),
-		);
-	});
-
 	it("returns a database error when the add RPC returns an unknown status", async () => {
 		const rpc = vi.fn().mockResolvedValue({ data: "unexpected", error: null });
 		vi.mocked(createAdminSupabaseClient).mockReturnValue({

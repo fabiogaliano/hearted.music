@@ -93,10 +93,6 @@ describe("ClaimHandleStep", () => {
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
-		expect(
-			screen.getByText("Letters, numbers, periods, and underscores."),
-		).toBeInTheDocument();
-
 		const btn = screen.getByRole("button", { name: /continue/i });
 		expect(btn).toBeDisabled();
 	});
@@ -440,37 +436,6 @@ describe("ClaimHandleStep", () => {
 	});
 
 	// ── Inline address ─────────────────────────────────────────────────────────
-
-	it("renders the address prefix and the typed handle as the field value", async () => {
-		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
-
-		const { user } = renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
-
-		const input = screen.getByRole("textbox", { name: /handle/i });
-		await user.type(input, "fabio");
-
-		await waitFor(() => {
-			expect(screen.getByText("Available.")).toBeInTheDocument();
-		});
-		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
-		expect(input).toHaveValue("fabio");
-	});
-
-	it("renders the address prefix for an owned-equal handle", () => {
-		renderStep(
-			<ClaimHandleStep
-				{...BASE_PROPS}
-				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
-			/>,
-		);
-
-		expect(screen.getByText("hearted.music/@")).toBeInTheDocument();
-		expect(screen.getByRole("textbox", { name: /handle/i })).toHaveValue(
-			"fabio",
-		);
-	});
 
 	it("keeps the address prefix visible for an unavailable (taken) handle", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({

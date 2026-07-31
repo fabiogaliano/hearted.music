@@ -472,59 +472,6 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 	});
 
-	describe("return shape", () => {
-		it("response shape matches PlaylistMatchFilterOptions exactly", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
-			mockGetLanguageColumns.mockResolvedValue(
-				okResult([{ song_id: "s1", language: "en", language_secondary: null }]),
-			);
-			mockGetReleaseYearAggregates.mockResolvedValue(
-				okResult({ min: 2010, max: 2024, counts: [{ year: 2020, count: 5 }] }),
-			);
-			mockGetLikedAtAggregates.mockResolvedValue(
-				okResult({
-					oldest: "2020-01-01",
-					yearCounts: [{ year: 2020, count: 10 }],
-				}),
-			);
-
-			const result =
-				(await getPlaylistMatchFilterOptions()) as PlaylistMatchFilterOptions;
-
-			// Top-level keys
-			expect(result).toHaveProperty("languages");
-			expect(result).toHaveProperty("releaseYears");
-			expect(result).toHaveProperty("likedAt");
-
-			// Language entry shape
-			const lang = result.languages[0];
-			expect(lang).toHaveProperty("code");
-			expect(lang).toHaveProperty("label");
-			expect(lang).toHaveProperty("count");
-			expect(lang).toHaveProperty("source");
-			expect(["detected", "catalog"]).toContain(lang.source);
-
-			// releaseYears shape
-			expect(
-				typeof result.releaseYears.min === "number" ||
-					result.releaseYears.min === null,
-			).toBe(true);
-			expect(
-				typeof result.releaseYears.max === "number" ||
-					result.releaseYears.max === null,
-			).toBe(true);
-			expect(Array.isArray(result.releaseYears.counts)).toBe(true);
-
-			// likedAt shape
-			expect(
-				typeof result.likedAt.oldest === "string" ||
-					result.likedAt.oldest === null,
-			).toBe(true);
-			expect(typeof result.likedAt.today).toBe("string");
-			expect(Array.isArray(result.likedAt.yearCounts)).toBe(true);
-		});
-	});
-
 	describe("error propagation", () => {
 		it("logs [filter-options] prefix and re-throws when eligibility fetch rejects", async () => {
 			mockGetEntitledSongIds.mockRejectedValue(

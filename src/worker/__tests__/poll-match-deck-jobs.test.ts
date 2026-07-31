@@ -264,23 +264,6 @@ describe("dispatchDeckJob", () => {
 		expect(enqueueDeckJob).not.toHaveBeenCalled();
 	});
 
-	it("is silent when append_sessions does not apply a snapshot", async () => {
-		vi.mocked(appendSessionsForAccountOrientation).mockResolvedValue(
-			Result.ok({ kind: "superseded" }),
-		);
-
-		const result = await dispatchDeckJob(
-			job({
-				kind: "append_sessions",
-				orientation: "song",
-				account_id: "acct-9",
-				payload: { snapshotId: "snap-1" },
-			}),
-		);
-
-		expect(Result.isError(result)).toBe(false);
-	});
-
 	it("capture_ahead: happy path captures the window from the session's resume position", async () => {
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(4));
 		vi.mocked(captureAheadForSession).mockResolvedValue(Result.ok(undefined));

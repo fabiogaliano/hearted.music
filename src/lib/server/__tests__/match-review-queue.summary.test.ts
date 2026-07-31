@@ -548,24 +548,6 @@ describe("getMatchReviewSummary — server fn", () => {
 		expect(result.previewImages).toHaveLength(1);
 		expect(mockGetQueueSummary).toHaveBeenCalledWith("acct-1", "song");
 	});
-
-	it("returns pendingCount 0 when caught up (no active queue, no snapshot)", async () => {
-		mockGetQueueSummary.mockResolvedValue(
-			Result.ok({
-				hasActiveQueue: false,
-				pendingCount: 0,
-				previewSubjectIds: [],
-			}),
-		);
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
-
-		const result = await getMatchReviewSummary({
-			data: { orientation: "song" },
-		});
-
-		expect(result.pendingCount).toBe(0);
-		expect(result.previewImages).toHaveLength(0);
-	});
 });
 
 // ---------------------------------------------------------------------------

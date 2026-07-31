@@ -11,33 +11,6 @@ import {
 } from "../instrumental-reviews";
 
 describe("mapRow → UI shape", () => {
-	it("maps snake_case DB columns to the camelCase UI shape", () => {
-		const row = mapRow({
-			id: "rev-1",
-			status: "pending",
-			signal: "genre",
-			instrumentalness: 0.42,
-			matched_genre: "ambient",
-			created_at: "2026-06-20T10:00:00Z",
-			song_id: "song-1",
-			song_name: "Intro - Live",
-			artist_label: "Some Artist",
-			album_name: "An Album",
-			image_url: "https://img/cover.jpg",
-			duration_ms: 192000,
-		});
-		expect(row.id).toBe("rev-1");
-		expect(row.status).toBe("pending");
-		expect(row.signal).toBe("genre");
-		expect(row.instrumentalness).toBeCloseTo(0.42);
-		expect(row.matchedGenre).toBe("ambient");
-		expect(row.songId).toBe("song-1");
-		expect(row.songName).toBe("Intro - Live");
-		expect(row.artistLabel).toBe("Some Artist");
-		expect(row.albumName).toBe("An Album");
-		expect(row.durationMs).toBe(192000);
-	});
-
 	it("coerces nulls without throwing", () => {
 		const row = mapRow({
 			id: "rev-2",

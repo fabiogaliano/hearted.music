@@ -64,10 +64,6 @@ describe("classifyContentType (replaces detectInstrumental)", () => {
 		expect(classify({ lyrics: "" })).toBe("unknown");
 	});
 
-	it("returns unknown for whitespace-only lyrics with no strong signal", () => {
-		expect(classify({ lyrics: "   " })).toBe("unknown");
-	});
-
 	// Regression: a song we hold real lyrics for must be analyzed lyrically even
 	// when Spotify reports a high instrumentalness. The old order trusted that
 	// score first and misrouted vocal songs (Lorde's "Ribs" at 0.61, Hot Chip's

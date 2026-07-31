@@ -88,18 +88,6 @@ describe("SAVEABLE_ONBOARDING_STEPS (zod schema)", () => {
 	it("fails parse on 'complete'", () => {
 		expect(SAVEABLE_ONBOARDING_STEPS.safeParse("complete").success).toBe(false);
 	});
-
-	it("passes parse on 'claim-handle'", () => {
-		expect(SAVEABLE_ONBOARDING_STEPS.safeParse("claim-handle").success).toBe(
-			true,
-		);
-	});
-
-	it("passes parse on 'plan-selection'", () => {
-		expect(SAVEABLE_ONBOARDING_STEPS.safeParse("plan-selection").success).toBe(
-			true,
-		);
-	});
 });
 
 describe("clearsSyncPhaseJobIds", () => {

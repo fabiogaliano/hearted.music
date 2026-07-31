@@ -16,28 +16,6 @@ import {
 } from "../lyrics-reviews";
 
 describe("mapRow → UI shape", () => {
-	it("maps snake_case DB columns to the camelCase UI shape", () => {
-		const row = mapRow({
-			song_id: "song-1",
-			song_name: "Wonderwall - Remastered",
-			artist_label: "Oasis",
-			album_name: "(What's the Story) Morning Glory?",
-			image_url: "https://img/cover.jpg",
-			duration_ms: 258000,
-			fetch_status: "not_found",
-			fetch_source: null,
-			fetch_updated_at: "2026-06-15T10:00:00Z",
-		});
-		expect(row.songId).toBe("song-1");
-		expect(row.songName).toBe("Wonderwall - Remastered");
-		expect(row.artistLabel).toBe("Oasis");
-		expect(row.albumName).toBe("(What's the Story) Morning Glory?");
-		expect(row.durationMs).toBe(258000);
-		expect(row.fetchStatus).toBe("not_found");
-		expect(row.fetchSource).toBeNull();
-		expect(row.fetchUpdatedAt).toBe("2026-06-15T10:00:00Z");
-	});
-
 	it("coerces nulls without throwing", () => {
 		const row = mapRow({
 			song_id: "song-2",

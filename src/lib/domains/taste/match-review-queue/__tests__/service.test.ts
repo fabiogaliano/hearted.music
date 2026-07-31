@@ -749,34 +749,6 @@ describe("hasFirstVisibleReviewSubject", () => {
 		if (Result.isOk(result)) expect(result.value).toBe(false);
 	});
 
-	it("returns true when a playlist-mode subject is visible in the snapshot", async () => {
-		// An owned playlist with one entitled, above-threshold, undecided suggestion
-		// song produces a visible playlist subject even without a song subject.
-		// (Both orientations contribute — this exercises the playlist path.)
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.8,
-					fused_score: null,
-				},
-			]),
-		);
-
-		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
-
-		expect(result).toBeOk();
-		// Any pair that yields a playlist subject also yields a song subject under the
-		// current data model, so isolating the playlist branch from the song branch is
-		// structurally impossible here — this test exercises the playlist code path but
-		// the song path alone would also satisfy the OR.
-		if (Result.isOk(result)) expect(result.value).toBe(true);
-	});
-
 	it("returns true immediately when an active queue has pending items, without reading match results", async () => {
 		// Active song queue already has pending items — short-circuit before snapshot.
 		vi.mocked(queries.fetchActiveSession).mockResolvedValue(

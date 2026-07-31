@@ -15,11 +15,6 @@ describe("validateHandleFormatInput — normalization", () => {
 		const result = validateHandleFormatInput(" fabio ");
 		expect(result).toEqual({ status: "invalid", reason: "invalid_chars" });
 	});
-
-	it("leading-only space is invalid_chars (whitespace is not trimmed)", () => {
-		const result = validateHandleFormatInput(" fabio");
-		expect(result).toEqual({ status: "invalid", reason: "invalid_chars" });
-	});
 });
 
 describe("validateHandleFormatInput — valid examples", () => {
@@ -82,13 +77,6 @@ describe("validateHandleFormatInput — invalid examples", () => {
 
 	it('"fabio galiano" → invalid_chars (spaces not allowed)', () => {
 		expect(validateHandleFormatInput("fabio galiano")).toEqual({
-			status: "invalid",
-			reason: "invalid_chars",
-		});
-	});
-
-	it('" fabio " → invalid_chars (surrounding whitespace not trimmed)', () => {
-		expect(validateHandleFormatInput(" fabio ")).toEqual({
 			status: "invalid",
 			reason: "invalid_chars",
 		});

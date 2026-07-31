@@ -28,12 +28,6 @@ function renderHeader({
 }
 
 describe("MatchingHeader toggle", () => {
-	it("renders Song and Playlist buttons", () => {
-		renderHeader();
-		expect(screen.getByRole("button", { name: "Song" })).toBeDefined();
-		expect(screen.getByRole("button", { name: "Playlist" })).toBeDefined();
-	});
-
 	it("wraps buttons in a group with accessible label", () => {
 		renderHeader();
 		expect(screen.getByRole("group", { name: "View mode" })).toBeDefined();

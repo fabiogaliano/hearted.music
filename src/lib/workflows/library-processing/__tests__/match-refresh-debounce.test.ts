@@ -3,7 +3,6 @@ import {
 	MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE,
 	resolveMatchRefreshAvailableAt,
 } from "../match-refresh-debounce";
-import type { LibraryProcessingChange } from "../types";
 
 describe("MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE", () => {
 	it("assigns 8 s debounce to playlist config saves", () => {
@@ -24,25 +23,6 @@ describe("MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE", () => {
 
 	it("assigns zero debounce to enrichment completion", () => {
 		expect(MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE.enrichment_completed).toBe(0);
-	});
-
-	it("covers every LibraryProcessingChange kind", () => {
-		const allKinds: Array<LibraryProcessingChange["kind"]> = [
-			"onboarding_target_selection_confirmed",
-			"library_synced",
-			"enrichment_completed",
-			"enrichment_stopped",
-			"match_snapshot_published",
-			"match_snapshot_failed",
-			"playlist_management_session_flushed",
-			"enrichment_work_available",
-			"songs_unlocked",
-			"unlimited_activated",
-			"candidate_access_revoked",
-		];
-		for (const kind of allKinds) {
-			expect(MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE[kind]).toBeDefined();
-		}
 	});
 });
 

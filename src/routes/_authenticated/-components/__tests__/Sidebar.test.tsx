@@ -44,13 +44,6 @@ describe("Sidebar — handle identity", () => {
 		expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
 	});
 
-	it("does not fall back to display_name or email when handle is null", () => {
-		render(<Sidebar unsortedCount={0} handle={null} userPlan="Free Plan" />);
-		// No @-prefixed text should appear
-		const atNodes = screen.queryAllByText(/^@/);
-		expect(atNodes).toHaveLength(0);
-	});
-
 	it("still renders the plan label when handle is null", () => {
 		render(<Sidebar unsortedCount={0} handle={null} userPlan="Free Plan" />);
 		expect(screen.getByText(/free plan/i)).toBeInTheDocument();

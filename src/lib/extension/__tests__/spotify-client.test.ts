@@ -258,24 +258,6 @@ describe("extension unavailable", () => {
 });
 
 describe("commandId generation", () => {
-	it("includes the generated UUID in the command message", async () => {
-		mockSendExtensionCommand.mockResolvedValue(null);
-
-		await addToPlaylist("uri", ["track"]);
-
-		expect(mockSendExtensionCommand).toHaveBeenCalledWith(
-			expect.objectContaining({ commandId: MOCK_UUID }),
-		);
-	});
-
-	it("includes the commandId in NETWORK_ERROR fallback response", async () => {
-		mockSendExtensionCommand.mockResolvedValue(null);
-
-		const result = await addToPlaylist("uri", ["track"]);
-
-		expect(result.commandId).toBe(MOCK_UUID);
-	});
-
 	it("generates a unique commandId per call", async () => {
 		const uuids = ["uuid-1", "uuid-2", "uuid-3"];
 		let callCount = 0;

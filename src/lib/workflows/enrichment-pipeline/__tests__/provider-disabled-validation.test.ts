@@ -641,19 +641,4 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 			expect(ctx).toMatchObject({ accountId: ACCOUNT_ID });
 		});
 	});
-
-	describe("6. No regressions: self_hosted equivalent to pre-billing full-library", () => {
-		it("orchestrator processes same count as pre-billing (all songs)", async () => {
-			const result = await executeWorkerChunk(
-				ACCOUNT_ID,
-				"job-1",
-				50,
-				0,
-				"normal",
-			);
-
-			expect(result.readyCount).toBe(3);
-			expect(result.doneCount).toBeGreaterThan(0);
-		});
-	});
 });

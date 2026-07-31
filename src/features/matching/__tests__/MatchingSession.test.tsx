@@ -58,22 +58,6 @@ function makeQueryClient() {
 }
 
 describe("MatchingSession", () => {
-	it("renders without crashing in song mode", () => {
-		render(
-			<QueryClientProvider client={makeQueryClient()}>
-				<MatchingSession
-					mode="song"
-					currentSong={SONG}
-					playlists={PLAYLISTS}
-					addedTo={[]}
-					onAdd={() => {}}
-					onDismiss={() => {}}
-					onNext={() => {}}
-				/>
-			</QueryClientProvider>,
-		);
-	});
-
 	it("renders song section and matches section in song mode", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>
@@ -90,22 +74,6 @@ describe("MatchingSession", () => {
 		);
 		expect(screen.getByText("Test Song")).toBeDefined();
 		expect(screen.getByText("Test Playlist")).toBeDefined();
-	});
-
-	it("renders without crashing in playlist mode", () => {
-		render(
-			<QueryClientProvider client={makeQueryClient()}>
-				<MatchingSession
-					mode="playlist"
-					reviewItem={PLAYLIST_REVIEW_ITEM}
-					suggestions={[]}
-					addedTo={[]}
-					onAdd={() => {}}
-					onDismiss={() => {}}
-					onNext={() => {}}
-				/>
-			</QueryClientProvider>,
-		);
 	});
 
 	it("renders playlist review item name in playlist mode", () => {

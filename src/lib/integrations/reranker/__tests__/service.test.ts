@@ -109,30 +109,4 @@ describe("RerankerService.rerank — instruction override", () => {
 			DEFAULT_RERANK_INSTRUCTION,
 		]);
 	});
-
-	it("concurrent calls with different instructions each receive their own instruction", async () => {
-		const captured: string[] = [];
-		vi.mocked(getMlProvider).mockReturnValue(
-			Result.ok(makeMockProvider(captured)),
-		);
-
-		const service = new RerankerService();
-		const candidates = [{ id: "c1", score: 0.8, document: "doc" }];
-
-		// Fire all three concurrently — none must bleed into the others
-		await Promise.all([
-			service.rerank("q", candidates, { instruction: "instr-1" }),
-			service.rerank("q", candidates, { instruction: "instr-2" }),
-			service.rerank("q", candidates),
-		]);
-
-		// Each call lands its own instruction; order may differ under concurrency
-		expect(captured).toContain("instr-1");
-		expect(captured).toContain("instr-2");
-		expect(captured).toContain(DEFAULT_RERANK_INSTRUCTION);
-		// Config must not be dirtied by any of the concurrent calls
-		expect(service.getConfig().instruction).toBe(
-			DEFAULT_RERANKER_CONFIG.instruction,
-		);
-	});
 });

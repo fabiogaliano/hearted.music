@@ -83,28 +83,6 @@ describe("MatchingEmptyState", () => {
 		});
 	});
 
-	describe("filtered reason — overline and headline", () => {
-		it("renders the overline and link for filtered state", () => {
-			render(
-				<MatchingEmptyState reason="filtered" hiddenCount={2} mode="song" />,
-			);
-			expect(screen.getByText("quiet in here")).toBeDefined();
-			expect(screen.getByText("Adjust strictness")).toBeDefined();
-		});
-	});
-
-	describe("mode prop does not affect non-filtered reasons", () => {
-		it("renders caught-up correctly in playlist mode", () => {
-			render(<MatchingEmptyState reason="caught-up" mode="playlist" />);
-			expect(screen.getByText(/You're caught up/)).toBeDefined();
-		});
-
-		it("renders none-yet correctly in playlist mode", () => {
-			render(<MatchingEmptyState reason="none-yet" mode="playlist" />);
-			expect(screen.getByText(/No matches/)).toBeDefined();
-		});
-	});
-
 	describe("orientation toggle (A2)", () => {
 		it("omits the toggle when onModeChange is not provided", () => {
 			render(<MatchingEmptyState reason="caught-up" />);

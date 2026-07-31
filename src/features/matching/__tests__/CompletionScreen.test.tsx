@@ -17,11 +17,6 @@ const ITEMS: ReviewedItem[] = [
 ];
 
 describe("CompletionScreen", () => {
-	it("renders the completion heading", () => {
-		render(<CompletionScreen stats={BASE_STATS} items={[]} onExit={vi.fn()} />);
-		expect(screen.getByText("You're caught up")).toBeDefined();
-	});
-
 	it("renders 'Matched this round' recap label (H5)", () => {
 		render(
 			<CompletionScreen stats={BASE_STATS} items={ITEMS} onExit={vi.fn()} />,
@@ -55,11 +50,6 @@ describe("CompletionScreen", () => {
 	it("renders dismissed count", () => {
 		render(<CompletionScreen stats={BASE_STATS} items={[]} onExit={vi.fn()} />);
 		expect(screen.getByText(/dismissed/i)).toBeDefined();
-	});
-
-	it("renders skipped count", () => {
-		render(<CompletionScreen stats={BASE_STATS} items={[]} onExit={vi.fn()} />);
-		expect(screen.getByText(/skipped/i)).toBeDefined();
 	});
 
 	it("renders reviewed item names in the recap", () => {

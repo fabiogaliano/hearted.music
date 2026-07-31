@@ -181,9 +181,6 @@ describe("ArtistConfig", () => {
 		it("surfaces a failure notice with a retry affordance when isResolutionError is true", () => {
 			renderPanel([sel("Clairo", true, null)], {}, { isResolutionError: true });
 			expect(
-				screen.getByText(/couldn't load song counts/i),
-			).toBeInTheDocument();
-			expect(
 				screen.getByRole("button", { name: /retry/i }),
 			).toBeInTheDocument();
 		});

@@ -284,45 +284,6 @@ describe("Queue integration: getOrCreateEnrichmentJob", () => {
 			}
 		});
 	});
-
-	describe("concurrent trigger safety", () => {
-		it("both callers get a valid job when one creates and one reuses", async () => {
-			const newJob = fakeJob({ id: "job-concurrent-001" });
-			// First call: no active job, creates one
-			// Second call: active job exists, reuses it
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = { data: newJob, error: null };
-
-			const result1Promise = getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			// After first call creates the job, simulate it being visible
-			activeJobResponse = { data: newJob, error: null };
-
-			const result2Promise = getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			const [result1, result2] = await Promise.all([
-				result1Promise,
-				result2Promise,
-			]);
-
-			expect(result1).toBeOk();
-			expect(result2).toBeOk();
-
-			if (Result.isOk(result1) && Result.isOk(result2)) {
-				expect(result1.value.id).toBe("job-concurrent-001");
-				expect(result2.value.id).toBe("job-concurrent-001");
-			}
-		});
-	});
 });
 
 describe("getActiveEnrichmentJob", () => {

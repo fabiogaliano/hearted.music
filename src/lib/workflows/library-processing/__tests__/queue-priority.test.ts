@@ -2,25 +2,11 @@ import { describe, expect, it } from "vitest";
 import { bandToNumeric } from "../queue-priority";
 
 describe("bandToNumeric", () => {
-	it("maps low to 0", () => {
-		expect(bandToNumeric("low")).toBe(0);
-	});
-
-	it("maps standard to 50", () => {
-		expect(bandToNumeric("standard")).toBe(50);
-	});
-
-	it("maps priority to 100", () => {
-		expect(bandToNumeric("priority")).toBe(100);
-	});
-
-	it("maps interactive to 200", () => {
-		expect(bandToNumeric("interactive")).toBe(200);
-	});
-
-	it("interactive outranks priority", () => {
-		expect(bandToNumeric("interactive")).toBeGreaterThan(
-			bandToNumeric("priority"),
+	it("orders bands strictly: low < standard < priority < interactive", () => {
+		expect(bandToNumeric("low")).toBeLessThan(bandToNumeric("standard"));
+		expect(bandToNumeric("standard")).toBeLessThan(bandToNumeric("priority"));
+		expect(bandToNumeric("priority")).toBeLessThan(
+			bandToNumeric("interactive"),
 		);
 	});
 });

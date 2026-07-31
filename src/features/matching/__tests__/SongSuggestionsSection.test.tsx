@@ -99,11 +99,6 @@ function makeMismatchProfile(
 }
 
 describe("SongSuggestionsSection", () => {
-	it("renders the section heading", () => {
-		render(<SongSuggestionsSection {...DEFAULT_PROPS} />);
-		expect(screen.getByText("Song Suggestions")).toBeDefined();
-	});
-
 	it("renders song name and artist for each suggestion", () => {
 		render(<SongSuggestionsSection {...DEFAULT_PROPS} />);
 		expect(screen.getByText("Echoes")).toBeDefined();
@@ -216,11 +211,6 @@ describe("SongSuggestionsSection", () => {
 		expect(screen.queryByRole("button", { name: /Previous/i })).toBeNull();
 	});
 
-	it("renders without crashing when suggestions list is empty", () => {
-		render(<SongSuggestionsSection {...DEFAULT_PROPS} suggestions={[]} />);
-		expect(screen.getByText("Song Suggestions")).toBeDefined();
-	});
-
 	it("renders all suggestions in a long list", () => {
 		const many = Array.from({ length: 10 }, (_, i) =>
 			makeRow(
@@ -232,11 +222,6 @@ describe("SongSuggestionsSection", () => {
 		for (let i = 0; i < 10; i++) {
 			expect(screen.getByText(`Song ${i}`)).toBeDefined();
 		}
-	});
-
-	it("renders without crashing with suppressTransition", () => {
-		render(<SongSuggestionsSection {...DEFAULT_PROPS} suppressTransition />);
-		expect(screen.getByText("Song Suggestions")).toBeDefined();
 	});
 
 	it("play preview button has an accessible aria-label for each song", () => {

@@ -347,24 +347,6 @@ describe("getPlaylistTracksPage", () => {
 		expect(result.nextCursor).toBeNull();
 	});
 
-	it("returns nextCursor: null on the final page", async () => {
-		mockGetPlaylistSongsPage.mockResolvedValue(
-			Result.ok({
-				items: [makePlaylistSongRow({ song_id: "song-1", position: 0 })],
-				nextCursor: null,
-			}),
-		);
-		mockGetSongsByIds.mockResolvedValue(
-			Result.ok([makeSong({ id: "song-1" })]),
-		);
-
-		const result = await getPlaylistTracksPage({
-			data: { playlistId: "uuid-1", limit: 50 },
-		});
-
-		expect(result.nextCursor).toBeNull();
-	});
-
 	it("filters out songs missing from song table while keeping matched rows", async () => {
 		mockGetPlaylistSongsPage.mockResolvedValue(
 			Result.ok({

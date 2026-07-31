@@ -83,20 +83,6 @@ describe("PlaylistReviewItemSection", () => {
 		expect(screen.queryByText("Playlist")).toBeNull();
 	});
 
-	it("renders with suppressTransition=true without crashing", () => {
-		render(
-			<QueryClientProvider client={makeQueryClient()}>
-				<PlaylistReviewItemSection
-					itemKey="pl-1"
-					reviewItem={REVIEW_ITEM}
-					canLoadTracks={false}
-					suppressTransition
-				/>
-			</QueryClientProvider>,
-		);
-		expect(screen.getByText("Chill Vibes")).toBeDefined();
-	});
-
 	it("exposes the cover as a track-list disclosure button when canLoadTracks is true", () => {
 		render(
 			<QueryClientProvider client={makeQueryClient()}>

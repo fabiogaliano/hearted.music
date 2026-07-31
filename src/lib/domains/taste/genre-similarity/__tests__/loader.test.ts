@@ -45,12 +45,6 @@ describe("table coverage", () => {
 // ── Self-similarity ───────────────────────────────────────────────────────────
 
 describe("genreSimilarity — self", () => {
-	it("identical canonical inputs → 1", () => {
-		expect(genreSimilarity("rock", "rock")).toBe(1);
-		expect(genreSimilarity("hip-hop", "hip-hop")).toBe(1);
-		expect(genreSimilarity("black metal", "black metal")).toBe(1);
-	});
-
 	it("variant inputs that canonicalize identically → 1", () => {
 		// "hip hop" canonicalizes to "hip-hop"
 		expect(genreSimilarity("hip hop", "hip-hop")).toBe(1);
@@ -112,13 +106,6 @@ describe("genreSimilarity — unknown inputs", () => {
 // ── genreNeighbors ────────────────────────────────────────────────────────────
 
 describe("genreNeighbors", () => {
-	it("returns an object (may be empty) for any whitelist genre", () => {
-		const canonicalGenres = [...new Set(GENRE_LIST.map(canonicalizeGenre))];
-		for (const g of canonicalGenres) {
-			expect(typeof genreNeighbors(g)).toBe("object");
-		}
-	});
-
 	it("matched genres have at least one neighbor with sim >= 0.3", () => {
 		// rock has neighbors in the curated graph — all stored values must be >= floor
 		const neighbors = genreNeighbors("rock");

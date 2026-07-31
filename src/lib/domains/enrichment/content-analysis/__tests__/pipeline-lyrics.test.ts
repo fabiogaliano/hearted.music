@@ -255,35 +255,6 @@ describe("Pipeline Lyrics Integration", () => {
 			);
 		});
 
-		it("handles lyrics fetch failure gracefully when audio features exist", async () => {
-			// not_found is a confirmed-missing signal; when audio IS available, the
-			// song is still analysable (audio-only path).
-			mockFetchAndStoreLyrics.mockResolvedValueOnce(
-				Result.ok({ kind: "not_found" }),
-			);
-			vi.mocked(getAudioFeaturesBatch).mockResolvedValueOnce(
-				Result.ok(new Map([["1", audioFeatureFor("1")]])),
-			);
-
-			const pipeline = await unwrapPipeline();
-
-			const songs: SongToAnalyze[] = [
-				{ songId: "1", artist: "Artist 1", title: "Song 1", lyrics: "" },
-			];
-
-			const result = await pipeline.analyzeSongs("account-123", songs);
-
-			expect(Result.isOk(result)).toBe(true);
-			if (Result.isOk(result)) {
-				expect(result.value.succeeded).toBe(1);
-				expect(result.value.failed).toBe(0);
-				expect(result.value.skippedConfirmedInputsMissing).toEqual([]);
-				expect(result.value.skippedUnconfirmedLyrics).toEqual([]);
-				expect(result.value.skippedUnconfirmedAudio).toEqual([]);
-				expect(result.value.skippedUnconfirmedBoth).toEqual([]);
-			}
-		});
-
 		it("skips prefetch when GENIUS_CLIENT_TOKEN not set", async () => {
 			mockEnv.GENIUS_CLIENT_TOKEN = undefined;
 

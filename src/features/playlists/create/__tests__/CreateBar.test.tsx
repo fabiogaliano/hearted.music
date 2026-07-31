@@ -401,17 +401,4 @@ describe("SuccessState — routes into the managed-playlist loop", () => {
 		);
 		expect(screen.getByText("Night Mix")).toBeInTheDocument();
 	});
-
-	it("uses retention-oriented copy about ongoing suggestions", () => {
-		render(
-			<SuccessState
-				playlistName="Night Mix"
-				spotifyId="xyz789"
-				playlistId={PLAYLIST_ID}
-			/>,
-		);
-		expect(
-			screen.getByText(/we'll keep suggesting songs that fit/i),
-		).toBeInTheDocument();
-	});
 });

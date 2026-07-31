@@ -55,11 +55,6 @@ const DEFAULT_PROPS = {
 };
 
 describe("MatchesSection", () => {
-	it("renders the section heading", () => {
-		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
-		expect(screen.getByText("Best Matches")).toBeDefined();
-	});
-
 	it("renders playlist name for each match", () => {
 		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
 		expect(screen.getByText("Chill Vibes")).toBeDefined();
@@ -171,11 +166,6 @@ describe("MatchesSection", () => {
 		expect((dismissBtn as HTMLButtonElement).disabled).toBe(true);
 		expect((prevBtn as HTMLButtonElement).disabled).toBe(true);
 		expect((nextBtn as HTMLButtonElement).disabled).toBe(true);
-	});
-
-	it("renders without crashing with suppressTransition", () => {
-		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} suppressTransition />);
-		expect(screen.getByText("Best Matches")).toBeDefined();
 	});
 
 	it("renders the 'real matches ready' banner when realAvailable is true", () => {

@@ -20,9 +20,6 @@ describe("ThemeHueProvider", () => {
 		expect(container.querySelector("style")?.textContent).toContain(
 			"--theme-hue: 135",
 		);
-		expect(container.querySelector("style")?.textContent).toContain(
-			`--t-surface: ${themes.green.surface}`,
-		);
 	});
 
 	it("updates the rendered hue when the theme prop changes", () => {

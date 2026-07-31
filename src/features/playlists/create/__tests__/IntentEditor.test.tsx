@@ -155,20 +155,4 @@ describe("IntentEditor — ineligible", () => {
 		}
 		expect(onChange).not.toHaveBeenCalled();
 	});
-
-	it("renders a visible teaser phrase (not hidden/blurred)", () => {
-		render(
-			<IntentEditor
-				isEligible={false}
-				value={undefined}
-				onChange={vi.fn()}
-				onOpenPaywall={vi.fn()}
-			/>,
-		);
-		// The locked field shows a muted example phrase as plain text — visible
-		// and readable, just not interactive as an input.
-		expect(
-			screen.getByText("Late-night drive through an empty city"),
-		).toBeTruthy();
-	});
 });

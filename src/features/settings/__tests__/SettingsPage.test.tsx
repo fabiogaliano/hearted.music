@@ -91,11 +91,4 @@ describe("SettingsPage — Account section", () => {
 		expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
 		expect(screen.getByText("user@example.com")).toBeInTheDocument();
 	});
-
-	it("does not fall back to display_name or email when handle is null", () => {
-		render(<SettingsPage {...baseProps} handle={null} />);
-		// Confirm no @-prefixed string appears at all
-		const atNodes = screen.queryAllByText(/^@/);
-		expect(atNodes).toHaveLength(0);
-	});
 });

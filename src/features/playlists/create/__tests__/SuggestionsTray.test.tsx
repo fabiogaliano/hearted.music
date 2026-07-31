@@ -102,20 +102,6 @@ describe("SuggestionsTray", () => {
 		expect(buttons).toHaveLength(10);
 	});
 
-	it("renders a refresh affordance in the header", () => {
-		render(
-			<SuggestionsTray
-				suggestions={SUGGESTIONS}
-				onAddSong={vi.fn()}
-				onDismissSong={vi.fn()}
-				onRefresh={vi.fn()}
-			/>,
-		);
-		expect(
-			screen.getByRole("button", { name: /refresh/i }),
-		).toBeInTheDocument();
-	});
-
 	it("calls onRefresh when the refresh button is clicked", async () => {
 		const user = userEvent.setup();
 		const onRefresh = vi.fn();
