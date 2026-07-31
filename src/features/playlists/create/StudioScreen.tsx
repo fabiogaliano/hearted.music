@@ -214,15 +214,6 @@ export function StudioScreen({
 
 			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_220px] lg:items-start">
 				<main>
-					<div className="mb-5">
-						<IntentEditor
-							isEligible={isIntentEligible}
-							value={draft.config.intent}
-							onChange={draft.setIntent}
-							onOpenPaywall={() => setShowPaywall(true)}
-						/>
-					</div>
-
 					{gateState !== "ok" && gateState !== "checking" && (
 						<div className="theme-surface-bg theme-border-color mb-5 border">
 							{gateState === "extension-unavailable" && (
@@ -240,6 +231,15 @@ export function StudioScreen({
 								))}
 						</div>
 					)}
+
+					<div className="mb-5">
+						<IntentEditor
+							isEligible={isIntentEligible}
+							value={draft.config.intent}
+							onChange={draft.setIntent}
+							onOpenPaywall={() => setShowPaywall(true)}
+						/>
+					</div>
 
 					{/* Unified playlist panel — bordered container holding the preview,
 					    suggestions, and create footer as one visual unit. */}
