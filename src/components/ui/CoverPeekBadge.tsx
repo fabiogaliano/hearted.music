@@ -33,7 +33,9 @@ export function CoverPeekBadge({
 	return (
 		<span
 			aria-hidden="true"
-			className={`pointer-events-none absolute right-2 bottom-2 inline-flex items-center justify-center gap-1.5 rounded-md ${
+			// Translucent fill stays — it sits over artwork and has to let it through,
+			// which a raised plane's opaque fill would not.
+			className={`squircle pointer-events-none absolute right-2 bottom-2 inline-flex items-center justify-center gap-1.5 rounded-[8px] ${
 				label ? "px-2" : ""
 			} ${className}`}
 			style={{

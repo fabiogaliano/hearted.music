@@ -25,7 +25,11 @@ export function CoverFlowEmptyState({
 		>
 			<div
 				aria-hidden="true"
-				className="theme-border-color theme-text-muted grid size-[120px] place-items-center border border-dashed text-4xl"
+				// Dashed edge stays — it's what marks this as an empty slot rather than
+				// a surface. The colour moves to the plane's ink mix: --t-border is
+				// derived against the page bg, and the shelf sits on a plane now, where
+				// it all but disappears.
+				className="plane-rule theme-text-muted squircle grid size-[120px] place-items-center rounded-[14px] border border-dashed text-4xl"
 			>
 				♫
 			</div>

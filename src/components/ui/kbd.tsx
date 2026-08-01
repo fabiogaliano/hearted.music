@@ -5,7 +5,10 @@ function Kbd({ className, style, ...props }: React.ComponentProps<"kbd">) {
 		<kbd
 			data-slot="kbd"
 			className={cn(
-				"pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-sm border px-1 font-sans text-xs font-medium select-none",
+				// Keeps its border and its own --kbd-* tokens: a key cap is meant to
+				// read as an edged physical key, not a raised plane. Only the corner
+				// geometry joins the new language.
+				"squircle pointer-events-none inline-flex h-5 w-fit min-w-5 items-center justify-center gap-1 rounded-[6px] border px-1 font-sans text-xs font-medium select-none",
 				"[&_svg:not([class*='size-'])]:size-3",
 				className,
 			)}

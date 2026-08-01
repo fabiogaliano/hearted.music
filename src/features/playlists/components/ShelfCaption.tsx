@@ -122,7 +122,10 @@ export function ShelfCaption({
 						type="button"
 						onClick={() => onRemove(playlist.id)}
 						aria-label="Remove from matching"
-						className="group/match theme-border-color relative inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center rounded-full border bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-text) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:bg-(--t-surface-dim) active:scale-[0.96]"
+						// chip-raised-hover replaces a hover to --t-surface-dim. That moved
+						// darker and cooler, the opposite of the direction every hover in the
+						// vision travels — the plane lifts toward the light.
+						className="group/match chip-raised chip-raised-hover squircle focus-edge relative inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center rounded-full px-4 text-[11px] tracking-[0.14em] text-(--t-text) uppercase transition-[color,background-color,transform] duration-150 active:scale-[0.96]"
 						style={{ fontFamily: fonts.body }}
 					>
 						<span className="flex items-center gap-1.5 transition-opacity duration-150 group-hover/match:opacity-0 motion-reduce:transition-none">
@@ -138,7 +141,7 @@ export function ShelfCaption({
 					<button
 						type="button"
 						onClick={() => onAdd(playlist.id)}
-						className="theme-border-color inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border bg-(--t-surface) px-4 text-[11px] tracking-[0.14em] text-(--t-primary) uppercase transition-[color,border-color,background-color,transform] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.96]"
+						className="chip-raised squircle focus-edge inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full px-4 text-[11px] tracking-[0.14em] text-(--t-primary) uppercase transition-[color,background-color,transform] duration-150 hover:bg-(--t-primary) hover:text-(--t-text-on-primary) active:scale-[0.96]"
 						style={{ fontFamily: fonts.body }}
 					>
 						<span aria-hidden="true">＋</span> Add to matching

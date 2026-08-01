@@ -42,7 +42,7 @@ function PrivacyPage() {
 				</aside>
 
 				<div className="max-w-3xl flex-1 space-y-12 px-8 pt-10 pb-32 md:px-12">
-					<div className="theme-surface-bg theme-border-color rounded-[8px] border p-6">
+					<div className="surface-raised squircle rounded-[14px] p-6">
 						<p className="theme-text-muted mb-3 text-xs font-medium tracking-widest uppercase">
 							The short version
 						</p>

@@ -357,7 +357,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 							aria-labelledby={packConfirmTitleId}
 							aria-describedby={packConfirmDescriptionId}
 							tabIndex={-1}
-							className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-[340px] border p-6 outline-none"
+							className="surface-raised squircle dialog-content relative w-full max-w-[340px] rounded-[16px] p-6 outline-none"
 						>
 							<p
 								id={packConfirmTitleId}

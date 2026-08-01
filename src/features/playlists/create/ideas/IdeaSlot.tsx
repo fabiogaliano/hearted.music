@@ -172,7 +172,7 @@ export function IdeaSlot({
 						// overflow-hidden so the active option's highlight is cut by the
 						// squircle instead of squaring off the card's corners. The
 						// listbox's own UA focus ring is dropped globally (styles.css).
-						className="theme-border-color theme-surface-bg absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col overflow-hidden border py-1 not-italic shadow-sm"
+						className="surface-raised absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col overflow-hidden py-1 not-italic shadow-sm"
 						style={{
 							borderRadius: 12,
 							// @ts-expect-error -- corner-shape not in CSS typings

@@ -579,7 +579,10 @@ export function QueueCardContent({
 					onModeChange={onModeChange}
 				/>
 				<div
-					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
+					// No -hover: a status card is read, not pressed. The raised fill
+					// replaces the hairline that used to be the only thing separating it
+					// from the page.
+					className="surface-raised squircle flex flex-col items-start gap-4 rounded-[14px] p-6"
 					role="status"
 					aria-label={
 						loosenStrictness
@@ -645,7 +648,7 @@ export function QueueCardContent({
 					onModeChange={onModeChange}
 				/>
 				<div
-					className="theme-surface-bg theme-border-color flex flex-col items-start gap-4 border p-6"
+					className="surface-raised squircle flex flex-col items-start gap-4 rounded-[14px] p-6"
 					role="status"
 					aria-label="Card load error"
 				>

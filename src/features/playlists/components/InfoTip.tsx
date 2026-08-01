@@ -122,7 +122,10 @@ export function InfoTip({ label, children, tone = "info" }: InfoTipProps) {
 					<div
 						id={id}
 						role="tooltip"
-						className="theme-surface-bg theme-border-color w-[min(16rem,72vw)] border p-3 text-xs leading-snug text-pretty"
+						// The layered shadow already separates it from whatever it floats
+						// over, so the hairline was doing the job twice. Not -hover: a
+						// tooltip is read, never pointed at.
+						className="surface-raised squircle w-[min(16rem,72vw)] rounded-[12px] p-3 text-xs leading-snug text-pretty"
 						style={{
 							fontFamily: fonts.body,
 							color: "var(--t-text-muted)",

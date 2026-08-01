@@ -179,7 +179,12 @@ export function Landing({
 
 					{/* UI Preview Container */}
 					<div
-						className="theme-bg theme-border-color rounded-sm border p-6 lg:p-8"
+						// Stays on theme-bg, NOT the raised plane: this sits inside a
+						// theme-surface-bg band, so it is recessed relative to its parent,
+						// not raised off it — a raised fill here would land within a
+						// rounding error of the band and the frame would disappear. The
+						// bg/surface step plus the shadow carry it, so the hairline goes.
+						className="squircle rounded-[18px] p-6 theme-bg lg:p-8"
 						style={{
 							boxShadow:
 								"0 1px 3px color-mix(in srgb, var(--t-text) 8%, transparent), 0 4px 12px color-mix(in srgb, var(--t-text) 4%, transparent)",

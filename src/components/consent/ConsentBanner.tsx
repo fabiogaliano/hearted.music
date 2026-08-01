@@ -54,7 +54,7 @@ export function ConsentBanner() {
 				aria-labelledby={titleId}
 				aria-describedby={descId}
 				onKeyDown={handleKeyDown}
-				className="theme-surface-bg theme-border-color dialog-content w-full max-w-md border p-8"
+				className="surface-raised squircle dialog-content w-full max-w-md rounded-[16px] p-8"
 			>
 				<p
 					className="theme-text-muted text-xs tracking-widest uppercase"

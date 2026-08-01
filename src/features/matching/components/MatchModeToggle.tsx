@@ -66,8 +66,12 @@ export const MatchModeToggle = memo(function MatchModeToggle({
 								if (isSelected) return;
 								onModeChange(value);
 							}}
+							// focus-underline, not a ring: this is bare display type with no
+							// box of its own, so a ring would draw a shape the control doesn't
+							// have. It had no focus style at all before — the only keyboard
+							// path between orientations was invisible.
 							className={[
-								"py-1 text-2xl font-extralight leading-none transition-[opacity,color] duration-150 ease-out",
+								"focus-underline py-1 text-2xl font-extralight leading-none transition-[opacity,color] duration-150 ease-out",
 								stateClasses,
 							].join(" ")}
 							style={{ fontFamily: fonts.display }}

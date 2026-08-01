@@ -67,7 +67,7 @@ function HoverTip({ children, tip }: { children: ReactNode; tip: string }) {
 				createPortal(
 					<span
 						role="tooltip"
-						className="theme-surface-bg theme-border-color block max-w-[16rem] border p-2.5 text-xs leading-snug text-pretty"
+						className="surface-raised squircle block max-w-[16rem] rounded-[12px] p-2.5 text-xs leading-snug text-pretty"
 						style={{
 							position: "fixed",
 							top: pos.top,
@@ -110,7 +110,8 @@ function Chip({
 }) {
 	return (
 		<HoverTip tip={tip}>
-			<span className="theme-border-color inline-flex items-center gap-1.5 rounded-full border bg-(--t-bg) px-2.5 py-1">
+			{/* Static read-only facet chip — the raised fill, no hover arm. */}
+			<span className="chip-raised squircle inline-flex items-center gap-1.5 rounded-full px-2.5 py-1">
 				<SummaryIcon icon={icon} />
 				<span
 					className="text-xs theme-text"

@@ -53,12 +53,15 @@ export function TargetToggle({
 				setHovering(false);
 				setRemoveSuppressed(false);
 			}}
-			className={`theme-border-color inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center gap-1.5 self-start rounded-full border px-4 text-[11px] tracking-[0.14em] uppercase transition-[color,border-color,background-color,transform] duration-200 ease-[var(--ease-out-quart)] active:scale-[0.96] motion-reduce:transition-none ${
+			// Both states share the raised chip and differ only in what hover means:
+			// already-in-matching lifts within the material (chip-raised-hover), while
+			// not-yet-added commits to the accent. Same split as ShelfCaption's pair.
+			className={`chip-raised squircle focus-edge inline-flex min-h-10 min-w-[150px] cursor-pointer items-center justify-center gap-1.5 self-start rounded-full px-4 text-[11px] tracking-[0.14em] uppercase transition-[color,background-color,transform] duration-200 ease-[var(--ease-out-quart)] active:scale-[0.96] motion-reduce:transition-none ${
 				pulse ? "xpl-pulse" : ""
 			} ${
 				isTarget
-					? "bg-(--t-surface) text-(--t-text) hover:bg-(--t-surface-dim)"
-					: "bg-(--t-surface) text-(--t-primary) hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
+					? "chip-raised-hover text-(--t-text)"
+					: "text-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
 			}`}
 			style={{ fontFamily: fonts.body }}
 		>

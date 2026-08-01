@@ -121,7 +121,7 @@ export function WaitlistWelcomeDialog({
 				aria-describedby={descriptionId}
 				tabIndex={-1}
 				data-state={closing ? "closing" : undefined}
-				className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-[480px] border p-8 outline-none"
+				className="surface-raised squircle dialog-content relative w-full max-w-[480px] rounded-[16px] p-8 outline-none"
 			>
 				<Button
 					variant="icon"
@@ -169,7 +169,9 @@ export function WaitlistWelcomeDialog({
 							style={{ animationDelay: "180ms" }}
 						>
 							<div
-								className="theme-border-color theme-text rounded-lg border px-4 py-3 text-center text-sm text-pretty"
+								// Chip tier: it's a box inside the dialog's plane, so it steps
+								// down from it the way a studio control steps down from a panel.
+								className="theme-text chip-raised squircle rounded-[10px] px-4 py-3 text-center text-sm text-pretty"
 								style={{ fontFamily: fonts.body }}
 							>
 								{content.highlight}

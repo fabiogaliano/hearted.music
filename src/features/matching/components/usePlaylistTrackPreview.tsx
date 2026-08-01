@@ -473,7 +473,10 @@ export function usePlaylistTrackPreview({
 												},
 											}
 								}
-								className="theme-surface-bg fixed z-[60] flex flex-col overflow-y-auto overscroll-contain rounded-xl px-4 py-3"
+								// Shape only. The raised fill is deliberately not used: it declares
+								// a `transition` shorthand that would fight this card's framer
+								// scale, and a floating card has no plane to be raised off anyway.
+								className="theme-surface-bg squircle fixed z-[60] flex flex-col overflow-y-auto overscroll-contain rounded-xl px-4 py-3"
 								style={{
 									left: position.left,
 									top: position.top,

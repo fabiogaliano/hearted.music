@@ -38,7 +38,7 @@ function LogoutPage() {
 			<form action={handleLogout.url} method="POST" onSubmit={handleSubmit}>
 				<button
 					type="submit"
-					className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+					className="theme-primary-action squircle cursor-pointer rounded-[10px] px-4 py-2 text-sm tracking-widest uppercase transition-opacity duration-150 hover:opacity-90"
 				>
 					Confirm Logout
 				</button>

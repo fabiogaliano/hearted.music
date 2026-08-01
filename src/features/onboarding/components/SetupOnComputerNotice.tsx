@@ -44,7 +44,7 @@ export function SetupOnComputerNoticeGate({
 export function SetupOnComputerNotice() {
 	return (
 		<div
-			className="theme-border-color theme-text-muted flex items-start gap-2 rounded-lg border px-4 py-3 text-sm leading-relaxed"
+			className="theme-text-muted chip-raised squircle flex items-start gap-2 rounded-[10px] px-4 py-3 text-sm leading-relaxed"
 			role="note"
 		>
 			<span className="flex h-[1lh] shrink-0 items-center">

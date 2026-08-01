@@ -131,7 +131,10 @@ export function AuthField({
 				disabled={disabled}
 				minLength={minLength}
 				ref={inputRef}
-				className="theme-surface-bg theme-border-color theme-text w-full rounded-sm border px-3 py-2.5 text-base outline-none transition-[border-color,opacity] duration-200 focus:outline-none disabled:opacity-50"
+				// The studio's field recipe (.mf-field in playlist-ui.css): chip-tier
+				// fill, radius 8 + squircle, and a transparent border that turns primary
+				// on focus rather than a ring drawn off the shape.
+				className="theme-text chip-raised squircle w-full rounded-[8px] px-3 py-2.5 text-base outline-none transition-[border-color,background-color,opacity] duration-200 focus:border-(--t-primary) focus:outline-none disabled:opacity-50"
 				style={{ fontFamily: fonts.body }}
 			/>
 			{helper && <p className="theme-text-muted mt-2 text-[11px]">{helper}</p>}
@@ -151,11 +154,11 @@ export function AuthButton({
 	const variantClass =
 		variant === "primary"
 			? "theme-primary-action"
-			: "theme-border-color theme-text border theme-surface-bg";
+			: "theme-text chip-raised chip-raised-hover focus-edge";
 	return (
 		<button
 			type="button"
-			className={`${variantClass} w-full cursor-pointer rounded-sm px-4 py-3 text-xs tracking-widest uppercase transition-[opacity,transform] duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ""}`}
+			className={`${variantClass} squircle w-full cursor-pointer rounded-[10px] px-4 py-3 text-xs tracking-widest uppercase transition-[opacity,transform] duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${className ?? ""}`}
 			style={{ fontFamily: fonts.body }}
 			{...rest}
 		/>

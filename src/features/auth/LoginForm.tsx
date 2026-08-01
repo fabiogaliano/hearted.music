@@ -196,7 +196,7 @@ function GoogleButton({
 			type="button"
 			disabled={disabled}
 			onClick={onClick}
-			className="theme-border-color theme-text theme-surface-bg relative flex w-full cursor-pointer items-center justify-center gap-3 rounded-sm border px-4 py-3.5 text-xs tracking-widest uppercase transition-[opacity,transform] duration-200 active:scale-[0.98] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+			className="theme-text chip-raised chip-raised-hover squircle focus-edge relative flex w-full cursor-pointer items-center justify-center gap-3 rounded-[10px] px-4 py-3.5 text-xs tracking-widest uppercase transition-[transform] duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 			style={{ fontFamily: fonts.body }}
 		>
 			<span className="absolute left-4 inline-flex">
@@ -240,7 +240,7 @@ function ToggleBar({
 			onClick={onClick}
 			disabled={disabled}
 			aria-expanded={expanded}
-			className="theme-border-color theme-text theme-surface-bg group relative flex w-full cursor-pointer items-center justify-center gap-3 rounded-sm border px-4 py-3.5 text-xs tracking-widest uppercase transition-[opacity,transform] duration-200 active:scale-[0.98] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+			className="theme-text chip-raised chip-raised-hover squircle focus-edge group relative flex w-full cursor-pointer items-center justify-center gap-3 rounded-[10px] px-4 py-3.5 text-xs tracking-widest uppercase transition-[transform] duration-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
 			style={{ fontFamily: fonts.body }}
 		>
 			{!expanded && (

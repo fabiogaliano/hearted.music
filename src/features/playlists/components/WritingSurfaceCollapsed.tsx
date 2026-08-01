@@ -27,7 +27,7 @@ function AddButton({
 		<button
 			type="button"
 			onClick={onClick}
-			className="theme-border-color inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full border bg-(--t-surface) px-3 py-1 text-xs text-(--t-primary) transition-[color,border-color,background-color] duration-150 hover:border-(--t-primary) hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
+			className="chip-raised squircle focus-edge inline-flex w-fit cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs text-(--t-primary) transition-[color,background-color] duration-150 hover:bg-(--t-primary) hover:text-(--t-text-on-primary)"
 			style={{ fontFamily: fonts.body }}
 		>
 			<PlusIcon size={12} weight="bold" aria-hidden />

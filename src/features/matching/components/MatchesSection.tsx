@@ -90,7 +90,8 @@ export const MatchesSection = memo(function MatchesSection({
 						</p>
 						{isDemo && (
 							<span
-								className="theme-surface-bg theme-text-muted rounded-full px-2 py-0.5 text-xs tracking-widest uppercase"
+								// A static tag, so no -hover.
+								className="chip-raised squircle theme-text-muted rounded-full px-2 py-0.5 text-xs tracking-widest uppercase"
 								style={{ fontFamily: fonts.body }}
 							>
 								Demo

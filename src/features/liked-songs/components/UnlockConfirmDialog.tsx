@@ -108,7 +108,7 @@ export function UnlockConfirmDialog({
 				aria-labelledby={titleId}
 				aria-describedby={descriptionId}
 				tabIndex={-1}
-				className="theme-surface-bg theme-border-color dialog-content relative w-full max-w-md border p-6 outline-none"
+				className="surface-raised squircle dialog-content relative w-full max-w-md rounded-[16px] p-6 outline-none"
 			>
 				{flowState.step === "confirming" && (
 					<ConfirmContent

@@ -124,7 +124,9 @@ export function RefreshBanner({
 								}
 					}
 					transition={{ duration: 0.25, ease: [0.165, 0.84, 0.44, 1] }}
-					className="theme-surface-bg theme-text mt-3 flex w-full items-center justify-between overflow-hidden px-4 py-2.5"
+					// It's a button, so it gets the pressable plane and a focus edge it
+					// never had — a flat full-bleed band gave no sign it was clickable.
+					className="theme-text surface-raised surface-raised-hover squircle focus-edge mt-3 flex w-full items-center justify-between overflow-hidden rounded-[12px] px-4 py-2.5"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-xs">Real matches are ready</span>
