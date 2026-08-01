@@ -3,9 +3,9 @@
  *
  * Visually a solid, hearted-style bleed row (picked treatment). The remove
  * button has a ≥40px touch target via py-3 padding so small clicks still land.
- * A transient "just added" highlight pulse can be triggered by the parent via
- * the `isNew` prop (respects useReducedMotion — collapses to instant opacity
- * when motion is disabled).
+ * A song explicitly added from the suggestions tray enters from that tray's
+ * direction. Filter-produced rows do not move because a filter has no spatial
+ * direction. Reduced motion disables the transfer motion.
  *
  * The cover doubles as an in-row Spotify preview (SpotifyPlaybackCover) when
  * `playback` is supplied and the song has a `spotifyId` — otherwise it falls
@@ -29,7 +29,7 @@ interface PreviewSongRowProps {
 	/** Flip the pin: promote to a manual pin or release it (see PreviewList).
 	 *  Omitted → the pin toggle is not rendered (e.g. isolated row stories). */
 	onTogglePin?: (id: string) => void;
-	/** Briefly highlight the row when it first enters the preview. */
+	/** Enter upward when the user explicitly transferred this song from suggestions. */
 	isNew?: boolean;
 	/** Shared "one preview at a time" coordinator; see PreviewList/CreatePlaylistScreen.
 	 *  Omitted → cover renders as a plain static image (no play affordance). */
@@ -48,30 +48,19 @@ export function PreviewSongRow({
 
 	return (
 		<motion.div
-			initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+			initial={
+				isNew && !prefersReducedMotion
+					? { transform: "translateY(6px)" }
+					: false
+			}
 			animate={
-				prefersReducedMotion
-					? { opacity: 1 }
-					: isNew
-						? {
-								opacity: [0, 1, 1],
-								y: [4, 0, 0],
-								transition: {
-									opacity: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-									y: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
-								},
-							}
-						: { opacity: 1, y: 0 }
+				isNew && !prefersReducedMotion
+					? { transform: "translateY(0)" }
+					: undefined
 			}
-			exit={
-				prefersReducedMotion
-					? { opacity: 0 }
-					: { opacity: 0, y: 4, transition: { duration: 0.15, ease: "easeIn" } }
-			}
-			className="theme-border-color -mx-3 flex items-center gap-4 border-b px-3 py-2.5 last:border-b-0"
+			transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
+			className="-mx-3 flex items-center gap-4 px-3 py-2"
 		>
-			{/* Album art — plays an inline Spotify preview when a coordinator and
-			spotifyId are both present; otherwise a plain static cover. */}
 			{playback && song.spotifyId ? (
 				<SpotifyPlaybackCover
 					playbackId={song.id}
@@ -139,7 +128,7 @@ export function PreviewSongRow({
 					title={isPinned ? "Pinned — kept in your playlist" : "Pin this song"}
 					className={cn(
 						"flex-none cursor-pointer rounded-full p-2",
-						"transition-opacity duration-150 active:scale-[0.96]",
+						"transition-[opacity,transform] duration-150 active:scale-[0.96]",
 						"focus-visible:outline-2 focus-visible:outline-offset-2",
 						"[outline-color:var(--t-primary)]",
 						isPinned
@@ -170,7 +159,7 @@ export function PreviewSongRow({
 				aria-label={`Remove ${song.name}`}
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
-					"transition-opacity duration-150 hover:opacity-70 active:scale-[0.96]",
+					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
 					"focus-visible:outline-2 focus-visible:outline-offset-2",
 					"[outline-color:var(--t-primary)]",
 				)}

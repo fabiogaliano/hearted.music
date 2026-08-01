@@ -17,7 +17,6 @@
  */
 
 import { PlusIcon, XIcon } from "@phosphor-icons/react";
-import { motion, useReducedMotion } from "framer-motion";
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
@@ -40,24 +39,8 @@ export function SuggestionRow({
 	onDismiss,
 	playback,
 }: SuggestionRowProps) {
-	const prefersReducedMotion = useReducedMotion();
-
 	return (
-		<motion.div
-			initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={
-				prefersReducedMotion
-					? { opacity: 0 }
-					: { opacity: 0, y: 4, transition: { duration: 0.15, ease: "easeIn" } }
-			}
-			className={cn(
-				// Bleed row idiom — same negative margin pattern as other rows
-				"-mx-3 flex items-center gap-4 border-b px-3 py-2.5 last:border-b-0",
-				// Distinct suggestion treatment: muted border, slightly faded text
-				"theme-border-color",
-			)}
-		>
+		<div className="-mx-3 flex items-center gap-4 px-3 py-2.5">
 			{/* Album art — dimmed vs. preview rows to reinforce secondary status.
 			The dimming only applies at rest (not while actively playing), so an
 			active preview here reads at full strength like a picked row's cover. */}
@@ -131,7 +114,7 @@ export function SuggestionRow({
 				aria-label={`Dismiss ${song.name}`}
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
-					"transition-opacity duration-150 hover:opacity-70 active:scale-[0.96]",
+					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
 					"focus-visible:outline-2 focus-visible:outline-offset-2",
 					"[outline-color:var(--t-primary)]",
 				)}
@@ -154,7 +137,7 @@ export function SuggestionRow({
 				aria-label={`Add ${song.name} to playlist`}
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
-					"transition-opacity duration-150 hover:opacity-70 active:scale-[0.96]",
+					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
 					"focus-visible:outline-2 focus-visible:outline-offset-2",
 					"[outline-color:var(--t-primary)]",
 				)}
@@ -168,6 +151,6 @@ export function SuggestionRow({
 			>
 				<PlusIcon size={14} weight="regular" aria-hidden />
 			</button>
-		</motion.div>
+		</div>
 	);
 }

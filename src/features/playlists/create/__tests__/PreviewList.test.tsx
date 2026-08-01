@@ -74,18 +74,23 @@ describe("PreviewList", () => {
 		expect(screen.getByText(/no songs matched/i)).toBeInTheDocument();
 	});
 
-	it("splits songs into Kept and Matched zones based on pinnedSongIds", () => {
+	it("renders pinned songs with a filled pin and unpinned with an outline pin", () => {
 		render(
 			<PreviewList
 				songs={SONGS}
 				isLoading={false}
 				onRemoveSong={vi.fn()}
 				onRestoreSong={vi.fn()}
+				onTogglePin={vi.fn()}
 				pinnedSongIds={["s1"]}
 			/>,
 		);
-		expect(screen.getByText(/kept/i)).toBeInTheDocument();
-		expect(screen.getByText(/matched/i)).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Unpin Song Alpha" }),
+		).toHaveAttribute("aria-pressed", "true");
+		expect(
+			screen.getByRole("button", { name: "Pin Song Beta" }),
+		).toHaveAttribute("aria-pressed", "false");
 	});
 
 	it("has an aria-live polite region", () => {
@@ -136,11 +141,22 @@ describe("PreviewList", () => {
 		await user.click(removeBtn);
 
 		expect(toast).toHaveBeenCalledWith(
-			"Removed Song Alpha",
+			expect.anything(),
 			expect.objectContaining({
 				action: expect.objectContaining({ label: "Undo" }),
 			}),
 		);
+
+		// The message is a node (verb, song and artist are styled apart), so the
+		// load-bearing part — that the toast identifies the song that just left,
+		// artist included — is asserted on its rendered text, not the argument.
+		const [message] = vi.mocked(toast).mock.calls[0];
+		// Own container: the list under test still has its own "Song Alpha" row.
+		const toastRender = render(message as React.ReactElement, {
+			container: document.body.appendChild(document.createElement("div")),
+		});
+		expect(toastRender.getByText("Song Alpha")).toBeInTheDocument();
+		expect(toastRender.getByText("Test Artist")).toBeInTheDocument();
 	});
 
 	it("calls onRestoreSong when Undo is invoked via the toast action", async () => {

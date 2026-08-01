@@ -44,21 +44,33 @@ import { useExtensionConnection } from "@/lib/extension/connection/useExtensionC
 import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 
-export type SpotifyGateState =
-	| "checking"
-	| "ok"
-	| "extension-unavailable"
-	| "reconnect-required"
-	| "account-mismatch";
+/**
+ * A discriminated union, not a bare state string + a separately-nullable
+ * profile: the old shape let `gateState === "account-mismatch"` and
+ * `mismatchProfile === null` co-occur in a caller's types even though
+ * gateStatusForVerdict below never actually produces that pairing, so
+ * CreateBar had to carry a runtime fallback for an "impossible" case that
+ * fallback then got wrong (it re-paired via ReconnectPrompt — see invariant
+ * 2). Tying `mismatchProfile` to the `"account-mismatch"` arm here makes that
+ * pairing the only one the type checker allows, so CreateBar can't
+ * accidentally reach the profile without also being in that state.
+ */
+export type SpotifyGateStatus =
+	| { gateState: "checking" }
+	| { gateState: "ok" }
+	| { gateState: "extension-unavailable" }
+	| { gateState: "reconnect-required" }
+	| {
+			gateState: "account-mismatch";
+			/** The Spotify identity the extension is actually signed in as, for
+			 * the "wrong account" copy. */
+			mismatchProfile: ExtensionSpotifyProfile;
+	  };
 
 export type SpotifyGateFailure = "extension-unavailable" | "reconnect-required";
 
 export interface SpotifyGate {
-	gateState: SpotifyGateState;
-	/** Populated only when `gateState === "account-mismatch"` — the Spotify
-	 * identity the extension is actually signed in as, for the "wrong account"
-	 * copy. Never null while mismatched (verdict.ts always attaches it). */
-	mismatchProfile: ExtensionSpotifyProfile | null;
+	gate: SpotifyGateStatus;
 	/** Re-run the gate detection now; resolves once the check settles. */
 	recheck: () => Promise<void>;
 	/**
@@ -84,19 +96,22 @@ export interface SpotifyGate {
 	reportGateFailure: (failure: SpotifyGateFailure) => void;
 }
 
-function gateStateForVerdict(verdict: ConnectionVerdict): SpotifyGateState {
+function gateStatusForVerdict(verdict: ConnectionVerdict): SpotifyGateStatus {
 	switch (verdict.kind) {
 		case "checking":
-			return "checking";
+			return { gateState: "checking" };
 		case "extension-missing":
-			return "extension-unavailable";
+			return { gateState: "extension-unavailable" };
 		case "spotify-disconnected":
-			return "reconnect-required";
+			return { gateState: "reconnect-required" };
 		case "mismatch":
 			// Invariant 2: mismatch outranks unpaired, and — unlike unpaired,
 			// which the studio can safely ignore (see the case below) — a
 			// mismatch is not silently repairable and must block publishing.
-			return "account-mismatch";
+			return {
+				gateState: "account-mismatch",
+				mismatchProfile: verdict.extensionProfile,
+			};
 		case "unpaired":
 		case "unverifiable":
 			// Both are pairing-adjacent states (the hearted apiToken, not the
@@ -108,12 +123,12 @@ function gateStateForVerdict(verdict: ConnectionVerdict): SpotifyGateState {
 			// correctly publishing to the RIGHT Spotify account, so both stay
 			// "ok" here even though they're now genuinely reachable verdicts
 			// (with a real linkedSpotifyId threaded in, unlike before).
-			return "ok";
+			return { gateState: "ok" };
 		case "ok":
-			return "ok";
+			return { gateState: "ok" };
 		default:
 			verdict satisfies never;
-			return "ok";
+			return { gateState: "ok" };
 	}
 }
 
@@ -141,9 +156,7 @@ export function useSpotifyGate(linkedSpotifyId: string | null): SpotifyGate {
 	);
 
 	return {
-		gateState: gateStateForVerdict(verdict),
-		mismatchProfile:
-			verdict.kind === "mismatch" ? verdict.extensionProfile : null,
+		gate: gateStatusForVerdict(verdict),
 		recheck,
 		reportGateFailure,
 	};

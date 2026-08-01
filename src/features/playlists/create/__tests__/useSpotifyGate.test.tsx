@@ -100,14 +100,14 @@ describe("useSpotifyGate — mount check", () => {
 	it("starts in checking", () => {
 		mockIsExtensionInstalled.mockResolvedValue(false);
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		expect(result.current.gateState).toBe("checking");
+		expect(result.current.gate.gateState).toBe("checking");
 	});
 
 	it("resolves to extension-unavailable when not installed", async () => {
 		mockIsExtensionInstalled.mockResolvedValue(false);
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
 		await waitFor(() =>
-			expect(result.current.gateState).toBe("extension-unavailable"),
+			expect(result.current.gate.gateState).toBe("extension-unavailable"),
 		);
 		expect(mockGetSpotifyAccountStatus).not.toHaveBeenCalled();
 	});
@@ -119,7 +119,7 @@ describe("useSpotifyGate — mount check", () => {
 		);
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
 		await waitFor(() =>
-			expect(result.current.gateState).toBe("reconnect-required"),
+			expect(result.current.gate.gateState).toBe("reconnect-required"),
 		);
 	});
 
@@ -127,7 +127,7 @@ describe("useSpotifyGate — mount check", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(connectedStatus());
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 	});
 });
 
@@ -159,8 +159,12 @@ describe("useSpotifyGate — account mismatch (findings 1+2)", () => {
 		const { result } = renderHook(() => useSpotifyGate(LINKED_SPOTIFY_ID), {
 			wrapper,
 		});
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
-		expect(result.current.mismatchProfile).toBeNull();
+		// gate is the exact { gateState: "ok" } shape — the discriminated union
+		// makes a stray mismatchProfile alongside "ok" unrepresentable, so this
+		// is the strongest available assertion that none is attached.
+		await waitFor(() =>
+			expect(result.current.gate).toEqual({ gateState: "ok" }),
+		);
 	});
 
 	it("resolves to account-mismatch — not ok — when the extension is signed into a DIFFERENT Spotify account (the core regression)", async () => {
@@ -178,14 +182,17 @@ describe("useSpotifyGate — account mismatch (findings 1+2)", () => {
 			wrapper,
 		});
 		await waitFor(() =>
-			expect(result.current.gateState).toBe("account-mismatch"),
+			expect(result.current.gate.gateState).toBe("account-mismatch"),
 		);
 		// Never "ok" — this is the exact state that must block CreateBar's CTA.
-		expect(result.current.gateState).not.toBe("ok");
-		expect(result.current.mismatchProfile).toEqual({
-			spotifyId: "someone-elses-spotify-id",
-			displayName: "not fabio",
-			avatarUrl: null,
+		expect(result.current.gate.gateState).not.toBe("ok");
+		expect(result.current.gate).toEqual({
+			gateState: "account-mismatch",
+			mismatchProfile: {
+				spotifyId: "someone-elses-spotify-id",
+				displayName: "not fabio",
+				avatarUrl: null,
+			},
 		});
 	});
 
@@ -204,7 +211,7 @@ describe("useSpotifyGate — account mismatch (findings 1+2)", () => {
 		const { result } = renderHook(() => useSpotifyGate(LINKED_SPOTIFY_ID), {
 			wrapper,
 		});
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 	});
 
 	it("unverifiable (profile missing) stays ok for a linked account, per invariant 6 — never a hard conflict", async () => {
@@ -215,7 +222,7 @@ describe("useSpotifyGate — account mismatch (findings 1+2)", () => {
 		const { result } = renderHook(() => useSpotifyGate(LINKED_SPOTIFY_ID), {
 			wrapper,
 		});
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 	});
 });
 
@@ -246,7 +253,7 @@ describe("useSpotifyGate — anti-flicker (invariant 4)", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 
 			// Hang the next fetch so we can observe the mid-flight state — this is
 			// exactly the "transient fetching state" the invariant is about:
@@ -268,14 +275,14 @@ describe("useSpotifyGate — anti-flicker (invariant 4)", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 
 			await act(async () => {
 				pending.resolve(connectedStatus());
 				await recheckPromise;
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 		} finally {
 			vi.useRealTimers();
 		}
@@ -290,7 +297,7 @@ describe("useSpotifyGate — anti-flicker (invariant 4)", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 
 			const pending = deferred<SpotifyAccountStatus>();
 			mockGetSpotifyAccountStatus.mockReturnValueOnce(pending.promise);
@@ -305,7 +312,7 @@ describe("useSpotifyGate — anti-flicker (invariant 4)", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 
 			await act(async () => {
 				pending.resolve(connectedStatus({ connected: false }));
@@ -316,7 +323,7 @@ describe("useSpotifyGate — anti-flicker (invariant 4)", () => {
 			// between (the mid-flight assertion above proved that genuinely, not
 			// vacuously), and this final value is the real new verdict, not a
 			// stale ok either.
-			expect(result.current.gateState).toBe("reconnect-required");
+			expect(result.current.gate.gateState).toBe("reconnect-required");
 		} finally {
 			vi.useRealTimers();
 		}
@@ -333,7 +340,7 @@ describe("useSpotifyGate — refetchOnWindowFocus", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 			const callsAtOk = mockIsExtensionInstalled.mock.calls.length;
 
 			// The shared query's staleTime (3s) gates refetchOnWindowFocus — focus
@@ -355,7 +362,7 @@ describe("useSpotifyGate — refetchOnWindowFocus", () => {
 			expect(mockIsExtensionInstalled.mock.calls.length).toBeGreaterThan(
 				callsAtOk,
 			);
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 		} finally {
 			vi.useRealTimers();
 		}
@@ -370,7 +377,7 @@ describe("useSpotifyGate — refetchOnWindowFocus", () => {
 			await act(async () => {
 				await vi.advanceTimersByTimeAsync(0);
 			});
-			expect(result.current.gateState).toBe("ok");
+			expect(result.current.gate.gateState).toBe("ok");
 			const callsAtOk = mockIsExtensionInstalled.mock.calls.length;
 
 			act(() => {
@@ -393,7 +400,7 @@ describe("useSpotifyGate — reportGateFailure", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(connectedStatus());
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 
 		const other = renderHook(() => useExtensionConnection(null), { wrapper });
 		await waitFor(() =>
@@ -404,7 +411,7 @@ describe("useSpotifyGate — reportGateFailure", () => {
 			result.current.reportGateFailure("reconnect-required");
 		});
 
-		expect(result.current.gateState).toBe("reconnect-required");
+		expect(result.current.gate.gateState).toBe("reconnect-required");
 		await waitFor(() =>
 			expect(other.result.current.verdict).toEqual({
 				kind: "spotify-disconnected",
@@ -416,12 +423,12 @@ describe("useSpotifyGate — reportGateFailure", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(connectedStatus());
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 
 		act(() => {
 			result.current.reportGateFailure("reconnect-required");
 		});
-		expect(result.current.gateState).toBe("reconnect-required");
+		expect(result.current.gate.gateState).toBe("reconnect-required");
 
 		// reportSpotifyAuthFailure invalidates the query, which triggers a
 		// confirming refetch. The extension's local hasToken check can't see a
@@ -431,14 +438,14 @@ describe("useSpotifyGate — reportGateFailure", () => {
 		await waitFor(() =>
 			expect(mockGetSpotifyAccountStatus.mock.calls.length).toBeGreaterThan(1),
 		);
-		expect(result.current.gateState).toBe("reconnect-required");
+		expect(result.current.gate.gateState).toBe("reconnect-required");
 	});
 
 	it("extension-unavailable is a synchronous push — the gate flips immediately, not after a refetch", async () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(connectedStatus());
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 
 		// Freeze the extension mocks so any refetch this call might trigger
 		// would never resolve within the test — proving the flip doesn't depend
@@ -454,7 +461,7 @@ describe("useSpotifyGate — reportGateFailure", () => {
 		// via notifyManager's setTimeout(…, 0), so this is a waitFor, but nothing
 		// here depends on the frozen `isExtensionInstalled` mock ever resolving.
 		await waitFor(() =>
-			expect(result.current.gateState).toBe("extension-unavailable"),
+			expect(result.current.gate.gateState).toBe("extension-unavailable"),
 		);
 	});
 
@@ -462,13 +469,13 @@ describe("useSpotifyGate — reportGateFailure", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(connectedStatus());
 		const { result } = renderHook(() => useSpotifyGate(null), { wrapper });
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 
 		act(() => {
 			result.current.reportGateFailure("extension-unavailable");
 		});
 		await waitFor(() =>
-			expect(result.current.gateState).toBe("extension-unavailable"),
+			expect(result.current.gate.gateState).toBe("extension-unavailable"),
 		);
 
 		// The user reinstalled/re-enabled the extension in another tab and hits
@@ -482,6 +489,6 @@ describe("useSpotifyGate — reportGateFailure", () => {
 			await result.current.recheck();
 		});
 
-		await waitFor(() => expect(result.current.gateState).toBe("ok"));
+		await waitFor(() => expect(result.current.gate.gateState).toBe("ok"));
 	});
 });

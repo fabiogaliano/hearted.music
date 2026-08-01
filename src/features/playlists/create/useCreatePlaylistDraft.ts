@@ -147,10 +147,20 @@ export interface CreatePlaylistDraftState {
 	 */
 	committedConfig: CreatePlaylistDraftConfig;
 	/**
-	 * True while a config edit is still pending debounce — the preview is stale
-	 * relative to `config`. Create should be blocked until this settles.
+	 * True while the rendered preview does not yet reflect the live config and
+	 * selection — either a config edit is pending debounce, or the re-fetch for
+	 * a changed query key is still in flight (the previous tracklist stays
+	 * rendered as placeholder data meanwhile). Create must be blocked until
+	 * this settles: submitting mid-window would pair the new committedConfig
+	 * with the old tracklist.
 	 */
 	isConfigStale: boolean;
+	/**
+	 * True while the rendered tracklist is placeholder data from a PREVIOUS
+	 * query key — the fetch for the current config/selection is still in
+	 * flight. Narrower than isConfigStale (no debounce window).
+	 */
+	isPreviewRefreshing: boolean;
 	selection: CreatePlaylistDraftSelection;
 	/** Selected artists (chips), in add order, with total liked-song counts. */
 	artistSelections: ArtistSelectionVM[];
@@ -246,7 +256,7 @@ export function useCreatePlaylistDraft(
 	// Reference inequality is exact here: setConfig always produces a new object
 	// and useDebounce settles back to that same reference, so config !==
 	// debouncedConfig holds precisely while a debounce is in flight.
-	const isConfigStale = config !== debouncedConfig;
+	const isDebouncePending = config !== debouncedConfig;
 
 	// debouncedConfig is the trigger for this reset, not a value read in the
 	// body — removing it from the deps (biome's autofix) would make this run
@@ -346,11 +356,43 @@ export function useCreatePlaylistDraft(
 		suggestionsOffset,
 	};
 
-	const { data, isLoading, isError } = useQuery(
+	const { data, isLoading, isError, isPlaceholderData } = useQuery(
 		playlistDraftPreviewQueryOptions(queryConfig),
 	);
 
 	const result = data ?? EMPTY_PREVIEW_RESULT;
+	// keepPreviousData preserves the old cohort during a refetch, but an exclusion
+	// is already authoritative client state and should not wait on the network.
+	const excludedSongIds = useMemo(
+		() => new Set(selection.excludedSongIds),
+		[selection.excludedSongIds],
+	);
+	const visibleTracklist = useMemo(
+		() => result.tracklist.filter((song) => !excludedSongIds.has(song.id)),
+		[result.tracklist, excludedSongIds],
+	);
+	// keepPreviousData also means a just-added suggestion lingers in the OLD
+	// cohort until the next preview resolves — filtering against the current
+	// effective pins (not just exclusions) drops it the instant Add is clicked,
+	// so the row can't be double-added while the refetch is in flight.
+	const effectivePinnedSongIdSet = useMemo(
+		() => new Set(effectivePinnedSongIds),
+		[effectivePinnedSongIds],
+	);
+	const visibleSuggestions = useMemo(
+		() =>
+			result.suggestions.filter(
+				(song) =>
+					!excludedSongIds.has(song.id) &&
+					!effectivePinnedSongIdSet.has(song.id),
+			),
+		[result.suggestions, excludedSongIds, effectivePinnedSongIdSet],
+	);
+
+	// isPlaceholderData is precisely "the shown data belongs to a previous
+	// query key" — a plain background refetch of the SAME key does not set it,
+	// so it never blocks Create on a mere staleTime revalidation.
+	const isConfigStale = isDebouncePending || isPlaceholderData;
 
 	// --- Stable action callbacks ---
 
@@ -481,31 +523,31 @@ export function useCreatePlaylistDraft(
 		setSuggestionsOffset(0);
 	}, []);
 
-	// Chip VMs: count is null (pending) until the resolution has landed;
-	// isFetching covers the in-flight window (initial add or a background
-	// refetch) when cached data would otherwise show a stale count.
+	// Chip VMs: count is null (pending) only for artists absent from the
+	// resolved map. keepPreviousData keeps already-resolved artists in that map
+	// while a newly added one resolves, so adding artist B never blanks A's
+	// count — the pending state is per-chip, exactly the unresolved ones.
 	const artistSelectionVMs: ArtistSelectionVM[] = useMemo(
 		() =>
 			artistSelections.map((a) => ({
 				...a,
-				songCount: artistResolution.isFetching
-					? null
-					: (resolvedSongIdsByArtist.get(a.name)?.length ?? null),
+				songCount: resolvedSongIdsByArtist.get(a.name)?.length ?? null,
 			})),
-		[artistSelections, resolvedSongIdsByArtist, artistResolution.isFetching],
+		[artistSelections, resolvedSongIdsByArtist],
 	);
 
 	return {
 		config,
 		committedConfig: debouncedConfig,
 		isConfigStale,
+		isPreviewRefreshing: isPlaceholderData,
 		selection,
 		artistSelections: artistSelectionVMs,
 		isResolvingArtists: artistResolution.isFetching,
 		isArtistResolutionError: artistResolution.isError,
 		effectivePinnedSongIds,
-		tracklist: result.tracklist,
-		suggestions: result.suggestions,
+		tracklist: visibleTracklist,
+		suggestions: visibleSuggestions,
 		totalEligible: result.totalEligible,
 		intentApplied: result.intentApplied,
 		droppedPinnedSongIds: result.droppedPinnedSongIds,

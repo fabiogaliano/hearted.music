@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const HIGHLIGHT_DURATION_MS = 1500;
+const TRANSFER_MOTION_WINDOW_MS = 200;
 
 interface VisibleSong {
 	id: string;
@@ -11,7 +11,7 @@ export interface SongAddHighlight {
 	markSongAdded: (id: string) => void;
 }
 
-/** Keep an add highlight pending until the added row actually reaches the preview. */
+/** Keep transfer motion pending until the added row actually reaches the preview. */
 export function useSongAddHighlight(
 	visibleSongs: readonly VisibleSong[],
 ): SongAddHighlight {
@@ -35,7 +35,7 @@ export function useSongAddHighlight(
 					return next;
 				});
 				timeoutsRef.current.delete(song.id);
-			}, HIGHLIGHT_DURATION_MS);
+			}, TRANSFER_MOTION_WINDOW_MS);
 			timeoutsRef.current.set(song.id, timeout);
 		}
 	}, [visibleSongs, newSongIds]);

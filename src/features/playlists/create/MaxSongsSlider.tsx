@@ -27,6 +27,7 @@ interface MaxSongsSliderProps {
 	value: number;
 	onChange: (value: number) => void;
 	className?: string;
+	compact?: boolean;
 }
 
 /** Clamp and snap `value` to the nearest valid step. */
@@ -52,7 +53,6 @@ export function MaxSongsSlider({
 	className,
 }: MaxSongsSliderProps) {
 	const inputId = useId();
-	const labelId = useId();
 
 	const percentage =
 		((value - MAX_SONGS_MIN) / (MAX_SONGS_MAX - MAX_SONGS_MIN)) * 100;
@@ -104,37 +104,23 @@ export function MaxSongsSlider({
 	const durationHint = approximateDuration(value);
 	const ariaValueText = `${value} songs, ${durationHint}`;
 
-	return (
-		<div className={cn("flex flex-col gap-3", className)}>
-			<div className="flex items-baseline justify-between gap-4">
-				<label
-					id={labelId}
-					htmlFor={inputId}
-					className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-					style={{ fontFamily: fonts.body }}
-				>
-					Songs
-				</label>
-				<div className="flex items-baseline gap-2" aria-hidden="true">
-					<span
-						className="theme-text text-2xl font-extralight tabular-nums leading-none"
-						style={{ fontFamily: fonts.display }}
-					>
-						{value}
-					</span>
-					<span
-						className="theme-text-muted text-xs"
-						style={{ fontFamily: fonts.body }}
-					>
-						{durationHint}
-					</span>
-				</div>
-			</div>
+	const labelId = useId();
 
-			{/* Track + thumb wrapper. The --pct custom property drives the fill via
-			    a linear-gradient background so the track shows how much is selected
-			    without JS measurement. */}
-			<div className="relative py-2">
+	return (
+		<div className={cn("flex flex-col gap-1.5", className)}>
+			<label
+				id={labelId}
+				htmlFor={inputId}
+				className="theme-text-muted flex items-baseline justify-between text-[10px] tracking-[0.16em] uppercase"
+				style={{ fontFamily: fonts.body }}
+			>
+				<span>Up to</span>
+				<span className="tabular-nums tracking-normal normal-case">
+					{value} songs
+				</span>
+			</label>
+
+			<div className="relative px-2.5 py-1">
 				<input
 					id={inputId}
 					type="range"
@@ -156,22 +142,6 @@ export function MaxSongsSlider({
 						} as React.CSSProperties
 					}
 				/>
-			</div>
-
-			{/* Min/max labels */}
-			<div className="flex items-center justify-between" aria-hidden="true">
-				<span
-					className="theme-text-muted text-[11px] tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					{MAX_SONGS_MIN}
-				</span>
-				<span
-					className="theme-text-muted text-[11px] tabular-nums"
-					style={{ fontFamily: fonts.body }}
-				>
-					{MAX_SONGS_MAX}
-				</span>
 			</div>
 		</div>
 	);

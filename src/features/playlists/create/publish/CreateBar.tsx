@@ -1,99 +1,74 @@
 /**
- * CreateBar — the full-width create footer for the playlist creation flow.
+ * CreateBar — the sticky create footer for the playlist creation flow.
  *
- * Houses the primary "Create playlist" CTA with a live song-count badge and a
- * left-aligned readiness hint. The playlist NAME lives in the page-title input
- * on the screen (not here), so this bar receives the committed name as a prop;
- * the hint explains a disabled CTA (unnamed draft or a preview still settling)
- * now that the name field it used to own has moved away.
- *
- * Fully presentational: submitting and payload assembly are owned by
- * usePublishPlaylist up in CreatePlaylistScreen. This bar just renders
- * readiness state and forwards a plain onSubmit — no orchestrator import.
- *
- * isResolvingArtists / isArtistResolutionError also gate the CTA: while the
- * studio's artist-song resolution is in flight (or failed), the effective
- * pinned ids don't yet reflect the selected artists, so a submit here would
- * silently create the playlist without their songs. Both conditions reuse
- * the "preview not settled" framing — the resolving case shares the
- * isPreviewStale hint, the error case gets its own, pointing at the
- * ArtistConfig panel where the actual retry affordance lives.
- *
- * Gated by the Spotify gate state already computed by the parent screen — if
- * reconnect, extension, or account-mismatch is needed, the CTA is replaced by
- * the appropriate inline affordance instead of a broken (or, for mismatch,
- * wrong-account) submit. Those affordances get the gate's recheck so the user
- * can recover in place without a page reload.
+ * Fully presentational for the ready/submitting states: submitting and
+ * payload assembly are owned by usePublishPlaylist up in StudioScreen. A
+ * blocked gate state, though, replaces the CTA outright with the matching
+ * recovery prompt (ExtensionUnavailablePrompt / ReconnectPrompt /
+ * AccountMismatchPrompt) — the same self-contained prompts the dashboard's
+ * reconnect banner is built from — so a missing extension, an expired
+ * Spotify session, or a wrong-account extension gets real recovery guidance
+ * (install link + Firefox reload hint, or a correctly-verdicted
+ * repairConnection call) instead of a dead-end generic "Connect" button.
+ * Each prompt owns its own repairConnection call, so CreateBar itself never
+ * has to know which verdict a given gate state needs.
  */
 
-import { Button } from "@/components/ui/Button";
+import type { SongVM } from "@/lib/domains/playlists/types";
 import { fonts } from "@/lib/theme/fonts";
-import type { SpotifyGateState } from "../useSpotifyGate";
+import type { SpotifyGateStatus } from "../useSpotifyGate";
+import { AccountMismatchPrompt } from "./AccountMismatchPrompt";
+import { ExtensionUnavailablePrompt } from "./ExtensionUnavailablePrompt";
+import { ReconnectPrompt } from "./ReconnectPrompt";
+
+async function noopRecheck() {}
 
 export interface CreateBarProps {
-	/** The playlist name, owned by the screen's title input. */
 	name: string;
-	/** Ordered song UUIDs to include in the playlist. */
-	songIds: string[];
-	/**
-	 * True while the live config is ahead of the previewed (debounced) config.
-	 * Blocks Create so a submit can't persist an edited config against songs
-	 * scored under the previous one.
-	 */
+	songs: SongVM[];
 	isPreviewStale: boolean;
-	/**
-	 * True while the selected artists' song resolution is in flight (including
-	 * background refetches). Blocks Create for the same reason as
-	 * isPreviewStale: the pinned ids haven't caught up with the current artist
-	 * selection yet.
-	 */
 	isResolvingArtists: boolean;
-	/**
-	 * True when the artist song resolution query failed outright. Submitting
-	 * in this state would silently create the playlist with every selected
-	 * artist's pool empty, so this blocks harder than isResolvingArtists and
-	 * gets its own hint directing the user to the ArtistConfig retry.
-	 */
 	isArtistResolutionError: boolean;
-	/** True while the flow's submit is in flight. */
 	isSubmitting: boolean;
-	/** Gate state computed by the parent — avoids re-checking on every render. */
-	gateState: SpotifyGateState;
-	/** Called when the user submits — the screen assembles the payload. */
+	/** A discriminated union (see useSpotifyGate) — `mismatchProfile` only
+	 * exists on the `"account-mismatch"` variant, so it's structurally
+	 * impossible to be in that state without a profile to render. */
+	gate: SpotifyGateStatus;
+	/** account.display_name — sharpens AccountMismatchPrompt's copy from "the
+	 * wrong account" to "not <name>". */
+	accountDisplayName?: string | null;
 	onSubmit: () => void;
-	/** Retries the failed artist song resolution from the footer. */
 	onRetryArtistResolution?: () => void;
+	/** Re-runs the gate detection; wired to ExtensionUnavailablePrompt's
+	 * "Check again". */
+	onRecheck?: () => Promise<void>;
 }
 
 export function CreateBar({
 	name,
-	songIds,
+	songs,
 	isPreviewStale,
 	isResolvingArtists,
 	isArtistResolutionError,
 	isSubmitting,
-	gateState,
+	gate,
+	accountDisplayName = null,
 	onSubmit,
 	onRetryArtistResolution,
+	onRecheck = noopRecheck,
 }: CreateBarProps) {
 	const trimmedName = name.trim();
-	const isGateBlocked = gateState !== "ok" && gateState !== "checking";
-	const isGateChecking = gateState === "checking";
+	const isGateChecking = gate.gateState === "checking";
 	const canSubmit =
-		songIds.length > 0 &&
+		songs.length > 0 &&
 		trimmedName.length > 0 &&
 		!isSubmitting &&
 		!isPreviewStale &&
 		!isResolvingArtists &&
 		!isArtistResolutionError &&
-		!isGateChecking &&
-		!isGateBlocked;
+		!isGateChecking;
 
-	const songCount = songIds.length;
-	const ctaLabel =
-		songCount === 0
-			? "Create playlist"
-			: `Create playlist · ${songCount} ${songCount === 1 ? "song" : "songs"}`;
+	const songCount = songs.length;
 
 	if (isArtistResolutionError) {
 		return (
@@ -122,38 +97,112 @@ export function CreateBar({
 		);
 	}
 
-	const hint = isGateBlocked
-		? "Connect Spotify above to create"
-		: isGateChecking
-			? "Checking your Spotify connection…"
-			: trimmedName.length === 0
-				? "Name your playlist above to create"
-				: isPreviewStale || isResolvingArtists
-					? "Updating preview…"
-					: isSubmitting
-						? "Creating on Spotify…"
-						: songCount === 0
-							? "Nothing selected yet"
-							: "Saves to your Spotify";
+	// A blocked gate state replaces the CTA outright (never just disables it) —
+	// each prompt below owns the repairConnection call its own verdict needs
+	// (invariant 2: a mismatch must never silently re-pair while the wrong
+	// Spotify identity is active).
+	if (gate.gateState === "extension-unavailable") {
+		return <ExtensionUnavailablePrompt onRecheck={onRecheck} />;
+	}
+	if (gate.gateState === "reconnect-required") {
+		return <ReconnectPrompt />;
+	}
+	if (gate.gateState === "account-mismatch") {
+		// SpotifyGateStatus ties mismatchProfile to this arm, so a real
+		// TypeScript caller can't construct "account-mismatch" without one —
+		// gate.mismatchProfile below is never null. This runtime guard is
+		// defense-in-depth only, against a caller that bypasses the type
+		// system (e.g. a stale/corrupted prop). It must stay BLOCKING and must
+		// NEVER fall through to ReconnectPrompt: that prompt repairs with the
+		// spotify-disconnected verdict, which pairExtension()s — exactly the
+		// bug invariant 2 forbids while the wrong Spotify identity is active.
+		if (!gate.mismatchProfile) {
+			return (
+				<div
+					className="flex items-center justify-between gap-4 px-5 py-3.5"
+					style={{ borderLeft: "2px solid var(--t-primary)" }}
+				>
+					<span
+						className="theme-text-muted text-xs"
+						style={{ fontFamily: fonts.body }}
+						aria-live="polite"
+					>
+						Spotify account needs to be reverified
+					</span>
+					<button
+						type="button"
+						onClick={() => void onRecheck()}
+						className="hover-border-brighten inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
+					>
+						Check again
+					</button>
+				</div>
+			);
+		}
+		return (
+			<AccountMismatchPrompt
+				extensionProfile={gate.mismatchProfile}
+				accountDisplayName={accountDisplayName}
+			/>
+		);
+	}
+
+	const hint = isGateChecking
+		? "Checking connection…"
+		: trimmedName.length === 0
+			? "Name your playlist to create"
+			: isPreviewStale || isResolvingArtists
+				? "Updating…"
+				: isSubmitting
+					? "Creating on Spotify…"
+					: songCount === 0
+						? "Add songs to create"
+						: null;
 
 	return (
-		<div className="flex items-center justify-between gap-4 px-5 py-3.5">
-			<span
-				className="theme-text-muted text-xs"
-				style={{ fontFamily: fonts.body }}
-				aria-live="polite"
-			>
-				{hint}
-			</span>
-			<Button
-				variant="primary"
-				size="sm"
+		<div
+			className="flex items-center gap-3 px-4 py-2.5"
+			style={{ fontFamily: fonts.body }}
+		>
+			<div className="min-w-0 flex-1">
+				{hint && (
+					<span
+						className="theme-text-muted text-[10px] shrink-0"
+						aria-live="polite"
+					>
+						{hint}
+					</span>
+				)}
+			</div>
+
+			<button
+				type="button"
 				disabled={!canSubmit}
 				aria-busy={isSubmitting}
+				aria-label={
+					isSubmitting
+						? "Creating…"
+						: songCount > 0
+							? `Create playlist with ${songCount} ${songCount === 1 ? "song" : "songs"}`
+							: "Create playlist"
+				}
 				onClick={onSubmit}
+				className="shrink-0 text-[11px] tracking-[0.1em] uppercase cursor-pointer transition-[background-color,opacity,transform] duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-default"
+				style={{
+					padding: "6px 16px",
+					borderRadius: 10,
+					// @ts-expect-error -- corner-shape not yet in CSS typings
+					cornerShape: "squircle",
+					border: "1px solid transparent",
+					background: "var(--t-primary)",
+					color: "var(--t-text-on-primary)",
+					fontFamily: fonts.body,
+					fontWeight: 500,
+				}}
 			>
-				{isSubmitting ? "Creating…" : ctaLabel}
-			</Button>
+				{isSubmitting ? "Creating…" : "Create"}
+			</button>
 		</div>
 	);
 }

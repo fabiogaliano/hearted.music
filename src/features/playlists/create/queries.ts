@@ -6,7 +6,7 @@
  * queryKey derivation logic.
  */
 
-import { queryOptions } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { previewPlaylistDraft } from "@/lib/server/playlist-draft.functions";
 import {
@@ -76,6 +76,11 @@ export function playlistDraftPreviewQueryOptions(config: DraftConfig) {
 				},
 			}),
 		staleTime: 30_000,
+		// Any config/selection change is a new query key. Without this, the
+		// preview empties to a loading state on every change and the whole list
+		// re-mounts; with it, the previous tracklist stays rendered and the new
+		// result diffs in row-by-row via AnimatePresence keys.
+		placeholderData: keepPreviousData,
 	});
 }
 
@@ -92,6 +97,10 @@ export function artistSongResolutionQueryOptions(artists: string[]) {
 		queryFn: () => resolveLikedArtistSongs({ data: { artists } }),
 		enabled: artists.length > 0,
 		staleTime: 30_000,
+		// Adding/removing an artist changes the key; without this the already-
+		// resolved artists' pools read as empty mid-flight, so their pins vanish
+		// from the preview and reappear when resolution lands.
+		placeholderData: keepPreviousData,
 	});
 }
 

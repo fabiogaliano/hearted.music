@@ -372,7 +372,7 @@ export function IdeasBoard({
 						className="theme-text block py-1 text-lg leading-tight font-light"
 						style={{ fontFamily: fonts.display }}
 					>
-						From your whole library
+						Your whole library
 					</span>
 					<span
 						className="theme-text-muted mt-0.5 block text-xs"

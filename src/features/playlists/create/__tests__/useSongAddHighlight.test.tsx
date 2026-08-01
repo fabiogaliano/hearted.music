@@ -26,7 +26,7 @@ describe("useSongAddHighlight", () => {
 		expect(result.current.newSongIds.has("song-1")).toBe(true);
 
 		rerender({ songs: [{ id: "song-1" }] });
-		act(() => vi.advanceTimersByTime(1499));
+		act(() => vi.advanceTimersByTime(199));
 		expect(result.current.newSongIds.has("song-1")).toBe(true);
 
 		act(() => vi.advanceTimersByTime(1));
@@ -41,11 +41,11 @@ describe("useSongAddHighlight", () => {
 
 		act(() => result.current.markSongAdded("song-1"));
 		rerender({ songs: [{ id: "song-1" }] });
-		act(() => vi.advanceTimersByTime(500));
+		act(() => vi.advanceTimersByTime(100));
 
 		act(() => result.current.markSongAdded("song-2"));
 		rerender({ songs: [{ id: "song-1" }, { id: "song-2" }] });
-		act(() => vi.advanceTimersByTime(1000));
+		act(() => vi.advanceTimersByTime(100));
 
 		expect(result.current.newSongIds.has("song-1")).toBe(false);
 		expect(result.current.newSongIds.has("song-2")).toBe(true);

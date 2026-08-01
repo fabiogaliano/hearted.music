@@ -90,8 +90,15 @@ function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 					type="button"
 					onClick={onOpenPaywall}
 					aria-describedby={LOCKED_DESC_ID}
-					className="theme-border-color theme-surface-bg flex w-full cursor-pointer items-center gap-3 border px-4 py-3 text-left transition-colors duration-150 group-hover:border-[var(--t-text-muted)]"
-					style={{ fontFamily: fonts.body }}
+					className="flex w-full cursor-pointer items-center gap-3 border border-transparent px-4 py-3 text-left transition-colors duration-150"
+					style={{
+						fontFamily: fonts.body,
+						borderRadius: 14,
+						// @ts-expect-error -- corner-shape not in CSS typings
+						cornerShape: "squircle",
+						background:
+							"oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2))",
+					}}
 				>
 					<span className="theme-text-muted min-w-0 flex-1 truncate text-sm leading-relaxed opacity-50">
 						{PLACEHOLDER_EXAMPLES[0]}
@@ -135,7 +142,18 @@ export function IntentEditor({
 			</span>
 
 			{isEligible ? (
-				<IntentEditorEligible value={value} onChange={onChange} />
+				<div
+					className="px-4 py-3"
+					style={{
+						borderRadius: 14,
+						// @ts-expect-error -- corner-shape not in CSS typings
+						cornerShape: "squircle",
+						background:
+							"oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2))",
+					}}
+				>
+					<IntentEditorEligible value={value} onChange={onChange} />
+				</div>
 			) : (
 				<IntentEditorLocked onOpenPaywall={onOpenPaywall} />
 			)}

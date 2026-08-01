@@ -1,11 +1,10 @@
 /**
  * PreviewList — the live preview of the draft playlist.
  *
- * Displays a count/duration header ("15 songs · about 50 min") with
- * tabular-nums to prevent layout shift as the count updates. Row enter/exit
- * animations are managed by framer-motion AnimatePresence with initial={false}
- * so the initial render lands without any entrance animation. Reduced motion
- * collapses all transitions to instant opacity changes.
+ * Rows crossfade in place when filters replace the cohort. A single removal
+ * fades only that row while the survivors close the gap, so list updates never
+ * imply a direction the user's action did not have. Reduced motion swaps rows
+ * instantly.
  *
  * Remove triggers a sonner toast with an Undo action. The `restoreSong`
  * callback (from the draft hook) reverses the exclusion without force-pinning,
@@ -18,8 +17,8 @@
  * id immediately rather than leaving it pointed at a gone row.
  */
 
-import { AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
@@ -43,10 +42,9 @@ interface PreviewListProps {
 	/** IDs of songs that just entered the preview (recently added). */
 	newSongIds?: ReadonlySet<string>;
 	/**
-	 * Effective pinned ids (manual picks + artist-derived). These lead the
-	 * tracklist and render with a FILLED pin — the picks are pinned by default,
-	 * which is what distinguishes them from the engine's matched fill (no zone
-	 * labels; the pin marker carries the distinction).
+	 * Effective pinned ids (manual picks + artist-derived). Rows with a pinned
+	 * id render with a FILLED pin icon; the draft engine already orders
+	 * pins-first in the tracklist.
 	 */
 	pinnedSongIds?: readonly string[];
 	/** Shared "one preview at a time" coordinator; see CreatePlaylistScreen.
@@ -64,21 +62,9 @@ export function PreviewList({
 	pinnedSongIds,
 	playback,
 }: PreviewListProps) {
+	const prefersReducedMotion = useReducedMotion();
 	const pinnedSet = new Set(pinnedSongIds ?? []);
 	const songCount = songs.length;
-
-	// Split songs into kept (pinned) and matched (fill) zones so the zone
-	// labels can show accurate counts. The tracklist is already ordered
-	// pins-first by the draft engine, so we partition by the pinned set.
-	const { kept, matched } = useMemo(() => {
-		const k: SongVM[] = [];
-		const m: SongVM[] = [];
-		for (const song of songs) {
-			if (pinnedSet.has(song.id)) k.push(song);
-			else m.push(song);
-		}
-		return { kept: k, matched: m };
-	}, [songs, pinnedSet]);
 
 	const prevCountRef = useRef<number | null>(null);
 	const [announcement, setAnnouncement] = useState("");
@@ -103,12 +89,21 @@ export function PreviewList({
 			playback.deactivatePlayback();
 		}
 		onRemoveSong(song.id);
-		toast(`Removed ${song.name}`, {
-			action: {
-				label: "Undo",
-				onClick: () => onRestoreSong(song.id),
+		toast(
+			<span className="toast-line">
+				<span className="toast-line-verb">Removed</span>
+				<span className="toast-line-subject">
+					{song.name}
+					<span className="toast-line-artist">{song.artist}</span>
+				</span>
+			</span>,
+			{
+				action: {
+					label: "Undo",
+					onClick: () => onRestoreSong(song.id),
+				},
 			},
-		});
+		);
 	}
 
 	if (isLoading && songCount === 0) {
@@ -134,21 +129,6 @@ export function PreviewList({
 		);
 	}
 
-	function renderRow(song: SongVM) {
-		return (
-			<li key={song.id} style={{ listStyle: "none" }}>
-				<PreviewSongRow
-					song={song}
-					onRemove={() => handleRemove(song)}
-					isPinned={pinnedSet.has(song.id)}
-					onTogglePin={onTogglePin ? () => onTogglePin(song.id) : undefined}
-					isNew={newSongIds?.has(song.id) ?? false}
-					playback={playback}
-				/>
-			</li>
-		);
-	}
-
 	return (
 		<div>
 			<div aria-live="polite" aria-atomic="true" className="sr-only">
@@ -156,45 +136,46 @@ export function PreviewList({
 			</div>
 
 			<ul aria-label="Preview playlist songs" className="flex flex-col">
-				<AnimatePresence initial={false}>
-					{kept.length > 0 && (
-						<li
-							key="zone-kept"
+				<AnimatePresence initial={false} mode="popLayout">
+					{songs.map((song) => (
+						<motion.li
+							key={song.id}
+							layout={prefersReducedMotion ? false : "position"}
+							initial={prefersReducedMotion ? false : { opacity: 0 }}
+							animate={{
+								opacity: 1,
+								transition: {
+									duration: prefersReducedMotion ? 0 : 0.14,
+									ease: [0.25, 1, 0.5, 1],
+								},
+							}}
+							exit={{
+								opacity: 0,
+								transition: {
+									duration: prefersReducedMotion ? 0 : 0.1,
+									ease: [0.25, 1, 0.5, 1],
+								},
+							}}
+							transition={{
+								layout: {
+									duration: prefersReducedMotion ? 0 : 0.18,
+									ease: [0.77, 0, 0.175, 1],
+								},
+							}}
 							style={{ listStyle: "none" }}
-							className="flex items-center gap-2.5 pb-1 pt-2"
 						>
-							<span
-								className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
-								style={{ fontFamily: fonts.body }}
-							>
-								Kept &middot; {kept.length}
-							</span>
-							<span
-								className="theme-text-muted text-[10px] normal-case tracking-normal"
-								style={{ fontFamily: fonts.body, opacity: 0.65 }}
-							>
-								survive filter changes
-							</span>
-							<span className="theme-border-color h-px flex-1 border-t" />
-						</li>
-					)}
-					{kept.map(renderRow)}
-					{matched.length > 0 && (
-						<li
-							key="zone-matched"
-							style={{ listStyle: "none" }}
-							className="flex items-center gap-2.5 pb-1 pt-3.5"
-						>
-							<span
-								className="theme-text-muted text-[11px] tracking-[0.18em] uppercase"
-								style={{ fontFamily: fonts.body }}
-							>
-								Matched &middot; {matched.length}
-							</span>
-							<span className="theme-border-color h-px flex-1 border-t" />
-						</li>
-					)}
-					{matched.map(renderRow)}
+							<PreviewSongRow
+								song={song}
+								onRemove={() => handleRemove(song)}
+								isPinned={pinnedSet.has(song.id)}
+								onTogglePin={
+									onTogglePin ? () => onTogglePin(song.id) : undefined
+								}
+								isNew={newSongIds?.has(song.id) ?? false}
+								playback={playback}
+							/>
+						</motion.li>
+					))}
 				</AnimatePresence>
 			</ul>
 		</div>

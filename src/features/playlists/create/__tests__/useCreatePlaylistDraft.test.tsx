@@ -12,6 +12,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
+import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
 
 const previewPlaylistDraftMock = vi.fn();
@@ -38,6 +39,20 @@ const EMPTY_RESULT: PlaylistDraftPreview = {
 	intentApplied: false,
 	droppedPinnedSongIds: [],
 };
+
+function makeSong(id: string): SongVM {
+	return {
+		id,
+		spotifyId: `spotify-${id}`,
+		name: `Song ${id}`,
+		artist: "Artist",
+		album: "Album",
+		imageUrl: null,
+		genres: [],
+		durationMs: 180_000,
+		matchScore: 0.8,
+	};
+}
 
 let queryClient: QueryClient;
 
@@ -85,6 +100,118 @@ describe("useCreatePlaylistDraft — refreshSuggestions paging", () => {
 				}),
 			}),
 		);
+	});
+});
+
+describe("useCreatePlaylistDraft — preview transitions", () => {
+	beforeEach(() => {
+		previewPlaylistDraftMock.mockReset();
+		resolveLikedArtistSongsMock.mockReset();
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+	});
+
+	it("hides a removed song immediately while its replacement is still loading", async () => {
+		let resolveNext!: (value: PlaylistDraftPreview) => void;
+		const nextPreview = new Promise<PlaylistDraftPreview>((resolve) => {
+			resolveNext = resolve;
+		});
+		previewPlaylistDraftMock
+			.mockResolvedValueOnce({
+				...EMPTY_RESULT,
+				tracklist: [makeSong("1"), makeSong("2")],
+			})
+			.mockReturnValueOnce(nextPreview);
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() =>
+			expect(result.current.tracklist.map((song) => song.id)).toEqual([
+				"1",
+				"2",
+			]),
+		);
+
+		act(() => {
+			result.current.removeSong("1");
+		});
+
+		expect(result.current.tracklist.map((song) => song.id)).toEqual(["2"]);
+		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+
+		act(() => {
+			resolveNext({ ...EMPTY_RESULT, tracklist: [makeSong("2")] });
+		});
+		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(false));
+	});
+
+	it("hides a just-added suggestion immediately while the next cohort is still loading", async () => {
+		let resolveNext!: (value: PlaylistDraftPreview) => void;
+		const nextPreview = new Promise<PlaylistDraftPreview>((resolve) => {
+			resolveNext = resolve;
+		});
+		previewPlaylistDraftMock
+			.mockResolvedValueOnce({
+				...EMPTY_RESULT,
+				suggestions: [makeSong("s1"), makeSong("s2")],
+			})
+			.mockReturnValueOnce(nextPreview);
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() =>
+			expect(result.current.suggestions.map((song) => song.id)).toEqual([
+				"s1",
+				"s2",
+			]),
+		);
+
+		act(() => {
+			result.current.addSong("s1");
+		});
+
+		// keepPreviousData still holds the OLD suggestions cohort (which still
+		// contains s1) until the next preview resolves. Filtering only excluded
+		// ids would leave the just-pinned s1 visible, letting a second click
+		// fire another add — the fix also filters against the current
+		// effective pins, so s1 drops out before the refetch even starts.
+		expect(result.current.suggestions.map((song) => song.id)).toEqual(["s2"]);
+		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+
+		act(() => {
+			resolveNext({ ...EMPTY_RESULT, suggestions: [makeSong("s2")] });
+		});
+		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(false));
+	});
+
+	it("keeps the previous preview marked stale while a changed query key loads", async () => {
+		let resolveNext!: (value: PlaylistDraftPreview) => void;
+		const nextPreview = new Promise<PlaylistDraftPreview>((resolve) => {
+			resolveNext = resolve;
+		});
+		previewPlaylistDraftMock
+			.mockResolvedValueOnce({ ...EMPTY_RESULT, totalEligible: 7 })
+			.mockReturnValueOnce(nextPreview);
+
+		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
+		await waitFor(() => expect(result.current.totalEligible).toBe(7));
+		expect(result.current.isConfigStale).toBe(false);
+		expect(result.current.isPreviewRefreshing).toBe(false);
+
+		act(() => {
+			result.current.addSong("song-1");
+		});
+
+		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+		expect(result.current.totalEligible).toBe(7);
+		expect(result.current.isConfigStale).toBe(true);
+
+		act(() => {
+			resolveNext({ ...EMPTY_RESULT, totalEligible: 11 });
+		});
+
+		await waitFor(() => expect(result.current.totalEligible).toBe(11));
+		expect(result.current.isPreviewRefreshing).toBe(false);
+		expect(result.current.isConfigStale).toBe(false);
 	});
 });
 

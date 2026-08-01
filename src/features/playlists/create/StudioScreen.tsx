@@ -18,6 +18,7 @@
 import { ArrowLeftIcon } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
@@ -30,14 +31,12 @@ import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";
 import { intentEligibilityQueryOptions } from "./intentEligibility";
 import { LibraryEmptyState } from "./LibraryEmptyState";
-import { approximateDuration, MaxSongsSlider } from "./MaxSongsSlider";
+import { MaxSongsSlider } from "./MaxSongsSlider";
 import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
 import { PreviewList } from "./preview/PreviewList";
-import { AccountMismatchPrompt } from "./publish/AccountMismatchPrompt";
+import { PreviewListSkeleton } from "./preview/PreviewListSkeleton";
 import { CreateBar } from "./publish/CreateBar";
-import { ExtensionUnavailablePrompt } from "./publish/ExtensionUnavailablePrompt";
 import { PublishResultRegion } from "./publish/PublishResultRegion";
-import { ReconnectPrompt } from "./publish/ReconnectPrompt";
 import { getStudioPreviewState } from "./studioPreviewState";
 import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
 import { buildStudioSubmitInput } from "./studioSubmitInput";
@@ -48,7 +47,7 @@ import { useSongAddHighlight } from "./useSongAddHighlight";
 import { useSpotifyGate } from "./useSpotifyGate";
 
 const MAX_NAME_LENGTH = 100;
-const DEFAULT_NAME = "New playlist";
+const DEFAULT_NAME = "";
 
 interface StudioScreenProps {
 	accountId: string;
@@ -58,9 +57,11 @@ interface StudioScreenProps {
 	 * detect a mismatched extension account (see useSpotifyGate.ts). null
 	 * pre-link (before the account's first sync). */
 	linkedSpotifyId: string | null;
-	/** account.display_name — for the mismatch prompt's "this library belongs
-	 * to…" copy, same field Dashboard.tsx threads for its own banner. */
-	accountDisplayName: string | null;
+	/** account.display_name — sharpens CreateBar's account-mismatch prompt
+	 * from "the wrong account" to "not <name>" (same field Dashboard.tsx
+	 * threads for its own mismatch banner). Optional because
+	 * AccountMismatchPrompt already renders sensible copy for null. */
+	accountDisplayName?: string | null;
 }
 
 export function StudioScreen({
@@ -68,9 +69,10 @@ export function StudioScreen({
 	billingState,
 	seed,
 	linkedSpotifyId,
-	accountDisplayName,
+	accountDisplayName = null,
 }: StudioScreenProps) {
 	const navigate = useNavigate();
+	const prefersReducedMotion = useReducedMotion();
 
 	// Intent eligibility was seeded by the route loader; this read is synchronous
 	// from cache. The gate carries the criteria (for the IntentEditor's locked
@@ -102,8 +104,11 @@ export function StudioScreen({
 	// (focus/visibility + a manual "Check again" in the prompts) so recovering
 	// in another tab isn't a dead end. linkedSpotifyId is what lets the gate
 	// actually detect a mismatched extension account — see useSpotifyGate.ts.
-	const { gateState, mismatchProfile, recheck, reportGateFailure } =
-		useSpotifyGate(linkedSpotifyId);
+	// CreateBar's per-state recovery prompts (ExtensionUnavailablePrompt /
+	// ReconnectPrompt / AccountMismatchPrompt) each own their own
+	// repairConnection call with the verdict their state needs, so this screen
+	// only needs to hand them `recheck`.
+	const { gate, recheck, reportGateFailure } = useSpotifyGate(linkedSpotifyId);
 
 	// Owns the publish lifecycle (submit → success/partial/created-unsynced,
 	// gate-failure routing, isSubmitting). Declared before `playback` below
@@ -120,8 +125,8 @@ export function StudioScreen({
 	// iframe playing behind a footer that no longer matches it.
 	const playback = useSingleActivePlayback(flow.result?.status ?? null);
 
-	// Keep the pulse pending through the preview fetch so a slow query cannot
-	// consume the animation before the newly added row actually appears.
+	// Keep the transfer motion pending through the preview fetch so a slow query
+	// cannot consume it before the newly added row actually appears.
 	const { newSongIds, markSongAdded } = useSongAddHighlight(draft.tracklist);
 	const handleAddSong = useCallback(
 		(id: string) => {
@@ -140,12 +145,21 @@ export function StudioScreen({
 		(id: string) => {
 			const song = draft.suggestions.find((s) => s.id === id);
 			draft.dismissSuggestion(id);
-			toast(`Dismissed ${song?.name ?? "song"}`, {
-				action: {
-					label: "Undo",
-					onClick: () => draft.restoreSong(id),
+			toast(
+				<span className="toast-line">
+					<span className="toast-line-verb">Dismissed</span>
+					<span className="toast-line-subject">
+						{song?.name ?? "song"}
+						{song && <span className="toast-line-artist">{song.artist}</span>}
+					</span>
+				</span>,
+				{
+					action: {
+						label: "Undo",
+						onClick: () => draft.restoreSong(id),
+					},
 				},
-			});
+			);
 		},
 		[draft.suggestions, draft.dismissSuggestion, draft.restoreSong],
 	);
@@ -170,18 +184,40 @@ export function StudioScreen({
 
 	// Preview messaging is derived from the same committed max that produced the
 	// tracklist, never the live value while its debounce is still in flight.
+	// Once the debounce commits, placeholder rows still belong to the previous
+	// config, so their totals cannot drive settled-state messaging yet.
 	const { showNotEnoughNote, tracklistIsEmpty, isWarming } =
 		getStudioPreviewState({
 			totalEligible: draft.totalEligible,
 			tracklistLength: draft.tracklist.length,
 			committedMaxSongs: draft.committedConfig.maxSongs,
-			isLoading: draft.isLoading,
+			isLoading: draft.isLoading || draft.isPreviewRefreshing,
 		});
 
 	const handleClearFilters = useCallback(() => {
 		draft.setGenrePills([]);
 		draft.setMatchFilters({ version: 1 });
 	}, [draft.setGenrePills, draft.setMatchFilters]);
+
+	// These states occupy the same surface, so paired timing keeps the swap
+	// reading as one state change rather than unrelated entrances and exits.
+	const previewStateMotion = prefersReducedMotion
+		? {
+				initial: false as const,
+				animate: { opacity: 1, transition: { duration: 0 } },
+				exit: { opacity: 0, transition: { duration: 0 } },
+			}
+		: {
+				initial: { opacity: 0 },
+				animate: {
+					opacity: 1,
+					transition: { duration: 0.14, ease: [0.25, 1, 0.5, 1] as const },
+				},
+				exit: {
+					opacity: 0,
+					transition: { duration: 0.1, ease: [0.25, 1, 0.5, 1] as const },
+				},
+			};
 
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
@@ -198,7 +234,7 @@ export function StudioScreen({
 					</button>
 					{/* The name is the page title; the visible control is an input, so the
 					    heading in the a11y tree is a sibling sr-only h1. */}
-					<h1 className="sr-only">{name.trim() || DEFAULT_NAME}</h1>
+					<h1 className="sr-only">{name.trim() || "Untitled playlist"}</h1>
 					<input
 						type="text"
 						value={name}
@@ -214,24 +250,6 @@ export function StudioScreen({
 
 			<div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_220px] lg:items-start">
 				<main>
-					{gateState !== "ok" && gateState !== "checking" && (
-						<div className="theme-surface-bg theme-border-color mb-5 border">
-							{gateState === "extension-unavailable" && (
-								<ExtensionUnavailablePrompt onRecheck={recheck} />
-							)}
-							{gateState === "reconnect-required" && <ReconnectPrompt />}
-							{gateState === "account-mismatch" &&
-								(mismatchProfile ? (
-									<AccountMismatchPrompt
-										extensionProfile={mismatchProfile}
-										accountDisplayName={accountDisplayName}
-									/>
-								) : (
-									<ReconnectPrompt />
-								))}
-						</div>
-					)}
-
 					<div className="mb-5">
 						<IntentEditor
 							isEligible={isIntentEligible}
@@ -241,72 +259,41 @@ export function StudioScreen({
 						/>
 					</div>
 
-					{/* Unified playlist panel — bordered container holding the preview,
-					    suggestions, and create footer as one visual unit. */}
-					<div className="theme-surface-bg theme-border-color border">
-						{/* Panel header — count + duration left, "of N matching" + loading right */}
-						<div className="theme-border-color flex items-end justify-between border-b px-5 py-3.5">
-							<div>
-								<span
-									className="theme-text-muted mb-1 block text-[11px] tracking-[0.18em] uppercase"
-									style={{ fontFamily: fonts.body }}
-								>
-									Your playlist
-								</span>
-								{!tracklistIsEmpty && (
-									<span
-										className="theme-text block leading-none"
-										style={{
-											fontFamily: fonts.display,
-											fontSize: "1.25rem",
-										}}
-									>
-										{draft.tracklist.length}{" "}
-										{draft.tracklist.length === 1 ? "song" : "songs"} &middot;{" "}
-										{approximateDuration(draft.tracklist.length)}
-									</span>
-								)}
-							</div>
-							<div className="text-right">
-								{draft.isLoading ? (
-									<span
-										className="theme-text-muted text-[11px] tracking-widest uppercase"
-										style={{ fontFamily: fonts.body }}
-									>
-										Updating…
-									</span>
-								) : (
-									draft.totalEligible > 0 && (
-										<span
-											className="theme-text-muted text-xs tabular-nums"
-											style={{ fontFamily: fonts.body }}
-										>
-											of {draft.totalEligible} matching
-										</span>
-									)
-								)}
-							</div>
-						</div>
-
-						{/* Panel body — preview songs with zone labels */}
+					<div
+						className="theme-surface-bg overflow-hidden"
+						style={{
+							borderRadius: 18,
+							// @ts-expect-error -- corner-shape not in CSS typings
+							cornerShape: "squircle",
+						}}
+					>
 						<div className="px-5 py-2.5">
-							{tracklistIsEmpty ? (
-								<LibraryEmptyState
-									isWarming={isWarming}
-									onClearFilters={handleClearFilters}
-								/>
-							) : (
-								<PreviewList
-									songs={draft.tracklist}
-									isLoading={draft.isLoading}
-									onRemoveSong={draft.removeSong}
-									onRestoreSong={draft.restoreSong}
-									onTogglePin={draft.togglePin}
-									newSongIds={newSongIds}
-									pinnedSongIds={draft.effectivePinnedSongIds}
-									playback={playback}
-								/>
-							)}
+							<AnimatePresence mode="popLayout" initial={false}>
+								{tracklistIsEmpty ? (
+									isWarming ? (
+										<motion.div key="preview-loading" {...previewStateMotion}>
+											<PreviewListSkeleton />
+										</motion.div>
+									) : (
+										<motion.div key="preview-empty" {...previewStateMotion}>
+											<LibraryEmptyState onClearFilters={handleClearFilters} />
+										</motion.div>
+									)
+								) : (
+									<motion.div key="preview-list" {...previewStateMotion}>
+										<PreviewList
+											songs={draft.tracklist}
+											isLoading={draft.isLoading}
+											onRemoveSong={draft.removeSong}
+											onRestoreSong={draft.restoreSong}
+											onTogglePin={draft.togglePin}
+											newSongIds={newSongIds}
+											pinnedSongIds={draft.effectivePinnedSongIds}
+											playback={playback}
+										/>
+									</motion.div>
+								)}
+							</AnimatePresence>
 
 							{showNotEnoughNote && (
 								<NotEnoughSongsNote
@@ -317,47 +304,82 @@ export function StudioScreen({
 							)}
 						</div>
 
-						{/* Suggestions section — inside the panel, separated by a border */}
-						{draft.suggestions.length > 0 && (
-							<div className="theme-border-color border-t px-5 py-2.5">
-								<SuggestionsTray
-									suggestions={draft.suggestions}
-									onAddSong={handleAddSong}
-									onDismissSong={handleDismissSuggestion}
-									onRefresh={draft.refreshSuggestions}
-									playback={playback}
-								/>
-							</div>
-						)}
-
-						{/* Create footer — inside the panel */}
-						<div className="theme-border-color border-t">
-							{flow.result ? (
+						{flow.result && (
+							<div>
 								<PublishResultRegion
 									result={flow.result}
 									isRetryingUnsynced={flow.isRetryingUnsynced}
 									onRetryUnsynced={() => {
-										if (gateState === "account-mismatch") return;
+										if (gate.gateState === "account-mismatch") return;
 										void flow.retryUnsynced();
 									}}
-									retryUnsyncedBlocked={gateState === "account-mismatch"}
-									mismatchDisplayName={mismatchProfile?.displayName}
+									retryUnsyncedBlocked={gate.gateState === "account-mismatch"}
+									mismatchDisplayName={
+										gate.gateState === "account-mismatch"
+											? gate.mismatchProfile.displayName
+											: undefined
+									}
 								/>
-							) : (
+							</div>
+						)}
+					</div>
+
+					{draft.suggestions.length > 0 && (
+						<div
+							className="mt-5 overflow-hidden px-5 py-2.5"
+							style={{
+								borderRadius: 18,
+								// @ts-expect-error -- corner-shape not in CSS typings
+								cornerShape: "squircle",
+								background:
+									"oklch(from var(--t-surface) calc(l - 0.018) calc(c + 0.001) calc(h - 2))",
+							}}
+						>
+							<SuggestionsTray
+								suggestions={draft.suggestions}
+								onAddSong={handleAddSong}
+								onDismissSong={handleDismissSuggestion}
+								onRefresh={draft.refreshSuggestions}
+								playback={playback}
+							/>
+						</div>
+					)}
+					{!flow.result && (
+						<div
+							className="sticky bottom-0 z-10 mt-4"
+							style={{
+								background:
+									"linear-gradient(to top, var(--t-bg) 60%, transparent)",
+								paddingTop: 20,
+								paddingBottom: 4,
+							}}
+						>
+							<div
+								className="theme-surface-bg overflow-hidden"
+								style={{
+									borderRadius: 16,
+									// @ts-expect-error -- corner-shape not in CSS typings
+									cornerShape: "squircle",
+									boxShadow:
+										"0 -2px 12px color-mix(in srgb, var(--t-text) 6%, transparent), 0 0 0 1px color-mix(in srgb, var(--t-border) 50%, transparent)",
+								}}
+							>
 								<CreateBar
 									name={name}
-									songIds={draft.tracklist.map((s) => s.id)}
+									songs={draft.tracklist}
 									isPreviewStale={draft.isConfigStale}
 									isResolvingArtists={draft.isResolvingArtists}
 									isArtistResolutionError={draft.isArtistResolutionError}
 									isSubmitting={flow.isSubmitting}
-									gateState={gateState}
+									gate={gate}
+									accountDisplayName={accountDisplayName}
 									onSubmit={handleSubmit}
 									onRetryArtistResolution={draft.retryArtistResolution}
+									onRecheck={recheck}
 								/>
-							)}
+							</div>
 						</div>
-					</div>
+					)}
 				</main>
 
 				<aside className="flex flex-col gap-7 pt-1.5 lg:sticky lg:top-8">

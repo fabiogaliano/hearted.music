@@ -16,22 +16,71 @@
  *  - CTA disabled (harder) on isArtistResolutionError, with its own hint
  *    pointing at the ArtistConfig retry.
  *  - onSubmit called on click when the CTA is enabled.
- *  - gate state extension-unavailable → renders ExtensionUnavailablePrompt.
- *  - gate state reconnect-required → renders ReconnectPrompt / SpotifyReconnectLink.
- *  - gate state account-mismatch → renders AccountMismatchPrompt, never the CTA
- *    (findings 1+2 regression guard).
+ *  - gate state extension-unavailable → renders ExtensionUnavailablePrompt
+ *    (browser-specific install link + a working "Check again" recheck), never
+ *    the dead-end CTA.
+ *  - gate state reconnect-required → renders ReconnectPrompt, which repairs
+ *    via repairConnection({ kind: "spotify-disconnected" }) (opens Spotify
+ *    *and* re-pairs — the fresh-install case).
+ *  - gate state account-mismatch → renders AccountMismatchPrompt with the
+ *    mismatched-account copy, never the CTA, and repairs via
+ *    repairConnection({ kind: "mismatch", extensionProfile }) — which must
+ *    never re-pair while the wrong Spotify identity is active (invariant 2).
  */
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CreateBar } from "../publish/CreateBar";
+import type { SpotifyGateStatus } from "../useSpotifyGate";
 
 // Mock browser-target so ExtensionUnavailablePrompt renders without navigator.
 vi.mock("@/lib/extension/browser-target", () => ({
 	getBrowserTarget: () => "chromium",
 	getExtensionStoreUrl: () => "https://chromewebstore.google.com/detail/test",
 }));
+
+// ReconnectPrompt/AccountMismatchPrompt repair through repairConnection, which
+// in turn calls these two — mocked (not repairConnection itself) so the tests
+// exercise the real verdict branching in repair.ts, mirroring
+// ExtensionAccountBanner.test.tsx's pattern for the same primitive.
+const mockExpectLoginReturn = vi.fn();
+const mockPairExtension = vi.fn();
+
+vi.mock("@/lib/extension/detect", () => ({
+	expectLoginReturn: (armToken: string) => mockExpectLoginReturn(armToken),
+}));
+
+vi.mock("@/lib/extension/connect", () => ({
+	pairExtension: () => mockPairExtension(),
+}));
+
+let openSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+	mockExpectLoginReturn.mockReset().mockResolvedValue(true);
+	mockPairExtension.mockReset().mockResolvedValue({ ok: true });
+	openSpy = vi.spyOn(window, "open").mockReturnValue(null);
+});
+
+afterEach(() => {
+	vi.restoreAllMocks();
+});
+
+// ReconnectPrompt/AccountMismatchPrompt read the QueryClient via
+// useQueryClient (repairConnection invalidates the connection query on
+// re-pair) — a bare render() has no provider, so only the tests that render
+// those two prompts need this wrapper.
+function renderWithQueryClient(ui: ReactElement) {
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	return render(
+		<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+	);
+}
 
 // PartialState and SuccessState use useNavigate for the "Done" → /playlists button.
 // SuccessState's primary action and PartialState's secondary "View playlist" link
@@ -67,15 +116,48 @@ import { PartialState } from "../publish/PartialState";
 import { SuccessState } from "../publish/SuccessState";
 import { UnsyncedState } from "../publish/UnsyncedState";
 
+const SONG_STUBS: Parameters<typeof CreateBar>[0]["songs"] = [
+	{
+		id: "s1",
+		spotifyId: "sp1",
+		name: "A",
+		artist: "X",
+		album: null,
+		imageUrl: null,
+		genres: [],
+		durationMs: null,
+	},
+	{
+		id: "s2",
+		spotifyId: "sp2",
+		name: "B",
+		artist: "Y",
+		album: null,
+		imageUrl: null,
+		genres: [],
+		durationMs: null,
+	},
+	{
+		id: "s3",
+		spotifyId: "sp3",
+		name: "C",
+		artist: "Z",
+		album: null,
+		imageUrl: null,
+		genres: [],
+		durationMs: null,
+	},
+];
+
 function makeProps(overrides: Partial<Parameters<typeof CreateBar>[0]> = {}) {
 	return {
 		name: "New playlist",
-		songIds: ["s1", "s2", "s3"],
+		songs: [...SONG_STUBS],
 		isPreviewStale: false,
 		isResolvingArtists: false,
 		isArtistResolutionError: false,
 		isSubmitting: false,
-		gateState: "ok" as const,
+		gate: { gateState: "ok" } as SpotifyGateStatus,
 		onSubmit: vi.fn(),
 		...overrides,
 	};
@@ -92,7 +174,7 @@ describe("CreateBar — name is a prop, not an internal field", () => {
 
 describe("CreateBar — CTA disabled states", () => {
 	it("is disabled when songIds is empty", () => {
-		render(<CreateBar {...makeProps({ songIds: [] })} />);
+		render(<CreateBar {...makeProps({ songs: [] })} />);
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
 	});
@@ -124,13 +206,11 @@ describe("CreateBar — CTA disabled states", () => {
 		expect(btn).toHaveAttribute("aria-busy", "true");
 	});
 
-	it("is disabled while artist song resolution is in flight, with the shared 'Updating preview…' hint", () => {
-		// The pinned ids don't reflect the artist selection until resolution
-		// lands — submitting here would silently drop that artist's songs.
+	it("is disabled while artist song resolution is in flight, with an 'Updating…' hint", () => {
 		render(<CreateBar {...makeProps({ isResolvingArtists: true })} />);
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
-		expect(screen.getByText("Updating preview…")).toBeInTheDocument();
+		expect(screen.getByText("Updating…")).toBeInTheDocument();
 	});
 
 	it("renders a Retry button instead of the CTA on artist resolution error", () => {
@@ -174,31 +254,105 @@ describe("CreateBar — onSubmit", () => {
 	it("does not call onSubmit when the CTA is disabled", async () => {
 		const user = userEvent.setup();
 		const onSubmit = vi.fn();
-		render(<CreateBar {...makeProps({ onSubmit, songIds: [] })} />);
+		render(<CreateBar {...makeProps({ onSubmit, songs: [] })} />);
 		await user.click(screen.getByRole("button", { name: /create playlist/i }));
 		expect(onSubmit).not.toHaveBeenCalled();
 	});
 });
 
-describe("CreateBar — gate states disable the CTA", () => {
-	it("disables the CTA when gate is extension-unavailable", () => {
+describe("CreateBar — extension-unavailable is a real recovery path, not a dead end", () => {
+	it("replaces the CTA with an Install link and a Check again action, no bare 'Connect'", () => {
 		render(
-			<CreateBar {...makeProps({ gateState: "extension-unavailable" })} />,
+			<CreateBar
+				{...makeProps({ gate: { gateState: "extension-unavailable" } })}
+			/>,
 		);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		expect(btn).toBeDisabled();
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
+		// Browser-specific extension-store URL — mocked getExtensionStoreUrl above.
+		expect(screen.getByRole("link", { name: /install/i })).toHaveAttribute(
+			"href",
+			"https://chromewebstore.google.com/detail/test",
+		);
+		expect(
+			screen.getByRole("button", { name: /check again/i }),
+		).toBeInTheDocument();
 	});
 
-	it("disables the CTA when gate is reconnect-required", () => {
-		render(<CreateBar {...makeProps({ gateState: "reconnect-required" })} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		expect(btn).toBeDisabled();
+	it("calls onRecheck when Check again is clicked", async () => {
+		const user = userEvent.setup();
+		const onRecheck = vi.fn().mockResolvedValue(undefined);
+		render(
+			<CreateBar
+				{...makeProps({
+					gate: { gateState: "extension-unavailable" },
+					onRecheck,
+				})}
+			/>,
+		);
+		await user.click(screen.getByRole("button", { name: /check again/i }));
+		expect(onRecheck).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("CreateBar — reconnect-required repairs with the spotify-disconnected verdict", () => {
+	it("replaces the CTA with Reconnect Spotify, which opens Spotify login *and* re-pairs — the fresh-install case (both credentials gone) resolves in one click", async () => {
+		const user = userEvent.setup();
+		renderWithQueryClient(
+			<CreateBar
+				{...makeProps({ gate: { gateState: "reconnect-required" } })}
+			/>,
+		);
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
+		await user.click(
+			screen.getByRole("button", { name: /reconnect spotify/i }),
+		);
+		expect(openSpy).toHaveBeenCalledTimes(1);
+		expect(mockPairExtension).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("CreateBar — account-mismatch repairs with the mismatch verdict, never the CTA", () => {
+	const mismatchProfile = {
+		spotifyId: "wrong-id",
+		displayName: "alex@work",
+		avatarUrl: null,
+	};
+
+	it("shows which Spotify identity is signed in and which account this library belongs to, and never the CTA", () => {
+		renderWithQueryClient(
+			<CreateBar
+				{...makeProps({
+					gate: { gateState: "account-mismatch", mismatchProfile },
+					accountDisplayName: "fabio",
+				})}
+			/>,
+		);
+		expect(screen.getByText(/alex@work/)).toBeInTheDocument();
+		expect(screen.getByText(/fabio/)).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
 	});
 
-	it("disables the CTA when gate is account-mismatch", () => {
-		render(<CreateBar {...makeProps({ gateState: "account-mismatch" })} />);
-		const btn = screen.getByRole("button", { name: /create playlist/i });
-		expect(btn).toBeDisabled();
+	it("opens Spotify login but never re-pairs — pairing can't fix a wrong Spotify identity (invariant 2, the bug this fix closes)", async () => {
+		const user = userEvent.setup();
+		renderWithQueryClient(
+			<CreateBar
+				{...makeProps({
+					gate: { gateState: "account-mismatch", mismatchProfile },
+					accountDisplayName: "fabio",
+				})}
+			/>,
+		);
+		await user.click(
+			screen.getByRole("button", { name: /switch spotify account/i }),
+		);
+		expect(openSpy).toHaveBeenCalledTimes(1);
+		expect(mockPairExtension).not.toHaveBeenCalled();
 	});
 });
 
