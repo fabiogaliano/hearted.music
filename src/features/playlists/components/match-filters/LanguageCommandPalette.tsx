@@ -94,6 +94,9 @@ export function LanguageCommandPalette({
 				aria-multiselectable="true"
 				aria-label="Languages"
 				aria-disabled={frozen}
+				// Keeps Chromium from adding this scroller to the tab order as a dead
+				// stop — the combobox input above is its keyboard entry point.
+				tabIndex={-1}
 				className="overflow-y-auto"
 				style={{
 					maxHeight: 180,

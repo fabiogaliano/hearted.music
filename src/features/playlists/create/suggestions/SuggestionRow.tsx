@@ -115,8 +115,8 @@ export function SuggestionRow({
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
 					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
-					"focus-visible:outline-2 focus-visible:outline-offset-2",
-					"[outline-color:var(--t-primary)]",
+					// Element opacity fades the focus ring with it, so focus goes solid.
+					"opacity-50 focus-edge focus-visible:opacity-100",
 				)}
 				style={{
 					minWidth: 40,
@@ -124,7 +124,6 @@ export function SuggestionRow({
 					display: "flex",
 					alignItems: "center",
 					justifyContent: "center",
-					opacity: 0.5,
 				}}
 			>
 				<XIcon size={14} weight="regular" aria-hidden />
@@ -138,8 +137,7 @@ export function SuggestionRow({
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
 					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
-					"focus-visible:outline-2 focus-visible:outline-offset-2",
-					"[outline-color:var(--t-primary)]",
+					"focus-edge",
 				)}
 				style={{
 					minWidth: 40,

@@ -161,6 +161,10 @@ export function SpotifyPlaybackCover({
 						transition: { duration: 0.25, ease: [0.165, 0.84, 0.44, 1] },
 					}}
 					style={{ pointerEvents: isPlaybackActive ? "auto" : "none" }}
+					// A premounted embed is invisible but still focusable: neither opacity
+					// 0 nor pointer-events removes it from the tab order, so Tab off the
+					// play button would land inside the hidden Spotify frame.
+					inert={!isPlaybackActive}
 				>
 					<SpotifyEmbedIframe
 						spotifyId={spotifyTrackId}

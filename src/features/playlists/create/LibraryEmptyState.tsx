@@ -35,7 +35,7 @@ export function LibraryEmptyState({
 				<button
 					type="button"
 					onClick={onClearFilters}
-					className="hover-border-brighten mt-3 inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+					className="hover-border-brighten focus-edge mt-3 inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
 					Clear filters

@@ -61,7 +61,7 @@ function IntentEditorEligible({ value, onChange }: IntentEditorEligibleProps) {
 			rows={1}
 			placeholder={PLACEHOLDER}
 			aria-label="Playlist intent"
-			className="theme-text w-full resize-none appearance-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-30"
+			className="theme-text focus-underline w-full resize-none appearance-none bg-transparent text-sm leading-relaxed outline-none placeholder:opacity-30"
 			style={{
 				fontFamily: fonts.body,
 				minHeight: "3.5rem",
@@ -90,7 +90,7 @@ function IntentEditorLocked({ onOpenPaywall }: IntentEditorLockedProps) {
 					type="button"
 					onClick={onOpenPaywall}
 					aria-describedby={LOCKED_DESC_ID}
-					className="flex w-full cursor-pointer items-center gap-3 border border-transparent px-4 py-3 text-left transition-colors duration-150"
+					className="focus-edge flex w-full cursor-pointer items-center gap-3 border border-transparent px-4 py-3 text-left transition-colors duration-150"
 					style={{
 						fontFamily: fonts.body,
 						borderRadius: 14,

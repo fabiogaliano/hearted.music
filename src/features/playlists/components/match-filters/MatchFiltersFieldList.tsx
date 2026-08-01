@@ -123,6 +123,7 @@ function FacetRow({
 	return (
 		<div>
 			<div
+				className="focus-edge"
 				style={{
 					display: "flex",
 					alignItems: "center",
@@ -140,6 +141,7 @@ function FacetRow({
 					type="button"
 					onClick={onToggle}
 					aria-expanded={open}
+					data-focus-edge
 					style={{
 						display: "flex",
 						alignItems: "center",

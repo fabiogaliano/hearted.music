@@ -129,8 +129,8 @@ export function PreviewSongRow({
 					className={cn(
 						"flex-none cursor-pointer rounded-full p-2",
 						"transition-[opacity,transform] duration-150 active:scale-[0.96]",
-						"focus-visible:outline-2 focus-visible:outline-offset-2",
-						"[outline-color:var(--t-primary)]",
+						// Element opacity fades the focus ring with it, so focus goes solid.
+						"focus-edge focus-visible:opacity-100",
 						isPinned
 							? "opacity-100 hover:opacity-80"
 							: "theme-text-muted opacity-50 hover:opacity-90",
@@ -160,8 +160,7 @@ export function PreviewSongRow({
 				className={cn(
 					"theme-text-muted flex-none cursor-pointer rounded-full p-2",
 					"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.96]",
-					"focus-visible:outline-2 focus-visible:outline-offset-2",
-					"[outline-color:var(--t-primary)]",
+					"focus-edge",
 				)}
 				style={{
 					minWidth: 40,

@@ -87,7 +87,7 @@ export function CreateBar({
 					<button
 						type="button"
 						onClick={onRetryArtistResolution}
-						className="hover-border-brighten inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Retry
@@ -132,7 +132,7 @@ export function CreateBar({
 					<button
 						type="button"
 						onClick={() => void onRecheck()}
-						className="hover-border-brighten inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Check again
@@ -188,7 +188,8 @@ export function CreateBar({
 							: "Create playlist"
 				}
 				onClick={onSubmit}
-				className="shrink-0 text-[11px] tracking-[0.1em] uppercase cursor-pointer transition-[background-color,opacity,transform] duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-default"
+				// The fill is --t-primary, so the edge takes the on-primary ink instead.
+				className="shrink-0 text-[11px] tracking-[0.1em] uppercase cursor-pointer transition-[background-color,opacity,transform] duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-default focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--t-text-on-primary)]"
 				style={{
 					padding: "6px 16px",
 					borderRadius: 10,

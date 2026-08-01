@@ -68,7 +68,7 @@ export function ExtensionUnavailablePrompt({
 						onClick={handleRecheck}
 						disabled={isChecking}
 						aria-busy={isChecking}
-						className="theme-text-muted inline-flex cursor-pointer items-center whitespace-nowrap text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-default disabled:opacity-40"
+						className="theme-text-muted focus-underline inline-flex cursor-pointer items-center whitespace-nowrap text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70 disabled:cursor-default disabled:opacity-40"
 						style={{ fontFamily: fonts.body }}
 					>
 						{isChecking ? "Checking…" : "Check again"}

@@ -244,7 +244,7 @@ export function LanguagePicker({
 					disabled={disabled}
 					onClick={() => setOpen((o) => !o)}
 					onKeyDown={handleTriggerKeyDown}
-					className="w-full flex items-center gap-1.5 border border-transparent rounded-[8px] px-2.5 py-1.5 text-left theme-text focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] disabled:opacity-50 cursor-pointer transition-[background-color] duration-150"
+					className="w-full flex items-center gap-1.5 border border-transparent rounded-[8px] px-2.5 py-1.5 text-left theme-text focus-edge disabled:opacity-50 cursor-pointer transition-[background-color] duration-150"
 					style={{
 						background:
 							"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",

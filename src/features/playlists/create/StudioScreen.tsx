@@ -226,7 +226,7 @@ export function StudioScreen({
 					<button
 						type="button"
 						onClick={() => void navigate({ to: "/playlists" })}
-						className="theme-text-muted -ml-0.5 mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+						className="theme-text-muted focus-underline -ml-0.5 mb-3 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
 						style={{ fontFamily: fonts.body }}
 					>
 						<ArrowLeftIcon size={11} weight="regular" aria-hidden />
@@ -242,7 +242,7 @@ export function StudioScreen({
 						maxLength={MAX_NAME_LENGTH}
 						placeholder="Name this playlist…"
 						aria-label="Playlist name"
-						className="theme-text text-page-title w-full bg-transparent leading-[0.95] font-extralight tracking-tight outline-none focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+						className="theme-text text-page-title w-full bg-transparent leading-[0.95] font-extralight tracking-tight outline-none focus-underline"
 						style={{ fontFamily: fonts.display }}
 					/>
 				</div>

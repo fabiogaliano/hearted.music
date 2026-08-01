@@ -243,6 +243,52 @@ code {
 }
 
 @layer utilities {
+  /* Focus edge that follows squircle corners. `outline` always renders a plain
+     rounded rect, so on a corner-shape: squircle element it reads as a square
+     box floating off the shape; an inset shadow tracks the real corner curve.
+     The :has() arm lets a wrapper carry the edge for a borderless child (a
+     full-bleed row button whose radius lives on the row). It is opt-in per
+     child so a row with several controls still points at the focused one
+     rather than lighting up whole. */
+  .focus-edge:focus-visible,
+  .focus-edge:has(> [data-focus-edge]:focus-visible) {
+    outline: none;
+    box-shadow: inset 0 0 0 1.5px var(--t-primary);
+  }
+  .focus-edge > [data-focus-edge]:focus-visible {
+    outline: none;
+  }
+
+  /* Bare icon buttons have no fill or radius of their own, so an inset ring
+     would trace the glyph's bounding box. They get the edge just outside
+     instead, where an outline's plain rounding is not a mismatch. */
+  .focus-edge-offset:focus-visible {
+    outline: 1.5px solid var(--t-primary);
+    outline-offset: 2px;
+    /* An outline traces the element's own radius, and these buttons have none —
+       so without this the ring is a hard square around a round glyph. Only
+       applied while focused, on a transparent box, so nothing else moves. */
+    border-radius: 999px;
+  }
+
+  /* Chromium makes a scroll container a tab stop when it holds no focusable
+     children, and paints the UA's own (unthemed, blue) ring on it. An
+     aria-activedescendant listbox has exactly that shape — options are
+     tabIndex=-1 — but it already has a keyboard path through its combobox
+     input, so it opts out rather than showing a ring the design never chose. */
+  [role="listbox"]:focus,
+  [role="listbox"]:focus-visible {
+    outline: none;
+  }
+
+  /* Same 1.5px primary edge for fields that have no box to ring — a bare or
+     underlined text input, where a full ring would draw a shape the control
+     doesn't otherwise have. */
+  .focus-underline:focus-visible {
+    outline: none;
+    box-shadow: inset 0 -1.5px 0 0 var(--t-primary);
+  }
+
   /* Solid outline focus - for buttons and interactive elements */
   .focus-outline-solid {
     outline: 2px solid transparent;
@@ -1249,8 +1295,8 @@ code {
 }
 
 .max-songs-slider:focus-visible {
-  outline: var(--focus-ring-width) solid var(--focus-ring-color);
-  outline-offset: var(--focus-ring-offset);
+  outline: 1.5px solid var(--t-primary);
+  outline-offset: 4px;
   border-radius: 2px;
 }
 

@@ -92,8 +92,7 @@ export function SuggestionsTray({
 					className={cn(
 						"theme-text-muted flex cursor-pointer items-center rounded-full p-1.5",
 						"transition-[opacity,transform] duration-150 hover:opacity-70 active:scale-[0.98]",
-						"focus-visible:outline-2 focus-visible:outline-offset-2",
-						"[outline-color:var(--t-primary)]",
+						"focus-edge",
 					)}
 					style={{ minHeight: 32 }}
 				>

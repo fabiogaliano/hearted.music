@@ -241,7 +241,7 @@ export function ArtistConfig({
 						setExpanded(true);
 						setActiveIndex(0);
 					}}
-					className="w-full flex items-center gap-1.5 border border-transparent rounded-[8px] px-2.5 py-1.5 text-left theme-text cursor-pointer transition-[background-color] duration-150"
+					className="focus-edge w-full flex items-center gap-1.5 border border-transparent rounded-[8px] px-2.5 py-1.5 text-left theme-text cursor-pointer transition-[background-color] duration-150"
 					style={{
 						background:
 							"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
@@ -298,7 +298,7 @@ export function ArtistConfig({
 							type="button"
 							onClick={closeSearch}
 							aria-label="Close artist search"
-							className="shrink-0 inline-flex items-center justify-center theme-text-muted cursor-pointer opacity-50 transition-opacity duration-150 hover:opacity-100"
+							className="shrink-0 inline-flex items-center justify-center theme-text-muted focus-edge-offset cursor-pointer opacity-50 transition-opacity duration-150 hover:opacity-100 focus-visible:opacity-100"
 							style={{ background: "transparent", border: "none", padding: 2 }}
 						>
 							<XIcon size={10} weight="bold" aria-hidden />
@@ -313,6 +313,9 @@ export function ArtistConfig({
 						role="listbox"
 						aria-label="Liked artists"
 						aria-multiselectable="true"
+						// Keeps Chromium from adding this scroller to the tab order as a
+						// dead stop — the combobox input above is its keyboard entry point.
+						tabIndex={-1}
 						className="overflow-y-auto"
 						style={{ maxHeight: 180 }}
 					>
@@ -367,7 +370,7 @@ export function ArtistConfig({
 						<button
 							type="button"
 							onClick={() => setOverflowOpen(true)}
-							className="cursor-pointer rounded-full border border-transparent px-2 py-0.5 text-xs whitespace-nowrap theme-text-muted"
+							className="focus-edge cursor-pointer rounded-full border border-transparent px-2 py-0.5 text-xs whitespace-nowrap theme-text-muted"
 							style={{
 								background:
 									"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
@@ -392,7 +395,7 @@ export function ArtistConfig({
 					<button
 						type="button"
 						onClick={onRetryResolution}
-						className="cursor-pointer rounded-full border border-transparent px-2 py-0.5 text-xs whitespace-nowrap"
+						className="focus-edge cursor-pointer rounded-full border border-transparent px-2 py-0.5 text-xs whitespace-nowrap"
 						style={{
 							background:
 								"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
@@ -461,7 +464,7 @@ function ArtistChip({
 				type="button"
 				onClick={onToggle}
 				aria-label={`${enabled ? "Disable" : "Enable"} ${name}`}
-				className="inline-flex items-center gap-1 cursor-pointer"
+				className="focus-underline inline-flex items-center gap-1 cursor-pointer"
 			>
 				<span className="max-w-[16ch] truncate">{name}</span>
 				<span className="tabular-nums opacity-60">{count ?? "…"}</span>
@@ -470,7 +473,7 @@ function ArtistChip({
 				type="button"
 				onClick={onRemove}
 				aria-label={`Remove ${name}`}
-				className="inline-flex items-center opacity-70 cursor-pointer transition-opacity duration-150 hover:opacity-100"
+				className="focus-edge-offset inline-flex items-center opacity-70 cursor-pointer transition-opacity duration-150 hover:opacity-100"
 				style={{ marginLeft: 2 }}
 			>
 				<XIcon size={10} weight="bold" aria-hidden />
@@ -702,7 +705,7 @@ function ArtistOverflowDialog({
 						type="button"
 						onClick={onClose}
 						aria-label="Close"
-						className="theme-text-muted cursor-pointer p-1 transition-opacity duration-150 hover:opacity-70"
+						className="theme-text-muted focus-edge-offset cursor-pointer p-1 transition-opacity duration-150 hover:opacity-70"
 					>
 						<XIcon size={16} weight="regular" aria-hidden />
 					</button>
@@ -714,7 +717,7 @@ function ArtistOverflowDialog({
 					onChange={(e) => setFilter(e.target.value)}
 					placeholder="Search within selection…"
 					aria-label="Search within selected artists"
-					className="theme-border-color theme-text w-full border-b bg-transparent px-1 py-1.5 text-sm outline-none focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+					className="theme-border-color theme-text w-full border-b bg-transparent px-1 py-1.5 text-sm outline-none focus-underline"
 				/>
 
 				<div className="flex flex-wrap content-start items-center gap-2 overflow-y-auto">

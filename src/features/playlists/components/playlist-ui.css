@@ -196,7 +196,7 @@
 .mf-field {
 	border-radius: 8px;
 	corner-shape: squircle;
-	border: 1px solid transparent;
+	border: 1.5px solid transparent;
 	background: oklch(
 		from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3)
 	);
@@ -208,7 +208,7 @@
 }
 .mf-field:focus-visible {
 	outline: none;
-	border-color: oklch(from var(--t-primary) l c h / 0.45);
+	border-color: var(--t-primary);
 }
 .mf-field:hover:not(:disabled) {
 	background: oklch(
@@ -223,7 +223,7 @@
 .mf-chip {
 	border-radius: 999px;
 	corner-shape: squircle;
-	border: 1px solid transparent;
+	border: 1.5px solid transparent;
 	background: oklch(
 		from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3)
 	);
@@ -247,6 +247,15 @@
 .mf-chip:disabled {
 	opacity: 0.5;
 	cursor: default;
+}
+.mf-chip:focus-visible,
+.mf-seg:focus-visible {
+	outline: none;
+	border-color: var(--t-primary);
+}
+.mf-remove:focus-visible {
+	outline: 1.5px solid var(--t-primary);
+	outline-offset: 2px;
 }
 .mf-chip[aria-pressed="true"] {
 	background: var(--t-primary);
