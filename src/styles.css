@@ -687,6 +687,7 @@ code {
   color: var(--t-primary);
 }
 .genre-picker .gp-chips {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -702,8 +703,22 @@ code {
   font-size: 11px;
   white-space: nowrap;
   color: var(--t-text-on-primary);
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   background: var(--t-primary);
+}
+/* The chip's own fill is --t-primary, so its focus edge takes the on-primary
+   ink; the suggestion below sits on the surface and takes primary. */
+.genre-picker .gp-chip:focus-visible,
+.genre-picker .gp-chip:has(:focus-visible) {
+  outline: none;
+  border-color: var(--t-text-on-primary);
+}
+.genre-picker .gp-chip :focus-visible {
+  outline: none;
+}
+.genre-picker .gp-opt:focus-visible {
+  outline: none;
+  border-color: var(--t-primary);
 }
 .genre-picker .gp-chip-x {
   position: relative;
@@ -745,11 +760,24 @@ code {
   corner-shape: squircle;
   padding: 3px 10px;
   cursor: text;
-  border: 1px solid transparent;
+  /* 1.5px to match the match-filters fields/chips below and the .focus-edge
+     utility — a thinner edge here would read as a weaker focus, not a different
+     control. Reserved transparent at rest so focus costs no layout shift. */
+  border: 1.5px solid transparent;
   background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
   transition:
     border-color 150ms ease,
     background-color 150ms ease;
+}
+/* The pill is the visible control but the input inside it takes focus, so the
+   pill carries the edge. It tints its own already-present transparent border
+   rather than drawing anything new — no layout shift, and the edge follows the
+   squircle corners (an `outline` would draw a plain rounded rect off the shape). */
+.genre-picker .gp-pill:has(.gp-pill-input:focus-visible) {
+  border-color: var(--t-primary);
+}
+.genre-picker .gp-pill-input:focus-visible {
+  outline: none;
 }
 .genre-picker .gp-pill.valid {
   background: color-mix(in srgb, var(--t-primary) 12%, transparent);
@@ -824,7 +852,7 @@ code {
   white-space: nowrap;
   cursor: pointer;
   color: var(--t-text-muted);
-  border: 1px solid transparent;
+  border: 1.5px solid transparent;
   background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
   transition:
     color 150ms ease,
@@ -842,20 +870,34 @@ code {
   opacity: 0.5;
   cursor: default;
 }
-/* Search results popover, anchored below the engine. */
+/* Search results popover, anchored to the bottom of the chips/input row. */
 .genre-picker .gp-pop {
   position: absolute;
   left: 0;
   right: 0;
   top: 100%;
-  margin-top: 8px;
   z-index: 30;
   background: var(--t-surface);
   border: 1px solid var(--t-border);
   border-radius: 12px;
-  padding: 5px;
+  /* Block padding only: the reserved scrollbar gutters below supply the inline
+     inset on both sides. 7px because the card's 12px corners eat into the first
+     and last rows' highlight, so a tighter value reads as top-cramped. */
+  padding: 7px 0;
   max-height: 220px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Reserve the bar's width on BOTH sides, so the option column stays centred in
+     the card instead of being pushed left by the gutter — and doesn't shift when
+     a shorter result set stops overflowing. */
+  scrollbar-gutter: stable both-edges;
+  /* Reset the global `* { scrollbar-width: thin; scrollbar-color: … }` — Chromium
+     drops the ::-webkit-scrollbar rules below the moment either is set (see the
+     .review-list-scroll note above). Firefox is themed in the @supports block. */
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+  /* Keep arrowed-to rows clear of the padding when they scroll into view. */
+  scroll-padding-block: 7px;
   list-style: none;
   margin-block: 8px 0;
   box-shadow:
@@ -869,6 +911,34 @@ code {
   transition:
     opacity 160ms var(--ease-out-expo),
     transform 160ms var(--ease-out-expo);
+}
+/* The bar's width also sets the reserved gutter, so 8px keeps both-edges cheap. */
+.genre-picker .gp-pop::-webkit-scrollbar {
+  width: 8px;
+}
+/* The track spans the whole padding box, which runs under the card's 12px
+   corners — inset it so the thumb can never reach the curve or the border. */
+.genre-picker .gp-pop::-webkit-scrollbar-track {
+  background: transparent;
+  margin-block: 10px;
+}
+.genre-picker .gp-pop::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--t-text) 20%, transparent);
+  border-radius: 999px;
+  /* Transparent border + padding-box clip: a 4px hairline thumb centred in the
+     8px gutter, with no second element to position. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.genre-picker .gp-pop:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklch, var(--t-text) 34%, transparent);
+}
+@supports (-moz-appearance: none) {
+  .genre-picker .gp-pop {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--t-text) 22%, transparent)
+      transparent;
+  }
 }
 .genre-picker .gp-pop.open {
   opacity: 1;

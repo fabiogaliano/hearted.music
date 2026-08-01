@@ -51,7 +51,8 @@ export function GenrePillsPicker({
 }: GenrePillsPickerProps) {
 	const [query, setQuery] = useState("");
 	const [open, setOpen] = useState(false);
-	const [activeIndex, setActiveIndex] = useState(-1);
+	// -1 means "no explicit move yet" — the selection sits on the top match.
+	const [cursor, setCursor] = useState(-1);
 	const [shake, setShake] = useState(false);
 	const [announcement, setAnnouncement] = useState("");
 
@@ -91,16 +92,25 @@ export function GenrePillsPicker({
 	// while the user is actively typing into the pill.
 	const popOpen = open && trimmed !== "" && !atCap;
 
-	// Inline autocomplete: the remainder of the top match when it prefixes the
-	// query, rendered behind the caret for Tab/→ to accept.
-	const ghost = useMemo(() => {
-		if (trimmed === "") return "";
-		const top = results[0]?.value;
-		if (top?.toLowerCase().startsWith(query.toLowerCase())) {
-			return top.slice(query.length);
-		}
-		return "";
-	}, [trimmed, results, query]);
+	// Exactly one option is ever "the selection": the top match by default, moved
+	// by the arrow keys. Everything downstream — the highlighted row, the pill's
+	// preview, and what Enter adds — reads this one index, so the popover and the
+	// pill can't disagree about what is about to be added.
+	const activeIndex =
+		trimmed === "" || results.length === 0
+			? -1
+			: Math.min(cursor < 0 ? 0 : cursor, results.length - 1);
+	const activeOption = activeIndex >= 0 ? results[activeIndex] : undefined;
+
+	// The pill previews the active option: its remainder ghosted after the typed
+	// text when the query prefixes it (Tab/→ accepts), otherwise the whole label
+	// replaces the query, so arrowing down always shows what you'd get.
+	const previewsQuery =
+		activeOption?.value.toLowerCase().startsWith(query.toLowerCase()) ?? false;
+	const shownValue =
+		activeOption && !previewsQuery ? activeOption.value : query;
+	const ghost =
+		activeOption && previewsQuery ? activeOption.value.slice(query.length) : "";
 
 	const announce = useCallback((message: string) => {
 		setAnnouncement(message);
@@ -132,7 +142,7 @@ export function GenrePillsPicker({
 			// genre shouldn't require manually deleting the previous term.
 			setQuery("");
 			setOpen(false);
-			setActiveIndex(-1);
+			setCursor(-1);
 			announce(`Added ${genre}. ${next.length} of ${maxPills} selected.`);
 			inputRef.current?.focus();
 		},
@@ -143,7 +153,7 @@ export function GenrePillsPicker({
 		(genre: string) => {
 			const next = value.filter((g) => g !== genre);
 			onChange(next);
-			setActiveIndex(-1);
+			setCursor(-1);
 			announce(`Removed ${genre}. ${next.length} of ${maxPills} selected.`);
 			inputRef.current?.focus();
 		},
@@ -183,15 +193,16 @@ export function GenrePillsPicker({
 		setOpen(next.trim() !== "");
 		// Results shift under the highlight as the query changes, so drop the
 		// active descendant rather than let it point at a stale option.
-		setActiveIndex(-1);
+		setCursor(-1);
 	};
 
-	const acceptGhost = () => {
-		const top = results[0];
-		if (!top) return;
-		setQuery(top.value);
+	// Commit the previewed option into the query itself, so the caret sits after
+	// it and the search narrows to that label.
+	const acceptPreview = () => {
+		if (!activeOption) return;
+		setQuery(activeOption.value);
 		setOpen(true);
-		setActiveIndex(-1);
+		setCursor(-1);
 	};
 
 	const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -202,18 +213,15 @@ export function GenrePillsPicker({
 				event.preventDefault();
 				if (!popOpen) {
 					setOpen(query.trim() !== "");
-					setActiveIndex(results.length > 0 ? 0 : -1);
 					return;
 				}
-				setActiveIndex((index) =>
-					results.length === 0 ? -1 : Math.min(index + 1, results.length - 1),
-				);
+				setCursor(Math.min(activeIndex + 1, results.length - 1));
 				return;
 			}
 			case "ArrowUp": {
 				event.preventDefault();
 				if (!popOpen) return;
-				setActiveIndex((index) => Math.max(index - 1, 0));
+				setCursor(Math.max(activeIndex - 1, 0));
 				return;
 			}
 			case "ArrowRight":
@@ -221,15 +229,14 @@ export function GenrePillsPicker({
 				// Accept the inline ghost completion when the caret sits at the end.
 				if (ghost && caretAtEnd) {
 					event.preventDefault();
-					acceptGhost();
+					acceptPreview();
 				}
 				return;
 			}
 			case "Enter": {
 				event.preventDefault();
-				if (results.length > 0) {
-					const target = results[activeIndex >= 0 ? activeIndex : 0];
-					if (target) addGenre(target.value);
+				if (activeOption) {
+					addGenre(activeOption.value);
 				} else if (trimmed !== "") {
 					// No match for what was typed — nudge rather than add nothing.
 					triggerShake();
@@ -244,7 +251,7 @@ export function GenrePillsPicker({
 					event.preventDefault();
 					event.stopPropagation();
 					setOpen(false);
-					setActiveIndex(-1);
+					setCursor(-1);
 				}
 				return;
 			}
@@ -272,7 +279,10 @@ export function GenrePillsPicker({
 			</div>
 
 			{/* Selected chips share a wrapping row with the add-genre input pill, so
-			    the control reads as one field that holds chips and a place to type. */}
+			    the control reads as one field that holds chips and a place to type.
+			    It is also the popover's containing block — anchored to the whole
+			    picker the popover would hang below the always-mounted suggestions
+			    row instead of below the pill it belongs to. */}
 			<div className="gp-chips">
 				{value.map((genre) => (
 					<span key={genre} id={chipId(genre)} className="gp-chip">
@@ -308,7 +318,7 @@ export function GenrePillsPicker({
 							    same font, same layout pass — and reflows with typing and
 							    webfont load with no JS measurement. The input overlays it. */}
 							<span className="gp-pill-measure" aria-hidden="true">
-								{query || "add genre"}
+								{shownValue || "add genre"}
 							</span>
 							<input
 								ref={inputRef}
@@ -316,7 +326,7 @@ export function GenrePillsPicker({
 								role="combobox"
 								aria-expanded={popOpen}
 								aria-controls={listboxId}
-								aria-autocomplete="list"
+								aria-autocomplete="both"
 								aria-activedescendant={
 									popOpen && activeIndex >= 0
 										? optionId(activeIndex)
@@ -325,7 +335,7 @@ export function GenrePillsPicker({
 								aria-label="Add genre"
 								className="gp-pill-input"
 								placeholder="add genre"
-								value={query}
+								value={shownValue}
 								onChange={handleInputChange}
 								onKeyDown={handleKeyDown}
 								onFocus={() => {
@@ -338,6 +348,36 @@ export function GenrePillsPicker({
 							</span>
 						</span>
 					</label>
+				)}
+
+				{!atCap && (
+					<ul
+						id={listboxId}
+						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: APG combobox keeps DOM focus on the input; the listbox is referenced via aria-controls/aria-activedescendant, so a styled <ul role=listbox> is the correct pattern here.
+						role="listbox"
+						aria-label="Genres"
+						aria-hidden={!popOpen}
+						className={`gp-pop${popOpen ? " open" : ""}`}
+					>
+						{popOpen &&
+							(results.length > 0 ? (
+								results.map((option, index) => (
+									<GenreOptionRow
+										key={option.value}
+										id={optionId(index)}
+										option={option}
+										query={query}
+										active={index === activeIndex}
+										onSelect={() => addGenre(option.value)}
+										onHover={() => setCursor(index)}
+									/>
+								))
+							) : (
+								<li className="gp-opt-empty" role="presentation">
+									No genre matches “{trimmed}”
+								</li>
+							))}
+					</ul>
 				)}
 			</div>
 
@@ -371,36 +411,6 @@ export function GenrePillsPicker({
 						</span>
 					)}
 				</div>
-			)}
-
-			{!atCap && (
-				<ul
-					id={listboxId}
-					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: APG combobox keeps DOM focus on the input; the listbox is referenced via aria-controls/aria-activedescendant, so a styled <ul role=listbox> is the correct pattern here.
-					role="listbox"
-					aria-label="Genres"
-					aria-hidden={!popOpen}
-					className={`gp-pop${popOpen ? " open" : ""}`}
-				>
-					{popOpen &&
-						(results.length > 0 ? (
-							results.map((option, index) => (
-								<GenreOptionRow
-									key={option.value}
-									id={optionId(index)}
-									option={option}
-									query={query}
-									active={index === activeIndex}
-									onSelect={() => addGenre(option.value)}
-									onHover={() => setActiveIndex(index)}
-								/>
-							))
-						) : (
-							<li className="gp-opt-empty" role="presentation">
-								No genre matches “{trimmed}”
-							</li>
-						))}
-				</ul>
 			)}
 
 			<div aria-live="polite" className="sr-only">
