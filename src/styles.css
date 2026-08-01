@@ -308,6 +308,25 @@ code {
     border-radius: 999px;
   }
 
+  /* Grows a small control's hit area to the 40px floor without moving a pixel
+     of what's drawn. The size-8 round buttons in the review columns are 32px of
+     glyph, which is a fine visual weight for a secondary action and a poor
+     target; a transparent pseudo-element takes the last 8px.
+
+     Both properties are load-bearing: the inset is half the shortfall on each
+     side so the target grows concentrically, and the positioning context has to
+     be the control itself or the box lands on some ancestor. Callers must keep
+     4px of clearance from their neighbour — hit areas that overlap are worse
+     than hit areas that are small, because the miss is then silent. */
+  .tap-40 {
+    position: relative;
+  }
+  .tap-40::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+  }
+
   /* Chromium makes a scroll container a tab stop when it holds no focusable
      children, and paints the UA's own (unthemed, blue) ring on it. An
      aria-activedescendant listbox has exactly that shape — options are

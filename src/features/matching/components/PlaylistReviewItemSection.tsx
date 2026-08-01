@@ -219,7 +219,7 @@ function PlaylistCoverAndName({
 								type="button"
 								onClick={collapse}
 								aria-label="Show cover art"
-								className="theme-text-muted absolute top-2 right-2 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+								className="theme-text-muted tap-40 absolute top-2 right-2 z-10 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
 								style={{
 									background:
 										"color-mix(in srgb, var(--t-surface) 80%, transparent)",

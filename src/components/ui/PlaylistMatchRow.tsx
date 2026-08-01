@@ -167,7 +167,7 @@ export function PlaylistMatchRow({
 							aria-label={
 								dismissLabel ?? `Dismiss playlist suggestion: ${name}`
 							}
-							className="theme-text-muted inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+							className="theme-text-muted tap-40 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
 						>
 							<XIcon size={14} weight="bold" />
 						</button>

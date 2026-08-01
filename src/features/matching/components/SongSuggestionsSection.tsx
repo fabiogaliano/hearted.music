@@ -259,7 +259,7 @@ function SongSuggestionRowItem({
 							disabled={navigationDisabled}
 							onClick={() => onDismiss(song.id)}
 							aria-label={`Dismiss song suggestion: ${song.name}`}
-							className="theme-text-muted inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
+							className="theme-text-muted tap-40 inline-flex size-8 cursor-pointer items-center justify-center rounded-full opacity-60 transition-opacity hover:opacity-100 disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
 						>
 							<XIcon size={14} weight="bold" />
 						</button>
