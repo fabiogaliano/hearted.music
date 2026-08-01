@@ -4,7 +4,7 @@ import {
 	TerminalWindowIcon,
 	TestTubeIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { AccountPicker } from "../components/AccountPicker";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -295,6 +295,66 @@ function OperationForm({ op }: { op: OperationDef }) {
 		!isStale &&
 		(!needsAck || ackWarnings);
 
+	function renderFieldControl(f: OperationField, fieldId: string): ReactNode {
+		if (f.type === "select") {
+			return (
+				<select
+					id={fieldId}
+					className="select"
+					value={values[f.name]}
+					onChange={(e) => setValue(f.name, e.target.value)}
+				>
+					{f.options?.map((o) => (
+						<option key={o.value} value={o.value}>
+							{o.label}
+						</option>
+					))}
+				</select>
+			);
+		}
+		if (f.type === "account") {
+			return (
+				<AccountPicker
+					inputId={fieldId}
+					placeholder={f.placeholder}
+					value={values[f.name]}
+					label={labels[f.name]}
+					onChange={(id, label) => {
+						setValues((v) => ({ ...v, [f.name]: id }));
+						setLabels((l) => ({ ...l, [f.name]: label }));
+						invalidatePreview();
+					}}
+				/>
+			);
+		}
+		if (f.type === "number") {
+			return (
+				<input
+					id={fieldId}
+					className="input"
+					type="number"
+					inputMode="numeric"
+					min={f.min}
+					max={f.max}
+					placeholder={f.placeholder}
+					value={values[f.name]}
+					{...noAutofill}
+					onChange={(e) => setValue(f.name, e.target.value)}
+				/>
+			);
+		}
+		return (
+			<input
+				id={fieldId}
+				className="input"
+				placeholder={f.placeholder}
+				value={values[f.name]}
+				{...noAutofill}
+				onChange={(e) => setValue(f.name, e.target.value)}
+			/>
+		);
+	}
+
 	return (
 		<Card
 			title={op.title}
@@ -315,54 +375,7 @@ function OperationForm({ op }: { op: OperationDef }) {
 							{f.label}
 							{f.required && <span style={{ color: "var(--accent)" }}> *</span>}
 						</label>
-						{f.type === "select" ? (
-							<select
-								id={fieldId}
-								className="select"
-								value={values[f.name]}
-								onChange={(e) => setValue(f.name, e.target.value)}
-							>
-								{f.options?.map((o) => (
-									<option key={o.value} value={o.value}>
-										{o.label}
-									</option>
-								))}
-							</select>
-						) : f.type === "account" ? (
-							<AccountPicker
-								inputId={fieldId}
-								placeholder={f.placeholder}
-								value={values[f.name]}
-								label={labels[f.name]}
-								onChange={(id, label) => {
-									setValues((v) => ({ ...v, [f.name]: id }));
-									setLabels((l) => ({ ...l, [f.name]: label }));
-									invalidatePreview();
-								}}
-							/>
-						) : f.type === "number" ? (
-							<input
-								id={fieldId}
-								className="input"
-								type="number"
-								inputMode="numeric"
-								min={f.min}
-								max={f.max}
-								placeholder={f.placeholder}
-								value={values[f.name]}
-								{...noAutofill}
-								onChange={(e) => setValue(f.name, e.target.value)}
-							/>
-						) : (
-							<input
-								id={fieldId}
-								className="input"
-								placeholder={f.placeholder}
-								value={values[f.name]}
-								{...noAutofill}
-								onChange={(e) => setValue(f.name, e.target.value)}
-							/>
-						)}
+						{renderFieldControl(f, fieldId)}
 					</div>
 				);
 			})}

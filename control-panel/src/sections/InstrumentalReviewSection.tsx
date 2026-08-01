@@ -6,7 +6,13 @@ import {
 	TrashIcon,
 	WaveformIcon,
 } from "@phosphor-icons/react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	AudioPlayer,
 	type AudioPlayerHandle,
@@ -207,6 +213,45 @@ function ListenFace({
 			: audio.data.origin === "match"
 				? "pipeline match"
 				: "via search";
+
+	function renderDetails(): ReactNode {
+		if (audio.error) {
+			return (
+				<>
+					<div className="rv-ptitle">Lookup failed</div>
+					<div className="rv-psub">{audio.error}</div>
+				</>
+			);
+		}
+		if (audio.data == null) {
+			return (
+				<>
+					<div className="rv-ptitle">Finding audio…</div>
+					<div className="rv-psub">Searching YouTube for this song</div>
+				</>
+			);
+		}
+		if (top == null) {
+			return (
+				<>
+					<div className="rv-ptitle">No results</div>
+					<div className="rv-psub">Nothing playable came back</div>
+				</>
+			);
+		}
+		return (
+			<>
+				<div className="rv-ptitle">{top.title ?? "(no title)"}</div>
+				<div className="rv-psub">
+					{top.channel ?? "—"}
+					{top.durationSeconds != null && (
+						<span className="num"> · {clock(top.durationSeconds)}</span>
+					)}
+				</div>
+			</>
+		);
+	}
+
 	return (
 		<div className={`rv-panel yt ${size}`}>
 			<span className="rv-face-art placeholder" />
@@ -215,32 +260,7 @@ function ListenFace({
 					<span className="rv-dot yt" />
 					<span className="rv-tag">YouTube audio · {originLabel}</span>
 				</div>
-				{audio.error ? (
-					<>
-						<div className="rv-ptitle">Lookup failed</div>
-						<div className="rv-psub">{audio.error}</div>
-					</>
-				) : audio.data == null ? (
-					<>
-						<div className="rv-ptitle">Finding audio…</div>
-						<div className="rv-psub">Searching YouTube for this song</div>
-					</>
-				) : top == null ? (
-					<>
-						<div className="rv-ptitle">No results</div>
-						<div className="rv-psub">Nothing playable came back</div>
-					</>
-				) : (
-					<>
-						<div className="rv-ptitle">{top.title ?? "(no title)"}</div>
-						<div className="rv-psub">
-							{top.channel ?? "—"}
-							{top.durationSeconds != null && (
-								<span className="num"> · {clock(top.durationSeconds)}</span>
-							)}
-						</div>
-					</>
-				)}
+				{renderDetails()}
 				{size === "lg" &&
 					(top ? (
 						<a

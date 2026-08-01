@@ -79,15 +79,6 @@ export function CreateBar({
 }: CreateBarProps) {
 	const trimmedName = name.trim();
 	const isGateChecking = gate.gateState === "checking";
-	const canSubmit =
-		songs.length > 0 &&
-		trimmedName.length > 0 &&
-		!isSubmitting &&
-		!isPreviewStale &&
-		!isResolvingArtists &&
-		!isArtistResolutionError &&
-		!isGateChecking;
-
 	const songCount = songs.length;
 
 	// A blocked gate state replaces the CTA outright (never just disables it) —
@@ -168,17 +159,26 @@ export function CreateBar({
 		);
 	}
 
-	const hint = isGateChecking
-		? "Checking connection…"
-		: trimmedName.length === 0
-			? "Name your playlist first"
-			: isPreviewStale || isResolvingArtists
-				? "Updating…"
-				: isSubmitting
-					? "Creating on Spotify…"
-					: songCount === 0
-						? "Add songs to create"
-						: null;
+	let submitBlocker: string | null = null;
+	if (isGateChecking) {
+		submitBlocker = "Checking connection…";
+	} else if (trimmedName.length === 0) {
+		submitBlocker = "Name your playlist first";
+	} else if (isPreviewStale || isResolvingArtists) {
+		submitBlocker = "Updating…";
+	} else if (isSubmitting) {
+		submitBlocker = "Creating on Spotify…";
+	} else if (songCount === 0) {
+		submitBlocker = "Add songs to create";
+	}
+	const canSubmit = submitBlocker === null;
+
+	let createButtonLabel = "Create playlist";
+	if (isSubmitting) {
+		createButtonLabel = "Creating…";
+	} else if (songCount > 0) {
+		createButtonLabel = `Create playlist with ${songCount} ${songCount === 1 ? "song" : "songs"}`;
+	}
 
 	return (
 		<div
@@ -186,12 +186,12 @@ export function CreateBar({
 			style={{ fontFamily: fonts.body }}
 		>
 			<div className="min-w-0 flex-1">
-				{hint ? (
+				{submitBlocker ? (
 					<span
 						className="theme-text-muted shrink-0 text-xs"
 						aria-live="polite"
 					>
-						{hint}
+						{submitBlocker}
 					</span>
 				) : (
 					<div className="flex min-w-0 items-baseline gap-2 text-xs">
@@ -214,13 +214,7 @@ export function CreateBar({
 				type="button"
 				disabled={!canSubmit}
 				aria-busy={isSubmitting}
-				aria-label={
-					isSubmitting
-						? "Creating…"
-						: songCount > 0
-							? `Create playlist with ${songCount} ${songCount === 1 ? "song" : "songs"}`
-							: "Create playlist"
-				}
+				aria-label={createButtonLabel}
 				onClick={onSubmit}
 				// The fill is --t-primary, so the edge takes the on-primary ink instead.
 				className="shrink-0 text-[11px] tracking-[0.1em] uppercase cursor-pointer transition-[background-color,opacity,transform] duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-default focus-visible:outline-none focus-visible:shadow-[inset_0_0_0_1.5px_var(--t-text-on-primary)]"

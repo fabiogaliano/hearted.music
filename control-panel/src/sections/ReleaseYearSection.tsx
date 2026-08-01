@@ -6,7 +6,7 @@ import {
 	MusicNotesIcon,
 	VinylRecordIcon,
 } from "@phosphor-icons/react";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge, Card, ErrorState, Loading } from "../components/primitives";
 import { QueueToolbar } from "../components/QueueToolbar";
@@ -716,6 +716,62 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 		groupRows[Math.min(queue.focusIndex, groupRows.length - 1)];
 	const focusSong = songRows[Math.min(queue.focusIndex, songRows.length - 1)];
 
+	function renderQueueContent(): ReactNode {
+		if (rowCount === 0) {
+			return (
+				<div className="card span-12">
+					<div className="empty">
+						{queue.q ? "No songs match your search." : EMPTY_COPY[queue.tab]}
+					</div>
+				</div>
+			);
+		}
+		if (isAlbums && isFocus) {
+			if (!focusGroup) return null;
+			return (
+				<div className="ar-list solo span-12">
+					<AlbumCard
+						key={focusGroup.albumId}
+						g={focusGroup}
+						entry={entries[focusGroup.albumId]}
+						onSaved={refetch}
+						solo
+					/>
+				</div>
+			);
+		}
+		if (isAlbums) {
+			return (
+				<div className="ar-list span-12">
+					{groupRows.map((g) => (
+						<AlbumCard
+							key={g.albumId}
+							g={g}
+							entry={entries[g.albumId]}
+							onSaved={refetch}
+							solo={false}
+						/>
+					))}
+				</div>
+			);
+		}
+		if (isFocus) {
+			if (!focusSong) return null;
+			return (
+				<div className="ar-list solo span-12">
+					<SongCard key={focusSong.songId} r={focusSong} onSaved={refetch} />
+				</div>
+			);
+		}
+		return (
+			<div className="ar-list span-12">
+				{songRows.map((r) => (
+					<SongCard key={r.songId} r={r} onSaved={refetch} />
+				))}
+			</div>
+		);
+	}
+
 	return (
 		<div className="queue-page">
 			<div className="card queue-head span-12">
@@ -847,51 +903,7 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 				</div>
 			)}
 
-			{rowCount === 0 ? (
-				<div className="card span-12">
-					<div className="empty">
-						{queue.q ? "No songs match your search." : EMPTY_COPY[queue.tab]}
-					</div>
-				</div>
-			) : isAlbums ? (
-				isFocus ? (
-					focusGroup && (
-						<div className="ar-list solo span-12">
-							<AlbumCard
-								key={focusGroup.albumId}
-								g={focusGroup}
-								entry={entries[focusGroup.albumId]}
-								onSaved={refetch}
-								solo
-							/>
-						</div>
-					)
-				) : (
-					<div className="ar-list span-12">
-						{groupRows.map((g) => (
-							<AlbumCard
-								key={g.albumId}
-								g={g}
-								entry={entries[g.albumId]}
-								onSaved={refetch}
-								solo={false}
-							/>
-						))}
-					</div>
-				)
-			) : isFocus ? (
-				focusSong && (
-					<div className="ar-list solo span-12">
-						<SongCard key={focusSong.songId} r={focusSong} onSaved={refetch} />
-					</div>
-				)
-			) : (
-				<div className="ar-list span-12">
-					{songRows.map((r) => (
-						<SongCard key={r.songId} r={r} onSaved={refetch} />
-					))}
-				</div>
-			)}
+			{renderQueueContent()}
 		</div>
 	);
 }

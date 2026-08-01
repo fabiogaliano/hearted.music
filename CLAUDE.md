@@ -38,6 +38,8 @@ Work on `main` unless told otherwise.
 - Structure is earned by present need, never anticipated: no abstraction before the third occurrence, no interface with one implementation, no option/callback no caller uses. If an abstraction needs a new boolean/variant param for a new caller, inline it back to duplication.
 - Don't split modules by execution order (parse → transform → save, one file per step) — group by shared knowledge instead.
 - Mutually exclusive states are one discriminated union, never co-occurring booleans (`isLoading`/`isError`/`hasData`).
+- Ternaries are for short binary choices. Use guards/`if` for precedence, exhaustive switches for unions, and early-return helpers for conditional JSX.
+- If predicates drive multiple outputs, derive one semantic state instead of repeating them.
 - Parse once at the boundary (Zod at the server-fn/route edge) — never re-check a field's shape downstream.
 - Before adding a `try/catch` or error branch, define the error out of existence (return `[]` not `null`; make "unset" valid).
 - Pure domain logic (pricing, filtering, state transitions) imports no IO — no supabase client, `fetch`, or storage. IO lives in server fns, loaders, and the worker.

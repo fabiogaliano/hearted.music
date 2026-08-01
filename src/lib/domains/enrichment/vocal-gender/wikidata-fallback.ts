@@ -42,6 +42,15 @@ function classify(g: string): "female" | "male" | "other" {
 	return "other";
 }
 
+function classifyBandGender(
+	members: Set<"female" | "male">,
+): WikidataResolved["band_gender"] {
+	if (members.has("female") && members.has("male")) return "mixed";
+	if (members.has("female")) return "female";
+	if (members.has("male")) return "male";
+	return null;
+}
+
 interface Acc {
 	wd: string;
 	self: "female" | "male" | "other" | null;
@@ -110,16 +119,12 @@ async function resolveBatch(batch: string[]): Promise<WikidataResolved[]> {
 				band_gender: null,
 			};
 		}
-		const m = hit.members;
-		const band_gender =
-			m.has("female") && m.has("male")
-				? "mixed"
-				: m.has("female")
-					? "female"
-					: m.has("male")
-						? "male"
-						: null;
-		return { spotify_id: sid, wikidata_id: hit.wd, gender: null, band_gender };
+		return {
+			spotify_id: sid,
+			wikidata_id: hit.wd,
+			gender: null,
+			band_gender: classifyBandGender(hit.members),
+		};
 	});
 }
 

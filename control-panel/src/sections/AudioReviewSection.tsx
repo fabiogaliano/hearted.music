@@ -8,7 +8,13 @@ import {
 	WarningCircleIcon,
 	WaveformIcon,
 } from "@phosphor-icons/react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import {
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import type { MatchCandidateSnapshot } from "@/lib/integrations/youtube-audio/types";
 import {
 	AudioPlayer,
@@ -1558,6 +1564,61 @@ function JobQueue({
 
 	if (error && !data) return <ErrorState message={error} />;
 
+	function renderQueueContent(): ReactNode {
+		if (!data) {
+			return (
+				<div className="card span-12">
+					<div className="empty">Loading…</div>
+				</div>
+			);
+		}
+		if (total === 0) {
+			return (
+				<div className="card span-12">
+					<div className="empty">
+						{queue.q ? "No songs match your search." : JOB_EMPTY[filter]}
+					</div>
+				</div>
+			);
+		}
+		if (isFocus) {
+			if (!focusRow) return null;
+			return (
+				<div className="ar-list solo span-12">{card(focusRow, "focus")}</div>
+			);
+		}
+		return (
+			<div className="rv-cockpit span-12">
+				<div className="rv-statbar">
+					<span>
+						<b className="serif upright">{total}</b>{" "}
+						{filter === "needs_url" ? "to match" : "failed"}
+					</span>
+					<span className="rv-statbar-keys">
+						<span className="rv-tag">keyboard</span>
+						<kbd>J</kbd>
+						<kbd>K</kbd> move · <kbd>/</kbd> search
+					</span>
+				</div>
+				<div className="rv-cols">
+					<div className="ar-rail">
+						{pageRows.map((r, i) => (
+							<JobRailRow
+								key={r.jobId}
+								r={r}
+								active={i === localIndex}
+								onSelect={() => queue.setFocusIndex(i)}
+							/>
+						))}
+					</div>
+					<div className="ar-detail">
+						{focusRow && card(focusRow, "cockpit")}
+					</div>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<>
 			<QueueToolbar
@@ -1581,50 +1642,7 @@ function JobQueue({
 				hasNext={hasNext}
 			/>
 
-			{!data ? (
-				<div className="card span-12">
-					<div className="empty">Loading…</div>
-				</div>
-			) : total === 0 ? (
-				<div className="card span-12">
-					<div className="empty">
-						{queue.q ? "No songs match your search." : JOB_EMPTY[filter]}
-					</div>
-				</div>
-			) : isFocus ? (
-				focusRow && (
-					<div className="ar-list solo span-12">{card(focusRow, "focus")}</div>
-				)
-			) : (
-				<div className="rv-cockpit span-12">
-					<div className="rv-statbar">
-						<span>
-							<b className="serif upright">{total}</b>{" "}
-							{filter === "needs_url" ? "to match" : "failed"}
-						</span>
-						<span className="rv-statbar-keys">
-							<span className="rv-tag">keyboard</span>
-							<kbd>J</kbd>
-							<kbd>K</kbd> move · <kbd>/</kbd> search
-						</span>
-					</div>
-					<div className="rv-cols">
-						<div className="ar-rail">
-							{pageRows.map((r, i) => (
-								<JobRailRow
-									key={r.jobId}
-									r={r}
-									active={i === localIndex}
-									onSelect={() => queue.setFocusIndex(i)}
-								/>
-							))}
-						</div>
-						<div className="ar-detail">
-							{focusRow && card(focusRow, "cockpit")}
-						</div>
-					</div>
-				</div>
-			)}
+			{renderQueueContent()}
 		</>
 	);
 }

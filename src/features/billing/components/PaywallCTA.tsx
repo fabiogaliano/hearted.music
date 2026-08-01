@@ -53,6 +53,28 @@ type QuoteState =
 	| { status: "loaded"; quote: SubscriptionUpgradeQuote }
 	| { status: "error" };
 
+function getDiscountNote(
+	hasRemainingCredits: boolean,
+	quoteState: QuoteState,
+): string | null {
+	if (!hasRemainingCredits) return null;
+
+	switch (quoteState.status) {
+		case "loading":
+			return "Checking upgrade discount…";
+		case "loaded":
+			return quoteState.quote.discountCents > 0
+				? `Your ${quoteState.quote.convertedCredits} remaining songs save ${formatPrice(
+						quoteState.quote.discountCents,
+					)}`
+				: null;
+		case "error":
+			return "Purchased songs discounted at checkout";
+		case "idle":
+			return null;
+	}
+}
+
 export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	const { startCheckout, isBusy } = useCheckoutFlow(billingState);
 	const [configState, setConfigState] = useState<ConfigState>({
@@ -87,17 +109,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 	const upgradeQuote = quoteState.status === "loaded" ? quoteState.quote : null;
 	const discountCents = upgradeQuote?.discountCents ?? 0;
 	const hasUpgradeDiscount = discountCents > 0;
-	const discountNote = hasRemainingCredits
-		? quoteState.status === "loading"
-			? "Checking upgrade discount…"
-			: quoteState.status === "loaded" && quoteState.quote.discountCents > 0
-				? `Your ${quoteState.quote.convertedCredits} remaining songs save ${formatPrice(
-						quoteState.quote.discountCents,
-					)}`
-				: quoteState.status === "error"
-					? "Purchased songs discounted at checkout"
-					: null
-		: null;
+	const discountNote = getDiscountNote(hasRemainingCredits, quoteState);
 
 	useEffect(() => {
 		if (!showUnlimitedCTA) return;

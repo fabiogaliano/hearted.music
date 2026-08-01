@@ -136,14 +136,10 @@ export function PlaylistsCoverFlowScreen({
 		enabled: selected?.isTarget === true,
 	});
 
-	const matchFilterOptionsState =
-		selected?.isTarget !== true
-			? ("loading" as const)
-			: filterOptionsPending
-				? ("loading" as const)
-				: filterOptionsError
-					? ("error" as const)
-					: ("ready" as const);
+	let matchFilterOptionsState: "loading" | "error" | "ready" = "loading";
+	if (selected?.isTarget === true && !filterOptionsPending) {
+		matchFilterOptionsState = filterOptionsError ? "error" : "ready";
+	}
 
 	const tracksQuery = useInfiniteQuery(
 		playlistTracksInfiniteQueryOptions(selectedId),

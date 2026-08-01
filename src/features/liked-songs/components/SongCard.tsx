@@ -103,41 +103,48 @@ export const SongCard = memo(function SongCard({
 		[onPointerDown, suppressPointerFocus],
 	);
 
-	const buttonStyle = useMemo<React.CSSProperties>(
-		() =>
-			({
-				"--hover-bg": isEnabled
-					? "color-mix(in srgb, var(--t-text) 6%, transparent)"
-					: "transparent",
-				position: "relative",
-				background: isSelectionChecked
-					? "var(--t-surface-dim)"
-					: isSelected
-						? "var(--t-surface)"
-						: undefined,
-				borderLeft:
-					isFocused || isSelected || showWalkthroughUi
-						? "2px solid var(--t-primary)"
-						: "2px solid transparent",
-				marginLeft: "-2px",
-				scrollMarginTop,
-				opacity: !isEnabled ? 0.5 : isSelectionChecked ? 1 : isLocked ? 0.6 : 1,
-				pointerEvents: !isEnabled ? "none" : undefined,
-				animation: isWalkthroughHighlight
-					? "walkthrough-pulse 2s ease-in-out infinite"
+	const buttonStyle = useMemo<React.CSSProperties>(() => {
+		let opacity = 1;
+		if (!isEnabled) {
+			opacity = 0.5;
+		} else if (isSelectionChecked) {
+			opacity = 1;
+		} else if (isLocked) {
+			opacity = 0.6;
+		}
+
+		return {
+			"--hover-bg": isEnabled
+				? "color-mix(in srgb, var(--t-text) 6%, transparent)"
+				: "transparent",
+			position: "relative",
+			background: isSelectionChecked
+				? "var(--t-surface-dim)"
+				: isSelected
+					? "var(--t-surface)"
 					: undefined,
-			}) as React.CSSProperties,
-		[
-			isEnabled,
-			isSelectionChecked,
-			isSelected,
-			isFocused,
-			showWalkthroughUi,
+			borderLeft:
+				isFocused || isSelected || showWalkthroughUi
+					? "2px solid var(--t-primary)"
+					: "2px solid transparent",
+			marginLeft: "-2px",
 			scrollMarginTop,
-			isLocked,
-			isWalkthroughHighlight,
-		],
-	);
+			opacity,
+			pointerEvents: !isEnabled ? "none" : undefined,
+			animation: isWalkthroughHighlight
+				? "walkthrough-pulse 2s ease-in-out infinite"
+				: undefined,
+		} as React.CSSProperties;
+	}, [
+		isEnabled,
+		isSelectionChecked,
+		isSelected,
+		isFocused,
+		showWalkthroughUi,
+		scrollMarginTop,
+		isLocked,
+		isWalkthroughHighlight,
+	]);
 
 	return (
 		<button

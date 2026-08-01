@@ -133,29 +133,16 @@ export function EnrichmentSection({ refreshKey }: { refreshKey: number }) {
 		const next = { ...table, ...patch };
 		setTable(next);
 		const url = new URL(window.location.href);
-		for (const key of [
-			"q",
-			"missing",
-			"coverageBelow",
-			"sort",
-			"direction",
-			"page",
-			"pageSize",
-		] as const) {
-			const value =
-				key === "q"
-					? next.search
-					: key === "missing"
-						? next.missing
-						: key === "coverageBelow"
-							? next.coverageBelow
-							: key === "sort"
-								? next.sort
-								: key === "direction"
-									? next.direction
-									: key === "page"
-										? String(next.page)
-										: String(next.pageSize);
+		const queryEntries = [
+			["q", next.search],
+			["missing", next.missing],
+			["coverageBelow", next.coverageBelow],
+			["sort", next.sort],
+			["direction", next.direction],
+			["page", String(next.page)],
+			["pageSize", String(next.pageSize)],
+		] as const;
+		for (const [key, value] of queryEntries) {
 			if (
 				(key === "missing" && value === "any") ||
 				(key === "coverageBelow" && value === "") ||
