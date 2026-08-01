@@ -3,10 +3,13 @@ import { CoverFlowShelf as Shelf } from "./CoverFlowShelf";
 import { samplePlaylists } from "./fixtures";
 
 /**
- * A single cover-flow shelf in isolation. Wheel, drag, the ‹ › arrows, or click a
- * neighbor to center it; click the centered sleeve (or its name) to "open". The
- * name is the open affordance — hovering it or the cover drifts the arrow. Every
- * playlist is seeded already in matching.
+ * A single cover-flow shelf in isolation. Wheel, drag, or click a neighbor to
+ * center it; click the centered sleeve (or its name) to "open". The name is the
+ * open affordance — hovering it or the cover drifts the arrow. Every playlist is
+ * seeded already in matching.
+ *
+ * The shelf renders on its own raised panel, which is why the harness sits on
+ * theme-bg: the panel needs a page to stand off.
  */
 export default { title: "Playlists/Explorations/Components" };
 

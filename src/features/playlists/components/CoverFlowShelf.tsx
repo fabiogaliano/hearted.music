@@ -1,5 +1,4 @@
 import { type ReactNode, useState } from "react";
-import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowEmptyState } from "./CoverFlowEmptyState";
 import { CoverFlowStage } from "./CoverFlowStage";
 import { prefersReduced } from "./coverFlowGeometry";
@@ -21,13 +20,6 @@ interface CoverFlowShelfProps {
 	/** Id of a just-added playlist whose sleeve should fly in rather than pop. */
 	enterId?: string | null;
 	/**
-	 * The chrome around the (fixed) stage. `plain` keeps the label left + arrows
-	 * right. `chapter` rides the label on a hairline rule with the count floated to
-	 * its far end (no arrow buttons — sleeves are navigated by click / wheel / drag
-	 * / keys). The sleeve geometry is identical in both.
-	 */
-	chrome?: "plain" | "chapter";
-	/**
 	 * Empty-state copy, overridable so the onboarding preview can teach the concept
 	 * ("what's a matching candidate?") while production keeps the terse default.
 	 */
@@ -40,9 +32,12 @@ interface CoverFlowShelfProps {
 
 /**
  * One cover-flow shelf: the centered sleeve sits front-and-large, neighbors
- * angle back and recede. Browse by wheel, drag, the ‹ › arrows, or click a
- * neighbor to center it (click the centered sleeve to open). reduced-motion
- * keeps every control but drops the 3-D rotation/recession.
+ * angle back and recede. Browse by wheel, drag, or click a neighbor to center
+ * it (click the centered sleeve to open). reduced-motion keeps every control
+ * but drops the 3-D rotation/recession.
+ *
+ * The stage and its caption sit on a raised plane rather than floating on the
+ * page, so the shelf reads as a display case the covers stand inside.
  */
 export function CoverFlowShelf({
 	label,
@@ -54,7 +49,6 @@ export function CoverFlowShelf({
 	onAdd,
 	onRemove,
 	enterId,
-	chrome = "plain",
 	emptyTitle = "No matching candidates yet",
 	emptyBody = "Add playlists from your library below — each one's description is how your liked songs find their homes.",
 	emptyAction,
@@ -67,8 +61,12 @@ export function CoverFlowShelf({
 	const clamped = Math.max(0, Math.min(center, max));
 	const centered = playlists[clamped];
 
-	const { stageRef, dragSteps, dragging, step, justDraggedRef } =
-		useCoverFlowDrag({ clamped, max, onCenterChange, onActivate });
+	const { stageRef, dragSteps, dragging, justDraggedRef } = useCoverFlowDrag({
+		clamped,
+		max,
+		onCenterChange,
+		onActivate,
+	});
 
 	// Fractional centre the geometry renders against: the committed centre shifted
 	// by the live drag, kept within the real range so the ends don't overscroll.
@@ -85,21 +83,6 @@ export function CoverFlowShelf({
 		if (index === clamped) onOpen(id);
 		else onCenterChange(index);
 	};
-
-	const arrowButton = (dir: -1 | 1) => (
-		<button
-			key={dir}
-			type="button"
-			aria-label={dir < 0 ? "Previous" : "Next"}
-			onClick={() => step(dir)}
-			// Was a border-brighten hover — the treatment .surface-raised supersedes,
-			// and one that says nothing in a monochrome theme where the hairline just
-			// becomes the same colour again.
-			className="theme-text-muted chip-raised chip-raised-hover squircle focus-edge grid size-[34px] place-items-center rounded-full text-lg leading-none transition-[color,background-color,transform] duration-150 hover:text-(--t-text) active:scale-[0.92]"
-		>
-			{dir < 0 ? "‹" : "›"}
-		</button>
-	);
 
 	const body =
 		playlists.length === 0 ? (
@@ -144,37 +127,14 @@ export function CoverFlowShelf({
 			</>
 		);
 
-	// The chapter chrome IS a panel now: the stage and its caption sit on a
-	// raised plane instead of floating on the page, so the shelf reads as a
-	// display case the covers stand inside. pb-6 gives the caption room to
-	// breathe against the plane's bottom edge — the sleeves' own drop shadows
-	// already bleed toward it. Overflow stays visible: the centred sleeve is
-	// perspective-transformed and taller than its slot.
-	if (chrome === "chapter") {
-		return (
-			<div className="mt-8">
-				<PanelSection label={label} count={playlists.length}>
-					<div className="px-3 pt-2 pb-6">{body}</div>
-				</PanelSection>
-			</div>
-		);
-	}
-
+	// pb-6 gives the caption room to breathe against the plane's bottom edge — the
+	// sleeves' own drop shadows already bleed toward it. Overflow stays visible:
+	// the centred sleeve is perspective-transformed and taller than its slot.
 	return (
-		<section className="mt-8">
-			<div className="flex items-center justify-between px-1">
-				<span
-					className="theme-text-muted flex items-baseline gap-2.5 text-xs tracking-[0.2em] uppercase"
-					style={{ fontFamily: fonts.body }}
-				>
-					{label} <span className="tabular-nums">{playlists.length}</span>
-				</span>
-				<div className="flex gap-1.5">
-					{arrowButton(-1)}
-					{arrowButton(1)}
-				</div>
-			</div>
-			{body}
-		</section>
+		<div className="mt-8">
+			<PanelSection label={label} count={playlists.length}>
+				<div className="px-3 pt-2 pb-6">{body}</div>
+			</PanelSection>
+		</div>
 	);
 }

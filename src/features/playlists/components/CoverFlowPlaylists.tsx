@@ -303,7 +303,6 @@ export function CoverFlowPlaylists({
 							onAdd={handleAdd}
 							onRemove={onRemove}
 							enterId={enteringId}
-							chrome="chapter"
 							emptyTitle={matchingEmptyTitle}
 							emptyBody={matchingEmptyBody}
 							emptyAction={matchingEmptyAction}

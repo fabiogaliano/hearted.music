@@ -13,8 +13,11 @@ interface UseCoverFlowDragArgs {
  * Owns the imperative pointer/wheel drag interaction for one cover-flow shelf:
  * the wheel-to-step accumulator, the finger-tracking drag, and the flick-to-snap
  * release. Returns the stage ref to attach, the live drag state the geometry
- * renders against, a `step` mover for the arrow buttons, and `justDraggedRef` so
- * the click that fires on release can tell a drag apart from a real tap.
+ * renders against, and `justDraggedRef` so the click that fires on release can
+ * tell a drag apart from a real tap.
+ *
+ * `step` stays internal — the wheel accumulator calls it. It used to be returned
+ * for the shelf's ‹ › arrow buttons, which only ever existed in the plain chrome.
  */
 export function useCoverFlowDrag({
 	clamped,
@@ -138,5 +141,5 @@ export function useCoverFlowDrag({
 		};
 	}, [step]);
 
-	return { stageRef, dragSteps, dragging, step, justDraggedRef };
+	return { stageRef, dragSteps, dragging, justDraggedRef };
 }
