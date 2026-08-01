@@ -1,10 +1,12 @@
 /**
- * Settings page — editorial row layout.
+ * Settings page — a stack of 2-column preference cards.
  *
- * Each section is a 2-column editorial row: identity (eyebrow + serif title +
- * microcopy) on the left, controls on the right. Hairline dividers separate
- * sections. The pattern mirrors PlaylistsHeader / LikedSongsHeader so the
- * /settings surface reads as part of the same magazine.
+ * Each section keeps its editorial split: identity (eyebrow + serif title +
+ * microcopy) on the left, controls on the right. What changed is what holds
+ * them — the sections used to be separated by hairline rules on the page
+ * background, which asked one line to do the work of a container and left the
+ * controls floating in open space. Each section is a raised plane now, the same
+ * material the studio's panels use, and the gap between cards separates them.
  */
 
 import { ArrowLeftIcon } from "@phosphor-icons/react";
@@ -174,8 +176,8 @@ export function SettingsPage({
 	}, [navigate]);
 
 	return (
-		<div className="max-w-4xl">
-			<header className="mb-10 md:mb-14">
+		<div className="flex max-w-4xl flex-col gap-4">
+			<header className="mb-6 md:mb-8">
 				<p
 					className="theme-text-muted text-xs tracking-widest uppercase"
 					style={{ fontFamily: fonts.body }}
@@ -341,7 +343,7 @@ function SettingsSection({
 	return (
 		<section
 			aria-labelledby={headingId}
-			className="theme-border-color grid grid-cols-1 gap-x-10 gap-y-6 border-t py-9 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:py-12"
+			className="surface-raised squircle grid grid-cols-1 gap-x-10 gap-y-6 rounded-[18px] p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] md:p-8"
 		>
 			<div className="flex flex-col">
 				{index !== undefined && (
@@ -417,11 +419,14 @@ function ThemeColorPicker({
 							className="relative inline-block size-10 rounded-full transition-[transform,box-shadow] duration-200 ease-out group-hover:scale-[1.06] group-active:scale-[0.96] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-(--focus-ring-color)"
 							style={{
 								background: optionTheme.surfaceDim,
-								// Offset ring: inner gap is the page background, outer line is
-								// the theme's own text color — lets the swatch read undisturbed
-								// when selected, and stays inside the layout box (no clipping).
+								// Offset ring: inner gap is whatever surface the swatch sits on,
+								// outer line is the theme's own text color — lets the swatch
+								// read undisturbed when selected, and stays inside the layout
+								// box (no clipping). --t-plane, not --t-bg: the section is a
+								// raised card now, so a page-coloured gap would read as a hole
+								// punched through it.
 								boxShadow: isSelected
-									? `0 0 0 2px var(--t-bg), 0 0 0 4px ${optionTheme.text}`
+									? `0 0 0 2px var(--t-plane), 0 0 0 4px ${optionTheme.text}`
 									: `inset 0 0 0 1px ${optionTheme.border}`,
 							}}
 						/>
@@ -465,9 +470,24 @@ function MatchStrictnessPicker({
 				return (
 					<label
 						key={option.value}
-						className="group flex cursor-pointer items-start gap-3.5 border p-4 transition-[border-color] duration-200 ease-out peer-focus-visible:outline-2"
+						// A pressable control whose selected state tints the edge — the exact
+						// use the raised material reserves its transparent border for, so
+						// selecting an option can't shift the layout by a pixel. Kept on
+						// --t-text rather than --t-primary so selection stays distinct from
+						// the primary focus ring.
+						//
+						// Chip tier, not plane: the section around it is a plane now, and
+						// two elements on the same tier read as one flat area. This is the
+						// studio's own nesting — panel at --t-surface, its controls a step
+						// below — so an option here and a field there are one material.
+						className="group chip-raised chip-raised-hover squircle flex cursor-pointer items-start gap-3.5 rounded-[14px] p-4 peer-focus-visible:outline-2"
 						style={{
-							borderColor: isSelected ? "var(--t-text)" : "var(--t-border)",
+							borderColor: isSelected ? "var(--t-text)" : "transparent",
+							// Inline: .chip-raised declares a `transition` shorthand that
+							// lands after any Tailwind transition-* utility in the same layer,
+							// so a class here would lose border-color. Both live together.
+							transition:
+								"background-color 150ms ease, border-color 200ms ease-out",
 						}}
 					>
 						<input

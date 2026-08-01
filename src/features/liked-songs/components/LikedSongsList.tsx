@@ -106,7 +106,7 @@ export function LikedSongsList({
 
 	if (data.isLoading) {
 		return (
-			<div className="-mx-3 px-3 pt-4">
+			<div className="px-2 pt-2">
 				<EditorialNotice eyebrow="Loading" headline="One moment." isLoading />
 			</div>
 		);
@@ -120,7 +120,7 @@ export function LikedSongsList({
 		(!isLockedOnlyView || !data.hasMore)
 	) {
 		return (
-			<div className="-mx-3 px-3 pt-4">
+			<div className="px-2 pt-2">
 				<EditorialNotice
 					eyebrow="No matches"
 					headline={`Nothing for "${data.searchQuery}".`}
@@ -133,7 +133,7 @@ export function LikedSongsList({
 	if (data.displayedSongs.length === 0) {
 		const isAll = data.filter === "all";
 		return (
-			<div className="-mx-3 px-3 pt-4">
+			<div className="px-2 pt-2">
 				<EditorialNotice
 					eyebrow={isAll ? "Nothing yet" : `No ${data.filter}`}
 					headline={isAll ? "Like a song on Spotify." : "Try another filter."}
@@ -148,8 +148,8 @@ export function LikedSongsList({
 	}
 
 	return (
-		<div className="-mx-3 px-3 pt-4">
-			<div className="space-y-1">
+		<div className="px-2 pt-2">
+			<div className="space-y-0.5">
 				{data.visibleSongs.length === 0 && isLockedOnlyView && (
 					<EditorialNotice
 						eyebrow={data.hasMore ? "Searching" : "All clear"}

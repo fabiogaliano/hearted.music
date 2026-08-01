@@ -3,6 +3,7 @@ import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowEmptyState } from "./CoverFlowEmptyState";
 import { CoverFlowStage } from "./CoverFlowStage";
 import { prefersReduced } from "./coverFlowGeometry";
+import { PanelSection } from "./PanelSection";
 import { ShelfCaption } from "./ShelfCaption";
 import type { PlaylistSummary } from "./types";
 import { useCoverFlowDrag } from "./useCoverFlowDrag";
@@ -91,86 +92,89 @@ export function CoverFlowShelf({
 			type="button"
 			aria-label={dir < 0 ? "Previous" : "Next"}
 			onClick={() => step(dir)}
-			className="theme-text-muted theme-border-color grid size-[34px] place-items-center rounded-full border text-lg leading-none transition-[color,border-color,transform] duration-150 hover:border-(--t-text-muted) hover:text-(--t-text) active:scale-[0.92]"
+			// Was a border-brighten hover — the treatment .surface-raised supersedes,
+			// and one that says nothing in a monochrome theme where the hairline just
+			// becomes the same colour again.
+			className="theme-text-muted chip-raised chip-raised-hover squircle focus-edge grid size-[34px] place-items-center rounded-full text-lg leading-none transition-[color,background-color,transform] duration-150 hover:text-(--t-text) active:scale-[0.92]"
 		>
 			{dir < 0 ? "‹" : "›"}
 		</button>
 	);
 
+	const body =
+		playlists.length === 0 ? (
+			<CoverFlowEmptyState
+				title={emptyTitle}
+				body={emptyBody}
+				action={emptyAction}
+			/>
+		) : (
+			<>
+				<CoverFlowStage
+					stageRef={stageRef}
+					playlists={playlists}
+					clamped={clamped}
+					renderCenter={renderCenter}
+					reduce={reduce}
+					dragging={dragging}
+					enterId={enterId}
+					onSleeveClick={onSleeveClick}
+					onCenterHoverChange={setOpenHover}
+				/>
+
+				<div
+					className="mt-4 flex min-h-[116px] items-center justify-center px-1"
+					aria-live="polite"
+				>
+					{centered ? (
+						// Keyed to the centred id so the settle animation re-fires on each
+						// navigation; the covers' own glide is untouched.
+						<div key={centered.id} className="xpl-caption-enter w-full">
+							<ShelfCaption
+								playlist={centered}
+								onOpen={onOpen}
+								onAdd={onAdd}
+								onRemove={onRemove}
+								openActive={openHover}
+								onOpenHoverChange={setOpenHover}
+							/>
+						</div>
+					) : null}
+				</div>
+			</>
+		);
+
+	// The chapter chrome IS a panel now: the stage and its caption sit on a
+	// raised plane instead of floating on the page, so the shelf reads as a
+	// display case the covers stand inside. pb-6 gives the caption room to
+	// breathe against the plane's bottom edge — the sleeves' own drop shadows
+	// already bleed toward it. Overflow stays visible: the centred sleeve is
+	// perspective-transformed and taller than its slot.
+	if (chrome === "chapter") {
+		return (
+			<div className="mt-8">
+				<PanelSection label={label} count={playlists.length}>
+					<div className="px-3 pt-2 pb-6">{body}</div>
+				</PanelSection>
+			</div>
+		);
+	}
+
 	return (
 		<section className="mt-8">
-			{chrome === "chapter" ? (
-				<div className="flex items-center gap-4 px-1">
-					<span
-						className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						{label}
-					</span>
-					<div className="theme-border-color h-px flex-1 self-center border-t" />
-					<span
-						className="theme-text-muted text-xs tabular-nums"
-						style={{ fontFamily: fonts.body }}
-					>
-						{playlists.length}
-					</span>
+			<div className="flex items-center justify-between px-1">
+				<span
+					className="theme-text-muted flex items-baseline gap-2.5 text-xs tracking-[0.2em] uppercase"
+					style={{ fontFamily: fonts.body }}
+				>
+					{label} <span className="tabular-nums">{playlists.length}</span>
+				</span>
+				<div className="flex gap-1.5">
+					{arrowButton(-1)}
+					{arrowButton(1)}
 				</div>
-			) : (
-				<div className="flex items-center justify-between px-1">
-					<span
-						className="theme-text-muted flex items-baseline gap-2.5 text-xs tracking-[0.2em] uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						{label} <span className="tabular-nums">{playlists.length}</span>
-					</span>
-					<div className="flex gap-1.5">
-						{arrowButton(-1)}
-						{arrowButton(1)}
-					</div>
-				</div>
-			)}
-
-			{playlists.length === 0 ? (
-				<CoverFlowEmptyState
-					title={emptyTitle}
-					body={emptyBody}
-					action={emptyAction}
-				/>
-			) : (
-				<>
-					<CoverFlowStage
-						stageRef={stageRef}
-						playlists={playlists}
-						clamped={clamped}
-						renderCenter={renderCenter}
-						reduce={reduce}
-						dragging={dragging}
-						enterId={enterId}
-						onSleeveClick={onSleeveClick}
-						onCenterHoverChange={setOpenHover}
-					/>
-
-					<div
-						className="mt-4 flex min-h-[116px] items-center justify-center px-1"
-						aria-live="polite"
-					>
-						{centered ? (
-							// Keyed to the centred id so the settle animation re-fires on each
-							// navigation; the covers' own glide is untouched.
-							<div key={centered.id} className="xpl-caption-enter w-full">
-								<ShelfCaption
-									playlist={centered}
-									onOpen={onOpen}
-									onAdd={onAdd}
-									onRemove={onRemove}
-									openActive={openHover}
-									onOpenHoverChange={setOpenHover}
-								/>
-							</div>
-						) : null}
-					</div>
-				</>
-			)}
+			</div>
+			{body}
 		</section>
 	);
 }

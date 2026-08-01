@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
+import { PanelSection } from "./PanelSection";
 import { RailRow } from "./RailRow";
 import type { GuidedPlaylistsConfig, PlaylistSummary } from "./types";
 
@@ -263,29 +264,31 @@ export function CoverFlowPlaylists({
 			</header>
 
 			{isSearching ? (
-				<section className="mt-8">
-					{searchResults.length > 0 ? (
-						<div className="mt-4">
-							{searchResults.map((playlist) => (
-								<RailRow
-									key={playlist.id}
-									playlist={playlist}
-									onOpen={onOpen}
-									onAdd={handleAdd}
-									onRemove={onRemove}
-									hideAdd={hideRailAdd}
-								/>
-							))}
-						</div>
-					) : (
-						<p
-							className="theme-text-muted py-6 text-[13px]"
-							style={{ fontFamily: fonts.body }}
-						>
-							No playlists match “{query.trim()}”.
-						</p>
-					)}
-				</section>
+				<div className="mt-8">
+					<PanelSection label="Results" count={searchResults.length}>
+						{searchResults.length > 0 ? (
+							<div className="p-2">
+								{searchResults.map((playlist) => (
+									<RailRow
+										key={playlist.id}
+										playlist={playlist}
+										onOpen={onOpen}
+										onAdd={handleAdd}
+										onRemove={onRemove}
+										hideAdd={hideRailAdd}
+									/>
+								))}
+							</div>
+						) : (
+							<p
+								className="theme-text-muted px-5 py-6 text-[13px]"
+								style={{ fontFamily: fonts.body }}
+							>
+								No playlists match “{query.trim()}”.
+							</p>
+						)}
+					</PanelSection>
+				</div>
 			) : (
 				<>
 					{/* data-tour marks onboarding spotlight targets; inert in production. */}
@@ -307,38 +310,24 @@ export function CoverFlowPlaylists({
 						/>
 					</div>
 
-					<section className="mt-8" data-tour="library">
-						<div className="flex items-center gap-4 px-1">
-							<span
-								className="theme-text-muted text-xs tracking-[0.2em] uppercase"
-								style={{ fontFamily: fonts.body }}
-							>
-								Library
-							</span>
-							<div className="theme-border-color h-px flex-1 self-center border-t" />
-							<span
-								className="theme-text-muted text-xs tabular-nums"
-								style={{ fontFamily: fonts.body }}
-							>
-								{library.length}
-							</span>
-						</div>
-
-						<div className="mt-4">
+					<div className="mt-6" data-tour="library">
+						<PanelSection label="Library" count={library.length}>
 							{library.length > 0 ? (
-								library.map((playlist) => (
-									<RailRow
-										key={playlist.id}
-										playlist={playlist}
-										onOpen={onOpen}
-										onAdd={handleAdd}
-										onRemove={onRemove}
-										hideAdd={hideRailAdd}
-									/>
-								))
+								<div className="p-2">
+									{library.map((playlist) => (
+										<RailRow
+											key={playlist.id}
+											playlist={playlist}
+											onOpen={onOpen}
+											onAdd={handleAdd}
+											onRemove={onRemove}
+											hideAdd={hideRailAdd}
+										/>
+									))}
+								</div>
 							) : (
 								<p
-									className="theme-text-muted py-6 text-[13px]"
+									className="theme-text-muted px-5 py-6 text-[13px]"
 									style={{ fontFamily: fonts.body }}
 								>
 									{matching.length > 0
@@ -346,8 +335,8 @@ export function CoverFlowPlaylists({
 										: "No playlists yet."}
 								</p>
 							)}
-						</div>
-					</section>
+						</PanelSection>
+					</div>
 				</>
 			)}
 		</div>
