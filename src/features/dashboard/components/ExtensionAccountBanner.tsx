@@ -55,7 +55,6 @@ export function ExtensionAccountBannerView({
 			role="status"
 			aria-live="polite"
 			className={`theme-surface-bg px-5 py-4${flush ? "" : " -mx-4 mb-10"}`}
-			style={{ borderLeft: "2px solid var(--t-primary)" }}
 		>
 			{verdict.kind === "mismatch" ? (
 				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">

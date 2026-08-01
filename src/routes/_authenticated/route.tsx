@@ -274,7 +274,10 @@ function AuthenticatedLayout() {
 					</>
 				)}
 			</AuthenticatedThemeProvider>
-			<Toaster richColors position="top-right" />
+			{/* No richColors: it would repaint typed toasts in sonner's own neon
+			    red/green, overriding the themed surface (see styles.css). The type
+			    icon carries the signal instead. */}
+			<Toaster position="top-right" />
 			{isComplete && (
 				<UserJotWidget accountId={session.accountId} handle={account.handle} />
 			)}

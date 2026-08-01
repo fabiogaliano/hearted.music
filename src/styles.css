@@ -644,42 +644,42 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .genre-picker .gp-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12px;
+  gap: 4px;
+  border-radius: 10px;
+  corner-shape: squircle;
+  padding: 3px 10px;
+  font-size: 11px;
   white-space: nowrap;
-  color: var(--t-primary);
-  border: 1px solid color-mix(in srgb, var(--t-primary) 32%, transparent);
-  background: color-mix(in srgb, var(--t-primary) 9%, transparent);
+  color: var(--t-text-on-primary);
+  border: 1px solid transparent;
+  background: var(--t-primary);
 }
 .genre-picker .gp-chip-x {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  margin-right: -4px;
+  width: 14px;
+  height: 14px;
+  margin-right: -2px;
   border: 0;
   padding: 0;
   border-radius: 999px;
   background: transparent;
   color: inherit;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1;
   opacity: 0.6;
   transition:
     opacity 150ms ease,
     transform 150ms var(--ease-out-quart);
 }
-/* Extend the 16px glyph to a comfortable tap target without disturbing layout. */
 .genre-picker .gp-chip-x::after {
   content: "";
   position: absolute;
@@ -691,34 +691,30 @@ code {
 .genre-picker .gp-chip-x:active {
   transform: scale(0.9);
 }
-/* The dashed "+ add genre" input pill — resting twin of the display trigger. */
 .genre-picker .gp-pill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border-radius: 999px;
-  padding: 4px 12px;
+  border-radius: 10px;
+  corner-shape: squircle;
+  padding: 3px 10px;
   cursor: text;
-  border: 1px dashed var(--t-border);
-  background: transparent;
+  border: 1px solid transparent;
+  background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
   transition:
     border-color 150ms ease,
     background-color 150ms ease;
 }
 .genre-picker .gp-pill.valid {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--t-primary) 42%, transparent);
-  background: color-mix(in srgb, var(--t-primary) 6%, transparent);
+  background: color-mix(in srgb, var(--t-primary) 12%, transparent);
 }
 .genre-picker .gp-pill.invalid {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--t-invalid) 58%, transparent);
-  background: color-mix(in srgb, var(--t-invalid) 6%, transparent);
+  background: color-mix(in srgb, var(--t-invalid) 10%, transparent);
 }
 .genre-picker .gp-pill-prefix {
   color: var(--t-text-muted);
   opacity: 0.7;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
 }
 .genre-picker .gp-pill.valid .gp-pill-prefix {
@@ -730,22 +726,24 @@ code {
   display: inline-flex;
   align-items: center;
 }
+/* In-flow invisible twin of the input's text — it, not the input, gives the
+   pill its width (see GenrePillsPicker), so the width is exact from the first
+   paint instead of snapping once JS measures. */
 .genre-picker .gp-pill-measure {
-  position: absolute;
-  left: 0;
-  top: 0;
   visibility: hidden;
   white-space: pre;
-  font-size: 12px;
+  font-size: 11px;
 }
 .genre-picker .gp-pill-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   border: 0;
   outline: 0;
   background: transparent;
   font-family: inherit;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--t-primary);
-  min-width: 2ch;
   padding: 0;
 }
 .genre-picker .gp-pill.invalid .gp-pill-input {
@@ -756,7 +754,7 @@ code {
 }
 /* Inline autocomplete remainder of the top match, behind the caret. */
 .genre-picker .gp-pill-ghost {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--t-text-muted);
   opacity: 0.5;
   white-space: pre;
@@ -766,30 +764,30 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: 2px;
 }
 .genre-picker .gp-opt {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 999px;
-  padding: 7px 13px;
-  font-size: 12px;
+  gap: 4px;
+  border-radius: 10px;
+  corner-shape: squircle;
+  padding: 4px 10px;
+  font-size: 11px;
   white-space: nowrap;
   cursor: pointer;
   color: var(--t-text-muted);
-  border: 1px solid var(--t-border);
-  background: transparent;
+  border: 1px solid transparent;
+  background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
   transition:
     color 150ms ease,
     background-color 150ms ease,
-    border-color 150ms ease,
     transform 150ms var(--ease-out-quart);
 }
 .genre-picker .gp-opt:hover {
   color: var(--t-text);
-  background: color-mix(in srgb, var(--t-text) 7%, transparent);
+  background: oklch(from var(--t-surface) calc(l - 0.04) calc(c + 0.005) calc(h + 5));
 }
 .genre-picker .gp-opt:active {
   transform: scale(0.96);
@@ -1182,11 +1180,14 @@ code {
 /* ── MaxSongsSlider ───────────────────────────────────────────────────── */
 /* Native range input styled to match the flat/bordered hearted materiality.
    --pct (set via inline style) drives the filled-track gradient so no JS
-   measurement is needed. Thumb hit area is ≥40px via padding + line-height. */
+   measurement is needed. The whole input (not just the visual track/thumb)
+   is the hit target for native range clicks/drags, so the input itself is
+   held at ≥40px tall for a touch-sized target while the track/thumb pseudo-
+   elements stay thin; `display: flex` centers them in the taller box. */
 
 .max-songs-slider {
-  /* 40px total touch target via line-height; visible track is thinner via
-     clip/border in the vendor pseudo-elements below. */
+  display: flex;
+  align-items: center;
   height: 40px;
   padding: 0;
 }
@@ -1216,25 +1217,23 @@ code {
 
 .max-songs-slider::-webkit-slider-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--t-primary);
-  border: 2px solid var(--t-bg);
-  outline: 1.5px solid var(--t-primary);
-  margin-top: -6px;
+  border: none;
+  margin-top: -4px;
   transition: transform 150ms var(--ease-out-quart);
   cursor: pointer;
 }
 
 .max-songs-slider::-moz-range-thumb {
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--t-primary);
-  border: 2px solid var(--t-bg);
-  outline: 1.5px solid var(--t-primary);
+  border: none;
   cursor: pointer;
   transition: transform 150ms var(--ease-out-quart);
 }
@@ -1282,6 +1281,146 @@ code {
   .hearted-ellipsis::after {
     content: "…";
     animation: none;
+  }
+}
+
+/* ── Toasts (sonner) ──────────────────────────────────────────────────────
+   Sonner ships a white card, a system-font 500-weight title and an inverted
+   black action button — none of which belong on top of the themed, squircled
+   --t-surface planes the app is made of (the create studio is the worst case:
+   the undo toast floats over a hue-tinted page). Retheming lives here, on the
+   toaster's own custom properties, so every toast follows the active theme
+   instead of each call site restyling itself.
+
+   The `body ` prefix is load-bearing: sonner's own rules are already
+   [data-sonner-toaster][data-sonner-theme='light'] (0,2,0) and it injects them
+   at runtime, so matching specificity would lose on source order. */
+body [data-sonner-toaster][data-sonner-theme] {
+  /* The per-playlist themes ship no danger token; same local fallback the
+     genre picker uses. */
+  --t-invalid: hsl(2, 58%, 47%);
+  --width: 19rem;
+  --border-radius: 14px;
+  --normal-bg: var(--t-surface);
+  --normal-text: var(--t-text);
+  --normal-border: color-mix(in srgb, var(--t-border) 55%, transparent);
+}
+
+body [data-sonner-toast][data-styled='true'] {
+  /* Same geometry + soft lift as the studio's create bar, so a toast reads as
+     one more floating plane of the page rather than a browser notification. */
+  corner-shape: squircle;
+  padding: 10px 10px 10px 14px;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--t-text) 10%, transparent);
+}
+
+body [data-sonner-toast][data-styled='true']:focus-visible {
+  box-shadow:
+    0 6px 20px color-mix(in srgb, var(--t-text) 10%, transparent),
+    0 0 0 var(--focus-ring-width) var(--focus-ring-color);
+}
+
+/* A toast is a passing message, not a heading — body sans at the config rail's
+   12px item size (ArtistConfig rows, filter values). The display serif is
+   reserved for titles. */
+body [data-sonner-toast][data-styled='true'] [data-title] {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Verb + subject, borrowed from the rail's "LANGUAGE / Any" grammar: the action
+   is a micro-caps label (what happened), the song is the value that matters. */
+.toast-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+/* Three distinct steps of ink, faintest first: the verb is chrome, the artist is
+   context, the song is the point. The verb sits below --t-text-muted so it can't
+   be confused with the artist, which shares the line at the same nominal size. */
+.toast-line-verb {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--t-text-muted) 70%, transparent);
+}
+.toast-line-subject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--t-text);
+}
+/* Song then artist, same hierarchy as a preview row (title in ink, artist a step
+   back) — folded onto one line, so a middot does the work the stacked layout does
+   there. The artist keeps the genre picker's secondary-text mix rather than plain
+   --t-text-muted: it has to stay clearly above the verb. */
+.toast-line-artist {
+  color: color-mix(in srgb, var(--t-text) 55%, var(--t-text-muted));
+}
+.toast-line-artist::before {
+  content: '·';
+  margin: 0 5px;
+  color: color-mix(in srgb, var(--t-text-muted) 45%, transparent);
+}
+
+body [data-sonner-toast][data-styled='true'] [data-description] {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  color: var(--t-text-muted);
+}
+
+/* Errors stay on the calm surface — the type icon carries the signal, so the
+   card never turns into a red banner. */
+body [data-sonner-toast][data-type='error'] [data-icon] {
+  color: var(--t-invalid);
+}
+
+/* The action ("Undo") is the rail's selected-chip recipe exactly — 11px, 10px
+   radius, py-1 px-2.5 (see ArtistConfig's artist chip). */
+body [data-sonner-toast][data-styled='true'] [data-button] {
+  border-radius: 10px;
+  corner-shape: squircle;
+  height: auto;
+  padding: 4px 10px;
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  background: var(--t-primary);
+  color: var(--t-text-on-primary);
+  transition:
+    background-color 150ms ease,
+    transform 150ms var(--ease-out-quart);
+}
+
+body [data-sonner-toast][data-styled='true'] [data-button]:hover {
+  background: var(--t-primary-hover);
+}
+
+body [data-sonner-toast][data-styled='true'] [data-button]:active {
+  transform: scale(0.96);
+}
+
+body [data-sonner-toast][data-styled='true'] [data-button]:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+body [data-sonner-toast][data-styled='true'] [data-cancel] {
+  background: color-mix(in srgb, var(--t-text) 8%, transparent);
+  color: var(--t-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body [data-sonner-toast][data-styled='true'] [data-button]:active {
+    transform: none;
   }
 }
 
