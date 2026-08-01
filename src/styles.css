@@ -160,6 +160,10 @@ code {
   --focus-ring-color: var(--ring);
   --focus-ring-offset: 4px;
 
+  /* Ceramic matte grain (design-evolution/vision.md #4). The story carries an
+     intensity switcher; this is the setting it lands on ("Matte 8%"). */
+  --grain-opacity: 0.08;
+
   --kbd-text-color: var(--t-text-muted);
   --kbd-bg-color: color-mix(in oklch, var(--t-text) 10%, transparent);
   --kbd-border-color: color-mix(in oklch, var(--t-text-muted) 30%, transparent);
@@ -626,6 +630,41 @@ code {
     .idea-enter {
       animation: none;
     }
+  }
+
+  /* Ceramic matte grain (design-evolution/vision.md #4) — a texture faint enough
+     to read as the material of a surface rather than a layer on top of it. The
+     story applies it per-surface (its own example is a sidebar panel), not as a
+     page wash, so this is a surface utility.
+
+     feTurbulence rendered once into a tiling image rather than a live <svg> per
+     surface: stitchTiles makes the 160px tile seamless under background-repeat,
+     so one decoded image covers a panel of any size. overlay (not normal) is
+     what keeps it reading as the surface's own grain instead of grey speckle
+     laid over it.
+
+     z-index -1 paints it above the element's own background but below in-flow
+     content, matching the story (content at zIndex 2, grain at 1) — text stays
+     crisp. isolation keeps the blend from reaching past this surface. */
+  /* :where() zeroes the specificity so `position` is only a fallback for an
+     otherwise-static host. This block lives in the same @layer utilities as
+     Tailwind's own output but *after* it, so a plain `.ceramic-grain` rule
+     would beat `fixed`/`sticky` on the same element and silently unstick it
+     (it did exactly that to the app sidebar). */
+  :where(.ceramic-grain) {
+    position: relative;
+    isolation: isolate;
+  }
+  .ceramic-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    opacity: var(--grain-opacity);
+    mix-blend-mode: overlay;
+    border-radius: inherit;
   }
 
   /* Subtle 1px image outline that adapts to light/dark surfaces. Inset

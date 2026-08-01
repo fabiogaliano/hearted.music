@@ -61,7 +61,10 @@ export function Sidebar({
 	return (
 		<aside
 			id="app-sidebar"
-			className={`theme-bg theme-border-color fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r px-6 py-8 transition-transform duration-300 ease motion-reduce:transition-none md:sticky md:top-0 md:z-10 md:translate-x-0 ${
+			// ceramic-grain: the sidebar shares --t-bg with the page and is separated
+			// from it only by a hairline, so the texture is what gives it a material
+			// of its own. It's also the story's own example surface.
+			className={`ceramic-grain theme-bg theme-border-color fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col border-r px-6 py-8 transition-transform duration-300 ease motion-reduce:transition-none md:sticky md:top-0 md:z-10 md:translate-x-0 ${
 				isOpen ? "translate-x-0" : "-translate-x-full"
 			}`}
 		>
