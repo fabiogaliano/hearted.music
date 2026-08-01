@@ -7,7 +7,6 @@ import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
-import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 import {
 	AnimatedReviewPanel,
 	RefreshBanner,
@@ -205,14 +204,6 @@ function MatchRow({
 				coverProps={coverProps}
 				media={
 					<Cover src={playlist.imageUrl} size={56} className="flex-none" />
-				}
-				scoreDisplay={
-					<NumberFlow
-						value={Math.round(playlist.matchScore * 100)}
-						suffix="%"
-						className="theme-text font-extralight tabular-nums leading-none"
-						style={{ fontFamily: fonts.display, fontSize: "1.5rem" }}
-					/>
 				}
 				reason={reconnectNode ? undefined : playlist.reason || undefined}
 				size="lg"

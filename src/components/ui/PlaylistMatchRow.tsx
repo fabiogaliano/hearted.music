@@ -12,8 +12,6 @@ type PlaylistMatchRowAction =
 interface PlaylistMatchRowProps {
 	playlistId: string;
 	name: string;
-	/** Pre-rendered score node — caller decides plain span vs NumberFlow */
-	scoreDisplay: ReactNode;
 	/** Optional subtitle below the name (e.g. playlist description) */
 	reason?: string;
 	/** Media slot (e.g. the playlist cover) rendered between the score and name. */
@@ -33,7 +31,6 @@ interface PlaylistMatchRowProps {
 export function PlaylistMatchRow({
 	playlistId,
 	name,
-	scoreDisplay,
 	reason,
 	media,
 	coverProps,
@@ -92,9 +89,11 @@ export function PlaylistMatchRow({
 		<div
 			className={`surface-raised-hover squircle group rounded-[10px] transition-[background-color] duration-150 ease-out ${rowPadding}`}
 		>
+			{/* The row opens on the cover. It used to open on a match percentage,
+			which put a figure nobody can act on in the position the eye lands
+			first — and claimed precision the ranking can't defend. The list is
+			ordered by score, so position already says which match is stronger. */}
 			<div className="flex items-center gap-6">
-				<div className="shrink-0">{scoreDisplay}</div>
-
 				<div className="flex min-w-0 flex-1 items-center gap-4">
 					{media &&
 						(coverProps ? (

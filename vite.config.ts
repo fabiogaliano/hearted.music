@@ -239,7 +239,6 @@ export default defineConfig(({ command }) => {
 				"@tanstack/react-query-devtools",
 				"@tanstack/react-router-devtools",
 				"@phosphor-icons/react",
-				"@number-flow/react",
 				"framer-motion",
 				"gsap",
 				"@gsap/react",

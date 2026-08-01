@@ -107,13 +107,6 @@ describe("SongSuggestionsSection", () => {
 		expect(screen.getByText("Comfortably Numb")).toBeDefined();
 	});
 
-	it("renders match percent from fitScore", () => {
-		render(<SongSuggestionsSection {...DEFAULT_PROPS} />);
-		// fitScore 0.82 → 82%, 0.75 → 75%
-		expect(screen.getByText("82%")).toBeDefined();
-		expect(screen.getByText("75%")).toBeDefined();
-	});
-
 	it("renders Add buttons for unadded suggestions", () => {
 		render(<SongSuggestionsSection {...DEFAULT_PROPS} />);
 		const addButtons = screen.getAllByRole("button", { name: "Add" });

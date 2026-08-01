@@ -61,12 +61,6 @@ describe("MatchesSection", () => {
 		expect(screen.getByText("Late Night Drive")).toBeDefined();
 	});
 
-	it("renders match percent from matchScore", () => {
-		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
-		expect(screen.getByText("82%")).toBeDefined();
-		expect(screen.getByText("75%")).toBeDefined();
-	});
-
 	it("renders Add buttons for unadded playlists", () => {
 		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
 		const addButtons = screen.getAllByRole("button", { name: "Add" });

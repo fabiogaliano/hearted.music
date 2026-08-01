@@ -9,7 +9,6 @@ import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestionRow, SongSuggestionsSectionProps } from "../types";
-import { ClientNumberFlow as NumberFlow } from "./ClientNumberFlow";
 import {
 	AnimatedReviewPanel,
 	ReviewColumnFrame,
@@ -205,23 +204,19 @@ function SongSuggestionRowItem({
 	onActivate,
 	onDeactivate,
 }: SongSuggestionRowItemProps) {
-	const { song, fitScore } = row;
+	// fitScore stays on the row type — it's what the list is ordered by — but
+	// nothing prints it any more.
+	const { song } = row;
 
 	return (
 		// Same evolved row as the song-mode column (see PlaylistMatchRow): no
 		// hairline, transparent at rest, one hover plane binding the row's three
 		// controls — play, dismiss, Add.
 		<div className="surface-raised-hover squircle rounded-[10px] px-2.5 py-3 transition-[background-color] duration-150 ease-out">
+			{/* Opens on the cover, mirroring song mode: the fit percentage that used
+			to hold this position claimed a precision the ranking can't defend, and
+			the list is ordered by score, so position already carries it. */}
 			<div className="flex items-center gap-6">
-				<div className="shrink-0">
-					<NumberFlow
-						value={Math.round(fitScore * 100)}
-						suffix="%"
-						className="theme-text font-extralight tabular-nums leading-none"
-						style={{ fontFamily: fonts.display, fontSize: "1.5rem" }}
-					/>
-				</div>
-
 				<div className="flex min-w-0 flex-1 items-center gap-4">
 					<SpotifyPlaybackCover
 						playbackId={song.id}
