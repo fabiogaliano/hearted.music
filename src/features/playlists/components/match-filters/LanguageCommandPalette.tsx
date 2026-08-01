@@ -14,6 +14,13 @@ interface LanguageCommandPaletteProps {
 	detectedCounts: Map<string, number>;
 	onToggleCode: (code: string) => void;
 	onSearchKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+	/**
+	 * True while options are loading/erroring or a save is in flight. The
+	 * empty-selection state renders this palette unconditionally (no trigger to
+	 * gate it), so it's the only place standing between the user and editing
+	 * against stale options or a save that's about to reconcile the draft.
+	 */
+	frozen?: boolean;
 }
 
 /**
@@ -35,14 +42,26 @@ export function LanguageCommandPalette({
 	detectedCounts,
 	onToggleCode,
 	onSearchKeyDown,
+	frozen = false,
 }: LanguageCommandPaletteProps) {
 	return (
 		<div
-			className="border theme-border-color theme-bg mt-1 xpl-reveal"
-			style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}
+			className="border border-transparent rounded-[10px] mt-1 xpl-reveal overflow-hidden"
+			style={{
+				background:
+					"oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2))",
+				// @ts-expect-error -- corner-shape not yet in CSS typings
+				cornerShape: "squircle",
+			}}
 		>
 			{/* Search input */}
-			<div className="border-b theme-border-color px-3 py-2">
+			<div
+				className="border-b border-transparent px-2.5 py-1.5"
+				style={{
+					borderBottomColor:
+						"oklch(from var(--t-surface) calc(l - 0.06) c h / 0.3)",
+				}}
+			>
 				<input
 					ref={searchRef}
 					type="text"
@@ -56,14 +75,14 @@ export function LanguageCommandPalette({
 					}
 					placeholder="Search languages…"
 					value={query}
+					disabled={frozen}
 					onChange={(e) => {
+						if (frozen) return;
 						onQueryChange(e.target.value);
-						// Reset highlight to the top match as the result set
-						// changes; the open/close effect resets on cleared query.
 						onActiveIndexChange(0);
 					}}
 					onKeyDown={onSearchKeyDown}
-					className="w-full border-0 bg-transparent text-sm theme-text placeholder:theme-text-muted focus-visible:outline-none"
+					className="w-full border-0 bg-transparent text-xs theme-text placeholder:theme-text-muted focus-visible:outline-none disabled:opacity-50"
 				/>
 			</div>
 
@@ -74,13 +93,18 @@ export function LanguageCommandPalette({
 				role="listbox"
 				aria-multiselectable="true"
 				aria-label="Languages"
+				aria-disabled={frozen}
 				className="overflow-y-auto"
-				style={{ maxHeight: 240 }}
+				style={{
+					maxHeight: 180,
+					opacity: frozen ? 0.5 : 1,
+					pointerEvents: frozen ? "none" : undefined,
+				}}
 			>
 				{displayOptions.length === 0 ? (
 					<div
 						role="presentation"
-						className="px-3 py-3 text-sm theme-text-muted"
+						className="px-2.5 py-2 text-xs theme-text-muted"
 					>
 						No languages match &ldquo;{query.trim()}&rdquo;
 					</div>
@@ -95,33 +119,42 @@ export function LanguageCommandPalette({
 								id={optionId(index)}
 								role="option"
 								aria-selected={isSelected}
+								aria-disabled={frozen}
 								tabIndex={-1}
-								className={`flex items-center justify-between px-3 py-2.5 text-sm cursor-pointer transition-[background-color] duration-100 ${
-									isActive
-										? "bg-(--t-surface)"
+								className={`flex items-center justify-between px-2.5 py-1.5 text-xs transition-[background-color] duration-100 theme-text ${frozen ? "cursor-default" : "cursor-pointer"}`}
+								style={{
+									background: isActive
+										? "oklch(from var(--t-surface) calc(l - 0.04) calc(c + 0.005) calc(h + 5))"
 										: isSelected
-											? "bg-(--t-surface-dim)"
-											: ""
-								} theme-text`}
-								onClick={() => onToggleCode(opt.code)}
+											? "oklch(from var(--t-surface) calc(l - 0.03) calc(c + 0.003) calc(h + 3))"
+											: "transparent",
+								}}
+								onClick={() => {
+									if (frozen) return;
+									onToggleCode(opt.code);
+								}}
 								onKeyDown={(e) => {
+									if (frozen) return;
 									if (e.key === "Enter" || e.key === " ") {
 										e.preventDefault();
 										onToggleCode(opt.code);
 									}
 								}}
-								onPointerMove={() => onActiveIndexChange(index)}
+								onPointerMove={() => {
+									if (frozen) return;
+									onActiveIndexChange(index);
+								}}
 							>
 								<span>{opt.label}</span>
-								<span className="flex items-center gap-3">
+								<span className="flex items-center gap-2.5">
 									{count !== undefined && (
-										<span className="text-[11px] tabular-nums theme-text-muted">
+										<span className="text-[10px] tabular-nums theme-text-muted">
 											{count} songs
 										</span>
 									)}
 									{isSelected && (
 										<span
-											className="text-[10px] tracking-[0.06em] uppercase"
+											className="text-[9px] tracking-[0.06em] uppercase"
 											style={{ color: "var(--t-primary)" }}
 											aria-hidden
 										>

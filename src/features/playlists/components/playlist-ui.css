@@ -131,13 +131,7 @@
 .xpl-genres .genre-picker .gp-meter {
 	display: none;
 }
-/* Selected chips go solid, matching the collapsed display's chips so editing and
-   reading show the same chip. */
-.xpl-genres .genre-picker .gp-chip {
-	color: var(--t-text-on-primary);
-	background: var(--t-primary);
-	border-color: transparent;
-}
+/* Base .gp-chip is already solid primary — no override needed. */
 /* In the guided onboarding the picker is disabled (genres arrive pre-set from the
    picked example), so each chip's remove-× is inert. Drop its pointer cursor so it
    doesn't read as clickable. Scoped to :disabled, so the enabled prod picker keeps
@@ -145,24 +139,21 @@
 .xpl-genres .genre-picker .gp-chip-x:disabled {
 	cursor: default;
 }
-/* The "+ add genre" input pill + its prefix/placeholder need an ink-mixed edge and
-   readable hint text against the band. */
 .xpl-genres .genre-picker .gp-pill {
-	border-color: color-mix(in srgb, var(--t-text) 45%, transparent);
+	background: oklch(
+		from var(--t-surface) calc(l - 0.03) calc(c + 0.003) calc(h + 3)
+	);
 }
 .xpl-genres .genre-picker .gp-pill-prefix,
 .xpl-genres .genre-picker .gp-pill-input::placeholder {
 	color: color-mix(in srgb, var(--t-text) 55%, var(--t-text-muted));
 	opacity: 1;
 }
-/* Quick-pick suggestion outlines. */
 .xpl-genres .genre-picker .gp-opt {
 	color: color-mix(in srgb, var(--t-text) 55%, var(--t-text-muted));
-	border-color: color-mix(in srgb, var(--t-text) 30%, transparent);
 }
 .xpl-genres .genre-picker .gp-opt:hover {
 	color: var(--t-text);
-	border-color: var(--t-text-muted);
 }
 /* "No match" is a gentle "keep typing" cue, not an error, so it gets no red at
    all — point the local invalid token at the neutral muted text token and the
@@ -202,47 +193,53 @@
    Borders + labels mix from --t-text so they clear the band — the same values the
    genre picker uses, so the two sections read as one family. */
 
-/* Numeric / date entry — a clearly-distinct field is allowed to differ from the
-   transparent chips; a faint recess + a firm border reads as editable. */
 .mf-field {
 	border-radius: 8px;
-	border: 1px solid color-mix(in srgb, var(--t-text) 28%, transparent);
-	background: color-mix(in srgb, var(--t-text) 6%, transparent);
+	corner-shape: squircle;
+	border: 1px solid transparent;
+	background: oklch(
+		from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3)
+	);
 	color: var(--t-text);
-	box-shadow: inset 0 1px 2px color-mix(in srgb, var(--t-text) 6%, transparent);
-	transition:
-		border-color 150ms ease,
-		box-shadow 150ms ease;
+	transition: background 150ms ease;
 }
 .mf-field::placeholder {
 	color: var(--t-text-muted);
 }
+.mf-field:focus-visible {
+	outline: none;
+	border-color: oklch(from var(--t-primary) l c h / 0.45);
+}
 .mf-field:hover:not(:disabled) {
-	border-color: color-mix(in srgb, var(--t-text) 42%, transparent);
+	background: oklch(
+		from var(--t-surface) calc(l - 0.035) calc(c + 0.004) calc(h + 4)
+	);
 }
 .mf-field:disabled {
 	opacity: 0.55;
 	cursor: default;
 }
 
-/* Option chip — mirrors .xpl-genres .gp-opt (outline, label mixed off --t-text). */
 .mf-chip {
 	border-radius: 999px;
-	border: 1px solid color-mix(in srgb, var(--t-text) 35%, transparent);
-	background: transparent;
+	corner-shape: squircle;
+	border: 1px solid transparent;
+	background: oklch(
+		from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3)
+	);
 	color: color-mix(in srgb, var(--t-text) 60%, var(--t-text-muted));
 	cursor: pointer;
 	white-space: nowrap;
 	transition:
 		background-color 150ms ease,
-		border-color 150ms ease,
 		color 150ms ease,
 		transform 150ms var(--ease-out-quart);
 }
 .mf-chip:hover:not(:disabled) {
 	color: var(--t-text);
-	border-color: var(--t-text-muted);
-	background: color-mix(in srgb, var(--t-text) 7%, transparent);
+	background: oklch(
+		from var(--t-surface) calc(l - 0.04) calc(c + 0.005) calc(h + 5)
+	);
 }
 .mf-chip:active:not(:disabled) {
 	transform: scale(0.96);
@@ -251,51 +248,17 @@
 	opacity: 0.5;
 	cursor: default;
 }
-/* Selected value — solid primary, identical to a chosen genre chip. */
 .mf-chip[aria-pressed="true"] {
 	background: var(--t-primary);
-	border-color: transparent;
 	color: var(--t-text-on-primary);
 }
 .mf-chip[aria-pressed="true"]:hover:not(:disabled) {
 	background: var(--t-primary-hover);
-	border-color: transparent;
 }
 
 /* Unset facet — dashed add pill at the create-rail chip scale (the genre
    field's "+ add genre" recipe: 0.625rem, 3px 10px, radius 12). Label/border
    keep the ink mix — plain --t-border goes near-invisible on the band. */
-.mf-add {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px 10px;
-	border-radius: 12px;
-	border: 1px dashed color-mix(in srgb, var(--t-text) 50%, transparent);
-	background: transparent;
-	color: color-mix(in srgb, var(--t-text) 72%, var(--t-text-muted));
-	font-size: 0.625rem;
-	letter-spacing: 0.07em;
-	cursor: pointer;
-	transition:
-		background-color 150ms ease,
-		border-color 150ms ease,
-		color 150ms ease,
-		transform 150ms var(--ease-out-quart);
-}
-.mf-add:hover:not(:disabled) {
-	color: var(--t-text);
-	border-color: var(--t-text-muted);
-	background: color-mix(in srgb, var(--t-text) 5%, transparent);
-}
-.mf-add:active:not(:disabled) {
-	transform: scale(0.96);
-}
-.mf-add:disabled {
-	opacity: 0.5;
-	cursor: default;
-}
-
 .mf-seg {
 	transition:
 		background-color 180ms var(--ease-out-expo),
@@ -337,7 +300,8 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 4px;
-	border-radius: 999px;
+	border-radius: 10px;
+	corner-shape: squircle;
 	padding: 3px 10px;
 	color: var(--t-text-on-primary);
 	border: 1px solid transparent;
@@ -381,7 +345,6 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.mf-chip:active:not(:disabled),
-	.mf-add:active:not(:disabled),
 	.mf-seg:active:not(:disabled),
 	.mf-remove:active:not(:disabled),
 	.mf-lang-chip-x:active:not(:disabled) {

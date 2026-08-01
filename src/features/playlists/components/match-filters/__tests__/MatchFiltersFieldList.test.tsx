@@ -26,7 +26,7 @@ const LANGUAGE_ACTIVE: PlaylistMatchFiltersV1 = {
 };
 
 describe("MatchFiltersFieldList — structure", () => {
-	it("shows active facets as rows and inactive facets as named Add pills", () => {
+	it("shows all facets as rows, active ones with a remove control", () => {
 		render(
 			<MatchFiltersFieldList
 				filters={VOCALS_ACTIVE}
@@ -35,20 +35,12 @@ describe("MatchFiltersFieldList — structure", () => {
 			/>,
 		);
 
-		// Active vocals → a removable row.
 		expect(
 			screen.getByRole("button", { name: "Remove Vocals filter" }),
 		).toBeInTheDocument();
-		// The other three facets are still addable.
-		expect(
-			screen.getByRole("button", { name: "Add Language filter" }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: "Add Release era filter" }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: "Add Liked date filter" }),
-		).toBeInTheDocument();
+		// Inactive facets show "Any" in their row value; the vocals segment
+		// also has an "Any" option button, so 3 row values + 1 segment = 4.
+		expect(screen.getAllByText("Any")).toHaveLength(4);
 	});
 
 	it("edits a facet value through its segment (vocals)", () => {
@@ -119,7 +111,7 @@ describe("MatchFiltersFieldList — save freeze (§7)", () => {
 });
 
 describe("MatchFiltersFieldList — options loading (§7)", () => {
-	it("shows the loading notice but still allows removal", () => {
+	it("renders no loading notice (the facet rows are the skeleton) while keeping removal live", () => {
 		const onFiltersChange = vi.fn();
 		render(
 			<MatchFiltersFieldList
@@ -130,7 +122,7 @@ describe("MatchFiltersFieldList — options loading (§7)", () => {
 			/>,
 		);
 
-		expect(screen.getByText(/loading filter options/i)).toBeInTheDocument();
+		expect(screen.queryByRole("status")).toBeNull();
 
 		const remove = screen.getByRole("button", { name: "Remove Vocals filter" });
 		expect(remove).not.toBeDisabled();
@@ -138,18 +130,17 @@ describe("MatchFiltersFieldList — options loading (§7)", () => {
 		expect(onFiltersChange).toHaveBeenCalledTimes(1);
 	});
 
-	it("does not show the loading notice during a save (only optionsState drives it)", () => {
+	it("shows the unavailable notice on options error", () => {
 		render(
 			<MatchFiltersFieldList
 				filters={VOCALS_ACTIVE}
 				onFiltersChange={vi.fn()}
 				options={OPTIONS}
-				optionsState="ready"
-				isSaving
+				optionsState="error"
 			/>,
 		);
 
-		expect(screen.queryByText(/loading filter options/i)).toBeNull();
+		expect(screen.getByRole("status")).toHaveTextContent(/unavailable/i);
 	});
 
 	// Regression: a saved liked-date filter keeps the facet visible, so LikedEditor
@@ -181,5 +172,32 @@ describe("MatchFiltersFieldList — options loading (§7)", () => {
 		expect(
 			screen.getByRole("button", { name: "Remove Liked date filter" }),
 		).toBeInTheDocument();
+	});
+});
+
+describe("MatchFiltersFieldList — empty-language freeze (§7)", () => {
+	// With no languages selected, LanguagePicker renders its command palette
+	// unconditionally (no trigger button gates it) — regression coverage for a bug
+	// where that always-on palette ignored disabled/isSaving entirely. Loading
+	// and isSaving both flow through the single editFrozen guard, so one case
+	// covers the wiring.
+	it("freezes the language palette while options are loading", () => {
+		const onFiltersChange = vi.fn();
+		render(
+			<MatchFiltersFieldList
+				filters={VOCALS_ACTIVE}
+				onFiltersChange={onFiltersChange}
+				options={OPTIONS}
+				optionsState="loading"
+			/>,
+		);
+
+		fireEvent.click(screen.getByRole("button", { name: /language/i }));
+
+		expect(
+			screen.getByRole("combobox", { name: "Search languages" }),
+		).toBeDisabled();
+		fireEvent.click(screen.getByRole("option", { name: /^English/ }));
+		expect(onFiltersChange).not.toHaveBeenCalled();
 	});
 });

@@ -49,6 +49,8 @@ export interface LanguagePickerProps {
 	 * the trigger's aria-labelledby accessible name is preserved.
 	 */
 	hideLabel?: boolean;
+	/** Whether the parent container (e.g. FacetRow Expand) is expanded. */
+	expanded?: boolean;
 }
 
 function buildDetectedCounts(
@@ -70,6 +72,7 @@ export function LanguagePicker({
 	disabled = false,
 	isSaving = false,
 	hideLabel = false,
+	expanded = true,
 }: LanguagePickerProps) {
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -101,16 +104,27 @@ export function LanguagePicker({
 		return [...sel, ...rest];
 	}, [query, orderedAll, selectedCodes]);
 
-	// Focus search when palette opens; restore trigger focus on close
+	const isEmpty = selectedCodes.length === 0;
+	const paletteVisible = isEmpty || open;
+	// Both `disabled` (options loading/error) and `isSaving` must freeze adding a
+	// language — unlike chip removal, there's no §7 carve-out for the add path.
+	// Matters most when empty: the palette is always rendered then (no trigger to
+	// gate it), so this is the only guard standing between the user and a stale add.
+	const frozen = disabled || isSaving;
+
+	// Focus search when the palette is visible AND the parent container is expanded.
+	// When empty the palette is always rendered, so `expanded` is the real trigger.
 	useEffect(() => {
-		if (open) {
+		if (paletteVisible && expanded) {
 			const id = window.setTimeout(() => searchRef.current?.focus(), 16);
 			return () => window.clearTimeout(id);
 		}
-		triggerRef.current?.focus();
-		setQuery("");
-		setActiveIndex(0);
-	}, [open]);
+		if (!paletteVisible) {
+			triggerRef.current?.focus();
+			setQuery("");
+			setActiveIndex(0);
+		}
+	}, [paletteVisible, expanded]);
 
 	// Close on outside click
 	useEffect(() => {
@@ -126,10 +140,14 @@ export function LanguagePicker({
 
 	const toggleCode = useCallback(
 		(code: string) => {
+			if (frozen) return;
 			const isSelected = selectedCodes.includes(code);
 			const remaining = isSelected
 				? selectedCodes.filter((c) => c !== code)
 				: [...selectedCodes, code];
+			// Keep the palette open when adding the first language — without this
+			// the palette would vanish (no longer isEmpty, open still false).
+			if (!isSelected && selectedCodes.length === 0) setOpen(true);
 			onChange(remaining);
 			setAnnouncement(
 				isSelected
@@ -137,7 +155,7 @@ export function LanguagePicker({
 					: `Added ${languageLabel(code)}. ${remaining.length} languages selected.`,
 			);
 		},
-		[onChange, selectedCodes],
+		[frozen, onChange, selectedCodes],
 	);
 
 	const removeCode = useCallback(
@@ -152,6 +170,9 @@ export function LanguagePicker({
 	);
 
 	const handleSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+		// The input carries `disabled` while frozen, which already stops real
+		// keystrokes; this guard is the defense-in-depth backstop.
+		if (frozen) return;
 		switch (e.key) {
 			case "ArrowDown": {
 				e.preventDefault();
@@ -211,35 +232,40 @@ export function LanguagePicker({
 				onRemove={removeCode}
 			/>
 
-			{/* Trigger: caret + placeholder only — no selected chips inside */}
-			<button
-				ref={triggerRef}
-				type="button"
-				aria-haspopup="listbox"
-				aria-expanded={open}
-				aria-labelledby={`${baseId}-label`}
-				disabled={disabled}
-				onClick={() => setOpen(true)}
-				onKeyDown={handleTriggerKeyDown}
-				className="w-full flex items-center gap-2 border px-3 py-2 text-left theme-border-color theme-bg theme-text focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] disabled:opacity-50 cursor-pointer transition-[background-color] duration-100 hover:bg-(--t-surface)"
-			>
-				<span className="flex-1 min-h-[20px] flex items-center">
-					<span className="text-sm theme-text-muted">
-						{selectedCodes.length === 0
-							? "Add language…"
-							: `${selectedCodes.length} selected — click to edit`}
+			{/* When empty, skip the trigger and show the palette directly;
+			    otherwise show the trigger button that opens it on click. */}
+			{!isEmpty && (
+				<button
+					ref={triggerRef}
+					type="button"
+					aria-haspopup="listbox"
+					aria-expanded={open}
+					aria-labelledby={`${baseId}-label`}
+					disabled={disabled}
+					onClick={() => setOpen((o) => !o)}
+					onKeyDown={handleTriggerKeyDown}
+					className="w-full flex items-center gap-1.5 border border-transparent rounded-[8px] px-2.5 py-1.5 text-left theme-text focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] disabled:opacity-50 cursor-pointer transition-[background-color] duration-150"
+					style={{
+						background:
+							"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
+						// @ts-expect-error -- corner-shape not yet in CSS typings
+						cornerShape: "squircle",
+					}}
+				>
+					<span className="flex-1 min-h-[16px] flex items-center">
+						<span className="text-xs theme-text-muted">Add one more</span>
 					</span>
-				</span>
-				<CaretDownIcon
-					size={14}
-					weight="regular"
-					aria-hidden
-					className={`shrink-0 theme-text-muted transition-transform duration-150 ${open ? "rotate-180" : ""}`}
-				/>
-			</button>
+					<CaretDownIcon
+						size={12}
+						weight="regular"
+						aria-hidden
+						className={`shrink-0 theme-text-muted transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+					/>
+				</button>
+			)}
 
-			{/* Command palette popover — sits in normal flow (full-width overlay) */}
-			{open && (
+			{/* Command palette: always visible when empty, toggled via trigger otherwise */}
+			{(isEmpty || open) && (
 				<LanguageCommandPalette
 					query={query}
 					onQueryChange={setQuery}
@@ -253,6 +279,7 @@ export function LanguagePicker({
 					detectedCounts={detectedCounts}
 					onToggleCode={toggleCode}
 					onSearchKeyDown={handleSearchKeyDown}
+					frozen={frozen}
 				/>
 			)}
 

@@ -4,7 +4,6 @@ import {
 	useCallback,
 	useEffect,
 	useId,
-	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -58,7 +57,6 @@ export function GenrePillsPicker({
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
-	const measureRef = useRef<HTMLSpanElement>(null);
 	const shakeTimerRef = useRef<number | null>(null);
 
 	const baseId = useId();
@@ -107,29 +105,6 @@ export function GenrePillsPicker({
 	const announce = useCallback((message: string) => {
 		setAnnouncement(message);
 	}, []);
-
-	// Size the bare input to its content (or placeholder) so the dashed pill hugs
-	// the text instead of reserving a fixed field width.
-	const sizeInput = useCallback(() => {
-		const input = inputRef.current;
-		const measure = measureRef.current;
-		if (!input || !measure) return;
-		measure.textContent = input.value || input.placeholder;
-		input.style.width = `${measure.offsetWidth + 2}px`;
-	}, []);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: query drives the re-measure; sizeInput reads the input via ref so the dep isn't statically visible
-	useLayoutEffect(() => {
-		sizeInput();
-	}, [query, sizeInput]);
-
-	// The hidden measure span only reports a correct width once the webfont has
-	// loaded; without this the "add genre" placeholder clips to "add gen…" on the
-	// first paint of a freshly-mounted picker.
-	useEffect(() => {
-		if (!document.fonts?.ready) return;
-		void document.fonts.ready.then(sizeInput);
-	}, [sizeInput]);
 
 	const triggerShake = useCallback(() => {
 		setShake(true);
@@ -328,11 +303,13 @@ export function GenrePillsPicker({
 							+
 						</span>
 						<span className="gp-pill-field">
-							<span
-								ref={measureRef}
-								className="gp-pill-measure"
-								aria-hidden="true"
-							/>
+							{/* Sizes the pill: an in-flow invisible twin of the input's text
+							    (or placeholder), so the width is exact from the first paint —
+							    same font, same layout pass — and reflows with typing and
+							    webfont load with no JS measurement. The input overlays it. */}
+							<span className="gp-pill-measure" aria-hidden="true">
+								{query || "add genre"}
+							</span>
 							<input
 								ref={inputRef}
 								type="text"
@@ -365,20 +342,34 @@ export function GenrePillsPicker({
 			</div>
 
 			{/* Quick picks yield to the search popover while the user is typing, so
-			    the control doesn't show two competing discovery modes at once. */}
-			{!open && !atCap && suggestions.length > 0 && (
+			    the control doesn't show two competing discovery modes at once. The
+			    row itself stays mounted with its height held by an invisible twin
+			    chip: suggestions arrive async (top-genres query), and the content
+			    below must not shift when they land, yield to the popover, or run
+			    out. */}
+			{!atCap && (
 				<div className="gp-suggestions">
-					{suggestions.map((genre) => (
-						<button
-							key={genre}
-							type="button"
-							className="gp-opt enter"
-							onClick={() => addGenre(genre)}
-							disabled={disabled}
+					{!open && suggestions.length > 0 ? (
+						suggestions.map((genre) => (
+							<button
+								key={genre}
+								type="button"
+								className="gp-opt enter"
+								onClick={() => addGenre(genre)}
+								disabled={disabled}
+							>
+								{genre}
+							</button>
+						))
+					) : (
+						<span
+							className="gp-opt"
+							style={{ visibility: "hidden" }}
+							aria-hidden="true"
 						>
-							{genre}
-						</button>
-					))}
+							&nbsp;
+						</span>
+					)}
 				</div>
 			)}
 

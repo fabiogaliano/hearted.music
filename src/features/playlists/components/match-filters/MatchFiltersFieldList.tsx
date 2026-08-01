@@ -29,7 +29,7 @@
 
 import { XIcon } from "@phosphor-icons/react";
 import type { CSSProperties, ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { languageLabel } from "@/lib/domains/taste/match-filters/languages";
 import type {
 	LikedAtFilterV1,
@@ -91,8 +91,7 @@ function Expand({ open, children }: { open: boolean; children: ReactNode }) {
 			style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
 		>
 			<div className="min-h-0 overflow-hidden" inert={!open}>
-				{/* Indent = the row's icon column (13px glyph + 8px gap). */}
-				<div style={{ padding: "4px 0 10px 21px" }}>{children}</div>
+				<div style={{ padding: "4px 10px 8px 10px" }}>{children}</div>
 			</div>
 		</div>
 	);
@@ -106,6 +105,7 @@ function FacetRow({
 	onToggle,
 	onRemove,
 	removeDisabled,
+	hideValueWhenOpen,
 	children,
 }: {
 	icon: FacetIcon;
@@ -115,12 +115,27 @@ function FacetRow({
 	onToggle: () => void;
 	onRemove?: () => void;
 	removeDisabled?: boolean;
+	hideValueWhenOpen?: boolean;
 	children: ReactNode;
 }) {
 	const active = value !== null;
+	const showValue = !(hideValueWhenOpen && open);
 	return (
 		<div>
-			<div style={{ display: "flex", alignItems: "center" }}>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					gap: 6,
+					padding: "6px 10px",
+					borderRadius: 10,
+					// @ts-expect-error -- corner-shape not yet in CSS typings
+					cornerShape: "squircle",
+					background:
+						"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
+					transition: "background 150ms ease",
+				}}
+			>
 				<button
 					type="button"
 					onClick={onToggle}
@@ -128,33 +143,35 @@ function FacetRow({
 					style={{
 						display: "flex",
 						alignItems: "center",
-						gap: 8,
+						gap: 6,
 						flex: 1,
 						minWidth: 0,
-						padding: "6px 2px",
-						background: "transparent",
+						padding: 0,
 						border: "none",
+						background: "transparent",
 						cursor: "pointer",
 						textAlign: "left",
 						color: c.text,
 						font: "inherit",
 					}}
 				>
-					<Icon icon={icon} />
-					<span style={{ flex: 1, fontSize: 12, color: c.muted }}>{label}</span>
-					<span
-						style={{
-							fontSize: 12,
-							color: active ? c.text : c.muted,
-							fontVariantNumeric: "tabular-nums",
-							maxWidth: "55%",
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-						}}
-					>
-						{value ?? "Any"}
-					</span>
+					<Icon icon={icon} size={12} />
+					<span style={{ flex: 1, fontSize: 11, color: c.muted }}>{label}</span>
+					{showValue && (
+						<span
+							style={{
+								fontSize: 11,
+								color: active ? c.text : c.muted,
+								fontVariantNumeric: "tabular-nums",
+								maxWidth: "55%",
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+							}}
+						>
+							{value ?? "Any"}
+						</span>
+					)}
 				</button>
 				{active && onRemove && (
 					<button
@@ -167,9 +184,8 @@ function FacetRow({
 							display: "grid",
 							placeItems: "center",
 							flexShrink: 0,
-							width: 20,
-							height: 20,
-							marginLeft: 4,
+							width: 18,
+							height: 18,
 							borderRadius: 999,
 							border: "none",
 							background: "transparent",
@@ -177,7 +193,7 @@ function FacetRow({
 							lineHeight: 1,
 						}}
 					>
-						<XIcon size={11} weight="bold" aria-hidden="true" />
+						<XIcon size={10} weight="bold" aria-hidden="true" />
 					</button>
 				)}
 			</div>
@@ -205,14 +221,18 @@ function VocalsSegment({
 	return (
 		<fieldset
 			style={{
-				display: "inline-flex",
+				display: "flex",
 				gap: 2,
-				margin: 0,
+				margin: "0 auto",
+				width: "fit-content",
 				padding: 2,
 				border: "none",
 				minInlineSize: 0,
-				borderRadius: 10,
-				background: c.dim,
+				borderRadius: 8,
+				// @ts-expect-error -- corner-shape not yet in CSS typings
+				cornerShape: "squircle",
+				background:
+					"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))",
 				opacity: disabled ? 0.5 : 1,
 			}}
 		>
@@ -228,11 +248,13 @@ function VocalsSegment({
 						className="mf-seg"
 						onClick={() => onChange(o.key === "any" ? undefined : o.key)}
 						style={{
-							padding: "5px 14px",
-							borderRadius: 8,
+							padding: "4px 12px",
+							borderRadius: 6,
+							// @ts-expect-error -- corner-shape not yet in CSS typings
+							cornerShape: "squircle",
 							border: "none",
 							cursor: disabled ? "default" : "pointer",
-							fontSize: 13,
+							fontSize: 11,
 							fontWeight: 500,
 							color: selected ? c.onPrimary : c.text,
 							background: selected ? c.primary : "transparent",
@@ -249,16 +271,15 @@ function VocalsSegment({
 // Layout only — the .mf-field class owns the well's border, fill, recessed
 // shadow and themed placeholder so the inputs read on the low-contrast band.
 const fieldLayout: CSSProperties = {
-	width: 92,
-	padding: "7px 10px",
-	fontSize: 13,
+	width: 84,
+	padding: "5px 8px",
+	fontSize: 11,
 	fontVariantNumeric: "tabular-nums",
 };
 
-// Layout only — the .mf-chip class owns the outline/pressed look and press feel.
 const chipLayout: CSSProperties = {
-	padding: "5px 10px",
-	fontSize: 12,
+	padding: "4px 8px",
+	fontSize: 11,
 };
 
 function EraEditor({
@@ -318,8 +339,15 @@ function EraEditor({
 		});
 	};
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-			<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 8,
+			}}
+		>
+			<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
 				<input
 					key={`low-${bounds.low}`}
 					className="mf-field"
@@ -331,7 +359,7 @@ function EraEditor({
 					onBlur={(e) => onChange(boundsToYear(e.target.value, bounds.high))}
 					aria-label="From year"
 				/>
-				<span style={{ color: c.muted, fontSize: 13 }}>to</span>
+				<span style={{ color: c.muted, fontSize: 11 }}>to</span>
 				<input
 					key={`high-${bounds.high}`}
 					className="mf-field"
@@ -344,10 +372,10 @@ function EraEditor({
 					aria-label="To year"
 				/>
 			</div>
-			<div style={{ fontSize: 12, color: c.muted }}>
+			<div style={{ fontSize: 10, color: c.muted }}>
 				Decades pick a consecutive span. Same year both sides = exact.
 			</div>
-			<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+			<div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
 				{decades.map((d) => {
 					const selected = band !== null && d.lo >= band[0] && d.hi <= band[1];
 					return (
@@ -402,20 +430,27 @@ function LikedEditor({
 	].filter((p) => p.start > oldest);
 
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+		<div
+			style={{
+				display: "flex",
+				flexDirection: "column",
+				alignItems: "center",
+				gap: 8,
+			}}
+		>
 			<div
 				style={{
 					display: "flex",
 					alignItems: "center",
-					gap: 8,
+					gap: 6,
 					flexWrap: "wrap",
 				}}
 			>
 				<input
 					key={`from-${from}`}
 					className="mf-field"
-					style={{ ...fieldLayout, width: 124 }}
-					placeholder={`From ${oldest}`}
+					style={{ ...fieldLayout, width: 96 }}
+					placeholder={oldest}
 					defaultValue={from}
 					disabled={disabled}
 					onBlur={(e) =>
@@ -423,7 +458,7 @@ function LikedEditor({
 					}
 					aria-label="Liked from date"
 				/>
-				<span style={{ color: c.muted, fontSize: 13 }}>to</span>
+				<span style={{ color: c.muted, fontSize: 10 }}>–</span>
 				{todayPinned ? (
 					<button
 						type="button"
@@ -441,8 +476,8 @@ function LikedEditor({
 						<input
 							key={`to-${to}`}
 							className="mf-field"
-							style={{ ...fieldLayout, width: 124 }}
-							placeholder={`To ${today}`}
+							style={{ ...fieldLayout, width: 96 }}
+							placeholder={today}
 							defaultValue={to}
 							disabled={disabled}
 							onBlur={(e) =>
@@ -462,12 +497,19 @@ function LikedEditor({
 					</>
 				)}
 			</div>
-			<div style={{ fontSize: 12, color: c.muted }}>
+			<div style={{ fontSize: 9, color: c.muted }}>
 				{todayPinned
-					? `↻ Rolling — keeps counting likes up to today (${today}) as the date moves forward.`
-					: `Your first like was ${oldest}.`}
+					? `↻ Rolling end — moves with today`
+					: `First like ${oldest}`}
 			</div>
-			<div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+			<div
+				style={{
+					display: "flex",
+					flexWrap: "wrap",
+					gap: 5,
+					justifyContent: "center",
+				}}
+			>
 				{presets.map((p) => {
 					const selected =
 						todayPinned &&
@@ -513,14 +555,15 @@ export interface MatchFiltersFieldListProps {
 	isSaving?: boolean;
 }
 
-function OptionsStateNotice({ state }: { state: "loading" | "error" }) {
-	// role="status" (implicit aria-live="polite") so the loading→ready/error
-	// transition is announced while the editor is open.
+// No loading notice: the facet rows themselves are the skeleton (they render
+// immediately with editing frozen), so extra copy on top is noise. Errors still
+// get a line because a frozen editor with no explanation reads as broken.
+function OptionsErrorNotice() {
+	// role="status" (implicit aria-live="polite") so the error is announced
+	// while the editor is open.
 	return (
 		<p role="status" style={{ fontSize: 11, color: c.muted, margin: 0 }}>
-			{state === "loading"
-				? "Loading filter options…"
-				: "Filter options unavailable."}
+			Filter options unavailable.
 		</p>
 	);
 }
@@ -533,29 +576,25 @@ export function MatchFiltersFieldList({
 	isSaving = false,
 }: MatchFiltersFieldListProps) {
 	const [open, setOpen] = useState<FacetKey | null>(null);
-	const [revealed, setRevealed] = useState<Set<FacetKey>>(() => new Set());
+	const containerRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		if (!open) return;
+		const handler = (e: PointerEvent) => {
+			if (!containerRef.current?.contains(e.target as Node)) {
+				setOpen(null);
+			}
+		};
+		document.addEventListener("pointerdown", handler);
+		return () => document.removeEventListener("pointerdown", handler);
+	}, [open]);
 
 	// Value-editing is frozen while options aren't ready or a save is in flight;
 	// removal only freezes during a save (§7).
 	const editFrozen = optionsState !== "ready" || isSaving;
 
-	const toggle = (k: FacetKey, active: boolean) => {
-		const closing = open === k;
+	const toggle = (k: FacetKey) => {
 		setOpen((cur) => (cur === k ? null : k));
-		// A facet revealed for editing but never given a value folds back into the
-		// Add row once its editor closes.
-		if (closing && !active) {
-			setRevealed((s) => {
-				const n = new Set(s);
-				n.delete(k);
-				return n;
-			});
-		}
-	};
-
-	const reveal = (k: FacetKey) => {
-		setRevealed((s) => new Set(s).add(k));
-		setOpen(k);
 	};
 
 	const clearFacet = (k: FacetKey) => {
@@ -565,12 +604,6 @@ export function MatchFiltersFieldList({
 		if (k === "era") delete next.releaseYear;
 		if (k === "liked") delete next.likedAt;
 		onFiltersChange(next);
-		// Drop a just-revealed-but-now-empty facet back into the Add row.
-		setRevealed((s) => {
-			const n = new Set(s);
-			n.delete(k);
-			return n;
-		});
 		if (open === k) setOpen(null);
 	};
 
@@ -579,6 +612,7 @@ export function MatchFiltersFieldList({
 		label: string;
 		icon: FacetIcon;
 		value: string | null;
+		hideValueWhenOpen?: boolean;
 		editor: ReactNode;
 	}> = [
 		{
@@ -586,6 +620,7 @@ export function MatchFiltersFieldList({
 			label: "Language",
 			icon: FACET_ICON.language,
 			value: languageSummary(filters.languages?.codes, languageLabel),
+			hideValueWhenOpen: true,
 			editor: (
 				<LanguagePicker
 					value={filters.languages?.codes ?? EMPTY_CODES}
@@ -599,6 +634,7 @@ export function MatchFiltersFieldList({
 					disabled={editFrozen}
 					isSaving={isSaving}
 					hideLabel
+					expanded={open === "language"}
 				/>
 			),
 		},
@@ -650,71 +686,31 @@ export function MatchFiltersFieldList({
 	];
 
 	const activeCount = facets.filter((f) => f.value !== null).length;
-	// Active facets (and any facet currently being added) show as rows; the rest
-	// live in the named Add row below.
-	const visible = facets.filter(
-		(f) => f.value !== null || revealed.has(f.key) || open === f.key,
-	);
-	const addable = facets.filter(
-		(f) => f.value === null && !revealed.has(f.key) && open !== f.key,
-	);
 
 	return (
-		<div style={{ fontFamily: fonts.body }}>
-			{/* Section eyebrow parallel to "Matching intent" / "Genres" (same Label
-			    recipe), so the filters read as a peer section, not a stray block. */}
-			<span
-				className="text-[11px] font-medium uppercase tracking-[0.18em]"
-				style={{
-					display: "block",
-					marginBottom: 10,
-					color: "color-mix(in srgb, var(--t-text) 70%, var(--t-text-muted))",
-				}}
-			>
+		<div ref={containerRef} style={{ fontFamily: fonts.body }}>
+			<span className="theme-text-muted text-[10px] uppercase tracking-[0.16em] block mb-2.5">
 				Filters
 			</span>
-			{optionsState !== "ready" && <OptionsStateNotice state={optionsState} />}
+			{optionsState === "error" && <OptionsErrorNotice />}
 
-			{visible.map((f) => (
-				<FacetRow
-					key={f.key}
-					icon={f.icon}
-					label={f.label}
-					value={f.value}
-					open={open === f.key}
-					onToggle={() => toggle(f.key, f.value !== null)}
-					onRemove={() => clearFacet(f.key)}
-					removeDisabled={isSaving}
-				>
-					{f.editor}
-				</FacetRow>
-			))}
-
-			{addable.length > 0 && (
-				<div
-					style={{
-						display: "flex",
-						flexWrap: "wrap",
-						alignItems: "center",
-						gap: 8,
-						marginTop: 14,
-					}}
-				>
-					{addable.map((f) => (
-						<button
-							key={f.key}
-							type="button"
-							disabled={editFrozen}
-							onClick={() => reveal(f.key)}
-							aria-label={`Add ${f.label} filter`}
-							className="mf-add"
-						>
-							<Icon icon={f.icon} size={11} />
-							{f.label}
-						</button>
-					))}
-				</div>
-			)}
+			<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+				{facets.map((f) => (
+					<FacetRow
+						key={f.key}
+						icon={f.icon}
+						label={f.label}
+						value={f.value}
+						open={open === f.key}
+						onToggle={() => toggle(f.key)}
+						onRemove={() => clearFacet(f.key)}
+						removeDisabled={isSaving}
+						hideValueWhenOpen={f.hideValueWhenOpen}
+					>
+						{f.editor}
+					</FacetRow>
+				))}
+			</div>
 
 			{activeCount > 0 && (
 				<button
@@ -722,10 +718,6 @@ export function MatchFiltersFieldList({
 					disabled={isSaving}
 					onClick={() => {
 						onFiltersChange({ version: 1 });
-						// Clearing the model must also drop the view state derived from
-						// it, otherwise just-cleared facets linger as empty "Any" rows
-						// instead of folding back into the Add chips.
-						setRevealed(new Set());
 						setOpen(null);
 					}}
 					style={{
