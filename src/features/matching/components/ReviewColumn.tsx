@@ -1,7 +1,9 @@
 import { ArrowLeftIcon, ArrowRightIcon, XIcon } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useIsPresent } from "framer-motion";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { repairConnection } from "@/lib/extension/connection/repair";
 import { fonts } from "@/lib/theme/fonts";
 
 // Mirrors both columns' art/cover height cap, so on short viewports either
@@ -146,6 +148,63 @@ export function RefreshBanner({
 				</motion.button>
 			)}
 		</AnimatePresence>
+	);
+}
+
+// Same destination SpotifyReconnectLink armed for this verdict, kept so the
+// click behaves exactly as the per-row links it replaces did.
+const SPOTIFY_LOGIN_URL = "https://open.spotify.com/";
+
+/** "Your Spotify session expired" — the review column's one reconnect home.
+ *
+ *  A dead token is account-level truth (QueueCardContent derives it once from
+ *  the shared verdict), and it used to render as a Reconnect link in every
+ *  suggestion row: N copies of one fact, each one displacing that row's Add
+ *  AND its match reason. The state belongs above the list, not inside every
+ *  item of it — so the rows keep their reasons and show a disabled Add, and
+ *  this says once why it's disabled and how to fix it.
+ *
+ *  Deliberately NOT ExtensionAccountBannerView, whose two variants are tuned
+ *  for the dashboard header and the create bar: both paint a surface that
+ *  computes flat against the card plane this column sits on. It takes
+ *  RefreshBanner's treatment instead, because that is what a banner on this
+ *  plane already looks like.
+ *
+ *  No enter animation, unlike RefreshBanner: that one arrives mid-session when
+ *  background matches land, so it has something to announce. This is true from
+ *  first render or not at all. */
+export function ReconnectBanner() {
+	const queryClient = useQueryClient();
+	const [repairing, setRepairing] = useState(false);
+
+	const onReconnect = useCallback(() => {
+		setRepairing(true);
+		// repairConnection opens the armed Spotify login synchronously (invariant
+		// 1 — nothing awaited first) and fires the silent re-pair in parallel. Its
+		// promise can genuinely reject, and there is no recovery to show beyond
+		// stopping the spinner: the next verdict poll re-renders this same banner.
+		repairConnection({
+			verdict: { kind: "spotify-disconnected" },
+			queryClient,
+			spotifyLoginUrl: SPOTIFY_LOGIN_URL,
+		})
+			.catch(() => {})
+			.finally(() => setRepairing(false));
+	}, [queryClient]);
+
+	return (
+		<button
+			type="button"
+			onClick={onReconnect}
+			disabled={repairing}
+			className="theme-text chip-raised chip-raised-hover squircle focus-edge mt-3 flex w-full items-center justify-between rounded-[12px] px-4 py-2.5 disabled:opacity-60"
+			style={{ fontFamily: fonts.body }}
+		>
+			<span className="text-xs">Your Spotify session expired</span>
+			<span className="theme-primary text-xs font-medium tracking-wider uppercase">
+				{repairing ? "Reconnecting…" : "Reconnect"}
+			</span>
+		</button>
 	);
 }
 

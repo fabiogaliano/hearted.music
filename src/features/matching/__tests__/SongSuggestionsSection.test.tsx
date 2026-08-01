@@ -337,21 +337,32 @@ describe("SongSuggestionsSection", () => {
 		expect(addedLabels).toHaveLength(2);
 	});
 
-	// Mirrors MatchesSection's song-mode treatment of the shared verdict:
-	// playlist-mode rows previously showed no reconnect affordance at all for
-	// spotify-disconnected (the prop was never wired through this orientation).
+	// Mirrors MatchesSection's song-mode treatment of the shared verdict. Both
+	// orientations used to render a reconnect link per row; it is one banner now.
 	describe("reconnect affordance (spotify-disconnected)", () => {
-		it("renders a reconnect link instead of Add when reconnectNeeded is true", () => {
+		it("renders one reconnect banner, not one per row", () => {
 			renderWithQuery(
 				<SongSuggestionsSection {...DEFAULT_PROPS} reconnectNeeded />,
 			);
-			expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
 			expect(
-				screen.getAllByRole("link", { name: /Reconnect to Spotify/i }),
-			).toHaveLength(2);
+				screen.getAllByRole("button", {
+					name: /Your Spotify session expired/i,
+				}),
+			).toHaveLength(1);
 		});
 
-		it("keeps added rows as added rather than swapping them for the reconnect link", () => {
+		it("keeps every row's Add, disabled", () => {
+			renderWithQuery(
+				<SongSuggestionsSection {...DEFAULT_PROPS} reconnectNeeded />,
+			);
+			const addButtons = screen.getAllByRole("button", { name: "Add" });
+			expect(addButtons).toHaveLength(2);
+			for (const btn of addButtons) {
+				expect((btn as HTMLButtonElement).disabled).toBe(true);
+			}
+		});
+
+		it("keeps added rows as added rather than showing a disabled Add", () => {
 			renderWithQuery(
 				<SongSuggestionsSection
 					{...DEFAULT_PROPS}
@@ -360,9 +371,7 @@ describe("SongSuggestionsSection", () => {
 				/>,
 			);
 			expect(screen.getByText("Found its home")).toBeDefined();
-			expect(
-				screen.getAllByRole("link", { name: /Reconnect to Spotify/i }),
-			).toHaveLength(1);
+			expect(screen.getAllByRole("button", { name: "Add" })).toHaveLength(1);
 		});
 	});
 

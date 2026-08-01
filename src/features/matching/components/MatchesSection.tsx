@@ -1,14 +1,14 @@
 import { AnimatePresence, useReducedMotion } from "framer-motion";
-import { memo, type ReactNode } from "react";
+import { memo } from "react";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { Cover } from "@/features/playlists/components/Cover";
 import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
 import {
 	AnimatedReviewPanel,
+	ReconnectBanner,
 	RefreshBanner,
 	ReviewColumnFrame,
 	ReviewControls,
@@ -65,9 +65,6 @@ export const MatchesSection = memo(function MatchesSection({
 	onPrevious,
 }: MatchesSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
-	const reconnectAction = reconnectNeeded ? (
-		<SpotifyReconnectLink label="Reconnect to Spotify" />
-	) : undefined;
 
 	return (
 		<ReviewColumnFrame>
@@ -98,6 +95,8 @@ export const MatchesSection = memo(function MatchesSection({
 						)}
 					</div>
 
+					{reconnectNeeded && <ReconnectBanner />}
+
 					<RefreshBanner
 						visible={realAvailable ?? false}
 						prefersReducedMotion={prefersReducedMotion ?? false}
@@ -123,8 +122,13 @@ export const MatchesSection = memo(function MatchesSection({
 									playlist={playlist}
 									added={addedTo.includes(playlist.id)}
 									isDemo={isDemo ?? false}
-									reconnectNode={reconnectAction}
-									navigationDisabled={navigationDisabled ?? false}
+									// Add stays visible but inert while the token is dead: the
+									// match is still real and worth reading, so the row shows
+									// what you'll be able to do, and the banner above says why
+									// you can't yet.
+									navigationDisabled={
+										(navigationDisabled ?? false) || (reconnectNeeded ?? false)
+									}
 									onAdd={onAdd}
 									onDismiss={onDismissSuggestion}
 								/>
@@ -150,8 +154,6 @@ interface MatchRowProps {
 	playlist: Playlist;
 	added: boolean;
 	isDemo: boolean;
-	/** Reconnect CTA shown in place of Add when a Spotify reconnect is needed. */
-	reconnectNode?: ReactNode;
 	navigationDisabled: boolean;
 	onAdd: (playlistId: string) => void;
 	onDismiss?: (playlistId: string) => void | Promise<void>;
@@ -165,7 +167,6 @@ function MatchRow({
 	playlist,
 	added,
 	isDemo,
-	reconnectNode,
 	navigationDisabled,
 	onAdd,
 	onDismiss,
@@ -204,7 +205,7 @@ function MatchRow({
 				media={
 					<Cover src={playlist.imageUrl} size={56} className="flex-none" />
 				}
-				reason={reconnectNode ? undefined : playlist.reason || undefined}
+				reason={playlist.reason || undefined}
 				size="lg"
 				onDismiss={onDismiss}
 				dismissDisabled={navigationDisabled}
@@ -212,9 +213,7 @@ function MatchRow({
 				action={
 					added
 						? { type: "added" }
-						: reconnectNode
-							? { type: "custom", node: reconnectNode }
-							: { type: "add", disabled: navigationDisabled, onAdd }
+						: { type: "add", disabled: navigationDisabled, onAdd }
 				}
 			/>
 			{preview}

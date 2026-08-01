@@ -172,9 +172,32 @@ describe("MatchesSection", () => {
 		expect(screen.queryByText("Real matches are ready")).toBeNull();
 	});
 
-	it("renders a reconnect link instead of Add when reconnectNeeded is true", () => {
-		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} reconnectNeeded />);
-		expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+	// Regression pin for the per-row reconnect: a dead token is one account-level
+	// fact, and it used to render as a link in every row, displacing that row's
+	// Add and its match reason. One banner, rows intact, Add visible but inert.
+	describe("reconnect affordance (spotify-disconnected)", () => {
+		it("renders one reconnect banner, not one per row", () => {
+			renderWithQuery(<MatchesSection {...DEFAULT_PROPS} reconnectNeeded />);
+			expect(
+				screen.getAllByRole("button", {
+					name: /Your Spotify session expired/i,
+				}),
+			).toHaveLength(1);
+		});
+
+		it("keeps every row's Add and reason, with Add disabled", () => {
+			renderWithQuery(<MatchesSection {...DEFAULT_PROPS} reconnectNeeded />);
+			const addButtons = screen.getAllByRole("button", { name: "Add" });
+			expect(addButtons).toHaveLength(2);
+			for (const btn of addButtons) {
+				expect((btn as HTMLButtonElement).disabled).toBe(true);
+			}
+			// The reason survives the disconnected state — it used to be suppressed
+			// on every row to make room for the link.
+			expect(
+				screen.getAllByText("Matches the song's mellow tone"),
+			).toHaveLength(2);
+		});
 	});
 
 	it("opens the playlist track preview via the cover disclosure handle", async () => {

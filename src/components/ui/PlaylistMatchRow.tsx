@@ -6,8 +6,7 @@ import { fonts } from "@/lib/theme/fonts";
 
 type PlaylistMatchRowAction =
 	| { type: "added" }
-	| { type: "add"; disabled?: boolean; onAdd: (playlistId: string) => void }
-	| { type: "custom"; node: ReactNode };
+	| { type: "add"; disabled?: boolean; onAdd: (playlistId: string) => void };
 
 interface PlaylistMatchRowProps {
 	playlistId: string;
@@ -53,8 +52,6 @@ export function PlaylistMatchRow({
 			>
 				Found its home
 			</span>
-		) : action.type === "custom" ? (
-			action.node
 		) : (
 			// The one action the matching page exists for, so it takes the accent
 			// fill. It can't be a raised chip: hovering Add necessarily hovers its row

@@ -1,16 +1,16 @@
 import { XIcon } from "@phosphor-icons/react";
 import { AnimatePresence, useReducedMotion } from "framer-motion";
-import { memo, type ReactNode } from "react";
+import { memo } from "react";
 import { Button } from "@/components/ui/Button";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
-import { SpotifyReconnectLink } from "@/lib/extension/SpotifyReconnectLink";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
 import { fonts } from "@/lib/theme/fonts";
 import type { SongSuggestionRow, SongSuggestionsSectionProps } from "../types";
 import {
 	AnimatedReviewPanel,
+	ReconnectBanner,
 	ReviewColumnFrame,
 	ReviewControls,
 	ReviewEmptyState,
@@ -50,9 +50,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	onPrevious,
 }: SongSuggestionsSectionProps) {
 	const prefersReducedMotion = useReducedMotion();
-	const reconnectAction = reconnectNeeded ? (
-		<SpotifyReconnectLink label="Reconnect to Spotify" />
-	) : undefined;
 
 	// A load-more error stops the auto-observer (retry is manual) but keeps
 	// hasMoreSuggestions true so the empty-state gate below stays suppressed —
@@ -127,6 +124,8 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 						Best matches
 					</p>
 
+					{reconnectNeeded && <ReconnectBanner />}
+
 					<ReviewListScroll footer={suggestionsFooter}>
 						{mismatchProfile ? (
 							// Invariant 2: block every row's Add rather than a per-row
@@ -145,8 +144,12 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 									key={row.song.id}
 									row={row}
 									added={addedTo.includes(row.song.id)}
-									reconnectNode={reconnectAction}
-									navigationDisabled={navigationDisabled ?? false}
+									// Add stays visible but inert while the token is dead — the
+									// suggestion is still real, and the banner above says why it
+									// can't be acted on yet.
+									navigationDisabled={
+										(navigationDisabled ?? false) || (reconnectNeeded ?? false)
+									}
 									onAdd={onAdd}
 									onDismiss={onDismissSuggestion}
 									isActive={activePlaybackId === row.song.id}
@@ -177,8 +180,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 interface SongSuggestionRowItemProps {
 	row: SongSuggestionRow;
 	added: boolean;
-	/** Reconnect CTA shown in place of Add when a Spotify reconnect is needed. */
-	reconnectNode?: ReactNode;
 	navigationDisabled: boolean;
 	onAdd: (suggestionId: string) => void;
 	onDismiss?: (suggestionId: string) => void | Promise<void>;
@@ -195,7 +196,6 @@ interface SongSuggestionRowItemProps {
 function SongSuggestionRowItem({
 	row,
 	added,
-	reconnectNode,
 	navigationDisabled,
 	onAdd,
 	onDismiss,
@@ -265,8 +265,6 @@ function SongSuggestionRowItem({
 						>
 							Found its home
 						</span>
-					) : reconnectNode ? (
-						reconnectNode
 					) : (
 						// Accent fill, matching song mode's Add — see PlaylistMatchRow for
 						// why a raised chip converges with its own row's hover.
