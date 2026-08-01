@@ -115,10 +115,8 @@ export interface SongSuggestionsSectionProps {
 	/**
 	 * Playlist-mode tail-paging state from useMatchReviewCard (first-page-fast,
 	 * P3). Optional — undefined in song mode and in Ladle stories, both of which
-	 * have no tail query. Threaded here for step 5 (footer/sentinel UI); this
-	 * component doesn't render them yet.
+	 * have no tail query.
 	 */
-	suggestionTotal?: number;
 	hasMoreSuggestions?: boolean;
 	isLoadingMoreSuggestions?: boolean;
 	loadMoreSuggestions?: () => void;
@@ -170,7 +168,6 @@ type PlaylistModeSession = MatchingSessionCommonProps & {
 	reviewItem: PlaylistForMatching;
 	suggestions: SongSuggestionRow[];
 	/** Tail-paging state (see SongSuggestionsSectionProps) — playlist mode only. */
-	suggestionTotal?: number;
 	hasMoreSuggestions?: boolean;
 	isLoadingMoreSuggestions?: boolean;
 	loadMoreSuggestions?: () => void;
@@ -226,7 +223,6 @@ export interface MatchingProps {
 	/** Callback for toggle navigation. No-op default keeps completion/story renders safe. */
 	onModeChange?: (mode: MatchViewMode) => void;
 	/** Playlist-mode tail-paging state (see SongSuggestionsSectionProps) — undefined in song mode. */
-	suggestionTotal?: number;
 	hasMoreSuggestions?: boolean;
 	isLoadingMoreSuggestions?: boolean;
 	loadMoreSuggestions?: () => void;

@@ -14,9 +14,10 @@ function baseCapPx() {
 	return Math.min(560, Math.max(260, window.innerHeight * 0.42));
 }
 
-// Shared scroll body for the two matching review columns — Best Matches (song
-// mode) and Song Suggestions (playlist mode). They're the same two-column-stage
-// list with different row contents, so both use this one container: a capped,
+// Shared scroll body for the two matching review columns — the same "Best
+// matches" list in both orientations, playlists in song mode and songs in
+// playlist mode. Same two-column stage, different row contents, so both use this
+// one container: a capped,
 // internally scrolling column whose persistent themed scrollbar (see
 // .review-list-scroll in styles.css) is the "more below" cue, with the review
 // controls pinned below it. min-h-0 lets the flex child shrink so overflow-y

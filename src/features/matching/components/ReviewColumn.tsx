@@ -152,8 +152,6 @@ export function RefreshBanner({
 export interface ReviewControlsProps {
 	disabled: boolean;
 	isLastItem: boolean;
-	/** Drives the Reject button's singular/plural label. */
-	count: number;
 	/** Label shown on Next when this isn't the last item — "Skip Song" / "Skip Playlist". */
 	nextLabel: string;
 	onDismiss: () => void | Promise<void>;
@@ -167,7 +165,6 @@ export interface ReviewControlsProps {
 export function ReviewControls({
 	disabled,
 	isLastItem,
-	count,
 	nextLabel,
 	onDismiss,
 	onPrevious,
@@ -182,9 +179,15 @@ export function ReviewControls({
 				onClick={onDismiss}
 				style={{ fontFamily: fonts.body }}
 			>
+				{/* "None of these", not "Reject Matches": this button and the X on each
+				row both meant reject, at wildly different scopes — one suggestion
+				versus every suggestion for this subject — and neither label carried
+				the difference. "These" can only mean the whole list, which puts the
+				scope in the words and leaves the row's X free to mean "not this one".
+				It also drops the singular/plural fork the old copy needed. */}
 				<span className="inline-flex min-h-11 items-center gap-1.5">
 					<XIcon size={14} weight="regular" />
-					{count === 1 ? "Reject Match" : "Reject Matches"}
+					None of these
 				</span>
 			</Button>
 

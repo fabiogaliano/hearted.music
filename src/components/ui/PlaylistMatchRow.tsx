@@ -51,7 +51,7 @@ export function PlaylistMatchRow({
 				className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
 				style={{ fontFamily: fonts.body }}
 			>
-				Added
+				Found its home
 			</span>
 		) : action.type === "custom" ? (
 			action.node

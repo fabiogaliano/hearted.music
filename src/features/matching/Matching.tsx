@@ -25,7 +25,6 @@ export function Matching({
 	navigationDisabled,
 	mode = "playlist",
 	onModeChange = () => {},
-	suggestionTotal,
 	hasMoreSuggestions,
 	isLoadingMoreSuggestions,
 	loadMoreSuggestions,
@@ -139,7 +138,6 @@ export function Matching({
 					navigationDisabled={navigationDisabled}
 					isLastItem={offset >= totalSongs - 1}
 					animateReject
-					suggestionTotal={suggestionTotal}
 					hasMoreSuggestions={hasMoreSuggestions}
 					isLoadingMoreSuggestions={isLoadingMoreSuggestions}
 					loadMoreSuggestions={loadMoreSuggestions}

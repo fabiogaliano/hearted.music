@@ -197,7 +197,6 @@ async function renderCard(
 	mockUseMatchReviewCard.mockReturnValue({
 		currentReviewItem: makeSongReviewItem(),
 		currentSuggestions: options?.currentSuggestions ?? [],
-		suggestionTotal: undefined,
 		hasMoreSuggestions: false,
 		isLoadingMoreSuggestions: false,
 		loadMoreSuggestions: vi.fn(),

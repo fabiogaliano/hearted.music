@@ -85,7 +85,7 @@ export const MatchesSection = memo(function MatchesSection({
 							className="theme-text-muted text-xs tracking-widest uppercase"
 							style={{ fontFamily: fonts.body }}
 						>
-							Best Matches
+							Best matches
 						</p>
 						{isDemo && (
 							<span
@@ -137,7 +137,6 @@ export const MatchesSection = memo(function MatchesSection({
 			<ReviewControls
 				disabled={navigationDisabled ?? false}
 				isLastItem={isLastItem ?? false}
-				count={playlists.length}
 				nextLabel="Skip Song"
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}

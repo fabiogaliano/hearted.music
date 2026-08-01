@@ -353,7 +353,6 @@ export function QueueCardContent({
 	const {
 		currentReviewItem,
 		currentSuggestions,
-		suggestionTotal,
 		hasMoreSuggestions,
 		isLoadingMoreSuggestions,
 		loadMoreSuggestions,
@@ -755,7 +754,6 @@ export function QueueCardContent({
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}
 			onModeChange={onModeChange}
-			suggestionTotal={suggestionTotal}
 			hasMoreSuggestions={hasMoreSuggestions}
 			isLoadingMoreSuggestions={isLoadingMoreSuggestions}
 			loadMoreSuggestions={loadMoreSuggestions}

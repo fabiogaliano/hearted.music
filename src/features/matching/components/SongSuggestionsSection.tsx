@@ -36,9 +36,8 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
-	// suggestionTotal drives SuggestionsControls' pluralization below; the rest
-	// drive the tail-paging sentinel/retry footer rendered in ReviewListScroll.
-	suggestionTotal,
+	// Tail-paging state driving the sentinel/retry footer rendered in
+	// ReviewListScroll.
 	hasMoreSuggestions,
 	isLoadingMoreSuggestions,
 	loadMoreSuggestions,
@@ -117,11 +116,15 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 					prefersReducedMotion={prefersReducedMotion ?? false}
 					instant={suppressTransition ?? false}
 				>
+					{/* Same heading as song mode. The two used to read "Best Matches" and
+					"Song Suggestions" — one slot, two grammars, a quality claim beside a
+					content type — so switching orientation made the column look like it
+					had changed job when only its contents had. */}
 					<p
 						className="theme-text-muted text-xs tracking-widest uppercase"
 						style={{ fontFamily: fonts.body }}
 					>
-						Song Suggestions
+						Best matches
 					</p>
 
 					<ReviewListScroll footer={suggestionsFooter}>
@@ -162,10 +165,6 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 			<ReviewControls
 				disabled={navigationDisabled ?? false}
 				isLastItem={isLastItem ?? false}
-				// suggestionTotal (capped, post-dismissal) is the playlist-mode source
-				// of truth once tail paging is in play — suggestions.length undercounts
-				// once earlier rows are loaded but later ones aren't yet.
-				count={suggestionTotal ?? suggestions.length}
 				nextLabel="Skip Playlist"
 				onDismiss={onDismiss}
 				onPrevious={onPrevious}
@@ -264,7 +263,7 @@ function SongSuggestionRowItem({
 							className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
 							style={{ fontFamily: fonts.body }}
 						>
-							Added
+							Found its home
 						</span>
 					) : reconnectNode ? (
 						reconnectNode

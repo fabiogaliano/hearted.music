@@ -77,9 +77,9 @@ describe("MatchesSection", () => {
 		expect(onAdd).toHaveBeenCalledWith("pl-1");
 	});
 
-	it("shows 'Added' text and hides Add button for playlists in addedTo", () => {
+	it("shows 'Found its home' and hides Add button for playlists in addedTo", () => {
 		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} addedTo={["pl-1"]} />);
-		expect(screen.getByText("Added")).toBeDefined();
+		expect(screen.getByText("Found its home")).toBeDefined();
 		const addButtons = screen.getAllByRole("button", { name: "Add" });
 		expect(addButtons).toHaveLength(1);
 	});
@@ -99,17 +99,8 @@ describe("MatchesSection", () => {
 		const { user } = renderWithQuery(
 			<MatchesSection {...DEFAULT_PROPS} onDismiss={onDismiss} />,
 		);
-		await user.click(screen.getByRole("button", { name: /Reject Matches/i }));
+		await user.click(screen.getByRole("button", { name: /None of these/i }));
 		expect(onDismiss).toHaveBeenCalledOnce();
-	});
-
-	it("uses singular 'Reject Match' copy when a single playlist is visible", () => {
-		renderWithQuery(
-			<MatchesSection {...DEFAULT_PROPS} playlists={[makePlaylist()]} />,
-		);
-		expect(
-			screen.getByRole("button", { name: /Reject Match$/i }),
-		).toBeDefined();
 	});
 
 	it("renders Skip Song button that calls onNext", async () => {
@@ -154,7 +145,7 @@ describe("MatchesSection", () => {
 		for (const btn of addButtons) {
 			expect((btn as HTMLButtonElement).disabled).toBe(true);
 		}
-		const dismissBtn = screen.getByRole("button", { name: /Reject Matches/i });
+		const dismissBtn = screen.getByRole("button", { name: /None of these/i });
 		const prevBtn = screen.getByRole("button", { name: /Previous/i });
 		const nextBtn = screen.getByRole("button", { name: /Skip Song/i });
 		expect((dismissBtn as HTMLButtonElement).disabled).toBe(true);

@@ -123,10 +123,10 @@ describe("SongSuggestionsSection", () => {
 		expect(onAdd).toHaveBeenCalledWith("song-1");
 	});
 
-	it("shows 'Added' text and hides Add button for songs in addedTo", () => {
+	it("shows 'Found its home' and hides Add button for songs in addedTo", () => {
 		render(<SongSuggestionsSection {...DEFAULT_PROPS} addedTo={["song-1"]} />);
-		// song-1 is added: shows "Added" text
-		expect(screen.getByText("Added")).toBeDefined();
+		// song-1 is added: shows the added label
+		expect(screen.getByText("Found its home")).toBeDefined();
 		// song-2 is not added: still has Add button
 		const addButtons = screen.getAllByRole("button", { name: "Add" });
 		expect(addButtons).toHaveLength(1);
@@ -148,7 +148,7 @@ describe("SongSuggestionsSection", () => {
 				onPrevious={vi.fn()}
 			/>,
 		);
-		const dismissBtn = screen.getByRole("button", { name: /Reject Matches/i });
+		const dismissBtn = screen.getByRole("button", { name: /None of these/i });
 		const prevBtn = screen.getByRole("button", { name: /Previous/i });
 		const nextBtn = screen.getByRole("button", { name: /Skip Playlist/i });
 		expect((dismissBtn as HTMLButtonElement).disabled).toBe(true);
@@ -161,17 +161,8 @@ describe("SongSuggestionsSection", () => {
 		const { user } = render(
 			<SongSuggestionsSection {...DEFAULT_PROPS} onDismiss={onDismiss} />,
 		);
-		await user.click(screen.getByRole("button", { name: /Reject Matches/i }));
+		await user.click(screen.getByRole("button", { name: /None of these/i }));
 		expect(onDismiss).toHaveBeenCalledOnce();
-	});
-
-	it("uses singular 'Reject Match' copy when a single suggestion is visible (H3)", () => {
-		render(
-			<SongSuggestionsSection {...DEFAULT_PROPS} suggestions={[makeRow()]} />,
-		);
-		expect(
-			screen.getByRole("button", { name: /Reject Match$/i }),
-		).toBeDefined();
 	});
 
 	it("renders Skip Playlist button that calls onNext", async () => {
@@ -339,10 +330,10 @@ describe("SongSuggestionsSection", () => {
 				addedTo={["song-1", "song-2"]}
 			/>,
 		);
-		// Both songs are still in the list (visible), just marked Added.
+		// Both songs are still in the list (visible), just marked as added.
 		expect(screen.getByText("Echoes")).toBeDefined();
 		expect(screen.getByText("Comfortably Numb")).toBeDefined();
-		const addedLabels = screen.getAllByText("Added");
+		const addedLabels = screen.getAllByText("Found its home");
 		expect(addedLabels).toHaveLength(2);
 	});
 
@@ -360,7 +351,7 @@ describe("SongSuggestionsSection", () => {
 			).toHaveLength(2);
 		});
 
-		it("keeps 'Added' rows as Added rather than swapping them for the reconnect link", () => {
+		it("keeps added rows as added rather than swapping them for the reconnect link", () => {
 			renderWithQuery(
 				<SongSuggestionsSection
 					{...DEFAULT_PROPS}
@@ -368,7 +359,7 @@ describe("SongSuggestionsSection", () => {
 					addedTo={["song-1"]}
 				/>,
 			);
-			expect(screen.getByText("Added")).toBeDefined();
+			expect(screen.getByText("Found its home")).toBeDefined();
 			expect(
 				screen.getAllByRole("link", { name: /Reconnect to Spotify/i }),
 			).toHaveLength(1);

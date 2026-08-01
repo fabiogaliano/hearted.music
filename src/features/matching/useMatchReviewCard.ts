@@ -23,8 +23,6 @@ export interface UseMatchReviewCardParams {
 export interface UseMatchReviewCardResult {
 	currentReviewItem: MatchingReviewItem | null;
 	currentSuggestions: MatchingSuggestion[];
-	/** Playlist-mode only (capped, post-dismissal total); undefined in song mode. */
-	suggestionTotal: number | undefined;
 	/** True while a tail page may still exist — see the derivation note below. */
 	hasMoreSuggestions: boolean;
 	isLoadingMoreSuggestions: boolean;
@@ -149,11 +147,6 @@ export function useMatchReviewCard({
 		}));
 	}, [itemData, tailQuery.data]);
 
-	const suggestionTotal =
-		itemData.status === "ready" && itemData.mode === "playlist"
-			? itemData.suggestionTotal
-			: undefined;
-
 	// NOT just tailQuery.hasNextPage: before the auto-fired first tail page
 	// resolves, hasNextPage can still read false (no page fetched yet to derive
 	// it from), which would flash "no more" between the card mounting and that
@@ -256,7 +249,6 @@ export function useMatchReviewCard({
 	return {
 		currentReviewItem,
 		currentSuggestions,
-		suggestionTotal,
 		hasMoreSuggestions,
 		isLoadingMoreSuggestions: tailQuery.isFetchingNextPage,
 		loadMoreSuggestions,
