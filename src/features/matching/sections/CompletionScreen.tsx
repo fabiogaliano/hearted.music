@@ -6,8 +6,6 @@ import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
 import type { CompletionScreenProps } from "../types";
 
-const IMAGE_OUTLINE = "1px solid rgba(255, 255, 255, 0.1)";
-
 export const CompletionScreen = memo(function CompletionScreen({
 	stats,
 	items,
@@ -94,12 +92,15 @@ export const CompletionScreen = memo(function CompletionScreen({
 								className="group relative size-20 transition-transform duration-[220ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] hover:z-10 motion-safe:hover:-translate-y-1"
 							>
 								{item.albumArtUrl ? (
+									// image-outline over the hardcoded white hairline this carried:
+									// 10% white shows nothing on the light themes, and the shared
+									// utility (every other cover in the app) flips per theme. The
+									// tiles stay square — cover art reads as a photograph.
 									<img
 										src={item.albumArtUrl}
 										alt={`${item.name} — ${item.artist}`}
 										loading="lazy"
-										className="h-full w-full object-cover"
-										style={{ outline: IMAGE_OUTLINE }}
+										className="image-outline h-full w-full object-cover"
 									/>
 								) : (
 									// No album art: a styled ♫ placeholder instead of a broken-image
@@ -107,8 +108,7 @@ export const CompletionScreen = memo(function CompletionScreen({
 									<div
 										role="img"
 										aria-label={`${item.name} — ${item.artist}`}
-										className="h-full w-full"
-										style={{ outline: IMAGE_OUTLINE }}
+										className="image-outline h-full w-full"
 									>
 										<AlbumPlaceholder />
 									</div>
@@ -116,7 +116,12 @@ export const CompletionScreen = memo(function CompletionScreen({
 								{/* Hover caption: title + artist. The opacity reveal is ungated
 								so reduced-motion users still get it instantly; only the
 								scale/rise easing is motion-safe. */}
-								<div className="theme-surface-bg pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[180px] -translate-x-1/2 rounded-md px-3 py-2 text-center opacity-0 shadow-md group-hover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover:translate-y-0 motion-safe:group-hover:scale-100">
+								{/* squircle only, not chip-raised: that utility declares a
+								`transition` shorthand which lands after Tailwind's in the same
+								layer, and would clobber this caption's opacity/transform reveal.
+								A floating caption reads off the page anyway, so the raised
+								temperature has nothing here to be raised against. */}
+								<div className="theme-surface-bg squircle pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[180px] -translate-x-1/2 rounded-[10px] px-3 py-2 text-center opacity-0 shadow-md group-hover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover:translate-y-0 motion-safe:group-hover:scale-100">
 									<p
 										className="theme-text truncate text-xs font-medium"
 										style={{ fontFamily: fonts.body }}

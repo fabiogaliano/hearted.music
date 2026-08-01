@@ -68,12 +68,14 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 							transform: `rotate(${comp.rotate}deg)`,
 						}}
 					>
+						{/* image-outline over the hardcoded 10% white this carried — that
+						edge draws nothing on the light themes, and the shared utility
+						flips per theme. */}
 						<img
 							src={item.image}
 							alt=""
 							loading="lazy"
-							className="h-full w-full object-cover shadow-md"
-							style={{ outline: "1px solid rgba(255, 255, 255, 0.1)" }}
+							className="image-outline h-full w-full object-cover shadow-md"
 						/>
 						{/* Hover caption: title + artist, mirroring the CompletionScreen
 						reveal. The opacity flip is ungated so reduced-motion users get it
@@ -81,7 +83,7 @@ export function FanSpreadAlbumArt({ images }: FanSpreadAlbumArtProps) {
 						inside the wrapper so it rides the lift/scale, and since it only
 						shows on hover (rotation already snapped to 0) the side cards'
 						tilt never reaches the text. */}
-						<div className="theme-surface-bg pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[160px] -translate-x-1/2 rounded-md px-3 py-2 text-center opacity-0 shadow-md group-hover/cover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover/cover:translate-y-0 motion-safe:group-hover/cover:scale-100">
+						<div className="theme-surface-bg squircle pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 w-max max-w-[160px] -translate-x-1/2 rounded-[10px] px-3 py-2 text-center opacity-0 shadow-md group-hover/cover:opacity-100 motion-safe:origin-bottom motion-safe:translate-y-1 motion-safe:scale-[0.97] motion-safe:transition-[opacity,transform] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:group-hover/cover:translate-y-0 motion-safe:group-hover/cover:scale-100">
 							<p
 								className="theme-text truncate text-xs font-medium"
 								style={{ fontFamily: fonts.body }}

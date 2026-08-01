@@ -299,8 +299,10 @@ function PlaylistCoverAndName({
 									}
 									className="group/cover relative block size-full cursor-pointer overflow-hidden border-0 bg-transparent p-0 text-left transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] motion-safe:active:scale-[0.99]"
 								>
+									{/* Cover draws its own image-outline, so the extra ring this
+									carried was a second hairline stacked on the first — at a
+									dark-only alpha, which the shared one already handles. */}
 									<Cover src={reviewItem.imageUrl} size="fill" />
-									<CoverRing />
 									<CoverPeekBadge
 										size={26}
 										label={countLabel ?? undefined}
@@ -313,7 +315,6 @@ function PlaylistCoverAndName({
 								// the same as the live one.
 								<div className="relative size-full">
 									<Cover src={reviewItem.imageUrl} size="fill" />
-									<CoverRing />
 									{countLabel && (
 										<CoverPeekBadge
 											size={26}
@@ -367,17 +368,6 @@ function PlaylistCoverAndName({
 				)}
 			</div>
 		</div>
-	);
-}
-
-// 1px inset ring matches the SongSection album art treatment: adds subtle
-// definition on light-colored or white covers in both themes.
-function CoverRing() {
-	return (
-		<div
-			className="pointer-events-none absolute inset-0 z-20"
-			style={{ boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.16)" }}
-		/>
 	);
 }
 

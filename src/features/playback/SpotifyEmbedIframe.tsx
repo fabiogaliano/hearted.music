@@ -142,9 +142,11 @@ export function SpotifyEmbedIframe({
 	return (
 		<div
 			ref={wrapperRef}
-			className={className}
+			// image-outline: same 1px edge every cover in the app carries, and it
+			// flips per theme — the hardcoded 10% white it replaced was invisible on
+			// the light ones.
+			className={`image-outline ${className ?? ""}`}
 			style={{
-				outline: "1px solid rgba(255, 255, 255, 0.1)",
 				width: "100%",
 				height: "100%",
 			}}

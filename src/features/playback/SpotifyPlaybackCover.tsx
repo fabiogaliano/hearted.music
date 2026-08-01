@@ -184,12 +184,11 @@ export function SpotifyPlaybackCover({
 				</motion.div>
 			)}
 
-			{/* Inset ring for subtle definition on light-colored covers, matching the
-			SongSection / PlaylistReviewItemSection album art treatment. */}
-			<div
-				className="pointer-events-none absolute inset-0 z-20"
-				style={{ boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.16)" }}
-			/>
+			{/* Inset ring for subtle definition on light-colored covers. Its own layer
+			rather than the img's own outline because it has to sit above the premounted
+			embed, which covers the art. image-outline over the hardcoded white it used
+			to carry: 16% white draws nothing on the light themes. */}
+			<div className="image-outline pointer-events-none absolute inset-0 z-20" />
 		</div>
 	);
 }
