@@ -29,6 +29,12 @@
 	"[css]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
+	// VS Code's bundled CSS validator predates both Tailwind v4's `@import
+	// "tailwindcss" source(".")` import condition and the relative-color
+	// `oklch(from var(--token) …)` syntax the theme is built on, and reports
+	// both as "semicolon expected". Biome lints CSS here, so the built-in
+	// validator only contributes false positives.
+	"css.validate": false,
 	"editor.codeActionsOnSave": {
 		"source.organizeImports.biome": "explicit"
 	}
