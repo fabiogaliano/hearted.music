@@ -153,8 +153,12 @@ export function PlaylistMatchRow({
 						)}
 					</div>
 				</div>
-
-				<div className="flex shrink-0 items-center gap-2">
+				{/* gap-4, not the tighter gap-2 this used to carry: dismiss persists its
+				decision and drops the row with no undo, so the one pair in this row that
+				must not be the closest is "permanently no" beside the accent-filled
+				"yes". 16px matches the row's own internal gap, and leaves 12px between
+				hit areas once .tap-40 has grown the X. */}
+				<div className="flex shrink-0 items-center gap-4">
 					{onDismiss && action.type !== "added" && (
 						<button
 							type="button"
