@@ -505,7 +505,7 @@ function MatchStrictnessPicker({
 							style={{
 								boxShadow: isSelected
 									? "inset 0 0 0 5px var(--t-text)"
-									: "inset 0 0 0 1px var(--t-border)",
+									: "inset 0 0 0 1px var(--t-control-edge)",
 							}}
 						/>
 						<span className="flex min-w-0 flex-col gap-1">

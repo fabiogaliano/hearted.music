@@ -330,7 +330,7 @@ const SongCardContent = memo(function SongCardContent({
 			{!showWalkthroughUi &&
 				(isSelectable ? (
 					<span
-						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "theme-border-color"} flex size-5 shrink-0 items-center justify-center border`}
+						className={`${isChecked ? "theme-primary-bg" : "bg-transparent"} ${isChecked ? "border-(--t-primary)" : "border-(--t-control-edge)"} flex size-5 shrink-0 items-center justify-center border`}
 					>
 						{isChecked && (
 							<CheckIcon

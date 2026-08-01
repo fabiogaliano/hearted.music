@@ -164,6 +164,19 @@ code {
      intensity switcher; this is the setting it lands on ("Matte 8%"). */
   --grain-opacity: 0.08;
 
+  /* The edge of a small control that draws its own outline — a checkbox, an
+     unselected radio dot. Ink mixed into transparency rather than a colour,
+     which is the whole point: it composites onto whatever is behind it, so one
+     value holds its weight on the page, on a plane, on a chip and on a lit row
+     (measured ΔL 0.070–0.081 across all four grounds in all four palettes).
+
+     These used --t-border, which is opaque and was picked against --t-bg. Once
+     controls moved onto raised planes that same token nearly doubled in weight
+     (0.080 on the page, 0.162 on a lit row) and became the hardest edge on the
+     card, sitting beside a .plane-rule seam a third its strength. 14%, not the
+     seam's 9%: a control has to be findable, an internal rule does not. */
+  --t-control-edge: color-mix(in srgb, var(--t-text) 14%, transparent);
+
   --kbd-text-color: var(--t-text-muted);
   --kbd-bg-color: color-mix(in oklch, var(--t-text) 10%, transparent);
   --kbd-border-color: color-mix(in oklch, var(--t-text-muted) 30%, transparent);
