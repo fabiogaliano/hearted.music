@@ -139,9 +139,11 @@
 .xpl-genres .genre-picker .gp-chip-x:disabled {
 	cursor: default;
 }
+/* Snapped onto the chip tier exactly (l - 0.025), so the onboarding pill is the
+   same material as .chip-raised rather than a near-miss of it. */
 .xpl-genres .genre-picker .gp-pill {
 	background: oklch(
-		from var(--t-surface) calc(l - 0.03) calc(c + 0.003) calc(h + 3)
+		from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3)
 	);
 }
 .xpl-genres .genre-picker .gp-pill-prefix,
@@ -210,9 +212,11 @@
 	outline: none;
 	border-color: var(--t-primary);
 }
+/* Same flip as .mf-chip below — a field and a pill are one material here, so
+   they lift together rather than one rising and the other sinking. */
 .mf-field:hover:not(:disabled) {
 	background: oklch(
-		from var(--t-surface) calc(l - 0.035) calc(c + 0.004) calc(h + 4)
+		from var(--t-surface) calc(l - 0.015) calc(c + 0.005) calc(h + 6)
 	);
 }
 .mf-field:disabled {
@@ -235,10 +239,14 @@
 		color 150ms ease,
 		transform 150ms var(--ease-out-quart);
 }
+/* Lighter and warmer, matching .chip-raised-hover. This used to go DOWN to
+   l-0.04 from an l-0.025 rest — hover sank the chip, the inverse of the gesture
+   every hover in the vision makes. Rest is already the chip tier exactly, so the
+   two are one material now. */
 .mf-chip:hover:not(:disabled) {
 	color: var(--t-text);
 	background: oklch(
-		from var(--t-surface) calc(l - 0.04) calc(c + 0.005) calc(h + 5)
+		from var(--t-surface) calc(l - 0.015) calc(c + 0.005) calc(h + 6)
 	);
 }
 .mf-chip:active:not(:disabled) {

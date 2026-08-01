@@ -123,6 +123,22 @@ code {
     --t-text-on-primary: hsl(340, 32%, 92%);
     --t-primary: hsl(340, 28%, 28%);
     --t-primary-hover: hsl(340, 30%, 20%);
+    /* "Whatever surface I'm sitting on." .surface-raised re-declares it to its
+       own fill, so it inherits down to every descendant — which is how a child
+       that must MATCH its container (a ring gap punched in the fill, a swatch
+       backing) gets the right colour without hard-coding a tier or being told
+       one by prop. Outside any plane it resolves to the page, which is the
+       honest answer there. Never a theme-* utility: it's a value to compose
+       with, not a background to apply. */
+    --t-plane: var(--t-bg);
+    /* The same surface with a row engaged on it — pointer or keyboard cursor.
+       Tier-aware for a reason: this was one fixed value derived from --t-surface,
+       which is correct for a row on the PAGE (it lifts to about the plane tier
+       and a shade past) but collapsed to a 0.012 step the moment rows moved onto
+       a plane, because the ground had risen under them while the fill hadn't.
+       .surface-raised re-declares it to a real step off its own fill; this
+       default is the page-borne value, unchanged. */
+    --t-plane-lit: oklch(from var(--t-surface) calc(l + 0.016) calc(c + 0.004) calc(h + 4));
   }
 }
 
@@ -482,11 +498,21 @@ code {
      differ only in shape, so the material never fights a rounded-* utility over
      border-radius (both are single-class selectors in the same layer, and that
      tie is decided by source order — too fragile to build a system on). */
-  /* Two tiers, taken from the Ladle vision stories (vision/*.stories.tsx): a
-     large PLANE sits closer to --t-surface than a small CHIP does, because the
-     same offset reads much louder over a card-sized area than over a pill. Both
-     tiers are lighter than --t-bg (--t-surface is the lighter token), which is
-     what makes them read as raised off the page.
+  /* Two tiers, calibrated against the studio (/playlists/new/studio), which is
+     the reference for how far an element should stand off the page:
+
+         page    --t-bg                        (surface - ~0.045)
+         plane   --t-surface, warm-tilted      <- .surface-raised
+         chip    --t-surface - 0.025           <- .chip-raised
+
+     The studio's panels are plain theme-surface-bg — full --t-surface — and its
+     fields and pills sit 0.025 below that. The plane tier used to sit at
+     surface - 0.012, which handed back a quarter of the page gap and left every
+     plane in the app reading dimmer than a studio panel. It now lands on
+     --t-surface itself (plus the warm tilt, which is what distinguishes this
+     material from a flat theme-surface-bg), so a card anywhere clears the page
+     exactly as decisively as a studio panel does, and the chip tier keeps the
+     same ~0.03 step down that the studio's own controls have.
 
      Hover in both tiers moves LIGHTER and warmer — up in chroma, further round
      in hue. The plane lifts toward the light rather than sinking, so hover is
@@ -496,8 +522,15 @@ code {
        keeping the box metrics means no pill resizes and a selected/invalid state
        can tint the edge later without a layout shift. */
     border: 1px solid transparent;
-    background: oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2));
-    color: var(--t-text);
+    /* Published as --t-plane (and consumed from it) so descendants can match
+       this exact fill — see the token's note in @layer base. */
+    --t-plane: oklch(from var(--t-surface) calc(l + 0.004) calc(c + 0.002) calc(h + 2));
+    /* +0.029 off THIS plane, mirroring the chip tier's step below it: a row lit
+       on a panel now travels as far as a control resting on one. Also covers the
+       element that is both — a pressable card carrying .surface-raised and
+       .surface-raised-hover lifts off its own fill instead of off the page's. */
+    --t-plane-lit: oklch(from var(--t-surface) calc(l + 0.033) calc(c + 0.005) calc(h + 5));
+    background: var(--t-plane);
     /* transform rides along because these planes are pressable and take an
        active:scale — declared here so the press has an easing without a
        Tailwind transition-* utility fighting this rule for transition-property. */
@@ -513,19 +546,36 @@ code {
      Keyboard focus takes the same fill as hover: they are one state — "this is
      the thing I'm engaging with" — and without it, tabbing through a feed of
      transparent rows moves a bare ring across dead rows while pointer users get
-     the whole plane lighting up. The :has() arm mirrors .focus-edge's, for the
-     case where the plane is a div and focus really sits on a child button. */
+     the whole plane lighting up.
+
+     The :has() arm takes ANY focused descendant, where .focus-edge's equivalent
+     is opt-in per child. They diverge on purpose: a ring must point at the one
+     control you're on, but the fill answers a different question — which ROW do
+     these controls belong to — and a match row with a cover, a dismiss and an
+     Add wants the whole plane to answer it. :focus-visible, not :focus-within,
+     so clicking Add doesn't leave the row lit behind the pointer. */
+  /* The fill comes from --t-plane-lit rather than being written here, so the
+     step is measured against whatever this row is sitting on. Hard-coding it
+     meant one number had to serve both a row on the page and a row inside a
+     panel, and it can't: the same value is a healthy lift in the first case and
+     a 0.012 hair in the second. */
   .surface-raised-hover:hover,
   .surface-raised-hover:focus-visible,
-  .surface-raised-hover:has(> [data-focus-edge]:focus-visible) {
-    background: oklch(from var(--t-surface) calc(l - 0.01) calc(c + 0.004) calc(h + 4));
+  .surface-raised-hover:has(:focus-visible) {
+    background: var(--t-plane-lit);
   }
 
-  /* Chip tier — pills, chips, small controls. */
+  /* Chip tier — pills, chips, small controls.
+
+     Fill only, no `color`: both tiers used to set color: var(--t-text), which is
+     what the shell already inherits down (and preflight has buttons and anchors
+     inherit too), so it bought nothing in the common case — while silently
+     beating any theme-text-muted / text-(--t-primary) on the same element,
+     because these rules land after those in the same layer. Same separation as
+     .squircle being shape-only: one material, any colour, any shape. */
   .chip-raised {
     border: 1px solid transparent;
     background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
-    color: var(--t-text);
     transition:
       background-color 150ms ease,
       transform 150ms ease;
@@ -533,6 +583,22 @@ code {
   .chip-raised-hover:hover,
   .chip-raised-hover:focus-visible {
     background: oklch(from var(--t-surface) calc(l - 0.015) calc(c + 0.005) calc(h + 6));
+  }
+
+  /* Hairline BETWEEN bands of one plane — a panel's toolbar and its rows, a
+     settings card and its footer. Deliberately SOFTER than --t-border, which is
+     a heavy line on a plane (~0.13 in oklch L, more than the 0.08 it carries on
+     the page, since the plane it's drawn on is lighter): an internal seam should
+     sit under the container's own edge, not match it. Mixing from --t-text is
+     what keeps it proportional on any tier, at the same 9% the studio's
+     .match-zone rows already use, so a rule here and a rule there agree.
+
+     Pairs with a Tailwind border-* side utility, which is why it sets
+     border-color only — so it can't be used ON a raised plane, whose material
+     reserves all four edges with a `border` shorthand. A plane that needs its
+     own seam draws it with an inset shadow instead (SongSelectionBar). */
+  .plane-rule {
+    border-color: color-mix(in srgb, var(--t-text) 9%, transparent);
   }
 
   /* Split-and-stagger enter for the ideas grid: each card fades up from a
@@ -938,9 +1004,11 @@ code {
     background-color 150ms ease,
     transform 150ms var(--ease-out-quart);
 }
+/* Lifts rather than sinks — same flip as .mf-chip:hover, and the same values as
+   .chip-raised-hover, so a genre option and a pill anywhere else agree. */
 .genre-picker .gp-opt:hover {
   color: var(--t-text);
-  background: oklch(from var(--t-surface) calc(l - 0.04) calc(c + 0.005) calc(h + 5));
+  background: oklch(from var(--t-surface) calc(l - 0.015) calc(c + 0.005) calc(h + 6));
 }
 .genre-picker .gp-opt:active {
   transform: scale(0.96);
