@@ -39,8 +39,10 @@ interface ExtensionAccountBannerViewProps {
 	accountDisplayName: string | null;
 	repairing: boolean;
 	onReconnect: () => void;
-	/** When true, drops the dashboard-specific negative margins and bottom spacing. */
-	flush?: boolean;
+	/** `"bar"` retunes the banner for the create bar: flush edges and the bar's
+	 * tighter type scale, so it reads as a sibling of the hint text it replaces
+	 * rather than a page-level banner dropped into a footer. */
+	variant?: "page" | "bar";
 }
 
 export function ExtensionAccountBannerView({
@@ -48,20 +50,27 @@ export function ExtensionAccountBannerView({
 	accountDisplayName,
 	repairing,
 	onReconnect,
-	flush,
+	variant = "page",
 }: ExtensionAccountBannerViewProps) {
+	const isBar = variant === "bar";
+	const copyClass = `theme-text text-balance ${isBar ? "text-xs" : "text-sm"}`;
+	const actionClass = `hover-border-brighten inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+		isBar ? "text-[11px]" : "text-xs"
+	}`;
+
 	return (
 		<div
 			role="status"
 			aria-live="polite"
-			className={`theme-surface-bg px-5 py-4${flush ? "" : " -mx-4 mb-10"}`}
+			className={
+				isBar
+					? "theme-surface-bg px-5 py-3.5"
+					: "theme-surface-bg -mx-4 mb-10 px-5 py-4"
+			}
 		>
 			{verdict.kind === "mismatch" ? (
 				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-					<p
-						className="theme-text text-sm text-balance"
-						style={{ fontFamily: fonts.body }}
-					>
+					<p className={copyClass} style={{ fontFamily: fonts.body }}>
 						Your browser is signed in to Spotify as{" "}
 						<strong className="font-medium">
 							{verdict.extensionProfile.displayName}
@@ -80,7 +89,7 @@ export function ExtensionAccountBannerView({
 						type="button"
 						onClick={onReconnect}
 						disabled={repairing}
-						className="hover-border-brighten inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+						className={actionClass}
 						style={{ fontFamily: fonts.body }}
 					>
 						{repairing ? "Switching…" : "Switch Spotify account"}
@@ -90,20 +99,14 @@ export function ExtensionAccountBannerView({
 				// Old extension (paired: null) or a background hiccup (profile: null)
 				// — never conflate with the explicit unpaired disconnect (invariant 6),
 				// so no CTA: there's nothing a click here could silently repair.
-				<p
-					className="theme-text text-sm text-balance"
-					style={{ fontFamily: fonts.body }}
-				>
+				<p className={copyClass} style={{ fontFamily: fonts.body }}>
 					We can't verify your Spotify account right now — this can happen with
 					an older version of the extension. Syncing is paused until it's
 					confirmed.
 				</p>
 			) : (
 				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-					<p
-						className="theme-text text-sm text-balance"
-						style={{ fontFamily: fonts.body }}
-					>
+					<p className={copyClass} style={{ fontFamily: fonts.body }}>
 						{verdict.kind === "unpaired"
 							? "The extension is no longer connected to your hearted account, so syncing is paused."
 							: "Your Spotify session expired, so syncing is paused."}
@@ -112,7 +115,7 @@ export function ExtensionAccountBannerView({
 						type="button"
 						onClick={onReconnect}
 						disabled={repairing}
-						className="hover-border-brighten inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+						className={actionClass}
 						style={{ fontFamily: fonts.body }}
 					>
 						{repairing

@@ -10,13 +10,11 @@ export function LibraryEmptyState({
 	onClearFilters,
 }: LibraryEmptyStateProps) {
 	return (
-		<div className="py-6" role="status" aria-live="polite">
-			<span
-				className="theme-text-muted mb-1 block text-[11px] tracking-[0.18em] uppercase"
-				style={{ fontFamily: fonts.body }}
-			>
-				Your playlist
-			</span>
+		<div
+			className="flex flex-col items-center py-6 text-center"
+			role="status"
+			aria-live="polite"
+		>
 			<span
 				className="theme-text block leading-none"
 				style={{ fontFamily: fonts.display, fontSize: "1.125rem" }}

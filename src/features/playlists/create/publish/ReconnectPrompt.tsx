@@ -26,7 +26,7 @@ export function ReconnectPrompt() {
 			accountDisplayName={null}
 			repairing={repairing}
 			onReconnect={onReconnect}
-			flush
+			variant="bar"
 		/>
 	);
 }

@@ -23,6 +23,26 @@ import { ReconnectPrompt } from "./ReconnectPrompt";
 
 async function noopRecheck() {}
 
+/**
+ * Songs whose durationMs never arrived (not yet enriched) would otherwise drag
+ * the total down, so they're valued at the average of the ones we do know —
+ * the label reads "~" precisely because of this.
+ */
+function estimateMinutes(songs: SongVM[]): number {
+	const known = songs.filter((s) => s.durationMs !== null);
+	if (known.length === 0) return 0;
+	const knownMs = known.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
+	const totalMs = (knownMs / known.length) * songs.length;
+	return Math.round(totalMs / 60_000);
+}
+
+function formatDuration(minutes: number): string {
+	if (minutes < 60) return `~${minutes} min`;
+	const hours = Math.floor(minutes / 60);
+	const rest = minutes % 60;
+	return rest === 0 ? `~${hours} hr` : `~${hours} hr ${rest} min`;
+}
+
 export interface CreateBarProps {
 	name: string;
 	songs: SongVM[];
@@ -151,7 +171,7 @@ export function CreateBar({
 	const hint = isGateChecking
 		? "Checking connection…"
 		: trimmedName.length === 0
-			? "Name your playlist to create"
+			? "Name your playlist first"
 			: isPreviewStale || isResolvingArtists
 				? "Updating…"
 				: isSubmitting
@@ -166,13 +186,27 @@ export function CreateBar({
 			style={{ fontFamily: fonts.body }}
 		>
 			<div className="min-w-0 flex-1">
-				{hint && (
+				{hint ? (
 					<span
-						className="theme-text-muted text-[10px] shrink-0"
+						className="theme-text-muted shrink-0 text-xs"
 						aria-live="polite"
 					>
 						{hint}
 					</span>
+				) : (
+					<div className="flex min-w-0 items-baseline gap-2 text-xs">
+						<span className="min-w-0 truncate" title={trimmedName}>
+							{trimmedName}
+						</span>
+						<span className="theme-text-muted shrink-0 opacity-50">·</span>
+						<span className="theme-text-muted shrink-0 tabular-nums">
+							{songCount} {songCount === 1 ? "track" : "tracks"}
+						</span>
+						<span className="theme-text-muted shrink-0 opacity-50">·</span>
+						<span className="theme-text-muted shrink-0 tabular-nums">
+							{formatDuration(estimateMinutes(songs))}
+						</span>
+					</div>
 				)}
 			</div>
 
