@@ -44,7 +44,9 @@ export function PlaylistMatchRow({
 	action,
 }: PlaylistMatchRowProps) {
 	const nameFontSize = size === "lg" ? "1.5rem" : "1rem";
-	const paddingBottom = size === "lg" ? "1.5rem" : "0.875rem";
+	// Symmetric now that the divider is gone: the old bottom-heavy padding existed
+	// to space the content off the hairline beneath it, not to shape the row.
+	const rowPadding = size === "lg" ? "px-2.5 py-3" : "px-2.5 py-2";
 
 	const actionElement =
 		action.type === "added" ? (
@@ -57,9 +59,17 @@ export function PlaylistMatchRow({
 		) : action.type === "custom" ? (
 			action.node
 		) : (
+			// The one action the matching page exists for, so it takes the accent
+			// fill. It can't be a raised chip: hovering Add necessarily hovers its row
+			// too, and both tiers move lighter, so a chip's hover slid toward the lit
+			// row and the primary action got muddier exactly when pointed at. An
+			// accent fill separates by hue, which no plane state can converge with.
+			// Shape (not the variant's job) comes from the call site, matching the
+			// pill language the surface variant already carries.
 			<Button
-				variant="secondary"
+				variant="primary"
 				size="sm"
+				className="squircle rounded-full"
 				disabled={action.disabled}
 				onClick={() => action.onAdd(playlistId)}
 			>
@@ -68,11 +78,21 @@ export function PlaylistMatchRow({
 		);
 
 	return (
+		// The vision tracklist's evolved row (vision/StudioTracklist.stories.tsx):
+		// no hairline, transparent at rest, the hover fill carrying the row on its
+		// own. Worth more here than in a plain tracklist — this row scatters three
+		// separate hit targets (cover preview, dismiss, Add) across its full width,
+		// and the plane is what binds them into one row you're acting on. The small
+		// horizontal inset is the vision's too; it can't bleed outward the way the
+		// dashboard's rows do because MatchingSession clips the card for the reject
+		// fling, which would take the corners with it.
+		// The transition is the caller's here: .surface-raised-hover is only the
+		// hover/focus arms, so a row that is transparent at rest has no base rule to
+		// carry one and the fill would snap.
 		<div
-			className="theme-border-color group border-b"
-			style={{ paddingBottom }}
+			className={`surface-raised-hover squircle group rounded-[10px] transition-[background-color] duration-150 ease-out ${rowPadding}`}
 		>
-			<div className="flex items-center gap-6 py-1 pr-1">
+			<div className="flex items-center gap-6">
 				<div className="shrink-0">{scoreDisplay}</div>
 
 				<div className="flex min-w-0 flex-1 items-center gap-4">

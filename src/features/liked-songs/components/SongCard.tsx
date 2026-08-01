@@ -10,6 +10,25 @@ import { fonts } from "@/lib/theme/fonts";
 import type { LikedSong } from "../types";
 import { formatRelativeTime, isNewSong } from "../types";
 
+// Rows sit on the library panel, so every engaged fill here is measured against
+// THAT, not against --t-surface. --t-plane-lit resolves to the panel's own lit
+// step (see styles.css), which is the same fill .surface-raised-hover paints —
+// so a row under the pointer and a row the keyboard cursor is on are one state.
+//
+// Open is the opposite direction: it drops to the chip tier, the fill every
+// control in the studio already rests at. The row whose panel is showing reads
+// as the slot its contents came out of rather than as a second hovered row —
+// which is what it was, since open and hover used to be the same value.
+// Spelled out rather than tokenised because it is not a plane-relative value:
+// it lands one step below THIS plane, and would be wrong (above the fill) on a
+// row that sits directly on the page.
+const ROW_OPEN =
+	"oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3))";
+// A primary wash over the lit fill: "I picked this" has to survive next to a
+// row that's merely under the pointer.
+const ROW_CHECKED =
+	"color-mix(in oklch, var(--t-primary) 12%, var(--t-plane-lit))";
+
 interface SongCardProps {
 	song: LikedSong;
 	albumArtUrl?: string;
@@ -113,21 +132,29 @@ export const SongCard = memo(function SongCard({
 			opacity = 0.6;
 		}
 
+		// Keyboard focus used to be a 2px primary rail on the left edge — the one
+		// mark on the row that wasn't a fill, and one that had to be mirrored by a
+		// -2px margin so unfocused rows still lined up. It takes the lit fill
+		// instead: data-focused suppresses the browser outline, so the row still
+		// says where the cursor is with nothing hanging off it.
+		//
+		// Focus outranks open when a row is both, which only happens under arrow
+		// navigation (data-focused is keyboard-only, so a click opens a row without
+		// focusing it). In keyboard mode the fill is the ONLY cursor cue, whereas
+		// the open row is also announced by the panel standing open beside it — so
+		// losing the cursor would cost more than losing the marker.
+		let background: string | undefined;
+		if (isSelectionChecked) {
+			background = ROW_CHECKED;
+		} else if (isFocused) {
+			background = "var(--t-plane-lit)";
+		} else if (isSelected) {
+			background = ROW_OPEN;
+		}
+
 		return {
-			"--hover-bg": isEnabled
-				? "color-mix(in srgb, var(--t-text) 6%, transparent)"
-				: "transparent",
 			position: "relative",
-			background: isSelectionChecked
-				? "var(--t-surface-dim)"
-				: isSelected
-					? "var(--t-surface)"
-					: undefined,
-			borderLeft:
-				isFocused || isSelected || showWalkthroughUi
-					? "2px solid var(--t-primary)"
-					: "2px solid transparent",
-			marginLeft: "-2px",
+			background,
 			scrollMarginTop,
 			opacity,
 			pointerEvents: !isEnabled ? "none" : undefined,
@@ -140,7 +167,6 @@ export const SongCard = memo(function SongCard({
 		isSelectionChecked,
 		isSelected,
 		isFocused,
-		showWalkthroughUi,
 		scrollMarginTop,
 		isLocked,
 		isWalkthroughHighlight,
@@ -158,7 +184,17 @@ export const SongCard = memo(function SongCard({
 			onPointerDown={handlePointerDown}
 			onFocus={onFocus}
 			onBlur={onBlur}
-			className={`song-card -mx-3 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent px-5 py-4 text-left transition-transform duration-100 active:scale-[0.98]${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
+			// The hover was `color-mix(in srgb, var(--t-text) 6%, transparent)` — all
+			// but exactly the value the vision stories label as the CURRENT treatment
+			// and replace. It's the shared row temperature now, so a row here reads
+			// the same as one in the dashboard feed or a match column. Gated on
+			// isEnabled because a disabled row must not respond to the pointer; that
+			// used to be done by zeroing an inline --hover-bg.
+			// The -mx-3 bleed is gone with the plane: a row no longer has to reach
+			// past a content column to prove it's interactive, it just fills the
+			// panel's padded interior. px-3 + the panel's px-2 restores the same
+			// 20px content inset the studio's tracklist rows sit at.
+			className={`song-card squircle flex w-full cursor-pointer items-center gap-4 rounded-[10px] border-0 bg-transparent px-3 py-3 text-left transition-[transform,background-color] duration-150 ease-out active:scale-[0.98]${isEnabled ? " surface-raised-hover" : ""}${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
 			style={buttonStyle}
 		>
 			<SongCardContent
@@ -220,15 +256,21 @@ const SongCardContent = memo(function SongCardContent({
 					viewTransitionName: isAnimatingTo ? "song-album" : "none",
 				}}
 			>
+				{/* image-outline on the art itself, not the wrapper: the ring is an
+				    inset shadow, which the wrapper would paint BEHIND its own
+				    content. This was the one cover in the app without it, which
+				    only started to show once the rows moved onto a light plane —
+				    art with a pale edge used to end on the page and now bleeds
+				    into the panel. */}
 				{albumArtUrl ? (
 					<img
 						src={albumArtUrl}
 						alt={`${song.track.album || song.track.name} album art`}
-						className="h-full w-full object-cover"
+						className="image-outline h-full w-full object-cover"
 						style={isLocked ? { filter: "grayscale(0.5)" } : undefined}
 					/>
 				) : (
-					<AlbumPlaceholder />
+					<AlbumPlaceholder className="image-outline" />
 				)}
 				{isLocked && (
 					<div className="absolute inset-0 flex items-center justify-center bg-black/35">
@@ -242,7 +284,7 @@ const SongCardContent = memo(function SongCardContent({
 
 			<div className="min-w-0 flex-1">
 				<h3
-					className={`${isSelectionChecked || !isLocked ? "theme-text" : "theme-text-muted"} truncate text-base`}
+					className={`${isSelectionChecked || !isLocked ? "theme-text" : "theme-text-muted"} truncate text-[17px]`}
 					style={{
 						fontFamily: fonts.display,
 						fontWeight: isSelected ? 400 : 300,
@@ -252,7 +294,7 @@ const SongCardContent = memo(function SongCardContent({
 					{song.track.name}
 				</h3>
 				<p
-					className="mt-0.5 truncate text-sm"
+					className="mt-0.5 truncate text-[13px]"
 					style={{
 						fontFamily: fonts.body,
 						color: isSelectionChecked

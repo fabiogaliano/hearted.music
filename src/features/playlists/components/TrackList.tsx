@@ -91,9 +91,18 @@ export function TrackList({
 				return (
 					<div
 						key={rowId}
-						className={`theme-border-color flex items-center gap-3.5 border-b py-2.5 last:border-b-0 ${
-							animateIn ? "xpl-track-enter" : ""
-						}`}
+						// The evolved SongRow from vision/StudioTracklist.stories.tsx, which
+						// is this exact component: hairline out, radius in, ~8px/10px
+						// padding, transparent at rest. The hover is gated on
+						// enableTrackPlayback — with playback off the row is inert, and a
+						// fill that follows the pointer onto something unclickable is a lie.
+						// Gated on the list-level flag, not per-track spotifyId, so one list
+						// doesn't have some rows that respond and some that don't.
+						className={`squircle flex items-center gap-3.5 rounded-[10px] px-2.5 py-2 ${
+							enableTrackPlayback
+								? "surface-raised-hover transition-[background-color] duration-150 ease-out"
+								: ""
+						} ${animateIn ? "xpl-track-enter" : ""}`}
 						style={animateIn ? { animationDelay: `${i * 26}ms` } : undefined}
 					>
 						<span
@@ -157,7 +166,7 @@ export function TrackList({
 				</div>
 			) : (
 				remaining > 0 && (
-					<div className="theme-border-color flex items-center gap-3.5 border-b py-2.5 opacity-60 last:border-b-0">
+					<div className="flex items-center gap-3.5 px-2.5 py-2 opacity-60">
 						<span className="w-[18px] flex-none" />
 						<span
 							className="theme-text-muted text-xs"

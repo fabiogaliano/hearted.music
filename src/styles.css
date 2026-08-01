@@ -328,24 +328,6 @@ code {
   }
 
   /* Theme-aware hover for song cards (variable set inline from JS) */
-  .song-card:hover {
-    background: var(--hover-bg);
-  }
-
-  /* Generic theme-aware row hover. Mixes 6% of the text color into transparent
-     so the hover lifts above the page background even when surface tokens are
-     only marginally different from the page bg (the case in our pastel
-     themes). Use on list rows that should feel like SongCard / ActivityItem
-     without the inline JS variable. */
-  .theme-row-hover {
-    transition-property: background-color, transform;
-    transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .theme-row-hover:hover {
-    background: color-mix(in srgb, var(--t-text) 6%, transparent);
-  }
-
   /* Song cards stay fully renderable so keyboard navigation updates paint immediately.
      Focus visuals are handled globally via [data-tab-focused="true"] and the
      [data-nav-engaged="true"]:focus-visible flicker-suppression rule. */
@@ -440,27 +422,6 @@ code {
     background: color-mix(in oklch, var(--t-primary) 6%, transparent);
     border-color: var(--t-text-muted);
   }
-
-  .theme-hover-surface:hover {
-    background: var(--t-surface);
-  }
-
-  .theme-selectable-row {
-    border-left: 2px solid transparent;
-  }
-
-  .theme-selectable-row:hover,
-  .theme-selectable-row[data-selected="true"],
-  .theme-selectable-row[data-highlighted="true"] {
-    background: var(--t-surface);
-  }
-
-  .theme-selectable-row[data-selected="true"],
-  .theme-selectable-row[data-highlighted="true"] {
-    border-left-color: var(--t-primary);
-  }
-
-  /* Tab-focus is handled by the global [data-tab-focused="true"] rule */
 
   .theme-border-brighten:hover {
     border-color: var(--t-text-muted);

@@ -208,8 +208,11 @@ function SongSuggestionRowItem({
 	const { song, fitScore } = row;
 
 	return (
-		<div className="theme-border-color border-b pb-6">
-			<div className="flex items-center gap-6 py-1 pr-1">
+		// Same evolved row as the song-mode column (see PlaylistMatchRow): no
+		// hairline, transparent at rest, one hover plane binding the row's three
+		// controls — play, dismiss, Add.
+		<div className="surface-raised-hover squircle rounded-[10px] px-2.5 py-3 transition-[background-color] duration-150 ease-out">
+			<div className="flex items-center gap-6">
 				<div className="shrink-0">
 					<NumberFlow
 						value={Math.round(fitScore * 100)}
@@ -271,9 +274,12 @@ function SongSuggestionRowItem({
 					) : reconnectNode ? (
 						reconnectNode
 					) : (
+						// Accent fill, matching song mode's Add — see PlaylistMatchRow for
+						// why a raised chip converges with its own row's hover.
 						<Button
-							variant="secondary"
+							variant="primary"
 							size="sm"
+							className="squircle rounded-full"
 							disabled={navigationDisabled}
 							onClick={() => onAdd(song.id)}
 						>

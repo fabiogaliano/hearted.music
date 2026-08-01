@@ -40,7 +40,12 @@ export function SuggestionRow({
 	playback,
 }: SuggestionRowProps) {
 	return (
-		<div className="-mx-3 flex items-center gap-4 px-3 py-2.5">
+		// py-2, not py-2.5: a suggestion and a picked song are the same row at two
+		// stages, and the tray sits directly opposite the picked list — a half-step
+		// of extra height read as the two lists being subtly out of register.
+		// Everything that separates them (dimmed art, muted title) is deliberate;
+		// this wasn't.
+		<div className="-mx-3 flex items-center gap-4 px-3 py-2">
 			{/* Album art — dimmed vs. preview rows to reinforce secondary status.
 			The dimming only applies at rest (not while actively playing), so an
 			active preview here reads at full strength like a picked row's cover. */}
