@@ -13,6 +13,7 @@ import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAuthenticatedTheme } from "@/lib/theme/authenticated-theme";
 import { LikedSongsHeader } from "./components/LikedSongsHeader";
 import { LikedSongsList } from "./components/LikedSongsList";
+import { LikedSongsToolbar } from "./components/LikedSongsToolbar";
 import { SongSelectionBar } from "./components/SongSelectionBar";
 import { SongDetailPanel } from "./components/song-detail-panel/SongDetailPanel";
 import type { LockedCta } from "./components/song-detail-panel/SongDetailPanelSurface";
@@ -361,53 +362,66 @@ export function LikedSongsPage({
 					lockedSongCount={lockedSongCount}
 					showSelectionUI={showSelectionUI}
 					selectionMode={selectionMode}
-					activeFilter={filter}
-					onFilterChange={handleFilterChange}
 					onEnterSelectionMode={enterSelectionMode}
-					searchQuery={searchQuery}
-					onSearchChange={setSearchQuery}
 					isWalkthrough={isWalkthrough}
 				/>
 
-				{selectionMode && showSelectionUI && billingState && (
-					<SongSelectionBar
-						containerRef={selectionBarRef}
-						selectedCount={selectedSongIds.size}
-						remainingBalance={billingState.creditBalance}
-						onConfirm={handleUnlockConfirm}
-						onCancel={exitSelectionMode}
-					/>
-				)}
+				{/* The library as one object: controls, selection bar and rows share a
+				    single raised plane, the way the studio's tracklist does. No
+				    overflow-hidden — that would make this a scroll container and kill
+				    the selection bar's sticky. Nothing inside needs clipping anyway;
+				    the rows carry their own radius. */}
+				<div className="surface-raised squircle rounded-[18px] pb-2">
+					{!isWalkthrough && (
+						<LikedSongsToolbar
+							stats={stats}
+							activeFilter={filter}
+							onFilterChange={handleFilterChange}
+							searchQuery={searchQuery}
+							onSearchChange={setSearchQuery}
+						/>
+					)}
 
-				<LikedSongsList
-					data={{
-						isLoading,
-						filter,
-						displayedSongs,
-						visibleSongs,
-						hasMore,
-						searchQuery: isSearching ? debouncedSearchQuery : null,
-					}}
-					selection={{
-						isActive: selectionMode && showSelectionUI,
-						selectedSongIds,
-						scrollMarginTop: selectionModeScrollMarginTop,
-						onToggleSelect: toggleSongSelection,
-					}}
-					navigation={{
-						selectedSongId,
-						closingToSongId,
-						isExpanded,
-						navIndexBySongId,
-						getItemProps,
-						onCardClick: handleCardClick,
-						sentinelRef,
-					}}
-					walkthrough={{
-						isActive: isWalkthrough,
-						songId: walkthroughSong?.id ?? null,
-					}}
-				/>
+					{selectionMode && showSelectionUI && billingState && (
+						<SongSelectionBar
+							containerRef={selectionBarRef}
+							selectedCount={selectedSongIds.size}
+							remainingBalance={billingState.creditBalance}
+							onConfirm={handleUnlockConfirm}
+							onCancel={exitSelectionMode}
+						/>
+					)}
+
+					<LikedSongsList
+						data={{
+							isLoading,
+							filter,
+							displayedSongs,
+							visibleSongs,
+							hasMore,
+							searchQuery: isSearching ? debouncedSearchQuery : null,
+						}}
+						selection={{
+							isActive: selectionMode && showSelectionUI,
+							selectedSongIds,
+							scrollMarginTop: selectionModeScrollMarginTop,
+							onToggleSelect: toggleSongSelection,
+						}}
+						navigation={{
+							selectedSongId,
+							closingToSongId,
+							isExpanded,
+							navIndexBySongId,
+							getItemProps,
+							onCardClick: handleCardClick,
+							sentinelRef,
+						}}
+						walkthrough={{
+							isActive: isWalkthrough,
+							songId: walkthroughSong?.id ?? null,
+						}}
+					/>
+				</div>
 			</div>
 
 			{conceptSong && (
