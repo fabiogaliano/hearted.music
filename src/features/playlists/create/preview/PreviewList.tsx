@@ -89,6 +89,9 @@ export function PreviewList({
 			playback.deactivatePlayback();
 		}
 		onRemoveSong(song.id);
+		// Removing an unpinned song is just the preview narrowing — only a
+		// pinned song was a deliberate pick worth offering back.
+		if (!pinnedSet.has(song.id)) return;
 		toast(
 			<span className="toast-line">
 				<span className="toast-line-verb">Removed</span>

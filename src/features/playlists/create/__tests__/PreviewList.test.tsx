@@ -125,7 +125,7 @@ describe("PreviewList", () => {
 		expect(onRemoveSong).toHaveBeenCalledWith("s1");
 	});
 
-	it("fires a sonner toast on remove", async () => {
+	it("fires a sonner toast when removing a pinned song", async () => {
 		const user = userEvent.setup();
 		const onRemoveSong = vi.fn();
 		render(
@@ -134,6 +134,7 @@ describe("PreviewList", () => {
 				isLoading={false}
 				onRemoveSong={onRemoveSong}
 				onRestoreSong={vi.fn()}
+				pinnedSongIds={["s1"]}
 			/>,
 		);
 
@@ -184,6 +185,7 @@ describe("PreviewList", () => {
 				isLoading={false}
 				onRemoveSong={onRemoveSong}
 				onRestoreSong={onRestoreSong}
+				pinnedSongIds={["s1"]}
 			/>,
 		);
 
@@ -191,6 +193,24 @@ describe("PreviewList", () => {
 		await user.click(removeBtn);
 
 		expect(onRestoreSong).toHaveBeenCalledWith("s1");
+	});
+
+	it("stays silent when removing an unpinned song", async () => {
+		const user = userEvent.setup();
+		const onRemoveSong = vi.fn();
+		render(
+			<PreviewList
+				songs={SONGS}
+				isLoading={false}
+				onRemoveSong={onRemoveSong}
+				onRestoreSong={vi.fn()}
+			/>,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Remove Song Alpha" }));
+
+		expect(onRemoveSong).toHaveBeenCalledWith("s1");
+		expect(toast).not.toHaveBeenCalled();
 	});
 
 	it("renders a play affordance on rows when a playback coordinator is supplied", () => {
