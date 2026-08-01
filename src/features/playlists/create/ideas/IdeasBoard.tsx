@@ -84,7 +84,7 @@ function IntentRowLocked({
 	const instantLabel = gate.criteria.find((c) => !c.progress && !c.met)?.label;
 
 	return (
-		<div className="mt-8 flex flex-col gap-2.5">
+		<div className="group mt-8 flex flex-col gap-2.5">
 			{/* Feature identity as its own label — names the capability. The price
 			    lives in the chip inside the field, so there's no separate offer line. */}
 			<p
@@ -95,9 +95,12 @@ function IntentRowLocked({
 			</p>
 			{/* Whole block is the CTA: a disabled input is a dead end, so this is an
 			    honest locked affordance that opens the paywall on click. The faux
-			    input wears the surface fill (the screen's "clickable object"
-			    material, matching the idea cards) rather than an input's
-			    underline — an underline promises typing, and this doesn't type. */}
+			    input wears the raised material (the screen's "clickable object"
+			    surface, matching the idea cards) rather than an input's underline —
+			    an underline promises typing, and this doesn't type. The button IS the
+			    box, so the focus edge traces the shape you're about to press; the
+			    progress line sits outside it, where a ring around it would be lying
+			    about the hit area. */}
 			<button
 				type="button"
 				onClick={onUnlock}
@@ -106,41 +109,39 @@ function IntentRowLocked({
 						? `Describe a playlist in your own words. You're ${progress.current.toLocaleString()} of ${progress.target.toLocaleString()} songs from packs, or get it now with ${instantLabel ?? "a Backstage Pass"}.`
 						: `Describe a playlist in your own words. Available with ${formatGateHint(gate)}.`
 				}
-				className="group flex w-full cursor-pointer flex-col gap-2.5 text-left"
+				className="surface-raised surface-raised-hover focus-edge flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left"
 			>
-				<span className="hover-border-brighten flex items-center gap-3 px-4 py-3 group-hover:border-(--t-text-muted)">
-					<span
-						className="theme-text-muted min-w-0 flex-1 truncate text-base opacity-60"
-						style={{ fontFamily: fonts.body }}
-					>
-						{example}
-					</span>
-					{/* The accent chip is the whole affordance: lock + the gate's own name,
-					    so the price lives here in one place instead of a second offer line
-					    repeating the CTA. Ties "colored = the special interaction" to the
-					    tunable blanks below. Avoids the salesy "unlock" per brand voice; an
-					    accumulating-path future falls back to a neutral "Get access", with
-					    the progress line carrying the specifics. */}
-					<span className="theme-primary inline-flex flex-none items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 group-hover:opacity-75">
-						<LockSimpleIcon size={12} weight="regular" aria-hidden />
-						{progress ? "Get access" : formatGateHint(gate) || "Backstage Pass"}
-					</span>
+				<span
+					className="theme-text-muted min-w-0 flex-1 truncate text-base opacity-60"
+					style={{ fontFamily: fonts.body }}
+				>
+					{example}
 				</span>
-				{progress ? (
-					<span
-						className="theme-text-muted text-xs leading-snug"
-						style={{ fontFamily: fonts.body }}
-					>
-						You're{" "}
-						<span className="theme-text tabular-nums">
-							{progress.current.toLocaleString()} /{" "}
-							{progress.target.toLocaleString()}
-						</span>{" "}
-						songs from packs
-						{instantLabel ? <>, or get it now with {instantLabel}</> : null}
-					</span>
-				) : null}
+				{/* The accent chip is the whole affordance: lock + the gate's own name,
+				    so the price lives here in one place instead of a second offer line
+				    repeating the CTA. Ties "colored = the special interaction" to the
+				    tunable blanks below. Avoids the salesy "unlock" per brand voice; an
+				    accumulating-path future falls back to a neutral "Get access", with
+				    the progress line carrying the specifics. */}
+				<span className="theme-primary inline-flex flex-none items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 group-hover:opacity-75">
+					<LockSimpleIcon size={12} weight="regular" aria-hidden />
+					{progress ? "Get access" : formatGateHint(gate) || "Backstage Pass"}
+				</span>
 			</button>
+			{progress ? (
+				<span
+					className="theme-text-muted text-xs leading-snug"
+					style={{ fontFamily: fonts.body }}
+				>
+					You're{" "}
+					<span className="theme-text tabular-nums">
+						{progress.current.toLocaleString()} /{" "}
+						{progress.target.toLocaleString()}
+					</span>{" "}
+					songs from packs
+					{instantLabel ? <>, or get it now with {instantLabel}</> : null}
+				</span>
+			) : null}
 		</div>
 	);
 }
@@ -164,7 +165,7 @@ function IntentRow({
 				}}
 				placeholder={example}
 				aria-label="Playlist intent"
-				className="theme-border-color theme-text min-w-0 flex-1 border-b bg-transparent px-1 py-2.5 text-base outline-none focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+				className="theme-border-color theme-text focus-underline min-w-0 flex-1 border-b bg-transparent px-1 py-2.5 text-base outline-none"
 				style={{ fontFamily: fonts.body }}
 			/>
 			<Button
@@ -197,16 +198,18 @@ function IdeaCard({
 
 	const resolved = resolveIdea(idea, selection);
 
-	// hover-border-brighten fills the card with --t-surface — the same material
-	// as the whole-library card below — so the grid visibly lifts off the page
-	// bg instead of being one more same-color outline. The whole card commits,
-	// via the arrow button's stretched ::after overlay (nesting the card in a
-	// <button> would swallow the blanks, which are buttons of their own); the
-	// blanks sit above the overlay (z-raised in IdeaSlot) so tuning one never
-	// accidentally commits.
+	// surface-raised gives the card the warm raised plane — the same material as
+	// the whole-library card below and the studio's fields — so the grid lifts off
+	// the page bg by temperature rather than by one more same-color outline. The
+	// whole card commits, via the arrow button's stretched ::after overlay
+	// (nesting the card in a <button> would swallow the blanks, which are buttons
+	// of their own); the blanks sit above the overlay (z-raised in IdeaSlot) so
+	// tuning one never accidentally commits. Because the overlay is what you press,
+	// focus-edge puts the ring on the CARD while the arrow holds focus — a ring
+	// around the 16px glyph would understate a hit area covering the whole card.
 	return (
 		<div
-			className="idea-enter hover-border-brighten group relative flex items-center justify-between gap-3 px-4 py-3"
+			className="idea-enter surface-raised surface-raised-hover focus-edge group relative flex items-center justify-between gap-3 px-4 py-3"
 			style={{ "--enter-index": index } as React.CSSProperties}
 		>
 			<div className="min-w-0">
@@ -267,7 +270,7 @@ function IdeaCard({
 									})
 								}
 								aria-label={`Start from ${resolved.label} and add ${idea.facet === "artist" ? "other artists" : "more genres"}`}
-								className="theme-text-muted relative z-10 ml-1.5 cursor-pointer border-b border-dashed border-(--t-border) px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight whitespace-nowrap transition-colors duration-150 hover:text-(--t-primary) focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)]"
+								className="theme-text-muted relative z-10 ml-1.5 cursor-pointer border-b border-dashed border-(--t-border) px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight whitespace-nowrap transition-colors duration-150 hover:text-(--t-primary) focus-underline"
 							>
 								{idea.facet === "artist"
 									? "add other artists"
@@ -283,16 +286,15 @@ function IdeaCard({
 					{idea.describe(selection)}
 				</span>
 			</div>
-			<div className="flex flex-none items-center gap-3">
-				<button
-					type="button"
-					onClick={() => onUse(resolved)}
-					aria-label={`Start from ${resolved.label}`}
-					className="theme-text-muted flex cursor-pointer items-center p-2 transition-[color,transform] duration-150 after:absolute after:inset-0 after:content-[''] group-hover:text-(--t-text) focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] motion-safe:group-hover:translate-x-1"
-				>
-					<ArrowRightIcon size={16} weight="regular" aria-hidden />
-				</button>
-			</div>
+			<button
+				type="button"
+				data-focus-edge
+				onClick={() => onUse(resolved)}
+				aria-label={`Start from ${resolved.label}`}
+				className="theme-text-muted flex flex-none cursor-pointer items-center p-2 transition-[color,transform] duration-150 after:absolute after:inset-0 after:content-[''] group-hover:text-(--t-text) motion-safe:group-hover:translate-x-1"
+			>
+				<ArrowRightIcon size={16} weight="regular" aria-hidden />
+			</button>
 		</div>
 	);
 }
@@ -356,16 +358,18 @@ export function IdeasBoard({
 			</p>
 
 			{/* The whole library LEADS the stack: the broadest starting point
-			    (everything, unfaceted) before the faceted ideas. Same surface material
-			    as the ideas but dashed, a different class of action, so it earns the
-			    different border. The title carries py-1 to match the extra line height
+			    (everything, unfaceted) before the faceted ideas. Same raised material
+			    as the ideas but dashed. The dashed edge stays even though the material
+			    now carries depth on its own — here the border isn't encoding "raised",
+			    it's encoding "a different class of action", which temperature can't
+			    say. The title carries py-1 to match the extra line height
 			    the ideas get from their inline tunable blanks, so every card in the
 			    stack sits at the same height. */}
 			<button
 				type="button"
 				onClick={() => onSeed(null, "")}
 				style={{ "--enter-index": IDEAS_ENTER_OFFSET } as React.CSSProperties}
-				className="idea-enter theme-border-color hover-border-brighten group mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 border-dashed px-4 py-3 text-left motion-safe:active:scale-[0.99]"
+				className="idea-enter theme-border-color surface-raised surface-raised-hover focus-edge group mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 border border-dashed px-4 py-3 text-left motion-safe:active:scale-[0.99]"
 			>
 				<span className="min-w-0">
 					<span
@@ -424,7 +428,7 @@ export function IdeasBoard({
 			<button
 				type="button"
 				onClick={onBack}
-				className="idea-enter theme-text-muted -ml-0.5 mb-6 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+				className="idea-enter theme-text-muted focus-underline -ml-0.5 mb-6 inline-flex w-fit cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
 				style={
 					{ fontFamily: fonts.body, "--enter-index": 0 } as React.CSSProperties
 				}

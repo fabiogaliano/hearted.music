@@ -110,7 +110,11 @@ export function IdeaSlot({
 					if (open) close(false);
 					else openList();
 				}}
-				className={`group mx-1 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight focus-visible:outline-2 focus-visible:outline-offset-2 [outline-color:var(--t-primary)] ${
+				// focus-underline rather than a ring: the blank is a WORD in a
+				// sentence, and its resting affordance is already a dashed underline —
+				// so focus thickens that same line into the accent instead of boxing a
+				// word mid-paragraph.
+				className={`group focus-underline mx-1 inline-block px-0.5 py-1 font-[inherit] text-[length:inherit] leading-tight ${
 					openable
 						? // The screen's accent lives here: color marks the tunable word. On
 							// this otherwise-monochrome screen these are the ONLY colored
@@ -165,7 +169,15 @@ export function IdeaSlot({
 						aria-label="Options"
 						aria-activedescendant={`${listId}-opt-${activeIndex}`}
 						onKeyDown={onListKeyDown}
-						className="theme-border-color theme-surface-bg absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col border py-1 not-italic shadow-sm outline-none"
+						// overflow-hidden so the active option's highlight is cut by the
+						// squircle instead of squaring off the card's corners. The
+						// listbox's own UA focus ring is dropped globally (styles.css).
+						className="theme-border-color theme-surface-bg absolute top-full left-0 z-20 mt-1.5 flex min-w-[11rem] flex-col overflow-hidden border py-1 not-italic shadow-sm"
+						style={{
+							borderRadius: 12,
+							// @ts-expect-error -- corner-shape not in CSS typings
+							cornerShape: "squircle",
+						}}
 					>
 						{options.map((option, i) => (
 							<button

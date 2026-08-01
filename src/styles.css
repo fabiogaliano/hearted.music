@@ -456,6 +456,37 @@ code {
     border-color: var(--t-text-muted);
   }
 
+  /* Color-temperature depth (design-evolution/vision.md #1 + #2): a raised
+     plane read as a warmth/lightness shift off --t-surface instead of a border,
+     so hierarchy survives a monochrome theme where a hairline reads as "same
+     color again". Hue-matched, so it adapts to every palette on its own. The
+     values are the studio's field recipe (IntentEditor), so a card here and a
+     field there are literally the same material.
+
+     Radius lives with the material because a squircle needs both halves:
+     corner-shape alone does nothing without a radius to shape. 14px is the
+     field/card scale; panels take 18 and pills 999 by overriding
+     border-radius on top. */
+  .surface-raised {
+    border-radius: 14px;
+    corner-shape: squircle;
+    background: oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2));
+    color: var(--t-text);
+    /* transform rides along because these planes are pressable and take an
+       active:scale — declared here so the press has an easing without a
+       Tailwind transition-* utility fighting this rule for transition-property. */
+    transition:
+      background-color 150ms ease,
+      transform 150ms ease;
+  }
+  /* Composed onto the raised planes that are themselves clickable — hover warms
+     further along the same axis, so "you can press this" is the same signal as
+     "this is raised", one step louder. Kept separate so a raised plane that only
+     CONTAINS a control (an input's box) doesn't light up under the pointer. */
+  .surface-raised-hover:hover {
+    background: oklch(from var(--t-surface) calc(l - 0.028) calc(c + 0.005) calc(h + 5));
+  }
+
   /* Split-and-stagger enter for the ideas grid: each card fades up from a
      small offset, delayed by its position, so the board assembles instead of
      snapping in. One-shot, so keyframes (not a transition) are correct;
