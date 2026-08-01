@@ -491,12 +491,12 @@ function FullScreenHarness({
 					</div>
 					<CreateBar
 						name="New playlist"
-						songIds={preview.map((s) => s.id)}
+						songs={preview}
 						isPreviewStale={false}
 						isResolvingArtists={false}
 						isArtistResolutionError={false}
 						isSubmitting={false}
-						gateState={gateState}
+						gate={{ gateState }}
 						onSubmit={() => {}}
 					/>
 				</div>

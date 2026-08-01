@@ -294,7 +294,7 @@ SuggestionsTrayEmpty.storyName = "Suggestions Tray — empty";
 // ─── CreateBar ────────────────────────────────────────────────────────────────
 
 export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
-	const songIds = SONG_FIXTURES.slice(0, songCount).map((s) => s.id);
+	const songs = SONG_FIXTURES.slice(0, songCount);
 	return (
 		<div className="mx-auto max-w-2xl">
 			<div className="theme-border-color border border-t-0">
@@ -305,12 +305,12 @@ export const CreateBarReady: Story<{ songCount: number }> = ({ songCount }) => {
 				</div>
 				<CreateBar
 					name="New playlist"
-					songIds={songIds}
+					songs={songs}
 					isPreviewStale={false}
 					isResolvingArtists={false}
 					isArtistResolutionError={false}
 					isSubmitting={false}
-					gateState="ok"
+					gate={{ gateState: "ok" }}
 					onSubmit={() => {}}
 				/>
 			</div>

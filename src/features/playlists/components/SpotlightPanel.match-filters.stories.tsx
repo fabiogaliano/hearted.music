@@ -155,7 +155,7 @@ export const DrawerOptionsLoading: Story = () => (
 );
 DrawerOptionsLoading.meta = {
 	description:
-		"Real drawer width. Options loading — controls disabled, 'Loading filter options…' notice visible. Chip remove actions stay enabled.",
+		"Real drawer width. Options loading — controls disabled, no notice (the facet rows are the skeleton). Chip remove actions stay enabled.",
 };
 
 /**
