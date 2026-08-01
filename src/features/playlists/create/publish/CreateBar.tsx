@@ -5,10 +5,10 @@
  * payload assembly are owned by usePublishPlaylist up in StudioScreen. A
  * blocked gate state, though, replaces the CTA outright with the matching
  * recovery prompt (ExtensionUnavailablePrompt / ReconnectPrompt /
- * AccountMismatchPrompt) — the same self-contained prompts the dashboard's
- * reconnect banner is built from — so a missing extension, an expired
- * Spotify session, or a wrong-account extension gets real recovery guidance
- * (install link + Firefox reload hint, or a correctly-verdicted
+ * AccountMismatchPrompt) — each self-contained, worded for creating a
+ * playlist rather than for the dashboard's sync — so a missing extension, an
+ * expired Spotify session, or a wrong-account extension gets real recovery
+ * guidance (install link + Firefox reload hint, or a correctly-verdicted
  * repairConnection call) instead of a dead-end generic "Connect" button.
  * Each prompt owns its own repairConnection call, so CreateBar itself never
  * has to know which verdict a given gate state needs.
