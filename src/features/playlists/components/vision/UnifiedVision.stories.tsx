@@ -2,9 +2,9 @@
  * Unified Vision — side-by-side "Current" vs "Evolved" comparison across three
  * app faces: the playlist studio sidebar, song detail, and the library
  * overview. Left column is the design language as it actually ships today
- * (flat cards, 999px pills, grayish unselected fill, no glow/grain). Right
- * column layers on the four evolved treatments: color-temperature depth,
- * squircle geometry, ambient glow, ceramic grain.
+ * (flat cards, 999px pills, grayish unselected fill, no grain). Right column
+ * layers on the three evolved treatments: color-temperature depth, squircle
+ * geometry, ceramic grain.
  *
  * Throwaway: delete once a direction is picked.
  */
@@ -166,30 +166,6 @@ const currentChipFill = "color-mix(in srgb, var(--t-text) 7%, transparent)";
 
 function Grain() {
 	return <GrainOverlay />;
-}
-
-function Glow({
-	color,
-	opacity = 0.22,
-	blur = 80,
-}: {
-	color: string;
-	opacity?: number;
-	blur?: number;
-}) {
-	return (
-		<div
-			style={{
-				position: "absolute",
-				inset: "-10%",
-				zIndex: 0,
-				pointerEvents: "none",
-				background: `radial-gradient(closest-side, ${color} 0%, transparent 70%)`,
-				filter: `blur(${blur}px)`,
-				opacity,
-			}}
-		/>
-	);
 }
 
 function Chip({
@@ -669,20 +645,9 @@ function SongDetail({ evolved }: { evolved: boolean }) {
 		</div>
 	);
 
-	if (!evolved) {
-		return (
-			<Card evolved={false} style={{ padding: 32 }}>
-				{body}
-			</Card>
-		);
-	}
-
 	return (
-		<Card evolved style={{ padding: 32 }}>
-			<div style={{ position: "relative" }}>
-				<Glow color="oklch(0.72 0.15 40)" opacity={0.22} />
-				<div style={{ position: "relative", zIndex: 2 }}>{body}</div>
-			</div>
+		<Card evolved={evolved} style={{ padding: 32 }}>
+			{body}
 		</Card>
 	);
 }
@@ -825,20 +790,9 @@ function LibraryOverview({ evolved }: { evolved: boolean }) {
 		</div>
 	);
 
-	if (!evolved) {
-		return (
-			<Card evolved={false} style={{ padding: 32 }}>
-				{body}
-			</Card>
-		);
-	}
-
 	return (
-		<Card evolved style={{ padding: 32 }}>
-			<div style={{ position: "relative" }}>
-				<Glow color="oklch(0.80 0.03 60)" opacity={0.12} blur={100} />
-				<div style={{ position: "relative", zIndex: 2 }}>{body}</div>
-			</div>
+		<Card evolved={evolved} style={{ padding: 32 }}>
+			{body}
 		</Card>
 	);
 }

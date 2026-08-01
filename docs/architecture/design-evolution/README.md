@@ -9,5 +9,5 @@ Visual identity evolution for hearted. — from flat editorial to warm tactile m
 
 | Doc | What it covers |
 | --- | --- |
-| [vision.md](vision.md) | The four directions and how they compose |
+| [vision.md](vision.md) | The three directions and how they compose |
 | Ladle prototypes | `src/features/playlists/components/vision/` |

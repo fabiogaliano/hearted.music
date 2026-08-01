@@ -160,7 +160,7 @@ code {
   --focus-ring-color: var(--ring);
   --focus-ring-offset: 4px;
 
-  /* Ceramic matte grain (design-evolution/vision.md #4). The story carries an
+  /* Ceramic matte grain (design-evolution/vision.md #3). The story carries an
      intensity switcher; this is the setting it lands on ("Matte 8%"). */
   --grain-opacity: 0.08;
 
@@ -606,7 +606,7 @@ code {
     }
   }
 
-  /* Ceramic matte grain (design-evolution/vision.md #4) — a texture faint enough
+  /* Ceramic matte grain (design-evolution/vision.md #3) — a texture faint enough
      to read as the material of a surface rather than a layer on top of it. The
      story applies it per-surface (its own example is a sidebar panel), not as a
      page wash, so this is a surface utility.

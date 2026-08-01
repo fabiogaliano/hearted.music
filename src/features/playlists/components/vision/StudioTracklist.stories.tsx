@@ -1,9 +1,9 @@
 /**
  * Studio Tracklist — side-by-side "Current" vs "Evolved" comparison of the
  * playlist creation studio's main content area. Left column matches shipped
- * design (flat rows, square art, no depth). Right column layers the four
- * evolved treatments: ambient glow, color-temperature depth (warm tracklist
- * vs. cool suggestions), squircle geometry, ceramic grain.
+ * design (flat rows, square art, no depth). Right column layers the three
+ * evolved treatments: color-temperature depth (warm tracklist vs. cool
+ * suggestions), squircle geometry, ceramic grain.
  *
  * Throwaway: delete once a direction is picked.
  */
@@ -178,30 +178,6 @@ const coolLoweredSurface =
 	"oklch(from var(--t-surface) calc(l - 0.02) calc(c + 0.001) calc(h - 2))";
 const currentChipFill = "color-mix(in srgb, var(--t-text) 7%, transparent)";
 
-function Glow({
-	color,
-	opacity = 0.2,
-	blur = 80,
-}: {
-	color: string;
-	opacity?: number;
-	blur?: number;
-}) {
-	return (
-		<div
-			style={{
-				position: "absolute",
-				inset: "-15%",
-				zIndex: 0,
-				pointerEvents: "none",
-				background: `radial-gradient(closest-side, ${color} 0%, transparent 70%)`,
-				filter: `blur(${blur}px)`,
-				opacity,
-			}}
-		/>
-	);
-}
-
 function SongRow({
 	title,
 	artist,
@@ -284,7 +260,6 @@ function SongRow({
 function CreateButton({ evolved }: { evolved: boolean }) {
 	return (
 		<div style={{ position: "relative", marginTop: 20 }}>
-			{evolved && <Glow color="oklch(0.72 0.15 40)" opacity={0.18} blur={40} />}
 			<button
 				type="button"
 				style={{
@@ -397,7 +372,6 @@ function EvolvedTracklist() {
 				background: "var(--t-surface)",
 			}}
 		>
-			<Glow color="oklch(0.72 0.14 45)" opacity={0.2} blur={80} />
 			<GrainOverlay />
 
 			<div style={{ position: "relative", zIndex: 2, padding: 20 }}>

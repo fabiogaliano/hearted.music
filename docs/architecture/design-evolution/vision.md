@@ -7,7 +7,7 @@ updated: 2026-07-31
 
 Evolving hearted.'s visual identity from flat editorial surfaces to warm, tactile materiality — without abandoning the calm, typography-driven foundation.
 
-The current system (SKILL.md) is the base: monochromatic pastel palettes, Instrument Serif + Geist type pairing, flat materials, whitespace-dominant art-gallery density. This proposal layers four treatments on top of that base. Each is independently adoptable; together they form a coherent evolved identity.
+The current system (SKILL.md) is the base: monochromatic pastel palettes, Instrument Serif + Geist type pairing, flat materials, whitespace-dominant art-gallery density. This proposal layers three treatments on top of that base. Each is independently adoptable; together they form a coherent evolved identity.
 
 Ladle prototypes: `bun run ladle` →
 - Unified comparison (Current vs Evolved): `?story=vision--unified--vision`
@@ -57,31 +57,7 @@ CSS `corner-shape: squircle` (shipping 2026) gives Apple-style superellipse corn
 
 Ladle: `?story=vision--squircles--squircles`
 
-## 3. Track-Derived Ambient Glow
-
-**The page breathes with the music.**
-
-Extract the dominant color from album artwork and bleed it as a large, heavily blurred, low-opacity radial gradient behind the content area. The song literally colors the space — fitting the brand voice where "songs have agency."
-
-```css
-.ambient-glow {
-  position: absolute;
-  inset: -10%;
-  background: radial-gradient(closest-side, var(--glow-color) 0%, transparent 70%);
-  filter: blur(80px);
-  opacity: 0.20;
-  transition: background 800ms ease;
-  pointer-events: none;
-}
-```
-
-**Why it fits:** adds warmth and life without abandoning flatness. The glow sits *behind* content, never on it. Keeps saturation low so it stays pastel — the base palette still dominates. The slow 800ms transition feels organic, not reactive.
-
-**Where it applies:** playlist studio (behind the tracklist), song detail page (behind the album art), now-playing surfaces. Not system-wide — reserved for music-focused contexts.
-
-Ladle: `?story=vision--ambient-glow--ambient-glow`
-
-## 4. Ceramic Matte Grain
+## 3. Ceramic Matte Grain
 
 **Flat surfaces feel material, not plastic.**
 
@@ -107,23 +83,21 @@ Ladle: `?story=vision--ceramic-grain--ceramic-grain`
 
 ## How They Compose
 
-The four directions target different perceptual channels:
+The three directions target different perceptual channels:
 
 | Direction | Channel | Replaces |
 | --- | --- | --- |
 | Color temperature | Spatial hierarchy | Shadows, borders, gray fills |
 | Squircle geometry | Shape language | Standard border-radius |
-| Ambient glow | Emotional atmosphere | Static backgrounds |
 | Ceramic grain | Surface materiality | Flat/plastic feel |
 
-No two compete. Color temperature defines *what's interactive*. Squircles define *shape*. Glow defines *mood*. Grain defines *texture*. They layer without conflict.
+No two compete. Color temperature defines *what's interactive*. Squircles define *shape*. Grain defines *texture*. They layer without conflict.
 
 ## Adoption Order
 
 1. **Color temperature** — immediate. Replaces the current `color-mix(--t-text 7%)` chip fill that clashes with the warm palette. Scoped to playlist creation first, then system-wide.
 2. **Squircle geometry** — immediate. Progressive enhancement, zero visual risk. Apply via a shared style object.
-3. **Ambient glow** — prototype on the playlist studio tracklist area, then song detail. One surface at a time.
-4. **Ceramic grain** — prototype on the page background first, then card surfaces. Tune opacity per-theme.
+3. **Ceramic grain** — prototype on the page background first, then card surfaces. Tune opacity per-theme.
 
 ## What This Is Not
 
