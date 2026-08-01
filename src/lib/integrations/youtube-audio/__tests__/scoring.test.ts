@@ -212,6 +212,24 @@ describe("scoreCandidates", () => {
 		expect(noisy.score).toBeGreaterThan(0.7);
 	});
 
+	it("does not demote a match when the extra title token comes from the album", () => {
+		const song = {
+			...SONG,
+			name: "Song",
+			artists: ["Artist"],
+			albumName: "X Soundtrack",
+			durationMs: null,
+		};
+		const decision = scoreCandidates(
+			song,
+			[candidate({ title: "Artist - Song Soundtrack" })],
+			THRESHOLDS,
+		);
+
+		expect(decision.kind).toBe("selected");
+		if (decision.kind === "selected") expect(decision.score).toBe(0.75);
+	});
+
 	it("does not penalize standard upload-format words", () => {
 		const song = { ...SONG, name: "Song", artists: ["Artist"] };
 		const scored = scoreCandidate(

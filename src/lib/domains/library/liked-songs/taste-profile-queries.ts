@@ -28,6 +28,11 @@ export interface TasteTopArtist {
 	count: number;
 }
 
+export interface ResolvedLikedArtistSongs {
+	name: string;
+	songIds: string[];
+}
+
 /** Count of active likes falling inside a named recency window. */
 export interface TasteLikedWindow {
 	/** Stable window id from the RPC (e.g. "last-3m"); the VM maps it to a label. */
@@ -140,6 +145,36 @@ export async function searchLikedArtistsByName(
 		(data ?? []).map((row) => ({
 			name: row.artist,
 			count: Number(row.occurrences),
+		})),
+	);
+}
+
+/**
+ * Resolve selected artist names to their preview-eligible liked-song IDs in
+ * recency order. The RPC owns the shared candidate predicate so this path does
+ * not hydrate the full preview candidate model merely to group IDs.
+ */
+export async function resolveLikedSongIdsByArtists(
+	accountId: string,
+	artists: string[],
+): Promise<Result<ResolvedLikedArtistSongs[], DbError>> {
+	const supabase = createAdminSupabaseClient();
+
+	const { data, error } = await supabase.rpc("resolve_artist_liked_songs", {
+		p_account_id: accountId,
+		p_artists: artists,
+	});
+
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+
+	return Result.ok(
+		(data ?? []).map((row) => ({
+			name: row.artist,
+			songIds: row.song_ids,
 		})),
 	);
 }

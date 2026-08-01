@@ -90,33 +90,6 @@ export function CreateBar({
 
 	const songCount = songs.length;
 
-	if (isArtistResolutionError) {
-		return (
-			<div
-				className="flex items-center justify-between gap-4 px-5 py-3.5"
-				style={{ borderLeft: "2px solid var(--t-primary)" }}
-			>
-				<span
-					className="theme-text-muted text-xs"
-					style={{ fontFamily: fonts.body }}
-					aria-live="polite"
-				>
-					Could not load artist songs
-				</span>
-				{onRetryArtistResolution && (
-					<button
-						type="button"
-						onClick={onRetryArtistResolution}
-						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
-						style={{ fontFamily: fonts.body }}
-					>
-						Retry
-					</button>
-				)}
-			</div>
-		);
-	}
-
 	// A blocked gate state replaces the CTA outright (never just disables it) —
 	// each prompt below owns the repairConnection call its own verdict needs
 	// (invariant 2: a mismatch must never silently re-pair while the wrong
@@ -165,6 +138,33 @@ export function CreateBar({
 				extensionProfile={gate.mismatchProfile}
 				accountDisplayName={accountDisplayName}
 			/>
+		);
+	}
+
+	if (isArtistResolutionError) {
+		return (
+			<div
+				className="flex items-center justify-between gap-4 px-5 py-3.5"
+				style={{ borderLeft: "2px solid var(--t-primary)" }}
+			>
+				<span
+					className="theme-text-muted text-xs"
+					style={{ fontFamily: fonts.body }}
+					aria-live="polite"
+				>
+					Could not load artist songs
+				</span>
+				{onRetryArtistResolution && (
+					<button
+						type="button"
+						onClick={onRetryArtistResolution}
+						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						style={{ fontFamily: fonts.body }}
+					>
+						Retry
+					</button>
+				)}
+			</div>
 		);
 	}
 

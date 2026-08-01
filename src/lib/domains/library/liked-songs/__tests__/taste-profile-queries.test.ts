@@ -13,6 +13,7 @@ const {
 	searchLikedArtistsByName,
 	getLikedWindowAggregates,
 	getAccountReleaseYearAggregates,
+	resolveLikedSongIdsByArtists,
 	rollUpDecades,
 } = await import("../taste-profile-queries");
 
@@ -153,6 +154,47 @@ describe("searchLikedArtistsByName", () => {
 		expect(Result.isError(await searchLikedArtistsByName("acct-1", "x"))).toBe(
 			true,
 		);
+	});
+});
+
+describe("resolveLikedSongIdsByArtists", () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it("maps per-artist song pools and forwards the complete selection", async () => {
+		mockRpc.mockResolvedValue({
+			data: [
+				{ artist: "Clairo", song_ids: ["s1", "s3"] },
+				{ artist: "Nobody", song_ids: [] },
+			],
+			error: null,
+		});
+
+		const result = await resolveLikedSongIdsByArtists("acct-1", [
+			"Clairo",
+			"Nobody",
+		]);
+
+		expect(result).toEqual(
+			Result.ok([
+				{ name: "Clairo", songIds: ["s1", "s3"] },
+				{ name: "Nobody", songIds: [] },
+			]),
+		);
+		expect(mockRpc).toHaveBeenCalledWith("resolve_artist_liked_songs", {
+			p_account_id: "acct-1",
+			p_artists: ["Clairo", "Nobody"],
+		});
+	});
+
+	it("returns a DatabaseError when resolution fails", async () => {
+		mockRpc.mockResolvedValue({
+			data: null,
+			error: { code: "57014", message: "canceling statement" },
+		});
+
+		expect(
+			Result.isError(await resolveLikedSongIdsByArtists("acct-1", ["Clairo"])),
+		).toBe(true);
 	});
 });
 

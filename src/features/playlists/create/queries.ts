@@ -89,7 +89,7 @@ export function playlistDraftPreviewQueryOptions(config: DraftConfig) {
  * filter-INDEPENDENT: an anchor artist is a filter-exempt commitment (its songs
  * are pinned and survive filter changes), so a filter change must NOT re-resolve
  * this pool. Chip counts and the balanced allocation both read from this one
- * source, which is why they now reflect an artist's total liked songs.
+ * source, which is why they reflect the artist's preview-eligible liked songs.
  */
 export function artistSongResolutionQueryOptions(artists: string[]) {
 	return queryOptions({

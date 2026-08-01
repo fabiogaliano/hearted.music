@@ -25,7 +25,8 @@
  *  - gate state account-mismatch → renders AccountMismatchPrompt with the
  *    mismatched-account copy, never the CTA, and repairs via
  *    repairConnection({ kind: "mismatch", extensionProfile }) — which must
- *    never re-pair while the wrong Spotify identity is active (invariant 2).
+ *    never re-pair while the wrong Spotify identity is active (invariant 2),
+ *    even when artist resolution has independently failed.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -335,6 +336,23 @@ describe("CreateBar — account-mismatch repairs with the mismatch verdict, neve
 		expect(screen.getByText(/fabio/)).toBeInTheDocument();
 		expect(
 			screen.queryByRole("button", { name: /create playlist/i }),
+		).not.toBeInTheDocument();
+	});
+
+	it("keeps the mismatch recovery visible when artist resolution also fails", () => {
+		renderWithQueryClient(
+			<CreateBar
+				{...makeProps({
+					isArtistResolutionError: true,
+					gate: { gateState: "account-mismatch", mismatchProfile },
+					accountDisplayName: "fabio",
+				})}
+			/>,
+		);
+
+		expect(screen.getByText(/alex@work/)).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: /retry/i }),
 		).not.toBeInTheDocument();
 	});
 

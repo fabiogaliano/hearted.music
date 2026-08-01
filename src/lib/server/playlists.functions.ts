@@ -15,6 +15,7 @@ import {
 	getAccountReleaseYearAggregates,
 	getLikedWindowAggregates,
 	getTopArtists,
+	resolveLikedSongIdsByArtists,
 	rollUpDecades,
 	searchLikedArtistsByName,
 	type TasteProfile,
@@ -34,7 +35,6 @@ import {
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
-import { loadPhase1Candidates } from "@/lib/domains/playlists/candidate-loader";
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import {
 	isLanguageCatalogCode,
@@ -1407,30 +1407,21 @@ export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
 		}): Promise<{ artists: { name: string; songIds: string[] }[] }> => {
 			const { accountId } = context.session;
 
-			const candidates = await loadPhase1Candidates(accountId);
-
-			// Group every preview-eligible candidate under each requested artist —
-			// deliberately NOT filter-aware. An anchor artist is a filter-exempt
-			// commitment (its songs are pinned and survive filter changes, like a
-			// hand-added pin), so match filters must not shape this pool.
-			// Candidates arrive most-recently-liked first, so each bucket inherits
-			// the recency order the balanced allocator expects. A song crediting
-			// several of the requested artists lands in every matching bucket; the
-			// allocator dedupes at take time.
-			const buckets = new Map<string, string[]>(
-				data.artists.map((name) => [name, []]),
+			const result = await resolveLikedSongIdsByArtists(
+				accountId,
+				data.artists,
 			);
-			for (const candidate of candidates) {
-				for (const artistName of candidate.song.artists) {
-					buckets.get(artistName)?.push(candidate.song.id);
-				}
+			if (Result.isError(result)) {
+				captureServerError(result.error, {
+					area: "playlists",
+					operation: "resolve_liked_artist_songs",
+					accountId,
+				});
+				throw new Error("Failed to resolve liked artist songs", {
+					cause: result.error,
+				});
 			}
 
-			return {
-				artists: data.artists.map((name) => ({
-					name,
-					songIds: buckets.get(name) ?? [],
-				})),
-			};
+			return { artists: result.value };
 		},
 	);

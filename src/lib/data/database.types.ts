@@ -4453,6 +4453,13 @@ export type Database = {
 				Args: { p_account_id: string };
 				Returns: number;
 			};
+			resolve_artist_liked_songs: {
+				Args: { p_account_id: string; p_artists: string[] };
+				Returns: {
+					artist: string;
+					song_ids: string[];
+				}[];
+			};
 			resolve_job_item_stage_failures: {
 				Args: { p_account_id: string; p_item_id: string; p_stage: string };
 				Returns: number;

@@ -4,9 +4,10 @@
 -- runs, so in a library with more distinct artists than the pool cap the
 -- less-liked ones are unfindable no matter what the user types. This sibling
 -- pushes the name predicate into the aggregation itself: the match runs over
--- ALL of the account's still-liked artists and only the result is limited.
--- Same population and credit semantics as get_account_top_artists (a song
--- crediting two artists counts for both).
+-- ALL preview-eligible artists and only the result is limited. The population
+-- matches the studio candidate loader: the 10,000 most-recent active likes that
+-- have genres or an audio-feature row. A song crediting two artists counts for
+-- both.
 --
 -- p_query must arrive with ILIKE metacharacters (\ % _) already escaped by the
 -- caller; the default backslash escape applies. An empty p_query degenerates
@@ -26,12 +27,22 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+  WITH recent_likes AS (
+    SELECT ls.song_id
+    FROM liked_song ls
+    WHERE ls.account_id = p_account_id
+      AND ls.unliked_at IS NULL
+    ORDER BY ls.liked_at DESC, ls.song_id ASC
+    LIMIT 10000
+  )
   SELECT a AS artist, COUNT(*)::BIGINT AS occurrences
-  FROM liked_song ls
-  JOIN song s ON s.id = ls.song_id
+  FROM recent_likes rl
+  JOIN song s ON s.id = rl.song_id
   CROSS JOIN LATERAL unnest(s.artists) AS a
-  WHERE ls.account_id = p_account_id
-    AND ls.unliked_at IS NULL
+  WHERE (
+    cardinality(s.genres) > 0
+    OR EXISTS (SELECT 1 FROM song_audio_feature f WHERE f.song_id = s.id)
+  )
     AND (p_query = '' OR a ILIKE '%' || p_query || '%')
   GROUP BY a
   ORDER BY occurrences DESC, a ASC

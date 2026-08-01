@@ -2,20 +2,18 @@
  * Tests for the studio's multi-artist selection server fns:
  * searchLikedArtists (query-filtered liked-artist aggregate) and
  * resolveLikedArtistSongs (filter-INDEPENDENT per-artist song-id resolution —
- * anchor-artist pins are filter-exempt, so their pool is the full liked catalog).
- *
- * getTopArtists and loadPhase1Candidates are mocked.
+ * anchor-artist pins are filter-exempt, so their pool is the full preview-eligible catalog).
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Phase1Candidate } from "@/lib/domains/playlists/candidate-loader";
 
 const {
 	mockAuthContext,
 	mockGetTopArtists,
 	mockSearchLikedArtistsByName,
-	mockLoadPhase1Candidates,
+	mockResolveLikedSongIdsByArtists,
+	mockCaptureServerError,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
 		session: { accountId: "acct-1" },
@@ -23,7 +21,8 @@ const {
 	},
 	mockGetTopArtists: vi.fn(),
 	mockSearchLikedArtistsByName: vi.fn(),
-	mockLoadPhase1Candidates: vi.fn(),
+	mockResolveLikedSongIdsByArtists: vi.fn(),
+	mockCaptureServerError: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-start", () => {
@@ -65,49 +64,21 @@ vi.mock("@/lib/domains/library/liked-songs/taste-profile-queries", () => ({
 	getTopArtists: (...args: unknown[]) => mockGetTopArtists(...args),
 	searchLikedArtistsByName: (...args: unknown[]) =>
 		mockSearchLikedArtistsByName(...args),
+	resolveLikedSongIdsByArtists: (...args: unknown[]) =>
+		mockResolveLikedSongIdsByArtists(...args),
 	getLikedWindowAggregates: vi.fn(),
 	getAccountReleaseYearAggregates: vi.fn(),
 	rollUpDecades: vi.fn(),
 }));
 
-vi.mock("@/lib/domains/playlists/candidate-loader", () => ({
-	loadPhase1Candidates: (...args: unknown[]) =>
-		mockLoadPhase1Candidates(...args),
-}));
-
 vi.mock("@/lib/observability/capture-server-error", () => ({
-	captureServerError: vi.fn(),
+	captureServerError: (...args: unknown[]) => mockCaptureServerError(...args),
 }));
 
 import {
 	resolveLikedArtistSongs,
 	searchLikedArtists,
 } from "../playlists.functions";
-
-function makeCandidate(
-	id: string,
-	artists: string[],
-	releaseYear = 2020,
-): Phase1Candidate {
-	return {
-		song: {
-			id,
-			spotifyId: `sp-${id}`,
-			name: `Song ${id}`,
-			artists,
-			genres: ["pop"],
-			audioFeatures: null,
-		},
-		filterMeta: {
-			language: "en",
-			languageSecondary: null,
-			releaseYear,
-			vocalGender: null,
-			likedAt: Date.now(),
-		},
-		display: { imageUrl: null, album: null, durationMs: null },
-	};
-}
 
 describe("searchLikedArtists", () => {
 	beforeEach(() => vi.clearAllMocks());
@@ -163,17 +134,23 @@ describe("searchLikedArtists", () => {
 describe("resolveLikedArtistSongs", () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it("groups every liked candidate id per requested artist, in candidate (recency) order", async () => {
-		mockLoadPhase1Candidates.mockResolvedValue([
-			makeCandidate("s1", ["Clairo"]),
-			makeCandidate("s2", ["KAYTRANADA"]),
-			makeCandidate("s3", ["Clairo", "KAYTRANADA"]),
-		]);
+	it("resolves the complete artist selection through one account-scoped query", async () => {
+		mockResolveLikedSongIdsByArtists.mockResolvedValue(
+			Result.ok([
+				{ name: "Clairo", songIds: ["s1", "s3"] },
+				{ name: "KAYTRANADA", songIds: ["s2", "s3"] },
+				{ name: "Nobody", songIds: [] },
+			]),
+		);
 
-		const result = await resolveLikedArtistSongs({
-			data: { artists: ["Clairo", "KAYTRANADA", "Nobody"] },
-		});
+		const artists = ["Clairo", "KAYTRANADA", "Nobody"];
+		const result = await resolveLikedArtistSongs({ data: { artists } });
 
+		expect(mockResolveLikedSongIdsByArtists).toHaveBeenCalledOnce();
+		expect(mockResolveLikedSongIdsByArtists).toHaveBeenCalledWith(
+			"acct-1",
+			artists,
+		);
 		expect(result.artists).toEqual([
 			{ name: "Clairo", songIds: ["s1", "s3"] },
 			{ name: "KAYTRANADA", songIds: ["s2", "s3"] },
@@ -181,21 +158,17 @@ describe("resolveLikedArtistSongs", () => {
 		]);
 	});
 
-	it("is filter-INDEPENDENT: an anchor artist's pool is its full preview-eligible catalog", async () => {
-		// An anchor artist is a filter-exempt pin, so resolution must ignore match
-		// filters entirely — both the 1999 and 2021 songs stay in Clairo's pool
-		// even though a release-year filter would otherwise drop the older one.
-		mockLoadPhase1Candidates.mockResolvedValue([
-			makeCandidate("old", ["Clairo"], 1999),
-			makeCandidate("new", ["Clairo"], 2021),
-		]);
+	it("captures query failures before throwing at the server boundary", async () => {
+		const error = new Error("boom");
+		mockResolveLikedSongIdsByArtists.mockResolvedValue(Result.err(error));
 
-		const result = await resolveLikedArtistSongs({
-			data: { artists: ["Clairo"] },
+		await expect(
+			resolveLikedArtistSongs({ data: { artists: ["Clairo"] } }),
+		).rejects.toThrow("Failed to resolve liked artist songs");
+		expect(mockCaptureServerError).toHaveBeenCalledWith(error, {
+			area: "playlists",
+			operation: "resolve_liked_artist_songs",
+			accountId: "acct-1",
 		});
-
-		expect(result.artists).toEqual([
-			{ name: "Clairo", songIds: ["old", "new"] },
-		]);
 	});
 });

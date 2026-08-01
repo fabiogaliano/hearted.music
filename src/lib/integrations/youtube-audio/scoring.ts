@@ -34,8 +34,10 @@ export interface ScoringThresholds {
 // the search strategy (query shape, YT Music filter, retry). Absent on rows
 // written before versioning existed. Version 1 = the 2026-07 overhaul:
 // album/artist-name escape hatches, leftover-title-token penalty, YT Music
-// songs-shelf search with album-or-"audio" retry.
-export const SCORING_VERSION = 1;
+// songs-shelf search with album-or-"audio" retry. Version 2 lets album metadata
+// explain candidate-title tokens so a legitimate album suffix does not cross
+// the auto-selection floor.
+export const SCORING_VERSION = 2;
 
 // Wrong-version markers. Single words are matched on token boundaries (so
 // "discover" never trips "cover"); multi-word entries match as bounded phrases.
@@ -150,6 +152,7 @@ function unexplainedTitleTokenRatio(
 	const explainedTokens = new Set([
 		...tokenize(stripBracketed(stripVersionQualifier(song.name))),
 		...song.artists.flatMap((artist) => tokenize(artist)),
+		...(song.albumName ? tokenize(song.albumName) : []),
 		...TITLE_FORMAT_WORDS,
 	]);
 	const unexplained = candidateTokens.filter(
