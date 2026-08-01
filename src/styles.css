@@ -69,12 +69,12 @@ html:has([data-landing-scroll-root]) {
 }
 
 /* Soft scrim over the sliced peek row so the hard cut through the cover art
-   dissolves into the page background instead of ending on a razor edge — the
-   scrollbar and the half-row peek still carry the "more below" signal, this is
-   just polish. Sticky so it tracks the scroll viewport's bottom; the negative
-   margin overlaps the last content without adding scroll height; it lives in the
-   content box so it never covers the scrollbar. ReviewListScroll only renders it
-   when the list overflows. */
+   dissolves into whatever the list is sitting on instead of ending on a razor
+   edge — the scrollbar and the half-row peek still carry the "more below"
+   signal, this is just polish. Sticky so it tracks the scroll viewport's bottom;
+   the negative margin overlaps the last content without adding scroll height; it
+   lives in the content box so it never covers the scrollbar. ReviewListScroll
+   only renders it when the list overflows. */
 .review-list-fade {
   position: sticky;
   bottom: 0;
@@ -87,14 +87,18 @@ html:has([data-landing-scroll-root]) {
   /* Eased (not linear) alpha ramp: a plain linear fade reads as a hard line at its
      top edge because perceived brightness is non-linear. The extra color-mix stops
      approximate an ease-in-out curve so the dissolve has no visible start edge
-     (see CSS-Tricks "Easing Linear Gradients" / Material scrim guidance). */
+     (see CSS-Tricks "Easing Linear Gradients" / Material scrim guidance).
+     --t-plane, not --t-bg: the review list rides the match card's raised plane,
+     and a scrim ramping toward the page colour over a lighter ground lands as a
+     grey band rather than a dissolve. :root aliases --t-plane to --t-bg, so a
+     list that really is on the page is unaffected. */
   background: linear-gradient(
     to top,
-    var(--t-bg) 0%,
-    color-mix(in srgb, var(--t-bg) 92%, transparent) 18%,
-    color-mix(in srgb, var(--t-bg) 73%, transparent) 38%,
-    color-mix(in srgb, var(--t-bg) 46%, transparent) 60%,
-    color-mix(in srgb, var(--t-bg) 20%, transparent) 80%,
+    var(--t-plane) 0%,
+    color-mix(in srgb, var(--t-plane) 92%, transparent) 18%,
+    color-mix(in srgb, var(--t-plane) 73%, transparent) 38%,
+    color-mix(in srgb, var(--t-plane) 46%, transparent) 60%,
+    color-mix(in srgb, var(--t-plane) 20%, transparent) 80%,
     transparent 100%
   );
 }
