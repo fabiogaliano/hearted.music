@@ -29,9 +29,12 @@ const variantClasses: Record<ButtonVariant, Record<ButtonSize, string>> = {
 		md: "theme-text-muted text-sm tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-70 disabled:opacity-50",
 		sm: "theme-text-muted text-xs tracking-widest uppercase transition-[transform,opacity] duration-150 hover:opacity-70 disabled:opacity-50",
 	},
+	// The raised-material pill. focus-edge lives in the variant rather than at each
+	// call site so every consumer gets a ring that follows the squircle, instead of
+	// an `outline` drawing a plain rounded rect just off the shape.
 	surface: {
-		md: "hover-border-brighten rounded-full px-3 py-1.5 text-xs tracking-widest uppercase",
-		sm: "hover-border-brighten rounded-full px-3 py-1.5 text-xs tracking-widest uppercase",
+		md: "chip-raised chip-raised-hover squircle focus-edge rounded-full px-3 py-1.5 text-xs tracking-widest uppercase",
+		sm: "chip-raised chip-raised-hover squircle focus-edge rounded-full px-3 py-1.5 text-xs tracking-widest uppercase",
 	},
 	icon: {
 		md: "p-1.5 transition-[transform,opacity] duration-100 hover:opacity-100 active:scale-[0.9] disabled:opacity-30",

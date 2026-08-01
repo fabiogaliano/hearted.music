@@ -446,6 +446,12 @@ code {
     border-color: var(--t-text-muted);
   }
 
+  /* Superseded by .surface-raised — depth by border rather than by temperature.
+     No product code uses it; the only consumers left are the two Ladle stories
+     whose whole point is showing this treatment (ButtonComparison's "Before"
+     column, BorderRadiusShowcase's "hover: border brighten" section), so it is
+     kept for them rather than deleted out from under a comparison. Reach for
+     .surface-raised in anything new. */
   .hover-border-brighten {
     transition: border-color 150ms, transform 150ms;
     border: 1px solid var(--t-border);
@@ -456,20 +462,40 @@ code {
     border-color: var(--t-text-muted);
   }
 
-  /* Color-temperature depth (design-evolution/vision.md #1 + #2): a raised
-     plane read as a warmth/lightness shift off --t-surface instead of a border,
-     so hierarchy survives a monochrome theme where a hairline reads as "same
-     color again". Hue-matched, so it adapts to every palette on its own. The
-     values are the studio's field recipe (IntentEditor), so a card here and a
-     field there are literally the same material.
-
-     Radius lives with the material because a squircle needs both halves:
-     corner-shape alone does nothing without a radius to shape. 14px is the
-     field/card scale; panels take 18 and pills 999 by overriding
-     border-radius on top. */
-  .surface-raised {
-    border-radius: 14px;
+  /* Continuous-curvature corners (design-evolution/vision.md #2). Shape only —
+     it pairs with whatever radius the caller already carries (rounded-full on a
+     pill, rounded-[14px] on a card), so one material can wear any shape.
+     corner-shape needs a border-radius to act on and does nothing without one;
+     where it isn't supported the plain radius still lands. */
+  .squircle {
     corner-shape: squircle;
+  }
+
+  /* Color-temperature depth (design-evolution/vision.md #1): a raised plane read
+     as a warmth/lightness shift off --t-surface instead of a border, so
+     hierarchy survives a monochrome theme — where a hairline just reads as "the
+     same color again" — and re-tunes itself to every palette because it is
+     derived from the token rather than fixed. The values are the studio's field
+     recipe (IntentEditor), so a pill here and a field there are one material.
+
+     Deliberately radius-free: pills, cards and panels share this ONE fill and
+     differ only in shape, so the material never fights a rounded-* utility over
+     border-radius (both are single-class selectors in the same layer, and that
+     tie is decided by source order — too fragile to build a system on). */
+  /* Two tiers, taken from the Ladle vision stories (vision/*.stories.tsx): a
+     large PLANE sits closer to --t-surface than a small CHIP does, because the
+     same offset reads much louder over a card-sized area than over a pill. Both
+     tiers are lighter than --t-bg (--t-surface is the lighter token), which is
+     what makes them read as raised off the page.
+
+     Hover in both tiers moves LIGHTER and warmer — up in chroma, further round
+     in hue. The plane lifts toward the light rather than sinking, so hover is
+     the same gesture as "raised", one step further along, not its inverse. */
+  .surface-raised {
+    /* Reserved transparent rather than dropped: this replaced a 1px border, and
+       keeping the box metrics means no pill resizes and a selected/invalid state
+       can tint the edge later without a layout shift. */
+    border: 1px solid transparent;
     background: oklch(from var(--t-surface) calc(l - 0.012) calc(c + 0.002) calc(h + 2));
     color: var(--t-text);
     /* transform rides along because these planes are pressable and take an
@@ -479,12 +505,34 @@ code {
       background-color 150ms ease,
       transform 150ms ease;
   }
-  /* Composed onto the raised planes that are themselves clickable — hover warms
-     further along the same axis, so "you can press this" is the same signal as
-     "this is raised", one step louder. Kept separate so a raised plane that only
-     CONTAINS a control (an input's box) doesn't light up under the pointer. */
-  .surface-raised-hover:hover {
-    background: oklch(from var(--t-surface) calc(l - 0.028) calc(c + 0.005) calc(h + 5));
+  /* Composed onto planes that are themselves clickable. Kept separate so a plane
+     that only CONTAINS a control (an input's box) doesn't light up under the
+     pointer — and so a row that is transparent at rest can still take the hover
+     alone, which is how the vision's tracklist rows behave.
+
+     Keyboard focus takes the same fill as hover: they are one state — "this is
+     the thing I'm engaging with" — and without it, tabbing through a feed of
+     transparent rows moves a bare ring across dead rows while pointer users get
+     the whole plane lighting up. The :has() arm mirrors .focus-edge's, for the
+     case where the plane is a div and focus really sits on a child button. */
+  .surface-raised-hover:hover,
+  .surface-raised-hover:focus-visible,
+  .surface-raised-hover:has(> [data-focus-edge]:focus-visible) {
+    background: oklch(from var(--t-surface) calc(l - 0.01) calc(c + 0.004) calc(h + 4));
+  }
+
+  /* Chip tier — pills, chips, small controls. */
+  .chip-raised {
+    border: 1px solid transparent;
+    background: oklch(from var(--t-surface) calc(l - 0.025) calc(c + 0.003) calc(h + 3));
+    color: var(--t-text);
+    transition:
+      background-color 150ms ease,
+      transform 150ms ease;
+  }
+  .chip-raised-hover:hover,
+  .chip-raised-hover:focus-visible {
+    background: oklch(from var(--t-surface) calc(l - 0.015) calc(c + 0.005) calc(h + 6));
   }
 
   /* Split-and-stagger enter for the ideas grid: each card fades up from a

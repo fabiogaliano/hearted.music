@@ -7,7 +7,7 @@ export function CreatePlaylistCTA() {
 	return (
 		<Link
 			to="/playlists/new"
-			className="theme-border-color hover-border-brighten group -mx-4 mb-10 flex items-center justify-between gap-6 border px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
+			className="surface-raised surface-raised-hover squircle focus-edge group -mx-4 mb-10 flex items-center justify-between gap-6 rounded-[14px] px-4 py-6 motion-safe:active:scale-[0.99]"
 		>
 			<div>
 				<p

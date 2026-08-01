@@ -54,7 +54,7 @@ export function ExtensionAccountBannerView({
 }: ExtensionAccountBannerViewProps) {
 	const isBar = variant === "bar";
 	const copyClass = `theme-text text-balance ${isBar ? "text-xs" : "text-sm"}`;
-	const actionClass = `hover-border-brighten inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+	const actionClass = `chip-raised chip-raised-hover squircle focus-edge inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 tracking-widest whitespace-nowrap uppercase active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
 		isBar ? "text-[11px]" : "text-xs"
 	}`;
 
@@ -64,8 +64,11 @@ export function ExtensionAccountBannerView({
 			aria-live="polite"
 			className={
 				isBar
-					? "theme-surface-bg px-5 py-3.5"
-					: "theme-surface-bg -mx-4 mb-10 px-5 py-4"
+					? // The bar variant stays flush and square on purpose (see `variant`):
+						// it sits inside the create bar's own surface, so a second rounded
+						// plane there would read as a card dropped into a footer.
+						"theme-surface-bg px-5 py-3.5"
+					: "surface-raised squircle -mx-4 mb-10 rounded-[14px] px-5 py-4"
 			}
 		>
 			{verdict.kind === "mismatch" ? (

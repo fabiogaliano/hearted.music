@@ -11,7 +11,7 @@ export function SpotifyPlaylistLink({ spotifyId }: SpotifyPlaylistLinkProps) {
 			href={`https://open.spotify.com/playlist/${spotifyId}`}
 			target="_blank"
 			rel="noopener noreferrer"
-			className="hover-border-brighten inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
+			className="chip-raised chip-raised-hover squircle focus-edge inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
 			style={{ fontFamily: fonts.body }}
 		>
 			Open in Spotify

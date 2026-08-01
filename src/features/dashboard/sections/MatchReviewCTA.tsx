@@ -35,7 +35,12 @@ export function MatchReviewCTA({
 		<Link
 			to="/match"
 			search={search}
-			className="theme-border-color hover-border-brighten group -mx-4 mb-10 block border px-4 py-6 transition-[transform,background-color,opacity] duration-200 ease-out hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)] motion-safe:active:scale-[0.99]"
+			// The old hover paired a border-brighten with hover:opacity-95, because the
+			// brightening hairline alone was too quiet to register. Temperature carries
+			// the hover on its own now, so the opacity dip goes: it faded the album art
+			// and headline along with the plane, dimming the content to signal the
+			// container.
+			className="surface-raised surface-raised-hover squircle focus-edge group -mx-4 mb-10 block rounded-[14px] px-4 py-6 motion-safe:active:scale-[0.99]"
 		>
 			<p
 				className="theme-text-muted mb-2 text-xs tracking-widest uppercase"

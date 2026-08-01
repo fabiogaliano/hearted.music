@@ -130,7 +130,7 @@ function ActionContent({
 					href={storeUrl}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="hover-border-brighten self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+					className="chip-raised chip-raised-hover squircle focus-edge self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
 					style={{ fontFamily: fonts.body }}
 				>
 					add to {browserLabel}
@@ -163,7 +163,7 @@ function ActionContent({
 				rel="noopener noreferrer"
 				onClick={onSpotifyLoginClick}
 				onAuxClick={onSpotifyLoginClick}
-				className="hover-border-brighten self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
+				className="chip-raised chip-raised-hover squircle focus-edge self-center md:self-start inline-flex cursor-pointer items-center gap-2 rounded-full px-5 py-2 text-sm font-medium uppercase tracking-widest active:scale-[0.98]"
 				style={{ fontFamily: fonts.body }}
 			>
 				log in to Spotify

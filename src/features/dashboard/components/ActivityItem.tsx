@@ -14,7 +14,6 @@ interface ActivityItemProps {
 	item: ActivityItemType;
 }
 
-const IMAGE_OUTLINE = "1px solid rgba(255, 255, 255, 0.1)";
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 // "3 hours ago" within the week; "4 Jul" same year; "4 Jul 2024" older.
@@ -97,21 +96,26 @@ export function ActivityItem({ item }: ActivityItemProps) {
 		<Link
 			to="/liked-songs"
 			search={{ song: songSlug }}
-			className="theme-hover-surface -mx-4 flex items-center gap-6 px-4 py-5 transition-[background-color] duration-150 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:[outline-color:var(--t-primary)]"
+			// Modelled on the vision tracklist's evolved SongRow: transparent at rest
+			// (a feed row is not a card — a resting fill would stack the timeline into
+			// cards), radius 10 so the hover lands as a rounded row rather than a
+			// full-bleed band, and the hover itself is the shared plane temperature, so
+			// "hovered" reads the same here as on the CTAs above.
+			className="surface-raised-hover squircle focus-edge -mx-4 flex items-center gap-6 rounded-[10px] px-4 py-5 transition-[background-color] duration-150 ease-out"
 		>
 			{imageUrl ? (
+				// Square on purpose — cover art stays a photograph here. image-outline
+				// rather than the hardcoded white `outline` this carried, which is a
+				// 10%-white hairline that simply doesn't show on the light themes; the
+				// shared utility (used by every other cover in the app) flips per theme.
 				<img
 					src={imageUrl}
 					alt={songName}
 					loading="lazy"
-					className="size-20 shrink-0 object-cover"
-					style={{ outline: IMAGE_OUTLINE }}
+					className="image-outline size-20 shrink-0 object-cover"
 				/>
 			) : (
-				<div
-					className="theme-surface-bg flex size-20 shrink-0 items-center justify-center"
-					style={{ outline: IMAGE_OUTLINE }}
-				>
+				<div className="theme-surface-bg image-outline flex size-20 shrink-0 items-center justify-center">
 					<span className="theme-text-muted text-3xl">♪</span>
 				</div>
 			)}

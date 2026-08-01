@@ -116,7 +116,7 @@ export function CreateBar({
 					<button
 						type="button"
 						onClick={() => void onRecheck()}
-						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						className="chip-raised chip-raised-hover squircle focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Check again
@@ -149,7 +149,7 @@ export function CreateBar({
 					<button
 						type="button"
 						onClick={onRetryArtistResolution}
-						className="hover-border-brighten focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
+						className="chip-raised chip-raised-hover squircle focus-edge inline-flex cursor-pointer items-center whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] tracking-widest uppercase active:scale-[0.98]"
 						style={{ fontFamily: fonts.body }}
 					>
 						Retry

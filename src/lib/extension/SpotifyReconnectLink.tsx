@@ -46,7 +46,7 @@ export function SpotifyReconnectLink({
 			rel="noopener noreferrer"
 			onClick={onActivate}
 			onAuxClick={onActivate}
-			className="hover-border-brighten inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
+			className="chip-raised chip-raised-hover squircle focus-edge inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-xs tracking-widest uppercase active:scale-[0.98]"
 			style={{ fontFamily: fonts.body }}
 		>
 			{label}

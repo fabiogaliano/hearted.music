@@ -8,7 +8,7 @@
  * is a real card too, saying what the scratch is (the library, with its count).
  *
  * Ideas render as a compact two-column grid of SURFACE-FILLED cards
- * (hover-border-brighten: --t-surface fill + border) — the fill is what
+ * (surface-raised: a warm temperature step off --t-surface) — the fill is what
  * separates them from the page bg in a monochrome theme, where outline-only
  * boxes read as "all the same color." The grid arrives already facet-ordered
  * from buildPlaylistIdeas (genre → time → artist) so it scans dimension-by-
@@ -109,7 +109,7 @@ function IntentRowLocked({
 						? `Describe a playlist in your own words. You're ${progress.current.toLocaleString()} of ${progress.target.toLocaleString()} songs from packs, or get it now with ${instantLabel ?? "a Backstage Pass"}.`
 						: `Describe a playlist in your own words. Available with ${formatGateHint(gate)}.`
 				}
-				className="surface-raised surface-raised-hover focus-edge flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left"
+				className="surface-raised surface-raised-hover squircle focus-edge flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-4 py-3 text-left"
 			>
 				<span
 					className="theme-text-muted min-w-0 flex-1 truncate text-base opacity-60"
@@ -209,7 +209,7 @@ function IdeaCard({
 	// around the 16px glyph would understate a hit area covering the whole card.
 	return (
 		<div
-			className="idea-enter surface-raised surface-raised-hover focus-edge group relative flex items-center justify-between gap-3 px-4 py-3"
+			className="idea-enter surface-raised surface-raised-hover squircle focus-edge group relative flex items-center justify-between gap-3 rounded-[14px] px-4 py-3"
 			style={{ "--enter-index": index } as React.CSSProperties}
 		>
 			<div className="min-w-0">
@@ -368,8 +368,17 @@ export function IdeasBoard({
 			<button
 				type="button"
 				onClick={() => onSeed(null, "")}
-				style={{ "--enter-index": IDEAS_ENTER_OFFSET } as React.CSSProperties}
-				className="idea-enter theme-border-color surface-raised surface-raised-hover focus-edge group mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 border border-dashed px-4 py-3 text-left motion-safe:active:scale-[0.99]"
+				style={
+					{
+						"--enter-index": IDEAS_ENTER_OFFSET,
+						// Inline, not `border-dashed`: .surface-raised reserves the edge with
+						// a `border` SHORTHAND, and both it and Tailwind's border utilities
+						// are single-class rules in the same layer — so which one wins comes
+						// down to source order. Inline sidesteps that tie entirely.
+						border: "1px dashed var(--t-border)",
+					} as React.CSSProperties
+				}
+				className="idea-enter surface-raised surface-raised-hover squircle focus-edge group mb-2.5 flex w-full cursor-pointer items-center justify-between gap-3 rounded-[14px] px-4 py-3 text-left motion-safe:active:scale-[0.99]"
 			>
 				<span className="min-w-0">
 					<span
