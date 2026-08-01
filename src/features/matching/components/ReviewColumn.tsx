@@ -4,31 +4,38 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 
-// Mirrors both columns' art/cover height cap, including the -40px reserve for
-// the fixed feedback launcher, so on short viewports either review column
-// collapses in step with its counterpart instead of forcing a tall row that
-// pushes the controls below the fold or under the launcher.
+// Mirrors both columns' art/cover height cap, so on short viewports either
+// review column collapses in step with its counterpart instead of forcing a
+// tall row that pushes the controls below the fold or under the launcher.
+// The 80px reserve is two things: 40px for the fixed feedback launcher, plus
+// the 40px the card plane's p-5 adds above and below the columns. Move it with
+// MatchingSession's padding or the controls slide back under the launcher.
 export const REVIEW_COLUMN_MIN_HEIGHT =
-	"min(clamp(300px, 34vw, 620px), calc(56dvh - 40px))";
+	"min(clamp(300px, 34vw, 620px), calc(56dvh - 80px))";
 
 interface ReviewColumnFrameProps {
 	children: ReactNode;
 }
 
 /** Outer shell shared by the song-match and playlist-suggestion columns: fixed
- *  min-height plus the mobile-only top border that restores the visual break
- *  the two-column grid gives at lg. */
+ *  min-height, the seam dividing this column from the review subject beside it,
+ *  and the mobile-only top border that restores the visual break the
+ *  two-column grid gives at lg. */
 export function ReviewColumnFrame({ children }: ReviewColumnFrameProps) {
 	return (
+		// The seam is drawn here rather than as a gap because both columns now sit
+		// on ONE card plane — it has to read as a plane divided, not as two planes
+		// abutting. plane-rule (a 9% ink mix) not --t-border, which is a heavy line
+		// on a raised fill. Side-by-side only: stacked, the rule below is the seam.
 		<div
-			className="flex flex-col"
+			className="plane-rule flex flex-col lg:border-l lg:pl-8"
 			style={{ minHeight: REVIEW_COLUMN_MIN_HEIGHT }}
 		>
 			{/* Below lg the column stacks directly under its counterpart with only the
 			grid gap between them; this rule restores the visual break the two-column
 			split gives on wider viewports. Hidden at lg, where the columns sit side
 			by side. */}
-			<div className="theme-border-color mb-8 border-t lg:hidden" />
+			<div className="plane-rule mb-8 border-t lg:hidden" />
 			{children}
 		</div>
 	);
@@ -124,9 +131,12 @@ export function RefreshBanner({
 								}
 					}
 					transition={{ duration: 0.25, ease: [0.165, 0.84, 0.44, 1] }}
-					// It's a button, so it gets the pressable plane and a focus edge it
-					// never had — a flat full-bleed band gave no sign it was clickable.
-					className="theme-text surface-raised surface-raised-hover squircle focus-edge mt-3 flex w-full items-center justify-between overflow-hidden rounded-[12px] px-4 py-2.5"
+					// It's a button, so it gets a pressable fill and a focus edge it never
+					// had — a flat full-bleed band gave no sign it was clickable. The chip
+					// tier, not the plane tier: this now sits INSIDE the card plane, where
+					// a plane on a plane computes the same fill and the banner would
+					// vanish at rest. A control resting on a plane steps down.
+					className="theme-text chip-raised chip-raised-hover squircle focus-edge mt-3 flex w-full items-center justify-between overflow-hidden rounded-[12px] px-4 py-2.5"
 					style={{ fontFamily: fonts.body }}
 				>
 					<span className="text-xs">Real matches are ready</span>

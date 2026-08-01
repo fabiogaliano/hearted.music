@@ -162,7 +162,17 @@ export function MatchingSession(props: MatchingSessionProps) {
 				ref={topGridRef}
 				className="origin-top transition-transform duration-300 ease-in-out"
 			>
-				<motion.div initial={CARD_AT_REST} animate={cardControls}>
+				{/* The plane rides the flung element on purpose: the reject animation
+				already treats the two columns as one card, so the material that makes
+				them read as one card belongs on the same node — the fill tilts to
+				grayscale and leaves with the content instead of staying behind as an
+				empty box. Padding is paid for out of both columns' dvh caps; see
+				REVIEW_COLUMN_MIN_HEIGHT. */}
+				<motion.div
+					className="surface-raised squircle rounded-[20px] p-5"
+					initial={CARD_AT_REST}
+					animate={cardControls}
+				>
 					{props.mode === "song" ? (
 						<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 							<SongSection

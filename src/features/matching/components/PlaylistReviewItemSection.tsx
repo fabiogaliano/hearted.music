@@ -30,7 +30,7 @@ import type {
 
 // Match SongSection's ALBUM_SIZE constant so the left columns across both
 // orientations stay visually consistent regardless of viewport size.
-const COVER_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 40px))";
+const COVER_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 80px))";
 
 export const PlaylistReviewItemSection = memo(
 	function PlaylistReviewItemSection({
@@ -178,7 +178,11 @@ function PlaylistCoverAndName({
 							id={panelId}
 							role="region"
 							aria-label={`Tracks in ${reviewItem.name}`}
-							className="theme-surface-bg absolute inset-0 flex flex-col p-4"
+							// Chip tier, not theme-surface-bg: the card plane underneath is
+							// --t-surface warm-tilted, so a plain surface fill here computes
+							// the same colour and the list reads as a hole in the card. A step
+							// down makes it a well where the art was.
+							className="chip-raised absolute inset-0 flex flex-col p-4"
 							initial={
 								prefersReducedMotion
 									? { opacity: 0 }

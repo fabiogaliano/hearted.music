@@ -11,13 +11,14 @@ import { fonts } from "@/lib/theme/fonts";
 
 // The dvh term caps the art by viewport height so the whole card (art + title +
 // matches + controls) stays reachable without scrolling on short viewports; on
-// tall screens 34vw wins and the size is unchanged. The -40px reserves vertical
-// room so the bottom controls (Next Song) clear the fixed feedback launcher
-// (size-10 @ right-6/bottom-6 → a 64px bottom-right corner) instead of sliding
-// under it when the card fills a short viewport. 34vw/56dvh (up from 30vw/50dvh)
-// grows the art toward the column edge on a laptop, closing the dead band that
-// sat between the height-capped square and the wider grid track.
-const ALBUM_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 40px))";
+// tall screens 34vw wins and the size is unchanged. The -80px reserves vertical
+// room for two things: the fixed feedback launcher (size-10 @ right-6/bottom-6 →
+// a 64px bottom-right corner), which the bottom controls (Next Song) would
+// otherwise slide under when the card fills a short viewport, and the card
+// plane's own top/bottom padding. 34vw/56dvh (up from 30vw/50dvh) grows the art
+// toward the column edge on a laptop, closing the dead band that sat between the
+// height-capped square and the wider grid track.
+const ALBUM_SIZE = "min(100%, clamp(200px, 34vw, 620px), calc(56dvh - 80px))";
 
 interface SongSectionProps {
 	song: {
