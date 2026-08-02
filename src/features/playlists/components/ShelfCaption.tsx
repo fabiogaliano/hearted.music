@@ -67,8 +67,11 @@ export function ShelfCaption({
 					/>
 				</button>
 				{purpose ? (
+					// Measured in ch, not %: the shelf is far wider than anything
+					// readable, so a full-width line only truncates past ~120 characters
+					// and reads as a ribbon. 60ch sits near the stage's own width.
 					<div
-						className="theme-text-muted mt-1.5 max-w-full truncate text-center text-[13px]"
+						className="theme-text-muted mt-1.5 max-w-[min(100%,60ch)] truncate text-center text-[13px]"
 						style={{ fontFamily: fonts.body }}
 					>
 						{purpose}
@@ -109,7 +112,7 @@ export function ShelfCaption({
 				)}
 				{playlist.genres.length > 0 && (
 					<div
-						className="theme-text-muted mt-1 max-w-full truncate text-center text-[11px] tracking-wide opacity-70"
+						className="theme-text-muted mt-1 max-w-[min(100%,60ch)] truncate text-center text-[11px] tracking-wide opacity-70"
 						style={{ fontFamily: fonts.body }}
 					>
 						{playlist.genres.join(" · ")}

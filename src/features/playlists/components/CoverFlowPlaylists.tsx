@@ -1,7 +1,10 @@
-import { MagnifyingGlassIcon, PlusIcon, XIcon } from "@phosphor-icons/react";
-import { useNavigate } from "@tanstack/react-router";
+import {
+	ArrowRightIcon,
+	MagnifyingGlassIcon,
+	XIcon,
+} from "@phosphor-icons/react";
+import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowShelf } from "./CoverFlowShelf";
@@ -42,15 +45,15 @@ export function CoverFlowPlaylists({
 	detailOpen = false,
 	guided,
 }: CoverFlowPlaylistsProps) {
-	const navigate = useNavigate();
-
 	// Expand the guided config into local constants — production defaults are
 	// explicit here and the guided path overrides only what it needs.
-	const showSearch = guided == null;
+	const showMasthead = guided == null;
 	const hideRailAdd = guided != null;
 	// With zero playlists at all, the shelf's default empty copy ("add from your
-	// library below") points at a library that's also empty — a dead end for the
-	// user who needs creation most. Swap in a create-first invitation instead.
+	// library below") points at a library that's also empty. The masthead's
+	// standing invitation is what rescues that now, so the copy only has to name
+	// the state and point at it — it used to carry a Create button of its own,
+	// which would sit a few rows under an identical one.
 	// Guided mode keeps its own copy; other cases keep the shelf defaults.
 	const noPlaylistsAtAll = guided == null && playlists.length === 0;
 	const matchingEmptyTitle =
@@ -61,32 +64,27 @@ export function CoverFlowPlaylists({
 		(noPlaylistsAtAll
 			? "Start one from your liked songs — hearted drafts it, you curate it."
 			: undefined);
-	const matchingEmptyAction =
-		guided?.matchingEmptyAction ??
-		(noPlaylistsAtAll ? (
-			<Button
-				variant="secondary"
-				size="sm"
-				onClick={() => void navigate({ to: "/playlists/new" })}
-			>
-				Create playlist
-			</Button>
-		) : undefined);
-	const library = playlists.filter((p) => !p.isTarget);
+	const library = useMemo(
+		() => playlists.filter((p) => !p.isTarget),
+		[playlists],
+	);
 
-	// Searching collapses the two-zone layout into one flat rail across the whole
-	// library — the cover flow is a browsing affordance, useless once you know what
-	// you're after. Matching state still reads from each row's add/remove action.
+	// Search is the library's lens, not the page's: it lives on the library
+	// panel's own band and filters that rail in place. It used to be a header
+	// control that swapped BOTH zones for one flat results rail — a page-wide
+	// mode entered from a field the size of a caption. The matching shelf holds a
+	// handful of covers you can already see all of, so there was never anything
+	// to find up there; the long tail is the only part that needs finding.
 	const [query, setQuery] = useState("");
 	const searchRef = useRef<HTMLInputElement>(null);
 	const trimmedQuery = query.trim().toLowerCase();
 	const isSearching = trimmedQuery.length > 0;
-	const searchResults = useMemo(() => {
-		if (!isSearching) return [];
-		return playlists.filter((p) =>
+	const visibleLibrary = useMemo(() => {
+		if (!isSearching) return library;
+		return library.filter((p) =>
 			`${p.name} ${p.intent ?? ""}`.toLowerCase().includes(trimmedQuery),
 		);
-	}, [playlists, isSearching, trimmedQuery]);
+	}, [library, isSearching, trimmedQuery]);
 
 	// The matching shelf is ordered by when each playlist was added, not by the
 	// underlying library order — otherwise adding one out of sequence would slot its
@@ -143,10 +141,13 @@ export function CoverFlowPlaylists({
 		const playlist = matching[Math.min(center, matching.length - 1)];
 		if (playlist) onOpen(playlist.id);
 	};
-	// Only the bare /playlists list drives the cover flow. While searching, the
-	// shelf is swapped for a flat results rail; with the detail panel open the
-	// covers sit behind it — in both cases h/l/Enter must do nothing here.
-	const navEnabled = matching.length > 0 && !isSearching && !detailOpen;
+	// With the detail panel open the covers sit behind it, so h/l/Enter must do
+	// nothing here. A query no longer gates them: the shelf stays on screen while
+	// you search the library, and a visible shelf that silently stops answering
+	// its own keys is worse than one you can still drive. Keystrokes aimed at the
+	// field can't reach these anyway — KeyboardShortcutProvider drops events
+	// sourced from an INPUT.
+	const navEnabled = matching.length > 0 && !detailOpen;
 	useShortcut({
 		key: "left",
 		handler: goPrev,
@@ -199,9 +200,75 @@ export function CoverFlowPlaylists({
 		},
 	});
 
+	// One message for one empty panel. Searching is the first branch because a
+	// no-hits panel must say the query came up empty, not that the library is —
+	// the library is fine, the lens is just narrow.
+	let emptyLibraryMessage: string;
+	if (isSearching)
+		emptyLibraryMessage = `No playlists match “${query.trim()}”.`;
+	else if (matching.length > 0)
+		emptyLibraryMessage = "Every playlist is in matching.";
+	else emptyLibraryMessage = "No playlists yet.";
+
+	// The band's lens. Inline rather than a component because it is nothing but
+	// this component's query state wearing an input — extracting it would move
+	// three props out to buy no simplification.
+	//
+	// Geometry and focus behaviour are LikedSongsToolbar's field verbatim: same
+	// widths, same placeholder brightening, same magnifier nudge. Two searches
+	// over two libraries in the same app should be one control a user learns
+	// once, so this is a place to copy rather than to have an opinion. The one
+	// part not copied is the accent focus line — PanelSection draws that, because
+	// on a band it belongs on the band's own seam and only the band knows where
+	// that is.
+	const librarySearch = (
+		<label className="flex items-center gap-2">
+			<input
+				ref={searchRef}
+				type="search"
+				value={query}
+				onChange={(event) => setQuery(event.target.value)}
+				placeholder="Search"
+				aria-label="Search library"
+				className="peer theme-text w-32 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-48 focus:placeholder:opacity-100 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+				style={{ fontFamily: fonts.body }}
+			/>
+			<button
+				type="button"
+				onClick={() => {
+					setQuery("");
+					searchRef.current?.focus();
+				}}
+				aria-label="Clear search"
+				aria-hidden={query.length === 0}
+				tabIndex={query.length === 0 ? -1 : 0}
+				// tap-40 is the one addition: a bare 12px glyph is half a target, and
+				// the -4px inset stops exactly at the midpoint of the gap-2 either
+				// side, so it never reaches the input's own hit area.
+				className={`theme-text-muted tap-40 shrink-0 transition-opacity duration-150 ${
+					query.length > 0
+						? "cursor-pointer opacity-70 hover:opacity-100"
+						: "pointer-events-none opacity-0"
+				}`}
+			>
+				<XIcon size={12} weight="regular" />
+			</button>
+			<MagnifyingGlassIcon
+				size={13}
+				weight="regular"
+				className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
+			/>
+		</label>
+	);
+
 	return (
 		<div className="mx-auto max-w-5xl pb-24">
-			<header className="mb-2 flex items-end justify-between gap-6">
+			{/* items-center, not items-end: the title carries leading-[0.95], so its
+			line box ends ABOVE the descender of "Playlists" — anything bottom-aligned
+			to it lands visibly high, which is what the card was doing. Sharing a
+			centre line instead puts the card's mass level with the word's, and holds
+			at any width as text-page-title fluidly resizes. */}
+			<header className="mb-2 flex items-center justify-between gap-6">
 				<h1
 					data-tour="page-title"
 					className="theme-text text-page-title leading-[0.95] font-extralight tracking-tight text-balance"
@@ -210,134 +277,92 @@ export function CoverFlowPlaylists({
 					Playlists
 				</h1>
 
-				{showSearch && (
-					<div className="flex items-center gap-6 pb-2.5">
-						<button
-							type="button"
-							onClick={() => void navigate({ to: "/playlists/new" })}
-							className="theme-text-muted inline-flex cursor-pointer items-center gap-1.5 text-[11px] tracking-widest uppercase transition-opacity duration-150 hover:opacity-70"
+				{/* The page's one act, at the weight it earns. It used to be an 11px
+				muted micro-link paired with the search field — the quietest thing on a
+				page of louder rows, which is why creation had drifted to living on the
+				dashboard. Same plane tier, eyebrow and words as the dashboard's
+				CreatePlaylistCTA, compressed to the masthead's right slot, so the two
+				surfaces teach one invitation instead of two. */}
+				{showMasthead && (
+					<Link
+						to="/playlists/new"
+						className="surface-raised surface-raised-hover squircle focus-edge group flex items-center justify-between gap-6 rounded-[14px] px-5 py-3.5 motion-safe:active:scale-[0.99]"
+					>
+						<div>
+							<p
+								className="theme-text-muted text-[10px] tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								From your liked songs
+							</p>
+							<p
+								className="theme-text mt-0.5 text-xl font-extralight"
+								style={{ fontFamily: fonts.display }}
+							>
+								Create a playlist
+							</p>
+						</div>
+						<span
+							className="theme-text-muted inline-flex items-center gap-1.5 text-xs transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
 							style={{ fontFamily: fonts.body }}
 						>
-							<PlusIcon size={11} weight="regular" aria-hidden />
-							Create playlist
-						</button>
-						<label className="relative flex items-center gap-2">
-							<input
-								ref={searchRef}
-								type="search"
-								value={query}
-								onChange={(event) => setQuery(event.target.value)}
-								placeholder="Search"
-								aria-label="Search playlists"
-								className="peer theme-text w-24 border-0 bg-transparent pl-2 text-sm tracking-wide outline-none transition-[width] duration-200 placeholder:text-(--t-text-muted) placeholder:opacity-70 placeholder:transition-opacity placeholder:duration-200 focus:w-32 focus:placeholder:opacity-100 sm:w-32 sm:focus:w-48 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
-								style={{ fontFamily: fonts.body }}
-							/>
-							<button
-								type="button"
-								onClick={() => {
-									setQuery("");
-									searchRef.current?.focus();
-								}}
-								aria-label="Clear search"
-								aria-hidden={query.length === 0}
-								tabIndex={query.length === 0 ? -1 : 0}
-								className={`theme-text-muted shrink-0 transition-opacity duration-150 ${
-									query.length > 0
-										? "cursor-pointer opacity-70 hover:opacity-100"
-										: "pointer-events-none opacity-0"
-								}`}
-							>
-								<XIcon size={12} weight="regular" />
-							</button>
-							<MagnifyingGlassIcon
-								size={13}
-								weight="regular"
-								className="theme-text-muted shrink-0 transition-[color,transform] duration-200 peer-focus:scale-110 peer-focus:text-(--t-text)"
-							/>
-							<span
-								aria-hidden="true"
-								className="theme-primary-bg pointer-events-none absolute inset-x-0 -bottom-px h-px opacity-0 transition-opacity duration-200 peer-focus:opacity-100"
-							/>
-						</label>
-					</div>
+							Start
+							<ArrowRightIcon size={13} weight="regular" aria-hidden />
+						</span>
+					</Link>
 				)}
 			</header>
 
-			{isSearching ? (
-				<div className="mt-8">
-					<PanelSection label="Results" count={searchResults.length}>
-						{searchResults.length > 0 ? (
-							<div className="p-2">
-								{searchResults.map((playlist) => (
-									<RailRow
-										key={playlist.id}
-										playlist={playlist}
-										onOpen={onOpen}
-										onAdd={handleAdd}
-										onRemove={onRemove}
-										hideAdd={hideRailAdd}
-									/>
-								))}
-							</div>
-						) : (
-							<p
-								className="theme-text-muted px-5 py-6 text-[13px]"
-								style={{ fontFamily: fonts.body }}
-							>
-								No playlists match “{query.trim()}”.
-							</p>
-						)}
-					</PanelSection>
-				</div>
-			) : (
-				<>
-					{/* data-tour marks onboarding spotlight targets; inert in production. */}
-					<div data-tour="matching">
-						<CoverFlowShelf
-							label="Matching candidates"
-							playlists={matching}
-							center={center}
-							onCenterChange={clampCenter}
-							onActivate={() => {}}
-							onOpen={onOpen}
-							onAdd={handleAdd}
-							onRemove={onRemove}
-							enterId={enteringId}
-							emptyTitle={matchingEmptyTitle}
-							emptyBody={matchingEmptyBody}
-							emptyAction={matchingEmptyAction}
-						/>
-					</div>
+			{/* data-tour marks onboarding spotlight targets; inert in production. */}
+			<div data-tour="matching">
+				<CoverFlowShelf
+					label="Matching candidates"
+					playlists={matching}
+					center={center}
+					onCenterChange={clampCenter}
+					onActivate={() => {}}
+					onOpen={onOpen}
+					onAdd={handleAdd}
+					onRemove={onRemove}
+					enterId={enteringId}
+					emptyTitle={matchingEmptyTitle}
+					emptyBody={matchingEmptyBody}
+					emptyAction={guided?.matchingEmptyAction}
+				/>
+			</div>
 
-					<div className="mt-6" data-tour="library">
-						<PanelSection label="Library" count={library.length}>
-							{library.length > 0 ? (
-								<div className="p-2">
-									{library.map((playlist) => (
-										<RailRow
-											key={playlist.id}
-											playlist={playlist}
-											onOpen={onOpen}
-											onAdd={handleAdd}
-											onRemove={onRemove}
-											hideAdd={hideRailAdd}
-										/>
-									))}
-								</div>
-							) : (
-								<p
-									className="theme-text-muted px-5 py-6 text-[13px]"
-									style={{ fontFamily: fonts.body }}
-								>
-									{matching.length > 0
-										? "Every playlist is in matching."
-										: "No playlists yet."}
-								</p>
-							)}
-						</PanelSection>
-					</div>
-				</>
-			)}
+			<div className="mt-6" data-tour="library">
+				{/* The count is the same slot it has always been, but it is live now:
+				the library's size at rest, the number of hits while you're typing
+				beside it. One figure, and the field next to it explains the change. */}
+				<PanelSection
+					label="Library"
+					count={visibleLibrary.length}
+					trailing={showMasthead ? librarySearch : undefined}
+				>
+					{visibleLibrary.length > 0 ? (
+						<div className="p-2">
+							{visibleLibrary.map((playlist) => (
+								<RailRow
+									key={playlist.id}
+									playlist={playlist}
+									onOpen={onOpen}
+									onAdd={handleAdd}
+									onRemove={onRemove}
+									hideAdd={hideRailAdd}
+								/>
+							))}
+						</div>
+					) : (
+						<p
+							className="theme-text-muted px-5 py-6 text-[13px]"
+							style={{ fontFamily: fonts.body }}
+						>
+							{emptyLibraryMessage}
+						</p>
+					)}
+				</PanelSection>
+			</div>
 		</div>
 	);
 }
