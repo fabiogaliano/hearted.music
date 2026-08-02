@@ -2,6 +2,7 @@ import { addToPlaylist, moveInPlaylist, removeFromPlaylist } from "./mutations";
 import {
 	createPlaylist,
 	deletePlaylist,
+	registerPlaylist,
 	removePlaylistCover,
 	setPlaylistVisibility,
 	updatePlaylist,
@@ -47,6 +48,7 @@ export function createSpotifyClient(): SpotifyClient {
 			return moveInPlaylist(token, playlistUri, uids, newPosition);
 		},
 		createPlaylist,
+		registerPlaylist,
 		updatePlaylist,
 		deletePlaylist,
 		uploadPlaylistCover,

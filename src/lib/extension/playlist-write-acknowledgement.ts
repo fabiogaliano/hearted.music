@@ -18,7 +18,11 @@ import {
 	updatePlaylist,
 } from "./spotify-client";
 
-type CreatePlaylistResult = { uri: string; revision: string };
+type CreatePlaylistResult = {
+	uri: string;
+	revision: string;
+	rootlistRegistered: boolean;
+};
 type UpdatePlaylistResult = { revision: string };
 type DeletePlaylistResult = { revision: string };
 
@@ -26,6 +30,23 @@ export type AcknowledgedResult<T> =
 	| { ok: true; data: T; acknowledged: true }
 	| { ok: true; data: T; acknowledged: false; acknowledgeError: unknown }
 	| { ok: false; commandResponse: CommandResponse<T> };
+
+export type CreateAcknowledgedResult =
+	| { ok: false; commandResponse: CommandResponse<CreatePlaylistResult> }
+	| { ok: true; data: CreatePlaylistResult; acknowledged: true }
+	| {
+			ok: true;
+			data: CreatePlaylistResult;
+			acknowledged: false;
+			rootlistRegistered: false;
+	  }
+	| {
+			ok: true;
+			data: CreatePlaylistResult;
+			acknowledged: false;
+			rootlistRegistered: true;
+			acknowledgeError: unknown;
+	  };
 
 export type AcknowledgeCreateOutcome =
 	| { acknowledged: true }
@@ -71,21 +92,39 @@ export async function acknowledgeCreateWithRetry(
 export async function createPlaylistAcknowledged(
 	name: string,
 	userId: string,
-): Promise<AcknowledgedResult<CreatePlaylistResult>> {
+): Promise<CreateAcknowledgedResult> {
 	const response = await createPlaylist(name, userId);
 
 	if (!response.ok) {
 		return { ok: false, commandResponse: response };
 	}
 
+	// Extension builds predating the flag register the rootlist inside the create
+	// command itself, so a missing flag means "registered". Only an explicit false
+	// may route into the register-resume path — those old builds would reject the
+	// registerPlaylist command it sends. Keep the strict comparison.
+	if (response.data.rootlistRegistered === false) {
+		return {
+			ok: true,
+			data: response.data,
+			acknowledged: false,
+			rootlistRegistered: false,
+		};
+	}
+
 	const ack = await acknowledgeCreateWithRetry(response.data.uri, name);
 	if (ack.acknowledged) {
-		return { ok: true, data: response.data, acknowledged: true };
+		return {
+			ok: true,
+			data: response.data,
+			acknowledged: true,
+		};
 	}
 	return {
 		ok: true,
 		data: response.data,
 		acknowledged: false,
+		rootlistRegistered: true,
 		acknowledgeError: ack.acknowledgeError,
 	};
 }

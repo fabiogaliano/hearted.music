@@ -115,6 +115,7 @@ describe("usePublishPlaylist — submit → created-unsynced → retryUnsynced �
 			status: "created-unsynced",
 			playlistUri: "spotify:playlist:abc",
 			spotifyId: "abc",
+			rootlistRegistered: true,
 		});
 		resumePlaylistCreateFromDraftMock.mockResolvedValueOnce({
 			status: "success",
@@ -150,11 +151,13 @@ describe("usePublishPlaylist — resume uses the original input", () => {
 			status: "created-unsynced",
 			playlistUri: "spotify:playlist:xyz",
 			spotifyId: "xyz",
+			rootlistRegistered: false,
 		});
 		resumePlaylistCreateFromDraftMock.mockResolvedValueOnce({
 			status: "created-unsynced",
 			playlistUri: "spotify:playlist:xyz",
 			spotifyId: "xyz",
+			rootlistRegistered: false,
 		});
 		const { result } = setup();
 
@@ -170,6 +173,7 @@ describe("usePublishPlaylist — resume uses the original input", () => {
 			INPUT_A,
 			"spotify:playlist:xyz",
 			"xyz",
+			false,
 		);
 	});
 });

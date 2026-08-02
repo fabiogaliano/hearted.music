@@ -48,9 +48,11 @@ vi.mock("../playlist-write-acknowledgement", () => ({
 }));
 
 const mockAddToPlaylist = vi.fn();
+const mockRegisterPlaylist = vi.fn();
 
 vi.mock("../spotify-client", () => ({
 	addToPlaylist: (...args: unknown[]) => mockAddToPlaylist(...args),
+	registerPlaylist: (...args: unknown[]) => mockRegisterPlaylist(...args),
 }));
 
 // ── Import under test ──────────────────────────────────────────────────────
@@ -73,7 +75,11 @@ const BASE_INPUT: import("../create-playlist-from-draft").CreatePlaylistFromDraf
 
 const SUCCESS_CREATE_RESULT = {
 	ok: true as const,
-	data: { uri: "spotify:playlist:abc123", revision: "r1" },
+	data: {
+		uri: "spotify:playlist:abc123",
+		revision: "r1",
+		rootlistRegistered: true as const,
+	},
 	acknowledged: true as const,
 };
 
@@ -396,8 +402,13 @@ describe("created-unsynced (acknowledge exhausted retries)", () => {
 		// the bounded retries inside createPlaylistAcknowledged.
 		mockCreatePlaylistAcknowledged.mockResolvedValue({
 			ok: true as const,
-			data: { uri: "spotify:playlist:abc123", revision: "r1" },
+			data: {
+				uri: "spotify:playlist:abc123",
+				revision: "r1",
+				rootlistRegistered: true,
+			},
 			acknowledged: false as const,
+			rootlistRegistered: true as const,
 			acknowledgeError: new Error("DB down"),
 		});
 
@@ -407,15 +418,45 @@ describe("created-unsynced (acknowledge exhausted retries)", () => {
 			status: "created-unsynced",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			rootlistRegistered: true,
 		});
+	});
+
+	it("preserves the existing playlist when Spotify rootlist registration fails", async () => {
+		setupHappyPath();
+		mockCreatePlaylistAcknowledged.mockResolvedValue({
+			ok: true as const,
+			data: {
+				uri: "spotify:playlist:abc123",
+				revision: "r1",
+				rootlistRegistered: false,
+			},
+			acknowledged: false as const,
+			rootlistRegistered: false as const,
+		});
+
+		const result = await createPlaylistFromDraft({ ...BASE_INPUT });
+
+		expect(result).toEqual({
+			status: "created-unsynced",
+			playlistUri: "spotify:playlist:abc123",
+			spotifyId: "abc123",
+			rootlistRegistered: false,
+		});
+		expect(mockPersistNewPlaylistConfig).not.toHaveBeenCalled();
 	});
 
 	it("does NOT persist config or add tracks when acknowledge failed", async () => {
 		setupHappyPath();
 		mockCreatePlaylistAcknowledged.mockResolvedValue({
 			ok: true as const,
-			data: { uri: "spotify:playlist:abc123", revision: "r1" },
+			data: {
+				uri: "spotify:playlist:abc123",
+				revision: "r1",
+				rootlistRegistered: true,
+			},
 			acknowledged: false as const,
+			rootlistRegistered: true as const,
 			acknowledgeError: new Error("DB down"),
 		});
 
@@ -447,6 +488,34 @@ describe("created-unsynced (acknowledge exhausted retries)", () => {
 // ── resume from created-unsynced ───────────────────────────────────────────
 
 describe("resumePlaylistCreateFromDraft", () => {
+	it("registers an already-created playlist before acknowledgement without creating another", async () => {
+		setupHappyPath();
+		mockRegisterPlaylist.mockResolvedValue({
+			ok: true,
+			data: { revision: "root-r2" },
+			commandId: "cmd-register",
+		});
+		mockAcknowledgeCreateWithRetry.mockResolvedValue({ acknowledged: true });
+
+		const result = await resumePlaylistCreateFromDraft(
+			{ ...BASE_INPUT },
+			"spotify:playlist:abc123",
+			"abc123",
+			false,
+		);
+
+		expect(result.status).toBe("success");
+		expect(mockRegisterPlaylist).toHaveBeenCalledWith(
+			"spotify:playlist:abc123",
+			"spotify-user-42",
+		);
+		expect(mockCreatePlaylistAcknowledged).not.toHaveBeenCalled();
+		expect(mockAcknowledgeCreateWithRetry).toHaveBeenCalledWith(
+			"spotify:playlist:abc123",
+			BASE_INPUT.name,
+		);
+	});
+
 	it("re-drives acknowledge + config + tracks against the existing playlist", async () => {
 		setupHappyPath();
 		mockAcknowledgeCreateWithRetry.mockResolvedValue({ acknowledged: true });
@@ -455,6 +524,7 @@ describe("resumePlaylistCreateFromDraft", () => {
 			{ ...BASE_INPUT },
 			"spotify:playlist:abc123",
 			"abc123",
+			true,
 		);
 
 		expect(result).toEqual({
@@ -484,12 +554,14 @@ describe("resumePlaylistCreateFromDraft", () => {
 			{ ...BASE_INPUT },
 			"spotify:playlist:abc123",
 			"abc123",
+			true,
 		);
 
 		expect(result).toEqual({
 			status: "created-unsynced",
 			playlistUri: "spotify:playlist:abc123",
 			spotifyId: "abc123",
+			rootlistRegistered: true,
 		});
 		expect(mockPersistNewPlaylistConfig).not.toHaveBeenCalled();
 		expect(mockAddToPlaylist).not.toHaveBeenCalled();
@@ -510,6 +582,7 @@ describe("resumePlaylistCreateFromDraft", () => {
 			{ ...BASE_INPUT },
 			"spotify:playlist:abc123",
 			"abc123",
+			true,
 		);
 
 		expect(result).toEqual({

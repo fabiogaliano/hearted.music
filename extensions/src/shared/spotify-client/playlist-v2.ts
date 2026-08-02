@@ -11,6 +11,7 @@ import type {
 import type {
 	CreatePlaylistResult,
 	DeletePlaylistResult,
+	RegisterPlaylistResult,
 	RemovePlaylistCoverResult,
 	SetPlaylistVisibilityResult,
 	UpdatePlaylistResult,
@@ -122,6 +123,40 @@ async function playlistV2Fetch<T>(
 	return res.json() as T;
 }
 
+export async function registerPlaylist(
+	token: string,
+	playlistUri: string,
+	userId: string,
+): Promise<RegisterPlaylistResult> {
+	return playlistV2Fetch<PlaylistV2ChangesResponse>(
+		token,
+		`/playlist/v2/user/${userId}/rootlist/changes`,
+		{
+			deltas: [
+				{
+					ops: [
+						{
+							kind: "ADD",
+							add: {
+								items: [
+									{
+										uri: playlistUri,
+										attributes: {
+											timestamp: String(Date.now()),
+										},
+									},
+								],
+								addFirst: true,
+							},
+						},
+					],
+					info: { source: { client: "WEBPLAYER" } },
+				},
+			],
+		},
+	);
+}
+
 export async function createPlaylist(
 	token: string,
 	name: string,
@@ -142,38 +177,14 @@ export async function createPlaylist(
 		},
 	);
 
-	await playlistV2Fetch<PlaylistV2ChangesResponse>(
-		token,
-		`/playlist/v2/user/${userId}/rootlist/changes`,
-		{
-			deltas: [
-				{
-					ops: [
-						{
-							kind: "ADD",
-							add: {
-								items: [
-									{
-										uri: created.uri,
-										attributes: {
-											timestamp: String(Date.now()),
-										},
-									},
-								],
-								addFirst: true,
-							},
-						},
-					],
-					info: { source: { client: "WEBPLAYER" } },
-				},
-			],
-		},
-	);
-
-	return {
-		uri: created.uri,
-		revision: created.revision,
-	};
+	try {
+		await registerPlaylist(token, created.uri, userId);
+		return { ...created, rootlistRegistered: true };
+	} catch {
+		// The playlist already exists, so the caller needs its URI to resume the
+		// rootlist write instead of issuing another create command.
+		return { ...created, rootlistRegistered: false };
+	}
 }
 
 export async function updatePlaylist(

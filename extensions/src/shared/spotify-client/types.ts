@@ -77,7 +77,11 @@ export type MoveInPlaylistResult = {
 	typename: PathfinderMoveInPlaylistResponse["data"]["moveItemsInPlaylist"]["__typename"];
 };
 
-export type CreatePlaylistResult = PlaylistV2CreateResponse;
+export type CreatePlaylistResult = PlaylistV2CreateResponse & {
+	rootlistRegistered: boolean;
+};
+
+export type RegisterPlaylistResult = PlaylistV2ChangesResponse;
 
 export type UpdatePlaylistResult = PlaylistV2ChangesResponse;
 
@@ -145,6 +149,11 @@ export type SpotifyClient = {
 		name: string,
 		userId: string,
 	) => Promise<CreatePlaylistResult>;
+	registerPlaylist: (
+		token: string,
+		playlistUri: string,
+		userId: string,
+	) => Promise<RegisterPlaylistResult>;
 	updatePlaylist: (
 		token: string,
 		playlistId: string,

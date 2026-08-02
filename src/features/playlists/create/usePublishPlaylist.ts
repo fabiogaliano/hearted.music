@@ -135,6 +135,7 @@ export function usePublishPlaylist(args: {
 				input,
 				result.playlistUri,
 				result.spotifyId,
+				result.rootlistRegistered,
 			);
 			applyResult(raw, input.name);
 		} catch {

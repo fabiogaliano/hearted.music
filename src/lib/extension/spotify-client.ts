@@ -12,7 +12,12 @@ import { sendExtensionCommand } from "./detect";
 type AddToPlaylistResult = { typename: string };
 type RemoveFromPlaylistResult = { typename: string };
 type MoveInPlaylistResult = { typename: string };
-type CreatePlaylistResult = { uri: string; revision: string };
+type CreatePlaylistResult = {
+	uri: string;
+	revision: string;
+	rootlistRegistered: boolean;
+};
+type RegisterPlaylistResult = { revision: string };
 type UpdatePlaylistResult = { revision: string };
 type DeletePlaylistResult = { revision: string };
 type UploadPlaylistCoverResult = { revision: string; picture: string };
@@ -38,6 +43,7 @@ type SpotifyCommandResultMap = {
 	removeFromPlaylist: RemoveFromPlaylistResult;
 	moveInPlaylist: MoveInPlaylistResult;
 	createPlaylist: CreatePlaylistResult;
+	registerPlaylist: RegisterPlaylistResult;
 	updatePlaylist: UpdatePlaylistResult;
 	deletePlaylist: DeletePlaylistResult;
 	uploadPlaylistCover: UploadPlaylistCoverResult;
@@ -124,6 +130,13 @@ export async function createPlaylist(
 		name,
 		userId,
 	});
+}
+
+export async function registerPlaylist(
+	playlistUri: string,
+	userId: string,
+): Promise<CommandResponse<RegisterPlaylistResult>> {
+	return sendSpotifyCommand("registerPlaylist", { playlistUri, userId });
 }
 
 export async function updatePlaylist(

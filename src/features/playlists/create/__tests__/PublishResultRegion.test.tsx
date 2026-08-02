@@ -31,6 +31,7 @@ const unsyncedResult: PublishPlaylistResult = {
 	status: "created-unsynced",
 	playlistUri: "spotify:playlist:unsynced",
 	spotifyId: "unsynced",
+	rootlistRegistered: true,
 };
 
 function renderRegion(result: PublishPlaylistResult) {

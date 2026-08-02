@@ -21,6 +21,7 @@ import {
 	deletePlaylist,
 	fetchPlaylistMetadata,
 	queryArtistOverview,
+	registerPlaylist,
 	removeFromPlaylist,
 	updatePlaylist,
 } from "../spotify-client";
@@ -106,6 +107,27 @@ describe("command serialization", () => {
 			type: "SPOTIFY_COMMAND",
 			command: "createPlaylist",
 			payload: { name: "My Playlist", userId: "user-123" },
+			commandId: MOCK_UUID,
+			protocolVersion: 1,
+		});
+	});
+
+	it("registerPlaylist sends the existing URI and user ID", async () => {
+		mockSendExtensionCommand.mockResolvedValue({
+			ok: true,
+			data: { revision: "root-r1" },
+			commandId: MOCK_UUID,
+		});
+
+		await registerPlaylist("spotify:playlist:new", "user-123");
+
+		expect(mockSendExtensionCommand).toHaveBeenCalledWith({
+			type: "SPOTIFY_COMMAND",
+			command: "registerPlaylist",
+			payload: {
+				playlistUri: "spotify:playlist:new",
+				userId: "user-123",
+			},
 			commandId: MOCK_UUID,
 			protocolVersion: 1,
 		});
@@ -234,6 +256,7 @@ describe("extension unavailable", () => {
 		["addToPlaylist", () => addToPlaylist("uri", ["track"])],
 		["removeFromPlaylist", () => removeFromPlaylist("uri", ["uid"])],
 		["createPlaylist", () => createPlaylist("name", "user")],
+		["registerPlaylist", () => registerPlaylist("uri", "user")],
 		["updatePlaylist", () => updatePlaylist("id", { name: "n" })],
 		["deletePlaylist", () => deletePlaylist("uri", "user")],
 		["queryArtistOverview", () => queryArtistOverview("uri")],

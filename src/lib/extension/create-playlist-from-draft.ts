@@ -10,13 +10,12 @@
  *   5. bulk addToPlaylist for the previewed tracks (single command)
  *   6. bulk match_decision "added" rows (non-fatal, fire-and-forget)
  *
- * The dual write (Spotify then DB) is non-atomic and un-eliminable: only the
- * client extension can talk to Spotify. If the Spotify create succeeds but the
- * DB acknowledge write fails even after bounded retries, step 3 returns a
- * "created-unsynced" result and the flow stops BEFORE step 4 — the ownership
- * guard in persistNewPlaylistConfig requires the row to exist. The caller then
- * resumes via resumePlaylistCreateFromDraft, which re-drives the acknowledge and
- * steps 4–6 against the EXISTING playlist (never a fresh create).
+ * The Spotify create, rootlist registration, and DB write are non-atomic. If
+ * either write after creation fails, step 3 returns a "created-unsynced" result
+ * carrying the existing URI and the flow stops BEFORE step 4. The caller then
+ * resumes via resumePlaylistCreateFromDraft, which finishes rootlist registration
+ * when needed, acknowledges the DB row, and continues against the EXISTING
+ * playlist (never a fresh create).
  *
  * The draft state (songIds, config) is never mutated here — callers are
  * responsible for preserving it on any failure branch so the user can retry.
@@ -37,7 +36,7 @@ import {
 	outcomeFromAcknowledgedResult,
 	outcomeFromCommandResponse,
 } from "./spotify-action-outcome";
-import { addToPlaylist } from "./spotify-client";
+import { addToPlaylist, registerPlaylist } from "./spotify-client";
 
 export interface CreatePlaylistFromDraftInput {
 	/** Display name for the new playlist. */
@@ -87,6 +86,8 @@ export type CreatePlaylistFromDraftResult =
 			status: "created-unsynced";
 			playlistUri: string;
 			spotifyId: string;
+			/** Whether Spotify's rootlist write landed before DB acknowledgement. */
+			rootlistRegistered: boolean;
 	  }
 	| {
 			status: "partial";
@@ -170,7 +171,12 @@ export async function createPlaylistFromDraft(
 	// failure and tempt a full re-create (a duplicate Spotify playlist). Surface
 	// the honest state so the caller can resume from acknowledge/config instead.
 	if (!createResult.acknowledged) {
-		return { status: "created-unsynced", playlistUri, spotifyId };
+		return {
+			status: "created-unsynced",
+			playlistUri,
+			spotifyId,
+			rootlistRegistered: createResult.rootlistRegistered,
+		};
 	}
 
 	return finalizePlaylistCreate(playlistUri, spotifyId, input);
@@ -178,10 +184,10 @@ export async function createPlaylistFromDraft(
 
 /**
  * Resumes a create that stopped at "created-unsynced": the Spotify playlist
- * already exists (playlistUri/spotifyId), but its DB row and config were never
- * written. Re-drives the acknowledge (idempotent upsert) and, once the row
- * exists, the config + track-add steps against the EXISTING playlist. It never
- * calls createPlaylist, so it cannot produce a duplicate Spotify playlist.
+ * already exists (playlistUri/spotifyId), but its rootlist registration or DB
+ * row may be missing. Finishes registration when needed, re-drives the DB
+ * acknowledge, then continues with config and tracks against the EXISTING
+ * playlist. It never calls createPlaylist, so it cannot produce a duplicate.
  *
  * Callers pass the SAME draft input used for the original attempt so the draft's
  * config (genre pills, match filters, intent) and track adds are preserved.
@@ -190,11 +196,41 @@ export async function resumePlaylistCreateFromDraft(
 	input: CreatePlaylistFromDraftInput,
 	playlistUri: string,
 	spotifyId: string,
+	rootlistRegistered: boolean,
 ): Promise<CreatePlaylistFromDraftResult> {
+	if (!rootlistRegistered) {
+		const stillUnregistered = {
+			status: "created-unsynced",
+			playlistUri,
+			spotifyId,
+			rootlistRegistered: false,
+		} as const;
+
+		let userId: string | null;
+		try {
+			userId = (await resolveSpotifyUserId()).spotifyUserId;
+		} catch {
+			return stillUnregistered;
+		}
+		if (!userId) {
+			return stillUnregistered;
+		}
+
+		const registration = await registerPlaylist(playlistUri, userId);
+		if (!registration.ok) {
+			return stillUnregistered;
+		}
+	}
+
 	const ack = await acknowledgeCreateWithRetry(playlistUri, input.name);
 	if (!ack.acknowledged) {
 		// Still couldn't write the row — stay unsynced so the user can retry again.
-		return { status: "created-unsynced", playlistUri, spotifyId };
+		return {
+			status: "created-unsynced",
+			playlistUri,
+			spotifyId,
+			rootlistRegistered: true,
+		};
 	}
 
 	return finalizePlaylistCreate(playlistUri, spotifyId, input);

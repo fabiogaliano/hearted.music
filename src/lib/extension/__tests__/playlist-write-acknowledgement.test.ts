@@ -52,6 +52,32 @@ describe("createPlaylistAcknowledged", () => {
 		});
 	});
 
+	it("preserves the created URI and skips DB acknowledgement when rootlist registration fails", async () => {
+		mockCreatePlaylist.mockResolvedValue({
+			ok: true,
+			data: {
+				uri: "spotify:playlist:new1",
+				revision: "r1",
+				rootlistRegistered: false,
+			},
+			commandId: "cmd-1",
+		});
+
+		const result = await createPlaylistAcknowledged("My Playlist", "user1");
+
+		expect(result).toEqual({
+			ok: true,
+			data: {
+				uri: "spotify:playlist:new1",
+				revision: "r1",
+				rootlistRegistered: false,
+			},
+			acknowledged: false,
+			rootlistRegistered: false,
+		});
+		expect(mockAcknowledgeCreate).not.toHaveBeenCalled();
+	});
+
 	it("short-circuits when command fails", async () => {
 		mockCreatePlaylist.mockResolvedValue({
 			ok: false,
@@ -103,7 +129,7 @@ describe("createPlaylistAcknowledged", () => {
 			data: { uri: "spotify:playlist:new1", revision: "r1" },
 			acknowledged: false,
 		});
-		if (result.ok && !result.acknowledged) {
+		if (result.ok && !result.acknowledged && result.rootlistRegistered) {
 			expect(result.acknowledgeError).toBeInstanceOf(Error);
 		}
 		// Initial attempt + 2 bounded retries.

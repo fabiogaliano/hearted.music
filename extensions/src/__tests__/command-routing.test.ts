@@ -24,9 +24,12 @@ vi.mock("../shared/spotify-client/mutations", () => ({
 }));
 
 vi.mock("../shared/spotify-client/playlist-v2", () => ({
-	createPlaylist: vi
-		.fn()
-		.mockResolvedValue({ uri: "spotify:playlist:new", revision: "r1" }),
+	createPlaylist: vi.fn().mockResolvedValue({
+		uri: "spotify:playlist:new",
+		revision: "r1",
+		rootlistRegistered: true,
+	}),
+	registerPlaylist: vi.fn().mockResolvedValue({ revision: "root-r1" }),
 	updatePlaylist: vi.fn().mockResolvedValue({ revision: "r2" }),
 	deletePlaylist: vi.fn().mockResolvedValue({ revision: "r3" }),
 	uploadPlaylistCover: vi
@@ -229,11 +232,37 @@ describe("handleSpotifyCommand", () => {
 				expect(result.data).toEqual({
 					uri: "spotify:playlist:new",
 					revision: "r1",
+					rootlistRegistered: true,
 				});
 			}
 			expect(createPlaylist).toHaveBeenCalledWith(
 				"test-token-abc",
 				"My Playlist",
+				"user123",
+			);
+		});
+
+		it("routes registerPlaylist to playlist-v2.registerPlaylist", async () => {
+			const { registerPlaylist } = await import(
+				"../shared/spotify-client/playlist-v2"
+			);
+
+			const cmd: SpotifyCommand = {
+				type: "SPOTIFY_COMMAND",
+				command: "registerPlaylist",
+				payload: {
+					playlistUri: "spotify:playlist:new",
+					userId: "user123",
+				},
+				commandId: "cmd-register",
+			};
+
+			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
+
+			expect(result.ok).toBe(true);
+			expect(registerPlaylist).toHaveBeenCalledWith(
+				"test-token-abc",
+				"spotify:playlist:new",
 				"user123",
 			);
 		});

@@ -23,6 +23,7 @@ export type {
 	FetchPlaylistMetadataPayload,
 	MoveInPlaylistPayload,
 	QueryArtistOverviewPayload,
+	RegisterPlaylistPayload,
 	RemoveFromPlaylistPayload,
 	RemovePlaylistCoverPayload,
 	SetPlaylistVisibilityPayload,

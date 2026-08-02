@@ -296,6 +296,7 @@ describe("playlist-v2", () => {
 			expect(result).toEqual({
 				uri: "spotify:playlist:new123",
 				revision: "rev-a",
+				rootlistRegistered: true,
 			});
 
 			const createCall = mockFetch.mock.calls[1];
@@ -315,6 +316,34 @@ describe("playlist-v2", () => {
 			expect(rootlistBody.deltas[0].ops[0].add.items[0].uri).toBe(
 				"spotify:playlist:new123",
 			);
+		});
+		it("returns the created URI when rootlist registration fails", async () => {
+			mockFetch
+				.mockResolvedValueOnce(new Response(null, { status: 200 }))
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							uri: "spotify:playlist:orphan-risk",
+							revision: "rev-created",
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockResolvedValueOnce(
+					new Response("rootlist unavailable", { status: 500 }),
+				);
+
+			const { createPlaylist } = await import(
+				"../shared/spotify-client/playlist-v2"
+			);
+
+			const result = await createPlaylist("tok-create", "My List", "user-1");
+
+			expect(result).toEqual({
+				uri: "spotify:playlist:orphan-risk",
+				revision: "rev-created",
+				rootlistRegistered: false,
+			});
 		});
 	});
 

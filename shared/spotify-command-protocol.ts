@@ -60,6 +60,11 @@ export type CreatePlaylistPayload = {
 	userId: string;
 };
 
+export type RegisterPlaylistPayload = {
+	playlistUri: string;
+	userId: string;
+};
+
 export type UpdatePlaylistPayload = {
 	playlistId: string;
 	name?: string;
@@ -102,6 +107,7 @@ export type SpotifyCommandMap = {
 	removeFromPlaylist: RemoveFromPlaylistPayload;
 	moveInPlaylist: MoveInPlaylistPayload;
 	createPlaylist: CreatePlaylistPayload;
+	registerPlaylist: RegisterPlaylistPayload;
 	updatePlaylist: UpdatePlaylistPayload;
 	deletePlaylist: DeletePlaylistPayload;
 	uploadPlaylistCover: UploadPlaylistCoverPayload;
@@ -132,6 +138,7 @@ const COMMAND_NAMES: SpotifyCommandName[] = [
 	"removeFromPlaylist",
 	"moveInPlaylist",
 	"createPlaylist",
+	"registerPlaylist",
 	"updatePlaylist",
 	"deletePlaylist",
 	"uploadPlaylistCover",
@@ -204,6 +211,13 @@ const payloadValidators: {
 	createPlaylist: (payload): payload is CreatePlaylistPayload => {
 		if (!isRecord(payload)) return false;
 		return typeof payload.name === "string" && typeof payload.userId === "string";
+	},
+	registerPlaylist: (payload): payload is RegisterPlaylistPayload => {
+		if (!isRecord(payload)) return false;
+		return (
+			typeof payload.playlistUri === "string" &&
+			typeof payload.userId === "string"
+		);
 	},
 	updatePlaylist: (payload): payload is UpdatePlaylistPayload => {
 		if (!isRecord(payload)) return false;

@@ -7,6 +7,7 @@ import {
 import {
 	createPlaylist,
 	deletePlaylist,
+	registerPlaylist,
 	removePlaylistCover,
 	setPlaylistVisibility,
 	updatePlaylist,
@@ -37,6 +38,7 @@ type CommandResultMap = {
 	removeFromPlaylist: Awaited<ReturnType<typeof removeFromPlaylist>>;
 	moveInPlaylist: Awaited<ReturnType<typeof moveInPlaylist>>;
 	createPlaylist: Awaited<ReturnType<typeof createPlaylist>>;
+	registerPlaylist: Awaited<ReturnType<typeof registerPlaylist>>;
 	updatePlaylist: Awaited<ReturnType<typeof updatePlaylist>>;
 	deletePlaylist: Awaited<ReturnType<typeof deletePlaylist>>;
 	uploadPlaylistCover: Awaited<ReturnType<typeof uploadPlaylistCover>>;
@@ -72,6 +74,8 @@ const commandExecutors: CommandExecutorMap = {
 		),
 	createPlaylist: async (token, payload) =>
 		createPlaylist(token, payload.name, payload.userId),
+	registerPlaylist: async (token, payload) =>
+		registerPlaylist(token, payload.playlistUri, payload.userId),
 	updatePlaylist: async (token, payload) =>
 		updatePlaylist(token, payload.playlistId, {
 			name: payload.name,
