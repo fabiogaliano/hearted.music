@@ -255,7 +255,7 @@ describe("selectEnrichmentWorkPlan — selection mode dispatch", () => {
 });
 
 describe("selectEnrichmentWorkPlan — Phase-1 / gated selector merge", () => {
-	it("takes audio/genre flags from the ungated Phase-1 selector, not the gated one", async () => {
+	it("preserves Phase-1 flags reported by the ungated selector", async () => {
 		// Free-user shape: the gated selector returns this song with its Phase-1
 		// flags FALSE (not entitled), while the ungated Phase-1 selector reports
 		// the real pending work. The merged plan must reflect Phase-1's flags.
@@ -290,6 +290,39 @@ describe("selectEnrichmentWorkPlan — Phase-1 / gated selector merge", () => {
 		expect(plan.needAudioFeatures).toEqual(["free-song"]);
 		expect(plan.needGenreTagging).toEqual(["free-song"]);
 		expect(plan.needAnalysis).toEqual([]);
+	});
+
+	it("preserves Phase-1 flags for an entitled song returned only by the independently-limited gated selector", async () => {
+		rpcResponseByName = {
+			[PHASE1_RPC]: { data: [], error: null },
+			[GATED_RPC]: {
+				data: [
+					{
+						song_id: "older-entitled-song",
+						needs_audio_features: true,
+						needs_genre_tagging: true,
+						needs_analysis: true,
+						needs_embedding: false,
+						needs_content_activation: false,
+					},
+				],
+				error: null,
+			},
+		};
+
+		const plan = await selectEnrichmentWorkPlan("account-1", 50, "normal");
+
+		expect(plan.needAudioFeatures).toEqual(["older-entitled-song"]);
+		expect(plan.needGenreTagging).toEqual(["older-entitled-song"]);
+		expect(plan.needAnalysis).toEqual(["older-entitled-song"]);
+		expect(plan.flags[0]).toEqual({
+			songId: "older-entitled-song",
+			needsAudioFeatures: true,
+			needsGenreTagging: true,
+			needsAnalysis: true,
+			needsEmbedding: false,
+			needsContentActivation: false,
+		});
 	});
 
 	it("includes a Phase-1-only song the gated selector never returns", async () => {

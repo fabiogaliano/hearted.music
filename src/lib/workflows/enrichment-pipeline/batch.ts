@@ -66,10 +66,9 @@ export async function getEntitledDataEnrichedSongIds(
  * before liked_at to front-load near-ready songs; both gated RPCs share the
  * normal selector's signature and return shape, so the cast below is accurate.
  *
- * The merge is additive and idempotent for entitled users: the ungated Phase-1
- * selector returns the same audio_features/genre_tagging candidates the gated
- * one would (it is a superset minus the is_entitled conjunct), so taking those
- * two flags from Phase-1 only never drops or double-counts an entitled song.
+ * The merge is additive and idempotent for entitled users. Phase-1 flags come
+ * from both selectors because their independent limits can leave an entitled
+ * song present only in the gated result. Sets deduplicate songs returned by both.
  *
  * Batch-size note: both selectors run with `p_limit: maxSongs` independently, so
  * the unioned `allSongIds` can hold up to `2 × maxSongs` entries — the sets are
@@ -122,13 +121,15 @@ export async function selectEnrichmentWorkPlan(
 	const phase1Rows: Phase1SelectorRow[] = phase1Result.data ?? [];
 	const gatedRows: GatedSelectorRow[] = gatedResult.data ?? [];
 
-	// Phase-1 flags: ungated selector only.
-	const audioFeaturesNeeded = new Set(
-		phase1Rows.filter((r) => r.needs_audio_features).map((r) => r.song_id),
-	);
-	const genreTaggingNeeded = new Set(
-		phase1Rows.filter((r) => r.needs_genre_tagging).map((r) => r.song_id),
-	);
+	// Include gated rows that fell outside the independently-limited Phase-1 result.
+	const audioFeaturesNeeded = new Set([
+		...phase1Rows.filter((r) => r.needs_audio_features).map((r) => r.song_id),
+		...gatedRows.filter((r) => r.needs_audio_features).map((r) => r.song_id),
+	]);
+	const genreTaggingNeeded = new Set([
+		...phase1Rows.filter((r) => r.needs_genre_tagging).map((r) => r.song_id),
+		...gatedRows.filter((r) => r.needs_genre_tagging).map((r) => r.song_id),
+	]);
 
 	// Phase-2/3 flags: entitlement-gated selector only.
 	const analysisNeeded = new Set(
