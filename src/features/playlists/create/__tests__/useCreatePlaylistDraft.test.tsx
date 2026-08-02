@@ -16,10 +16,12 @@ import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
 
 const previewPlaylistDraftMock = vi.fn();
+const recordStudioActionsMock = vi.fn();
 
 vi.mock("@/lib/server/playlist-draft.functions", () => ({
 	previewPlaylistDraft: (...args: unknown[]) =>
 		previewPlaylistDraftMock(...args),
+	recordStudioActions: (...args: unknown[]) => recordStudioActionsMock(...args),
 }));
 
 const resolveLikedArtistSongsMock = vi.fn();

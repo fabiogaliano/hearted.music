@@ -5,10 +5,12 @@
  * the workflow module owns all orchestration logic and has its own test
  * suites (preview.test.ts, commit.test.ts). These tests only assert the
  * adapter's job: accountId/supabase threading into the workflow calls, zod
- * validation running before the workflow is invoked, and the one genuinely
- * shallow handler (resolveSpotifyUserId) reading auth context correctly.
+ * validation running before the workflow is invoked, ownership filtering for
+ * Studio action writes, and the one genuinely shallow handler
+ * (resolveSpotifyUserId) reading auth context correctly.
  */
 
+import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockAuthContext = {
@@ -58,6 +60,20 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => fakeSupabaseClient,
 }));
 
+const selectOwnedSongIdsMock = vi.fn();
+vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
+	selectOwnedSongIds: (...args: unknown[]) => selectOwnedSongIdsMock(...args),
+}));
+
+const insertStudioActionsMock = vi.fn();
+vi.mock("@/lib/domains/taste/song-matching/studio-action-queries", () => ({
+	insertStudioActions: (...args: unknown[]) => insertStudioActionsMock(...args),
+}));
+
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: vi.fn(),
+}));
+
 const runPreviewPlaylistDraftMock = vi.fn();
 vi.mock("@/lib/workflows/playlist-studio/preview", () => ({
 	runPreviewPlaylistDraft: (...args: unknown[]) =>
@@ -77,6 +93,7 @@ import {
 	persistNewPlaylistConfig,
 	previewPlaylistDraft,
 	recordPlaylistMatchDecisions,
+	recordStudioActions,
 	resolveSpotifyUserId,
 } from "../playlist-draft.functions";
 
@@ -97,11 +114,19 @@ const validPersistInput = {
 	intentApplied: false,
 };
 
+const validStudioActionContext = {
+	genrePills: [],
+	matchFilters: { version: 1 },
+	intentPresent: false,
+};
+
 describe("playlist-draft.functions adapter", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockAuthContext.session = { accountId: "acct-1" };
 		mockAuthContext.account = { spotify_id: null };
+		selectOwnedSongIdsMock.mockReset();
+		insertStudioActionsMock.mockReset();
 	});
 
 	it("previewPlaylistDraft threads the resolved accountId and supabase client into the workflow", async () => {
@@ -170,6 +195,48 @@ describe("playlist-draft.functions adapter", () => {
 			"acct-1",
 			expect.objectContaining({ spotifyId: "abc123" }),
 		);
+	});
+
+	it("records only Studio actions for songs owned by the account", async () => {
+		const ownedSongId = "00000000-0000-4000-8000-000000000001";
+		const foreignSongId = "00000000-0000-4000-8000-000000000002";
+		const sessionId = "00000000-0000-4000-8000-000000000099";
+		selectOwnedSongIdsMock.mockResolvedValue(Result.ok(new Set([ownedSongId])));
+		insertStudioActionsMock.mockResolvedValue(Result.ok([{ id: "event-1" }]));
+
+		const result = await recordStudioActions({
+			data: {
+				sessionId,
+				actions: [
+					{
+						songId: ownedSongId,
+						action: "add",
+						position: 2,
+						context: validStudioActionContext,
+					},
+					{
+						songId: foreignSongId,
+						action: "dismiss",
+						position: 4,
+						context: validStudioActionContext,
+					},
+				],
+			},
+		});
+
+		expect(result).toEqual({ recorded: 1 });
+		expect(selectOwnedSongIdsMock).toHaveBeenCalledWith("acct-1", [
+			ownedSongId,
+			foreignSongId,
+		]);
+		expect(insertStudioActionsMock).toHaveBeenCalledWith("acct-1", [
+			expect.objectContaining({
+				songId: ownedSongId,
+				sessionId,
+				action: "add",
+				position: 2,
+			}),
+		]);
 	});
 
 	it("resolveSpotifyUserId reads spotify_id off the auth context account", async () => {

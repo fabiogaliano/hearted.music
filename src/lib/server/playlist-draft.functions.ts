@@ -12,12 +12,17 @@
  *   and return the ordered track URIs for the bulk-add step.
  * recordPlaylistMatchDecisions: bulk-write match_decision "added" rows for the
  *   songs committed to the new playlist so they don't resurface as suggestions.
+ * recordStudioActions: append Studio action events for the current draft session.
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { selectOwnedSongIds } from "@/lib/domains/library/liked-songs/queries";
 import { MAX_PINNED_SONG_IDS } from "@/lib/domains/playlists/draft-engine";
+import { insertStudioActions } from "@/lib/domains/taste/song-matching/studio-action-queries";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import type { PlaylistDraftPreview } from "@/lib/workflows/playlist-studio/preview";
 import { runPreviewPlaylistDraft } from "@/lib/workflows/playlist-studio/preview";
@@ -187,4 +192,89 @@ export const recordPlaylistMatchDecisions = createServerFn({ method: "POST" })
 	.handler(async ({ data, context }): Promise<{ recorded: number }> => {
 		const { accountId } = context.session;
 		return runRecordPlaylistMatchDecisions(accountId, data);
+	});
+
+// ============================================================================
+// Studio action logging
+// ============================================================================
+
+const StudioActionContextSchema = z
+	.object({
+		genrePills: z.array(z.string()).max(10),
+		matchFilters: MatchFiltersV1Schema,
+		intentPresent: z.boolean(),
+	})
+	.strict();
+
+const RecordStudioActionsSchema = z
+	.object({
+		sessionId: z.uuid(),
+		actions: z
+			.array(
+				z
+					.object({
+						songId: z.uuid(),
+						action: z.enum(["add", "pin", "remove", "dismiss"]),
+						position: z.number().int().min(0).nullable(),
+						context: StudioActionContextSchema,
+					})
+					.strict(),
+			)
+			.max(100),
+	})
+	.strict();
+
+export const recordStudioActions = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => RecordStudioActionsSchema.parse(data))
+	.handler(async ({ data, context }): Promise<{ recorded: number }> => {
+		const { accountId } = context.session;
+		if (data.actions.length === 0) return { recorded: 0 };
+
+		const ownedResult = await selectOwnedSongIds(
+			accountId,
+			data.actions.map((action) => action.songId),
+		);
+		if (Result.isError(ownedResult)) {
+			// The client fires and forgets, so Sentry is the only place a
+			// persistent logging failure can surface.
+			captureServerError(ownedResult.error, {
+				area: "playlists",
+				operation: "record_studio_actions_ownership",
+				accountId,
+				extra: { actionCount: data.actions.length },
+			});
+			throw new Error("Failed to verify song ownership for Studio actions", {
+				cause: ownedResult.error,
+			});
+		}
+
+		const ownedActions = data.actions.filter((action) =>
+			ownedResult.value.has(action.songId),
+		);
+		if (ownedActions.length === 0) return { recorded: 0 };
+
+		const insertResult = await insertStudioActions(
+			accountId,
+			ownedActions.map((action) => ({
+				songId: action.songId,
+				sessionId: data.sessionId,
+				action: action.action,
+				position: action.position,
+				context: action.context,
+			})),
+		);
+		if (Result.isError(insertResult)) {
+			captureServerError(insertResult.error, {
+				area: "playlists",
+				operation: "record_studio_actions_insert",
+				accountId,
+				extra: { actionCount: ownedActions.length },
+			});
+			throw new Error("Failed to record Studio actions", {
+				cause: insertResult.error,
+			});
+		}
+
+		return { recorded: insertResult.value.length };
 	});

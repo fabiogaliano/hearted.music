@@ -3083,6 +3083,61 @@ export type Database = {
 					},
 				];
 			};
+			studio_action: {
+				Row: {
+					account_id: string;
+					action: string;
+					context: Json;
+					created_at: string;
+					id: string;
+					position: number | null;
+					session_id: string;
+					song_id: string;
+				};
+				Insert: {
+					account_id: string;
+					action: string;
+					context: Json;
+					created_at?: string;
+					id?: string;
+					position?: number | null;
+					session_id: string;
+					song_id: string;
+				};
+				Update: {
+					account_id?: string;
+					action?: string;
+					context?: Json;
+					created_at?: string;
+					id?: string;
+					position?: number | null;
+					session_id?: string;
+					song_id?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "studio_action_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+					{
+						foreignKeyName: "studio_action_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "liked_song_decorated";
+						referencedColumns: ["song_id"];
+					},
+					{
+						foreignKeyName: "studio_action_song_id_fkey";
+						columns: ["song_id"];
+						isOneToOne: false;
+						referencedRelation: "song";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			subscription_credit_conversion: {
 				Row: {
 					account_id: string;

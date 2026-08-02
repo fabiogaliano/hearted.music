@@ -20,7 +20,10 @@ import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import { MAX_PINNED_SONG_IDS } from "@/lib/domains/playlists/draft-engine";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";
+import {
+	type PlaylistDraftPreview,
+	recordStudioActions,
+} from "@/lib/server/playlist-draft.functions";
 import type { DraftConfig } from "./queries";
 import {
 	artistSongResolutionQueryOptions,
@@ -29,6 +32,7 @@ import {
 } from "./queries";
 
 const DEBOUNCE_MS = 600;
+type StudioActionType = "add" | "pin" | "remove" | "dismiss";
 
 export interface CreatePlaylistDraftConfig {
 	intent?: string;
@@ -219,6 +223,7 @@ const EMPTY_PREVIEW_RESULT: PlaylistDraftPreview = {
 export function useCreatePlaylistDraft(
 	init?: CreatePlaylistDraftInit,
 ): UseCreatePlaylistDraftResult {
+	const [studioSessionId] = useState(() => crypto.randomUUID());
 	const [config, setConfig] = useState<CreatePlaylistDraftConfig>(() => ({
 		intent: init?.intent ?? DEFAULT_DRAFT_CONFIG.intent,
 		genrePills: init?.genrePills ?? DEFAULT_DRAFT_CONFIG.genrePills,
@@ -394,6 +399,83 @@ export function useCreatePlaylistDraft(
 	// so it never blocks Create on a mere staleTime revalidation.
 	const isConfigStale = isDebouncePending || isPlaceholderData;
 
+	// Logging is deliberately detached from the state transition: an unavailable
+	// telemetry path must not delay or surface an interaction failure.
+	const recordStudioAction = useCallback(
+		(action: StudioActionType, songId: string) => {
+			const tracklistPosition = visibleTracklist.findIndex(
+				(song) => song.id === songId,
+			);
+			const suggestionPosition = visibleSuggestions.findIndex(
+				(song) => song.id === songId,
+			);
+			const position =
+				tracklistPosition >= 0
+					? tracklistPosition
+					: suggestionPosition >= 0
+						? suggestionPosition
+						: null;
+
+			void (async () => {
+				try {
+					await recordStudioActions({
+						data: {
+							sessionId: studioSessionId,
+							actions: [
+								{
+									songId,
+									action,
+									position,
+									context: {
+										genrePills: config.genrePills,
+										matchFilters: config.matchFilters,
+										intentPresent: Boolean(config.intent?.trim()),
+									},
+								},
+							],
+						},
+					});
+				} catch {
+					// Logging is optional collection and never an interaction outcome.
+				}
+			})();
+		},
+		[config, studioSessionId, visibleSuggestions, visibleTracklist],
+	);
+
+	// These transitions are shared by public callbacks so aliases cannot change
+	// the action label or record the same state change twice.
+	const removeSongTransition = useCallback((id: string) => {
+		setSelection((prev) => ({
+			...prev,
+			pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
+			excludedSongIds: prev.excludedSongIds.includes(id)
+				? prev.excludedSongIds
+				: [...prev.excludedSongIds, id],
+		}));
+	}, []);
+
+	const addSongTransition = useCallback((id: string) => {
+		setSelection((prev) => ({
+			...prev,
+			pinnedSongIds: prev.pinnedSongIds.includes(id)
+				? prev.pinnedSongIds
+				: [...prev.pinnedSongIds, id],
+			excludedSongIds: prev.excludedSongIds.filter((eid) => eid !== id),
+			releasedSongIds: prev.releasedSongIds.filter((rid) => rid !== id),
+		}));
+	}, []);
+
+	const releasePinTransition = useCallback((id: string) => {
+		setSelection((prev) => ({
+			...prev,
+			pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
+			releasedSongIds: prev.releasedSongIds.includes(id)
+				? prev.releasedSongIds
+				: [...prev.releasedSongIds, id],
+		}));
+	}, []);
+
 	// --- Stable action callbacks ---
 
 	const setIntent = useCallback((intent: string | undefined) => {
@@ -415,45 +497,41 @@ export function useCreatePlaylistDraft(
 		setConfig((prev) => ({ ...prev, maxSongs }));
 	}, []);
 
-	const removeSong = useCallback((id: string) => {
-		setSelection((prev) => ({
-			...prev,
-			pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
-			excludedSongIds: prev.excludedSongIds.includes(id)
-				? prev.excludedSongIds
-				: [...prev.excludedSongIds, id],
-		}));
-	}, []);
+	const removeSong = useCallback(
+		(id: string) => {
+			removeSongTransition(id);
+			recordStudioAction("remove", id);
+		},
+		[recordStudioAction, removeSongTransition],
+	);
 
-	const addSong = useCallback((id: string) => {
-		setSelection((prev) => ({
-			pinnedSongIds: prev.pinnedSongIds.includes(id)
-				? prev.pinnedSongIds
-				: [...prev.pinnedSongIds, id],
-			excludedSongIds: prev.excludedSongIds.filter((eid) => eid !== id),
-			releasedSongIds: prev.releasedSongIds.filter((rid) => rid !== id),
-		}));
-	}, []);
+	const addSong = useCallback(
+		(id: string) => {
+			addSongTransition(id);
+			recordStudioAction("add", id);
+		},
+		[addSongTransition, recordStudioAction],
+	);
 
-	// The two-way pin routing (see the interface doc). Pinning reuses addSong
-	// (not a reimplementation) so the two transitions can never drift. Release
-	// records the id even for pure-manual pins whose artist isn't anchored yet:
-	// anchoring that artist later must not resurrect a pin the user dropped.
+	// The two-way pin routing (see the interface doc). The shared add transition
+	// keeps pinning and adding behavior aligned without sharing their log label.
+	// Release records the id even for pure-manual pins whose artist isn't anchored
+	// yet, so anchoring that artist later cannot resurrect a dropped pin.
 	const togglePin = useCallback(
 		(id: string) => {
 			if (!effectivePinnedSongIds.includes(id)) {
-				addSong(id);
+				addSongTransition(id);
+				recordStudioAction("pin", id);
 				return;
 			}
-			setSelection((prev) => ({
-				...prev,
-				pinnedSongIds: prev.pinnedSongIds.filter((pid) => pid !== id),
-				releasedSongIds: prev.releasedSongIds.includes(id)
-					? prev.releasedSongIds
-					: [...prev.releasedSongIds, id],
-			}));
+			releasePinTransition(id);
 		},
-		[effectivePinnedSongIds, addSong],
+		[
+			addSongTransition,
+			effectivePinnedSongIds,
+			recordStudioAction,
+			releasePinTransition,
+		],
 	);
 
 	const addArtist = useCallback((name: string) => {
@@ -498,10 +576,15 @@ export function useCreatePlaylistDraft(
 		void refetchArtistResolution();
 	}, [refetchArtistResolution]);
 
-	// Dismissing a suggestion is semantically "reject a suggestion" rather than
-	// "undo a pin", but the underlying state transition is identical to
-	// removeSong. Aliased (not reimplemented) so the two can never drift apart.
-	const dismissSuggestion = removeSong;
+	// Dismissing a suggestion shares the exclusion transition with removeSong,
+	// but keeps its own event label because the two gestures mean different things.
+	const dismissSuggestion = useCallback(
+		(id: string) => {
+			removeSongTransition(id);
+			recordStudioAction("dismiss", id);
+		},
+		[recordStudioAction, removeSongTransition],
+	);
 
 	const refreshSuggestions = useCallback(() => {
 		setSuggestionsOffset((prev) => prev + SUGGESTIONS_COUNT);
