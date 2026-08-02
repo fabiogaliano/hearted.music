@@ -40,31 +40,28 @@ import { ExtensionStatusRow } from "./components/ExtensionStatusRow";
 
 interface StrictnessOption {
 	value: MatchStrictness;
-	label: string;
 	description: string;
 }
 
-// The label stays evocative and the description stays plain; the score
-// threshold rides along as a muted caption in the picker so the number grounds
-// the choice (users already see it on every match in /match) without turning
-// the copy into a spec. The caption is derived from STRICTNESS_MIN_SCORE rather
-// than retyped here, so retuning a preset can't make the copy lie. Order is
-// loosest → strictest.
+// One plain line per option, phrased as the set of songs you'll be shown, so
+// the three read as a single scale you can compare at a glance — an evocative
+// name above each one only made you translate it back into this. The score
+// threshold rides along as a muted caption so the number grounds the choice
+// (users already see it on every match in /match) without turning the copy into
+// a spec, and it's derived from STRICTNESS_MIN_SCORE rather than retyped here,
+// so retuning a preset can't make the copy lie. Order is loosest → strictest.
 const STRICTNESS_OPTIONS: StrictnessOption[] = [
 	{
 		value: "open",
-		label: "Room for surprises",
-		description: "Shows every match, even the weak ones.",
+		description: "Every match, even the weak ones.",
 	},
 	{
 		value: "balanced",
-		label: "Might be worth the spot",
-		description: "Hides the weaker matches.",
+		description: "Everything but the weaker ones.",
 	},
 	{
 		value: "strict",
-		label: "The ones pulling ahead",
-		description: "Shows only the strongest.",
+		description: "Only the strongest.",
 	},
 ];
 
@@ -508,7 +505,7 @@ function MatchStrictnessPicker({
 									: "inset 0 0 0 1px var(--t-control-edge)",
 							}}
 						/>
-						<span className="flex min-w-0 flex-col gap-1">
+						<span className="flex min-w-0 flex-col gap-2">
 							<span
 								className="theme-text-muted text-xs leading-none tabular-nums italic opacity-70"
 								style={{ fontFamily: fonts.body }}
@@ -516,15 +513,9 @@ function MatchStrictnessPicker({
 								above {Math.round(STRICTNESS_MIN_SCORE[option.value] * 100)}%
 							</span>
 							<span
-								className={`text-base leading-none ${
-									isSelected ? "theme-text font-medium" : "theme-text"
+								className={`theme-text text-base leading-snug text-pretty ${
+									isSelected ? "font-medium" : ""
 								}`}
-								style={{ fontFamily: fonts.body }}
-							>
-								{option.label}
-							</span>
-							<span
-								className="theme-text-muted text-sm leading-snug text-pretty"
 								style={{ fontFamily: fonts.body }}
 							>
 								{option.description}
