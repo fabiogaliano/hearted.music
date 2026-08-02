@@ -1,7 +1,7 @@
 # Studio suggestion quality: private-beta roadmap
 
 Date: 2026-08-02  
-Status: private-beta product behavior settled; delivery steps 1–2 done; session vibes cut after the step 2 probe; remaining implementation specifications not started  
+Status: private-beta product behavior settled; delivery steps 1–3 shipped; session vibes cut after the step 2 probe; next up: seeded variation and Shuffle (step 4, via OpenSpec)  
 Related diagnosis: [`../studio-suggestion-quality.md`](../studio-suggestion-quality.md)
 
 ## Product context
@@ -95,9 +95,9 @@ Result against the pass bar (≥3 clusters in ≥1 modality, ~70% recognizable):
 
 **What the failure does not indict:** clustering measures global separation; pins and intent use local neighborhoods, and the report's neighbor lists are locally coherent (the ambient-electronic songs found each other). Mild positive evidence for the embeddings that step 8 depends on.
 
-### 3. Log studio actions (collection only)
+### 3. Log studio actions (collection only) — shipped
 
-Add the append-only `studio_action` table and fire-and-forget recording of add, pin, remove, and dismiss with session id, position, and config context, per the diagnosis handoff spec. Nothing reads the log yet.
+The append-only `studio_action` table and fire-and-forget recording of add, pin, remove, and dismiss with session id, position, and config context, per the diagnosis handoff spec. Nothing reads the log yet.
 
 **Why now:** Every "Not now" item can be built later without loss except this one — history cannot be backfilled. The revisit triggers below require historical actions to exist on the day they fire.
 
