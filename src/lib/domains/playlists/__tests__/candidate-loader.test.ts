@@ -45,7 +45,21 @@ vi.mock("@/lib/data/client", () => ({
 // ---------------------------------------------------------------------------
 
 /** The embedded one-to-one song_audio_feature object, or null when absent. */
-function makeEmbeddedAudioFeature() {
+type TestAudioFeature = {
+	energy: number | null;
+	valence: number | null;
+	danceability: number | null;
+	acousticness: number | null;
+	instrumentalness: number | null;
+	speechiness: number | null;
+	liveness: number | null;
+	tempo: number | null;
+	loudness: number | null;
+};
+
+function makeEmbeddedAudioFeature(
+	overrides: Partial<TestAudioFeature> = {},
+): TestAudioFeature {
 	return {
 		energy: 0.7,
 		valence: 0.5,
@@ -56,6 +70,7 @@ function makeEmbeddedAudioFeature() {
 		liveness: 0.1,
 		tempo: 120,
 		loudness: -10,
+		...overrides,
 	};
 }
 
@@ -130,6 +145,33 @@ describe("loadPhase1Candidates", () => {
 		expect(candidates).toHaveLength(1);
 		expect(candidates[0].song.id).toBe(songId);
 		expect(candidates[0].song.audioFeatures).not.toBeNull();
+	});
+
+	it("omits missing measurements from a partially populated audio row", async () => {
+		const songId = "partial-audio";
+		const song = makeSongRow(songId, {
+			genres: [],
+			audio: makeEmbeddedAudioFeature({
+				energy: null,
+				tempo: null,
+				loudness: null,
+			}),
+		});
+		mockLikedSongRange.mockResolvedValue({
+			data: [makeLikedRow(songId, song)],
+			error: null,
+		});
+
+		const [candidate] = await loadPhase1Candidates("any-account");
+
+		expect(candidate.song.audioFeatures).toEqual({
+			valence: 0.5,
+			danceability: 0.6,
+			acousticness: 0.2,
+			instrumentalness: 0.1,
+			speechiness: 0.05,
+			liveness: 0.1,
+		});
 	});
 
 	it("tolerates a to-many audio embed by taking the first row", async () => {

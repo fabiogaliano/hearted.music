@@ -186,15 +186,15 @@ export interface DataAvailability {
 
 /** Audio features for matching (subset of ReccoBeats features) */
 export interface MatchingAudioFeatures {
-	readonly energy: number;
-	readonly valence: number;
-	readonly danceability: number;
-	readonly acousticness: number;
-	readonly instrumentalness: number;
-	readonly speechiness: number;
-	readonly liveness: number;
-	readonly tempo: number;
-	readonly loudness: number;
+	readonly energy?: number;
+	readonly valence?: number;
+	readonly danceability?: number;
+	readonly acousticness?: number;
+	readonly instrumentalness?: number;
+	readonly speechiness?: number;
+	readonly liveness?: number;
+	readonly tempo?: number;
+	readonly loudness?: number;
 }
 
 /** Song data needed for matching */

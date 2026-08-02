@@ -82,15 +82,17 @@ function toMatchingAudioFeatures(
 	if (!hasAnyFeature) return null;
 
 	return {
-		energy: af.energy ?? 0,
-		valence: af.valence ?? 0,
-		danceability: af.danceability ?? 0,
-		acousticness: af.acousticness ?? 0,
-		instrumentalness: af.instrumentalness ?? 0,
-		speechiness: af.speechiness ?? 0,
-		liveness: af.liveness ?? 0,
-		tempo: af.tempo ?? 120,
-		loudness: af.loudness ?? -10,
+		...(af.energy !== null && { energy: af.energy }),
+		...(af.valence !== null && { valence: af.valence }),
+		...(af.danceability !== null && { danceability: af.danceability }),
+		...(af.acousticness !== null && { acousticness: af.acousticness }),
+		...(af.instrumentalness !== null && {
+			instrumentalness: af.instrumentalness,
+		}),
+		...(af.speechiness !== null && { speechiness: af.speechiness }),
+		...(af.liveness !== null && { liveness: af.liveness }),
+		...(af.tempo !== null && { tempo: af.tempo }),
+		...(af.loudness !== null && { loudness: af.loudness }),
 	};
 }
 
