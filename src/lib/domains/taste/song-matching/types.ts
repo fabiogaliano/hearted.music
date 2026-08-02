@@ -124,6 +124,12 @@ export interface MatchingConfig {
 	/** Skip vector scoring (for testing) */
 	readonly skipVectorScoring: boolean;
 	/**
+	 * Controls whether a song-side missing signal gives its weight to the
+	 * remaining signals or contributes a neutral zero with its weight retained.
+	 * Defaults to redistribution for existing matching callers.
+	 */
+	readonly songMissingSignalPolicy?: "redistribute" | "neutral";
+	/**
 	 * No-embedding scoring mode.
 	 *
 	 * When true, vector scoring is disabled entirely and the embedding weight is

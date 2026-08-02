@@ -343,7 +343,16 @@ class MatchingService {
 	private fuse(scored: RawScored, stats: FactorStats): MatchResult {
 		const { song, profile, factors, availability } = scored;
 		const baseWeights = selectBaseWeights(this.config, profile.hasGenrePills);
-		const weights = computeAdaptiveWeights(availability, baseWeights);
+		const weightingAvailability: DataAvailability =
+			this.config.songMissingSignalPolicy === "neutral"
+				? {
+						hasEmbedding:
+							!this.config.skipVectorScoring && profile.embedding !== null,
+						hasAudioFeatures: Object.keys(profile.audioCentroid).length > 0,
+						hasGenres: Object.keys(profile.genreDistribution).length > 0,
+					}
+				: availability;
+		const weights = computeAdaptiveWeights(weightingAvailability, baseWeights);
 
 		const normalizedFactors: ScoreFactors = {
 			embedding: this.normalizeFactor(
@@ -392,7 +401,8 @@ class MatchingService {
 
 	/**
 	 * Normalize a single factor against its candidate-set distribution.
-	 * Unavailable signals contribute 0 (their weight is already redistributed).
+	 * Unavailable signals contribute 0. Fusion decides separately whether their
+	 * weight is redistributed or retained by the configured missing-signal policy.
 	 * When normalization can't be trusted (disabled, or under-sampled so the
 	 * stats would be noise), the signal takes `fallback` instead — the legacy
 	 * scaling for signals whose raw range is compressed — or passes through raw.
@@ -446,8 +456,8 @@ class MatchingService {
 	 * The early return 0 for empty/null song genres is a harmless no-op:
 	 * `computeRawScored` sets `availability.hasGenres = false` when genres is
 	 * empty, so `computeFactorStats` never includes this value in its genre
-	 * distribution, and `computeAdaptiveWeights` redistributes the genre weight
-	 * away entirely. The 0 is never fused as a real signal.
+	 * distribution. Normalization keeps the unavailable contribution at 0 while
+	 * fusion applies the configured missing-signal policy to its weight.
 	 */
 	private computeGenreScore(
 		songGenres: string[] | null,

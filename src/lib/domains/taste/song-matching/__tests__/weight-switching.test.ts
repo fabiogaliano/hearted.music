@@ -197,6 +197,57 @@ describe("per-playlist weight switch via matchBatch", () => {
 		expect(base.embedding).toBeCloseTo(0.35);
 	});
 
+	it("genreless songs steal declared-genre weight and outrank genre matches when missing signals redistribute", async () => {
+		const profile: MatchingPlaylistProfile = {
+			playlistId: "pill-profile",
+			embedding: null,
+			audioCentroid: { energy: 0.8 },
+			genreDistribution: { "hip-hop": 1 },
+			hasGenrePills: true,
+		};
+		const genrelessPerfectAudio: MatchingSong = {
+			...makeSong([]),
+			id: "genreless-perfect-audio",
+			audioFeatures: { energy: 0.8 },
+		};
+		const genreMatchWeakerAudio: MatchingSong = {
+			...makeSong(["hip-hop"]),
+			id: "genre-match-weaker-audio",
+			audioFeatures: { energy: 0.5 },
+		};
+
+		async function scores(policy: "redistribute" | "neutral") {
+			const service = createMatchingService(null, null, {
+				noEmbeddingMode: true,
+				songMissingSignalPolicy: policy,
+				minScoreThreshold: 0,
+				normalization: {
+					enabled: false,
+					method: "zscore",
+					minSamples: 8,
+					fallbackSimilarityBaseline: 0.5,
+				},
+			});
+			const result = await service.matchBatch(
+				[genrelessPerfectAudio, genreMatchWeakerAudio],
+				[profile],
+			);
+			if (Result.isError(result)) throw result.error;
+			return {
+				genreless:
+					result.value.matches.get(genrelessPerfectAudio.id)?.[0]?.score ?? 0,
+				genreMatch:
+					result.value.matches.get(genreMatchWeakerAudio.id)?.[0]?.score ?? 0,
+			};
+		}
+
+		const redistributed = await scores("redistribute");
+		expect(redistributed.genreless).toBeGreaterThan(redistributed.genreMatch);
+
+		const neutral = await scores("neutral");
+		expect(neutral.genreless).toBeLessThan(neutral.genreMatch);
+	});
+
 	it("weight switch does not affect z-score stats computation (stats are per-signal across the matrix)", async () => {
 		// The stats are computed in computeFactorStats BEFORE fuse() is called.
 		// Changing hasGenrePills changes which weights multiply the already-

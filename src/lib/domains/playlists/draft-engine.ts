@@ -175,14 +175,13 @@ export interface RankedCandidate {
  *
  * When `profile.embedding` is present (premium intent path), the service runs
  * in full-fusion mode. Candidates whose song IDs appear in `songEmbeddings`
- * get cosine-similarity scoring; those without embeddings fall back to
- * adaptive-weight redistribution via `hasEmbedding = false` in the scorer.
- * Passing an empty or absent map means all candidates use the no-embedding
- * fallback even on the intent path — the intent embedding in the profile only
- * influences results when song embeddings are also present.
+ * get cosine-similarity scoring. Those without embeddings contribute a neutral
+ * 0 while the profile-side embedding weight is retained. Passing an empty or
+ * absent map therefore leaves semantic ranking inactive without amplifying the
+ * remaining song signals.
  *
- * Candidates without audio features are still scored on genre alone (audio
- * weight further redistributed by computeAdaptiveWeights).
+ * Declared genre pills use the same neutral song-side policy. Without pills or
+ * a query embedding, the legacy redistribution behavior remains unchanged.
  */
 export async function rankCandidates(
 	candidates: Phase1Candidate[],
@@ -203,6 +202,10 @@ export async function rankCandidates(
 
 	const service = createMatchingService(null, null, {
 		noEmbeddingMode: !useEmbedding,
+		songMissingSignalPolicy:
+			profile.hasGenrePills || profile.embedding !== null
+				? "neutral"
+				: "redistribute",
 		// Lower the threshold so the preview is generous — users can remove songs
 		// they dislike. The ranking matters more than a hard cutoff here.
 		minScoreThreshold: 0,

@@ -69,6 +69,7 @@ export const DEFAULT_MATCHING_CONFIG: MatchingConfig = {
 	minScoreThreshold: 0.35,
 	maxResultsPerSong: 10,
 	skipVectorScoring: false,
+	songMissingSignalPolicy: "redistribute",
 	normalization: {
 		enabled: true,
 		method: "zscore",
