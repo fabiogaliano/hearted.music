@@ -197,7 +197,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						<Button
 							key={pack.offer}
 							variant="card"
-							className="bg-(--t-surface)"
+							className="surface-raised-lit"
 							onClick={() => handlePackClick(pack)}
 							disabled={isBusy}
 							style={{ fontFamily: fonts.body }}
@@ -216,7 +216,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									· {formatOfferPrice(pack.offer)}
 								</span>
 							</div>
-							<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
+							<ul className="theme-text-muted mt-2 flex flex-col gap-1">
 								<li className="text-xs">You choose which ones to explore</li>
 							</ul>
 						</Button>
@@ -226,7 +226,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 					<>
 						<Button
 							variant="card"
-							className="bg-(--t-surface)"
+							className="surface-raised-lit"
 							onClick={() => startCheckout(UNLIMITED_YEARLY)}
 							disabled={isBusy}
 							style={{ fontFamily: fonts.body }}
@@ -260,8 +260,8 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									)}
 								</span>
 							</div>
-							<div className="mt-1.5 flex justify-between">
-								<ul className="theme-text-muted flex flex-col gap-0.5">
+							<div className="mt-2 flex justify-between">
+								<ul className="theme-text-muted flex flex-col gap-1">
 									<li className="text-xs">Every song explored automatically</li>
 									<li className="text-xs">
 										Your feature requests and bug reports get priority
@@ -281,7 +281,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 						{quarterlyEnabled && (
 							<Button
 								variant="card"
-								className="bg-(--t-surface)"
+								className="surface-raised-lit"
 								onClick={() => startCheckout(UNLIMITED_QUARTERLY)}
 								disabled={isBusy}
 								style={{ fontFamily: fonts.body }}
@@ -328,7 +328,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 										)}
 									</div>
 								</div>
-								<ul className="theme-text-muted mt-1.5 flex flex-col gap-0.5">
+								<ul className="theme-text-muted mt-2 flex flex-col gap-1">
 									<li className="text-xs">Every song explored automatically</li>
 									<li className="text-xs">Standard queue</li>
 								</ul>

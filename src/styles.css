@@ -566,6 +566,40 @@ code {
     background: var(--t-plane-lit);
   }
 
+  /* Rests where the plane tier only travels on hover. For the few elements a
+     screen is actually built around — the paywall's offer cards — where "a plane
+     you could press" isn't enough: they have to read as objects standing on top
+     of everything else, including the settings section they render inside, where
+     a plane nested on a plane computes the same fill and the two read as one
+     flat area.
+
+     Re-pointing --t-plane rather than writing a fill keeps the tier derived:
+     this IS .surface-raised-hover's step, taken at rest. Not circular —
+     --t-plane-lit depends only on --t-surface.
+
+     That spends the fill ladder, though. Every palette is light, so resting here
+     puts the card at 0.955–0.978 oklch L depending on theme — still clearly not
+     white, but a second step of the same size would clip past 1.0 on green and
+     lavender and read as a hair on the other two. It also makes the inherited
+     .surface-raised-hover rule a no-op here, by construction. So hover moves to
+     the edge instead, on the border .surface-raised reserves for exactly this,
+     and still costs no layout shift. Hover only: focus already has its own
+     answer in .focus-edge's inset --t-primary ring, and a tinted edge under it
+     would just blur which line is the ring.
+
+     The transition is restated because .surface-raised declares the shorthand;
+     placed after it so this one wins the source-order tie in the same layer. */
+  .surface-raised-lit {
+    --t-plane: var(--t-plane-lit);
+    transition:
+      background-color 150ms ease,
+      border-color 200ms ease-out,
+      transform 150ms ease;
+  }
+  .surface-raised-lit:hover {
+    border-color: color-mix(in srgb, var(--t-text) 28%, transparent);
+  }
+
   /* Chip tier — pills, chips, small controls.
 
      Fill only, no `color`: both tiers used to set color: var(--t-text), which is
