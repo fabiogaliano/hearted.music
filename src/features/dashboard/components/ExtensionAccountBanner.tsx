@@ -42,7 +42,7 @@ interface ExtensionAccountBannerViewProps {
 	/** `"bar"` retunes the banner for the create bar: flush edges and the bar's
 	 * tighter type scale, so it reads as a sibling of the hint text it replaces
 	 * rather than a page-level banner dropped into a footer. */
-	variant?: "page" | "bar";
+	variant?: "header" | "bar";
 }
 
 export function ExtensionAccountBannerView({
@@ -50,7 +50,7 @@ export function ExtensionAccountBannerView({
 	accountDisplayName,
 	repairing,
 	onReconnect,
-	variant = "page",
+	variant = "header",
 }: ExtensionAccountBannerViewProps) {
 	const isBar = variant === "bar";
 	const copyClass = `theme-text text-balance ${isBar ? "text-xs" : "text-sm"}`;
@@ -68,11 +68,19 @@ export function ExtensionAccountBannerView({
 						// it sits inside the create bar's own surface, so a second rounded
 						// plane there would read as a card dropped into a footer.
 						"theme-surface-bg px-5 py-3.5"
-					: "surface-raised squircle -mx-4 mb-10 rounded-[14px] px-5 py-4"
+					: // A bar beside the page title, not a full-bleed strip under it —
+						// hence no -mx-4, and no margin of its own: it's a flex child of the
+						// header row now, which owns the spacing. max-w-md is sized to seat
+						// the short verdicts' copy and button on one line, which is what
+						// keeps the bar one row tall; the cap stops the mismatch verdict's
+						// much longer copy from stretching across the whole row, and the
+						// header drops the bar below the title when the viewport can't seat
+						// both.
+						"surface-raised squircle max-w-md rounded-[14px] px-4 py-2"
 			}
 		>
 			{verdict.kind === "mismatch" ? (
-				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+				<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
 					<p className={copyClass} style={{ fontFamily: fonts.body }}>
 						Your browser is signed in to Spotify as{" "}
 						<strong className="font-medium">
@@ -108,11 +116,16 @@ export function ExtensionAccountBannerView({
 					confirmed.
 				</p>
 			) : (
-				<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+				<div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+					{/* Cause only, one short line, so the bar stays a single row next to
+					    the page title. It doesn't spell out the consequence ("syncing is
+					    paused") because nothing on the dashboard is syncing to report on
+					    yet — this bar has replaced the sync line for the duration — nor
+					    the fix, which is the button's job. */}
 					<p className={copyClass} style={{ fontFamily: fonts.body }}>
 						{verdict.kind === "unpaired"
-							? "The extension is no longer connected to your hearted account, so syncing is paused."
-							: "Your Spotify session expired, so syncing is paused."}
+							? "The extension isn't connected."
+							: "Your Spotify session expired."}
 					</p>
 					<button
 						type="button"
@@ -121,11 +134,7 @@ export function ExtensionAccountBannerView({
 						className={actionClass}
 						style={{ fontFamily: fonts.body }}
 					>
-						{repairing
-							? "Reconnecting…"
-							: verdict.kind === "unpaired"
-								? "Reconnect"
-								: "Reconnect Spotify"}
+						{repairing ? "Reconnecting…" : "Reconnect"}
 					</button>
 				</div>
 			)}
@@ -141,14 +150,26 @@ interface ExtensionAccountBannerProps {
 	accountDisplayName: string | null;
 }
 
-function isActionable(
+/** Whether this banner will render anything — exported because the dashboard
+ * has to know: the last-sync line is hosted in here while it's up and left on
+ * the activity feed otherwise, and the two placements must not both fire or
+ * both miss. One predicate, so that answer can't be derived twice and drift.
+ *
+ * Pre-link accounts are excluded regardless of verdict: before first sync,
+ * onboarding owns the connect UX and a banner is noise. The verdict alone can't
+ * express that (a pre-link account can still read `spotify-disconnected`), so
+ * linkedSpotifyId is part of the rule; the sync control keeps a CTA of its own
+ * for that case (see useDashboardSync's `spotify-reconnect-required`). */
+export function showsReconnectBanner(
 	verdict: ConnectionVerdict,
+	linkedSpotifyId: string | null,
 ): verdict is ActionableConnectionVerdict {
 	return (
-		verdict.kind === "mismatch" ||
-		verdict.kind === "unpaired" ||
-		verdict.kind === "spotify-disconnected" ||
-		verdict.kind === "unverifiable"
+		linkedSpotifyId !== null &&
+		(verdict.kind === "mismatch" ||
+			verdict.kind === "unpaired" ||
+			verdict.kind === "spotify-disconnected" ||
+			verdict.kind === "unverifiable")
 	);
 }
 
@@ -160,12 +181,7 @@ export function ExtensionAccountBanner({
 	const queryClient = useQueryClient();
 	const [repairing, setRepairing] = useState(false);
 
-	// Pre-link accounts never had a banner — before first sync, onboarding owns
-	// the connect UX and a banner is noise. The verdict alone can't express this
-	// (a pre-link account can still read `spotify-disconnected`), so gate on
-	// linkedSpotifyId explicitly; the sync control keeps a CTA of its own for
-	// this case (see useDashboardSync's `spotify-reconnect-required`).
-	if (linkedSpotifyId === null || !isActionable(verdict)) return null;
+	if (!showsReconnectBanner(verdict, linkedSpotifyId)) return null;
 
 	const onReconnect = () => {
 		setRepairing(true);

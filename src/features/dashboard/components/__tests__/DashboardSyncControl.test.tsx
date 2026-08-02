@@ -56,9 +56,11 @@ describe("DashboardSyncControl", () => {
 		expect(onAction).toHaveBeenCalledTimes(1);
 	});
 
-	it("renders a Sync CTA when ready and delegates clicks", async () => {
+	it("renders a sync CTA when ready and delegates clicks", async () => {
 		const { onAction } = renderState({ kind: "ready", lastSyncAt: null });
-		await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
+		await userEvent.click(
+			screen.getByRole("button", { name: /^sync new songs$/i }),
+		);
 		expect(onAction).toHaveBeenCalledTimes(1);
 	});
 

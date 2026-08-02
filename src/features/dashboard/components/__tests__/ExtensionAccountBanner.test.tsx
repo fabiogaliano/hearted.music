@@ -158,7 +158,7 @@ describe("ExtensionAccountBanner — unpaired", () => {
 });
 
 describe("ExtensionAccountBanner — spotify-disconnected, one-click fresh-install repair", () => {
-	it("a single Reconnect Spotify click opens Spotify *and* re-pairs — the fresh-install case (both credentials gone) resolves in one gesture, fixing the two-reconnects bug", async () => {
+	it("a single Reconnect click opens Spotify *and* re-pairs — the fresh-install case (both credentials gone) resolves in one gesture, fixing the two-reconnects bug", async () => {
 		const user = userEvent.setup();
 		renderBanner(
 			<ExtensionAccountBanner
@@ -168,9 +168,7 @@ describe("ExtensionAccountBanner — spotify-disconnected, one-click fresh-insta
 			/>,
 		);
 
-		await user.click(
-			screen.getByRole("button", { name: /reconnect spotify/i }),
-		);
+		await user.click(screen.getByRole("button", { name: /reconnect/i }));
 
 		expect(openSpy).toHaveBeenCalledTimes(1);
 		expect(mockPairExtension).toHaveBeenCalledTimes(1);

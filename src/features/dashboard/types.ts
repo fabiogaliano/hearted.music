@@ -61,5 +61,7 @@ export interface DashboardProps {
 	recentActivity: ActivityItem[];
 	matchPreviews: MatchPreview[];
 	stats: DashboardStats;
-	lastSyncText: string;
+	/** null when no sync job has ever completed — see the derivation in
+	 * routes/_authenticated/dashboard.tsx. */
+	lastSyncText: string | null;
 }

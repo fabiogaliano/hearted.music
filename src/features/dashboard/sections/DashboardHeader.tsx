@@ -1,29 +1,19 @@
-/** Welcome greeting with stats and the inline sync control. */
+/** Welcome greeting, with the session's connection state beside it. */
 
-import { ClientNumberFlow } from "@/features/matching/components/ClientNumberFlow";
-import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
+import type { ReactNode } from "react";
 import { fonts } from "@/lib/theme/fonts";
-import type { DashboardStats } from "../types";
 
 interface DashboardHeaderProps {
-	accountId: string;
-	stats: DashboardStats;
 	handle: string | null;
+	/** Sits where the library counts used to. A slot rather than a verdict prop:
+	 * Dashboard already subscribes to the connection, and the header has no other
+	 * reason to know the extension exists. Renders nothing while the connection
+	 * is healthy, which is the point — this corner only speaks up when something
+	 * needs the user. */
+	trailing?: ReactNode;
 }
 
-export function DashboardHeader({
-	accountId,
-	stats,
-	handle,
-}: DashboardHeaderProps) {
-	const { isEnrichmentRunning, enrichmentProgress } = useActiveJobs(accountId);
-
-	const analyzedPercent = enrichmentProgress
-		? enrichmentProgress.total > 0
-			? Math.round((enrichmentProgress.done / enrichmentProgress.total) * 100)
-			: 0
-		: stats.analyzedPercent;
-
+export function DashboardHeader({ handle, trailing }: DashboardHeaderProps) {
 	return (
 		<div className="mb-10 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
 			<div>
@@ -42,31 +32,7 @@ export function DashboardHeader({
 					</h2>
 				)}
 			</div>
-			<div
-				className="theme-text-muted flex flex-wrap items-center gap-x-2 gap-y-2 text-xs"
-				style={{ fontFamily: fonts.body }}
-			>
-				<span className="tabular-nums">
-					{stats.totalSongs}{" "}
-					<span className="tracking-widest uppercase">songs</span>
-				</span>
-				<span aria-hidden="true" className="opacity-40">
-					·
-				</span>
-				<span className="tabular-nums">
-					{stats.playlistCount}{" "}
-					<span className="tracking-widest uppercase">playlists</span>
-				</span>
-				<span aria-hidden="true" className="opacity-40">
-					·
-				</span>
-				<span className="tabular-nums">
-					<ClientNumberFlow value={analyzedPercent} suffix="%" continuous />{" "}
-					<span className="tracking-widest uppercase">
-						{isEnrichmentRunning ? "unlocking" : "unlocked"}
-					</span>
-				</span>
-			</div>
+			{trailing}
 		</div>
 	);
 }

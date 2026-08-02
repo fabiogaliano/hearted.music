@@ -8,7 +8,10 @@ import { useExtensionConnection } from "@/lib/extension/connection/useExtensionC
 import { hasNavigatedThisSession } from "@/lib/navigation/session-navigation";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
-import { ExtensionAccountBanner } from "./components/ExtensionAccountBanner";
+import {
+	ExtensionAccountBanner,
+	showsReconnectBanner,
+} from "./components/ExtensionAccountBanner";
 import { CreatePlaylistCTA } from "./sections/CreatePlaylistCTA";
 import { DashboardHeader } from "./sections/DashboardHeader";
 import { MatchReviewCTA } from "./sections/MatchReviewCTA";
@@ -30,6 +33,27 @@ export function Dashboard({
 	const [animateEntrance] = useState(() => !hasNavigatedThisSession());
 	const { verdict } = useExtensionConnection(linkedSpotifyId);
 
+	// One corner of the header, two mutually exclusive states — never both. A
+	// broken connection has no sync to report on, so the reconnect bar takes the
+	// slot outright; the last-sync line comes back the moment the verdict clears,
+	// which is exactly when it has something to say (syncing…, then a timestamp).
+	// A ternary rather than two conditionals so they can't both render or both
+	// vanish, and so useDashboardSync is only ever subscribed once.
+	const connectionCorner = showsReconnectBanner(verdict, linkedSpotifyId) ? (
+		<ExtensionAccountBanner
+			verdict={verdict}
+			linkedSpotifyId={linkedSpotifyId}
+			accountDisplayName={accountDisplayName}
+		/>
+	) : (
+		<DashboardSyncStatus
+			accountId={accountId}
+			lastSyncText={lastSyncText}
+			verdict={verdict}
+			linkedSpotifyId={linkedSpotifyId}
+		/>
+	);
+
 	return (
 		<StaggeredContent
 			className="mx-auto max-w-5xl"
@@ -37,13 +61,7 @@ export function Dashboard({
 			staggerDelay={0.06}
 			initialDelay={0.05}
 		>
-			<DashboardHeader accountId={accountId} stats={stats} handle={handle} />
-
-			<ExtensionAccountBanner
-				verdict={verdict}
-				linkedSpotifyId={linkedSpotifyId}
-				accountDisplayName={accountDisplayName}
-			/>
+			<DashboardHeader handle={handle} trailing={connectionCorner} />
 
 			<MatchReviewCTA
 				reviewCount={stats.reviewCount}
@@ -53,17 +71,7 @@ export function Dashboard({
 
 			<CreatePlaylistCTA />
 
-			<ActivityFeed
-				activities={recentActivity}
-				trailing={
-					<DashboardSyncStatus
-						accountId={accountId}
-						lastSyncText={lastSyncText}
-						verdict={verdict}
-						linkedSpotifyId={linkedSpotifyId}
-					/>
-				}
-			/>
+			<ActivityFeed activities={recentActivity} />
 		</StaggeredContent>
 	);
 }

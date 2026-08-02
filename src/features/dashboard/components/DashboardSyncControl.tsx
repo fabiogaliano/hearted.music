@@ -35,6 +35,26 @@ const ERROR_ACTION_LABELS: Record<ErrorAction, string> = {
 	install: "Install extension",
 };
 
+/**
+ * Whether this state renders a bare action button and nothing else.
+ *
+ * That is the only shape that can follow a timestamp without the two being read
+ * as one sentence: "2 hours ago · Sync new songs" parses as a fact and a
+ * control, but every other state here renders a status phrase, which
+ * concatenates — "Nothing synced yet up to date", "Never looking through your
+ * playlists". Those states describe the present, which makes the last-sync time
+ * both stale and redundant, so the caller drops it (see DashboardSyncStatus).
+ *
+ * Lives beside the switch that decides the shape, so the two can't drift.
+ */
+export function rendersActionOnly(state: DashboardSyncUiState): boolean {
+	return (
+		state.kind === "install-required" ||
+		state.kind === "spotify-reconnect-required" ||
+		state.kind === "ready"
+	);
+}
+
 function syncPercent(sync: ExtensionSyncState): number | null {
 	if (sync.total > 0) {
 		return Math.min(100, Math.round((sync.fetched / sync.total) * 100));
@@ -103,7 +123,10 @@ export function DashboardSyncControl({
 				</ActionButton>
 			);
 		case "ready":
-			return <ActionButton onClick={onAction}>Sync</ActionButton>;
+			// Named with its object: "Sync" alone is the only label here that says
+			// what the machine does rather than what the user gets. Works on a first
+			// run too, where every song is a new one.
+			return <ActionButton onClick={onAction}>Sync new songs</ActionButton>;
 		case "paused":
 			// The dashboard banner owns the reconnect action for every linked-account
 			// case (spotify-disconnected / mismatch / unpaired / unverifiable) — this

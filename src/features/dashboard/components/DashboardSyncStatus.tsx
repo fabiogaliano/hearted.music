@@ -9,11 +9,15 @@
 import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import { fonts } from "@/lib/theme/fonts";
 import { useDashboardSync } from "../hooks/useDashboardSync";
-import { DashboardSyncControl } from "./DashboardSyncControl";
+import {
+	DashboardSyncControl,
+	rendersActionOnly,
+} from "./DashboardSyncControl";
 
 interface DashboardSyncStatusProps {
 	accountId: string;
-	lastSyncText: string;
+	/** null when no sync has completed — the row then shows only the action. */
+	lastSyncText: string | null;
 	verdict: ConnectionVerdict;
 	/** null before first sync — narrows which reconnect CTA the control keeps
 	 * (see useDashboardSync's deriveState: pre-link has no banner to own it). */
@@ -32,15 +36,23 @@ export function DashboardSyncStatus({
 		linkedSpotifyId,
 	);
 
+	// Two independent reasons to say nothing, one derived state. Either the
+	// control is already reporting the present — and "when did this last happen"
+	// beside "what is happening now" reads as one sentence nobody wrote ("Nothing
+	// synced yet up to date") — or there is no completed sync to report at all.
+	const showsLastSync = lastSyncText !== null && rendersActionOnly(state);
+
 	return (
 		<div
 			className="theme-text-muted flex items-center gap-x-2 text-xs"
 			style={{ fontFamily: fonts.body }}
 		>
-			<span className="flex items-center gap-2" aria-live="polite">
-				<span className="theme-text-muted-bg size-1.5 rounded-full" />
-				{lastSyncText}
-			</span>
+			{showsLastSync && (
+				<span className="flex items-center gap-2">
+					<span className="theme-text-muted-bg size-1.5 rounded-full" />
+					{lastSyncText}
+				</span>
+			)}
 			<DashboardSyncControl state={state} onAction={onAction} />
 		</div>
 	);

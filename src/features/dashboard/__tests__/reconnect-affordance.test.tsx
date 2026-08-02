@@ -5,9 +5,12 @@
  * pairing, then a second "Reconnect Spotify" button in the sync control once
  * pairing settled — two sequential CTAs for one problem.
  *
- * Renders ExtensionAccountBanner and DashboardSyncStatus side by side, both
- * driven by the same verdict (as Dashboard.tsx wires them), and asserts the
- * dashboard never shows more than one reconnect-shaped button at a time.
+ * Renders ExtensionAccountBanner and DashboardSyncStatus together, both driven
+ * by the same verdict, and asserts the dashboard never shows more than one
+ * reconnect-shaped button at a time. Kept as siblings rather than mirroring
+ * Dashboard.tsx, which nests the status inside the banner for actionable
+ * verdicts: siblings are the arrangement where a second CTA could actually slip
+ * through, so this is the stricter of the two.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -152,9 +155,9 @@ describe("dashboard reconnect affordance — two-reconnects regression guard", (
 			/>,
 		);
 
-		// Only the control's own "Sync" CTA remains — no reconnect affordance.
+		// Only the control's own sync CTA remains — no reconnect affordance.
 		const buttons = screen.getAllByRole("button");
 		expect(buttons).toHaveLength(1);
-		expect(buttons[0]).toHaveTextContent(/^sync$/i);
+		expect(buttons[0]).toHaveTextContent(/^sync new songs$/i);
 	});
 });

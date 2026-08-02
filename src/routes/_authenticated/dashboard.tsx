@@ -34,9 +34,20 @@ function DashboardHome() {
 		matchPreviewsQueryOptions(session.accountId),
 	);
 
+	// Carries its own verb: this sits beside a "Sync new songs" button, where a
+	// bare "2 hours ago" leaves the reader to guess what happened then.
+	//
+	// null, not a phrase, when no sync has completed. It's tempting to write
+	// "Nothing synced yet" there, but lastSyncAt is null for three different
+	// situations — a sync in flight right now, one that failed, and a genuine
+	// never — and that phrase asserts the third while usually meaning the first:
+	// onboarding advances on the extension's own "done", which it sets on the 202
+	// from /api/extension/sync, before the worker has claimed the job. With
+	// nothing true to say about all three, the row says nothing and shows only
+	// the action.
 	const lastSyncText = stats.lastSyncAt
-		? formatRelativeTime(stats.lastSyncAt)
-		: "Never";
+		? `Synced ${formatRelativeTime(stats.lastSyncAt)}`
+		: null;
 
 	return (
 		<Dashboard

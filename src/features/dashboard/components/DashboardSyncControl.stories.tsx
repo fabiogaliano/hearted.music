@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import type { DashboardSyncUiState } from "@/features/dashboard/hooks/useDashboardSync";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
-import { DashboardSyncControl } from "./DashboardSyncControl";
+import {
+	DashboardSyncControl,
+	rendersActionOnly,
+} from "./DashboardSyncControl";
 
 export default {
 	title: "Dashboard/SyncControl",
@@ -11,31 +14,30 @@ export default {
 
 const noop = () => {};
 
-// Mirror DashboardHeader's right-hand metadata cluster so each state is judged
-// in the layout it actually ships in, across all four theme hues.
-function HeaderContext({ children }: { children: ReactNode }) {
+// Reproduce DashboardSyncStatus's own row, in the dashboard header's right
+// corner where it now lives — including its rule for when the last-sync phrase
+// appears at all. Hardcoding the timestamp onto every story was how "Never
+// looking through your playlists" stayed invisible here for so long: the states
+// that suppress it looked fine in Ladle and broken in the app.
+function HeaderContext({
+	state,
+	children,
+}: {
+	state: DashboardSyncUiState;
+	children: ReactNode;
+}) {
 	return (
 		<div style={{ padding: 48 }}>
 			<div
-				className="theme-text-muted flex flex-wrap items-center gap-x-2 gap-y-2 text-xs"
+				className="theme-text-muted flex items-center gap-x-2 text-xs"
 				style={{ fontFamily: fonts.body }}
 			>
-				<span className="tabular-nums">
-					1,280 <span className="tracking-widest uppercase">songs</span>
-				</span>
-				<span aria-hidden="true" className="opacity-40">
-					·
-				</span>
-				<span className="tabular-nums">
-					24 <span className="tracking-widest uppercase">playlists</span>
-				</span>
-				<span aria-hidden="true" className="mx-1 opacity-40">
-					|
-				</span>
-				<span className="flex items-center gap-2">
-					<span className="theme-text-muted-bg size-1.5 rounded-full" />
-					synced 2 hours ago
-				</span>
+				{rendersActionOnly(state) && (
+					<span className="flex items-center gap-2">
+						<span className="theme-text-muted-bg size-1.5 rounded-full" />
+						Synced 2 hours ago
+					</span>
+				)}
 				{children}
 			</div>
 		</div>
@@ -60,7 +62,7 @@ function makeSync(overrides: Partial<ExtensionSyncState>): ExtensionSyncState {
 
 function StoryFor(state: DashboardSyncUiState): Story {
 	const Component: Story = () => (
-		<HeaderContext>
+		<HeaderContext state={state}>
 			<DashboardSyncControl state={state} onAction={noop} />
 		</HeaderContext>
 	);
@@ -115,6 +117,16 @@ export const RetryableError = StoryFor({
 	message: "Sync couldn't finish: HTTP 500",
 	retryable: true,
 	action: "retry",
+});
+
+// The other half of ERROR_ACTION_LABELS — a failure whose fix is installing the
+// extension rather than retrying. Every other branch of the control had a story;
+// this label was the one nobody could look at.
+export const ErrorNeedsInstall = StoryFor({
+	kind: "error",
+	message: "The extension isn't available in this browser",
+	retryable: false,
+	action: "install",
 });
 
 export const SuccessJustSynced = StoryFor({

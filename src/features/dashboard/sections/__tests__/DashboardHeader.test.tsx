@@ -5,59 +5,37 @@
  * never falls back to display_name or email.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { render, screen } from "@/test/utils/render";
 import { DashboardHeader } from "../DashboardHeader";
 
-vi.mock("@/lib/hooks/useActiveJobs", () => ({
-	useActiveJobs: () => ({
-		isEnrichmentRunning: false,
-		enrichmentProgress: null,
-	}),
-}));
-
-// ClientNumberFlow is a client-only component; stub it to avoid SSR issues
-vi.mock("@/features/matching/components/ClientNumberFlow", () => ({
-	ClientNumberFlow: ({ value, suffix }: { value: number; suffix?: string }) => (
-		<span>{`${value}${suffix ?? ""}`}</span>
-	),
-}));
-
-const baseStats = {
-	totalSongs: 100,
-	analyzedPercent: 80,
-	playlistCount: 5,
-	reviewCount: 3,
-	matchOrientation: "song" as const,
-};
-
 describe("DashboardHeader — handle identity", () => {
 	it("renders @handle as the heading when handle is present", () => {
-		render(
-			<DashboardHeader accountId="acc-1" stats={baseStats} handle="fabio" />,
-		);
+		render(<DashboardHeader handle="fabio" />);
 		expect(screen.getByRole("heading", { name: "@fabio" })).toBeInTheDocument();
 	});
 
 	it("omits the heading entirely when handle is null — non-throwing", () => {
-		render(
-			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
-		);
+		render(<DashboardHeader handle={null} />);
 		expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
 	});
 
 	it("does not fall back to display_name or email when handle is null", () => {
-		render(
-			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
-		);
+		render(<DashboardHeader handle={null} />);
 		expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
 	});
 
-	it("still renders stats when handle is null", () => {
+	// The header's other half must survive a null handle: an account mid-setup is
+	// exactly when the reconnect banner in `trailing` matters most.
+	it("still renders trailing content when handle is null", () => {
 		render(
-			<DashboardHeader accountId="acc-1" stats={baseStats} handle={null} />,
+			<DashboardHeader
+				handle={null}
+				trailing={<button type="button">Reconnect Spotify</button>}
+			/>,
 		);
-		expect(screen.getByText("songs")).toBeInTheDocument();
-		expect(screen.getByText("playlists")).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /reconnect spotify/i }),
+		).toBeInTheDocument();
 	});
 });

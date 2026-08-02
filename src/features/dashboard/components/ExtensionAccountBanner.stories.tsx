@@ -1,5 +1,6 @@
 import type { Story } from "@ladle/react";
 import type { ReactNode } from "react";
+import { fonts } from "@/lib/theme/fonts";
 import {
 	type ActionableConnectionVerdict,
 	ExtensionAccountBannerView,
@@ -11,13 +12,33 @@ export default {
 
 const noop = () => {};
 
-// Sit the banner in the dashboard's max-w-5xl column so the -mx-4 full-bleed
-// edges and text wrapping are judged at the width it actually ships in, across
-// all four theme hues.
+// The banner ships in the dashboard header's right corner, opposite the page
+// title, so the stories reproduce that row: same max-w-5xl column, same
+// flex-wrap/justify-between, a real title on the left. Judged here, the things
+// that actually go wrong are visible — copy wrapping past max-w-md, the bar
+// growing past one row, and the point where it drops below the title.
 function DashboardContext({ children }: { children: ReactNode }) {
 	return (
 		<div style={{ padding: 48 }}>
-			<div className="mx-auto max-w-5xl px-4">{children}</div>
+			<div className="mx-auto max-w-5xl">
+				<div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+					<div>
+						<p
+							className="theme-text-muted text-xs tracking-widest uppercase"
+							style={{ fontFamily: fonts.body }}
+						>
+							Welcome back
+						</p>
+						<h2
+							className="theme-text mt-3 text-page-title font-extralight tracking-tight"
+							style={{ fontFamily: fonts.display }}
+						>
+							@fabio
+						</h2>
+					</div>
+					{children}
+				</div>
+			</div>
 		</div>
 	);
 }
