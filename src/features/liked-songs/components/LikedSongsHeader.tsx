@@ -1,5 +1,5 @@
 /**
- * The page masthead: eyebrow, title, count, and the Unlock entry point.
+ * The page masthead: title, count, and the Unlock entry point.
  *
  * Titles float on the page background — the studio does the same with its
  * playlist-name field — so the first thing that lands as a solid object is the
@@ -35,14 +35,7 @@ export function LikedSongsHeader({
 
 	return (
 		<header className="mb-6">
-			<p
-				className="theme-text-muted text-xs tracking-widest uppercase"
-				style={{ fontFamily: fonts.body }}
-			>
-				Library
-			</p>
-
-			<div className="mt-3 flex items-end justify-between gap-6">
+			<div className="flex items-end justify-between gap-6">
 				<h1
 					className="theme-text flex items-baseline gap-4 font-extralight tracking-tight leading-[0.95]"
 					style={{ fontFamily: fonts.display }}
