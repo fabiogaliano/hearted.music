@@ -1,7 +1,7 @@
 # Studio suggestion quality: private-beta roadmap
 
 Date: 2026-08-02  
-Status: private-beta product behavior settled; delivery step 1 shipped; remaining implementation specifications not started  
+Status: private-beta product behavior settled; delivery steps 1–2 done; session vibes cut after the step 2 probe; remaining implementation specifications not started  
 Related diagnosis: [`../studio-suggestion-quality.md`](../studio-suggestion-quality.md)
 
 ## Product context
@@ -13,7 +13,9 @@ This roadmap assumes:
 - Pinning means both **include this song** and **softly steer toward compatible songs**.
 - There is not enough usage volume to justify behavioral learning or experimentation infrastructure — but raw event collection is exempt, because events are the one asset that cannot be backfilled.
 
-The Studio is a **rediscovery** tool, not a recommender: every candidate is already a liked song, so it can never fail on likability — only on **fit** (wrong song for this playlist), **freshness** (same songs every session), and **trust** (a pick so wrong it reads as "the system doesn't get me"). Its emotional job is resurfacing corners of the library the user forgot they loved. This is why taste-mode clustering outranks learned preference at this scale.
+The Studio is a **rediscovery** tool, not a recommender: every candidate is already a liked song, so it can never fail on likability — only on **fit** (wrong song for this playlist), **freshness** (same songs every session), and **trust** (a pick so wrong it reads as "the system doesn't get me"). Its emotional job is resurfacing corners of the library the user forgot they loved.
+
+The step 2 probe showed the reference library does **not partition into taste areas**: it is one broad region plus a single recognizable satellite, not a set of islands. Coherent sessions therefore come from **anchoring** — pins, typed intent, seeds pulling locally coherent neighborhoods — not from partitioning the library into named vibes. Session vibes is cut from the delivery order (see revisit triggers).
 
 A typed matching intent does not change that: it turns curation into **retrieval over the same liked library**. The user declares the direction; the system finds the likes that match it. See "Decided intent-mode behavior" for how this flips the quality bar.
 
@@ -25,7 +27,6 @@ The selected private-beta features are:
 - Automatic artist-diversity balancing
 - A why-this-song score trace (dev-only)
 - Pin-based steering
-- Taste-mode clustering (session vibes)
 
 Genre-pill output calibration is explicitly deferred. First validate the existing pill profile/weight behavior after the missing-signal fix; add list-level calibration only if pills still fail to move the output clearly. Missing-genre backfill is likewise deferred unless private-beta validation shows niche songs remain unfairly excluded.
 
@@ -54,7 +55,7 @@ The budget deliberately breaks the mental model other tools teach ("this number 
 
 A typed intent flips the Studio from "system proposes a direction" to "user declares one." Decisions:
 
-- The intent supplies the session direction. The taste profile remains a secondary prior; once session vibes exist, a typed intent **overrides vibe selection** entirely.
+- The intent supplies the session direction. The taste profile remains a secondary prior.
 - **Precision against the brief outranks freshness.** Serving the same strong matches for the same brief in a later session is correct, not stale. Session-to-session rotation mechanisms never apply in intent mode.
 - **Shuffle varies songs within the brief; it never changes the direction.** "Take me somewhere else" semantics apply only to automatic sessions.
 - An intent is the highest-specificity request. Songs missing embeddings cannot be assessed against the brief and must sink under the neutral-weight policy rather than ride their remaining signals; they stay reachable through the suggestions tray.
@@ -79,21 +80,20 @@ The missing-signal neutral-weight policy from the diagnosis, plus the always-loa
 
 **Product outcome:** Declared preferences are trustworthy: a song missing genre or embedding evidence no longer receives extra audio weight merely because the evidence is absent, so genreless centroid-huggers lose their artificial advantage.
 
-**Follow-up:** Re-check the hip-hop-pill scenario on the reference account to confirm pills now visibly move the output before deciding anything about calibration (step 10).
+**Follow-up:** Re-check the hip-hop-pill scenario on the reference account to confirm pills now visibly move the output before deciding anything about calibration (step 9).
 
-### 2. Probe whether the library actually forms vibes
+### 2. Probe whether the library actually forms vibes — done, bet lost
 
-Before any session-vibes design work, test the assumption it stands on: that the library partitions into taste areas the user would recognize.
+Script: `scripts/analysis/vibe-probe.ts` · Report: `docs/tmp/vibe-probe-report.md` (reference account, 764 active liked songs).
 
-- Throwaway script in `scripts/`, run against the reference account in local Supabase; findings noted in `docs/tmp/`.
-- Cluster semantic embeddings and audio features separately with the parameters already decided in the diagnosis (k-means, smallest near-optimal k by silhouette, minimum cluster sizes).
-- Print each cluster's medoid plus its five nearest songs and review manually.
+Result against the pass bar (≥3 clusters in ≥1 modality, ~70% recognizable):
 
-**Success criteria:** at least 3 clusters in at least one modality, with roughly 70% of clusters recognizable as a genuine taste area. Below that, the single-profile fallback is the main path and step 9 must be re-shaped before it is specified.
+- **Semantic:** no meaningful clustering — best size-eligible silhouette 0.086 at k=2, below the abandon threshold. The library is one 565-song blob plus one genuine ~100-song satellite (instrumental/ambient electronic).
+- **Sonic:** only a lopsided k=2 (97 vs 655, silhouette 0.450) whose small cluster is not recognizable as a taste area.
 
-**Why first:** Session vibes is the roadmap's largest and most experimental item, and this is an hour of scripting that either de-risks it or resizes it.
+**Consequence:** session vibes is cut from the delivery order. The single-profile path stays the default, freshness comes from seeded variation (step 4), and coherent direction comes from anchoring (pins, typed intent).
 
-**Scope:** Tiny; no product code.
+**What the failure does not indict:** clustering measures global separation; pins and intent use local neighborhoods, and the report's neighbor lists are locally coherent (the ambient-electronic songs found each other). Mild positive evidence for the embeddings that step 8 depends on.
 
 ### 3. Log studio actions (collection only)
 
@@ -115,12 +115,12 @@ Decided behavior:
 - The action is labeled **Shuffle playlist**. It rerolls the seed, intentionally choosing new songs.
 - Genre/filter edits do not reroll the seed.
 - Existing Refresh suggestions remains the way to explore deeper candidates without rerolling.
-- Shuffle preserves explicit pins and dismissed-song exclusions. Until the automatic-song budget (step 5) lands it refills to the cap as today; afterwards it also preserves the current automatic-slot count. Once session vibes (step 9) land, the seed additionally selects the session vibe, making Shuffle a "take me somewhere else" action — in automatic sessions only; under a typed intent, Shuffle varies songs within the brief.
+- Shuffle preserves explicit pins and dismissed-song exclusions. Until the automatic-song budget (step 5) lands it refills to the cap as today; afterwards it also preserves the current automatic-slot count. Under a typed intent, Shuffle varies songs within the brief, never the direction.
 - **Shuffle must feel instant** (sub-~400ms perceived). Ranking is a pure function of (library, config, seed), so the next seed's draft can be prefetched before the button is pressed. A slow Shuffle breaks the exploratory loop regardless of ranking quality.
 
-**Why here:** This is the cheap fix for the "same songs every session" half of the original complaint, and it works over the current centroid ranking — the sampling design was already decided in diagnosis round 1. Shipping it early also answers a sizing question for step 9: how much of the felt problem is staleness rather than centroid-averageness.
+**Why here:** This is the cheap fix for the "same songs every session" half of the original complaint, and it works over the current centroid ranking — the sampling design was already decided in diagnosis round 1. With session vibes cut, sampling (plus the served-recently escalation dial below) is the freshness mechanism, not a stopgap.
 
-**Product outcome:** Fresh, coherent sessions now, without waiting on the clustering bet.
+**Product outcome:** Fresh, coherent sessions now.
 
 **Tradeoff:** The result is no longer the strict top-N by score; top-slot protection and modest temperature keep it curated.
 
@@ -166,7 +166,7 @@ Decided artist-scoped behavior:
 
 Surface each tracklist song's score breakdown in the Studio behind a dev flag: taste-profile proximity, pill contribution, pin similarity, artist penalty, sampling noise, and missing-signal effects, as the inspectable addends they already are in the fused score.
 
-**Why here:** From pin steering onward, up to four steering forces act on one list (vibe, pills, pins, artist scope). When a surprising song appears, attribution must be a glance, not a debugging session. At this scale, explainability is the evaluation tooling — the maintainer is the reviewer.
+**Why here:** From pin steering onward, up to four steering forces act on one list (intent, pills, pins, artist scope). When a surprising song appears, attribution must be a glance, not a debugging session. At this scale, explainability is the evaluation tooling — the maintainer is the reviewer.
 
 **Product outcome:** Every "this list feels off" moment during private-beta review resolves to a named cause; ranking regressions become visible the day they land.
 
@@ -185,7 +185,7 @@ Decided behavior:
 - When pins differ, a candidate may fit any one pin; combine per-pin similarities with a soft maximum rather than forcing candidates toward a blended middle.
 - Never average heterogeneous pin embeddings into one query vector.
 
-**Why before vibes:** Pins are direct session evidence, and pin steering is a medium-cost probe of the same asset session vibes bets on at large cost — whether the semantic embeddings encode musical compatibility rather than lyric-topic overlap. If pin steering feels wrong, that is decisive information about step 9 before its spec is written.
+**Why it carries more weight after the probe:** The library's taste areas are reachable by anchoring, not partitioning — pin steering is that anchor mechanism, so it is now the primary way to get a coherent themed session without typing an intent. It also remains the live test of whether the semantic embeddings encode musical compatibility rather than lyric-topic overlap; the probe's locally coherent neighbor lists suggest they do.
 
 **Product outcome:** Users can communicate “include this and build compatibly around it” without writing an intent.
 
@@ -193,46 +193,7 @@ Decided behavior:
 
 **Scope:** Medium; embedding plumbing already shipped in step 1.
 
-### 9. Replace the single library centroid with session vibes
-
-Represent a varied library through several coherent taste areas rather than one global average, then select one coherent vibe for each fresh Studio visit. A vibe may arise from genre, sonic character, semantic mood/theme, or agreement across those signals; it does not need a user-facing label. Shape this step with the results of the step 2 probe.
-
-Decided behavior:
-
-- One Studio session builds one coherent automatic playlist rather than mixing unrelated taste modes deliberately.
-- A fresh Studio visit may select a different vibe from the same library.
-- A typed intent overrides vibe selection for the session (see "Decided intent-mode behavior").
-- Semantic meaning and audio sound are independent valid evidence. A song can fit a vibe through either, with bounded modality contributions so neither automatically wins every conflict.
-- The selected vibe remains deterministic within the session and has no explicit user-facing label; the songs communicate the direction.
-- Fresh visits favor larger taste areas while still giving meaningful smaller vibes a chance.
-- Avoid only the immediately previous vibe by retaining its opaque id locally and rerolling once. This is local continuity, not behavioral analytics.
-- Genre and hard-filter changes adapt the vibe deterministically. Preserve it where it remains valid; if it no longer fits the eligible set, choose the closest valid vibe rather than switching randomly.
-
-Technical direction:
-
-- Cluster semantic embeddings and audio features separately because their scales and missingness differ.
-- Keep the number of candidate vibes small; local storage retains only the last selected opaque vibe id.
-- Use the session seed to select a candidate vibe and score songs against its relevant centers rather than the global mean.
-- Give meaningful smaller vibes a real chance of selection instead of choosing only the library's largest cluster.
-- Recompute synchronously after a material change (approximately 5% of the library or usable feature coverage) or a model/clustering-config version change, with a simple cache keyed by library state and config version. At ≤1k songs clustering is milliseconds of in-memory work — no versioned vibe sets, no serve-while-rebuilding, no atomic replacement; earn that machinery only if recompute latency ever becomes noticeable.
-- Fall back to one conventional profile when the library is too small or sparse for meaningful clustering.
-
-**Why last among the ranking changes:** The global centroid is the fundamental default-path defect, but this is also the largest and most experimental item. By this point the probe (step 2) has validated the clusters, pin steering (step 8) has validated the embeddings, and seeded variation (step 4) has shown how much of the complaint staleness alone explains.
-
-**Product outcome:** Better playlists with no pills, intent, or pins; each visit explores a coherent, genuine area of the user's taste — the rediscovery job served directly.
-
-**Tradeoffs:** An automatically inferred vibe may occasionally feel surprising, and a stable session requires careful seed and configuration semantics.
-
-**Alternatives:**
-
-- Genre-only vibes are simpler and explainable but depend on incomplete metadata.
-- A random liked-song anchor creates variety cheaply but is unstable and can overfit one song.
-- Mixing several modes in every playlist represents the whole library but can sacrifice listening coherence.
-- Keeping the centroid and adding randomness varies the output without fixing relevance.
-
-**Scope:** Large; requires an OpenSpec change and fixture-based evaluation before implementation.
-
-### 10. Fill genre gaps only when validation shows a remaining problem
+### 9. Fill genre gaps only when validation shows a remaining problem
 
 After missing evidence becomes neutral, missing genres no longer create an unfair ranking advantage. Add deterministic cross-track artist fallback only if manual review shows that good niche songs are still systematically excluded.
 
@@ -265,10 +226,8 @@ Review both computed invariants and the actual tracklists:
 - Missing evidence never increases another signal's weight in preference-aware modes.
 - Pills visibly change output composition.
 - Pins pull compatible songs closer without collapsing the playlist around one anchor.
-- Each session forms one coherent vibe without the global centroid dominating.
-- A fresh seed can select another genuine vibe; the same seed replays the same choice.
-- Genre/filter edits adapt deterministically without random vibe changes.
-- Shuffle selects a new vibe and new songs in automatic sessions; under an intent it stays on the brief.
+- The same seed replays the same selection; a fresh seed changes it. Genre/filter edits rerank without rerolling the seed.
+- Shuffle selects new songs in automatic sessions; under an intent it stays on the brief.
 - Under a typed intent, songs missing embeddings never rank above verified matches.
 
 Use fixed fixtures and local-account replay for regressions. Musical judgment remains a manual product review at this stage; the why-this-song trace (step 7) is the supporting tooling.
@@ -276,6 +235,8 @@ Use fixed fixtures and local-account replay for regressions. Musical judgment re
 This plan assumes regular real Studio sessions. If usage — not quality — turns out to be the bottleneck, nothing in the product currently cues a visit; the lightest fix is a timing hook such as "new liked songs since your last session" as the Studio entry point. Do not build it preemptively.
 
 ## Revisit triggers
+
+**Session vibes** (partition-based taste areas) is cut on the step 2 probe's evidence, not on principle. Re-run `scripts/analysis/vibe-probe.ts` before reconsidering it — worth doing if the library grows or shifts substantially, or if a new embedding model ships. Until a re-run passes the original bar (≥3 recognizable clusters in ≥1 modality), coherent session direction comes from anchoring: pins, typed intent, and seeds.
 
 Only reconsider interpreting the action log — feedback priors, learned personalization — when at least one is true:
 
