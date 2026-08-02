@@ -5,13 +5,16 @@ const ROW_GAP = 20;
 
 // Used until the client measures real row heights (SSR / first paint) and as the
 // fallback for the empty state, where there's no row to slice.
-const FALLBACK_MAX_HEIGHT = "clamp(260px, 42dvh, 560px)";
+const FALLBACK_MAX_HEIGHT = "clamp(300px, 56dvh, 720px)";
 
 // Target cap for the list height before it's snapped to a half-row. dvh-relative
-// so taller screens show more rows; clamped so neither extreme gets silly.
+// so taller screens show more rows; clamped so neither extreme gets silly. The
+// fraction is deliberately larger than the column's own min-height reserve: the
+// sibling review subject usually stretches this column past that floor, and a
+// smaller cap left the list ending in dead space well above the controls.
 function baseCapPx() {
-	if (typeof window === "undefined") return 360;
-	return Math.min(560, Math.max(260, window.innerHeight * 0.42));
+	if (typeof window === "undefined") return 480;
+	return Math.min(720, Math.max(300, window.innerHeight * 0.56));
 }
 
 // Shared scroll body for the two matching review columns — the same "Best
