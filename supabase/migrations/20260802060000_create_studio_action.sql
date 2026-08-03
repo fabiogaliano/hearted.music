@@ -18,3 +18,8 @@ CREATE INDEX idx_studio_action_account_song
 CREATE INDEX idx_studio_action_session ON public.studio_action(session_id);
 
 ALTER TABLE public.studio_action ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "studio_action_deny_all"
+  ON public.studio_action
+  FOR ALL
+  USING (false);
