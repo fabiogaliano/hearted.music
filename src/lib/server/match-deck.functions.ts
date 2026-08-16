@@ -825,7 +825,7 @@ async function resolveDeckCard(
 		event: "match_deck_materialize_on_read",
 		operation: "capture_match_deck_materialize_on_read",
 		properties: {
-			itemId,
+			item_id: itemId,
 			recovered,
 			orientation: materialized?.orientation ?? null,
 		},

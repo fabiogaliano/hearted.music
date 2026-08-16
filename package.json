@@ -22,6 +22,7 @@
 		"test:e2e": "bun tests/e2e/auth.e2e.ts",
 		"typecheck": "tsgo --noEmit",
 		"typecheck:worker": "tsgo -p src/worker/tsconfig.json --noEmit",
+		"typecheck:control-panel": "tsgo -p control-panel/tsconfig.json --noEmit",
 		"typecheck:legacy": "tsc --noEmit",
 		"typecheck:legacy:worker": "tsc -p src/worker/tsconfig.json --noEmit",
 		"check": "biome check",

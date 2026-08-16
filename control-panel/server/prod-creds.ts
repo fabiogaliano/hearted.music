@@ -170,3 +170,27 @@ export function loadCloudEnvIntoProcess(): void {
 		process.env[key] = value;
 	}
 }
+
+export interface PostHogCreds {
+	apiKey: string | null;
+	projectId: string;
+	apiHost: string;
+}
+
+export function getPostHogCreds(): PostHogCreds {
+	const env = readEnv(
+		["POSTHOG_PERSONAL_API_KEY", "POSTHOG_PROJECT_ID", "POSTHOG_API_HOST"],
+		[".env.cloud.local", ".env.cloud", ".env.local", ".env"],
+	);
+	const apiKey =
+		env.POSTHOG_PERSONAL_API_KEY ?? process.env.POSTHOG_PERSONAL_API_KEY ?? null;
+	const projectId =
+		env.POSTHOG_PROJECT_ID ?? process.env.POSTHOG_PROJECT_ID ?? "185471";
+	const apiHost = (
+		env.POSTHOG_API_HOST ??
+		process.env.POSTHOG_API_HOST ??
+		"https://eu.posthog.com"
+	).replace(/\/+$/, "");
+
+	return { apiKey: apiKey || null, projectId, apiHost };
+}

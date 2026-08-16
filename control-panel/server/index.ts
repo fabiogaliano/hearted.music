@@ -106,18 +106,54 @@ import {
 } from "./release-year-reviews";
 import { getActionRun } from "./local-store/action-runs";
 
+import {
+	getTelemetryActivity,
+	getTelemetryCoverage,
+	getTelemetryEconomics,
+	getTelemetryEngagement,
+	getTelemetryFunnel,
+	getTelemetrySources,
+	getTelemetrySummary,
+} from "./telemetry-reports";
+
 const PORT = Number(process.env.CP_API_PORT ?? 4319);
 
-const CORS = {
-	"Access-Control-Allow-Origin": "*",
-	"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-	"Access-Control-Allow-Headers": "Content-Type",
-};
+export function getAllowedOrigins(): Set<string> {
+	const webPort = Number(process.env.CP_WEB_PORT ?? 4318);
+	const origins = new Set<string>([
+		`http://localhost:${webPort}`,
+		`http://127.0.0.1:${webPort}`,
+	]);
+	if (process.env.CP_ALLOWED_ORIGIN) {
+		origins.add(process.env.CP_ALLOWED_ORIGIN);
+	}
+	return origins;
+}
 
-function json(body: unknown, status = 200): Response {
+export function isAllowedOrigin(origin: string | null | undefined): boolean {
+	if (!origin) return false;
+	return getAllowedOrigins().has(origin);
+}
+
+export function getCorsHeaders(req?: Request): Record<string, string> {
+	const origin = req?.headers.get("Origin") ?? "";
+	const allowed = isAllowedOrigin(origin);
+	const webPort = Number(process.env.CP_WEB_PORT ?? 4318);
+	const defaultOrigin = `http://localhost:${webPort}`;
+	const allowOrigin = allowed ? origin : defaultOrigin;
+
+	return {
+		"Access-Control-Allow-Origin": allowOrigin,
+		"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+		"Access-Control-Allow-Headers": "Content-Type",
+		"Access-Control-Allow-Credentials": "true",
+	};
+}
+
+export function json(body: unknown, status = 200, req?: Request): Response {
 	return new Response(JSON.stringify(body), {
 		status,
-		headers: { "Content-Type": "application/json", ...CORS },
+		headers: { "Content-Type": "application/json", ...getCorsHeaders(req) },
 	});
 }
 
@@ -149,30 +185,69 @@ const METRIC_HANDLERS: Record<string, () => Promise<unknown>> = {
 // still work but every mutating route returns 503 (recordAction enforces it).
 await initLocalStore();
 
-const server = Bun.serve({
-	port: PORT,
-	idleTimeout: 60,
-	async fetch(req) {
-		const url = new URL(req.url);
-		const path = url.pathname;
-		// The UI's "Refresh" button appends ?fresh=1 to bypass the read cache.
-		const fresh = url.searchParams.get("fresh") === "1";
+export async function handleRequest(req: Request): Promise<Response> {
+	const url = new URL(req.url);
+	const path = url.pathname;
+	// The UI's "Refresh" button appends ?fresh=1 to bypass the read cache.
+	const fresh = url.searchParams.get("fresh") === "1";
 
-		if (req.method === "OPTIONS") {
-			return new Response(null, { status: 204, headers: CORS });
+	if (req.method === "OPTIONS") {
+		return new Response(null, { status: 204, headers: getCorsHeaders(req) });
+	}
+
+	if (req.method === "POST") {
+		const origin = req.headers.get("Origin");
+		if (origin && !isAllowedOrigin(origin)) {
+			return json({ error: "Forbidden origin" }, 403, req);
 		}
+	}
 
-		try {
-			if (path === "/api/health") {
-				return json({
+	try {
+		if (path === "/api/health") {
+			return json(
+				{
 					ok: true,
 					ref: prodRef(),
 					historyReady: isLocalStoreReady(),
-				});
-			}
+				},
+				200,
+				req,
+			);
+		}
+
+		// Telemetry endpoints
+		if (path === "/api/telemetry/sources" && req.method === "GET") {
+			return json(await getTelemetrySources(fresh), 200, req);
+		}
+		if (path === "/api/telemetry/summary" && req.method === "GET") {
+			const range = url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetrySummary(range, fresh), 200, req);
+		}
+		if (path === "/api/telemetry/funnel" && req.method === "GET") {
+			const cohort =
+				url.searchParams.get("cohort") ?? url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetryFunnel(cohort, fresh), 200, req);
+		}
+		if (path === "/api/telemetry/activity" && req.method === "GET") {
+			const range = url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetryActivity(range, fresh), 200, req);
+		}
+		if (path === "/api/telemetry/engagement" && req.method === "GET") {
+			const range = url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetryEngagement(range, fresh), 200, req);
+		}
+		if (path === "/api/telemetry/economics" && req.method === "GET") {
+			const range = url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetryEconomics(range, fresh), 200, req);
+		}
+		if (path === "/api/telemetry/coverage" && req.method === "GET") {
+			const range = url.searchParams.get("range") ?? "30d";
+			return json(await getTelemetryCoverage(range, fresh), 200, req);
+		}
+
 
 			if (path === "/api/history" && req.method === "GET") {
-				return json(historyPage(url));
+				return json(historyPage(url), 200, req);
 			}
 			if (path === "/api/history/summary" && req.method === "GET") {
 				return json(historySummary());
@@ -1116,21 +1191,35 @@ const server = Bun.serve({
 			if (err instanceof HttpError) {
 				return json({ error: err.message }, err.status);
 			}
+			if (err instanceof RangeError) {
+				return json({ error: err.message }, 400);
+			}
 			const message = err instanceof Error ? err.message : String(err);
 			console.error(`[control-panel] ${path}:`, message);
 			return json({ error: message }, 500);
 		}
-	},
-});
+	}
 
-console.log(`▶ control-panel API → http://localhost:${server.port}`);
-try {
-	console.log(`  prod ref: ${prodRef()}`);
-	// Open the pooler connection now so the first dashboard load doesn't pay the
-	// cold TLS handshake on top of its queries.
-	void warm();
-} catch (err) {
-	console.error(
-		`  ⚠ prod creds not resolved yet: ${err instanceof Error ? err.message : err}`,
-	);
+export const server =
+	typeof Bun !== "undefined"
+		? Bun.serve({
+				port: PORT,
+				hostname: "127.0.0.1",
+				idleTimeout: 60,
+				fetch: handleRequest,
+			})
+		: null;
+
+if (server) {
+	console.log(`▶ control-panel API → http://localhost:${server.port}`);
+	try {
+		console.log(`  prod ref: ${prodRef()}`);
+		// Open the pooler connection now so the first dashboard load doesn't pay the
+		// cold TLS handshake on top of its queries.
+		void warm();
+	} catch (err) {
+		console.error(
+			`  ⚠ prod creds not resolved yet: ${err instanceof Error ? err.message : err}`,
+		);
+	}
 }

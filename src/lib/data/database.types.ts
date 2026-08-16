@@ -101,6 +101,35 @@ export type Database = {
 					},
 				];
 			};
+			account_activity_day: {
+				Row: {
+					account_id: string;
+					activity_date: string;
+					first_seen_at: string;
+					last_seen_at: string;
+				};
+				Insert: {
+					account_id: string;
+					activity_date?: string;
+					first_seen_at?: string;
+					last_seen_at?: string;
+				};
+				Update: {
+					account_id?: string;
+					activity_date?: string;
+					first_seen_at?: string;
+					last_seen_at?: string;
+				};
+				Relationships: [
+					{
+						foreignKeyName: "account_activity_day_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
+				];
+			};
 			account_billing: {
 				Row: {
 					account_id: string;

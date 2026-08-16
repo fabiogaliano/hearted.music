@@ -53,7 +53,11 @@ function withFresh(path: string): string {
 	return `${path}${path.includes("?") ? "&" : "?"}fresh=1`;
 }
 
-export function useApi<T>(path: string, refreshKey = 0): QueryState<T> {
+export function useApi<T>(
+	path: string,
+	refreshKey = 0,
+	enabled = true,
+): QueryState<T> {
 	const seed = responseCache.get(path) as CachedResponse<T> | undefined;
 	const [data, setData] = useState<T | null>(seed?.data ?? null);
 	const [error, setError] = useState<string | null>(null);
@@ -71,6 +75,13 @@ export function useApi<T>(path: string, refreshKey = 0): QueryState<T> {
 	// re-run triggers, read in the body to decide whether to force a fresh fetch.
 	useEffect(() => {
 		let cancelled = false;
+		if (!enabled) {
+			setLoading(false);
+			setRefreshing(false);
+			return () => {
+				cancelled = true;
+			};
+		}
 
 		const tickForced = tick !== lastTick.current;
 		lastTick.current = tick;
@@ -116,7 +127,7 @@ export function useApi<T>(path: string, refreshKey = 0): QueryState<T> {
 		return () => {
 			cancelled = true;
 		};
-	}, [path, tick, refreshKey]);
+	}, [path, tick, refreshKey, enabled]);
 
 	return { data, error, loading, refreshing, fetchedAt, refetch };
 }

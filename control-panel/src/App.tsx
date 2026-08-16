@@ -2,6 +2,7 @@ import {
 	ArrowLeftIcon,
 	ArrowsClockwiseIcon,
 	CalendarBlankIcon,
+	ChartLineUpIcon,
 	ClockCounterClockwiseIcon,
 	CreditCardIcon,
 	EnvelopeSimpleIcon,
@@ -48,6 +49,7 @@ import { LyricsReviewSection } from "./sections/LyricsReviewSection";
 import { OperationsSection } from "./sections/OperationsSection";
 import { Overview } from "./sections/Overview";
 import { ReleaseYearSection } from "./sections/ReleaseYearSection";
+import { TelemetrySection } from "./sections/TelemetrySection";
 import { UserDetail } from "./sections/UserDetail";
 import { UsersSection } from "./sections/UsersSection";
 
@@ -83,6 +85,12 @@ const NAV: NavEntry[] = [
 		label: "Overview",
 		icon: GaugeIcon,
 		render: (k) => <Overview refreshKey={k} />,
+	},
+	{
+		key: "telemetry",
+		label: "Telemetry",
+		icon: ChartLineUpIcon,
+		render: (k) => <TelemetrySection refreshKey={k} />,
 	},
 	{
 		key: "users",

@@ -52,7 +52,7 @@ function LoginPage() {
 		setError(null);
 		setNotice(null);
 		setLoading("google");
-		analytics.capture("user_logged_in", { provider: "google" });
+		analytics.capture("login_attempted", { provider: "google" });
 		try {
 			await signIn.social({
 				provider: "google",
@@ -77,7 +77,7 @@ function LoginPage() {
 		setLoading("credentials");
 
 		if (submittedMode === "signup") {
-			analytics.capture("user_signed_up", { provider: "credentials" });
+			analytics.capture("signup_attempted", { provider: "credentials" });
 			const { error: err } = await signUp.email({
 				email,
 				password,
@@ -90,6 +90,7 @@ function LoginPage() {
 				setLoading(null);
 				return;
 			}
+			analytics.capture("signup_succeeded", { provider: "credentials" });
 			// requireEmailVerification means sign-up creates the account but
 			// issues no session — the user must click the verification link
 			// before they can sign in. Show a dedicated confirmation panel (no
@@ -102,7 +103,7 @@ function LoginPage() {
 			return;
 		}
 
-		analytics.capture("user_logged_in", { provider: "credentials" });
+		analytics.capture("login_attempted", { provider: "credentials" });
 		const { error: err } = await signIn.email({
 			email,
 			password,
@@ -114,6 +115,7 @@ function LoginPage() {
 			setLoading(null);
 			return;
 		}
+		analytics.capture("login_succeeded", { provider: "credentials" });
 		navigate({ to: "/dashboard" });
 	};
 

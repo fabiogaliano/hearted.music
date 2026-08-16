@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export const SECTION_KEYS = [
 	"overview",
+	"telemetry",
 	"users",
 	"library",
 	"enrichment",

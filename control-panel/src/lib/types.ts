@@ -357,3 +357,181 @@ export interface ActionRunTodaySummary {
 	dryRuns: number;
 	failedOrPartial: number;
 }
+
+export type TelemetryPreset = "24h" | "7d" | "14d" | "30d" | "90d" | "launch";
+
+export type TelemetrySourceStatus =
+	| { status: "available"; fetchedAt: string; latestObservedAt: string | null }
+	| { status: "quiet"; fetchedAt: string; latestObservedAt: string | null }
+	| { status: "unconfigured"; message: string }
+	| { status: "unavailable"; message: string };
+
+export interface TelemetryEnvelope<T> {
+	generatedAt: string;
+	range: {
+		from: string;
+		to: string;
+		timezone: "UTC";
+		preset: string;
+	};
+	data: T;
+	sources: {
+		supabase: TelemetrySourceStatus;
+		posthog: TelemetrySourceStatus;
+	};
+	caveats: string[];
+}
+
+export interface TelemetrySummaryData {
+	accountsCreated: {
+		current: number;
+		previous: number;
+		deltaPercent: number | null;
+	};
+	activatedAccounts: {
+		current: number;
+		previous: number;
+		deltaPercent: number | null;
+	};
+	current7DayActive: number;
+	engagedMatchingAccounts: {
+		current: number;
+		previous: number;
+		deltaPercent: number | null;
+	};
+	paidAccounts: {
+		current: number;
+		previous: number;
+		deltaPercent: number | null;
+	};
+	llmSpend: {
+		currentCostUsd: number;
+		previousCostUsd: number;
+		deltaPercent: number | null;
+	};
+}
+
+export interface FunnelStageMetric {
+	stageId: string;
+	name: string;
+	count: number;
+	conversionFromPrevious: number | null;
+	conversionFromSignup: number | null;
+	medianSeconds: number | null;
+	p75Seconds: number | null;
+	stuckCount: number;
+	limitationNote?: string;
+}
+
+export interface FunnelCohortReport {
+	cohortRange: { from: string; to: string };
+	totalSignups: number;
+	hasSufficientData: boolean;
+	stages: FunnelStageMetric[];
+}
+
+export interface TelemetryActivityData {
+	dailyActive: { date: string; count: number | null; isComplete: boolean }[];
+	current24hActive: number;
+	currentWau: number;
+	currentMau: number;
+	cohortRetention: {
+		cohortWeek: string;
+		signups: number;
+		week1Active: number | null;
+		week1Rate: number | null;
+		week4Active: number | null;
+		week4Rate: number | null;
+		isWeek1Mature: boolean;
+		isWeek4Mature: boolean;
+	}[];
+	observedWebActivity: {
+		visitors: number | null;
+		pageviews: number | null;
+		sessions: number | null;
+		latestObservedAt: string | null;
+	};
+	routeUsage: { pathname: string; count: number }[];
+}
+
+export interface TelemetryEngagementData {
+	sessionsStarted: number;
+	sessionsCompleted: number;
+	suggestionsServed: number;
+	added: number;
+	dismissed: number;
+	skipped: number;
+	totalDecisions: number;
+	engagedAccounts: number;
+	matchSessions: number;
+	explicitDecisionAddRate: number | null;
+	servedAddRate: number | null;
+	decisionsPerAccount: number | null;
+	orientationSplit: {
+		song: number;
+		playlist: number;
+	};
+	timeToFirstDecisionSeconds: number | null;
+	timeToFirstAddSeconds: number | null;
+}
+
+export interface TelemetryEconomicsData {
+	totalCostUsd: number;
+	totalCalls: number;
+	totalInputTokens: number;
+	totalOutputTokens: number;
+	previousPeriodCostUsd: number;
+	costDeltaPercent: number | null;
+	byFunction: {
+		functionId: string;
+		calls: number;
+		costUsd: number;
+		inputTokens: number;
+		outputTokens: number;
+	}[];
+	byModel: {
+		model: string;
+		calls: number;
+		costUsd: number;
+	}[];
+	byProvider: {
+		provider: string;
+		calls: number;
+		costUsd: number;
+	}[];
+	dailySpend: {
+		date: string;
+		costUsd: number;
+		calls: number;
+	}[];
+	costPerAnalyzedSong: number | null;
+	costPerActivatedAccount: number | null;
+	costPerPaidAccount: number | null;
+	activeSubscriptions: number;
+	newPaidActivations: number;
+	previousPaidActivations: number;
+}
+
+export interface EventCoverageRow {
+	id: string;
+	name: string;
+	canonicalSource: string;
+	posthogEventName: string;
+	dbCount: number;
+	posthogCount: number | null;
+	dbDistinctAccounts: number;
+	posthogDistinctAccounts: number | null;
+	coveragePercent: number | null;
+	dbLatestTimestamp: string | null;
+	posthogLatestTimestamp: string | null;
+	isLowVolume: boolean;
+	semanticNote: string;
+}
+
+export interface TelemetryCoverageData {
+	rows: EventCoverageRow[];
+	freshness: {
+		dbLatest: string | null;
+		posthogLatest: string | null;
+	};
+}
