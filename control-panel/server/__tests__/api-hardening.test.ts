@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("../db", () => ({
+	prodRef: () => {
+		throw new Error("Production credentials are unavailable");
+	},
+	warm: vi.fn(),
+}));
+
 import {
 	getAllowedOrigins,
 	handleRequest,
@@ -18,7 +26,7 @@ describe("Control Panel API Hardening", () => {
 		expect(isAllowedOrigin("http://malicious.website.com")).toBe(false);
 	});
 
-	it("returns 200 and no sensitive tokens on /api/health", async () => {
+	it("returns health without database credentials or sensitive tokens", async () => {
 		const req = new Request("http://127.0.0.1:4319/api/health", {
 			method: "GET",
 		});
@@ -27,7 +35,7 @@ describe("Control Panel API Hardening", () => {
 
 		const data = (await res.json()) as Record<string, unknown>;
 		expect(data.ok).toBe(true);
-		expect(typeof data.ref).toBe("string");
+		expect(data.ref).toBe("(unavailable)");
 		expect(typeof data.historyReady).toBe("boolean");
 
 		// Crucial security invariant: no tokens, secrets, or keys in health output

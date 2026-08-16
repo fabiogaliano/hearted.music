@@ -157,6 +157,14 @@ export function json(body: unknown, status = 200, req?: Request): Response {
 	});
 }
 
+function healthRef(): string {
+	try {
+		return prodRef();
+	} catch {
+		return "(unavailable)";
+	}
+}
+
 // The non-sensitive slice of an operation's input recorded in action history.
 function operationInputSummary(
 	input: Record<string, unknown>,
@@ -207,7 +215,7 @@ export async function handleRequest(req: Request): Promise<Response> {
 			return json(
 				{
 					ok: true,
-					ref: prodRef(),
+					ref: healthRef(),
 					historyReady: isLocalStoreReady(),
 				},
 				200,
