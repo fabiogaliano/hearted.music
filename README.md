@@ -466,6 +466,7 @@ and `/api/pulse-s` to survive blockers.
 | `docs/ops/youtube-audio-match-analysis.md` | Backfill match-quality analysis                     |
 | `docs/ops/prod-db-migrations.md`           | Prod migration workflow, secrets, rollback policy   |
 | `docs/ops/prod-db-backups.md`              | Backup strategy, worker backup env, restore runbook |
+| `docs/plans/hyperdrive-private-database.md` | Future private Worker-to-Postgres connectivity      |
 | `docs/brand/`                              | Brand voice, copy guide, positioning                |
 | `src/routes/README.md`                     | Routes layout and conventions                       |
 | `control-panel/README.md`                  | Operator app                                        |
