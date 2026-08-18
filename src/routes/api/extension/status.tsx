@@ -24,11 +24,7 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
-import {
-	EXTENSION_SYNC_ALREADY_RUNNING,
-	EXTENSION_SYNC_COOLDOWN,
-	EXTENSION_SYNC_UNKNOWN_FAILURE,
-} from "../../../../shared/extension-sync-contract";
+import { EXTENSION_SYNC_BACKEND_FAILURE_CODES } from "../../../../shared/extension-sync-contract";
 import {
 	EXTENSION_SYNC_DIAGNOSTIC_OUTCOMES,
 	EXTENSION_SYNC_DIAGNOSTIC_PHASES,
@@ -67,13 +63,7 @@ const DiagnosticPayloadSchema = z
 		outcome: z.enum(EXTENSION_SYNC_DIAGNOSTIC_OUTCOMES),
 		phase: z.enum(EXTENSION_SYNC_DIAGNOSTIC_PHASES),
 		backendStatus: z.number().int().min(100).max(599).nullable(),
-		backendFailureCode: z
-			.enum([
-				EXTENSION_SYNC_ALREADY_RUNNING,
-				EXTENSION_SYNC_COOLDOWN,
-				EXTENSION_SYNC_UNKNOWN_FAILURE,
-			])
-			.nullable(),
+		backendFailureCode: z.enum(EXTENSION_SYNC_BACKEND_FAILURE_CODES).nullable(),
 		retryAfterSeconds: z.number().int().positive().nullable(),
 		errorMessage: z.string().max(500).nullable(),
 		durationMs: z.number().int().nonnegative(),

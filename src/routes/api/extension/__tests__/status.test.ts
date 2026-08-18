@@ -248,6 +248,62 @@ describe("/api/extension/status", () => {
 		expect(await response.json()).toEqual({ ok: true });
 	});
 
+	it("accepts a sync_payload_too_large diagnostic (413 telemetry)", async () => {
+		mockValidateApiToken.mockResolvedValue(Result.ok("acct-1"));
+
+		const response = await route.server.handlers.POST({
+			request: new Request("https://hearted.test/api/extension/status", {
+				method: "POST",
+				headers: {
+					Authorization: "Bearer good-token",
+					Origin: "chrome-extension://test-extension-id",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					id: "22222222-2222-4222-8222-222222222222",
+					clientCreatedAt: "2026-06-12T21:00:00.000Z",
+					extensionVersion: "0.1.1",
+					outcome: "backend_failure",
+					phase: "uploading",
+					backendStatus: 413,
+					backendFailureCode: "sync_payload_too_large",
+					retryAfterSeconds: null,
+					errorMessage: "Payload too large",
+					durationMs: 12345,
+					likedSongsCount: 15000,
+					playlistCount: 300,
+					playlistsWithTracksCount: 280,
+					playlistTracksCount: 15000,
+					failedPlaylistTrackFetchCount: 0,
+					skippedEmptyPlaylistsCount: 0,
+					requestStats: {
+						started: 0,
+						succeeded: 0,
+						failed: 0,
+						rateLimitedResponses: 0,
+						retryAttempts: 0,
+						retryAfterSecondsTotal: 0,
+						wallTimeMs: 0,
+					},
+					requestPolicy: {
+						maxConcurrentRequests: 2,
+						minRequestIntervalMs: 200,
+						maxRequestIntervalMs: 300,
+					},
+				}),
+			}),
+		});
+
+		expect(response.status).toBe(200);
+		expect(mockUpsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				backend_failure_code: "sync_payload_too_large",
+			}),
+			{ onConflict: "id" },
+		);
+		expect(await response.json()).toEqual({ ok: true });
+	});
+
 	it("rejects invalid diagnostic payloads", async () => {
 		mockValidateApiToken.mockResolvedValue(Result.ok("acct-1"));
 
