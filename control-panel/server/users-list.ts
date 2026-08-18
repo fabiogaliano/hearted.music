@@ -17,6 +17,7 @@ export interface UserRow {
 	unlocks: number;
 	plan: string | null;
 	unlimited: boolean;
+	excludeFromProductMetrics: boolean;
 }
 
 export type UserSort =
@@ -66,6 +67,7 @@ export interface UsersListQuery extends ListQuery<UserSort> {
 	joinedFrom: string | null;
 	joinedTo: string | null;
 	lastSeen: "24h" | "7d" | "30d" | "inactive_30d" | "never" | "all";
+	productMetrics: "included" | "excluded" | "all";
 }
 
 export function parseUsersListQuery(url: URL): UsersListQuery {
@@ -74,6 +76,7 @@ export function parseUsersListQuery(url: URL): UsersListQuery {
 	const library = url.searchParams.get("library");
 	const onboarding = url.searchParams.get("onboarding");
 	const lastSeen = url.searchParams.get("lastSeen");
+	const productMetrics = url.searchParams.get("productMetrics");
 	return {
 		...base,
 		plan: url.searchParams.get("plan")?.trim() || null,
@@ -85,6 +88,10 @@ export function parseUsersListQuery(url: URL): UsersListQuery {
 				: "all",
 		joinedFrom: url.searchParams.get("joinedFrom") || null,
 		joinedTo: url.searchParams.get("joinedTo") || null,
+		productMetrics:
+			productMetrics === "included" || productMetrics === "excluded"
+				? productMetrics
+				: "all",
 		lastSeen:
 			lastSeen === "24h" ||
 			lastSeen === "7d" ||
@@ -125,6 +132,8 @@ export function whereForUsers(query: UsersListQuery, params: unknown[]): string[
 	if (query.lastSeen === "24h") where.push("act.last_seen_at >= now() - interval '24 hours'");
 	if (query.lastSeen === "7d") where.push("act.last_seen_at >= now() - interval '7 days'");
 	if (query.lastSeen === "30d") where.push("act.last_seen_at >= now() - interval '30 days'");
+	if (query.productMetrics === "included") where.push("not a.exclude_from_product_metrics");
+	if (query.productMetrics === "excluded") where.push("a.exclude_from_product_metrics");
 	return where;
 }
 
@@ -155,6 +164,7 @@ function mapUser(r: Record<string, unknown>): UserRow {
 		unlocks: Number(r.unlocks ?? 0),
 		plan: r.plan ? String(r.plan) : null,
 		unlimited: Boolean(r.unlimited),
+		excludeFromProductMetrics: Boolean(r.exclude_from_product_metrics),
 	};
 }
 
@@ -168,7 +178,7 @@ export async function usersListPage(url: URL): Promise<PageResult<UserRow>> {
 	const offset = (query.page - 1) * query.pageSize;
 	const rowsParams = [...params, query.pageSize, offset];
 	const rows = await read(`
-		select a.id, a.email, a.handle, a.display_name,
+		select a.id, a.email, a.handle, a.display_name, a.exclude_from_product_metrics,
 			to_char(a.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as created_at,
 			to_char(act.last_seen_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as last_seen_at,
 			p.onboarding_step, (p.onboarding_completed_at is not null) as onboarded,

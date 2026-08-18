@@ -18,7 +18,7 @@ import {
 	listAudioFeatureJobs,
 	submitManualUrl,
 } from "./audio-feature-jobs";
-import { cached } from "./cache";
+import { cached, clearCache } from "./cache";
 import { prodRef, warm } from "./db";
 import { HttpError } from "./http-error";
 import {
@@ -105,6 +105,7 @@ import {
 	setReleaseYear,
 } from "./release-year-reviews";
 import { getActionRun } from "./local-store/action-runs";
+import { prodSupabase } from "./supabase";
 
 import {
 	getTelemetryActivity,
@@ -460,6 +461,45 @@ export async function handleRequest(req: Request): Promise<Response> {
 				const id = userSongsMatch[1];
 				if (!id) return json({ error: "Invalid account id" }, 400);
 				return json(await userSongsPage(id, url));
+			}
+
+			const userMetricsExclusionMatch = path.match(
+				/^\/api\/users\/([0-9a-fA-F-]+)\/product-metrics-exclusion$/,
+			);
+			if (userMetricsExclusionMatch && req.method === "POST") {
+				const accountId = userMetricsExclusionMatch[1]!;
+				const body = (await req.json().catch(() => ({}))) as {
+					excludeFromProductMetrics?: unknown;
+				};
+				if (typeof body.excludeFromProductMetrics !== "boolean") {
+					return json({ error: "excludeFromProductMetrics must be boolean" }, 400, req);
+				}
+				const excluded = body.excludeFromProductMetrics;
+				const result = await recordAction({
+					actionType: "account-product-metrics-exclusion",
+					mode: "commit",
+					targetType: "account",
+					targetId: accountId,
+					inputSummary: { excludeFromProductMetrics: excluded },
+					run: async () => {
+						const { data, error } = await prodSupabase()
+							.from("account")
+							.update({ exclude_from_product_metrics: excluded })
+							.eq("id", accountId)
+							.select("id, exclude_from_product_metrics")
+							.maybeSingle();
+						if (error) throw new Error(`Could not update account metrics classification: ${error.message}`);
+						if (!data) throw new HttpError(404, "Account not found");
+						return data;
+					},
+					summarize: (data) => ({
+						result: { excludeFromProductMetrics: data.exclude_from_product_metrics },
+					}),
+				});
+				// The classification is evaluated at query time by nearly every product
+				// aggregate, so a targeted invalidation would miss more than it caught.
+				clearCache();
+				return json({ excludeFromProductMetrics: result.exclude_from_product_metrics }, 200, req);
 			}
 
 			const userMatch = path.match(/^\/api\/users\/([0-9a-fA-F-]+)$/);

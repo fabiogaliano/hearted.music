@@ -46,6 +46,7 @@ export const SongAnalysisInstrumentalSchema = z.object({
 type SongAnalysisInstrumental = z.infer<typeof SongAnalysisInstrumentalSchema>;
 
 export interface AnalyzeSongInput {
+	accountId?: string;
 	songId: string;
 	artist: string;
 	title: string;
@@ -260,6 +261,7 @@ export class SongAnalysisService {
 		// still leaves an accurate record of tokens actually billed.
 		await this.recordUsage({
 			functionId: "song-analysis",
+			accountId: input.accountId,
 			songId,
 			provider: llmResult.value.provider,
 			model: llmResult.value.modelId,
@@ -270,6 +272,7 @@ export class SongAnalysisService {
 		for (const usage of rewriteUsages) {
 			await this.recordUsage({
 				functionId: "song-rewrite",
+				accountId: input.accountId,
 				songId,
 				provider: usage.provider,
 				model: usage.model,

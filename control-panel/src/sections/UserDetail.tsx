@@ -16,7 +16,7 @@ import {
 	Loading,
 	Stat,
 } from "../components/primitives";
-import { useApi } from "../lib/api";
+import { postJson, useApi } from "../lib/api";
 import { fmt, pct, relativeTime } from "../lib/format";
 import { useNavigate } from "../lib/navigation";
 import type {
@@ -131,7 +131,11 @@ function readSongTableState(): SongTableState {
 
 export function UserDetail({ accountId }: { accountId: string }) {
 	const navigate = useNavigate();
-	const { data, error } = useApi<UserDetailData>(`/api/users/${accountId}`);
+	const { data, error, refetch } = useApi<UserDetailData>(
+		`/api/users/${accountId}`,
+	);
+	const [metricsSaving, setMetricsSaving] = useState(false);
+	const [metricsError, setMetricsError] = useState<string | null>(null);
 	const [songsTable, setSongsTable] =
 		useState<SongTableState>(readSongTableState);
 	useEffect(() => {
@@ -167,6 +171,33 @@ export function UserDetail({ accountId }: { accountId: string }) {
 		.charAt(0)
 		.toUpperCase();
 	const isUnlimited = data.unlimitedAccessSource != null;
+
+	async function updateMetricsExclusion(excludeFromProductMetrics: boolean) {
+		if (
+			excludeFromProductMetrics &&
+			!window.confirm(
+				"Exclude this account from product metrics? This changes historical reporting but does not delete account data.",
+			)
+		) {
+			return;
+		}
+		setMetricsSaving(true);
+		setMetricsError(null);
+		try {
+			await postJson(`/api/users/${accountId}/product-metrics-exclusion`, {
+				excludeFromProductMetrics,
+			});
+			refetch();
+		} catch (mutationError) {
+			setMetricsError(
+				mutationError instanceof Error
+					? mutationError.message
+					: String(mutationError),
+			);
+		} finally {
+			setMetricsSaving(false);
+		}
+	}
 
 	const coverage = [
 		{ label: "Audio feat.", missing: data.missingAudio },
@@ -233,6 +264,21 @@ export function UserDetail({ accountId }: { accountId: string }) {
 							<span className="num">{data.spotifyId ?? "no spotify id"}</span>
 							<span>joined {relativeTime(data.createdAt)}</span>
 						</div>
+						<div className="btn-row" style={{ marginTop: 8 }}>
+							<button
+								type="button"
+								className="btn"
+								disabled={metricsSaving}
+								onClick={() =>
+									void updateMetricsExclusion(!data.excludeFromProductMetrics)
+								}
+							>
+								{data.excludeFromProductMetrics
+									? "Include in product metrics"
+									: "Exclude from product metrics"}
+							</button>
+						</div>
+						{metricsError && <div className="error">{metricsError}</div>}
 					</div>
 					<div className="user-badges">
 						<Badge tone={data.plan === "free" ? "default" : "accent"}>

@@ -55,6 +55,7 @@ describe("telemetry engagement and economics definitions", () => {
 				},
 			])
 			.mockResolvedValueOnce([{ total_cost_usd: 50 }])
+			.mockResolvedValueOnce([{ total_cost_usd: 120 }])
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([])
 			.mockResolvedValueOnce([])
@@ -74,6 +75,7 @@ describe("telemetry engagement and economics definitions", () => {
 		const report = await getEconomicsMetrics(range);
 
 		expect(report.totalCostUsd).toBe(100);
+		expect(report.allAccountCostUsd).toBe(120);
 		expect(report.costPerAnalyzedSong).toBe(2);
 	});
 });

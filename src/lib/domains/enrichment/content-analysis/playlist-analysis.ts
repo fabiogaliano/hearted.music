@@ -174,6 +174,7 @@ interface PlaylistTrackInfo {
 
 /** Input for analyzing a playlist */
 export interface AnalyzePlaylistInput {
+	accountId?: string;
 	playlistId: string;
 	name: string;
 	description?: string;
@@ -249,6 +250,7 @@ export class PlaylistAnalysisService {
 		// ledger insert is logged, never propagated (cost tracking must not fail analysis).
 		const recorded = await recordLlmUsage({
 			functionId: "playlist-analysis",
+			accountId: input.accountId,
 			playlistId,
 			provider: llmResult.value.provider,
 			model: llmResult.value.modelId,

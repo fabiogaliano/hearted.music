@@ -35,11 +35,12 @@ export async function getCachedPostHogActivity(
 	preset: string,
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 	fresh = false,
 ): Promise<Result<PostHogActivityData, PostHogError>> {
 	return cached(
-		`telemetry:posthog:activity:${preset}:${fromIso}:${toIso}`,
-		() => postHogActivity(fromIso, toIso),
+		`telemetry:posthog:activity:${preset}:${fromIso}:${toIso}:${excludedAccountIds.join(",")}`,
+		() => postHogActivity(fromIso, toIso, excludedAccountIds),
 		fresh,
 		POSTHOG_CACHE_TTL,
 	);
@@ -49,11 +50,12 @@ export async function getCachedPostHogRouteUsage(
 	preset: string,
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 	fresh = false,
 ): Promise<Result<PostHogRouteUsageItem[], PostHogError>> {
 	return cached(
-		`telemetry:posthog:route_usage:${preset}:${fromIso}:${toIso}`,
-		() => postHogRouteUsage(fromIso, toIso),
+		`telemetry:posthog:route_usage:${preset}:${fromIso}:${toIso}:${excludedAccountIds.join(",")}`,
+		() => postHogRouteUsage(fromIso, toIso, excludedAccountIds),
 		fresh,
 		POSTHOG_CACHE_TTL,
 	);
@@ -63,11 +65,12 @@ export async function getCachedPostHogEventCoverage(
 	preset: string,
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 	fresh = false,
 ): Promise<Result<PostHogEventCoverageData, PostHogError>> {
 	return cached(
-		`telemetry:posthog:event_coverage:${preset}:${fromIso}:${toIso}`,
-		() => postHogEventCoverage(fromIso, toIso),
+		`telemetry:posthog:event_coverage:${preset}:${fromIso}:${toIso}:${excludedAccountIds.join(",")}`,
+		() => postHogEventCoverage(fromIso, toIso, excludedAccountIds),
 		fresh,
 		POSTHOG_CACHE_TTL,
 	);

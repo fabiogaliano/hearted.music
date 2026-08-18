@@ -778,7 +778,9 @@ function ActivityView({
 				</div>
 				<div className="stat-sub">
 					<span className="dim">
-						Subject to ad-blockers and privacy consent.
+						Subject to ad-blockers and privacy consent. Identified activity from
+						accounts excluded from product metrics is filtered out; traffic with
+						no linked account is still counted here.
 					</span>
 				</div>
 			</div>
@@ -1076,10 +1078,14 @@ function EconomicsView({
 			<div className="card span-3">
 				<div className="stat">
 					<div className="stat-label">
-						<CurrencyDollarIcon size={13} weight="bold" /> Total Spend
+						<CurrencyDollarIcon size={13} weight="bold" /> Product-audience
+						spend
 					</div>
 					<div className="stat-value" style={{ fontSize: 22, fontWeight: 700 }}>
 						{usd(ec.totalCostUsd)}
+					</div>
+					<div className="stat-sub">
+						Actual all-account spend: {usd(ec.allAccountCostUsd)}
 					</div>
 					<div className="stat-sub">
 						{ec.costDeltaPercent !== null

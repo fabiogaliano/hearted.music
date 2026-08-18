@@ -15,6 +15,20 @@ import {
 	type TelemetryPreset,
 } from "./telemetry-registry";
 
+/**
+ * Product aggregates read the account's *current* classification, so flagging an
+ * account withdraws its whole history from these reports and unflagging restores
+ * it — no product data is deleted. Operational reads stay unfiltered.
+ */
+const INCLUDED_ACCOUNTS = "(SELECT id FROM account WHERE NOT exclude_from_product_metrics)";
+
+export async function excludedProductMetricsAccountIds(): Promise<string[]> {
+	const rows = await read<{ id: string }>(
+		"select id::text from account where exclude_from_product_metrics",
+	);
+	return rows.map((row) => row.id);
+}
+
 export interface ParsedTelemetryRange {
 	preset: TelemetryPreset;
 	from: Date;
@@ -216,7 +230,8 @@ export async function getFunnelCohort(
 			SELECT a.id, a.created_at, a.spotify_id, up.onboarding_completed_at
 			FROM account a
 			LEFT JOIN user_preferences up ON up.account_id = a.id
-			WHERE a.created_at >= $1 AND a.created_at < $2
+			WHERE not a.exclude_from_product_metrics
+				AND a.created_at >= $1 AND a.created_at < $2
 		),
 		first_sync AS (
 			SELECT account_id, min(completed_at) AS first_synced_at
@@ -450,8 +465,10 @@ export async function getActivityMetrics(
 		SELECT
 			activity_date::text AS date,
 			count(DISTINCT account_id)::int AS count
-		FROM account_activity_day
-		WHERE activity_date >= ($1::timestamptz AT TIME ZONE 'UTC')::date
+		FROM account_activity_day d
+		JOIN account a ON a.id = d.account_id
+		WHERE not a.exclude_from_product_metrics
+			AND activity_date >= ($1::timestamptz AT TIME ZONE 'UTC')::date
 		  AND activity_date < ($2::timestamptz AT TIME ZONE 'UTC')::date
 		GROUP BY activity_date
 		ORDER BY activity_date ASC
@@ -469,7 +486,9 @@ export async function getActivityMetrics(
 			count(*) FILTER (WHERE last_seen_at >= now() - interval '24 hours')::int AS active_24h,
 			count(*) FILTER (WHERE last_seen_at >= now() - interval '7 days')::int AS wau,
 			count(*) FILTER (WHERE last_seen_at >= now() - interval '30 days')::int AS mau
-		FROM account_activity
+		FROM account_activity act
+		JOIN account a ON a.id = act.account_id
+		WHERE not a.exclude_from_product_metrics
 	`);
 
 	const retentionRows = await read<{
@@ -486,7 +505,8 @@ export async function getActivityMetrics(
 				id AS account_id,
 				created_at
 			FROM account
-			WHERE created_at >= now() - interval '90 days'
+			WHERE not exclude_from_product_metrics
+				AND created_at >= now() - interval '90 days'
 		),
 		cohort_sizes AS (
 			SELECT cohort_week, cohort_week_start, count(*)::int AS signups
@@ -646,16 +666,16 @@ export async function getEngagementMetrics(
 	}>(
 		`
 		SELECT
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2 AND event = 'added')::int AS added,
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2 AND event = 'dismissed')::int AS dismissed,
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2 AND event = 'skipped')::int AS skipped,
-			(SELECT count(DISTINCT account_id) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2)::int AS engaged_accounts,
-			(SELECT count(DISTINCT session_id) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2)::int AS match_sessions,
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2 AND (served_orientation = 'song' OR served_orientation IS NULL))::int AS song_orientation_count,
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2 AND served_orientation = 'playlist')::int AS playlist_orientation_count,
-			(SELECT count(*) FROM match_review_session WHERE created_at >= $1 AND created_at < $2)::int AS sessions_started,
-			(SELECT count(*) FROM match_review_session WHERE status = 'completed' AND completed_at >= $1 AND completed_at < $2)::int AS sessions_completed,
-			(SELECT count(*) FROM match_review_item_visible_pair WHERE captured_at >= $1 AND captured_at < $2)::int AS suggestions_served
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2 AND event = 'added')::int AS added,
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2 AND event = 'dismissed')::int AS dismissed,
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2 AND event = 'skipped')::int AS skipped,
+			(SELECT count(DISTINCT account_id) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2)::int AS engaged_accounts,
+			(SELECT count(DISTINCT session_id) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2)::int AS match_sessions,
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2 AND (served_orientation = 'song' OR served_orientation IS NULL))::int AS song_orientation_count,
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2 AND served_orientation = 'playlist')::int AS playlist_orientation_count,
+			(SELECT count(*) FROM match_review_session WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS sessions_started,
+			(SELECT count(*) FROM match_review_session WHERE account_id IN ${INCLUDED_ACCOUNTS} AND status = 'completed' AND completed_at >= $1 AND completed_at < $2)::int AS sessions_completed,
+			(SELECT count(*) FROM match_review_item_visible_pair v JOIN match_review_queue_item q ON q.id = v.queue_item_id JOIN match_review_session s ON s.id = q.session_id WHERE s.account_id IN ${INCLUDED_ACCOUNTS} AND v.captured_at >= $1 AND v.captured_at < $2)::int AS suggestions_served
 		`,
 		[range.fromIso, range.toIso],
 	);
@@ -687,7 +707,8 @@ export async function getEngagementMetrics(
 				(SELECT min(occurred_at) FROM match_event WHERE account_id = a.id) AS first_dec,
 				(SELECT min(occurred_at) FROM match_event WHERE account_id = a.id AND event = 'added') AS first_add
 			FROM account a
-			WHERE a.created_at >= $1 AND a.created_at < $2
+			WHERE not a.exclude_from_product_metrics
+				AND a.created_at >= $1 AND a.created_at < $2
 		)
 		SELECT
 			percentile_cont(0.5) WITHIN GROUP (
@@ -744,7 +765,9 @@ export async function getEngagementMetrics(
 }
 
 export interface EconomicsReport {
+	/** Product-audience spend. Historical rows without attribution remain included. */
 	totalCostUsd: number;
+	allAccountCostUsd: number;
 	totalCalls: number;
 	totalInputTokens: number;
 	totalOutputTokens: number;
@@ -800,6 +823,7 @@ export async function getEconomicsMetrics(
 			coalesce(sum(output_tokens), 0)::bigint AS total_output_tokens
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		`,
 		[range.fromIso, range.toIso],
 	);
@@ -809,11 +833,19 @@ export async function getEconomicsMetrics(
 		SELECT coalesce(sum(cost_usd), 0)::float AS total_cost_usd
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		`,
 		[range.previousFrom.toISOString(), range.previousTo.toISOString()],
 	);
 
+	const allAccountLedger = await read<{ total_cost_usd: number }>(
+		`SELECT coalesce(sum(cost_usd), 0)::float AS total_cost_usd
+		 FROM llm_usage
+		 WHERE created_at >= $1 AND created_at < $2`,
+		[range.fromIso, range.toIso],
+	);
 	const currentCost = currentLedger[0]?.total_cost_usd ?? 0;
+	const allAccountCost = allAccountLedger[0]?.total_cost_usd ?? 0;
 	const prevCost = prevLedger[0]?.total_cost_usd ?? 0;
 	let costDeltaPercent: number | null = null;
 	if (prevCost > 0) {
@@ -837,6 +869,7 @@ export async function getEconomicsMetrics(
 			coalesce(sum(output_tokens), 0)::bigint AS output_tokens
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		GROUP BY function_id
 		ORDER BY cost_usd DESC
 		`,
@@ -855,6 +888,7 @@ export async function getEconomicsMetrics(
 			coalesce(sum(cost_usd), 0)::float AS cost_usd
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		GROUP BY model
 		ORDER BY cost_usd DESC
 		`,
@@ -873,6 +907,7 @@ export async function getEconomicsMetrics(
 			coalesce(sum(cost_usd), 0)::float AS cost_usd
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		GROUP BY provider
 		ORDER BY cost_usd DESC
 		`,
@@ -891,6 +926,7 @@ export async function getEconomicsMetrics(
 			count(*)::int AS calls
 		FROM llm_usage
 		WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 		GROUP BY (created_at AT TIME ZONE 'UTC')::date
 		ORDER BY date ASC
 		`,
@@ -909,13 +945,14 @@ export async function getEconomicsMetrics(
 		`
 		SELECT
 			(SELECT count(DISTINCT song_id) FROM song_analysis WHERE created_at >= $1 AND created_at < $2)::int AS analyzed_songs,
-			(SELECT count(*) FROM user_preferences WHERE onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS activated_accounts,
-			(SELECT count(DISTINCT account_id) FROM billing_activation WHERE created_at >= $1 AND created_at < $2)::int AS paid_accounts,
-			(SELECT count(*) FROM account_billing WHERE subscription_status = 'active')::int AS active_subscriptions,
-			(SELECT count(*) FROM billing_activation WHERE created_at >= $1 AND created_at < $2)::int AS new_activations,
-			(SELECT count(*) FROM billing_activation WHERE created_at >= $3 AND created_at < $4)::int AS prev_activations,
+			(SELECT count(*) FROM user_preferences WHERE account_id IN ${INCLUDED_ACCOUNTS} AND onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS activated_accounts,
+			(SELECT count(DISTINCT account_id) FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS paid_accounts,
+			(SELECT count(*) FROM account_billing WHERE account_id IN ${INCLUDED_ACCOUNTS} AND subscription_status = 'active')::int AS active_subscriptions,
+			(SELECT count(*) FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS new_activations,
+			(SELECT count(*) FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $3 AND created_at < $4)::int AS prev_activations,
 			(SELECT coalesce(sum(cost_usd), 0)::float FROM llm_usage
 			 WHERE created_at >= $1 AND created_at < $2
+			AND (account_id IS NULL OR account_id IN ${INCLUDED_ACCOUNTS})
 			   AND function_id IN ('song-analysis', 'song-rewrite', 'voice-audit-rewrite-pass')) AS song_analysis_cost_usd
 		`,
 		[
@@ -938,6 +975,7 @@ export async function getEconomicsMetrics(
 
 	return {
 		totalCostUsd: Math.round(currentCost * 10000) / 10000,
+		allAccountCostUsd: Math.round(allAccountCost * 10000) / 10000,
 		totalCalls: currentLedger[0]?.total_calls ?? 0,
 		totalInputTokens: Number(currentLedger[0]?.total_input_tokens ?? 0),
 		totalOutputTokens: Number(currentLedger[0]?.total_output_tokens ?? 0),
@@ -1029,21 +1067,21 @@ export async function getCoverageDbMetrics(
 	}>(
 		`
 		SELECT
-			(SELECT count(*) FROM user_preferences WHERE onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS db_onboarding_completed,
-			(SELECT count(DISTINCT account_id) FROM user_preferences WHERE onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS db_onboarding_accounts,
-			(SELECT max(onboarding_completed_at)::text FROM user_preferences WHERE onboarding_completed_at >= $1 AND onboarding_completed_at < $2) AS db_onboarding_latest,
+			(SELECT count(*) FROM user_preferences WHERE account_id IN ${INCLUDED_ACCOUNTS} AND onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS db_onboarding_completed,
+			(SELECT count(DISTINCT account_id) FROM user_preferences WHERE account_id IN ${INCLUDED_ACCOUNTS} AND onboarding_completed_at >= $1 AND onboarding_completed_at < $2)::int AS db_onboarding_accounts,
+			(SELECT max(onboarding_completed_at)::text FROM user_preferences WHERE account_id IN ${INCLUDED_ACCOUNTS} AND onboarding_completed_at >= $1 AND onboarding_completed_at < $2) AS db_onboarding_latest,
 
-			(SELECT count(*) FROM billing_activation WHERE created_at >= $1 AND created_at < $2)::int AS db_purchase_confirmed,
-			(SELECT count(DISTINCT account_id) FROM billing_activation WHERE created_at >= $1 AND created_at < $2)::int AS db_purchase_accounts,
-			(SELECT max(created_at)::text FROM billing_activation WHERE created_at >= $1 AND created_at < $2) AS db_purchase_latest,
+			(SELECT count(*) FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS db_purchase_confirmed,
+			(SELECT count(DISTINCT account_id) FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS db_purchase_accounts,
+			(SELECT max(created_at)::text FROM billing_activation WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2) AS db_purchase_latest,
 
-			(SELECT count(*) FROM match_snapshot WHERE created_at >= $1 AND created_at < $2)::int AS db_snapshot_published,
-			(SELECT count(DISTINCT account_id) FROM match_snapshot WHERE created_at >= $1 AND created_at < $2)::int AS db_snapshot_accounts,
-			(SELECT max(created_at)::text FROM match_snapshot WHERE created_at >= $1 AND created_at < $2) AS db_snapshot_latest,
+			(SELECT count(*) FROM match_snapshot WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS db_snapshot_published,
+			(SELECT count(DISTINCT account_id) FROM match_snapshot WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2)::int AS db_snapshot_accounts,
+			(SELECT max(created_at)::text FROM match_snapshot WHERE account_id IN ${INCLUDED_ACCOUNTS} AND created_at >= $1 AND created_at < $2) AS db_snapshot_latest,
 
-			(SELECT count(*) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2)::int AS db_match_action,
-			(SELECT count(DISTINCT account_id) FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2)::int AS db_match_accounts,
-			(SELECT max(occurred_at)::text FROM match_event WHERE occurred_at >= $1 AND occurred_at < $2) AS db_match_latest
+			(SELECT count(*) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2)::int AS db_match_action,
+			(SELECT count(DISTINCT account_id) FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2)::int AS db_match_accounts,
+			(SELECT max(occurred_at)::text FROM match_event WHERE account_id IN ${INCLUDED_ACCOUNTS} AND occurred_at >= $1 AND occurred_at < $2) AS db_match_latest
 		`,
 		[range.fromIso, range.toIso],
 	);

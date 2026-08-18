@@ -23,6 +23,7 @@ export interface RecordLlmUsageInput {
 	/** Bare model id, e.g. 'gemini-2.5-flash'. */
 	model: string;
 	/** Exactly one of these identifies the entity; the rest stay null. */
+	accountId?: string | null;
 	songId?: string | null;
 	playlistId?: string | null;
 	contentHash?: string | null;
@@ -46,6 +47,7 @@ export async function recordLlmUsage(
 			function_id: input.functionId,
 			provider: input.provider,
 			model: input.model,
+			account_id: input.accountId ?? null,
 			song_id: input.songId ?? null,
 			playlist_id: input.playlistId ?? null,
 			content_hash: input.contentHash ?? null,

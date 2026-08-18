@@ -24,4 +24,18 @@ describe("usersListPage", () => {
 		expect(queries[1]).toMatch(/limit \$2 offset \$3/);
 		expect(params[1]).toEqual(["%fabio%", 50, 0]);
 	});
+
+	it("filters the directory by product-metrics inclusion without hiding accounts by default", async () => {
+		const queries: string[] = [];
+		vi.mocked(read).mockImplementation((async (text: string) => {
+			queries.push(text);
+			return /count\(\*\) as total/.test(text) ? [{ total: "0" }] : [];
+		}) as typeof read);
+
+		await usersListPage(
+			new URL("https://panel.test/api/users/list?productMetrics=excluded"),
+		);
+
+		expect(queries[0]).toContain("a.exclude_from_product_metrics");
+	});
 });

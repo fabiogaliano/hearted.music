@@ -31,17 +31,18 @@ export async function usersMetrics(): Promise<UsersMetrics> {
 	const [[totals], trend] = await Promise.all([
 		read(`
 		select
-			(select count(*) from account) as total_accounts,
-			(select count(*) from account where created_at >= now() - interval '1 day') as signups_1d,
-			(select count(*) from account where created_at >= now() - interval '7 days') as signups_7d,
-			(select count(*) from account where created_at >= now() - interval '30 days') as signups_30d,
-			(select count(distinct account_id) from liked_song where unliked_at is null) as accounts_with_library,
+			(select count(*) from account where not exclude_from_product_metrics) as total_accounts,
+			(select count(*) from account where not exclude_from_product_metrics and created_at >= now() - interval '1 day') as signups_1d,
+			(select count(*) from account where not exclude_from_product_metrics and created_at >= now() - interval '7 days') as signups_7d,
+			(select count(*) from account where not exclude_from_product_metrics and created_at >= now() - interval '30 days') as signups_30d,
+			(select count(distinct l.account_id) from liked_song l join account a on a.id = l.account_id where l.unliked_at is null and not a.exclude_from_product_metrics) as accounts_with_library,
 			(select count(*) from waitlist) as waitlist_total
 	`),
 		read(`
 		select to_char(date_trunc('day', created_at), 'YYYY-MM-DD') as day, count(*) as count
 		from account
-		where created_at >= now() - interval '14 days'
+		where not exclude_from_product_metrics
+			and created_at >= now() - interval '14 days'
 		group by 1 order by 1
 	`),
 	]);
@@ -149,15 +150,16 @@ export async function libraryMetrics(): Promise<LibraryMetrics> {
 	const [[totals], [dist], topUsers] = await Promise.all([
 		read(`
 		select
-			(select count(*) from liked_song where unliked_at is null) as active_liked,
-			(select count(distinct song_id) from liked_song where unliked_at is null) as distinct_songs,
-			(select count(*) from playlist) as total_playlists,
+			(select count(*) from liked_song l join account a on a.id = l.account_id where l.unliked_at is null and not a.exclude_from_product_metrics) as active_liked,
+			(select count(distinct l.song_id) from liked_song l join account a on a.id = l.account_id where l.unliked_at is null and not a.exclude_from_product_metrics) as distinct_songs,
+			(select count(*) from playlist p join account a on a.id = p.account_id where not a.exclude_from_product_metrics) as total_playlists,
 			(select count(*) from song) as total_songs
 	`),
 		read(`
 		with per as (
 			select a.id, count(l.id) filter (where l.unliked_at is null) as c
 			from account a left join liked_song l on l.account_id = a.id
+			where not a.exclude_from_product_metrics
 			group by a.id
 		)
 		select
@@ -187,6 +189,7 @@ export async function libraryMetrics(): Promise<LibraryMetrics> {
 		from lk
 		join account a on a.id = lk.account_id
 		left join pl on pl.account_id = a.id
+		where not a.exclude_from_product_metrics
 		order by lk.liked desc
 		limit 25
 	`),
@@ -253,7 +256,8 @@ export async function accountsByLiked(
 		from account a
 		left join lk on lk.account_id = a.id
 		left join pl on pl.account_id = a.id
-		where coalesce(lk.liked, 0) >= $1 ${upperClause}
+		where not a.exclude_from_product_metrics
+			and coalesce(lk.liked, 0) >= $1 ${upperClause}
 		order by liked desc
 		limit 200
 	`,
@@ -299,15 +303,19 @@ export interface EnrichmentMetrics {
 // (account_id, song_id) pairs of entitled, actively-liked songs.
 const ENTITLED_PAIRS = `
 	with unlimited as (
-		select account_id from account_billing
-		where unlimited_access_source is not null
+		select b.account_id from account_billing b
+		join account a on a.id = b.account_id
+		where not a.exclude_from_product_metrics
+			and unlimited_access_source is not null
 			and (unlimited_access_source = 'self_hosted'
 				or (unlimited_access_source = 'subscription' and subscription_status = 'active'))
 	),
 	ent as (
 		select l.account_id, l.song_id
 		from liked_song l
-		where l.unliked_at is null
+		join account a on a.id = l.account_id
+		where not a.exclude_from_product_metrics
+			and l.unliked_at is null
 			and (
 				l.account_id in (select account_id from unlimited)
 				or exists (
@@ -563,11 +571,15 @@ export async function billingMetrics(): Promise<BillingMetrics> {
 		select
 			count(*) filter (where subscription_status not in ('none')) as active_subs,
 			coalesce(sum(credit_balance), 0) as credit_total
-		from account_billing
+		from account_billing b
+		join account a on a.id = b.account_id
+		where not a.exclude_from_product_metrics
 	`),
 		read(`
 		select plan, subscription_status as status, count(*) as accounts
-		from account_billing
+		from account_billing b
+		join account a on a.id = b.account_id
+		where not a.exclude_from_product_metrics
 		group by 1, 2
 		order by 3 desc
 	`),
@@ -663,6 +675,7 @@ export async function overviewComparisons(range: OverviewRange): Promise<Overvie
 				count(*) filter (where created_at >= now() - interval '${single}') as current,
 				count(*) filter (where created_at >= now() - interval '${double}' and created_at < now() - interval '${single}') as previous
 			from account
+			where not exclude_from_product_metrics
 		`),
 		read(`
 			select
@@ -792,6 +805,7 @@ export interface UserDetail {
 	displayName: string | null;
 	spotifyId: string | null;
 	imageUrl: string | null;
+	excludeFromProductMetrics: boolean;
 	createdAt: string;
 	plan: string | null;
 	subscriptionStatus: string | null;
@@ -825,6 +839,7 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 	const [acct] = await read(
 		`
 		select a.id, a.email, a.handle, a.display_name, a.spotify_id, a.image_url,
+			a.exclude_from_product_metrics,
 			to_char(a.created_at, 'YYYY-MM-DD"T"HH24:MI:SSOF') as created_at,
 			b.plan, b.subscription_status, b.unlimited_access_source, b.credit_balance
 		from account a
@@ -901,6 +916,7 @@ export async function userDetail(accountId: string): Promise<UserDetail | null> 
 		displayName: acct.display_name ? String(acct.display_name) : null,
 		spotifyId: acct.spotify_id ? String(acct.spotify_id) : null,
 		imageUrl: acct.image_url ? String(acct.image_url) : null,
+		excludeFromProductMetrics: Boolean(acct.exclude_from_product_metrics),
 		createdAt: String(acct.created_at),
 		plan: acct.plan ? String(acct.plan) : null,
 		subscriptionStatus: acct.subscription_status

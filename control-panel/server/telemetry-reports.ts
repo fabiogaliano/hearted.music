@@ -15,6 +15,7 @@ import {
 	type EconomicsReport,
 	type EngagementReport,
 	type FunnelCohortReport,
+	excludedProductMetricsAccountIds,
 	getCoverageDbMetrics,
 	getDbSourceStatus,
 	getEconomicsMetrics,
@@ -333,6 +334,7 @@ export async function getTelemetryActivity(
 	const parsed = parseTelemetryRange(preset);
 	const sources = await resolveSources(fresh);
 
+	const excludedAccountIds = await excludedProductMetricsAccountIds();
 	const [dbActivity, phActivityRes, phRoutesRes] = await Promise.all([
 		cached(
 			`telemetry:report:activity_db:${parsed.preset}:${parsed.toIso}`,
@@ -344,12 +346,14 @@ export async function getTelemetryActivity(
 			parsed.preset,
 			parsed.fromIso,
 			parsed.toIso,
+			excludedAccountIds,
 			fresh,
 		),
 		getCachedPostHogRouteUsage(
 			parsed.preset,
 			parsed.fromIso,
 			parsed.toIso,
+			excludedAccountIds,
 			fresh,
 		),
 	]);
@@ -465,6 +469,7 @@ export async function getTelemetryCoverage(
 	const parsed = parseTelemetryRange(preset);
 	const sources = await resolveSources(fresh);
 
+	const excludedAccountIds = await excludedProductMetricsAccountIds();
 	const [dbFacts, phCoverageRes] = await Promise.all([
 		cached(
 			`telemetry:report:coverage_db:${parsed.preset}:${parsed.toIso}`,
@@ -476,6 +481,7 @@ export async function getTelemetryCoverage(
 			parsed.preset,
 			parsed.fromIso,
 			parsed.toIso,
+			excludedAccountIds,
 			fresh,
 		),
 	]);

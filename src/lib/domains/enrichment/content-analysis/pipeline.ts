@@ -384,6 +384,7 @@ export class AnalysisPipeline {
 				const af = audioFeaturesMap.get(song.songId) ?? null;
 
 				const input: AnalyzeSongInput = {
+					accountId,
 					songId: song.songId,
 					artist: song.artist,
 					title: song.title,
@@ -476,6 +477,7 @@ export class AnalysisPipeline {
 
 		// 4. Analyze playlist
 		const input: AnalyzePlaylistInput = {
+			accountId,
 			playlistId: playlist.playlistId,
 			name: playlist.name,
 			description: playlist.description,

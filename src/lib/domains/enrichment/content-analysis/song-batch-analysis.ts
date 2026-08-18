@@ -202,6 +202,8 @@ export interface SongBatchAnalyzerDeps {
 
 export interface AnalyzeSongBatchOptions {
 	forceAnalyzeSongIds?: ReadonlySet<string>;
+	/** Requesting account, recorded on the LLM spend ledger for cost attribution. */
+	accountId?: string;
 }
 
 /**
@@ -317,6 +319,7 @@ export async function analyzeSongBatch(
 				const af = audioFeaturesMap.get(song.songId) ?? null;
 
 				const input: AnalyzeSongInput = {
+					accountId: options.accountId,
 					songId: song.songId,
 					artist: song.artist,
 					title: song.title,

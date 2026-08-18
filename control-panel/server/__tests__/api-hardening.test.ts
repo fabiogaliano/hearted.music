@@ -74,6 +74,22 @@ describe("Control Panel API Hardening", () => {
 		expect(body.error).toContain("Invalid telemetry preset");
 	});
 
+	it("rejects a non-boolean product-metrics classification with 400", async () => {
+		const req = new Request(
+			"http://127.0.0.1:4319/api/users/3f0a1c62-1f2f-4f9a-9d0e-2b6d9d5f1a44/product-metrics-exclusion",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ excludeFromProductMetrics: "yes" }),
+			},
+		);
+
+		const res = await handleRequest(req);
+		expect(res.status).toBe(400);
+		const body = (await res.json()) as { error: string };
+		expect(body.error).toContain("must be boolean");
+	});
+
 	it("handles OPTIONS preflight with 204 No Content and CORS headers", async () => {
 		const req = new Request("http://127.0.0.1:4319/api/telemetry/summary", {
 			method: "OPTIONS",

@@ -56,6 +56,7 @@ export interface UserRow {
 	unlocks: number;
 	plan: string | null;
 	unlimited: boolean;
+	excludeFromProductMetrics: boolean;
 }
 
 export interface AccountLikedRow {
@@ -176,6 +177,7 @@ export interface UserDetail {
 	displayName: string | null;
 	spotifyId: string | null;
 	imageUrl: string | null;
+	excludeFromProductMetrics: boolean;
 	createdAt: string;
 	plan: string | null;
 	subscriptionStatus: string | null;
@@ -477,6 +479,7 @@ export interface TelemetryEngagementData {
 
 export interface TelemetryEconomicsData {
 	totalCostUsd: number;
+	allAccountCostUsd: number;
 	totalCalls: number;
 	totalInputTokens: number;
 	totalOutputTokens: number;

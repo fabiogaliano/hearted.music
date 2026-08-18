@@ -225,6 +225,7 @@ const mockEconomics = {
 	},
 	data: {
 		totalCostUsd: 12.3456,
+		allAccountCostUsd: 15.6789,
 		totalCalls: 340,
 		totalInputTokens: 250000,
 		totalOutputTokens: 85000,
@@ -406,7 +407,9 @@ describe("TelemetrySection UI", () => {
 		const economicsTabBtn = screen.getByText("LLM Economics");
 		fireEvent.click(economicsTabBtn);
 
-		expect(screen.getByText("Total Spend")).toBeDefined();
+		// Both ledger scopes surface: product-audience spend and real all-account spend.
+		expect(screen.getAllByText("$12.35").length).toBeGreaterThan(0);
+		expect(screen.getByText(/\$15\.68/)).toBeDefined();
 		expect(screen.getByText("LLM Spend by Provider")).toBeDefined();
 		expect(screen.getByText("LLM Spend by Function")).toBeDefined();
 		expect(screen.getByText("LLM Spend by Model")).toBeDefined();

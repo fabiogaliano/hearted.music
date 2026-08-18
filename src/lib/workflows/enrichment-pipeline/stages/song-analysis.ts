@@ -304,6 +304,7 @@ async function probeLyricsRefreshCandidates(
 	batch: PipelineBatch,
 	probeSongIds: string[],
 	deps: SongBatchAnalyzerDeps,
+	accountId: string,
 ): Promise<ProbeOutcome> {
 	if (probeSongIds.length === 0) {
 		return { succeededSongIds: [], failures: [] };
@@ -386,6 +387,7 @@ async function probeLyricsRefreshCandidates(
 
 		const audioFeature = audioFeatures.get(songId) ?? null;
 		const input: AnalyzeSongInput = {
+			accountId,
 			songId,
 			artist: song.artists[0] ?? "Unknown Artist",
 			title: song.name,
@@ -417,7 +419,7 @@ async function probeLyricsRefreshCandidates(
 }
 
 export async function runSongAnalysis(
-	_ctx: EnrichmentContext,
+	ctx: EnrichmentContext,
 	batch: PipelineBatch,
 ): Promise<StageOutcome> {
 	const readiness = await getReadyForSongAnalysis(batch.songIds);
@@ -460,6 +462,7 @@ export async function runSongAnalysis(
 			readiness.snapshots,
 		);
 		const batchOutcome = await analyzeSongBatch(songsToAnalyze, deps, {
+			accountId: ctx.accountId,
 			forceAnalyzeSongIds: new Set(readiness.reanalyzeSongIds),
 		});
 		const resolved = await resolveBatchOutcome(analysisSongIds, batchOutcome);
@@ -472,6 +475,7 @@ export async function runSongAnalysis(
 			batch,
 			readiness.probeSongIds,
 			deps,
+			ctx.accountId,
 		);
 		succeededSongIds = [...succeededSongIds, ...probeOutcome.succeededSongIds];
 		failures = [...failures, ...probeOutcome.failures];

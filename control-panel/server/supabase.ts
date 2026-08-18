@@ -8,14 +8,15 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/data/database.types";
 import { getRestCreds } from "./prod-creds";
 
-let client: ReturnType<typeof createClient> | null = null;
+let client: ReturnType<typeof createClient<Database>> | null = null;
 
-export function prodSupabase(): ReturnType<typeof createClient> {
+export function prodSupabase(): ReturnType<typeof createClient<Database>> {
 	if (!client) {
 		const { url, key } = getRestCreds();
-		client = createClient(url, key, {
+		client = createClient<Database>(url, key, {
 			auth: { autoRefreshToken: false, persistSession: false },
 		});
 	}

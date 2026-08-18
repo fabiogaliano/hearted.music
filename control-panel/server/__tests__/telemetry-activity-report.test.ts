@@ -28,6 +28,7 @@ vi.mock("../telemetry-db", () => ({
 		currentMau: 3,
 		cohortRetention: [],
 	}),
+	excludedProductMetricsAccountIds: vi.fn().mockResolvedValue([]),
 	getCoverageDbMetrics: vi.fn(),
 	getEconomicsMetrics: vi.fn(),
 	getEngagementMetrics: vi.fn(),

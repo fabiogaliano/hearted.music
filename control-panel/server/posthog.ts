@@ -126,6 +126,21 @@ const LatestEventRowsSchema = z.array(
 	]),
 );
 
+// HogQL has no bound parameters here, so only canonical UUIDs reach the query
+// text — anything else is dropped rather than quoted into it.
+function excludedDistinctIdsClause(excludedAccountIds: readonly string[]): string {
+	const ids = excludedAccountIds
+		.filter((id) =>
+			/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+				id,
+			),
+		)
+		.map((id) => `'${id}'`)
+		.join(", ");
+	if (!ids) return "";
+	return `\n\t\t  AND distinct_id NOT IN (${ids})`;
+}
+
 function validateRows<T>(
 	schema: z.ZodType<T>,
 	rows: unknown,
@@ -283,6 +298,7 @@ export async function postHogSourceStatus(): Promise<SourceStatus> {
 export async function postHogActivity(
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 ): Promise<Result<PostHogActivityData, PostHogError>> {
 	const query = `
 		SELECT
@@ -292,7 +308,7 @@ export async function postHogActivity(
 			toString(max(timestamp))
 		FROM events
 		WHERE timestamp >= toDateTime('${fromIso}')
-		  AND timestamp < toDateTime('${toIso}')
+		  AND timestamp < toDateTime('${toIso}')${excludedDistinctIdsClause(excludedAccountIds)}
 	`;
 
 	const res = await executeHogQL(query);
@@ -316,6 +332,7 @@ export async function postHogActivity(
 export async function postHogRouteUsage(
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 ): Promise<Result<PostHogRouteUsageItem[], PostHogError>> {
 	const query = `
 		SELECT
@@ -324,7 +341,7 @@ export async function postHogRouteUsage(
 		FROM events
 		WHERE event = '$pageview'
 		  AND timestamp >= toDateTime('${fromIso}')
-		  AND timestamp < toDateTime('${toIso}')
+		  AND timestamp < toDateTime('${toIso}')${excludedDistinctIdsClause(excludedAccountIds)}
 		GROUP BY pathname
 		ORDER BY cnt DESC
 		LIMIT 50
@@ -347,6 +364,7 @@ export async function postHogRouteUsage(
 export async function postHogEventCoverage(
 	fromIso: string,
 	toIso: string,
+	excludedAccountIds: readonly string[] = [],
 ): Promise<Result<PostHogEventCoverageData, PostHogError>> {
 	const query = `
 		SELECT
@@ -357,7 +375,7 @@ export async function postHogEventCoverage(
 		FROM events
 		WHERE event IN ('onboarding_completed', 'purchase_confirmed', 'match_snapshot_published', 'match_deck_action')
 		  AND timestamp >= toDateTime('${fromIso}')
-		  AND timestamp < toDateTime('${toIso}')
+		  AND timestamp < toDateTime('${toIso}')${excludedDistinctIdsClause(excludedAccountIds)}
 		GROUP BY event
 	`;
 

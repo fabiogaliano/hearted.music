@@ -40,6 +40,7 @@ export type Database = {
 					created_at: string;
 					display_name: string | null;
 					email: string | null;
+					exclude_from_product_metrics: boolean;
 					handle: string | null;
 					id: string;
 					image_url: string | null;
@@ -51,6 +52,7 @@ export type Database = {
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
+					exclude_from_product_metrics?: boolean;
 					handle?: string | null;
 					id?: string;
 					image_url?: string | null;
@@ -62,6 +64,7 @@ export type Database = {
 					created_at?: string;
 					display_name?: string | null;
 					email?: string | null;
+					exclude_from_product_metrics?: boolean;
 					handle?: string | null;
 					id?: string;
 					image_url?: string | null;
@@ -1230,6 +1233,7 @@ export type Database = {
 			};
 			llm_usage: {
 				Row: {
+					account_id: string | null;
 					cache_read_tokens: number;
 					content_hash: string | null;
 					cost_usd: number | null;
@@ -1247,6 +1251,7 @@ export type Database = {
 					song_id: string | null;
 				};
 				Insert: {
+					account_id?: string | null;
 					cache_read_tokens?: number;
 					content_hash?: string | null;
 					cost_usd?: number | null;
@@ -1264,6 +1269,7 @@ export type Database = {
 					song_id?: string | null;
 				};
 				Update: {
+					account_id?: string | null;
 					cache_read_tokens?: number;
 					content_hash?: string | null;
 					cost_usd?: number | null;
@@ -1281,6 +1287,13 @@ export type Database = {
 					song_id?: string | null;
 				};
 				Relationships: [
+					{
+						foreignKeyName: "llm_usage_account_id_fkey";
+						columns: ["account_id"];
+						isOneToOne: false;
+						referencedRelation: "account";
+						referencedColumns: ["id"];
+					},
 					{
 						foreignKeyName: "llm_usage_playlist_id_fkey";
 						columns: ["playlist_id"];
@@ -3771,6 +3784,7 @@ export type Database = {
 					created_at: string;
 					display_name: string | null;
 					email: string | null;
+					exclude_from_product_metrics: boolean;
 					handle: string | null;
 					id: string;
 					image_url: string | null;
@@ -4001,7 +4015,7 @@ export type Database = {
 			get_account_liked_window_counts: {
 				Args: { p_account_id: string };
 				Returns: {
-					end_at: string | null;
+					end_at: string;
 					occurrences: number;
 					start_at: string;
 					window_id: string;

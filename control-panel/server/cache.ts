@@ -22,6 +22,10 @@ interface Entry {
 const store = new Map<string, Entry>();
 const inflight = new Map<string, Promise<unknown>>();
 
+export function clearCache(): void {
+	store.clear();
+}
+
 export async function cached<T>(
 	key: string,
 	fn: () => Promise<T>,

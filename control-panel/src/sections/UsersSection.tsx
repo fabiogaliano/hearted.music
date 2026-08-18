@@ -22,7 +22,12 @@ const columns: DataTableColumn<UserRow>[] = [
 		key: "label",
 		header: "Account",
 		sortable: true,
-		render: (r) => <UserLink id={r.id} label={r.label} handle={r.handle} />,
+		render: (r) => (
+			<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+				<UserLink id={r.id} label={r.label} handle={r.handle} />
+				{r.excludeFromProductMetrics && <Badge tone="warning">excluded</Badge>}
+			</div>
+		),
 	},
 	{
 		key: "lastSeenAt",
@@ -93,6 +98,7 @@ type TableState = {
 	library: "all" | "synced" | "none";
 	onboarding: "all" | "complete" | "incomplete" | "not_started";
 	lastSeen: "all" | "24h" | "7d" | "30d" | "inactive_30d" | "never";
+	productMetrics: "all" | "included" | "excluded";
 	sort: string;
 	direction: "asc" | "desc";
 	page: number;
@@ -132,6 +138,11 @@ function readTableState(): TableState {
 		lastSeen: enumValue(
 			params.get("lastSeen") ?? "",
 			["all", "24h", "7d", "30d", "inactive_30d", "never"],
+			"all",
+		),
+		productMetrics: enumValue(
+			params.get("productMetrics") ?? "",
+			["all", "included", "excluded"],
 			"all",
 		),
 		sort: params.get("sort") ?? "createdAt",
@@ -178,6 +189,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 			"library",
 			"onboarding",
 			"lastSeen",
+			"productMetrics",
 			"sort",
 			"direction",
 		];
@@ -190,6 +202,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 			"library",
 			"onboarding",
 			"lastSeen",
+			"productMetrics",
 		] as const) {
 			const value = next[key];
 			if (value && value !== "all") url.searchParams.set(key, value);
@@ -209,6 +222,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		library: table.library,
 		onboarding: table.onboarding,
 		lastSeen: table.lastSeen,
+		productMetrics: table.productMetrics,
 		sort: table.sort,
 		direction: table.direction,
 		page: String(table.page),
@@ -225,6 +239,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		table.library !== "all",
 		table.onboarding !== "all",
 		table.lastSeen !== "all",
+		table.productMetrics !== "all",
 	].filter(Boolean).length;
 	useEffect(() => {
 		// "Select all matching" is a standing intent, not a snapshot of loaded
@@ -450,6 +465,27 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 									<option value="complete">Complete</option>
 									<option value="incomplete">Incomplete</option>
 									<option value="not_started">Not started</option>
+								</select>
+							</label>
+							<label className="filter-field">
+								<span>Product metrics</span>
+								<select
+									className="select"
+									value={table.productMetrics}
+									onChange={(event) =>
+										updateTable({
+											productMetrics: enumValue<TableState["productMetrics"]>(
+												event.target.value,
+												["all", "included", "excluded"],
+												"all",
+											),
+											page: 1,
+										})
+									}
+								>
+									<option value="all">All accounts</option>
+									<option value="included">Included</option>
+									<option value="excluded">Excluded</option>
 								</select>
 							</label>
 							<label className="filter-field">
