@@ -1,12 +1,19 @@
 import "@testing-library/jest-dom/vitest";
 import "./setup.node";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
 import type React from "react";
 import { afterEach, vi } from "vitest";
 
 afterEach(() => {
 	cleanup();
 });
+
+// Testing Library's 1s waitFor/findBy budget leaves almost no headroom over a
+// real debounce (ClaimHandleStep pauses 250ms before it even queries), and the
+// pre-push hook runs check, typecheck and this suite in parallel (lefthook.yml),
+// so a starved worker has failed that assertion on timing alone. 5s still fails
+// a genuinely absent element well inside testTimeout, with RTL's DOM diff.
+configure({ asyncUtilTimeout: 5_000 });
 
 Object.defineProperty(window, "matchMedia", {
 	writable: true,
