@@ -480,6 +480,18 @@ function backendFailureFallbackMessage(failure: SyncBackendFailure): string {
 		: `Backend HTTP ${failure.status}`;
 }
 
+// A 413 is payload-too-large by HTTP semantics even when the body carries no
+// parseable code (e.g. an intermediary's own error page), so classification
+// falls back to the status line instead of reporting "unknown".
+function classifyBackendFailureCode(
+	status: number,
+	code: unknown,
+): ExtensionSyncBackendFailureCode {
+	if (isBackendFailureCode(code)) return code;
+	if (status === 413) return EXTENSION_SYNC_PAYLOAD_TOO_LARGE;
+	return EXTENSION_SYNC_UNKNOWN_FAILURE;
+}
+
 function parseRetryAfterSeconds(value: unknown): number | null {
 	if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
 		return null;
@@ -500,7 +512,7 @@ function parseBackendFailure(
 	if (typeof payload !== "object" || payload === null) {
 		return {
 			status,
-			code: EXTENSION_SYNC_UNKNOWN_FAILURE,
+			code: classifyBackendFailureCode(status, null),
 			message: null,
 			retryAfterSeconds: retryAfterFromHeader,
 		};
@@ -514,7 +526,7 @@ function parseBackendFailure(
 
 	return {
 		status,
-		code: isBackendFailureCode(code) ? code : EXTENSION_SYNC_UNKNOWN_FAILURE,
+		code: classifyBackendFailureCode(status, code),
 		message: typeof error === "string" ? error : null,
 		retryAfterSeconds: retryAfterSeconds ?? retryAfterFromHeader,
 	};
