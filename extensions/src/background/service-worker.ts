@@ -9,6 +9,7 @@ import type {
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
+	EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
 	EXTENSION_SYNC_UNKNOWN_FAILURE,
 } from "../../../shared/extension-sync-contract";
 import type {
@@ -57,6 +58,7 @@ import {
 	hydrateLikedSongReleaseYears,
 	recordReleaseYearLookups,
 } from "./release-year-hydration";
+import { postSyncPayload } from "./sync-upload";
 
 let cachedToken: SpotifyTokenPayload | null = null;
 let cachedProfile: UserProfile | null = null;
@@ -461,8 +463,21 @@ function isBackendFailureCode(
 	return (
 		value === EXTENSION_SYNC_ALREADY_RUNNING ||
 		value === EXTENSION_SYNC_COOLDOWN ||
-		value === EXTENSION_SYNC_UNKNOWN_FAILURE
+		value === EXTENSION_SYNC_UNKNOWN_FAILURE ||
+		value === EXTENSION_SYNC_PAYLOAD_TOO_LARGE
 	);
+}
+
+// Server-provided messages normally cover this, but a payload-too-large
+// response body isn't guaranteed parseable (e.g. an intermediary's own 413
+// page), so the user still needs a clear message instead of "Backend HTTP 413".
+const PAYLOAD_TOO_LARGE_FALLBACK_MESSAGE =
+	"Your library is too large to sync. Please update the extension or contact support.";
+
+function backendFailureFallbackMessage(failure: SyncBackendFailure): string {
+	return failure.code === EXTENSION_SYNC_PAYLOAD_TOO_LARGE
+		? PAYLOAD_TOO_LARGE_FALLBACK_MESSAGE
+		: `Backend HTTP ${failure.status}`;
 }
 
 function parseRetryAfterSeconds(value: unknown): number | null {
@@ -701,7 +716,9 @@ async function performSync(): Promise<SyncResult> {
 		await setSyncState({ phase: "uploading" });
 
 		try {
-			const res = await postToBackend("/api/extension/sync", {
+			const apiToken = await getApiToken();
+			const backendUrl = await getBackendUrl();
+			const res = await postSyncPayload(apiToken, backendUrl, {
 				likedSongs: hydratedLikedSongs,
 				playlists,
 				playlistTracks,
@@ -746,13 +763,10 @@ async function performSync(): Promise<SyncResult> {
 			diagnosticBackendStatus = failure.status;
 			diagnosticBackendFailureCode = failure.code;
 			diagnosticRetryAfterSeconds = failure.retryAfterSeconds;
-			diagnosticErrorMessage = truncateDiagnosticError(
-				failure.message ?? `Backend HTTP ${res.status}`,
-			);
-			await setSyncState({
-				status: "error",
-				error: failure.message ?? `Backend HTTP ${res.status}`,
-			});
+			const failureMessage =
+				failure.message ?? backendFailureFallbackMessage(failure);
+			diagnosticErrorMessage = truncateDiagnosticError(failureMessage);
+			await setSyncState({ status: "error", error: failureMessage });
 			console.warn("[hearted.] Backend sync failed:", failure);
 			return { kind: "backend-failure", count: likedSongs.length, failure };
 		} catch {
