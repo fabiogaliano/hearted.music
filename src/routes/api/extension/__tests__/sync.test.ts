@@ -1,9 +1,11 @@
+import { gzipSync } from "node:zlib";
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
+	EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
 } from "../../../../../shared/extension-sync-contract";
 
 type SyncRoute = {
@@ -189,7 +191,7 @@ describe("/api/extension/sync", () => {
 		expect(mockUploadSyncPayload).not.toHaveBeenCalled();
 	});
 
-	it("returns 413 when Content-Length exceeds the body cap", async () => {
+	it("returns 413 with the payload-too-large code when Content-Length exceeds the body cap", async () => {
 		const response = await route.server.handlers.POST({
 			request: syncRequest(
 				{ likedSongs: [], playlists: [] },
@@ -198,7 +200,31 @@ describe("/api/extension/sync", () => {
 		});
 
 		expect(response.status).toBe(413);
-		expect(await response.json()).toEqual({ error: "Payload too large" });
+		expect(await response.json()).toEqual({
+			code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
+			error:
+				"Your library is too large to sync. Please update the hearted. extension and try again.",
+		});
+		expect(mockUploadSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("returns 413 with the gzip-specific message when a compressed body's declared length exceeds the cap", async () => {
+		const response = await route.server.handlers.POST({
+			request: syncRequest(
+				{ likedSongs: [], playlists: [] },
+				{
+					"Content-Type": "application/gzip",
+					"Content-Length": String(20 * 1024 * 1024 + 1),
+				},
+			),
+		});
+
+		expect(response.status).toBe(413);
+		expect(await response.json()).toEqual({
+			code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
+			error:
+				"Your library is too large to sync, even compressed. Please contact support.",
+		});
 		expect(mockUploadSyncPayload).not.toHaveBeenCalled();
 	});
 
@@ -217,18 +243,62 @@ describe("/api/extension/sync", () => {
 			phaseJobIds: PHASE_JOB_IDS,
 		});
 
-		// Uploaded the raw body, then enqueued with the same path + byte size.
+		// Uploaded the raw body as JSON-typed bytes, then enqueued with the same
+		// path + byte size.
 		expect(mockUploadSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin-client" },
 			PAYLOAD_PATH,
-			expect.any(String),
+			expect.any(Uint8Array),
+			"application/json",
 		);
 		const [, pathArg, bytesArg] = mockBeginExtensionSync.mock.calls[0];
 		expect(pathArg).toBe(PAYLOAD_PATH);
 		expect(bytesArg).toBeGreaterThan(0);
 		expect(mockCaptureWithWaitUntil).toHaveBeenCalledOnce();
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+			expect.objectContaining({
+				properties: expect.objectContaining({ payload_encoding: "json" }),
+			}),
+		);
 		// Queued path keeps the staged object for the worker.
 		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("stages a gzip body untouched with a .json.gz path and application/gzip content type", async () => {
+		const compressed = gzipSync(
+			Buffer.from(JSON.stringify({ likedSongs: [], playlists: [] })),
+		);
+		const request = new Request("https://hearted.test/api/extension/sync", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/gzip",
+				"Content-Length": String(compressed.byteLength),
+				Origin: "chrome-extension://test-extension-id",
+			},
+			body: compressed,
+		});
+		mockBuildSyncPayloadPath.mockReturnValue("acct-1/payload-uuid.json.gz");
+
+		const response = await route.server.handlers.POST({ request });
+
+		expect(response.status).toBe(202);
+		// Route builds the path with the gzip extension and uploads the exact
+		// compressed bytes it received — no decompression, no re-encoding.
+		expect(mockBuildSyncPayloadPath).toHaveBeenCalledWith(
+			ACCOUNT_ID,
+			"json.gz",
+		);
+		const [, , uploadedBytesArg, uploadedContentTypeArg] =
+			mockUploadSyncPayload.mock.calls[0];
+		expect(new Uint8Array(uploadedBytesArg as Uint8Array)).toEqual(
+			new Uint8Array(compressed),
+		);
+		expect(uploadedContentTypeArg).toBe("application/gzip");
+		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+			expect.objectContaining({
+				properties: expect.objectContaining({ payload_encoding: "gzip" }),
+			}),
+		);
 	});
 
 	it("returns 429 already-running and drops the staged payload when gated", async () => {

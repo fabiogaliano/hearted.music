@@ -1,7 +1,35 @@
+import { gzipSync } from "node:zlib";
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
+
+// downloadSyncPayload now returns raw bytes; staged payloads in these tests
+// are plain JSON, so this just encodes the fixture strings the same way the
+// route's upload path would have written them.
+function jsonBytes(value: unknown): Uint8Array {
+	return new TextEncoder().encode(JSON.stringify(value));
+}
+
+// Lets one test force gunzipSync to throw the way it does when decompressed
+// output exceeds maxOutputLength, without actually gzipping 200MB+ of data in
+// a unit test. Every other test falls through to the real implementation.
+const { zlibOverrides } = vi.hoisted(() => ({
+	zlibOverrides: {
+		gunzip: null as ((...args: unknown[]) => Buffer) | null,
+	},
+}));
+
+vi.mock("node:zlib", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:zlib")>();
+	const realGunzipSync = (...args: unknown[]) =>
+		(actual.gunzipSync as (...a: unknown[]) => Buffer)(...args);
+	return {
+		...actual,
+		gunzipSync: (...args: unknown[]) =>
+			(zlibOverrides.gunzip ?? realGunzipSync)(...args),
+	};
+});
 
 const {
 	mockDownloadSyncPayload,
@@ -200,6 +228,7 @@ function makeSupabaseMock(
 describe("runExtensionSyncJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		zlibOverrides.gunzip = null;
 		mockCreateAdminSupabaseClient.mockReturnValue({ id: "admin" });
 		mockDeleteSyncPayload.mockResolvedValue(Result.ok(undefined));
 		mockCompleteJob.mockResolvedValue(Result.ok({ id: "j" }));
@@ -216,7 +245,7 @@ describe("runExtensionSyncJob", () => {
 
 	it("completes an empty-payload sync and deletes the staged object", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
-			Result.ok(JSON.stringify({ likedSongs: [], playlists: [] })),
+			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
 		);
 
 		const outcome = await runExtensionSyncJob(
@@ -285,7 +314,7 @@ describe("runExtensionSyncJob", () => {
 
 	it("fails when the downloaded payload does not match the schema", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
-			Result.ok(JSON.stringify({ likedSongs: "not-an-array" })),
+			Result.ok(jsonBytes({ likedSongs: "not-an-array" })),
 		);
 
 		const outcome = await runExtensionSyncJob(
@@ -306,7 +335,7 @@ describe("runExtensionSyncJob", () => {
 	it("fails unsettled phases + parent when a phase errors", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.ok(
-				JSON.stringify({
+				jsonBytes({
 					likedSongs: [
 						{
 							added_at: "2026-01-01T00:00:00Z",
@@ -359,7 +388,7 @@ describe("runExtensionSyncJob", () => {
 		});
 		mockCreateAdminSupabaseClient.mockReturnValue(supabaseMock);
 
-		const payloadWithProfile = JSON.stringify({
+		const payloadWithProfile = jsonBytes({
 			likedSongs: [],
 			playlists: [],
 			userProfile: {
@@ -390,7 +419,7 @@ describe("runExtensionSyncJob", () => {
 		});
 		mockCreateAdminSupabaseClient.mockReturnValue(supabaseMock);
 
-		const payloadWithProfile = JSON.stringify({
+		const payloadWithProfile = jsonBytes({
 			likedSongs: [],
 			playlists: [],
 			userProfile: {
@@ -408,5 +437,64 @@ describe("runExtensionSyncJob", () => {
 		expect(outcome.status).toBe("completed");
 		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
 		expect(mockFailJob).not.toHaveBeenCalled();
+	});
+
+	it("decompresses a gzipped staged payload and completes like a plain-JSON one", async () => {
+		const compressed = gzipSync(
+			Buffer.from(JSON.stringify({ likedSongs: [], playlists: [] })),
+		);
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(new Uint8Array(compressed)),
+		);
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+		);
+
+		expect(outcome).toEqual({ status: "completed" });
+		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
+		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
+			{ id: "admin" },
+			PAYLOAD_PATH,
+		);
+	});
+
+	it("settles the job as failed, without throwing, when decompression exceeds the output cap", async () => {
+		// Real gunzipSync throws when maxOutputLength is exceeded; mocked here
+		// (see the node:zlib mock above) instead of actually gzipping 200MB+ in
+		// a unit test.
+		zlibOverrides.gunzip = () => {
+			const error = new Error(
+				"Cannot create a Buffer larger than 0x3fffffff bytes",
+			) as NodeJS.ErrnoException;
+			error.code = "ERR_BUFFER_TOO_LARGE";
+			throw error;
+		};
+		const compressed = gzipSync(
+			Buffer.from("irrelevant, decompression is mocked"),
+		);
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(new Uint8Array(compressed)),
+		);
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+		);
+
+		expect(outcome.status).toBe("failed");
+		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockFailJob).toHaveBeenCalledWith(
+			PHASE_JOB_IDS.liked_songs,
+			expect.any(String),
+		);
+		// Terminal failure via the existing fail path, not a thrown exception out
+		// of the runner — the job never stays claimed forever.
+		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
+			{ id: "admin" },
+			PAYLOAD_PATH,
+		);
 	});
 });

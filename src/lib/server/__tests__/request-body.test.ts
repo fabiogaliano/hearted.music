@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readBodyWithByteCap } from "@/lib/server/request-body";
+import { readBodyBytesWithByteCap } from "@/lib/server/request-body";
 
 // The helper only touches request.body, so a minimal object with a body stream
 // is enough to exercise it without standing up a full Request.
@@ -20,23 +20,29 @@ function streamOf(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
 
 const encoder = new TextEncoder();
 
-describe("readBodyWithByteCap", () => {
-	it("returns an empty string when there is no body", async () => {
-		expect(await readBodyWithByteCap(requestWithBody(null), 1024)).toBe("");
+describe("readBodyBytesWithByteCap", () => {
+	it("returns an empty Uint8Array when there is no body", async () => {
+		const result = await readBodyBytesWithByteCap(requestWithBody(null), 1024);
+		expect(result).toEqual(new Uint8Array(0));
 	});
 
-	it("returns the decoded body when it fits within the cap", async () => {
-		const text = '{"hello":"world"}';
-		const stream = streamOf([encoder.encode(text)]);
+	it("returns the raw bytes when they fit within the cap", async () => {
+		const bytes = encoder.encode('{"hello":"world"}');
+		const stream = streamOf([bytes]);
 
-		expect(await readBodyWithByteCap(requestWithBody(stream), 1024)).toBe(text);
+		const result = await readBodyBytesWithByteCap(
+			requestWithBody(stream),
+			1024,
+		);
+		expect(result).toEqual(bytes);
 	});
 
-	it("returns the body when it is exactly at the cap", async () => {
-		const text = "abcde";
-		const stream = streamOf([encoder.encode(text)]);
+	it("returns the bytes when exactly at the cap", async () => {
+		const bytes = encoder.encode("abcde");
+		const stream = streamOf([bytes]);
 
-		expect(await readBodyWithByteCap(requestWithBody(stream), 5)).toBe(text);
+		const result = await readBodyBytesWithByteCap(requestWithBody(stream), 5);
+		expect(result).toEqual(bytes);
 	});
 
 	it("returns null and stops reading once the cap is exceeded", async () => {
@@ -54,7 +60,7 @@ describe("readBodyWithByteCap", () => {
 			cancel,
 		});
 
-		const result = await readBodyWithByteCap(requestWithBody(stream), 5);
+		const result = await readBodyBytesWithByteCap(requestWithBody(stream), 5);
 
 		expect(result).toBeNull();
 		expect(cancel).toHaveBeenCalledOnce();
@@ -63,18 +69,21 @@ describe("readBodyWithByteCap", () => {
 		expect(pulled.length).toBeLessThan(3);
 	});
 
-	it("decodes multi-byte UTF-8 sequences split across chunk boundaries", async () => {
-		// "é" is 0xC3 0xA9; splitting it across two chunks would corrupt a
-		// per-chunk decode but must survive the single trailing decode pass.
-		const full = encoder.encode("café");
-		const splitPoint = full.length - 1;
+	it("joins bytes split across chunk boundaries without corruption", async () => {
+		// Non-UTF-8 binary (a gzip-like byte sequence, including 0x00 and bytes
+		// >0x7F) split mid-sequence — a per-chunk decode/re-encode would corrupt
+		// this, so the join must operate on raw bytes only.
+		const full = new Uint8Array([0x1f, 0x8b, 0x00, 0xff, 0x8b, 0x1f]);
+		const splitPoint = 3;
 		const stream = streamOf([
 			full.slice(0, splitPoint),
 			full.slice(splitPoint),
 		]);
 
-		expect(await readBodyWithByteCap(requestWithBody(stream), 1024)).toBe(
-			"café",
+		const result = await readBodyBytesWithByteCap(
+			requestWithBody(stream),
+			1024,
 		);
+		expect(result).toEqual(full);
 	});
 });
