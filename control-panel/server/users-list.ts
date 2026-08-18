@@ -99,12 +99,13 @@ export function parseUsersListQuery(url: URL): UsersListQuery {
 export function whereForUsers(query: UsersListQuery, params: unknown[]): string[] {
 	const where: string[] = [];
 	if (query.q) {
-		const value = addParam(params, query.q);
 		const pattern = addParam(params, `%${escapeLike(query.q)}%`);
-		const search = isUuid(query.q)
-			? `(a.id = ${value} or a.email ilike ${pattern} or coalesce(a.display_name, '') ilike ${pattern} or coalesce(a.handle, '') ilike ${pattern})`
-			: `(a.email ilike ${pattern} or coalesce(a.display_name, '') ilike ${pattern} or coalesce(a.handle, '') ilike ${pattern})`;
-		where.push(search);
+		const idPredicate = isUuid(query.q)
+			? `a.id = ${addParam(params, query.q)} or `
+			: "";
+		where.push(
+			`(${idPredicate}a.email ilike ${pattern} or coalesce(a.display_name, '') ilike ${pattern} or coalesce(a.handle, '') ilike ${pattern})`,
+		);
 	}
 	if (query.plan) where.push(`b.plan = ${addParam(params, query.plan)}`);
 	if (query.access === "unlimited") {
