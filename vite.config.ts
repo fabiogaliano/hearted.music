@@ -181,6 +181,14 @@ export default defineConfig(({ command }) => {
 			// testMaxWorkers above for the rationale and the CI override.
 			maxWorkers: testMaxWorkers,
 			minWorkers: 1,
+			// Vitest's 5s default is sized for a run that owns the machine. The
+			// pre-push hook runs `check`, a cache-busted full `typecheck`, and this
+			// suite in parallel (lefthook.yml), so workers can lose most of the CPU
+			// for stretches — a jsdom render that measures ~300ms solo (the language
+			// catalog in MatchFiltersFieldList) has blown past 5s there and reported
+			// as a timeout. Assertions are unchanged; only the deadline is realistic.
+			testTimeout: 20_000,
+			hookTimeout: 20_000,
 			// Two projects split by environment cost: jsdom is initialized per file
 			// and dominates total runtime, so only the ~25 files that touch a DOM pay
 			// for it. The other ~90 run in the much cheaper node environment.
