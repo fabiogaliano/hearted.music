@@ -200,15 +200,15 @@ describe("/api/extension/sync", () => {
 		});
 
 		expect(response.status).toBe(413);
-		expect(await response.json()).toEqual({
-			code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
-			error:
-				"Your library is too large to sync. Please update the hearted. extension and try again.",
-		});
+		// The code is the machine contract the extension keys on; the error copy
+		// is display text and deliberately not pinned.
+		const body = await response.json();
+		expect(body).toMatchObject({ code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE });
+		expect(typeof body.error).toBe("string");
 		expect(mockUploadSyncPayload).not.toHaveBeenCalled();
 	});
 
-	it("returns 413 with the gzip-specific message when a compressed body's declared length exceeds the cap", async () => {
+	it("returns 413 with the payload-too-large code when a compressed body's declared length exceeds the cap", async () => {
 		const response = await route.server.handlers.POST({
 			request: syncRequest(
 				{ likedSongs: [], playlists: [] },
@@ -220,11 +220,9 @@ describe("/api/extension/sync", () => {
 		});
 
 		expect(response.status).toBe(413);
-		expect(await response.json()).toEqual({
-			code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
-			error:
-				"Your library is too large to sync, even compressed. Please contact support.",
-		});
+		const body = await response.json();
+		expect(body).toMatchObject({ code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE });
+		expect(typeof body.error).toBe("string");
 		expect(mockUploadSyncPayload).not.toHaveBeenCalled();
 	});
 
