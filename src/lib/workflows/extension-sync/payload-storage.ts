@@ -1,10 +1,11 @@
 /**
  * Storage staging for extension sync payloads.
  *
- * The CF Worker ingress streams the raw ~20 MB body to a private Storage object
- * (no parse, ~0 CPU); the Bun worker downloads + validates it, then deletes it
- * on terminal settlement. Storage's confirmed 50 MB/file limit comfortably
- * covers the 20 MB body cap, and keeps the blob out of the 500 MB Free-plan DB.
+ * The CF Worker ingress streams the raw ~20 MB body — plain JSON or gzip-
+ * compressed bytes, see sync.tsx — to a private Storage object (no parse, ~0
+ * CPU); the Bun worker downloads + validates it, then deletes it on terminal
+ * settlement. Storage's confirmed 50 MB/file limit comfortably covers the
+ * 20 MB body cap, and keeps the blob out of the 500 MB Free-plan DB.
  *
  * All access is via the service-role admin client, which bypasses the (absent)
  * Storage RLS on the policy-less `sync-payloads` bucket.
@@ -17,22 +18,27 @@ import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 export const SYNC_PAYLOADS_BUCKET = "sync-payloads";
 
 /**
- * Object key for a staged payload: `{accountId}/{uuid}.json`. Namespacing by
- * account keeps the orphan sweep and any future per-account cleanup trivial.
+ * Object key for a staged payload: `{accountId}/{uuid}.json` (or `.json.gz`
+ * for a gzip-compressed body). Namespacing by account keeps the orphan sweep
+ * and any future per-account cleanup trivial.
  */
-export function buildSyncPayloadPath(accountId: string): string {
-	return `${accountId}/${crypto.randomUUID()}.json`;
+export function buildSyncPayloadPath(
+	accountId: string,
+	extension: "json" | "json.gz" = "json",
+): string {
+	return `${accountId}/${crypto.randomUUID()}.${extension}`;
 }
 
 export async function uploadSyncPayload(
 	supabase: AdminSupabaseClient,
 	path: string,
-	body: string | Uint8Array | ArrayBuffer,
+	bytes: Uint8Array,
+	contentType: "application/json" | "application/gzip",
 ): Promise<Result<void, DbError>> {
 	const { error } = await supabase.storage
 		.from(SYNC_PAYLOADS_BUCKET)
-		.upload(path, body, {
-			contentType: "application/json",
+		.upload(path, bytes, {
+			contentType,
 			upsert: false,
 		});
 
@@ -48,10 +54,15 @@ export async function uploadSyncPayload(
 	return Result.ok(undefined);
 }
 
+/**
+ * Downloads the staged object as raw bytes. Bytes, not text: a gzip-staged
+ * payload is binary, and the worker (not this module) is what knows how to
+ * tell compressed bytes from plain JSON and decode accordingly.
+ */
 export async function downloadSyncPayload(
 	supabase: AdminSupabaseClient,
 	path: string,
-): Promise<Result<string, DbError>> {
+): Promise<Result<Uint8Array, DbError>> {
 	const { data, error } = await supabase.storage
 		.from(SYNC_PAYLOADS_BUCKET)
 		.download(path);
@@ -74,7 +85,7 @@ export async function downloadSyncPayload(
 		);
 	}
 
-	return Result.ok(await data.text());
+	return Result.ok(new Uint8Array(await data.arrayBuffer()));
 }
 
 /**

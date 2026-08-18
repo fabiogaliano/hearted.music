@@ -15,10 +15,18 @@
  *   3. calls begin_extension_sync to atomically gate + enqueue the work,
  *   4. returns 202 with the phase job ids for progress polling.
  *
+ * The body may arrive as `Content-Type: application/json` (older extensions,
+ * and any future non-compressing caller) or `application/gzip` (raw gzip
+ * bytes, no `Content-Encoding` header — Cloudflare's front line
+ * auto-decompresses bodies that declare `Content-Encoding`, which would defeat
+ * the point). Either way this route never inspects the bytes: it stages them
+ * as-is under an extension that matches the wire format, and the Bun worker
+ * sniffs the gzip magic bytes and decompresses before parsing.
+ *
  * The Bun worker (src/lib/workflows/extension-sync/runner.ts) claims the parent
- * job, downloads + validates the payload, and runs the phases with no
- * subrequest/CPU ceiling. Cost here is constant (~5 subrequests) regardless of
- * library size.
+ * job, downloads + decompresses (if needed) + validates the payload, and runs
+ * the phases with no subrequest/CPU ceiling. Cost here is constant (~5
+ * subrequests) regardless of library size.
  *
  * Auth: Better Auth session cookie OR Bearer token (extension API token)
  */
@@ -33,7 +41,7 @@ import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
 } from "@/lib/server/extension-cors";
-import { readBodyWithByteCap } from "@/lib/server/request-body";
+import { readBodyBytesWithByteCap } from "@/lib/server/request-body";
 import {
 	buildSyncPayloadPath,
 	deleteSyncPayload,
@@ -43,15 +51,29 @@ import { captureWithWaitUntil } from "@/utils/posthog-server";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
+	EXTENSION_SYNC_PAYLOAD_TOO_LARGE,
 } from "../../../../shared/extension-sync-contract";
 
 // Body size is bounded in two layers below: a required+strict Content-Length
 // check rejects oversized/missing/malformed declarations up front, and
-// readBodyWithByteCap streams with a hard byte cap so memory stays bounded
+// readBodyBytesWithByteCap streams with a hard byte cap so memory stays bounded
 // during the read instead of buffering the whole 20 MB payload (which could OOM
-// the 128 MB Worker isolate). The payload itself is validated later, in the
-// worker, against SyncPayloadSchema — never here.
+// the 128 MB Worker isolate). This cap applies to the bytes on the wire — for a
+// gzip body that's the compressed size, not the eventual decompressed JSON. The
+// payload itself is validated later, in the worker, against SyncPayloadSchema —
+// never here.
 const MAX_SYNC_BODY_BYTES = 20 * 1024 * 1024;
+
+const GZIP_CONTENT_TYPE = "application/gzip";
+
+// An updated extension compresses ~10x before sending, so a legitimate library
+// hitting the raw-JSON cap almost always means the extension is stale.
+const JSON_TOO_LARGE_MESSAGE =
+	"Your library is too large to sync. Please update the hearted. extension and try again.";
+// A compressed payload over the cap is a genuinely enormous library (~10x+
+// this size uncompressed) rather than a stale-extension problem.
+const GZIP_TOO_LARGE_MESSAGE =
+	"Your library is too large to sync, even compressed. Please contact support.";
 
 export const Route = createFileRoute("/api/extension/sync")({
 	server: {
@@ -82,12 +104,19 @@ export const Route = createFileRoute("/api/extension/sync")({
 					);
 				}
 
+				const isGzip = (request.headers.get("content-type") ?? "")
+					.toLowerCase()
+					.startsWith(GZIP_CONTENT_TYPE);
+				const tooLargeMessage = isGzip
+					? GZIP_TOO_LARGE_MESSAGE
+					: JSON_TOO_LARGE_MESSAGE;
+
 				// Layer 1: require and strictly parse Content-Length. The protocol
 				// guarantees a present header is honest (HTTP/2+ resets streams whose
 				// declared length mismatches the body), so an absent or non-numeric
 				// header is the only practical way to smuggle an oversized body past a
 				// size check. Browsers always attach an accurate Content-Length for the
-				// extension's JSON.stringify string body, so this can't reject a
+				// extension's body (JSON string or gzip bytes), so this can't reject a
 				// legitimate caller. 411 for the missing/malformed declaration, 413 for
 				// an honest-but-oversized one.
 				const lengthHeader = request.headers.get("content-length");
@@ -100,7 +129,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				const declaredBytes = Number(lengthHeader);
 				if (declaredBytes > MAX_SYNC_BODY_BYTES) {
 					return Response.json(
-						{ error: "Payload too large" },
+						{ error: tooLargeMessage, code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE },
 						{ status: 413, headers: corsHeaders },
 					);
 				}
@@ -108,9 +137,12 @@ export const Route = createFileRoute("/api/extension/sync")({
 				// Layer 2 (defense-in-depth): stream the body with a hard byte cap so
 				// memory is bounded during the read even if an intermediary let a
 				// mismatched length through. null means the cap was exceeded → 413.
-				let rawBody: string | null;
+				let rawBody: Uint8Array | null;
 				try {
-					rawBody = await readBodyWithByteCap(request, MAX_SYNC_BODY_BYTES);
+					rawBody = await readBodyBytesWithByteCap(
+						request,
+						MAX_SYNC_BODY_BYTES,
+					);
 				} catch {
 					return Response.json(
 						{ error: "Invalid payload" },
@@ -119,19 +151,24 @@ export const Route = createFileRoute("/api/extension/sync")({
 				}
 				if (rawBody === null) {
 					return Response.json(
-						{ error: "Payload too large" },
+						{ error: tooLargeMessage, code: EXTENSION_SYNC_PAYLOAD_TOO_LARGE },
 						{ status: 413, headers: corsHeaders },
 					);
 				}
 
-				// Stage the raw bytes in Storage. No parse, no Zod — that work moves to
-				// the worker, keeping Worker CPU inside the 10 ms Free budget.
+				// Stage the raw bytes in Storage. No parse, no Zod, no decompression —
+				// that work moves to the worker, keeping Worker CPU inside the 10 ms
+				// Free budget.
 				const supabase = createAdminSupabaseClient();
-				const payloadPath = buildSyncPayloadPath(accountId);
+				const payloadPath = buildSyncPayloadPath(
+					accountId,
+					isGzip ? "json.gz" : "json",
+				);
 				const uploadResult = await uploadSyncPayload(
 					supabase,
 					payloadPath,
 					rawBody,
+					isGzip ? "application/gzip" : "application/json",
 				);
 				if (Result.isError(uploadResult)) {
 					return Response.json(
@@ -199,6 +236,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 					event: "library_sync_queued",
 					properties: {
 						payload_bytes: declaredBytes,
+						payload_encoding: isGzip ? "gzip" : "json",
 						source: "extension",
 					},
 				});

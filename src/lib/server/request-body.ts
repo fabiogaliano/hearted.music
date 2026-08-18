@@ -1,5 +1,5 @@
 /**
- * Read a request body as text without ever buffering past a byte cap.
+ * Read a request body as raw bytes without ever buffering past a byte cap.
  *
  * On Cloudflare Workers the isolate has a hard 128 MB memory ceiling, and
  * `request.text()` / `request.json()` buffer the *entire* body before any size
@@ -9,15 +9,17 @@
  * the moment the running total exceeds `maxBytes`, so we never hold more than the
  * cap in memory.
  *
- * Returns the decoded body string, "" when there is no body, or `null` when the
- * stream exceeds `maxBytes` (the caller should answer 413).
+ * Returns raw bytes (not text): the sync route's body may be gzip-compressed
+ * binary, and round-tripping binary through TextDecoder/string would corrupt it.
+ * Returns an empty Uint8Array when there is no body, or `null` when the stream
+ * exceeds `maxBytes` (the caller should answer 413).
  */
-export async function readBodyWithByteCap(
+export async function readBodyBytesWithByteCap(
 	request: Request,
 	maxBytes: number,
-): Promise<string | null> {
+): Promise<Uint8Array | null> {
 	if (!request.body) {
-		return "";
+		return new Uint8Array(0);
 	}
 
 	const reader = request.body.getReader();
@@ -47,7 +49,5 @@ export async function readBodyWithByteCap(
 		offset += chunk.byteLength;
 	}
 
-	// One decode pass over the joined bytes so multi-byte UTF-8 sequences split
-	// across chunk boundaries decode correctly.
-	return new TextDecoder().decode(buf);
+	return buf;
 }

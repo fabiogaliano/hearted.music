@@ -11,6 +11,7 @@
  * Mirrors src/lib/workflows/library-processing/runner.ts in shape.
  */
 
+import { gunzipSync } from "node:zlib";
 import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
@@ -51,6 +52,23 @@ import {
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }
 	| { status: "failed"; error: string };
+
+// gzip can expand ~1000x on decompression; without a ceiling a decompression
+// bomb (or a corrupt/adversarial payload) could exhaust worker memory before
+// SyncPayloadSchema ever gets a chance to reject it. 200 MB clears the largest
+// plausible real library (~60 MB raw JSON, the incident that motivated this
+// fix) with ~3x headroom.
+const MAX_DECOMPRESSED_PAYLOAD_BYTES = 200 * 1024 * 1024;
+
+// gzip's fixed 2-byte magic header (RFC 1952). Sniffed from content, not the
+// storage path's extension, so a mislabeled object can never reach JSON.parse
+// with binary garbage.
+const GZIP_MAGIC_BYTE_0 = 0x1f;
+const GZIP_MAGIC_BYTE_1 = 0x8b;
+
+function isGzipPayload(bytes: Uint8Array): boolean {
+	return bytes[0] === GZIP_MAGIC_BYTE_0 && bytes[1] === GZIP_MAGIC_BYTE_1;
+}
 
 interface PhaseResults {
 	likedSongs?: { total: number; added: number; removed: number };
@@ -145,9 +163,33 @@ export async function runExtensionSyncJob(
 		);
 	}
 
+	let jsonBytes: Uint8Array;
+	if (isGzipPayload(downloadResult.value)) {
+		try {
+			jsonBytes = gunzipSync(downloadResult.value, {
+				maxOutputLength: MAX_DECOMPRESSED_PAYLOAD_BYTES,
+			});
+		} catch (error) {
+			// A decompression bomb, truncated upload, or corrupt gzip stream is most
+			// likely a bad client upload, so report it as a warning rather than an
+			// error to keep the issue feed honest.
+			captureExtensionSyncFailure(error, {
+				phase: "decompress_payload",
+				jobId: job.id,
+				accountId,
+				level: "warning",
+			});
+			return fail(`Invalid sync payload: ${errorMessage(error)}`);
+		}
+	} else {
+		jsonBytes = downloadResult.value;
+	}
+
 	let payload: SyncPayload;
 	try {
-		payload = SyncPayloadSchema.parse(JSON.parse(downloadResult.value));
+		payload = SyncPayloadSchema.parse(
+			JSON.parse(new TextDecoder().decode(jsonBytes)),
+		);
 	} catch (error) {
 		// A malformed payload is most likely a bad client upload, so report it as a
 		// warning rather than an error to keep the issue feed honest.
