@@ -70,6 +70,28 @@ export function initSentry(router: AnyRouter): void {
 	});
 }
 
+/**
+ * React's recoverable errors — hydration mismatches above all — never throw, so
+ * they bypass route error boundaries and reach Sentry only through the global
+ * onerror handler, stripped of the component stack that says *where* the
+ * server and client HTML diverged. Wired from the client entry's
+ * onRecoverableError so the stack arrives as a linked React frame set.
+ */
+export function captureRecoverableError(
+	error: unknown,
+	componentStack: string | null | undefined,
+): void {
+	if (!isSentryEnabled() || !sentryInitialized) {
+		return;
+	}
+
+	Sentry.captureReactException(
+		error,
+		{ componentStack: componentStack ?? undefined },
+		{ mechanism: { type: "react.recoverable", handled: true } },
+	);
+}
+
 export function enableSentryReplay(): void {
 	if (!isSentryEnabled() || !sentryInitialized || replayIntegration !== null) {
 		return;

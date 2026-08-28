@@ -25,6 +25,15 @@ export function captureRouteError(
 	});
 }
 
+export function captureRecoverableError(
+	error: unknown,
+	componentStack: string | null | undefined,
+): void {
+	void loadSentryClient().then((module: SentryClientModule | undefined) => {
+		module?.captureRecoverableError(error, componentStack);
+	});
+}
+
 export function enableSentryReplay(): void {
 	void loadSentryClient().then((module: SentryClientModule | undefined) => {
 		module?.enableSentryReplay();
