@@ -17,6 +17,9 @@ interface ActivityItemProps {
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 // "3 hours ago" within the week; "4 Jul" same year; "4 Jul 2024" older.
+// Rendered on the server and re-derived at hydration from a later clock, so
+// the hosting <p> carries suppressHydrationWarning: a one-second drift must not
+// discard the server tree (React #418).
 // Abbreviated month is unambiguous between US/EU readers and pairs cleanly
 // with the uppercase kicker; the all-numeric locale fallback reads as data.
 function formatActivityDate(isoDate: string): string {
@@ -51,6 +54,7 @@ function renderMeta(item: ActivityItemType): ReactNode {
 					<p
 						className="theme-text-muted mt-2 text-xs tabular-nums"
 						style={{ fontFamily: fonts.body }}
+						suppressHydrationWarning
 					>
 						{when}
 					</p>
@@ -75,6 +79,7 @@ function renderMeta(item: ActivityItemType): ReactNode {
 					<p
 						className="theme-text-muted mt-1 text-xs tabular-nums"
 						style={{ fontFamily: fonts.body }}
+						suppressHydrationWarning
 					>
 						{when}
 					</p>
