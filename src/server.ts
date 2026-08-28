@@ -8,6 +8,9 @@ interface WorkerEnv {
 	[key: string]: unknown;
 }
 
+// Mirrors the worker's denylist (src/worker/instrument.ts).
+const LOCAL_ENVIRONMENTS = new Set(["development", "test", "local"]);
+
 function validateSentryEnv(env: WorkerEnv): {
 	dsn?: string;
 	environment: string;
@@ -37,11 +40,19 @@ function validateSentryEnv(env: WorkerEnv): {
 
 	// `bun run dev` loads the same .env as prod, so a DSN left set locally sends
 	// every dev-server error to the production project — that leak was ~98% of
-	// this project's Sentry volume. Gate on the build-time DEV flag rather than
-	// SENTRY_ENVIRONMENT: the environment string defaults to "production" when
-	// unset, so trusting it would let one missing var reopen the leak. Validation
-	// above still runs, so a malformed DSN fails loudly in dev where it's seen.
-	if (import.meta.env.DEV) {
+	// this project's Sentry volume. Two independent signals drop the DSN, and
+	// either one suffices:
+	//
+	// - The build-time DEV flag. On its own it leaked again on 2026-08-01: Vite
+	//   derives DEV from `process.env.NODE_ENV !== "production"`, so a shell that
+	//   had NODE_ENV exported ran `vite dev` with DEV=false and HMR-session
+	//   errors landed in the production project tagged `development`.
+	// - A local SENTRY_ENVIRONMENT, which is what a dev .env actually sets. The
+	//   string still defaults to "production" when unset, so a missing var in
+	//   the deployed Worker can never silently blind us to production errors.
+	//
+	// Validation above still runs, so a malformed DSN fails loudly in dev.
+	if (import.meta.env.DEV || LOCAL_ENVIRONMENTS.has(environment)) {
 		return { environment };
 	}
 
