@@ -6,9 +6,9 @@
  * Content simply materializes without drawing attention to itself.
  */
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import type { ReactNode } from "react";
-import { Children, useMemo } from "react";
+import { Children, useMemo, useSyncExternalStore } from "react";
 
 interface StaggeredContentProps {
 	children: ReactNode;
@@ -36,6 +36,34 @@ const EASE_SILK = [0.4, 0, 0.2, 1] as const;
 const DEFAULT_STAGGER_DELAY = 0.04;
 const DEFAULT_INITIAL_DELAY = 0.1;
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+	const mql = window.matchMedia(REDUCED_MOTION_QUERY);
+	mql.addEventListener("change", onChange);
+	return () => mql.removeEventListener("change", onChange);
+}
+
+function getReducedMotion(): boolean {
+	return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
+// Not framer's useReducedMotion: that hook answers the real media query on the
+// very first client render, while the server — which can't know the visitor's
+// preference — always rendered the animated branch. The two branches below
+// differ in DOM structure (per-child wrapper divs vs bare children), so for
+// every "Reduce motion" user React threw a hydration mismatch (#418) on each
+// page using this component and discarded the server tree. The server snapshot
+// here is fixed to false so hydration reproduces the server markup exactly;
+// the reduced layout takes over in the re-render that follows.
+function useHydrationSafeReducedMotion(): boolean {
+	return useSyncExternalStore(
+		subscribeReducedMotion,
+		getReducedMotion,
+		() => false,
+	);
+}
+
 const itemVariants = {
 	initial: { opacity: 0 },
 	animate: {
@@ -53,7 +81,7 @@ export function StaggeredContent({
 	role,
 	"aria-label": ariaLabel,
 }: StaggeredContentProps) {
-	const shouldReduceMotion = useReducedMotion();
+	const shouldReduceMotion = useHydrationSafeReducedMotion();
 
 	const staggerDelay = staggerDelayOverride ?? DEFAULT_STAGGER_DELAY;
 	const initialDelay = initialDelayOverride ?? DEFAULT_INITIAL_DELAY;
