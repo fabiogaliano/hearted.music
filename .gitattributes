@@ -1,0 +1,5 @@
+# Generated prod dump: 28 MB of INSERTs, ~73% of the repo's bytes. Left
+# undecorated it makes GitHub label the whole project PLpgSQL (the `$$` in
+# artist names like "Joey Bada$$" trips Linguist's plpgsql heuristic).
+# linguist-generated also collapses it in diffs, which is what we want anyway.
+supabase/seeds/prod-snapshot.sql linguist-generated=true
