@@ -347,6 +347,7 @@ jobs:
       - name: Trigger Coolify deploy (Worker)
         run: >-
           curl
+          --request POST
           --fail
           --show-error
           --retry 3
@@ -359,6 +360,7 @@ jobs:
       - name: Trigger Coolify deploy (Gateway)
         run: >-
           curl
+          --request POST
           --fail
           --show-error
           --retry 3
