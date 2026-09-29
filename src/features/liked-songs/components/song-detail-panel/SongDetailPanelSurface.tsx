@@ -31,6 +31,7 @@ import type {
 	SongInstrumentalRead,
 	SongRead,
 } from "./song-detail-types";
+import { unreadStatus } from "./unread-status";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
@@ -535,34 +536,14 @@ function SonicNumbers({ song, colors }: { song: SongDetail; colors: Palette }) {
 }
 
 // Stands in for the Read/Instrumental/Trace layers when a song has no read yet.
-// The hero still renders above — every selected song opens the panel. Four branches
-// answer *why* the content is missing:
-//   - locked      → not unlocked yet; offer the unlock path (terminal CTA, no divider).
-//   - analyzing   → genuinely in-flight: no settled fetch outcome yet, or the fetch
-//                   found lyrics but the read hasn’t been generated yet.
-//   - unavailable → lyrics-fetch has settled to a no-read outcome (not_found or
-//                   instrumental without a read), or the analysis ran and produced no
-//                   parseable output. Distinct from analyzing: honest "No words yet".
-//
-// Resolved-unknown fix: a song that cleanly resolves to "unknown" (retry candidate:
-// lyrics fetch returned not_found, no song_analysis row written) used to show
-// "Listening" forever because display_state stays ‘pending’ with no analysis row.
-// contentFetchStatus = ‘not_found’ is the settled signal that breaks the loop:
-// no read + not_found → "No words yet", not "Listening".
-//
-// instrumental without a read: fetch settled to ‘instrumental’ but no analysis row
-// parsed successfully — treated as "No words yet" (the read is unavailable, not in-
-// flight). This matches the resolved-unknown treatment: a settled fetch with no read.
-//
-// isEnrichmentRunning still matters for the genuinely in-flight case (e.g. a song
-// just unlocked with no fetch outcome yet), but it is NOT allowed to override a
-// settled not_found — a song whose fetch is done is not "Listening" regardless of
-// whether the pipeline is running for other songs.
+// The hero still renders above — every selected song opens the panel. Locked songs
+// get the unlock path (terminal CTA, no divider); otherwise `unreadStatus` decides
+// between in-flight ("Listening") and an honest "No words yet".
 function UnreadState({
 	colors,
 	displayState,
 	contentFetchStatus,
-	isEnrichmentRunning = false,
+	isEnrichmentRunning,
 	heroHeight,
 	lockedCta,
 }: {
@@ -580,25 +561,9 @@ function UnreadState({
 		);
 	}
 
-	// A settled fetch outcome with no read means the song is resolved-unknown or
-	// resolved-instrumental-without-read — show "No words yet", not "Listening".
-	// not_found: the lyrics fetch confirmed no lyrics exist for this song.
-	// instrumental without a read: the fetch found it’s instrumental but no analysis
-	// row parsed successfully yet — still "unavailable", not in-flight.
-	const fetchSettledWithNoRead =
-		contentFetchStatus === "not_found" || contentFetchStatus === "instrumental";
-
-	// "Listening" only when genuinely pre-resolution:
-	// - the fetch has not settled yet (null) AND the song is in-flight per
-	//   display_state or the pipeline is actively running;
-	// - OR the fetch returned lyrics but the read hasn’t arrived yet.
-	// A settled not_found always overrides isEnrichmentRunning.
 	const isAnalyzing =
-		!fetchSettledWithNoRead &&
-		(isEnrichmentRunning ||
-			displayState === "analyzing" ||
-			displayState === "pending" ||
-			contentFetchStatus === "lyrics");
+		unreadStatus({ displayState, contentFetchStatus, isEnrichmentRunning }) ===
+		"analyzing";
 
 	return (
 		<section
