@@ -4,8 +4,9 @@
  * charge for already-unlocked songs, all-or-nothing on insufficient balance,
  * reserved conversion credits, row-lock serialization) are only proven here.
  *
- * Races are made deterministic by holding the account_billing row lock in an
- * open transaction until both competing unlocks are parked on it.
+ * Races are made deterministic by holding the competing row locks (the
+ * account_billing row, or a conversion prepare's lot locks) in an open
+ * transaction until the racing unlocks are parked on them.
  *
  * Auto-skipped when DATABASE_URL / SUPABASE_URL are not the local stack.
  */
@@ -159,7 +160,7 @@ async function waitForParkedRacers(count: number): Promise<void> {
 		if (row.n === count) return;
 		await new Promise((resolve) => setTimeout(resolve, 20));
 	}
-	throw new Error(`expected ${count} unlocks parked on the billing row lock`);
+	throw new Error(`expected ${count} unlocks parked on a row lock`);
 }
 
 /**
@@ -314,6 +315,49 @@ describeLocal("unlock_songs_for_account", () => {
 		});
 
 		// The upgrade can still consume exactly what it reserved.
+		await db()`
+      SELECT apply_subscription_upgrade_conversion(
+        ${conversion?.conversion_id}::uuid, 'sub_test', 'in_test', ${`evt_apply_${accountId}`}
+      )
+    `;
+		expect(await readBalance(accountId)).toBe(0);
+	});
+
+	it("regression: an unlock racing an in-flight conversion prepare cannot drain the lot it reserves", async () => {
+		const { accountId, songIds } = await seedAccount({
+			creditBalance: 5,
+			likedSongs: 1,
+		});
+		const lot = await seedPackLot({
+			accountId,
+			credits: 5,
+			createdAt: "2026-09-01T00:00:00Z",
+		});
+
+		// Prepare reserves the whole lot but stays uncommitted until the unlock
+		// is parked, so the unlock's reservation read predates the commit.
+		let unlocking: Promise<UnlockPayload> | undefined;
+		const conversion = await db().begin(async (tx) => {
+			const [prepared] = await tx`
+        SELECT conversion_id
+        FROM prepare_subscription_upgrade_conversion(${accountId}::uuid, 'quarterly')
+      `;
+			unlocking = unlock(accountId, songIds, racerDb());
+			await waitForParkedRacers(1);
+			return prepared;
+		});
+		if (!unlocking) throw new Error("race never started");
+
+		expect(await unlocking).toEqual({
+			status: "insufficient_balance",
+			required_credits: 1,
+			available_credits: 0,
+		});
+		const [lotRow] = await db()`
+      SELECT remaining_credits FROM pack_credit_lot WHERE id = ${lot}
+    `;
+		expect(lotRow?.remaining_credits).toBe(5);
+
 		await db()`
       SELECT apply_subscription_upgrade_conversion(
         ${conversion?.conversion_id}::uuid, 'sub_test', 'in_test', ${`evt_apply_${accountId}`}
