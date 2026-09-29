@@ -3,6 +3,8 @@
  */
 
 import { Result } from "better-result";
+import type { z } from "zod";
+import type { Json } from "@/lib/data/database.types";
 import {
 	type ArtistUpsertData,
 	upsert as upsertArtists,
@@ -15,7 +17,8 @@ import {
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { getByIds, upsertCatalog } from "@/lib/domains/library/songs/queries";
 import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import type { DbError } from "@/lib/shared/errors/database";
+import { getJobById } from "@/lib/platform/jobs/repository";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { LikedSongsSyncResult, SpotifyTrackDTO } from "./types";
 
@@ -242,18 +245,21 @@ export async function incrementalSync(
 	});
 }
 
-// "superseded": the phase job had already left pending, so another run owns it
-// and this one did no work.
+// "superseded": another run started the phase and has not finished it, or
+// moved it to terminal under this run; either way this run does not own it.
 export type PhaseOutcome<T> =
 	| { status: "completed"; value: T }
 	| { status: "superseded" };
 
 /**
- * Runs a sync operation with job lifecycle management.
- * Handles job start, execution, and completion/failure.
+ * Runs one sync phase on its phase job. The phase's result is persisted on the
+ * job as it completes, so a retry of the same sync (after a crash further
+ * down the parent run) reuses it instead of re-diffing an already-applied
+ * library to zero changes. `resultSchema` parses that persisted result back.
  */
-export async function runPhase<T>(
+export async function runPhase<T extends Json>(
 	jobId: string,
+	resultSchema: z.ZodType<T>,
 	syncFn: () => Promise<Result<T, SyncOperationError>>,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const startResult = await startJob(jobId);
@@ -261,7 +267,7 @@ export async function runPhase<T>(
 		return Result.err(startResult.error);
 	}
 	if (startResult.value === "superseded") {
-		return Result.ok({ status: "superseded" });
+		return resumePhase(jobId, resultSchema);
 	}
 
 	const result = await syncFn();
@@ -271,13 +277,71 @@ export async function runPhase<T>(
 		if (Result.isError(failResult)) {
 			return Result.err(failResult.error);
 		}
+		if (failResult.value === "superseded") {
+			return Result.ok({ status: "superseded" });
+		}
 		return result;
 	}
 
-	const completeResult = await completeJob(jobId);
+	const completeResult = await completeJob(jobId, { result: result.value });
 	if (Result.isError(completeResult)) {
 		return Result.err(completeResult.error);
 	}
+	if (completeResult.value === "superseded") {
+		return Result.ok({ status: "superseded" });
+	}
 
 	return Result.ok({ status: "completed", value: result.value });
+}
+
+async function resumePhase<T extends Json>(
+	jobId: string,
+	resultSchema: z.ZodType<T>,
+): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
+	const jobResult = await getJobById(jobId);
+	if (Result.isError(jobResult)) {
+		return Result.err(jobResult.error);
+	}
+	const job = jobResult.value;
+	if (!job) {
+		return Result.err(
+			new DatabaseError({
+				code: "phase_job_missing",
+				message: `Phase job ${jobId} not found`,
+			}),
+		);
+	}
+
+	switch (job.status) {
+		case "pending":
+		case "running":
+			return Result.ok({ status: "superseded" });
+		case "failed":
+			// A terminal failure cannot be re-run; the sync it belongs to cannot
+			// finish, so surface the phase's own error.
+			return Result.err(
+				new DatabaseError({
+					code: "phase_job_failed",
+					message: job.error ?? `Phase job ${jobId} failed`,
+				}),
+			);
+		case "completed": {
+			const progress =
+				typeof job.progress === "object" &&
+				job.progress !== null &&
+				!Array.isArray(job.progress)
+					? job.progress
+					: {};
+			const parsed = resultSchema.safeParse(progress.result);
+			if (!parsed.success) {
+				return Result.err(
+					new DatabaseError({
+						code: "phase_result_bad_shape",
+						message: `Phase job ${jobId} completed without a readable result: ${parsed.error.message}`,
+					}),
+				);
+			}
+			return Result.ok({ status: "completed", value: parsed.data });
+		}
+	}
 }

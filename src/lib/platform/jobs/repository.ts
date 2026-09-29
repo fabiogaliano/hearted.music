@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Enums, Tables } from "@/lib/data/database.types";
+import type { Enums, Json, Tables } from "@/lib/data/database.types";
 import type { EnrichmentChunkProgress } from "@/lib/platform/jobs/progress/enrichment";
 import {
 	JobProgressSchema as JobProgressSchemaImpl,
@@ -156,10 +156,12 @@ export function markJobRunning(
 	);
 }
 
-// Terminal writes accept pending too: extension-sync finalizes an empty phase
-// straight from pending, and failure paths fail phases that never started.
+// Terminal writes accept pending too: failure paths fail phases that never
+// started. `progress` lands in the same write so a completed row can never be
+// observed without the result it was completed with.
 export function markJobCompleted(
 	id: string,
+	progress?: Json,
 ): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return transition(
@@ -168,6 +170,7 @@ export function markJobCompleted(
 			.update({
 				status: "completed",
 				completed_at: new Date().toISOString(),
+				...(progress === undefined ? {} : { progress }),
 			})
 			.eq("id", id)
 			.in("status", ["pending", "running"])

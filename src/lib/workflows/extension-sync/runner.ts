@@ -14,8 +14,9 @@
 import { gunzipSync } from "node:zlib";
 import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
+import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { TablesUpdate } from "@/lib/data/database.types";
+import type { Json, TablesUpdate } from "@/lib/data/database.types";
 import { maybeGrantLikedSongAccessAfterSync } from "@/lib/domains/billing/liked-song-access-grant";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
@@ -25,13 +26,11 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { log } from "@/lib/observability/logger";
 import { parseExtensionSyncJobProgress } from "@/lib/platform/jobs/extension-sync-jobs";
-import {
-	completeJob,
-	failJob,
-	settleClaimedJob,
-	startJob,
-} from "@/lib/platform/jobs/lifecycle";
+import { failJob, settleClaimedJob } from "@/lib/platform/jobs/lifecycle";
+import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { Job } from "@/lib/platform/jobs/repository";
+import type { DbError } from "@/lib/shared/errors/database";
+import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
@@ -78,13 +77,25 @@ function isGzipPayload(bytes: Uint8Array): boolean {
 	return bytes[0] === GZIP_MAGIC_BYTE_0 && bytes[1] === GZIP_MAGIC_BYTE_1;
 }
 
+// Each phase's result is persisted on its phase job (see runPhase), so these
+// schemas are the stored contract a resumed run parses back.
+const LikedSongsPhaseResultSchema = z.object({
+	total: z.number(),
+	added: z.number(),
+	removed: z.number(),
+});
+const PlaylistsPhaseResultSchema = z.object({
+	removedTargetPlaylistIds: z.array(z.string()),
+	updatedTargetProfileTextPlaylistIds: z.array(z.string()),
+});
+const PlaylistTracksPhaseResultSchema = z.object({
+	changedPlaylistIds: z.array(z.string()),
+});
+
 interface PhaseResults {
-	likedSongs?: { total: number; added: number; removed: number };
-	playlists?: {
-		removedTargetPlaylistIds: string[];
-		updatedTargetProfileTextPlaylistIds: string[];
-	};
-	playlistTracks?: { playlistsChanged: number };
+	likedSongs: z.infer<typeof LikedSongsPhaseResultSchema>;
+	playlists: z.infer<typeof PlaylistsPhaseResultSchema>;
+	playlistTracks: z.infer<typeof PlaylistTracksPhaseResultSchema>;
 }
 
 /**
@@ -153,9 +164,7 @@ export async function runExtensionSyncJob(
 	};
 
 	// The parent is fenced first: a superseded worker must not fail phase jobs
-	// or delete the payload the reclaiming worker is running from. This is also
-	// how a phase job found already started resolves: usually the parent was
-	// reclaimed too, and otherwise the sync cannot finish, so it fails.
+	// or delete the payload the reclaiming worker is running from.
 	const fail = async (reason: string): Promise<ExtensionSyncRunOutcome> => {
 		const failed = await settleClaimedJob(job, "failed", reason);
 		if (Result.isOk(failed) && failed.value === "superseded") {
@@ -226,173 +235,165 @@ export async function runExtensionSyncJob(
 			return fail(profileResult.error);
 		}
 
-		const results: PhaseResults = {};
-		const changedPlaylistIds: string[] = [];
+		type PhaseStep<T> =
+			| { status: "done"; value: T }
+			| { status: "stopped"; outcome: ExtensionSyncRunOutcome };
 
-		// Phase 1: liked songs
+		const runSyncPhase = async <T extends Json>(
+			phase: keyof PhaseJobIds,
+			label: string,
+			sentryPhase: string,
+			resultSchema: z.ZodType<T>,
+			syncFn: () => Promise<Result<T, DbError | SyncFailedError>>,
+		): Promise<PhaseStep<T>> => {
+			const phaseResult = await runPhase(
+				phaseJobIds[phase],
+				resultSchema,
+				syncFn,
+			);
+			if (Result.isError(phaseResult)) {
+				captureExtensionSyncFailure(phaseResult.error, {
+					phase: sentryPhase,
+					jobId: job.id,
+					accountId,
+				});
+				return {
+					status: "stopped",
+					outcome: await fail(
+						`${label} sync failed: ${phaseResult.error.message}`,
+					),
+				};
+			}
+			if (phaseResult.value.status === "superseded") {
+				// Another run is inside this phase (or moved it to terminal under
+				// this one). Settling the parent here would race that run, so this
+				// run stops and leaves the parent to whichever run holds the lease.
+				log.warn("extension-sync-phase-superseded", {
+					actor,
+					jobId: job.id,
+					accountId,
+					phase,
+					phaseJobId: phaseJobIds[phase],
+				});
+				return { status: "stopped", outcome: { status: "superseded" } };
+			}
+			settledJobIds.add(phaseJobIds[phase]);
+			return { status: "done", value: phaseResult.value.value };
+		};
+
+		// Phase 1: liked songs. An empty list means the extension sent none, not
+		// that every song was unliked, so it must not reach the diff.
 		const likedSongs = payload.likedSongs;
-		if (likedSongs.length > 0) {
-			const songsResult = await runPhase(phaseJobIds.liked_songs, async () => {
+		const songsStep = await runSyncPhase(
+			"liked_songs",
+			"Liked songs",
+			"liked_songs_sync",
+			LikedSongsPhaseResultSchema,
+			async () => {
+				if (likedSongs.length === 0) {
+					return Result.ok({ total: 0, added: 0, removed: 0 });
+				}
 				const existingResult = await getAll(accountId);
 				if (Result.isError(existingResult)) return existingResult;
 
 				const isInitial = existingResult.value.length === 0;
-				return isInitial
-					? initialSync(accountId, likedSongs)
-					: incrementalSync(accountId, {
+				const synced = isInitial
+					? await initialSync(accountId, likedSongs)
+					: await incrementalSync(accountId, {
 							likedSongs,
 							existingLikedSongs: existingResult.value,
 							likedSongsIds: new Set(likedSongs.map((t) => t.track.id)),
 						});
-			});
-
-			if (Result.isError(songsResult)) {
-				captureExtensionSyncFailure(songsResult.error, {
-					phase: "liked_songs_sync",
-					jobId: job.id,
-					accountId,
-				});
-				return fail(`Liked songs sync failed: ${songsResult.error.message}`);
-			}
-			if (songsResult.value.status === "superseded") {
-				return fail("Liked songs job was already started by another run");
-			}
-			settledJobIds.add(phaseJobIds.liked_songs);
-			const likedSongsSync = songsResult.value.value;
-			results.likedSongs = {
-				total: likedSongsSync.total,
-				added: likedSongsSync.added,
-				removed: likedSongsSync.removed,
-			};
-		} else {
-			const completeResult = await completeJob(phaseJobIds.liked_songs);
-			if (Result.isError(completeResult)) {
-				captureExtensionSyncFailure(completeResult.error, {
-					phase: "finalize_liked_songs",
-					jobId: job.id,
-					accountId,
-				});
-				return fail("Failed to finalize liked songs job");
-			}
-			settledJobIds.add(phaseJobIds.liked_songs);
-		}
+				return Result.map(synced, ({ total, added, removed }) => ({
+					total,
+					added,
+					removed,
+				}));
+			},
+		);
+		if (songsStep.status === "stopped") return songsStep.outcome;
 
 		// Phase 2: playlists
 		const extensionPlaylists = payload.playlists;
-		if (extensionPlaylists.length > 0) {
-			const playlistResult = await runPhase(phaseJobIds.playlists, () =>
-				syncPlaylists(accountId, extensionPlaylists),
-			);
-			if (Result.isError(playlistResult)) {
-				captureExtensionSyncFailure(playlistResult.error, {
-					phase: "playlist_sync",
-					jobId: job.id,
-					accountId,
-				});
-				return fail(`Playlist sync failed: ${playlistResult.error.message}`);
-			}
-			if (playlistResult.value.status === "superseded") {
-				return fail("Playlists job was already started by another run");
-			}
-			settledJobIds.add(phaseJobIds.playlists);
-			const playlistSync = playlistResult.value.value;
-			results.playlists = {
-				removedTargetPlaylistIds: playlistSync.removedTargetPlaylistIds,
-				updatedTargetProfileTextPlaylistIds:
-					playlistSync.updatedTargetProfileTextPlaylistIds,
-			};
-		} else {
-			const completeResult = await completeJob(phaseJobIds.playlists);
-			if (Result.isError(completeResult)) {
-				captureExtensionSyncFailure(completeResult.error, {
-					phase: "finalize_playlists",
-					jobId: job.id,
-					accountId,
-				});
-				return fail("Failed to finalize playlists job");
-			}
-			settledJobIds.add(phaseJobIds.playlists);
-		}
+		const playlistsStep = await runSyncPhase(
+			"playlists",
+			"Playlist",
+			"playlist_sync",
+			PlaylistsPhaseResultSchema,
+			async () => {
+				if (extensionPlaylists.length === 0) {
+					return Result.ok({
+						removedTargetPlaylistIds: [],
+						updatedTargetProfileTextPlaylistIds: [],
+					});
+				}
+				const synced = await syncPlaylists(accountId, extensionPlaylists);
+				return Result.map(synced, (playlistSync) => ({
+					removedTargetPlaylistIds: playlistSync.removedTargetPlaylistIds,
+					updatedTargetProfileTextPlaylistIds:
+						playlistSync.updatedTargetProfileTextPlaylistIds,
+				}));
+			},
+		);
+		if (playlistsStep.status === "stopped") return playlistsStep.outcome;
 
-		// Phase 3: playlist tracks
+		// Phase 3: playlist tracks. Per-playlist failures are skipped, not fatal.
 		const incomingPlaylistTracks = payload.playlistTracks ?? [];
-		if (incomingPlaylistTracks.length > 0) {
-			const startResult = await startJob(phaseJobIds.playlist_tracks);
-			if (Result.isError(startResult)) {
-				captureExtensionSyncFailure(startResult.error, {
-					phase: "start_playlist_tracks",
-					jobId: job.id,
-					accountId,
+		const tracksStep = await runSyncPhase(
+			"playlist_tracks",
+			"Playlist tracks",
+			"playlist_tracks_sync",
+			PlaylistTracksPhaseResultSchema,
+			async () => {
+				if (incomingPlaylistTracks.length === 0) {
+					return Result.ok({ changedPlaylistIds: [] });
+				}
+				const dbPlaylistsResult = await getPlaylists(accountId);
+				const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
+					? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
+					: new Map<string, Playlist>();
+
+				const trackSyncResults = await mapWithConcurrency(
+					incomingPlaylistTracks,
+					4,
+					async (entry) => {
+						const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
+						if (!dbPlaylist) return { changedPlaylistId: null };
+
+						const trackResult = await syncPlaylistTracksFromData(
+							dbPlaylist,
+							entry.tracks,
+						);
+						if (Result.isError(trackResult)) {
+							return { changedPlaylistId: null };
+						}
+
+						const changed =
+							trackResult.value.added > 0 || trackResult.value.removed > 0;
+						return { changedPlaylistId: changed ? dbPlaylist.id : null };
+					},
+				);
+
+				return Result.ok({
+					changedPlaylistIds: trackSyncResults.flatMap((r) =>
+						r.changedPlaylistId ? [r.changedPlaylistId] : [],
+					),
 				});
-				return fail("Failed to start playlist tracks job");
-			}
-			if (startResult.value === "superseded") {
-				return fail("Playlist tracks job was already started by another run");
-			}
+			},
+		);
+		if (tracksStep.status === "stopped") return tracksStep.outcome;
 
-			const dbPlaylistsResult = await getPlaylists(accountId);
-			const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
-				? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
-				: new Map<string, Playlist>();
-
-			const trackSyncResults = await mapWithConcurrency(
-				incomingPlaylistTracks,
-				4,
-				async (entry) => {
-					const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
-					if (!dbPlaylist) return { changedPlaylistId: null };
-
-					const trackResult = await syncPlaylistTracksFromData(
-						dbPlaylist,
-						entry.tracks,
-					);
-					if (Result.isError(trackResult)) return { changedPlaylistId: null };
-
-					const changed =
-						trackResult.value.added > 0 || trackResult.value.removed > 0;
-					return { changedPlaylistId: changed ? dbPlaylist.id : null };
-				},
-			);
-
-			changedPlaylistIds.push(
-				...trackSyncResults.flatMap((r) =>
-					r.changedPlaylistId ? [r.changedPlaylistId] : [],
-				),
-			);
-
-			const completeResult = await completeJob(phaseJobIds.playlist_tracks);
-			if (Result.isError(completeResult)) {
-				captureExtensionSyncFailure(completeResult.error, {
-					phase: "finalize_playlist_tracks",
-					jobId: job.id,
-					accountId,
-				});
-				return fail("Failed to finalize playlist tracks job");
-			}
-			settledJobIds.add(phaseJobIds.playlist_tracks);
-			results.playlistTracks = { playlistsChanged: changedPlaylistIds.length };
-		} else {
-			const completeResult = await completeJob(phaseJobIds.playlist_tracks);
-			if (Result.isError(completeResult)) {
-				captureExtensionSyncFailure(completeResult.error, {
-					phase: "finalize_playlist_tracks",
-					jobId: job.id,
-					accountId,
-				});
-				return fail("Failed to finalize playlist tracks job");
-			}
-			settledJobIds.add(phaseJobIds.playlist_tracks);
-		}
+		const results: PhaseResults = {
+			likedSongs: songsStep.value,
+			playlists: playlistsStep.value,
+			playlistTracks: tracksStep.value,
+		};
 
 		// Classify and emit one aggregated library-processing change.
 		const applyResult = await applyLibraryProcessingChange(
 			SyncChanges.librarySynced(
 				accountId,
-				classifyChange(
-					results,
-					changedPlaylistIds,
-					await getTargetIds(accountId),
-				),
+				classifyChange(results, await getTargetIds(accountId)),
 			),
 		);
 		if (Result.isError(applyResult)) {
@@ -483,7 +484,6 @@ async function getTargetIds(accountId: string): Promise<Set<string>> {
 
 function classifyChange(
 	results: PhaseResults,
-	changedPlaylistIds: string[],
 	currentTargetIds: Set<string>,
 ): {
 	likedSongs: { added: boolean; removed: boolean };
@@ -493,27 +493,20 @@ function classifyChange(
 		removed: boolean;
 	};
 } {
-	const removedTargets = results.playlists?.removedTargetPlaylistIds ?? [];
-	const updatedProfileTextTargets =
-		results.playlists?.updatedTargetProfileTextPlaylistIds ?? [];
-
-	const trackMembershipChanged =
-		(results.playlistTracks?.playlistsChanged ?? 0) > 0 &&
-		changedPlaylistIds.some((id) => currentTargetIds.has(id));
-
-	const profileTextChanged =
-		updatedProfileTextTargets.length > 0 &&
-		updatedProfileTextTargets.some((id) => currentTargetIds.has(id));
-
 	return {
 		likedSongs: {
-			added: (results.likedSongs?.added ?? 0) > 0,
-			removed: (results.likedSongs?.removed ?? 0) > 0,
+			added: results.likedSongs.added > 0,
+			removed: results.likedSongs.removed > 0,
 		},
 		targetPlaylists: {
-			trackMembershipChanged,
-			profileTextChanged,
-			removed: removedTargets.length > 0,
+			trackMembershipChanged: results.playlistTracks.changedPlaylistIds.some(
+				(id) => currentTargetIds.has(id),
+			),
+			profileTextChanged:
+				results.playlists.updatedTargetProfileTextPlaylistIds.some((id) =>
+					currentTargetIds.has(id),
+				),
+			removed: results.playlists.removedTargetPlaylistIds.length > 0,
 		},
 	};
 }

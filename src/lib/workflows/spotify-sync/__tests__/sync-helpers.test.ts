@@ -1,19 +1,26 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
+import { makeJob } from "@/test/fixtures";
 import type { SpotifyTrackDTO } from "../types";
 
 const mockStartJob = vi.fn();
 const mockCompleteJob = vi.fn();
 const mockFailJob = vi.fn();
+const mockGetJobById = vi.fn();
 
 vi.mock("@/lib/platform/jobs/lifecycle", () => ({
 	startJob: (...args: unknown[]) => mockStartJob(...args),
 	completeJob: (...args: unknown[]) => mockCompleteJob(...args),
 	failJob: (...args: unknown[]) => mockFailJob(...args),
+}));
+
+vi.mock("@/lib/platform/jobs/repository", () => ({
+	getJobById: (...args: unknown[]) => mockGetJobById(...args),
 }));
 
 const mockGetByIds = vi.fn();
@@ -79,11 +86,24 @@ function makeLikedSong(unlikedAt: string | null): LikedSong {
 }
 
 describe("runPhase", () => {
+	const TotalSchema = z.object({ total: z.number() });
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockStartJob.mockResolvedValue(Result.ok("applied"));
 		mockCompleteJob.mockResolvedValue(Result.ok("applied"));
 		mockFailJob.mockResolvedValue(Result.ok("applied"));
+	});
+
+	it("persists the phase result on the completing write so a retry can reuse it", async () => {
+		const result = await runPhase("job-1", TotalSchema, async () =>
+			Result.ok({ total: 3 }),
+		);
+
+		expect(result).toHaveOkValue({ status: "completed", value: { total: 3 } });
+		expect(mockCompleteJob).toHaveBeenCalledWith("job-1", {
+			result: { total: 3 },
+		});
 	});
 
 	it("returns an error when completeJob fails instead of silently succeeding", async () => {
@@ -93,26 +113,88 @@ describe("runPhase", () => {
 		});
 		mockCompleteJob.mockResolvedValueOnce(Result.err(completeError));
 
-		const result = await runPhase("job-1", async () => Result.ok({ total: 1 }));
+		const result = await runPhase("job-1", TotalSchema, async () =>
+			Result.ok({ total: 1 }),
+		);
 
-		expect(Result.isError(result)).toBe(true);
-		if (Result.isOk(result)) {
-			throw new Error("expected result to be an error");
-		}
-		expect(result.error).toBe(completeError);
-		expect(mockCompleteJob).toHaveBeenCalledWith("job-1");
+		expect(result).toHaveErrValue(completeError);
 	});
 
-	it("skips the phase work when the phase job already left pending (regression: a superseded startJob was ignored and the sync ran anyway)", async () => {
-		mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
-		const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+	describe("a phase job that already left pending (regression: a superseded startJob was ignored and the sync ran anyway; then a crash-resumed sync failed on its own completed phase)", () => {
+		it("completed: reuses the persisted result without redoing the work", async () => {
+			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+			mockGetJobById.mockResolvedValueOnce(
+				Result.ok(
+					makeJob({
+						id: "job-1",
+						status: "completed",
+						progress: { result: { total: 7 } },
+					}),
+				),
+			);
+			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
 
-		const result = await runPhase("job-1", syncFn);
+			const result = await runPhase("job-1", TotalSchema, syncFn);
+
+			expect(result).toHaveOkValue({
+				status: "completed",
+				value: { total: 7 },
+			});
+			expect(syncFn).not.toHaveBeenCalled();
+			expect(mockCompleteJob).not.toHaveBeenCalled();
+		});
+
+		it("running: another run owns it, so this one is superseded and touches nothing", async () => {
+			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+			mockGetJobById.mockResolvedValueOnce(
+				Result.ok(makeJob({ id: "job-1", status: "running" })),
+			);
+			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+
+			const result = await runPhase("job-1", TotalSchema, syncFn);
+
+			expect(result).toHaveOkValue({ status: "superseded" });
+			expect(syncFn).not.toHaveBeenCalled();
+			expect(mockCompleteJob).not.toHaveBeenCalled();
+			expect(mockFailJob).not.toHaveBeenCalled();
+		});
+
+		it("failed: cannot be re-run, so the phase's own error is returned", async () => {
+			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+			mockGetJobById.mockResolvedValueOnce(
+				Result.ok(
+					makeJob({ id: "job-1", status: "failed", error: "spotify exploded" }),
+				),
+			);
+			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+
+			const result = await runPhase("job-1", TotalSchema, syncFn);
+
+			expect(result).toBeErr();
+			if (Result.isOk(result)) throw new Error("expected an error");
+			expect(result.error.message).toMatch(/spotify exploded/);
+			expect(syncFn).not.toHaveBeenCalled();
+		});
+	});
+
+	it("is superseded when its completing write loses the fence (regression: a lost phase completion was ignored and the run carried on)", async () => {
+		mockCompleteJob.mockResolvedValueOnce(Result.ok("superseded"));
+
+		const result = await runPhase("job-1", TotalSchema, async () =>
+			Result.ok({ total: 1 }),
+		);
 
 		expect(result).toHaveOkValue({ status: "superseded" });
-		expect(syncFn).not.toHaveBeenCalled();
-		expect(mockCompleteJob).not.toHaveBeenCalled();
-		expect(mockFailJob).not.toHaveBeenCalled();
+	});
+
+	it("is superseded when its failing write loses the fence", async () => {
+		mockFailJob.mockResolvedValueOnce(Result.ok("superseded"));
+
+		const result = await runPhase("job-1", TotalSchema, async () =>
+			Result.err(new SyncFailedError("liked_songs", "acct-1", "boom")),
+		);
+
+		expect(result).toHaveOkValue({ status: "superseded" });
 	});
 
 	it("returns a lifecycle error when failJob cleanup fails", async () => {
@@ -127,13 +209,11 @@ describe("runPhase", () => {
 		});
 		mockFailJob.mockResolvedValueOnce(Result.err(cleanupError));
 
-		const result = await runPhase("job-1", async () => Result.err(syncError));
+		const result = await runPhase("job-1", TotalSchema, async () =>
+			Result.err(syncError),
+		);
 
-		expect(Result.isError(result)).toBe(true);
-		if (Result.isOk(result)) {
-			throw new Error("expected result to be an error");
-		}
-		expect(result.error).toBe(cleanupError);
+		expect(result).toHaveErrValue(cleanupError);
 		expect(mockFailJob).toHaveBeenCalledWith("job-1", syncError.message);
 	});
 });

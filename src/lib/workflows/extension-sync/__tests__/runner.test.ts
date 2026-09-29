@@ -38,9 +38,7 @@ const {
 	mockGetAll,
 	mockGetPlaylists,
 	mockGetTargetPlaylists,
-	mockCompleteJob,
 	mockFailJob,
-	mockStartJob,
 	mockSettleClaimedJob,
 	mockRunPhase,
 	mockInitialSync,
@@ -58,9 +56,7 @@ const {
 	mockGetAll: vi.fn(),
 	mockGetPlaylists: vi.fn(),
 	mockGetTargetPlaylists: vi.fn(),
-	mockCompleteJob: vi.fn(),
 	mockFailJob: vi.fn(),
-	mockStartJob: vi.fn(),
 	mockSettleClaimedJob: vi.fn(),
 	mockRunPhase: vi.fn(),
 	mockInitialSync: vi.fn(),
@@ -97,9 +93,7 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 }));
 
 vi.mock("@/lib/platform/jobs/lifecycle", () => ({
-	completeJob: (...a: unknown[]) => mockCompleteJob(...a),
 	failJob: (...a: unknown[]) => mockFailJob(...a),
-	startJob: (...a: unknown[]) => mockStartJob(...a),
 	settleClaimedJob: (...a: unknown[]) => mockSettleClaimedJob(...a),
 }));
 
@@ -237,9 +231,7 @@ describe("runExtensionSyncJob", () => {
 		zlibOverrides.gunzip = null;
 		mockCreateAdminSupabaseClient.mockReturnValue({ id: "admin" });
 		mockDeleteSyncPayload.mockResolvedValue(Result.ok(undefined));
-		mockCompleteJob.mockResolvedValue(Result.ok("applied"));
 		mockFailJob.mockResolvedValue(Result.ok("applied"));
-		mockStartJob.mockResolvedValue(Result.ok("applied"));
 		mockSettleClaimedJob.mockResolvedValue(Result.ok("applied"));
 		mockGetAll.mockResolvedValue(Result.ok([]));
 		mockGetPlaylists.mockResolvedValue(Result.ok([]));
@@ -248,6 +240,18 @@ describe("runExtensionSyncJob", () => {
 		mockLibrarySynced.mockReturnValue({ kind: "library_synced" });
 		mockMaybeGrant.mockResolvedValue(undefined);
 		mockMapWithConcurrency.mockResolvedValue([]);
+		mockRunPhase.mockImplementation(
+			async (
+				_jobId: string,
+				_schema: unknown,
+				syncFn: () => Promise<unknown>,
+			) => {
+				const synced = (await syncFn()) as Result<unknown, Error>;
+				return Result.isOk(synced)
+					? Result.ok({ status: "completed", value: synced.value })
+					: synced;
+			},
+		);
 	});
 
 	it("completes an empty-payload sync and deletes the staged object", async () => {
@@ -261,10 +265,14 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome).toEqual({ status: "completed" });
-		// All three phase jobs completed via their empty branches, then the parent.
-		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.liked_songs);
-		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.playlists);
-		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.playlist_tracks);
+		// All three phase jobs run (and settle) through runPhase, then the parent.
+		for (const phaseJobId of Object.values(PHASE_JOB_IDS)) {
+			expect(mockRunPhase).toHaveBeenCalledWith(
+				phaseJobId,
+				expect.anything(),
+				expect.any(Function),
+			);
+		}
 		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
 			PARENT_LEASE,
 			"completed",
@@ -356,7 +364,7 @@ describe("runExtensionSyncJob", () => {
 			PAYLOAD_PATH,
 		);
 		// Validation failed before any phase ran.
-		expect(mockCompleteJob).not.toHaveBeenCalled();
+		expect(mockRunPhase).not.toHaveBeenCalled();
 	});
 
 	it("fails unsettled phases + parent when a phase errors", async () => {
@@ -380,7 +388,7 @@ describe("runExtensionSyncJob", () => {
 				}),
 			),
 		);
-		mockRunPhase.mockResolvedValue(Result.err(new Error("liked blew up")));
+		mockRunPhase.mockResolvedValueOnce(Result.err(new Error("liked blew up")));
 
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
@@ -552,7 +560,7 @@ describe("runExtensionSyncJob", () => {
 			PAYLOAD_PATH,
 		);
 	});
-	it("a playlist-tracks phase already started elsewhere is not synced again (regression: a superseded startJob was ignored)", async () => {
+	it("a phase another run owns stops the sync without settling the parent or emitting (regression: the run failed the whole sync on a phase it did not own)", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.ok(
 				jsonBytes({
@@ -562,23 +570,25 @@ describe("runExtensionSyncJob", () => {
 				}),
 			),
 		);
-		mockStartJob.mockResolvedValue(Result.ok("superseded"));
+		mockRunPhase.mockImplementation(async (jobId: string) =>
+			Result.ok(
+				jobId === PHASE_JOB_IDS.playlist_tracks
+					? { status: "superseded" }
+					: { status: "completed", value: {} },
+			),
+		);
 
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
 		);
 
-		expect(outcome.status).toBe("failed");
-		expect(mockMapWithConcurrency).not.toHaveBeenCalled();
-		expect(mockCompleteJob).not.toHaveBeenCalledWith(
-			PHASE_JOB_IDS.playlist_tracks,
-		);
-		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			PARENT_LEASE,
-			"failed",
-			expect.any(String),
-		);
+		expect(outcome).toEqual({ status: "superseded" });
+		expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockMaybeGrant).not.toHaveBeenCalled();
+		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
 	});
 
 	it("a lease reclaimed before completion leaves the payload to the reclaiming worker", async () => {

@@ -4,19 +4,25 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { makeJob } from "@/test/fixtures";
 import type { Job } from "../repository";
 
-const { row, mockMarkClaimedJobTerminal, mockMarkJobRunning } = vi.hoisted(
-	() => ({
-		row: { current: null as Job | null },
-		mockMarkClaimedJobTerminal: vi.fn(),
-		mockMarkJobRunning: vi.fn(),
-	}),
-);
+const {
+	row,
+	mockMarkClaimedJobTerminal,
+	mockMarkJobRunning,
+	mockMarkJobCompleted,
+	mockMarkJobFailed,
+} = vi.hoisted(() => ({
+	row: { current: null as Job | null },
+	mockMarkClaimedJobTerminal: vi.fn(),
+	mockMarkJobRunning: vi.fn(),
+	mockMarkJobCompleted: vi.fn(),
+	mockMarkJobFailed: vi.fn(),
+}));
 
 vi.mock("../repository", () => ({
 	markClaimedJobTerminal: mockMarkClaimedJobTerminal,
 	markJobRunning: mockMarkJobRunning,
-	markJobCompleted: vi.fn(),
-	markJobFailed: vi.fn(),
+	markJobCompleted: mockMarkJobCompleted,
+	markJobFailed: mockMarkJobFailed,
 	getJobById: vi.fn(async () => Result.ok(row.current)),
 }));
 
@@ -24,7 +30,9 @@ vi.mock("@/lib/observability/logger", () => ({
 	log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-const { settleClaimedJob, startJob } = await import("../lifecycle");
+const { completeJob, failJob, settleClaimedJob, startJob } = await import(
+	"../lifecycle"
+);
 
 const lostResponse = () =>
 	Result.err(
@@ -119,5 +127,33 @@ describe("a CAS write retried after its response was lost (regression: the retry
 		);
 
 		expect(await run(startJob("job-1"))).toHaveOkValue("applied");
+	});
+
+	// Phase runs now stop on a superseded complete/fail, so a false
+	// "superseded" here would abandon a phase this run actually settled.
+	it("completeJob reports applied when its first attempt committed", async () => {
+		row.current = makeJob({ id: "job-1", status: "running" });
+		mockMarkJobCompleted.mockImplementation(
+			casWrite(
+				(j) => j.status === "pending" || j.status === "running",
+				(j) => ({ ...j, status: "completed" }),
+				{ commitThenLoseResponse: true },
+			),
+		);
+
+		expect(await run(completeJob("job-1"))).toHaveOkValue("applied");
+	});
+
+	it("failJob reports applied when its first attempt committed", async () => {
+		row.current = makeJob({ id: "job-1", status: "running" });
+		mockMarkJobFailed.mockImplementation(
+			casWrite(
+				(j) => j.status === "pending" || j.status === "running",
+				(j) => ({ ...j, status: "failed", error: "boom" }),
+				{ commitThenLoseResponse: true },
+			),
+		);
+
+		expect(await run(failJob("job-1", "boom"))).toHaveOkValue("applied");
 	});
 });

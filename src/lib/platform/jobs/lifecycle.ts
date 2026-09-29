@@ -10,6 +10,7 @@
  */
 
 import { Result } from "better-result";
+import type { Json } from "@/lib/data/database.types";
 import { log } from "@/lib/observability/logger";
 import {
 	getJobById,
@@ -124,12 +125,18 @@ export async function finalizeJob(
 }
 
 /**
- * Marks a job as completed with retry logic.
+ * Marks a job as completed with retry logic, optionally persisting `progress`
+ * in the same write.
  */
 export async function completeJob(
 	jobId: string,
+	progress?: Json,
 ): Promise<Result<JobTransition, DbError>> {
-	return withRetry(() => markJobCompleted(jobId), RETRY_OPTIONS);
+	return retryTransition(
+		jobId,
+		() => markJobCompleted(jobId, progress),
+		(job) => job.status === "completed",
+	);
 }
 
 /**
@@ -139,7 +146,11 @@ export async function failJob(
 	jobId: string,
 	errorMessage?: string,
 ): Promise<Result<JobTransition, DbError>> {
-	return withRetry(() => markJobFailed(jobId, errorMessage), RETRY_OPTIONS);
+	return retryTransition(
+		jobId,
+		() => markJobFailed(jobId, errorMessage),
+		(job) => job.status === "failed" && job.error === (errorMessage ?? null),
+	);
 }
 
 /**
