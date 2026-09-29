@@ -51,6 +51,7 @@ export function createPollLoop<TJob, TError extends { message: string }>(
 ): PollLoop {
 	let shouldPoll = true;
 	const activeJobs = new Set<string>();
+	let inFlightClaims = 0;
 
 	function stop() {
 		shouldPoll = false;
@@ -61,8 +62,19 @@ export function createPollLoop<TJob, TError extends { message: string }>(
 	}
 
 	async function claimAndDispatch(): Promise<void> {
-		while (shouldPoll && activeJobs.size < options.concurrency()) {
-			const claimResult = await options.claim();
+		// A NOTIFY wake and the poll tick can overlap; without reserving the slot
+		// before awaiting the claim, both pass the cap check and both claim.
+		while (
+			shouldPoll &&
+			activeJobs.size + inFlightClaims < options.concurrency()
+		) {
+			inFlightClaims++;
+			let claimResult: Result<TJob | null, TError>;
+			try {
+				claimResult = await options.claim();
+			} finally {
+				inFlightClaims--;
+			}
 			if (ResultNs.isError(claimResult)) {
 				options.onClaimError(claimResult.error);
 				return;
