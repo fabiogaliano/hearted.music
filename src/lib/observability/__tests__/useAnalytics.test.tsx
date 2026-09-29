@@ -36,4 +36,22 @@ describe("useAnalytics", () => {
 			undefined,
 		);
 	});
+
+	it("keeps the schema_version stamp when caller properties carry their own schema_version (stamp was spread first and got clobbered)", () => {
+		const { result } = renderHook(() => useAnalytics());
+
+		// The cast models an untyped caller (e.g. spreading a loose object) that
+		// the event map can't stop at compile time.
+		result.current.capture("onboarding_completed", {
+			songs: 1,
+			playlists: 1,
+			schema_version: 999,
+		} as never);
+
+		expect(capture).toHaveBeenCalledWith(
+			"onboarding_completed",
+			{ schema_version: EVENT_SCHEMA_VERSION, songs: 1, playlists: 1 },
+			undefined,
+		);
+	});
 });

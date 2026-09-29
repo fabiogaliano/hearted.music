@@ -54,9 +54,11 @@ export function useAnalytics(): AnalyticsClient {
 	return {
 		capture<E extends ProductEventName>(...args: AnalyticsCaptureArgs<E>) {
 			const [event, properties, options] = args;
+			// Stamp last: the version describes this client's property contract,
+			// so no caller-supplied key may override it.
 			posthog.capture(
 				event,
-				{ schema_version: EVENT_SCHEMA_VERSION, ...(properties ?? {}) },
+				{ ...(properties ?? {}), schema_version: EVENT_SCHEMA_VERSION },
 				options,
 			);
 		},
