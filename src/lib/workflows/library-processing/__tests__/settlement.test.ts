@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
+// One returned row = the fenced job UPDATE won its compare-and-set.
+const WON_FENCE = [{ id: "job-1" }];
+
 const { txMock, beginMock } = vi.hoisted(() => {
-	const txMock = vi.fn().mockResolvedValue([]);
+	const txMock = vi.fn().mockResolvedValue([{ id: "job-1" }]);
 	return {
 		txMock,
 		beginMock: vi.fn(async (cb) => cb(txMock)),
@@ -31,7 +34,7 @@ const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
 describe("settleEnrichmentJobTerminal", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		txMock.mockResolvedValue([]);
+		txMock.mockResolvedValue(WON_FENCE);
 		beginMock.mockImplementation(async (cb) => cb(txMock));
 	});
 
@@ -100,7 +103,7 @@ describe("settleEnrichmentJobTerminal", () => {
 describe("settleMatchSnapshotRefreshJobTerminal", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		txMock.mockResolvedValue([]);
+		txMock.mockResolvedValue(WON_FENCE);
 		beginMock.mockImplementation(async (cb) => cb(txMock));
 	});
 

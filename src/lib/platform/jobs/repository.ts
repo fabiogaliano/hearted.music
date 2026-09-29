@@ -121,9 +121,29 @@ export function updateJobProgress(
 	);
 }
 
-export function markJobRunning(id: string): Promise<Result<Job, DbError>> {
+/**
+ * Outcome of a compare-and-set status write. "superseded" means the row was no
+ * longer in the transition's expected prior state — another writer (a sweep,
+ * a reclaiming worker, a self-heal) already moved it — so the caller must not
+ * act on the transition it attempted.
+ */
+export type JobTransition = "applied" | "superseded";
+
+async function transition(
+	query: PromiseLike<{
+		data: { id: string }[] | null;
+		error: { code: string; message: string } | null;
+	}>,
+): Promise<Result<JobTransition, DbError>> {
+	const rows = await fromSupabaseMany(query);
+	return Result.map(rows, (r) => (r.length > 0 ? "applied" : "superseded"));
+}
+
+export function markJobRunning(
+	id: string,
+): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
+	return transition(
 		supabase
 			.from("job")
 			.update({
@@ -131,14 +151,18 @@ export function markJobRunning(id: string): Promise<Result<Job, DbError>> {
 				started_at: new Date().toISOString(),
 			})
 			.eq("id", id)
-			.select()
-			.single(),
+			.eq("status", "pending")
+			.select("id"),
 	);
 }
 
-export function markJobCompleted(id: string): Promise<Result<Job, DbError>> {
+// Terminal writes accept pending too: extension-sync finalizes an empty phase
+// straight from pending, and failure paths fail phases that never started.
+export function markJobCompleted(
+	id: string,
+): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
+	return transition(
 		supabase
 			.from("job")
 			.update({
@@ -146,17 +170,17 @@ export function markJobCompleted(id: string): Promise<Result<Job, DbError>> {
 				completed_at: new Date().toISOString(),
 			})
 			.eq("id", id)
-			.select()
-			.single(),
+			.in("status", ["pending", "running"])
+			.select("id"),
 	);
 }
 
 export function markJobFailed(
 	id: string,
 	error?: string,
-): Promise<Result<Job, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
+	return transition(
 		supabase
 			.from("job")
 			.update({
@@ -165,8 +189,34 @@ export function markJobFailed(
 				completed_at: new Date().toISOString(),
 			})
 			.eq("id", id)
-			.select()
-			.single(),
+			.in("status", ["pending", "running"])
+			.select("id"),
+	);
+}
+
+/**
+ * Terminal write for a job leased by a claim RPC. Each claim increments
+ * `attempts`, so fencing on it rejects a worker whose claim was swept back to
+ * pending and re-claimed (or dead-lettered) while it was still running.
+ */
+export function markClaimedJobTerminal(
+	job: Pick<Job, "id" | "attempts">,
+	status: "completed" | "failed",
+	error?: string,
+): Promise<Result<JobTransition, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return transition(
+		supabase
+			.from("job")
+			.update({
+				status,
+				error: error ?? null,
+				completed_at: new Date().toISOString(),
+			})
+			.eq("id", job.id)
+			.eq("status", "running")
+			.eq("attempts", job.attempts)
+			.select("id"),
 	);
 }
 

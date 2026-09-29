@@ -26,15 +26,25 @@ function dispatch(job: Job, actor: string, markDone: () => void): void {
 		const heartbeat = startHeartbeat(jobId);
 		try {
 			const outcome = await runExtensionSyncJob(job, actor);
-			if (outcome.status === "completed") {
-				log.info("extension-sync-job-complete", { actor, jobId, accountId });
-			} else {
-				log.warn("extension-sync-job-failed", {
-					actor,
-					jobId,
-					accountId,
-					error: outcome.error,
-				});
+			switch (outcome.status) {
+				case "completed":
+					log.info("extension-sync-job-complete", { actor, jobId, accountId });
+					break;
+				case "superseded":
+					log.warn("extension-sync-job-superseded", {
+						actor,
+						jobId,
+						accountId,
+					});
+					break;
+				case "failed":
+					log.warn("extension-sync-job-failed", {
+						actor,
+						jobId,
+						accountId,
+						error: outcome.error,
+					});
+					break;
 			}
 		} catch (error) {
 			log.error("extension-sync-job-threw", {

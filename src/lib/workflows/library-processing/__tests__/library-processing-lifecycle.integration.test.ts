@@ -1,0 +1,320 @@
+/**
+ * Library-processing job lifecycle against the real SQL:
+ * claim_pending_library_processing_job, sweep_stale_library_processing_jobs and
+ * mark_dead_library_processing_jobs (20260625050000 / 20260327200650), plus the
+ * worker-side settlements in settlement.ts. The runner suites mock all of
+ * these, so the claim/sweep interplay and the settlement fence only exist here.
+ *
+ * Expected values come from the SQL: the claim flips pending→running,
+ * attempts+1, stamps started_at/heartbeat_at, and skips rows whose
+ * available_at is in the future; the sweep re-pends running rows whose
+ * heartbeat is older than the threshold while attempts < max_attempts
+ * (started_at/heartbeat_at cleared); mark_dead fails running rows past the
+ * threshold with attempts >= max_attempts. Each claim increments `attempts`,
+ * so (status = 'running', attempts) identifies one claim of the row.
+ *
+ * The claim is global, so seeded jobs carry the maximum queue_priority and an
+ * ancient created_at to win its ORDER BY over unrelated local rows.
+ * Auto-skipped unless DATABASE_URL and SUPABASE_URL point at the local stack.
+ */
+
+import { Result } from "better-result";
+import postgres from "postgres";
+import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	claimLibraryProcessingJob,
+	markDeadLibraryProcessingJobs,
+	sweepStaleLibraryProcessingJobs,
+} from "@/lib/platform/jobs/library-processing-queue";
+import type { Job } from "@/lib/platform/jobs/repository";
+import {
+	requeueLibraryProcessingJobForRetry,
+	settleEnrichmentJobTerminal,
+	settleMatchSnapshotRefreshJobTerminal,
+} from "../settlement";
+
+const DATABASE_URL = process.env.DATABASE_URL ?? "";
+const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
+const IS_LOCAL =
+	(DATABASE_URL.includes("127.0.0.1") || DATABASE_URL.includes("localhost")) &&
+	SUPABASE_URL.startsWith("http://127.0.0.1");
+
+const sql = IS_LOCAL
+	? postgres(DATABASE_URL, { prepare: false, max: 2, fetch_types: false })
+	: null;
+
+function db() {
+	if (!sql) throw new Error("postgres client not initialised");
+	return sql;
+}
+
+const STALE_THRESHOLD = "5 minutes";
+const STALE_AGE_SECONDS = 600;
+
+let accountId: string | null = null;
+
+function account(): string {
+	if (!accountId) throw new Error("fixture not seeded");
+	return accountId;
+}
+
+async function seedPendingJob(
+	type: "enrichment" | "match_snapshot_refresh",
+	opts: { maxAttempts?: number } = {},
+): Promise<string> {
+	const id = crypto.randomUUID();
+	await db()`
+    INSERT INTO job(
+      id, account_id, type, status, attempts, max_attempts, queue_priority,
+      available_at, created_at, progress
+    ) VALUES (
+      ${id}, ${account()}, ${type}, 'pending', 0, ${opts.maxAttempts ?? 3},
+      2147483647, '2000-01-01T00:00:00Z', '2000-01-01T00:00:00Z',
+      ${db().json({ done: 4, total: 5, succeeded: 3, failed: 1 })}
+    )
+  `;
+	return id;
+}
+
+async function claim(): Promise<Job> {
+	const claimed = await claimLibraryProcessingJob();
+	if (Result.isError(claimed)) throw claimed.error;
+	if (!claimed.value) throw new Error("nothing claimable");
+	return claimed.value;
+}
+
+async function stallHeartbeat(jobId: string): Promise<void> {
+	await db()`UPDATE job SET heartbeat_at = now() - make_interval(secs => ${STALE_AGE_SECONDS}) WHERE id = ${jobId}`;
+}
+
+async function sweptIds(): Promise<string[]> {
+	const swept = await sweepStaleLibraryProcessingJobs(STALE_THRESHOLD);
+	if (Result.isError(swept)) throw swept.error;
+	return swept.value.map((j) => j.id);
+}
+
+interface JobRow {
+	status: string;
+	attempts: number;
+	error: string | null;
+	started_is_null: boolean;
+	heartbeat_is_null: boolean;
+	completed_is_null: boolean;
+}
+
+async function readJob(id: string): Promise<JobRow> {
+	const rows = await db()<JobRow[]>`
+    SELECT status, attempts, error,
+           started_at IS NULL AS started_is_null,
+           heartbeat_at IS NULL AS heartbeat_is_null,
+           completed_at IS NULL AS completed_is_null
+    FROM job WHERE id = ${id}
+  `;
+	const row = rows[0];
+	if (!row) throw new Error(`job ${id} missing`);
+	return row;
+}
+
+async function eventTypes(): Promise<string[]> {
+	const rows = await db()<{ type: string }[]>`
+    SELECT type FROM account_event WHERE account_id = ${account()} ORDER BY id
+  `;
+	return rows.map((r) => r.type);
+}
+
+/** First run claims, stalls past the threshold, is swept, and a second worker reclaims. */
+async function sweepAndReclaim(jobId: string): Promise<{
+	stale: Job;
+	current: Job;
+}> {
+	const stale = await claim();
+	expect(stale.id).toBe(jobId);
+	await stallHeartbeat(jobId);
+	expect(await sweptIds()).toContain(jobId);
+	const current = await claim();
+	expect(current.id).toBe(jobId);
+	return { stale, current };
+}
+
+beforeEach(async () => {
+	if (!IS_LOCAL) return;
+	accountId = crypto.randomUUID();
+	await db()`INSERT INTO account(id, spotify_id) VALUES (${accountId}, ${`test-${accountId}`})`;
+});
+
+afterEach(async () => {
+	if (!IS_LOCAL || !accountId) return;
+	// Account cascade clears jobs, account_event and library_processing_state.
+	await db()`DELETE FROM account WHERE id = ${accountId}`;
+	accountId = null;
+});
+
+afterAll(async () => {
+	await sql?.end();
+});
+
+describe.skipIf(!IS_LOCAL)("claim → settle", () => {
+	it("claim leases one attempt; settle completes it and emits exactly one event", async () => {
+		const jobId = await seedPendingJob("enrichment");
+
+		const job = await claim();
+		expect(job.id).toBe(jobId);
+		expect(job.status).toBe("running");
+		expect(job.attempts).toBe(1);
+		const running = await readJob(jobId);
+		expect(running.started_is_null).toBe(false);
+		expect(running.heartbeat_is_null).toBe(false);
+
+		expect(
+			await settleEnrichmentJobTerminal(job, "completed", "completed"),
+		).toHaveOkValue("applied");
+		const done = await readJob(jobId);
+		expect(done.status).toBe("completed");
+		expect(done.completed_is_null).toBe(false);
+		expect(await eventTypes()).toEqual(["enrichment_completed"]);
+	});
+
+	it("a job whose available_at is in the future is not claimable", async () => {
+		const jobId = await seedPendingJob("enrichment");
+		await db()`UPDATE job SET available_at = now() + interval '1 hour' WHERE id = ${jobId}`;
+
+		const claimed = await claimLibraryProcessingJob();
+		if (Result.isError(claimed)) throw claimed.error;
+		expect(claimed.value?.id).not.toBe(jobId);
+		expect((await readJob(jobId)).status).toBe("pending");
+	});
+
+	it("requeue for retry re-pends the claim with backoff and the error recorded", async () => {
+		const jobId = await seedPendingJob("enrichment");
+		const job = await claim();
+
+		expect(
+			await requeueLibraryProcessingJobForRetry(job, "boom"),
+		).toHaveOkValue(true);
+		const row = await readJob(jobId);
+		expect(row.status).toBe("pending");
+		expect(row.error).toBe("boom");
+		expect(row.started_is_null).toBe(true);
+		expect(row.heartbeat_is_null).toBe(true);
+		expect(await eventTypes()).toEqual([]);
+	});
+});
+
+describe.skipIf(!IS_LOCAL)("stale sweep and dead-letter", () => {
+	it("sweep re-pends a stale running job with attempts left and leaves a live one alone", async () => {
+		const staleId = await seedPendingJob("enrichment");
+		await claim();
+		await stallHeartbeat(staleId);
+		const liveId = await seedPendingJob("match_snapshot_refresh");
+		await claim();
+
+		const ids = await sweptIds();
+		expect(ids).toContain(staleId);
+		expect(ids).not.toContain(liveId);
+
+		const swept = await readJob(staleId);
+		expect(swept.status).toBe("pending");
+		expect(swept.attempts).toBe(1);
+		expect(swept.started_is_null).toBe(true);
+		expect(swept.heartbeat_is_null).toBe(true);
+		expect((await readJob(liveId)).status).toBe("running");
+
+		expect((await claim()).id).toBe(staleId);
+		expect((await readJob(staleId)).attempts).toBe(2);
+	});
+
+	it("an exhausted stale job is dead-lettered, not swept, and a late settle cannot revive it", async () => {
+		const jobId = await seedPendingJob("enrichment", { maxAttempts: 1 });
+		const job = await claim();
+		await stallHeartbeat(jobId);
+
+		expect(await sweptIds()).not.toContain(jobId);
+		const dead = await markDeadLibraryProcessingJobs(STALE_THRESHOLD);
+		if (Result.isError(dead)) throw dead.error;
+		expect(dead.value.map((j) => j.id)).toContain(jobId);
+		const failed = await readJob(jobId);
+		expect(failed.status).toBe("failed");
+		expect(failed.error).toBe("max attempts exhausted after stale detection");
+
+		// Dead-letter recovery owns the reconcile; the late worker must stay silent.
+		const late = await settleEnrichmentJobTerminal(
+			job,
+			"completed",
+			"completed",
+		);
+		expect((await readJob(jobId)).status).toBe("failed");
+		expect(await eventTypes()).toEqual([]);
+		expect(late).toHaveOkValue("superseded");
+	});
+});
+
+describe.skipIf(!IS_LOCAL)(
+	"late settle after sweep+reclaim must not overwrite the new run (regression: id-only terminal UPDATE let a stale worker complete a reclaimed job and emit duplicate events)",
+	() => {
+		it("enrichment: the stale worker's settle is superseded; the reclaiming worker's settle lands once", async () => {
+			const jobId = await seedPendingJob("enrichment");
+			const { stale, current } = await sweepAndReclaim(jobId);
+
+			const late = await settleEnrichmentJobTerminal(
+				stale,
+				"completed",
+				"completed",
+			);
+			const afterStale = await readJob(jobId);
+			expect(afterStale.status).toBe("running");
+			expect(afterStale.attempts).toBe(2);
+			expect(afterStale.completed_is_null).toBe(true);
+			expect(await eventTypes()).toEqual([]);
+			expect(late).toHaveOkValue("superseded");
+
+			expect(
+				await settleEnrichmentJobTerminal(current, "completed", "completed"),
+			).toHaveOkValue("applied");
+			expect((await readJob(jobId)).status).toBe("completed");
+			expect(await eventTypes()).toEqual(["enrichment_completed"]);
+		});
+
+		it("match refresh: the stale worker neither publishes nor releases the new run's active ref", async () => {
+			const jobId = await seedPendingJob("match_snapshot_refresh");
+			await db()`
+        INSERT INTO library_processing_state(account_id, match_snapshot_refresh_active_job_id)
+        VALUES (${account()}, ${jobId})
+      `;
+			const { stale } = await sweepAndReclaim(jobId);
+
+			const late = await settleMatchSnapshotRefreshJobTerminal(
+				stale,
+				"completed",
+				"published",
+				null,
+			);
+			expect((await readJob(jobId)).status).toBe("running");
+			const [state] = await db()<
+				{ active: string | null; settled_is_null: boolean }[]
+			>`
+        SELECT match_snapshot_refresh_active_job_id AS active,
+               match_snapshot_refresh_settled_at IS NULL AS settled_is_null
+        FROM library_processing_state WHERE account_id = ${account()}
+      `;
+			expect(state?.active).toBe(jobId);
+			expect(state?.settled_is_null).toBe(true);
+			expect(await eventTypes()).toEqual([]);
+			expect(late).toHaveOkValue("superseded");
+		});
+
+		it("a stale worker's requeue cannot re-pend the reclaimed run", async () => {
+			const jobId = await seedPendingJob("enrichment");
+			const { stale } = await sweepAndReclaim(jobId);
+
+			const late = await requeueLibraryProcessingJobForRetry(
+				stale,
+				"stale boom",
+			);
+			const row = await readJob(jobId);
+			expect(row.status).toBe("running");
+			expect(row.error).toBeNull();
+			expect(row.heartbeat_is_null).toBe(false);
+			expect(late).toHaveOkValue(false);
+		});
+	},
+);

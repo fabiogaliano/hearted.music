@@ -66,7 +66,7 @@ import { type RunJobOutcome, runClaimedJob } from "../runner";
 import type { LibraryProcessingApplyError } from "../types";
 
 function settlementOf(outcome: RunJobOutcome) {
-	return outcome.status === "retrying" ? null : outcome.settlement;
+	return "settlement" in outcome ? outcome.settlement : null;
 }
 
 const APPLY_OK_RESULT = Result.ok({
@@ -115,10 +115,10 @@ describe("runClaimedJob", () => {
 		recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
 		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 		// Default: no retry budget consumed successfully — existing failure-path
 		// tests keep exercising terminal settlement. Retry tests override to true.
@@ -133,9 +133,7 @@ describe("runClaimedJob", () => {
 
 	it("dispatches enrichment jobs and returns completed outcome", async () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
-		);
+		vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
 
@@ -155,9 +153,7 @@ describe("runClaimedJob", () => {
 			snapshotId: "snap-1",
 		};
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(execResult);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
-		);
+		vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
@@ -173,9 +169,7 @@ describe("runClaimedJob", () => {
 	it("returns failed outcome and marks job failed on execution error", async () => {
 		const thrown = new Error("provider down");
 		vi.mocked(executeEnrichmentJob).mockRejectedValue(thrown);
-		vi.mocked(markJobFailed).mockResolvedValue(
-			Result.ok(makeJob({ status: "failed" })),
-		);
+		vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
 
@@ -201,9 +195,7 @@ describe("runClaimedJob", () => {
 	it("reports match_snapshot_refresh execution errors to Sentry", async () => {
 		const thrown = new Error("snapshot exploded");
 		vi.mocked(executeMatchSnapshotRefreshJob).mockRejectedValue(thrown);
-		vi.mocked(markJobFailed).mockResolvedValue(
-			Result.ok(makeJob({ status: "failed" })),
-		);
+		vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
@@ -307,9 +299,7 @@ describe("runClaimedJob", () => {
 
 	it("preserves workflow result payloads on completed outcomes", async () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-		vi.mocked(markJobCompleted).mockResolvedValue(
-			Result.ok(makeJob({ status: "completed" })),
-		);
+		vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(makeJob(), "@test");
 
@@ -332,9 +322,7 @@ describe("runClaimedJob", () => {
 			});
 
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -355,9 +343,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockRejectedValue(
 				new Error("provider down"),
 			);
-			vi.mocked(markJobFailed).mockResolvedValue(
-				Result.ok(makeJob({ status: "failed" })),
-			);
+			vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -383,9 +369,7 @@ describe("runClaimedJob", () => {
 				isEmpty: false,
 				snapshotId: "snap-1",
 			});
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
@@ -399,9 +383,7 @@ describe("runClaimedJob", () => {
 	describe("settlement", () => {
 		it("returns settled when apply succeeds on first attempt", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			const outcome = await runClaimedJob(makeJob(), "@test");
 
@@ -411,9 +393,7 @@ describe("runClaimedJob", () => {
 
 		it("retries transient DatabaseError and settles on success", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			applyLibraryProcessingChangeMock
 				.mockResolvedValueOnce(Result.err(makePersistStateError()))
@@ -429,9 +409,7 @@ describe("runClaimedJob", () => {
 
 		it("returns settlement_failed after retry exhaustion", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			const error = makePersistStateError();
 			applyLibraryProcessingChangeMock.mockResolvedValue(Result.err(error));
@@ -469,9 +447,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockRejectedValue(
 				new Error("provider down"),
 			);
-			vi.mocked(markJobFailed).mockResolvedValue(
-				Result.ok(makeJob({ status: "failed" })),
-			);
+			vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
 			const settlementError = makePersistStateError();
 			applyLibraryProcessingChangeMock.mockResolvedValue(
@@ -516,9 +492,7 @@ describe("runClaimedJob", () => {
 				snapshotId: "snap-1",
 			};
 			vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(execResult);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			const outcome = await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
@@ -530,9 +504,7 @@ describe("runClaimedJob", () => {
 
 		it("does not retry non-DatabaseError apply failures", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			const nonRetryableError: LibraryProcessingApplyError = {
 				kind: "effect_ensure_failed",
@@ -593,9 +565,7 @@ describe("runClaimedJob", () => {
 
 		it("applies enrichment_stopped(blocked) when zero songs attempted and work remains", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -611,9 +581,7 @@ describe("runClaimedJob", () => {
 
 		it("does not apply enrichment_completed for a blocked chunk", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -626,9 +594,7 @@ describe("runClaimedJob", () => {
 			// enrichment_stopped always sets isFailureChange = true, so no effects are
 			// produced and no re-ensure fires in the same apply cycle.
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			const staleWithoutJobState = {
 				accountId: "acct-1",
@@ -668,9 +634,7 @@ describe("runClaimedJob", () => {
 
 		it("applies enrichment_completed(requestSatisfied:false) for a normal partial chunk", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -684,9 +648,7 @@ describe("runClaimedJob", () => {
 
 		it("does not treat a completed chunk (doneCount > 0, hasMoreSongs true) as blocked", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -700,9 +662,7 @@ describe("runClaimedJob", () => {
 				...BLOCKED_EXEC_RESULT,
 				hasMoreSongs: false,
 			});
-			vi.mocked(markJobCompleted).mockResolvedValue(
-				Result.ok(makeJob({ status: "completed" })),
-			);
+			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
 			await runClaimedJob(makeJob(), "@test");
 
@@ -715,7 +675,7 @@ describe("runClaimedJob", () => {
 	it("propagates newCandidateSongIds into the enrichment_completed change", async () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		await runClaimedJob(makeJob(), "@test");
@@ -734,7 +694,7 @@ describe("runClaimedJob", () => {
 			recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 			applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
 			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-				Result.ok(undefined),
+				Result.ok("applied"),
 			);
 		});
 

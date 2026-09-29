@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
-import type { Job } from "@/lib/platform/jobs/repository";
+import type { Job, JobTransition } from "@/lib/platform/jobs/repository";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
@@ -23,9 +23,9 @@ const RETRY_BACKOFF_BASE_SECONDS = 30;
  * Requeue a running job whose execution threw, consuming one attempt (the
  * claim RPC already incremented `attempts`). Mirrors the stale-job sweep's
  * reset (status back to pending, started_at/heartbeat_at cleared) so app-level
- * errors get the same retry budget as worker crashes. Returns false when the
- * job was no longer running (e.g. already swept), in which case the caller
- * should fall back to terminal failure handling.
+ * errors get the same retry budget as worker crashes. Returns false when this
+ * claim no longer owns the job (swept, reclaimed, or dead-lettered); the
+ * caller's terminal settle is then superseded too.
  */
 export async function requeueLibraryProcessingJobForRetry(
 	job: Job,
@@ -40,7 +40,7 @@ export async function requeueLibraryProcessingJobForRetry(
 			    error = ${errorMsg},
 			    available_at = now() + make_interval(secs => ${RETRY_BACKOFF_BASE_SECONDS * job.attempts}),
 			    updated_at = now()
-			WHERE id = ${job.id} AND status = 'running'
+			WHERE id = ${job.id} AND status = 'running' AND attempts = ${job.attempts}
 			RETURNING id
 		`;
 		return Result.ok(rows.length > 0);
@@ -50,22 +50,41 @@ export async function requeueLibraryProcessingJobForRetry(
 	}
 }
 
+/**
+ * Terminal write fenced to the claim that produced `job`: the claim RPC bumps
+ * `attempts`, so a sweep + reclaim (or a dead-letter) makes a late worker's
+ * snapshot stale. Losing the fence means another claim owns the outcome, so
+ * the caller must write no state and emit no events.
+ */
+async function fenceTerminal(
+	tx: postgres.TransactionSql<Record<string, never>>,
+	job: Job,
+	status: "completed" | "failed",
+	errorMsg: string | undefined,
+): Promise<boolean> {
+	const rows = await tx`
+		UPDATE job
+		SET status = ${status},
+		    completed_at = now(),
+		    error = ${errorMsg ?? null}
+		WHERE id = ${job.id} AND status = 'running' AND attempts = ${job.attempts}
+		RETURNING id
+	`;
+	return rows.length > 0;
+}
+
 export async function settleMatchSnapshotRefreshJobTerminal(
 	job: Job,
 	status: "completed" | "failed",
 	reason: "published" | "superseded" | "failed",
 	snapshotId: string | null,
 	errorMsg?: string,
-): Promise<Result<void, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	try {
-		await sql.begin(async (tx) => {
-			await tx`
-				UPDATE job 
-				SET status = ${status}, 
-				    completed_at = now(), 
-				    error = ${errorMsg ?? null}
-				WHERE id = ${job.id}
-			`;
+		const outcome = await sql.begin(async (tx) => {
+			if (!(await fenceTerminal(tx, job, status, errorMsg))) {
+				return "superseded" as const;
+			}
 
 			await tx`
 				INSERT INTO library_processing_state (account_id)
@@ -128,8 +147,9 @@ export async function settleMatchSnapshotRefreshJobTerminal(
 					payload: {},
 				});
 			}
+			return "applied" as const;
 		});
-		return Result.ok(undefined);
+		return Result.ok(outcome);
 	} catch (error) {
 		const message = errorMessage(error);
 		return Result.err(
@@ -143,7 +163,7 @@ export async function settleEnrichmentJobTerminal(
 	status: "completed" | "failed",
 	eventReason: "completed" | "user_cancelled" | "failed" | "superseded",
 	errorMsg?: string,
-): Promise<Result<void, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	const parsed = parseJobProgress(job.type, job.progress);
 	const counts =
 		parsed.type === "unknown"
@@ -156,14 +176,10 @@ export async function settleEnrichmentJobTerminal(
 				};
 
 	try {
-		await sql.begin(async (tx) => {
-			await tx`
-				UPDATE job 
-				SET status = ${status}, 
-				    completed_at = now(), 
-				    error = ${errorMsg ?? null}
-				WHERE id = ${job.id}
-			`;
+		const outcome = await sql.begin(async (tx) => {
+			if (!(await fenceTerminal(tx, job, status, errorMsg))) {
+				return "superseded" as const;
+			}
 
 			if (eventReason === "completed") {
 				await writeAccountEvent(tx, {
@@ -178,8 +194,9 @@ export async function settleEnrichmentJobTerminal(
 					payload: { jobId: job.id, reason: eventReason, counts },
 				});
 			}
+			return "applied" as const;
 		});
-		return Result.ok(undefined);
+		return Result.ok(outcome);
 	} catch (error) {
 		const message = errorMessage(error);
 		return Result.err(

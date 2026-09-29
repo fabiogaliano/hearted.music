@@ -41,6 +41,7 @@ const {
 	mockCompleteJob,
 	mockFailJob,
 	mockStartJob,
+	mockSettleClaimedJob,
 	mockRunPhase,
 	mockInitialSync,
 	mockIncrementalSync,
@@ -60,6 +61,7 @@ const {
 	mockCompleteJob: vi.fn(),
 	mockFailJob: vi.fn(),
 	mockStartJob: vi.fn(),
+	mockSettleClaimedJob: vi.fn(),
 	mockRunPhase: vi.fn(),
 	mockInitialSync: vi.fn(),
 	mockIncrementalSync: vi.fn(),
@@ -98,6 +100,7 @@ vi.mock("@/lib/platform/jobs/lifecycle", () => ({
 	completeJob: (...a: unknown[]) => mockCompleteJob(...a),
 	failJob: (...a: unknown[]) => mockFailJob(...a),
 	startJob: (...a: unknown[]) => mockStartJob(...a),
+	settleClaimedJob: (...a: unknown[]) => mockSettleClaimedJob(...a),
 }));
 
 vi.mock("@/lib/workflows/spotify-sync/sync-helpers", () => ({
@@ -159,6 +162,9 @@ function parentJob(progress: unknown): Job {
 		updated_at: new Date().toISOString(),
 	} as Job;
 }
+
+// The parent settle must carry the claim's attempts so a reclaimed lease loses.
+const PARENT_LEASE = expect.objectContaining({ id: PARENT_ID, attempts: 1 });
 
 function validProgress(): unknown {
 	return {
@@ -231,9 +237,10 @@ describe("runExtensionSyncJob", () => {
 		zlibOverrides.gunzip = null;
 		mockCreateAdminSupabaseClient.mockReturnValue({ id: "admin" });
 		mockDeleteSyncPayload.mockResolvedValue(Result.ok(undefined));
-		mockCompleteJob.mockResolvedValue(Result.ok({ id: "j" }));
-		mockFailJob.mockResolvedValue(Result.ok({ id: "j" }));
-		mockStartJob.mockResolvedValue(Result.ok({ id: "j" }));
+		mockCompleteJob.mockResolvedValue(Result.ok("applied"));
+		mockFailJob.mockResolvedValue(Result.ok("applied"));
+		mockStartJob.mockResolvedValue(Result.ok("applied"));
+		mockSettleClaimedJob.mockResolvedValue(Result.ok("applied"));
 		mockGetAll.mockResolvedValue(Result.ok([]));
 		mockGetPlaylists.mockResolvedValue(Result.ok([]));
 		mockGetTargetPlaylists.mockResolvedValue(Result.ok([]));
@@ -258,7 +265,10 @@ describe("runExtensionSyncJob", () => {
 		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.liked_songs);
 		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.playlists);
 		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE_JOB_IDS.playlist_tracks);
-		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"completed",
+		);
 		expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
 		expect(mockMaybeGrant).toHaveBeenCalledWith({ id: "admin" }, ACCOUNT_ID, {
 			onOperationalError: expect.any(Function),
@@ -268,6 +278,11 @@ describe("runExtensionSyncJob", () => {
 			PAYLOAD_PATH,
 		);
 		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.anything(),
+		);
 	});
 
 	it("fails only the parent when the job progress is malformed", async () => {
@@ -277,7 +292,11 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome.status).toBe("failed");
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		// No payload pointer recoverable → nothing downloaded or deleted.
 		expect(mockDownloadSyncPayload).not.toHaveBeenCalled();
 	});
@@ -305,7 +324,11 @@ describe("runExtensionSyncJob", () => {
 			PHASE_JOB_IDS.playlist_tracks,
 			expect.any(String),
 		);
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin" },
 			PAYLOAD_PATH,
@@ -323,7 +346,11 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome.status).toBe("failed");
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin" },
 			PAYLOAD_PATH,
@@ -374,7 +401,11 @@ describe("runExtensionSyncJob", () => {
 			PHASE_JOB_IDS.playlist_tracks,
 			expect.any(String),
 		);
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin" },
 			PAYLOAD_PATH,
@@ -408,7 +439,11 @@ describe("runExtensionSyncJob", () => {
 			status: "failed",
 			error: expect.stringContaining("Failed to update account profile"),
 		});
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalled();
 	});
 
@@ -435,8 +470,16 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome.status).toBe("completed");
-		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"completed",
+		);
 		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.anything(),
+		);
 	});
 
 	it("decompresses a gzipped staged payload and completes like a plain-JSON one", async () => {
@@ -453,8 +496,16 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome).toEqual({ status: "completed" });
-		expect(mockCompleteJob).toHaveBeenCalledWith(PARENT_ID);
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"completed",
+		);
 		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.anything(),
+		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
 			{ id: "admin" },
 			PAYLOAD_PATH,
@@ -485,7 +536,11 @@ describe("runExtensionSyncJob", () => {
 		);
 
 		expect(outcome.status).toBe("failed");
-		expect(mockFailJob).toHaveBeenCalledWith(PARENT_ID, expect.any(String));
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
 		expect(mockFailJob).toHaveBeenCalledWith(
 			PHASE_JOB_IDS.liked_songs,
 			expect.any(String),
@@ -496,5 +551,35 @@ describe("runExtensionSyncJob", () => {
 			{ id: "admin" },
 			PAYLOAD_PATH,
 		);
+	});
+	it("a lease reclaimed before completion leaves the payload to the reclaiming worker", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
+		);
+		mockSettleClaimedJob.mockResolvedValue(Result.ok("superseded"));
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+		);
+
+		expect(outcome).toEqual({ status: "superseded" });
+		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("a lease reclaimed before a failure neither fails the new run's phases nor deletes its payload", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "storage", message: "blip" })),
+		);
+		mockSettleClaimedJob.mockResolvedValue(Result.ok("superseded"));
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+		);
+
+		expect(outcome).toEqual({ status: "superseded" });
+		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
 	});
 });

@@ -25,7 +25,12 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { log } from "@/lib/observability/logger";
 import { parseExtensionSyncJobProgress } from "@/lib/platform/jobs/extension-sync-jobs";
-import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
+import {
+	completeJob,
+	failJob,
+	settleClaimedJob,
+	startJob,
+} from "@/lib/platform/jobs/lifecycle";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
@@ -51,7 +56,10 @@ import {
 
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }
-	| { status: "failed"; error: string };
+	| { status: "failed"; error: string }
+	// The sweep reclaimed (or dead-lettered) this worker's lease mid-run; the
+	// current owner settles the job and its payload.
+	| { status: "superseded" };
 
 // gzip can expand ~1000x on decompression; without a ceiling a decompression
 // bomb (or a corrupt/adversarial payload) could exhaust worker memory before
@@ -121,7 +129,10 @@ export async function runExtensionSyncJob(
 		// No payload pointer means nothing the worker can do; fail the parent.
 		// Phase ids are unknown here, so there is nothing else to settle.
 		const message = `Invalid extension_sync job progress: ${progressResult.error.message}`;
-		await failJob(job.id, message);
+		const failed = await settleClaimedJob(job, "failed", message);
+		if (Result.isOk(failed) && failed.value === "superseded") {
+			return { status: "superseded" };
+		}
 		return { status: "failed", error: message };
 	}
 
@@ -141,9 +152,14 @@ export async function runExtensionSyncJob(
 		await Promise.all(unsettled.map((id) => failJob(id, reason)));
 	};
 
+	// The parent is fenced first: a superseded worker must not fail phase jobs
+	// or delete the payload the reclaiming worker is running from.
 	const fail = async (reason: string): Promise<ExtensionSyncRunOutcome> => {
+		const failed = await settleClaimedJob(job, "failed", reason);
+		if (Result.isOk(failed) && failed.value === "superseded") {
+			return { status: "superseded" };
+		}
 		await failUnsettledPhaseJobs(reason);
-		await failJob(job.id, reason);
 		await deletePayloadBestEffort(supabase, payloadPath, job.id, actor);
 		return { status: "failed", error: reason };
 	};
@@ -418,7 +434,7 @@ export async function runExtensionSyncJob(
 			});
 		}
 
-		const completeParent = await completeJob(job.id);
+		const completeParent = await settleClaimedJob(job, "completed");
 		if (Result.isError(completeParent)) {
 			captureExtensionSyncFailure(completeParent.error, {
 				phase: "complete_parent_job",
@@ -426,6 +442,9 @@ export async function runExtensionSyncJob(
 				accountId,
 			});
 			return { status: "failed", error: completeParent.error.message };
+		}
+		if (completeParent.value === "superseded") {
+			return { status: "superseded" };
 		}
 
 		await deletePayloadBestEffort(supabase, payloadPath, job.id, actor);

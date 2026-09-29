@@ -14,6 +14,8 @@ import { log } from "@/lib/observability/logger";
 import {
 	type Job,
 	type JobProgress,
+	type JobTransition,
+	markClaimedJobTerminal,
 	markJobCompleted,
 	markJobFailed,
 	markJobRunning,
@@ -32,9 +34,12 @@ const RETRY_OPTIONS = {
  * This prevents orphaned jobs stuck in 'pending' status forever.
  *
  * @param jobId - The job ID to start
- * @returns The job in 'running' state, or error if both start and cleanup failed
+ * @returns "superseded" when the job had already left pending, or error if both
+ * start and cleanup failed
  */
-export async function startJob(jobId: string): Promise<Result<Job, DbError>> {
+export async function startJob(
+	jobId: string,
+): Promise<Result<JobTransition, DbError>> {
 	const runningResult = await withRetry(
 		() => markJobRunning(jobId),
 		RETRY_OPTIONS,
@@ -81,7 +86,7 @@ export async function finalizeJob(
 	jobId: string,
 	progress: JobProgress,
 	errorMessage?: string,
-): Promise<Result<Job, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	const shouldComplete =
 		progress.total === 0 || progress.failed < progress.total;
 	return shouldComplete
@@ -94,7 +99,7 @@ export async function finalizeJob(
  */
 export async function completeJob(
 	jobId: string,
-): Promise<Result<Job, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	return withRetry(() => markJobCompleted(jobId), RETRY_OPTIONS);
 }
 
@@ -104,6 +109,22 @@ export async function completeJob(
 export async function failJob(
 	jobId: string,
 	errorMessage?: string,
-): Promise<Result<Job, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	return withRetry(() => markJobFailed(jobId, errorMessage), RETRY_OPTIONS);
+}
+
+/**
+ * Settles a job this worker leased through a claim RPC, with retry logic.
+ * "superseded" means a sweep reclaimed or dead-lettered the lease; the caller
+ * must leave the job, its payload, and its side effects to the current owner.
+ */
+export async function settleClaimedJob(
+	job: Pick<Job, "id" | "attempts">,
+	status: "completed" | "failed",
+	errorMessage?: string,
+): Promise<Result<JobTransition, DbError>> {
+	return withRetry(
+		() => markClaimedJobTerminal(job, status, errorMessage),
+		RETRY_OPTIONS,
+	);
 }

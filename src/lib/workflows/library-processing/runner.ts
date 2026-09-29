@@ -55,12 +55,18 @@ export type RunJobOutcome =
 			status: "retrying";
 			workflow: "enrichment" | "match_snapshot_refresh";
 			error: string;
+	  }
+	// A sweep reclaimed or dead-lettered this worker's lease before it settled;
+	// the current owner applies the outcome, so nothing was written or emitted.
+	| {
+			status: "superseded";
+			workflow: "enrichment" | "match_snapshot_refresh";
 	  };
 
 // App-thrown errors consume the same retry budget as worker crashes: requeue
 // while attempts remain (the claim RPC already counted this attempt), and only
 // settle as terminally failed once max_attempts is exhausted — or when the
-// requeue itself can't land (job no longer running, or the write failed).
+// requeue itself can't land (lease lost, or the write failed).
 async function tryRequeueForRetry(
 	job: Job,
 	actor: string,
@@ -118,6 +124,9 @@ async function runEnrichmentJob(
 				error: completedResult.error.message,
 			});
 			throw new Error(completedResult.error.message);
+		}
+		if (completedResult.value === "superseded") {
+			return superseded(job, actor, "enrichment");
 		}
 
 		// A chunk that attempted zero songs while work is still owed is blocked —
@@ -237,16 +246,22 @@ async function runEnrichmentJob(
 			return { status: "retrying", workflow: "enrichment", error: message };
 		}
 
-		await settleEnrichmentJobTerminal(job, "failed", "failed", message).catch(
-			(markError) => {
-				log.error("mark-failed-error", {
-					actor,
-					jobId: job.id,
-					accountId: job.account_id,
-					error: errorMessage(markError),
-				});
-			},
+		const failedResult = await settleEnrichmentJobTerminal(
+			job,
+			"failed",
+			"failed",
+			message,
 		);
+		if (Result.isError(failedResult)) {
+			log.error("mark-failed-error", {
+				actor,
+				jobId: job.id,
+				accountId: job.account_id,
+				error: failedResult.error.message,
+			});
+		} else if (failedResult.value === "superseded") {
+			return superseded(job, actor, "enrichment");
+		}
 
 		await writeMeasurement(job, actor, "enrichment", startedAt, "error");
 
@@ -306,6 +321,9 @@ async function runMatchSnapshotRefreshJob(
 				});
 				throw new Error(completedResult.error.message);
 			}
+			if (completedResult.value === "superseded") {
+				return superseded(job, actor, "match_snapshot_refresh");
+			}
 
 			const change = MatchSnapshotChanges.superseded({
 				accountId: result.accountId,
@@ -352,6 +370,9 @@ async function runMatchSnapshotRefreshJob(
 				error: completedResult.error.message,
 			});
 			throw new Error(completedResult.error.message);
+		}
+		if (completedResult.value === "superseded") {
+			return superseded(job, actor, "match_snapshot_refresh");
 		}
 
 		const change = MatchSnapshotChanges.published({
@@ -407,20 +428,23 @@ async function runMatchSnapshotRefreshJob(
 			"error",
 		);
 
-		await settleMatchSnapshotRefreshJobTerminal(
+		const failedResult = await settleMatchSnapshotRefreshJobTerminal(
 			job,
 			"failed",
 			"failed",
 			null,
 			message,
-		).catch((markError) => {
+		);
+		if (Result.isError(failedResult)) {
 			log.error("mark-failed-error", {
 				actor,
 				jobId: job.id,
 				accountId: job.account_id,
-				error: errorMessage(markError),
+				error: failedResult.error.message,
 			});
-		});
+		} else if (failedResult.value === "superseded") {
+			return superseded(job, actor, "match_snapshot_refresh");
+		}
 
 		const change = MatchSnapshotChanges.failed({
 			accountId: job.account_id,
@@ -442,6 +466,21 @@ async function runMatchSnapshotRefreshJob(
 			settlement,
 		};
 	}
+}
+
+function superseded(
+	job: Job,
+	actor: string,
+	workflow: "enrichment" | "match_snapshot_refresh",
+): RunJobOutcome {
+	log.warn("job-lease-superseded", {
+		actor,
+		jobId: job.id,
+		accountId: job.account_id,
+		workflow,
+		attempts: job.attempts,
+	});
+	return { status: "superseded", workflow };
 }
 
 interface SettlementLogContext {

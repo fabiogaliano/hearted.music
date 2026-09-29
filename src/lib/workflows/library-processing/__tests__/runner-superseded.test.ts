@@ -99,7 +99,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		await runClaimedJob(supersedableRefreshJob, "@test");
@@ -117,7 +117,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		await runClaimedJob(supersedableRefreshJob, "@test");
@@ -139,7 +139,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		await runClaimedJob(supersedableRefreshJob, "@test");
@@ -154,7 +154,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		await runClaimedJob(supersedableRefreshJob, "@test");
@@ -168,16 +168,14 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		const outcome = await runClaimedJob(supersedableRefreshJob, "@test");
 
 		expect(outcome.status).toBe("completed");
 		expect(outcome.workflow).toBe("match_snapshot_refresh");
-		expect(outcome.status === "retrying" ? null : outcome.settlement).toBe(
-			"settled",
-		);
+		expect("settlement" in outcome ? outcome.settlement : null).toBe("settled");
 		if (
 			outcome.status === "completed" &&
 			outcome.workflow === "match_snapshot_refresh"
@@ -191,14 +189,12 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			SUPERSEDED_EXEC_RESULT,
 		);
 		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
-			Result.ok(undefined),
+			Result.ok("applied"),
 		);
 
 		const outcome = await runClaimedJob(supersedableRefreshJob, "@test");
 
-		expect(outcome.status === "retrying" ? null : outcome.settlement).toBe(
-			"settled",
-		);
+		expect("settlement" in outcome ? outcome.settlement : null).toBe("settled");
 		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
 		const changeArg = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
 		expect(changeArg?.kind).toBe("match_snapshot_superseded");
