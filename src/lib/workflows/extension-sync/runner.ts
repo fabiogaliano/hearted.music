@@ -177,8 +177,8 @@ export async function runExtensionSyncJob(
 	};
 
 	// The heartbeat saw the lease taken over. A phase already in flight still
-	// settles its own phase job (it won that job's start, so no one else can),
-	// which is what lets the reclaiming run resume from it; nothing new starts.
+	// settles its own phase job unless the reclaiming run took that phase over
+	// first; either way the reclaiming run resumes from it. Nothing new starts.
 	const stopForLostLease = (): ExtensionSyncRunOutcome => {
 		log.warn("extension-sync-lease-lost", {
 			actor,
@@ -264,7 +264,7 @@ export async function runExtensionSyncJob(
 				return { status: "stopped", outcome: stopForLostLease() };
 			}
 			const phaseResult = await runPhase(
-				phaseJobIds[phase],
+				{ id: phaseJobIds[phase], attempts: job.attempts },
 				resultSchema,
 				syncFn,
 			);
@@ -282,9 +282,10 @@ export async function runExtensionSyncJob(
 				};
 			}
 			if (phaseResult.value.status === "superseded") {
-				// Another run is inside this phase (or moved it to terminal under
-				// this one). Settling the parent here would race that run, so this
-				// run stops and leaves the parent to whichever run holds the lease.
+				// A newer parent attempt holds this phase (or moved it to terminal
+				// under this one). Settling the parent here would race that run, so
+				// this run stops and leaves the parent to whichever run holds the
+				// lease.
 				log.warn("extension-sync-phase-superseded", {
 					actor,
 					jobId: job.id,

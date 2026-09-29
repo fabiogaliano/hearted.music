@@ -272,7 +272,7 @@ describe("runExtensionSyncJob", () => {
 		// All three phase jobs run (and settle) through runPhase, then the parent.
 		for (const phaseJobId of Object.values(PHASE_JOB_IDS)) {
 			expect(mockRunPhase).toHaveBeenCalledWith(
-				phaseJobId,
+				{ id: phaseJobId, attempts: 1 },
 				expect.anything(),
 				expect.any(Function),
 			);
@@ -582,9 +582,9 @@ describe("runExtensionSyncJob", () => {
 				}),
 			),
 		);
-		mockRunPhase.mockImplementation(async (jobId: string) =>
+		mockRunPhase.mockImplementation(async (phase: { id: string }) =>
 			Result.ok(
-				jobId === PHASE_JOB_IDS.playlist_tracks
+				phase.id === PHASE_JOB_IDS.playlist_tracks
 					? { status: "superseded" }
 					: { status: "completed", value: {} },
 			),

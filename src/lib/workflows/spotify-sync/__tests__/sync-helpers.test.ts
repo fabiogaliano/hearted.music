@@ -9,14 +9,16 @@ import { makeJob } from "@/test/fixtures";
 import type { SpotifyTrackDTO } from "../types";
 
 const mockStartJob = vi.fn();
+const mockTakeOverJob = vi.fn();
 const mockCompleteJob = vi.fn();
-const mockFailJob = vi.fn();
+const mockSettleClaimedJob = vi.fn();
 const mockGetJobById = vi.fn();
 
 vi.mock("@/lib/platform/jobs/lifecycle", () => ({
 	startJob: (...args: unknown[]) => mockStartJob(...args),
+	takeOverJob: (...args: unknown[]) => mockTakeOverJob(...args),
 	completeJob: (...args: unknown[]) => mockCompleteJob(...args),
-	failJob: (...args: unknown[]) => mockFailJob(...args),
+	settleClaimedJob: (...args: unknown[]) => mockSettleClaimedJob(...args),
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
@@ -87,21 +89,24 @@ function makeLikedSong(unlikedAt: string | null): LikedSong {
 
 describe("runPhase", () => {
 	const TotalSchema = z.object({ total: z.number() });
+	// The phase job leased under the parent's second claim attempt.
+	const PHASE = { id: "job-1", attempts: 2 };
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockStartJob.mockResolvedValue(Result.ok("applied"));
+		mockTakeOverJob.mockResolvedValue(Result.ok("applied"));
 		mockCompleteJob.mockResolvedValue(Result.ok("applied"));
-		mockFailJob.mockResolvedValue(Result.ok("applied"));
+		mockSettleClaimedJob.mockResolvedValue(Result.ok("applied"));
 	});
 
 	it("persists the phase result on the completing write so a retry can reuse it", async () => {
-		const result = await runPhase("job-1", TotalSchema, async () =>
+		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.ok({ total: 3 }),
 		);
 
 		expect(result).toHaveOkValue({ status: "completed", value: { total: 3 } });
-		expect(mockCompleteJob).toHaveBeenCalledWith("job-1", {
+		expect(mockCompleteJob).toHaveBeenCalledWith(PHASE, {
 			result: { total: 3 },
 		});
 	});
@@ -113,7 +118,7 @@ describe("runPhase", () => {
 		});
 		mockCompleteJob.mockResolvedValueOnce(Result.err(completeError));
 
-		const result = await runPhase("job-1", TotalSchema, async () =>
+		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.ok({ total: 1 }),
 		);
 
@@ -134,7 +139,7 @@ describe("runPhase", () => {
 			);
 			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
 
-			const result = await runPhase("job-1", TotalSchema, syncFn);
+			const result = await runPhase(PHASE, TotalSchema, syncFn);
 
 			expect(result).toHaveOkValue({
 				status: "completed",
@@ -144,19 +149,79 @@ describe("runPhase", () => {
 			expect(mockCompleteJob).not.toHaveBeenCalled();
 		});
 
-		it("running: another run owns it, so this one is superseded and touches nothing", async () => {
+		it.each([
+			["the same", 2],
+			["a newer", 3],
+		])("running under %s parent attempt: that run owns it, so this one is superseded and touches nothing", async (_label, holder) => {
 			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
 			mockGetJobById.mockResolvedValueOnce(
-				Result.ok(makeJob({ id: "job-1", status: "running" })),
+				Result.ok(
+					makeJob({ id: "job-1", status: "running", attempts: holder }),
+				),
 			);
 			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
 
-			const result = await runPhase("job-1", TotalSchema, syncFn);
+			const result = await runPhase(PHASE, TotalSchema, syncFn);
 
 			expect(result).toHaveOkValue({ status: "superseded" });
+			expect(mockTakeOverJob).not.toHaveBeenCalled();
 			expect(syncFn).not.toHaveBeenCalled();
 			expect(mockCompleteJob).not.toHaveBeenCalled();
-			expect(mockFailJob).not.toHaveBeenCalled();
+			expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+		});
+
+		// 0 is a phase started before phases recorded their parent attempt.
+		it.each([
+			["an older", 1],
+			["no recorded", 0],
+		])("running under %s parent attempt (regression: a phase stranded by a crashed attempt stopped every retry as superseded): takes it over and re-runs the work", async (_label, holder) => {
+			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+			mockGetJobById.mockResolvedValueOnce(
+				Result.ok(
+					makeJob({ id: "job-1", status: "running", attempts: holder }),
+				),
+			);
+			const syncFn = vi.fn(async () => Result.ok({ total: 4 }));
+
+			const result = await runPhase(PHASE, TotalSchema, syncFn);
+
+			expect(result).toHaveOkValue({
+				status: "completed",
+				value: { total: 4 },
+			});
+			expect(mockTakeOverJob).toHaveBeenCalledWith(PHASE);
+			expect(mockCompleteJob).toHaveBeenCalledWith(PHASE, {
+				result: { total: 4 },
+			});
+		});
+
+		it("running under an older attempt that settles it before the takeover lands: reuses the settled result", async () => {
+			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+			mockGetJobById
+				.mockResolvedValueOnce(
+					Result.ok(makeJob({ id: "job-1", status: "running", attempts: 1 })),
+				)
+				.mockResolvedValueOnce(
+					Result.ok(
+						makeJob({
+							id: "job-1",
+							status: "completed",
+							attempts: 1,
+							progress: { result: { total: 7 } },
+						}),
+					),
+				);
+			mockTakeOverJob.mockResolvedValueOnce(Result.ok("superseded"));
+			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+
+			const result = await runPhase(PHASE, TotalSchema, syncFn);
+
+			expect(result).toHaveOkValue({
+				status: "completed",
+				value: { total: 7 },
+			});
+			expect(syncFn).not.toHaveBeenCalled();
+			expect(mockCompleteJob).not.toHaveBeenCalled();
 		});
 
 		it("failed: cannot be re-run, so the phase's own error is returned", async () => {
@@ -168,7 +233,7 @@ describe("runPhase", () => {
 			);
 			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
 
-			const result = await runPhase("job-1", TotalSchema, syncFn);
+			const result = await runPhase(PHASE, TotalSchema, syncFn);
 
 			expect(result).toBeErr();
 			if (Result.isOk(result)) throw new Error("expected an error");
@@ -180,7 +245,7 @@ describe("runPhase", () => {
 	it("is superseded when its completing write loses the fence (regression: a lost phase completion was ignored and the run carried on)", async () => {
 		mockCompleteJob.mockResolvedValueOnce(Result.ok("superseded"));
 
-		const result = await runPhase("job-1", TotalSchema, async () =>
+		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.ok({ total: 1 }),
 		);
 
@@ -188,16 +253,16 @@ describe("runPhase", () => {
 	});
 
 	it("is superseded when its failing write loses the fence", async () => {
-		mockFailJob.mockResolvedValueOnce(Result.ok("superseded"));
+		mockSettleClaimedJob.mockResolvedValueOnce(Result.ok("superseded"));
 
-		const result = await runPhase("job-1", TotalSchema, async () =>
+		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.err(new SyncFailedError("liked_songs", "acct-1", "boom")),
 		);
 
 		expect(result).toHaveOkValue({ status: "superseded" });
 	});
 
-	it("returns a lifecycle error when failJob cleanup fails", async () => {
+	it("returns a lifecycle error when the failing write errors", async () => {
 		const syncError = new SyncFailedError(
 			"liked_songs",
 			"acct-1",
@@ -207,14 +272,18 @@ describe("runPhase", () => {
 			code: "db_error",
 			message: "fail cleanup failed",
 		});
-		mockFailJob.mockResolvedValueOnce(Result.err(cleanupError));
+		mockSettleClaimedJob.mockResolvedValueOnce(Result.err(cleanupError));
 
-		const result = await runPhase("job-1", TotalSchema, async () =>
+		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.err(syncError),
 		);
 
 		expect(result).toHaveErrValue(cleanupError);
-		expect(mockFailJob).toHaveBeenCalledWith("job-1", syncError.message);
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PHASE,
+			"failed",
+			syncError.message,
+		);
 	});
 });
 

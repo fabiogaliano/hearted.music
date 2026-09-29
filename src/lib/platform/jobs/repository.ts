@@ -123,8 +123,16 @@ async function transition(
 	return Result.map(rows, (r) => (r.length > 0 ? "applied" : "superseded"));
 }
 
+/**
+ * Sync phase jobs are leased through their parent extension_sync claim: a
+ * phase's `attempts` holds the parent attempt that started it. That lets a
+ * reclaimed parent tell a phase stranded by its own crashed predecessor from
+ * one a live run owns, and fences the predecessor's late settle out after a
+ * takeover. Phases started before this lease existed hold 0, so any retry
+ * can take them over.
+ */
 export function markJobRunning(
-	id: string,
+	phase: Pick<Job, "id" | "attempts">,
 ): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return transition(
@@ -133,19 +141,40 @@ export function markJobRunning(
 			.update({
 				status: "running",
 				started_at: new Date().toISOString(),
+				attempts: phase.attempts,
 			})
-			.eq("id", id)
+			.eq("id", phase.id)
 			.eq("status", "pending")
 			.select("id"),
 	);
 }
 
-// Terminal writes accept pending too: failure paths fail phases that never
-// started. `progress` lands in the same write so a completed row can never be
-// observed without the result it was completed with.
+// Strictly-older lease only: two retries racing for the same stranded phase
+// serialize on the row, and the newer parent attempt always wins.
+export function takeOverRunningJob(
+	phase: Pick<Job, "id" | "attempts">,
+): Promise<Result<JobTransition, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return transition(
+		supabase
+			.from("job")
+			.update({
+				started_at: new Date().toISOString(),
+				attempts: phase.attempts,
+			})
+			.eq("id", phase.id)
+			.eq("status", "running")
+			.lt("attempts", phase.attempts)
+			.select("id"),
+	);
+}
+
+// `progress` lands in the same write so a completed row can never be observed
+// without the result it was completed with. Fenced on the phase lease (see
+// markJobRunning) so a run whose phase was taken over cannot clobber it.
 export function markJobCompleted(
-	id: string,
-	progress?: Json,
+	phase: Pick<Job, "id" | "attempts">,
+	progress: Json,
 ): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return transition(
@@ -154,14 +183,16 @@ export function markJobCompleted(
 			.update({
 				status: "completed",
 				completed_at: new Date().toISOString(),
-				...(progress === undefined ? {} : { progress }),
+				progress,
 			})
-			.eq("id", id)
-			.in("status", ["pending", "running"])
+			.eq("id", phase.id)
+			.eq("status", "running")
+			.eq("attempts", phase.attempts)
 			.select("id"),
 	);
 }
 
+// Accepts pending too: failure paths fail phases that never started.
 export function markJobFailed(
 	id: string,
 	error?: string,

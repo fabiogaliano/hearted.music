@@ -18,6 +18,7 @@ import {
 	markJobCompleted,
 	markJobFailed,
 	markJobRunning,
+	takeOverRunningJob,
 } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
@@ -54,22 +55,22 @@ async function retryTransition(
 }
 
 /**
- * Starts a job by transitioning from pending → running.
- * If markJobRunning fails, attempts cleanup by marking as failed.
+ * Starts a phase job by transitioning pending → running under `phase.attempts`
+ * (the parent attempt, see markJobRunning). If markJobRunning fails, attempts
+ * cleanup by marking as failed.
  *
  * This prevents orphaned jobs stuck in 'pending' status forever.
  *
- * @param jobId - The job ID to start
  * @returns "superseded" when the job had already left pending, or error if both
  * start and cleanup failed
  */
 export async function startJob(
-	jobId: string,
+	phase: Pick<Job, "id" | "attempts">,
 ): Promise<Result<JobTransition, DbError>> {
 	const runningResult = await retryTransition(
-		jobId,
-		() => markJobRunning(jobId),
-		(job) => job.status === "running",
+		phase.id,
+		() => markJobRunning(phase),
+		(job) => job.status === "running" && job.attempts === phase.attempts,
 	);
 
 	if (Result.isOk(runningResult)) {
@@ -78,18 +79,18 @@ export async function startJob(
 
 	// Running failed - attempt cleanup to prevent orphaned pending job
 	log.error("job-start-failed", {
-		jobId,
+		jobId: phase.id,
 		error: runningResult.error.message,
 	});
 
 	const cleanupResult = await failJob(
-		jobId,
+		phase.id,
 		`Failed to start: ${runningResult.error.message}`,
 	);
 
 	if (Result.isError(cleanupResult)) {
 		log.error("job-start-cleanup-failed", {
-			jobId,
+			jobId: phase.id,
 			error: cleanupResult.error.message,
 		});
 	}
@@ -98,17 +99,32 @@ export async function startJob(
 }
 
 /**
- * Marks a job as completed with retry logic, optionally persisting `progress`
- * in the same write.
+ * Takes over a running phase job left by an older parent attempt, with retry
+ * logic. "superseded" means the phase is no longer running or a parent
+ * attempt at least as new already holds it.
  */
-export async function completeJob(
-	jobId: string,
-	progress?: Json,
+export async function takeOverJob(
+	phase: Pick<Job, "id" | "attempts">,
 ): Promise<Result<JobTransition, DbError>> {
 	return retryTransition(
-		jobId,
-		() => markJobCompleted(jobId, progress),
-		(job) => job.status === "completed",
+		phase.id,
+		() => takeOverRunningJob(phase),
+		(job) => job.status === "running" && job.attempts === phase.attempts,
+	);
+}
+
+/**
+ * Completes a phase job this parent attempt holds, with retry logic,
+ * persisting `progress` in the same write.
+ */
+export async function completeJob(
+	phase: Pick<Job, "id" | "attempts">,
+	progress: Json,
+): Promise<Result<JobTransition, DbError>> {
+	return retryTransition(
+		phase.id,
+		() => markJobCompleted(phase, progress),
+		(job) => job.status === "completed" && job.attempts === phase.attempts,
 	);
 }
 

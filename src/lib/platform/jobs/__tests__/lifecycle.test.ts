@@ -117,31 +117,35 @@ describe("a CAS write retried after its response was lost (regression: the retry
 	});
 
 	it("startJob reports applied when its first attempt committed", async () => {
-		row.current = makeJob({ id: "job-1", status: "pending" });
+		row.current = makeJob({ id: "job-1", status: "pending", attempts: 0 });
 		mockMarkJobRunning.mockImplementation(
 			casWrite(
 				(j) => j.status === "pending",
-				(j) => ({ ...j, status: "running" }),
+				(j) => ({ ...j, status: "running", attempts: 1 }),
 				{ commitThenLoseResponse: true },
 			),
 		);
 
-		expect(await run(startJob("job-1"))).toHaveOkValue("applied");
+		expect(await run(startJob({ id: "job-1", attempts: 1 }))).toHaveOkValue(
+			"applied",
+		);
 	});
 
 	// Phase runs now stop on a superseded complete/fail, so a false
 	// "superseded" here would abandon a phase this run actually settled.
 	it("completeJob reports applied when its first attempt committed", async () => {
-		row.current = makeJob({ id: "job-1", status: "running" });
+		row.current = makeJob({ id: "job-1", status: "running", attempts: 1 });
 		mockMarkJobCompleted.mockImplementation(
 			casWrite(
-				(j) => j.status === "pending" || j.status === "running",
+				(j) => j.status === "running" && j.attempts === 1,
 				(j) => ({ ...j, status: "completed" }),
 				{ commitThenLoseResponse: true },
 			),
 		);
 
-		expect(await run(completeJob("job-1"))).toHaveOkValue("applied");
+		expect(
+			await run(completeJob({ id: "job-1", attempts: 1 }, { result: {} })),
+		).toHaveOkValue("applied");
 	});
 
 	it("failJob reports applied when its first attempt committed", async () => {

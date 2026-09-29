@@ -16,8 +16,13 @@ import {
 } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { getByIds, upsertCatalog } from "@/lib/domains/library/songs/queries";
-import { completeJob, failJob, startJob } from "@/lib/platform/jobs/lifecycle";
-import { getJobById } from "@/lib/platform/jobs/repository";
+import {
+	completeJob,
+	settleClaimedJob,
+	startJob,
+	takeOverJob,
+} from "@/lib/platform/jobs/lifecycle";
+import { getJobById, type Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import type { LikedSongsSyncResult, SpotifyTrackDTO } from "./types";
@@ -245,35 +250,48 @@ export async function incrementalSync(
 	});
 }
 
-// "superseded": another run started the phase and has not finished it, or
-// moved it to terminal under this run; either way this run does not own it.
+// "superseded": a parent attempt at least as new as this run's holds the
+// phase, or moved it to terminal under this run; either way this run does not
+// own it.
 export type PhaseOutcome<T> =
 	| { status: "completed"; value: T }
 	| { status: "superseded" };
 
 /**
- * Runs one sync phase on its phase job. The phase's result is persisted on the
- * job as it completes, so a retry of the same sync (after a crash further
- * down the parent run) reuses it instead of re-diffing an already-applied
- * library to zero changes. `resultSchema` parses that persisted result back.
+ * Runs one sync phase on its phase job, leased under the parent's claim
+ * attempt (`phase.attempts`, see markJobRunning). The phase's result is
+ * persisted on the job as it completes, so a retry of the same sync (after a
+ * crash further down the parent run) reuses it instead of re-diffing an
+ * already-applied library to zero changes. `resultSchema` parses that
+ * persisted result back.
  */
 export async function runPhase<T extends Json>(
-	jobId: string,
+	phase: Pick<Job, "id" | "attempts">,
 	resultSchema: z.ZodType<T>,
 	syncFn: () => Promise<Result<T, SyncOperationError>>,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
-	const startResult = await startJob(jobId);
+	const startResult = await startJob(phase);
 	if (Result.isError(startResult)) {
 		return Result.err(startResult.error);
 	}
 	if (startResult.value === "superseded") {
-		return resumePhase(jobId, resultSchema);
+		return resumePhase(phase, resultSchema, syncFn);
 	}
+	return runHeldPhase(phase, syncFn);
+}
 
+async function runHeldPhase<T extends Json>(
+	phase: Pick<Job, "id" | "attempts">,
+	syncFn: () => Promise<Result<T, SyncOperationError>>,
+): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const result = await syncFn();
 
 	if (Result.isError(result)) {
-		const failResult = await failJob(jobId, result.error.message);
+		const failResult = await settleClaimedJob(
+			phase,
+			"failed",
+			result.error.message,
+		);
 		if (Result.isError(failResult)) {
 			return Result.err(failResult.error);
 		}
@@ -283,7 +301,7 @@ export async function runPhase<T extends Json>(
 		return result;
 	}
 
-	const completeResult = await completeJob(jobId, { result: result.value });
+	const completeResult = await completeJob(phase, { result: result.value });
 	if (Result.isError(completeResult)) {
 		return Result.err(completeResult.error);
 	}
@@ -295,9 +313,11 @@ export async function runPhase<T extends Json>(
 }
 
 async function resumePhase<T extends Json>(
-	jobId: string,
+	phase: Pick<Job, "id" | "attempts">,
 	resultSchema: z.ZodType<T>,
+	syncFn: () => Promise<Result<T, SyncOperationError>>,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
+	const jobId = phase.id;
 	const jobResult = await getJobById(jobId);
 	if (Result.isError(jobResult)) {
 		return Result.err(jobResult.error);
@@ -314,8 +334,26 @@ async function resumePhase<T extends Json>(
 
 	switch (job.status) {
 		case "pending":
-		case "running":
 			return Result.ok({ status: "superseded" });
+		case "running": {
+			// Only one worker holds the parent lease, so a phase left running by
+			// an older parent attempt belongs to a run that crashed or lost its
+			// lease: without taking it over, every retry would stop here until
+			// the parent is dead-lettered. The takeover fences that run's late
+			// settle out.
+			if (job.attempts >= phase.attempts) {
+				return Result.ok({ status: "superseded" });
+			}
+			const takeover = await takeOverJob(phase);
+			if (Result.isError(takeover)) {
+				return Result.err(takeover.error);
+			}
+			if (takeover.value === "superseded") {
+				// The older run settled it, or a newer attempt took it, in between.
+				return resumePhase(phase, resultSchema, syncFn);
+			}
+			return runHeldPhase(phase, syncFn);
+		}
 		case "failed":
 			// A terminal failure cannot be re-run; the sync it belongs to cannot
 			// finish, so surface the phase's own error.

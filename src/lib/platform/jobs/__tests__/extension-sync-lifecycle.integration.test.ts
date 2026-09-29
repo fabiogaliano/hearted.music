@@ -259,8 +259,11 @@ describe.skipIf(!IS_LOCAL)(
 				status: "failed",
 			});
 
-			expect(await startJob(phaseId)).toHaveOkValue("superseded");
-			expect(await completeJob(phaseId)).toHaveOkValue("superseded");
+			const phase = { id: phaseId, attempts: 1 };
+			expect(await startJob(phase)).toHaveOkValue("superseded");
+			expect(await completeJob(phase, { result: {} })).toHaveOkValue(
+				"superseded",
+			);
 			expect((await readJob(phaseId)).status).toBe("failed");
 		});
 	},

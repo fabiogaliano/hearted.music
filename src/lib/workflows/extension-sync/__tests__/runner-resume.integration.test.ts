@@ -6,6 +6,7 @@
  * Only the edges outside the job/library tables are mocked: the Storage
  * payload, the billing grant, and applyLibraryProcessingChange (captured so
  * the emitted change can be asserted, and hung once to model the crash).
+ * The liked-songs read can be hung once too, to model a crash mid-phase.
  * Auto-skipped unless DATABASE_URL and SUPABASE_URL point at the local stack.
  */
 
@@ -20,17 +21,22 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { z } from "zod";
 import {
 	claimExtensionSyncJob,
 	sweepStaleExtensionSyncJobs,
 } from "@/lib/platform/jobs/extension-sync-jobs";
 import type { Job } from "@/lib/platform/jobs/repository";
 
-const { mockDownloadSyncPayload, mockApplyLibraryProcessingChange } =
-	vi.hoisted(() => ({
-		mockDownloadSyncPayload: vi.fn(),
-		mockApplyLibraryProcessingChange: vi.fn(),
-	}));
+const {
+	mockDownloadSyncPayload,
+	mockApplyLibraryProcessingChange,
+	hangNextLikedSongsRead,
+} = vi.hoisted(() => ({
+	mockDownloadSyncPayload: vi.fn(),
+	mockApplyLibraryProcessingChange: vi.fn(),
+	hangNextLikedSongsRead: { current: false },
+}));
 
 vi.mock("@sentry/bun", () => ({ captureException: vi.fn() }));
 
@@ -44,11 +50,29 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 		mockApplyLibraryProcessingChange(...a),
 }));
 
+vi.mock("@/lib/domains/library/liked-songs/queries", async (importOriginal) => {
+	const actual =
+		await importOriginal<
+			typeof import("@/lib/domains/library/liked-songs/queries")
+		>();
+	return {
+		...actual,
+		getAll: (accountId: string) => {
+			if (hangNextLikedSongsRead.current) {
+				hangNextLikedSongsRead.current = false;
+				return new Promise(() => {});
+			}
+			return actual.getAll(accountId);
+		},
+	};
+});
+
 vi.mock("@/lib/domains/billing/liked-song-access-grant", () => ({
 	maybeGrantLikedSongAccessAfterSync: async () => undefined,
 }));
 
 const { runExtensionSyncJob } = await import("../runner");
+const { runPhase } = await import("@/lib/workflows/spotify-sync/sync-helpers");
 
 // A lease the heartbeat never reports lost.
 const LIVE_LEASE = new AbortController().signal;
@@ -133,6 +157,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	vi.clearAllMocks();
+	hangNextLikedSongsRead.current = false;
 	if (!IS_LOCAL || !accountId) return;
 	await db()`DELETE FROM account WHERE id = ${accountId}`;
 	await db()`DELETE FROM song WHERE spotify_id IN ${db()(trackIds)}`;
@@ -201,6 +226,141 @@ describe.skipIf(!IS_LOCAL)(
         SELECT status FROM job WHERE id = ${parentId}
       `;
 			expect(parent?.status).toBe("completed");
+		});
+	},
+);
+
+type Finish = (total: number) => void;
+
+async function readPhase(
+	id: string,
+): Promise<{ status: string; attempts: number; progress: unknown }> {
+	const [row] = await db()<
+		{ status: string; attempts: number; progress: unknown }[]
+	>`SELECT status, attempts, progress FROM job WHERE id = ${id}`;
+	if (!row) throw new Error(`job ${id} missing`);
+	return row;
+}
+
+describe.skipIf(!IS_LOCAL)(
+	"crash inside the liked-songs phase (regression: the phase stayed running, so every reclaimed retry stopped as superseded until the parent was dead-lettered)",
+	() => {
+		it("the retry takes over the stranded phase, finishes the sync, and emits the added change", async () => {
+			const phaseJobIds = {
+				liked_songs: await seedJob("sync_liked_songs"),
+				playlists: await seedJob("sync_playlists"),
+				playlist_tracks: await seedJob("sync_playlist_tracks"),
+			};
+			const parentId = await seedJob("extension_sync", {
+				payload_path: `${account()}/p.json`,
+				phase_job_ids: phaseJobIds,
+			});
+
+			// First run: the worker dies right after starting the liked-songs
+			// phase (modelled as a library read that never returns).
+			const crashed = await claim();
+			expect(crashed.id).toBe(parentId);
+			hangNextLikedSongsRead.current = true;
+			void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
+			await vi.waitFor(
+				async () =>
+					expect((await readPhase(phaseJobIds.liked_songs)).status).toBe(
+						"running",
+					),
+				{ timeout: 10_000 },
+			);
+
+			await db()`UPDATE job SET heartbeat_at = now() - interval '10 minutes' WHERE id = ${parentId}`;
+			const swept = await sweepStaleExtensionSyncJobs("5 minutes");
+			if (Result.isError(swept)) throw swept.error;
+			expect(swept.value.map((j) => j.id)).toContain(parentId);
+
+			const retry = await claim();
+			expect(retry.id).toBe(parentId);
+			expect(retry.attempts).toBe(2);
+			mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
+
+			const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
+
+			expect(outcome).toEqual({ status: "completed" });
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith({
+				kind: "library_synced",
+				accountId: account(),
+				changes: {
+					likedSongs: { added: true, removed: false },
+					targetPlaylists: {
+						trackMembershipChanged: false,
+						profileTextChanged: false,
+						removed: false,
+					},
+				},
+			});
+			const likedPhase = await readPhase(phaseJobIds.liked_songs);
+			expect(likedPhase.status).toBe("completed");
+			expect(likedPhase.progress).toEqual({
+				result: { total: 2, added: 2, removed: 0 },
+			});
+			const [parent] = await db()<{ status: string }[]>`
+        SELECT status FROM job WHERE id = ${parentId}
+      `;
+			expect(parent?.status).toBe("completed");
+		});
+	},
+);
+
+describe.skipIf(!IS_LOCAL)(
+	"a taken-over phase is fenced on the parent attempt",
+	() => {
+		it("the older attempt's late completion is rejected and the new holder's result lands", async () => {
+			const phaseId = await seedJob("sync_liked_songs");
+			const TotalSchema = z.object({ total: z.number() });
+			// Each run's phase work blocks until the test finishes it with a total.
+			const finishers: { stale?: Finish; taker?: Finish } = {};
+			const gatedWork = (who: "stale" | "taker") => () =>
+				new Promise<Result<{ total: number }, never>>((resolve) => {
+					finishers[who] = (total) => resolve(Result.ok({ total }));
+				});
+
+			const stale = runPhase(
+				{ id: phaseId, attempts: 1 },
+				TotalSchema,
+				gatedWork("stale"),
+			);
+			await vi.waitFor(() => expect(finishers.stale).toBeDefined());
+			expect(await readPhase(phaseId)).toMatchObject({
+				status: "running",
+				attempts: 1,
+			});
+
+			const taker = runPhase(
+				{ id: phaseId, attempts: 2 },
+				TotalSchema,
+				gatedWork("taker"),
+			);
+			await vi.waitFor(() => expect(finishers.taker).toBeDefined());
+			expect(await readPhase(phaseId)).toMatchObject({
+				status: "running",
+				attempts: 2,
+			});
+
+			finishers.stale?.(1);
+			expect(await stale).toHaveOkValue({ status: "superseded" });
+			expect(await readPhase(phaseId)).toMatchObject({
+				status: "running",
+				attempts: 2,
+			});
+
+			finishers.taker?.(2);
+			expect(await taker).toHaveOkValue({
+				status: "completed",
+				value: { total: 2 },
+			});
+			expect(await readPhase(phaseId)).toMatchObject({
+				status: "completed",
+				attempts: 2,
+				progress: { result: { total: 2 } },
+			});
 		});
 	},
 );
