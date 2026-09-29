@@ -113,7 +113,7 @@ async function runEnrichmentJob(
 ): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeEnrichmentJob(job, actor);
+		const result = await executeEnrichmentJob(job, actor, leaseLost);
 		if (leaseLost.aborted) return superseded(job, actor, "enrichment");
 
 		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;

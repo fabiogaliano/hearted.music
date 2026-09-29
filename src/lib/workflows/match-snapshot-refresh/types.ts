@@ -20,4 +20,6 @@ export interface MatchSnapshotRefreshResult {
 
 export type MatchSnapshotRefreshOutcome =
 	| { status: "published"; result: MatchSnapshotRefreshResult }
-	| { status: "superseded" };
+	| { status: "superseded" }
+	// The heartbeat saw this claim taken over; the snapshot was not published.
+	| { status: "lease_lost" };

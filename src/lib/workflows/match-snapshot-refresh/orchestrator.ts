@@ -204,8 +204,14 @@ function skipStage(
 async function publishSnapshot(opts: {
 	jobId?: string;
 	progress: MatchSnapshotRefreshProgress;
+	leaseLost?: AbortSignal;
 	writer: () => Promise<MatchSnapshotRefreshResult>;
-}): Promise<MatchSnapshotRefreshResult> {
+}): Promise<MatchSnapshotRefreshOutcome> {
+	// The publish is the one write another worker's run can't overwrite or
+	// dedupe, so a run whose claim was taken over must stop right before it.
+	if (opts.leaseLost?.aborted) {
+		return { status: "lease_lost" };
+	}
 	startStage(opts.progress, "publishing");
 	await persistRefreshProgress(opts.jobId, opts.progress);
 
@@ -217,7 +223,7 @@ async function publishSnapshot(opts: {
 	opts.progress.currentStage = undefined;
 	await persistRefreshProgress(opts.jobId, opts.progress);
 
-	return snapshotResult;
+	return { status: "published", result: snapshotResult };
 }
 
 export async function executeMatchSnapshotRefresh(
@@ -226,6 +232,7 @@ export async function executeMatchSnapshotRefresh(
 	jobId?: string,
 	actor?: string,
 	satisfiesRequestedAt?: string,
+	leaseLost?: AbortSignal,
 ): Promise<MatchSnapshotRefreshOutcome> {
 	// Resolve a label when the caller didn't pass one (e.g. matching-lab replays)
 	// so every step log still names the account.
@@ -307,12 +314,12 @@ export async function executeMatchSnapshotRefresh(
 	if (playlists.length === 0) {
 		progress.candidateCount = 0;
 		progress.matchedSongCount = 0;
-		const snapshotResult = await publishSnapshot({
+		return publishSnapshot({
 			jobId,
 			progress,
+			leaseLost,
 			writer: () => writeEmptySnapshot(accountId),
 		});
-		return { status: "published", result: snapshotResult };
 	}
 
 	if (profiles.length !== playlists.length) {
@@ -342,9 +349,10 @@ export async function executeMatchSnapshotRefresh(
 
 	if (songIds.length === 0) {
 		progress.matchedSongCount = 0;
-		const snapshotResult = await publishSnapshot({
+		return publishSnapshot({
 			jobId,
 			progress,
+			leaseLost,
 			writer: () =>
 				writeMatchSnapshot({
 					accountId,
@@ -354,7 +362,6 @@ export async function executeMatchSnapshotRefresh(
 					matchedSongIds: [],
 				}),
 		});
-		return { status: "published", result: snapshotResult };
 	}
 
 	const { matchingSongs, baseExclusionSet } = await loadCandidateDetails(
@@ -442,9 +449,10 @@ export async function executeMatchSnapshotRefresh(
 	}
 
 	// --- Stage: publishing ---
-	const snapshotResult = await publishSnapshot({
+	return publishSnapshot({
 		jobId,
 		progress,
+		leaseLost,
 		writer: () =>
 			writeMatchSnapshot({
 				accountId,
@@ -456,5 +464,4 @@ export async function executeMatchSnapshotRefresh(
 				rerankDocumentMode,
 			}),
 	});
-	return { status: "published", result: snapshotResult };
 }

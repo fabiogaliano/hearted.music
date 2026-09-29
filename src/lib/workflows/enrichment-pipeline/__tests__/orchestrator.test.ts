@@ -125,6 +125,7 @@ vi.mock("@/lib/domains/enrichment/language-detection/service", () => ({
 		mockDetectLanguageForSongs(...args),
 }));
 
+import { updateJobProgress } from "@/lib/platform/jobs/repository";
 import { executeWorkerChunk } from "../orchestrator";
 import { recordStageFailure } from "../record-failure";
 import type { StageOutcome } from "../stage-outcomes";
@@ -702,6 +703,43 @@ describe("executeWorkerChunk sub-batching", () => {
 		}
 
 		consoleSpy.mockRestore();
+	});
+
+	it("stops after the in-flight phase once the lease is lost (stale worker kept enriching and overwriting the reclaimer's progress)", async () => {
+		const workPlan = makeWorkPlan({
+			allSongIds: ["song-1"],
+			needAnalysis: ["song-1"],
+			needEmbedding: ["song-1"],
+			needContentActivation: ["song-1"],
+		});
+		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
+		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1"]));
+		const lease = new AbortController();
+		let progressWritesBeforeLoss = 0;
+		mockRunSongAnalysis.mockImplementation(
+			async (_ctx: unknown, batch: PipelineBatch) => {
+				lease.abort();
+				progressWritesBeforeLoss =
+					vi.mocked(updateJobProgress).mock.calls.length;
+				return analysisOutcomeSuccess(batch.songIds);
+			},
+		);
+
+		await executeWorkerChunk(
+			"account-1",
+			"job-1",
+			10,
+			0,
+			"normal",
+			lease.signal,
+		);
+
+		expect(mockRunSongAnalysis).toHaveBeenCalledOnce();
+		expect(mockRunSongEmbedding).not.toHaveBeenCalled();
+		expect(mockRunContentActivation).not.toHaveBeenCalled();
+		expect(vi.mocked(updateJobProgress).mock.calls.length).toBe(
+			progressWritesBeforeLoss,
+		);
 	});
 });
 

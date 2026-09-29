@@ -85,6 +85,7 @@ export function startHeartbeat(job: Pick<Job, "id" | "attempts">): {
 export async function executeEnrichmentJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<EnrichmentExecuteResult> {
 	const accountId = job.account_id;
 	// Route through the canonical parse so fillEnrichmentDefaults guarantees all
@@ -120,6 +121,7 @@ export async function executeEnrichmentJob(
 		batchSize,
 		progress.batchSequence,
 		progress.selectionMode,
+		leaseLost,
 	);
 
 	return {
@@ -162,6 +164,7 @@ export async function executeMatchSnapshotRefreshJob(
 		job.id,
 		actor,
 		job.satisfies_requested_at ?? undefined,
+		leaseLost,
 	);
 
 	if (outcome.status === "superseded") {
@@ -169,7 +172,7 @@ export async function executeMatchSnapshotRefreshJob(
 		return { status: "superseded", accountId, jobId: job.id };
 	}
 
-	if (leaseLost.aborted) {
+	if (outcome.status === "lease_lost" || leaseLost.aborted) {
 		return { status: "lease_lost", accountId, jobId: job.id };
 	}
 

@@ -184,13 +184,21 @@ async function gateAnalysisOnAudioBackfill(
 
 // --- Song enrichment phases (A-C) ---
 
+/**
+ * `leaseLost` is checked before each phase: a phase already started finishes
+ * and records its own accounting (and any compensation owed for it), but no
+ * later phase starts once another worker has taken over the claim.
+ */
 async function enrichSongs(
 	ctx: EnrichmentContext,
 	workPlan: EnrichmentWorkPlan,
 	batch: PipelineBatch,
 	jobId: string,
 	progress: InitializedEnrichmentChunkProgress,
+	leaseLost: AbortSignal | undefined,
 ): Promise<void> {
+	if (leaseLost?.aborted) return;
+
 	// Phase A: audio_features + genre_tagging (parallel, entitled songs only)
 	progress.currentStage = "audio_features";
 	progress.stages.audio_features.status = "running";
@@ -274,6 +282,8 @@ async function enrichSongs(
 
 	await vocalGenderResolution;
 
+	if (leaseLost?.aborted) return;
+
 	// Phase B: song_analysis (entitled only)
 	progress.currentStage = "song_analysis";
 	progress.stages.song_analysis.status = "running";
@@ -347,6 +357,8 @@ async function enrichSongs(
 	const languageDetection = detectLanguageForSongs(batch.songIds);
 
 	try {
+		if (leaseLost?.aborted) return;
+
 		// Phase C: song_embedding (entitled only)
 		progress.currentStage = "song_embedding";
 		progress.stages.song_embedding.status = "running";
@@ -385,6 +397,8 @@ async function enrichSongs(
 				? stageStatus(embeddingResult)
 				: "skipped",
 		);
+
+		if (leaseLost?.aborted) return;
 
 		// Phase D: content_activation (entitled + data-enriched songs)
 		progress.currentStage = "content_activation";
@@ -447,6 +461,7 @@ export async function executeWorkerChunk(
 	batchSize: number,
 	batchSequence: number,
 	selectionMode: EnrichmentSelectionMode,
+	leaseLost?: AbortSignal,
 ): Promise<ChunkResult> {
 	const embeddingResult = EmbeddingService.create();
 	if (Result.isError(embeddingResult)) {
@@ -477,7 +492,21 @@ export async function executeWorkerChunk(
 	);
 
 	// Candidate-side enrichment only (phases A-C)
-	await enrichSongs(ctx, workPlan, batch, jobId, progress);
+	await enrichSongs(ctx, workPlan, batch, jobId, progress, leaseLost);
+
+	// The job row now belongs to the reclaiming worker, so this run must not
+	// write its progress; the caller discards this result on a lost lease.
+	if (leaseLost?.aborted) {
+		return {
+			hasMoreSongs: true,
+			newCandidatesAvailable: false,
+			newCandidateSongIds: [],
+			readyCount: batch.songIds.length,
+			doneCount: progress.done,
+			succeededCount: progress.succeeded,
+			failedCount: progress.failed,
+		};
+	}
 
 	progress.currentStage = undefined;
 	await persistProgress(jobId, progress);

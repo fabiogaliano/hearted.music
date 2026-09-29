@@ -270,6 +270,31 @@ describe("executeMatchSnapshotRefresh — sequencing", () => {
 		expect(outcome).toEqual({ status: "superseded" });
 		expect(mockLoadCandidateSongIds).not.toHaveBeenCalled();
 	});
+
+	it("does not publish once the lease is lost mid-run (stale worker overwrote the reclaimer's snapshot)", async () => {
+		setupHappyPath();
+		const lease = new AbortController();
+		mockRunOrientedRanking.mockImplementation(async () => {
+			lease.abort();
+			return {
+				status: "completed",
+				resultEntries: [],
+				rerankDocumentMode: "metadata",
+			};
+		});
+
+		const outcome = await executeMatchSnapshotRefresh(
+			"acc-1",
+			makePlan(),
+			"job-1",
+			"test-user",
+			undefined,
+			lease.signal,
+		);
+
+		expect(outcome).toEqual({ status: "lease_lost" });
+		expect(mockWriteMatchSnapshot).not.toHaveBeenCalled();
+	});
 });
 
 describe("executeMatchSnapshotRefresh — exclusion set threading", () => {
