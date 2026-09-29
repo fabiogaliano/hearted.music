@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	captureAheadForSession,
 	readSessionResumePosition,
@@ -10,11 +10,13 @@ import {
 	completeDeckJob,
 	deferDeckJob,
 	enqueueDeckJob,
+	heartbeatDeckJob,
 } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import { buildProposalsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/proposal-builder";
 import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/session-appender";
 import { log } from "@/lib/observability/logger";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { workerConfig } from "../config";
 import { runClaimedDeckJob } from "../poll-match-deck-jobs";
 
 vi.mock("@sentry/bun", () => ({
@@ -288,6 +290,46 @@ describe("runClaimedDeckJob", () => {
 			settlement: "complete",
 			jobId: "job-raced",
 			kind: "capture_ahead",
+		});
+	});
+
+	describe("when a heartbeat finds the claim lost mid-run", () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("stops before the next side effect and does not settle", async () => {
+			let finishBuild: () => void = () => {};
+			vi.mocked(buildProposalsForAccountOrientation).mockReturnValue(
+				new Promise((resolve) => {
+					finishBuild = () => resolve(Result.ok(undefined));
+				}),
+			);
+			vi.mocked(heartbeatDeckJob).mockResolvedValue(Result.ok(false));
+			vi.mocked(enqueueDeckJob).mockResolvedValue(Result.ok(null));
+
+			const run = runClaimedDeckJob(
+				job({
+					id: "job-stale",
+					kind: "build_proposals",
+					payload: { snapshotId: "snap-1" },
+				}),
+			);
+			await vi.advanceTimersByTimeAsync(workerConfig.heartbeatIntervalMs);
+			expect(heartbeatDeckJob).toHaveBeenCalledWith(
+				"job-stale",
+				"claim-token-1",
+			);
+
+			finishBuild();
+			await run;
+
+			expect(enqueueDeckJob).not.toHaveBeenCalled();
+			expect(completeDeckJob).not.toHaveBeenCalled();
+			expect(deferDeckJob).not.toHaveBeenCalled();
 		});
 	});
 });

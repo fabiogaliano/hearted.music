@@ -66,19 +66,25 @@ export async function claimDeckJob(): Promise<
 	return Result.ok({ ...job, locked_by: lockedBy });
 }
 
-/** Refreshes the running lease so the sweep doesn't reclaim an in-flight job. */
+/**
+ * Refreshes the running lease so the sweep doesn't reclaim an in-flight job.
+ * Ok(false) means the claim is lost (swept, reclaimed, or dead-lettered): the
+ * run no longer owns the job and must stop.
+ */
 export async function heartbeatDeckJob(
 	jobId: string,
 	claimToken: string,
-): Promise<Result<void, DbError>> {
-	const { error } = await createAdminSupabaseClient()
+): Promise<Result<boolean, DbError>> {
+	const { data, error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ heartbeat_at: new Date().toISOString() })
 		.eq("id", jobId)
 		.eq("status", "running")
-		.eq("locked_by", claimToken);
+		.eq("locked_by", claimToken)
+		.select("id")
+		.maybeSingle();
 	if (error) return Result.err(dbErr(error));
-	return Result.ok(undefined);
+	return Result.ok(data !== null);
 }
 
 /**

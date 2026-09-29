@@ -120,7 +120,24 @@ function captureDeckJobDispatchError(
 	});
 }
 
-async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
+function claimLost(job: DeckJob): Result<never, DbError> {
+	return Result.err(
+		new DatabaseError({
+			code: "deck_job_claim_lost",
+			message: `deck job ${job.id} lost its claim mid-run`,
+		}),
+	);
+}
+
+/**
+ * `claim` aborts once a heartbeat finds the lease gone; every side effect is
+ * gated on it so a stale run stops writing alongside the run that reclaimed
+ * the job. A write already in flight at the loss still completes.
+ */
+async function dispatchDeckJob(
+	job: DeckJob,
+	claim: AbortSignal,
+): Promise<Result<void, DbError>> {
 	const orientation = toOrientation(job.orientation);
 	if (!orientation) {
 		return Result.err(
@@ -150,6 +167,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 				);
 			}
 
+			if (claim.aborted) return claimLost(job);
 			const built = await buildProposalsForAccountOrientation({
 				accountId: job.account_id,
 				orientation,
@@ -183,6 +201,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 
 			// R2: chain append_sessions once proposals are ready. Idempotency key is
 			// per-snapshot so a rebuild re-enqueues the same append at most once.
+			if (claim.aborted) return claimLost(job);
 			const chained = await enqueueDeckJob({
 				accountId: job.account_id,
 				orientation,
@@ -204,6 +223,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 					}),
 				);
 			}
+			if (claim.aborted) return claimLost(job);
 			const outcome = await appendSessionsForAccountOrientation({
 				accountId: job.account_id,
 				orientation,
@@ -270,6 +290,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 						error: resumeResult.error.message,
 					});
 				} else {
+					if (claim.aborted) return claimLost(job);
 					const captureIdemKey = `capture:${job.account_id}:${orientation}:${affectedSessionId}:${resumeResult.value ?? "none"}`;
 					const chainedCapture = await enqueueDeckJob({
 						accountId: job.account_id,
@@ -304,6 +325,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 				);
 				return resumeResult;
 			}
+			if (claim.aborted) return claimLost(job);
 			const captured = await captureAheadForSession({
 				accountId: job.account_id,
 				sessionId: job.session_id,
@@ -367,11 +389,13 @@ function logSettlementFailure(
 
 /**
  * Handles one claimed job end-to-end: heartbeat lease, dispatch, and settle
- * (complete/defer). Exported so the dispatch → settle lifecycle can be driven
+ * (complete/defer), or no settle once a heartbeat finds the claim lost.
+ * Exported so the dispatch → settle lifecycle can be driven
  * in tests without the live loop, which idles on the global `Bun.sleep` the
  * vitest node pool doesn't provide.
  */
 export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
+	const claim = new AbortController();
 	const heartbeat = setInterval(() => {
 		void heartbeatDeckJob(job.id, job.locked_by).then((result) => {
 			if (Result.isError(result)) {
@@ -379,12 +403,23 @@ export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
 					jobId: job.id,
 					error: result.error.message,
 				});
+				return;
+			}
+			if (!result.value && !claim.signal.aborted) {
+				log.warn("match-deck-job-claim-lost", {
+					jobId: job.id,
+					kind: job.kind,
+				});
+				claim.abort();
 			}
 		});
 	}, workerConfig.heartbeatIntervalMs);
 
 	try {
-		const outcome = await dispatchDeckJob(job);
+		const outcome = await dispatchDeckJob(job, claim.signal);
+		// The job now belongs to the sweep or another run; a settle would be
+		// fenced to a no-op anyway.
+		if (claim.signal.aborted) return;
 		if (Result.isError(outcome)) {
 			log.warn("match-deck-job-deferred", {
 				jobId: job.id,
@@ -413,6 +448,7 @@ export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
 			error: errorMessage(err),
 		});
 		Sentry.captureException(err, { tags: { loop: "match-deck-jobs" } });
+		if (claim.signal.aborted) return;
 		const deferred = await deferDeckJob(
 			job.id,
 			job.locked_by,

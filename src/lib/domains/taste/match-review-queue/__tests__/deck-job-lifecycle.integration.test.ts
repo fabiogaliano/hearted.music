@@ -251,7 +251,7 @@ describe.skipIf(!IS_LOCAL)(
 			// Backdated so a leaked stale heartbeat is observable.
 			await db()`UPDATE match_review_deck_job SET heartbeat_at = now() - interval '60 seconds' WHERE id = ${jobId}`;
 
-			expect(await heartbeatDeckJob(jobId, staleToken)).toBeOk();
+			expect(await heartbeatDeckJob(jobId, staleToken)).toHaveOkValue(false);
 			expect(await completeDeckJob(jobId, staleToken)).toHaveOkValue(false);
 			expect(await deferDeckJob(jobId, staleToken, 30)).toHaveOkValue(false);
 
@@ -260,6 +260,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(row.attempts).toBe(2);
 			expect(row.heartbeat_age_seconds).toBeGreaterThanOrEqual(59);
 
+			expect(await heartbeatDeckJob(jobId, liveToken)).toHaveOkValue(true);
 			expect(await completeDeckJob(jobId, liveToken)).toHaveOkValue(true);
 		});
 
