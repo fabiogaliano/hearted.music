@@ -3,12 +3,13 @@
  * RPCs and direct settlement UPDATEs. Modeled on the audio-feature-backfill
  * jobs layer (src/lib/domains/enrichment/audio-feature-backfill/jobs.ts).
  *
- * Settlement is by direct UPDATE (not a settlement RPC): Phase 1a shipped only
- * claim/sweep/mark_dead — no complete/defer function exists, and the table has
- * no worker-fencing column, so complete/defer/heartbeat are plain status/timing
- * flips scoped by id. `attempts` is already incremented at claim time, so a
- * defer is just re-pending with a future available_at; exhausted attempts are
- * terminalized by mark_dead in the sweep tick.
+ * Settlement is by direct UPDATE (not a settlement RPC), compare-and-set on
+ * (id, status = 'running', locked_by = the claim token): a sweep can re-pend a
+ * stalled job and another worker reclaim it, and the stalled run's late
+ * settle/heartbeat must not land on the new run. `attempts` is already
+ * incremented at claim time, so a defer is just re-pending with a future
+ * available_at; exhausted attempts are terminalized by mark_dead in the sweep
+ * tick.
  */
 
 import { Result } from "better-result";
@@ -19,6 +20,9 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 
 /** The deck-job row shape, exported for the DB layer + worker dispatch. */
 export type DeckJob = Tables<"match_review_deck_job">;
+
+/** A job this worker holds the lease on; `locked_by` fences its settlement. */
+export type ClaimedDeckJob = DeckJob & { locked_by: string };
 
 function dbErr(error: { code?: string; message: string }): DbError {
 	return new DatabaseError({
@@ -40,24 +44,39 @@ function firstRow<T>(data: unknown): T | null {
  * batching (p_limit > 1) is unsafe (decisions log Phase 1a). Returns the claimed
  * job or null when nothing is claimable.
  */
-export async function claimDeckJob(): Promise<Result<DeckJob | null, DbError>> {
+export async function claimDeckJob(): Promise<
+	Result<ClaimedDeckJob | null, DbError>
+> {
 	const { data, error } = await createAdminSupabaseClient().rpc(
 		"claim_pending_match_review_deck_job",
 		{ p_limit: 1 },
 	);
 	if (error) return Result.err(dbErr(error));
-	return Result.ok(firstRow<DeckJob>(data));
+	const job = firstRow<DeckJob>(data);
+	if (!job) return Result.ok(null);
+	const lockedBy = job.locked_by;
+	if (lockedBy === null) {
+		return Result.err(
+			new DatabaseError({
+				code: "deck_job_claim_token_missing",
+				message: `deck job ${job.id} was claimed without a claim token`,
+			}),
+		);
+	}
+	return Result.ok({ ...job, locked_by: lockedBy });
 }
 
 /** Refreshes the running lease so the sweep doesn't reclaim an in-flight job. */
 export async function heartbeatDeckJob(
 	jobId: string,
+	claimToken: string,
 ): Promise<Result<void, DbError>> {
 	const { error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ heartbeat_at: new Date().toISOString() })
 		.eq("id", jobId)
-		.eq("status", "running");
+		.eq("status", "running")
+		.eq("locked_by", claimToken);
 	if (error) return Result.err(dbErr(error));
 	return Result.ok(undefined);
 }
@@ -67,18 +86,20 @@ export async function heartbeatDeckJob(
  * partial index's non-terminal set, so this frees the idempotency_key for a
  * future re-enqueue.
  *
- * Scoped to `status = "running"` (H1 belt-and-suspenders): a job the sweep
- * mark-dead pass already terminalized to `dead` must not be resurrected to
- * `completed` by a late-finishing handler.
+ * The status guard stops a late-finishing handler from resurrecting a job
+ * mark_dead already terminalized; the claim-token guard stops it from
+ * completing a newer run of the same job.
  */
 export async function completeDeckJob(
 	jobId: string,
+	claimToken: string,
 ): Promise<Result<boolean, DbError>> {
 	const { data, error } = await createAdminSupabaseClient()
 		.from("match_review_deck_job")
 		.update({ status: "completed" })
 		.eq("id", jobId)
 		.eq("status", "running")
+		.eq("locked_by", claimToken)
 		.select("id")
 		.maybeSingle();
 	if (error) return Result.err(dbErr(error));
@@ -91,12 +112,12 @@ export async function completeDeckJob(
  * job has exhausted max_attempts the claim guard skips it and mark_dead
  * terminalizes it on the next sweep.
  *
- * Scoped to `status = "running"` (H1 belt-and-suspenders): a job already
- * dead-lettered must not be resurrected to `pending` by a late-finishing
- * handler.
+ * Fenced like completeDeckJob: neither a dead-lettered job nor a newer run of
+ * this job may be re-pended by a late-finishing handler.
  */
 export async function deferDeckJob(
 	jobId: string,
+	claimToken: string,
 	backoffSeconds: number,
 ): Promise<Result<boolean, DbError>> {
 	const availableAt = new Date(
@@ -108,9 +129,11 @@ export async function deferDeckJob(
 			status: "pending",
 			available_at: availableAt,
 			heartbeat_at: null,
+			locked_by: null,
 		})
 		.eq("id", jobId)
 		.eq("status", "running")
+		.eq("locked_by", claimToken)
 		.select("id")
 		.maybeSingle();
 	if (error) return Result.err(dbErr(error));

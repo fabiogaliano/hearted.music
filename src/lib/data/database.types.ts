@@ -1649,6 +1649,7 @@ export type Database = {
 					id: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by: string | null;
 					max_attempts: number;
 					orientation: string;
 					payload: Json;
@@ -1665,6 +1666,7 @@ export type Database = {
 					id?: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by?: string | null;
 					max_attempts?: number;
 					orientation: string;
 					payload?: Json;
@@ -1681,6 +1683,7 @@ export type Database = {
 					id?: string;
 					idempotency_key?: string;
 					kind?: string;
+					locked_by?: string | null;
 					max_attempts?: number;
 					orientation?: string;
 					payload?: Json;
@@ -3682,6 +3685,7 @@ export type Database = {
 					id: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by: string | null;
 					max_attempts: number;
 					orientation: string;
 					payload: Json;
@@ -3939,6 +3943,7 @@ export type Database = {
 					id: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by: string | null;
 					max_attempts: number;
 					orientation: string;
 					payload: Json;
@@ -4367,6 +4372,7 @@ export type Database = {
 					id: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by: string | null;
 					max_attempts: number;
 					orientation: string;
 					payload: Json;
@@ -4791,6 +4797,7 @@ export type Database = {
 					id: string;
 					idempotency_key: string;
 					kind: string;
+					locked_by: string | null;
 					max_attempts: number;
 					orientation: string;
 					payload: Json;

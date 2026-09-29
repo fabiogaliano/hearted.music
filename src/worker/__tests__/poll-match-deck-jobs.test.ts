@@ -5,7 +5,7 @@ import {
 	captureAheadForSession,
 	readSessionResumePosition,
 } from "@/lib/domains/taste/match-review-queue/card-materializer";
-import type { DeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
+import type { ClaimedDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import {
 	completeDeckJob,
 	deferDeckJob,
@@ -61,7 +61,7 @@ vi.mock("../posthog-capture", () => ({
 	captureWorkerEvent: vi.fn(),
 }));
 
-function job(overrides: Partial<DeckJob> = {}): DeckJob {
+function job(overrides: Partial<ClaimedDeckJob> = {}): ClaimedDeckJob {
 	return {
 		id: overrides.id ?? "job-1",
 		account_id: overrides.account_id ?? "acct-1",
@@ -74,6 +74,7 @@ function job(overrides: Partial<DeckJob> = {}): DeckJob {
 		max_attempts: overrides.max_attempts ?? 3,
 		available_at: overrides.available_at ?? "2026-07-07T00:00:00Z",
 		heartbeat_at: overrides.heartbeat_at ?? null,
+		locked_by: overrides.locked_by ?? "claim-token-1",
 		payload: overrides.payload ?? {},
 		created_at: overrides.created_at ?? "2026-07-07T00:00:00Z",
 		updated_at: overrides.updated_at ?? "2026-07-07T00:00:00Z",
@@ -148,12 +149,12 @@ describe("runClaimedDeckJob", () => {
 	});
 
 	function expectCompleted(jobId: string) {
-		expect(completeDeckJob).toHaveBeenCalledWith(jobId);
+		expect(completeDeckJob).toHaveBeenCalledWith(jobId, "claim-token-1");
 		expect(deferDeckJob).not.toHaveBeenCalled();
 	}
 
 	function expectDeferred(jobId: string) {
-		expect(deferDeckJob).toHaveBeenCalledWith(jobId, 30);
+		expect(deferDeckJob).toHaveBeenCalledWith(jobId, "claim-token-1", 30);
 		expect(completeDeckJob).not.toHaveBeenCalled();
 	}
 

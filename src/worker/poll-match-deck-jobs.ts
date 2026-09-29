@@ -14,7 +14,7 @@
  *    session; a not-yet-ready proposal defers for a retry.
  *  - capture_ahead → capture the next deck window off the swiper's path.
  *
- * Settlement is by direct UPDATE (no settlement RPC exists): completeDeckJob on
+ * Settlement is by direct UPDATE fenced on the claim token: completeDeckJob on
  * success, deferDeckJob on a returned error or a throw. Every handler is
  * idempotent, so a sweep-resurrected double-run converges.
  */
@@ -28,6 +28,7 @@ import {
 	readSessionResumePosition,
 } from "@/lib/domains/taste/match-review-queue/card-materializer";
 import {
+	type ClaimedDeckJob,
 	claimDeckJob,
 	completeDeckJob,
 	type DeckJob,
@@ -354,7 +355,7 @@ async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 }
 
 // A settlement UPDATE (complete/defer) can itself fail — or match zero rows
-// when the status guard fires after a concurrent sweep/dead-letter. Control
+// when the fence fires after a concurrent sweep/dead-letter/reclaim. Control
 // flow is unchanged — the stale-lease sweep still reclaims the job — but log
 // both cases so a lingering job is diagnosable rather than silent.
 function logSettlementFailure(
@@ -389,9 +390,9 @@ function logSettlementFailure(
  * live while-loop, which idles on the global `Bun.sleep` the vitest node pool
  * doesn't provide. Pure extraction: same body, same single call site below.
  */
-export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
+export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
 	const heartbeat = setInterval(() => {
-		void heartbeatDeckJob(job.id).then((result) => {
+		void heartbeatDeckJob(job.id, job.locked_by).then((result) => {
 			if (Result.isError(result)) {
 				log.warn("match-deck-heartbeat-failed", {
 					jobId: job.id,
@@ -409,7 +410,11 @@ export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
 				kind: job.kind,
 				error: outcome.error.message,
 			});
-			const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
+			const deferred = await deferDeckJob(
+				job.id,
+				job.locked_by,
+				DEFER_BACKOFF_SECONDS,
+			);
 			logSettlementFailure("defer", job, deferred);
 		} else {
 			log.info("match-deck-job-settled", {
@@ -418,7 +423,7 @@ export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
 				accountId: job.account_id,
 				orientation: job.orientation,
 			});
-			const completed = await completeDeckJob(job.id);
+			const completed = await completeDeckJob(job.id, job.locked_by);
 			logSettlementFailure("complete", job, completed);
 		}
 	} catch (err) {
@@ -427,7 +432,11 @@ export async function runClaimedDeckJob(job: DeckJob): Promise<void> {
 			error: errorMessage(err),
 		});
 		Sentry.captureException(err, { tags: { loop: "match-deck-jobs" } });
-		const deferred = await deferDeckJob(job.id, DEFER_BACKOFF_SECONDS);
+		const deferred = await deferDeckJob(
+			job.id,
+			job.locked_by,
+			DEFER_BACKOFF_SECONDS,
+		);
 		logSettlementFailure("defer", job, deferred);
 	} finally {
 		clearInterval(heartbeat);

@@ -1,10 +1,10 @@
 /**
  * Deck-job lifecycle against the real SQL: claim_pending_match_review_deck_job
- * and mark_dead_match_review_deck_jobs (latest: 20260706000011),
- * sweep_stale_match_review_deck_jobs (20260706000006), and the direct-UPDATE
- * settlements in deck-jobs.ts whose only guard is `status = 'running'`. The
- * worker suite mocks every one of these, so the compare-and-set and the
- * claim's attempts/available_at gates only exist here.
+ * and sweep_stale_match_review_deck_jobs (latest: 20260929100000),
+ * mark_dead_match_review_deck_jobs (20260706000011), and the direct-UPDATE
+ * settlements in deck-jobs.ts fenced on `status = 'running'` plus the claim
+ * token (locked_by). The worker suite mocks every one of these, so the
+ * compare-and-set and the claim's attempts/available_at gates only exist here.
  *
  * Expected values come from the SQL: claim flips pending→running, attempts+1,
  * heartbeat_at=now(), and skips rows with available_at in the future or
@@ -26,6 +26,7 @@ import {
 	claimDeckJob,
 	completeDeckJob,
 	deferDeckJob,
+	heartbeatDeckJob,
 	markDeadDeckJobs,
 	sweepStaleDeckJobs,
 } from "../deck-jobs";
@@ -47,6 +48,9 @@ function db() {
 
 // Mirrors DECK_JOB_LEASE_SECONDS in src/worker/poll-match-deck-jobs.ts.
 const LEASE_SECONDS = 900;
+
+// Seeded running rows stand in for a claim, so they carry a known token.
+const SEED_TOKEN = "seeded-claim-token";
 
 let accountId: string | null = null;
 
@@ -70,13 +74,14 @@ async function seedJob(opts: SeedJob): Promise<string> {
 	await db()`
     INSERT INTO match_review_deck_job(
       id, account_id, orientation, kind, idempotency_key, status,
-      attempts, max_attempts, available_at, heartbeat_at
+      attempts, max_attempts, available_at, heartbeat_at, locked_by
     ) VALUES (
       ${id}, ${account()}, ${opts.orientation ?? "song"}, ${"capture_ahead"},
       ${`test:${id}`}, ${opts.status}, ${opts.attempts ?? 0},
       ${opts.maxAttempts ?? 3}, ${"2000-01-01T00:00:00Z"}::timestamptz,
       CASE WHEN ${heartbeatAge}::int IS NULL THEN NULL
-           ELSE now() - make_interval(secs => ${heartbeatAge}::int) END
+           ELSE now() - make_interval(secs => ${heartbeatAge}::int) END,
+      ${opts.status === "running" ? SEED_TOKEN : null}
     )
   `;
 	return id;
@@ -88,6 +93,7 @@ interface JobRow {
 	heartbeat_is_null: boolean;
 	available_epoch_ms: number;
 	available_is_past: boolean;
+	heartbeat_age_seconds: number | null;
 }
 
 async function readJob(id: string): Promise<JobRow> {
@@ -96,7 +102,8 @@ async function readJob(id: string): Promise<JobRow> {
            attempts,
            heartbeat_at IS NULL AS heartbeat_is_null,
            (extract(epoch FROM available_at) * 1000)::float8 AS available_epoch_ms,
-           available_at <= now() AS available_is_past
+           available_at <= now() AS available_is_past,
+           extract(epoch FROM now() - heartbeat_at)::float8 AS heartbeat_age_seconds
     FROM match_review_deck_job WHERE id = ${id}
   `;
 	const row = rows[0];
@@ -108,6 +115,15 @@ async function claimOwn(): Promise<string | null> {
 	const claimed = await claimDeckJob();
 	if (Result.isError(claimed)) throw claimed.error;
 	return claimed.value?.id ?? null;
+}
+
+/** Claims `jobId` (asserting it wins the global claim) and returns its token. */
+async function claimToken(jobId: string): Promise<string> {
+	const claimed = await claimDeckJob();
+	if (Result.isError(claimed)) throw claimed.error;
+	expect(claimed.value?.id).toBe(jobId);
+	if (!claimed.value) throw new Error(`deck job ${jobId} not claimed`);
+	return claimed.value.locked_by;
 }
 
 beforeEach(async () => {
@@ -131,22 +147,22 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 	it("claim leases the job with one attempt consumed; complete terminalizes it", async () => {
 		const jobId = await seedJob({ status: "pending" });
 
-		expect(await claimOwn()).toBe(jobId);
+		const token = await claimToken(jobId);
 		const running = await readJob(jobId);
 		expect(running.status).toBe("running");
 		expect(running.attempts).toBe(1);
 		expect(running.heartbeat_is_null).toBe(false);
 
-		expect(await completeDeckJob(jobId)).toHaveOkValue(true);
+		expect(await completeDeckJob(jobId, token)).toHaveOkValue(true);
 		expect((await readJob(jobId)).status).toBe("completed");
 	});
 
 	it("defer re-pends with the backoff and keeps the attempt; the claim waits out available_at", async () => {
 		const jobId = await seedJob({ status: "pending" });
-		expect(await claimOwn()).toBe(jobId);
+		const token = await claimToken(jobId);
 
 		const before = Date.now();
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(true);
+		expect(await deferDeckJob(jobId, token, 30)).toHaveOkValue(true);
 		const after = Date.now();
 
 		const deferred = await readJob(jobId);
@@ -165,8 +181,8 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 
 	it("a job deferred on its final attempt is never reclaimed and is dead-lettered", async () => {
 		const jobId = await seedJob({ status: "pending", maxAttempts: 1 });
-		expect(await claimOwn()).toBe(jobId);
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(true);
+		const token = await claimToken(jobId);
+		expect(await deferDeckJob(jobId, token, 30)).toHaveOkValue(true);
 		await db()`UPDATE match_review_deck_job SET available_at = now() - interval '1 second' WHERE id = ${jobId}`;
 
 		expect(await claimOwn()).not.toBe(jobId);
@@ -178,69 +194,98 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 	});
 });
 
-describe.skipIf(!IS_LOCAL)("settlement compare-and-set on status", () => {
-	it("a late settle cannot resurrect a job the sweep tick dead-lettered", async () => {
-		const jobId = await seedJob({
-			status: "running",
-			attempts: 3,
-			maxAttempts: 3,
-			heartbeatAgeSeconds: LEASE_SECONDS + 300,
+describe.skipIf(!IS_LOCAL)(
+	"settlement compare-and-set on status + claim token",
+	() => {
+		it("a late settle cannot resurrect a job the sweep tick dead-lettered", async () => {
+			const jobId = await seedJob({
+				status: "running",
+				attempts: 3,
+				maxAttempts: 3,
+				heartbeatAgeSeconds: LEASE_SECONDS + 300,
+			});
+
+			// Same order as runMatchDeckJobSweepTick: sweep leaves exhausted jobs
+			// alone, mark_dead terminalizes them.
+			const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
+			if (Result.isError(swept)) throw swept.error;
+			expect(swept.value.map((j) => j.id)).not.toContain(jobId);
+			const dead = await markDeadDeckJobs(LEASE_SECONDS);
+			if (Result.isError(dead)) throw dead.error;
+			expect(dead.value.map((j) => j.id)).toContain(jobId);
+
+			expect(await completeDeckJob(jobId, SEED_TOKEN)).toHaveOkValue(false);
+			expect(await deferDeckJob(jobId, SEED_TOKEN, 30)).toHaveOkValue(false);
+			expect((await readJob(jobId)).status).toBe("dead");
 		});
 
-		// Same order as runMatchDeckJobSweepTick: sweep leaves exhausted jobs
-		// alone, mark_dead terminalizes them.
-		const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
-		if (Result.isError(swept)) throw swept.error;
-		expect(swept.value.map((j) => j.id)).not.toContain(jobId);
-		const dead = await markDeadDeckJobs(LEASE_SECONDS);
-		if (Result.isError(dead)) throw dead.error;
-		expect(dead.value.map((j) => j.id)).toContain(jobId);
+		it("a late settle after the sweep re-pended the job leaves it pending and claimable", async () => {
+			const jobId = await seedJob({
+				status: "running",
+				attempts: 1,
+				heartbeatAgeSeconds: LEASE_SECONDS + 300,
+			});
+			const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
+			if (Result.isError(swept)) throw swept.error;
+			expect(swept.value.map((j) => j.id)).toContain(jobId);
 
-		expect(await completeDeckJob(jobId)).toHaveOkValue(false);
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(false);
-		expect((await readJob(jobId)).status).toBe("dead");
-	});
-
-	it("a late settle after the sweep re-pended the job leaves it pending and claimable", async () => {
-		const jobId = await seedJob({
-			status: "running",
-			attempts: 1,
-			heartbeatAgeSeconds: LEASE_SECONDS + 300,
+			expect(await completeDeckJob(jobId, SEED_TOKEN)).toHaveOkValue(false);
+			expect(await deferDeckJob(jobId, SEED_TOKEN, 30)).toHaveOkValue(false);
+			const row = await readJob(jobId);
+			expect(row.status).toBe("pending");
+			// A leaked defer would have pushed available_at 30s into the future.
+			expect(row.available_is_past).toBe(true);
 		});
-		const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
-		if (Result.isError(swept)) throw swept.error;
-		expect(swept.value.map((j) => j.id)).toContain(jobId);
 
-		expect(await completeDeckJob(jobId)).toHaveOkValue(false);
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(false);
-		const row = await readJob(jobId);
-		expect(row.status).toBe("pending");
-		// A leaked defer would have pushed available_at 30s into the future.
-		expect(row.available_is_past).toBe(true);
-	});
+		it("stale worker's settle after sweep+reclaim must not affect the new run", async () => {
+			const jobId = await seedJob({ status: "pending" });
+			const staleToken = await claimToken(jobId);
 
-	it("double complete is idempotent and a defer cannot re-open a completed job", async () => {
-		const jobId = await seedJob({ status: "pending" });
-		expect(await claimOwn()).toBe(jobId);
+			// The first run's worker stalls past the lease; the sweep re-pends the job
+			// and a second worker reclaims it while the first is still alive.
+			await db()`UPDATE match_review_deck_job SET heartbeat_at = now() - make_interval(secs => ${LEASE_SECONDS + 60}) WHERE id = ${jobId}`;
+			const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
+			if (Result.isError(swept)) throw swept.error;
+			expect(swept.value.map((j) => j.id)).toContain(jobId);
+			const liveToken = await claimToken(jobId);
+			// Backdated so a leaked stale heartbeat is observable.
+			await db()`UPDATE match_review_deck_job SET heartbeat_at = now() - interval '60 seconds' WHERE id = ${jobId}`;
 
-		expect(await completeDeckJob(jobId)).toHaveOkValue(true);
-		expect(await completeDeckJob(jobId)).toHaveOkValue(false);
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(false);
-		expect((await readJob(jobId)).status).toBe("completed");
-	});
+			expect(await heartbeatDeckJob(jobId, staleToken)).toBeOk();
+			expect(await completeDeckJob(jobId, staleToken)).toHaveOkValue(false);
+			expect(await deferDeckJob(jobId, staleToken, 30)).toHaveOkValue(false);
 
-	it("double defer does not push the retry out again", async () => {
-		const jobId = await seedJob({ status: "pending" });
-		expect(await claimOwn()).toBe(jobId);
+			const row = await readJob(jobId);
+			expect(row.status).toBe("running");
+			expect(row.attempts).toBe(2);
+			expect(row.heartbeat_age_seconds).toBeGreaterThanOrEqual(59);
 
-		expect(await deferDeckJob(jobId, 30)).toHaveOkValue(true);
-		const first = await readJob(jobId);
-		expect(await deferDeckJob(jobId, 600)).toHaveOkValue(false);
-		const second = await readJob(jobId);
-		expect(second.status).toBe("pending");
-		expect(second.available_epoch_ms).toBe(first.available_epoch_ms);
-	});
-});
+			expect(await completeDeckJob(jobId, liveToken)).toHaveOkValue(true);
+		});
+
+		it("double complete is idempotent and a defer cannot re-open a completed job", async () => {
+			const jobId = await seedJob({ status: "pending" });
+			const token = await claimToken(jobId);
+
+			expect(await completeDeckJob(jobId, token)).toHaveOkValue(true);
+			expect(await completeDeckJob(jobId, token)).toHaveOkValue(false);
+			expect(await deferDeckJob(jobId, token, 30)).toHaveOkValue(false);
+			expect((await readJob(jobId)).status).toBe("completed");
+		});
+
+		it("double defer does not push the retry out again", async () => {
+			const jobId = await seedJob({ status: "pending" });
+			const token = await claimToken(jobId);
+
+			expect(await deferDeckJob(jobId, token, 30)).toHaveOkValue(true);
+			const first = await readJob(jobId);
+			expect(await deferDeckJob(jobId, token, 600)).toHaveOkValue(false);
+			const second = await readJob(jobId);
+			expect(second.status).toBe("pending");
+			expect(second.available_epoch_ms).toBe(first.available_epoch_ms);
+		});
+	},
+);
 
 describe.skipIf(!IS_LOCAL)("lease-expiry sweep", () => {
 	it("reclaims only a running job whose heartbeat outlived the lease, and it is claimable again", async () => {
