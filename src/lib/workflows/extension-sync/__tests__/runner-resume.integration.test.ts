@@ -6,7 +6,8 @@
  * Only the edges outside the job/library tables are mocked: the Storage
  * payload, the billing grant, and applyLibraryProcessingChange (captured so
  * the emitted change can be asserted, and hung once to model the crash).
- * The liked-songs read can be hung once too, to model a crash mid-phase.
+ * The liked-songs read, or the return from its write, can be hung once too,
+ * to model a crash mid-phase before or after the songs were written.
  * Auto-skipped unless DATABASE_URL and SUPABASE_URL point at the local stack.
  */
 
@@ -32,10 +33,12 @@ const {
 	mockDownloadSyncPayload,
 	mockApplyLibraryProcessingChange,
 	hangNextLikedSongsRead,
+	hangAfterNextLikedSongsWrite,
 } = vi.hoisted(() => ({
 	mockDownloadSyncPayload: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	hangNextLikedSongsRead: { current: false },
+	hangAfterNextLikedSongsWrite: { current: false },
 }));
 
 vi.mock("@sentry/bun", () => ({ captureException: vi.fn() }));
@@ -63,6 +66,14 @@ vi.mock("@/lib/domains/library/liked-songs/queries", async (importOriginal) => {
 				return new Promise(() => {});
 			}
 			return actual.getAll(accountId);
+		},
+		upsert: async (...args: Parameters<typeof actual.upsert>) => {
+			const written = await actual.upsert(...args);
+			if (hangAfterNextLikedSongsWrite.current) {
+				hangAfterNextLikedSongsWrite.current = false;
+				return new Promise(() => {});
+			}
+			return written;
 		},
 	};
 });
@@ -158,6 +169,7 @@ beforeEach(async () => {
 afterEach(async () => {
 	vi.clearAllMocks();
 	hangNextLikedSongsRead.current = false;
+	hangAfterNextLikedSongsWrite.current = false;
 	if (!IS_LOCAL || !accountId) return;
 	await db()`DELETE FROM account WHERE id = ${accountId}`;
 	await db()`DELETE FROM song WHERE spotify_id IN ${db()(trackIds)}`;
@@ -243,9 +255,23 @@ async function readPhase(
 }
 
 describe.skipIf(!IS_LOCAL)(
-	"crash inside the liked-songs phase (regression: the phase stayed running, so every reclaimed retry stopped as superseded until the parent was dead-lettered)",
+	"crash inside the liked-songs phase (regression: the phase stayed running, so every reclaimed retry stopped as superseded until the parent was dead-lettered; then, once taken over, a crash after the songs were written left the retry's diff empty and the added change unemitted)",
 	() => {
-		it("the retry takes over the stranded phase, finishes the sync, and emits the added change", async () => {
+		it.each([
+			{
+				crashPoint: "before the songs were written",
+				hang: hangNextLikedSongsRead,
+				retryAdded: 2,
+			},
+			{
+				crashPoint: "after the songs were written",
+				hang: hangAfterNextLikedSongsWrite,
+				retryAdded: 0,
+			},
+		])("crash $crashPoint: the retry takes over the stranded phase, finishes the sync, and emits the liked-songs change", async ({
+			hang,
+			retryAdded,
+		}) => {
 			const phaseJobIds = {
 				liked_songs: await seedJob("sync_liked_songs"),
 				playlists: await seedJob("sync_playlists"),
@@ -256,19 +282,18 @@ describe.skipIf(!IS_LOCAL)(
 				phase_job_ids: phaseJobIds,
 			});
 
-			// First run: the worker dies right after starting the liked-songs
-			// phase (modelled as a library read that never returns).
+			// First run: the worker dies inside the liked-songs phase (modelled as
+			// a library call that never returns).
 			const crashed = await claim();
 			expect(crashed.id).toBe(parentId);
-			hangNextLikedSongsRead.current = true;
+			hang.current = true;
 			void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
-			await vi.waitFor(
-				async () =>
-					expect((await readPhase(phaseJobIds.liked_songs)).status).toBe(
-						"running",
-					),
-				{ timeout: 10_000 },
-			);
+			// The hang clears its flag once it fires, i.e. once the crashed run's
+			// read was issued or its write committed.
+			await vi.waitFor(() => expect(hang.current).toBe(false), {
+				timeout: 10_000,
+			});
+			expect((await readPhase(phaseJobIds.liked_songs)).status).toBe("running");
 
 			await db()`UPDATE job SET heartbeat_at = now() - interval '10 minutes' WHERE id = ${parentId}`;
 			const swept = await sweepStaleExtensionSyncJobs("5 minutes");
@@ -288,7 +313,7 @@ describe.skipIf(!IS_LOCAL)(
 				kind: "library_synced",
 				accountId: account(),
 				changes: {
-					likedSongs: { added: true, removed: false },
+					likedSongs: { added: true, removed: true },
 					targetPlaylists: {
 						trackMembershipChanged: false,
 						profileTextChanged: false,
@@ -299,7 +324,7 @@ describe.skipIf(!IS_LOCAL)(
 			const likedPhase = await readPhase(phaseJobIds.liked_songs);
 			expect(likedPhase.status).toBe("completed");
 			expect(likedPhase.progress).toEqual({
-				result: { total: 2, added: 2, removed: 0 },
+				result: { total: 2, added: retryAdded, removed: 0, tookOver: true },
 			});
 			const [parent] = await db()<{ status: string }[]>`
         SELECT status FROM job WHERE id = ${parentId}

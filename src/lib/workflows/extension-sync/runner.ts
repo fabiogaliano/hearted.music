@@ -46,6 +46,7 @@ import {
 import {
 	incrementalSync,
 	initialSync,
+	type PhaseRun,
 	runPhase,
 } from "@/lib/workflows/spotify-sync/sync-helpers";
 import {
@@ -83,6 +84,8 @@ const LikedSongsPhaseResultSchema = z.object({
 	total: z.number(),
 	added: z.number(),
 	removed: z.number(),
+	// Results stored before this field existed never came from a takeover.
+	tookOver: z.boolean().default(false),
 });
 const PlaylistsPhaseResultSchema = z.object({
 	removedTargetPlaylistIds: z.array(z.string()),
@@ -258,7 +261,7 @@ export async function runExtensionSyncJob(
 			label: string,
 			sentryPhase: string,
 			resultSchema: z.ZodType<T>,
-			syncFn: () => Promise<Result<T, DbError | SyncFailedError>>,
+			syncFn: (run: PhaseRun) => Promise<Result<T, DbError | SyncFailedError>>,
 		): Promise<PhaseStep<T>> => {
 			if (leaseLost.aborted) {
 				return { status: "stopped", outcome: stopForLostLease() };
@@ -307,9 +310,9 @@ export async function runExtensionSyncJob(
 			"Liked songs",
 			"liked_songs_sync",
 			LikedSongsPhaseResultSchema,
-			async () => {
+			async ({ tookOver }) => {
 				if (likedSongs.length === 0) {
-					return Result.ok({ total: 0, added: 0, removed: 0 });
+					return Result.ok({ total: 0, added: 0, removed: 0, tookOver });
 				}
 				const existingResult = await getAll(accountId);
 				if (Result.isError(existingResult)) return existingResult;
@@ -326,6 +329,7 @@ export async function runExtensionSyncJob(
 					total,
 					added,
 					removed,
+					tookOver,
 				}));
 			},
 		);
@@ -514,9 +518,13 @@ function classifyChange(
 	};
 } {
 	return {
+		// After a takeover the crashed attempt may already have applied the
+		// adds/removes, hiding them from this run's diff. Both signals only
+		// request idempotent downstream work, so over-reporting is safe where
+		// under-reporting would leave new songs unenriched until the next sync.
 		likedSongs: {
-			added: results.likedSongs.added > 0,
-			removed: results.likedSongs.removed > 0,
+			added: results.likedSongs.added > 0 || results.likedSongs.tookOver,
+			removed: results.likedSongs.removed > 0 || results.likedSongs.tookOver,
 		},
 		targetPlaylists: {
 			trackMembershipChanged: results.playlistTracks.changedPlaylistIds.some(

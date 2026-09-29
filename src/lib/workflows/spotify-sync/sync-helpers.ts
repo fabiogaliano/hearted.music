@@ -257,6 +257,13 @@ export type PhaseOutcome<T> =
 	| { status: "completed"; value: T }
 	| { status: "superseded" };
 
+// `tookOver`: the phase was taken over from a crashed attempt that may already
+// have applied part of its writes, so a diff against the current library
+// undercounts what this sync changed.
+export interface PhaseRun {
+	tookOver: boolean;
+}
+
 /**
  * Runs one sync phase on its phase job, leased under the parent's claim
  * attempt (`phase.attempts`, see markJobRunning). The phase's result is
@@ -268,7 +275,7 @@ export type PhaseOutcome<T> =
 export async function runPhase<T extends Json>(
 	phase: Pick<Job, "id" | "attempts">,
 	resultSchema: z.ZodType<T>,
-	syncFn: () => Promise<Result<T, SyncOperationError>>,
+	syncFn: (run: PhaseRun) => Promise<Result<T, SyncOperationError>>,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const startResult = await startJob(phase);
 	if (Result.isError(startResult)) {
@@ -277,14 +284,15 @@ export async function runPhase<T extends Json>(
 	if (startResult.value === "superseded") {
 		return resumePhase(phase, resultSchema, syncFn);
 	}
-	return runHeldPhase(phase, syncFn);
+	return runHeldPhase(phase, syncFn, { tookOver: false });
 }
 
 async function runHeldPhase<T extends Json>(
 	phase: Pick<Job, "id" | "attempts">,
-	syncFn: () => Promise<Result<T, SyncOperationError>>,
+	syncFn: (run: PhaseRun) => Promise<Result<T, SyncOperationError>>,
+	run: PhaseRun,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
-	const result = await syncFn();
+	const result = await syncFn(run);
 
 	if (Result.isError(result)) {
 		const failResult = await settleClaimedJob(
@@ -315,7 +323,7 @@ async function runHeldPhase<T extends Json>(
 async function resumePhase<T extends Json>(
 	phase: Pick<Job, "id" | "attempts">,
 	resultSchema: z.ZodType<T>,
-	syncFn: () => Promise<Result<T, SyncOperationError>>,
+	syncFn: (run: PhaseRun) => Promise<Result<T, SyncOperationError>>,
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const jobId = phase.id;
 	const jobResult = await getJobById(jobId);
@@ -352,7 +360,7 @@ async function resumePhase<T extends Json>(
 				// The older run settled it, or a newer attempt took it, in between.
 				return resumePhase(phase, resultSchema, syncFn);
 			}
-			return runHeldPhase(phase, syncFn);
+			return runHeldPhase(phase, syncFn, { tookOver: true });
 		}
 		case "failed":
 			// A terminal failure cannot be re-run; the sync it belongs to cannot

@@ -247,9 +247,12 @@ describe("runExtensionSyncJob", () => {
 			async (
 				_jobId: string,
 				_schema: unknown,
-				syncFn: () => Promise<unknown>,
+				syncFn: (run: { tookOver: boolean }) => Promise<unknown>,
 			) => {
-				const synced = (await syncFn()) as Result<unknown, Error>;
+				const synced = (await syncFn({ tookOver: false })) as Result<
+					unknown,
+					Error
+				>;
 				return Result.isOk(synced)
 					? Result.ok({ status: "completed", value: synced.value })
 					: synced;
