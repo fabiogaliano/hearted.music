@@ -150,6 +150,8 @@ collapsed case.
   reason union extension.
 - **Pipeline** (`content-analysis/pipeline.ts`): propagate content type; keep
   instrumentals re-analyzable; record unknown as a retry candidate.
+  (`pipeline.ts` has since been removed; the worker path is
+  `content-analysis/song-batch-analysis.ts`.)
 - **UI** (`src/features/liked-songs/components/song-detail-panel/`):
   `song-detail-adapter.ts` parses + exposes the instrumental read when present;
   `SongDetailPanelSurface.tsx` UnreadState gains a distinct lyrics-unavailable

@@ -98,7 +98,7 @@ lib/capabilities/
 ├── analysis/
 │   ├── song-analysis.ts
 │   ├── playlist-analysis.ts
-│   ├── pipeline.ts            # Merged batch orchestration
+│   ├── pipeline.ts            # Merged batch orchestration (since removed; see content-analysis/song-batch-analysis.ts)
 │   ├── retry-policy.ts
 │   └── rate-limit-gate.ts
 ├── matching/

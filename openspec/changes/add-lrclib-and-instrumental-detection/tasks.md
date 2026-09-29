@@ -77,6 +77,8 @@
 - [x] 6.1 In `content-analysis/pipeline.ts`, propagate the lyrics-fetch outcome
       into analysis; ensure unknown songs are not analyzed as instrumentals and
       are recorded as retry candidates (not silently terminal).
+      (`pipeline.ts` has since been removed; this now lives in
+      `song-batch-analysis.ts`.)
 - [x] 6.2 Confirm `getSongsNeedingAnalysis` still re-picks songs whose
       `fetch_status` changes (e.g. an LRCLIB hit on a previously not_found
       song) on a later run.
