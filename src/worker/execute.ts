@@ -43,11 +43,26 @@ export type MatchSnapshotRefreshExecuteResult =
 	  }
 	| { status: "superseded"; accountId: string; jobId: string };
 
-export function startHeartbeat(jobId: string): { stop: () => void } {
+export function startHeartbeat(job: Pick<Job, "id" | "attempts">): {
+	stop: () => void;
+} {
 	const interval = setInterval(async () => {
-		const result = await updateHeartbeat(jobId);
+		const result = await updateHeartbeat(job);
 		if (Result.isError(result)) {
-			log.warn("heartbeat-failed", { jobId, error: result.error.message });
+			log.warn("heartbeat-failed", {
+				jobId: job.id,
+				error: result.error.message,
+			});
+			return;
+		}
+		// The lease was swept and reclaimed or dead-lettered; renewing it can
+		// never succeed again, and the fenced settle will discard this run.
+		if (result.value === "superseded") {
+			log.warn("heartbeat-lease-lost", {
+				jobId: job.id,
+				attempts: job.attempts,
+			});
+			clearInterval(interval);
 		}
 	}, workerConfig.heartbeatIntervalMs);
 	return { stop: () => clearInterval(interval) };

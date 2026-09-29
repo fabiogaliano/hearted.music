@@ -12,6 +12,7 @@
 import { Result } from "better-result";
 import { log } from "@/lib/observability/logger";
 import {
+	getJobById,
 	type Job,
 	type JobProgress,
 	type JobTransition,
@@ -28,6 +29,33 @@ const RETRY_OPTIONS = {
 };
 
 /**
+ * Retries a compare-and-set write. An attempt can commit and still error (the
+ * response was lost), so the retry misses its own write and reports
+ * "superseded"; only after such an error is the row re-read, and `isOwnWrite`
+ * tells this caller's committed write apart from a competing writer's.
+ */
+async function retryTransition(
+	jobId: string,
+	write: () => Promise<Result<JobTransition, DbError>>,
+	isOwnWrite: (job: Job) => boolean,
+): Promise<Result<JobTransition, DbError>> {
+	let anAttemptErrored = false;
+	const result = await withRetry(async () => {
+		const attempt = await write();
+		if (Result.isError(attempt)) anAttemptErrored = true;
+		return attempt;
+	}, RETRY_OPTIONS);
+	if (!anAttemptErrored || !Result.isOk(result) || result.value === "applied") {
+		return result;
+	}
+	const current = await getJobById(jobId);
+	if (Result.isError(current)) return current;
+	return current.value && isOwnWrite(current.value)
+		? Result.ok("applied")
+		: result;
+}
+
+/**
  * Starts a job by transitioning from pending → running.
  * If markJobRunning fails, attempts cleanup by marking as failed.
  *
@@ -40,9 +68,10 @@ const RETRY_OPTIONS = {
 export async function startJob(
 	jobId: string,
 ): Promise<Result<JobTransition, DbError>> {
-	const runningResult = await withRetry(
+	const runningResult = await retryTransition(
+		jobId,
 		() => markJobRunning(jobId),
-		RETRY_OPTIONS,
+		(job) => job.status === "running",
 	);
 
 	if (Result.isOk(runningResult)) {
@@ -123,8 +152,14 @@ export async function settleClaimedJob(
 	status: "completed" | "failed",
 	errorMessage?: string,
 ): Promise<Result<JobTransition, DbError>> {
-	return withRetry(
+	return retryTransition(
+		job.id,
 		() => markClaimedJobTerminal(job, status, errorMessage),
-		RETRY_OPTIONS,
+		// A dead-letter also leaves this claim's attempts on a failed row, so the
+		// error text is what separates it from this worker's own failed settle.
+		(current) =>
+			current.status === status &&
+			current.attempts === job.attempts &&
+			current.error === (errorMessage ?? null),
 	);
 }

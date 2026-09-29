@@ -242,6 +242,12 @@ export async function incrementalSync(
 	});
 }
 
+// "superseded": the phase job had already left pending, so another run owns it
+// and this one did no work.
+export type PhaseOutcome<T> =
+	| { status: "completed"; value: T }
+	| { status: "superseded" };
+
 /**
  * Runs a sync operation with job lifecycle management.
  * Handles job start, execution, and completion/failure.
@@ -249,10 +255,13 @@ export async function incrementalSync(
 export async function runPhase<T>(
 	jobId: string,
 	syncFn: () => Promise<Result<T, SyncOperationError>>,
-): Promise<Result<T, SyncOperationError>> {
+): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const startResult = await startJob(jobId);
 	if (Result.isError(startResult)) {
 		return Result.err(startResult.error);
+	}
+	if (startResult.value === "superseded") {
+		return Result.ok({ status: "superseded" });
 	}
 
 	const result = await syncFn();
@@ -270,5 +279,5 @@ export async function runPhase<T>(
 		return Result.err(completeResult.error);
 	}
 
-	return result;
+	return Result.ok({ status: "completed", value: result.value });
 }

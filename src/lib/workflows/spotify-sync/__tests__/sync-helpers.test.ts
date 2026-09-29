@@ -81,9 +81,9 @@ function makeLikedSong(unlikedAt: string | null): LikedSong {
 describe("runPhase", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockStartJob.mockResolvedValue(Result.ok({ id: "job-1" }));
-		mockCompleteJob.mockResolvedValue(Result.ok({ id: "job-1" }));
-		mockFailJob.mockResolvedValue(Result.ok({ id: "job-1" }));
+		mockStartJob.mockResolvedValue(Result.ok("applied"));
+		mockCompleteJob.mockResolvedValue(Result.ok("applied"));
+		mockFailJob.mockResolvedValue(Result.ok("applied"));
 	});
 
 	it("returns an error when completeJob fails instead of silently succeeding", async () => {
@@ -101,6 +101,18 @@ describe("runPhase", () => {
 		}
 		expect(result.error).toBe(completeError);
 		expect(mockCompleteJob).toHaveBeenCalledWith("job-1");
+	});
+
+	it("skips the phase work when the phase job already left pending (regression: a superseded startJob was ignored and the sync ran anyway)", async () => {
+		mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+		const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+
+		const result = await runPhase("job-1", syncFn);
+
+		expect(result).toHaveOkValue({ status: "superseded" });
+		expect(syncFn).not.toHaveBeenCalled();
+		expect(mockCompleteJob).not.toHaveBeenCalled();
+		expect(mockFailJob).not.toHaveBeenCalled();
 	});
 
 	it("returns a lifecycle error when failJob cleanup fails", async () => {

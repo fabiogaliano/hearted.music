@@ -6,7 +6,7 @@ import {
 	JobProgressSchema as JobProgressSchemaImpl,
 	type JobProgress as JobProgressType,
 } from "@/lib/platform/jobs/progress/types";
-import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -220,21 +220,22 @@ export function markClaimedJobTerminal(
 	);
 }
 
-export async function updateHeartbeat(
-	jobId: string,
-): Promise<Result<void, DbError>> {
+/**
+ * Renews a claimed job's lease, fenced like markClaimedJobTerminal: a stale
+ * worker that keeps renewing a reclaimed row would hide the new owner's death
+ * from the stale sweep.
+ */
+export function updateHeartbeat(
+	job: Pick<Job, "id" | "attempts">,
+): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
-
-	const { error } = await supabase
-		.from("job")
-		.update({ heartbeat_at: new Date().toISOString() })
-		.eq("id", jobId);
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	return Result.ok(undefined);
+	return transition(
+		supabase
+			.from("job")
+			.update({ heartbeat_at: new Date().toISOString() })
+			.eq("id", job.id)
+			.eq("status", "running")
+			.eq("attempts", job.attempts)
+			.select("id"),
+	);
 }

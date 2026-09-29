@@ -26,7 +26,7 @@ import {
 	markDeadLibraryProcessingJobs,
 	sweepStaleLibraryProcessingJobs,
 } from "@/lib/platform/jobs/library-processing-queue";
-import type { Job } from "@/lib/platform/jobs/repository";
+import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
 import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
@@ -299,6 +299,18 @@ describe.skipIf(!IS_LOCAL)(
 			expect(state?.active).toBe(jobId);
 			expect(state?.settled_is_null).toBe(true);
 			expect(await eventTypes()).toEqual([]);
+			expect(late).toHaveOkValue("superseded");
+		});
+
+		it("a stale worker's heartbeat cannot keep a dead reclaiming worker's lease alive (regression: id-only heartbeat masked the new owner's death from the sweep)", async () => {
+			const jobId = await seedPendingJob("enrichment");
+			const { stale } = await sweepAndReclaim(jobId);
+			// The reclaiming worker dies: its heartbeat stops renewing.
+			await stallHeartbeat(jobId);
+
+			const late = await updateHeartbeat(stale);
+
+			expect(await sweptIds()).toContain(jobId);
 			expect(late).toHaveOkValue("superseded");
 		});
 

@@ -309,6 +309,67 @@ describe("runClaimedJob", () => {
 		}
 	});
 
+	describe("a lease lost at the terminal settle records nothing (regression: match_snapshot_refresh wrote its measurement before the fenced settle, double-recording a reclaimed run)", () => {
+		const refreshJob = makeJob({ id: "job-2", type: "match_snapshot_refresh" });
+		const cases = [
+			{
+				name: "match refresh published",
+				job: refreshJob,
+				arrange: () =>
+					vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue({
+						status: "published",
+						accountId: "acct-1",
+						jobId: "job-2",
+						published: true,
+						isEmpty: false,
+						snapshotId: "snap-1",
+					}),
+			},
+			{
+				name: "match refresh superseded by a newer request",
+				job: refreshJob,
+				arrange: () =>
+					vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue({
+						status: "superseded",
+						accountId: "acct-1",
+						jobId: "job-2",
+					}),
+			},
+			{
+				name: "match refresh failed with no retry budget",
+				job: refreshJob,
+				arrange: () =>
+					vi
+						.mocked(executeMatchSnapshotRefreshJob)
+						.mockRejectedValue(new Error("snapshot exploded")),
+			},
+			{
+				name: "enrichment completed",
+				job: makeJob(),
+				arrange: () =>
+					vi
+						.mocked(executeEnrichmentJob)
+						.mockResolvedValue(ENRICHMENT_EXEC_RESULT),
+			},
+		];
+
+		it.each(cases)("$name", async ({ job, arrange }) => {
+			arrange();
+			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+				Result.ok("superseded"),
+			);
+			vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+				Result.ok("superseded"),
+			);
+
+			const outcome = await runClaimedJob(job, "@test");
+
+			expect(outcome.status).toBe("superseded");
+			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
+			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("measurement-before-apply ordering", () => {
 		it("writes measurement before applying library-processing change on success", async () => {
 			const callOrder: string[] = [];

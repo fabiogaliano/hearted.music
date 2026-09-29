@@ -37,7 +37,7 @@ import {
 	type JobProgress,
 	updateJobProgress,
 } from "@/lib/platform/jobs/repository";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	NoLyricsAvailableError,
 	PipelineConfigError,
@@ -287,6 +287,16 @@ export class AnalysisPipeline {
 		if (Result.isError(runningResult)) {
 			return Result.err(runningResult.error);
 		}
+		if (runningResult.value === "superseded") {
+			// The job was created above, so only a concurrent writer can have moved
+			// it off pending; running the analysis would race that writer.
+			return Result.err(
+				new DatabaseError({
+					code: "job_superseded",
+					message: `Job ${job.id} left pending before this run started it`,
+				}),
+			);
+		}
 
 		// 3. Initialize progress
 		const progress: JobProgress = {
@@ -463,6 +473,16 @@ export class AnalysisPipeline {
 		const runningResult = await startJob(job.id);
 		if (Result.isError(runningResult)) {
 			return Result.err(runningResult.error);
+		}
+		if (runningResult.value === "superseded") {
+			// The job was created above, so only a concurrent writer can have moved
+			// it off pending; running the analysis would race that writer.
+			return Result.err(
+				new DatabaseError({
+					code: "job_superseded",
+					message: `Job ${job.id} left pending before this run started it`,
+				}),
+			);
 		}
 
 		// 3. Initialize progress

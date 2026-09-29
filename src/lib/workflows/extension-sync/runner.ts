@@ -153,7 +153,9 @@ export async function runExtensionSyncJob(
 	};
 
 	// The parent is fenced first: a superseded worker must not fail phase jobs
-	// or delete the payload the reclaiming worker is running from.
+	// or delete the payload the reclaiming worker is running from. This is also
+	// how a phase job found already started resolves: usually the parent was
+	// reclaimed too, and otherwise the sync cannot finish, so it fails.
 	const fail = async (reason: string): Promise<ExtensionSyncRunOutcome> => {
 		const failed = await settleClaimedJob(job, "failed", reason);
 		if (Result.isOk(failed) && failed.value === "superseded") {
@@ -252,11 +254,15 @@ export async function runExtensionSyncJob(
 				});
 				return fail(`Liked songs sync failed: ${songsResult.error.message}`);
 			}
+			if (songsResult.value.status === "superseded") {
+				return fail("Liked songs job was already started by another run");
+			}
 			settledJobIds.add(phaseJobIds.liked_songs);
+			const likedSongsSync = songsResult.value.value;
 			results.likedSongs = {
-				total: songsResult.value.total,
-				added: songsResult.value.added,
-				removed: songsResult.value.removed,
+				total: likedSongsSync.total,
+				added: likedSongsSync.added,
+				removed: likedSongsSync.removed,
 			};
 		} else {
 			const completeResult = await completeJob(phaseJobIds.liked_songs);
@@ -285,11 +291,15 @@ export async function runExtensionSyncJob(
 				});
 				return fail(`Playlist sync failed: ${playlistResult.error.message}`);
 			}
+			if (playlistResult.value.status === "superseded") {
+				return fail("Playlists job was already started by another run");
+			}
 			settledJobIds.add(phaseJobIds.playlists);
+			const playlistSync = playlistResult.value.value;
 			results.playlists = {
-				removedTargetPlaylistIds: playlistResult.value.removedTargetPlaylistIds,
+				removedTargetPlaylistIds: playlistSync.removedTargetPlaylistIds,
 				updatedTargetProfileTextPlaylistIds:
-					playlistResult.value.updatedTargetProfileTextPlaylistIds,
+					playlistSync.updatedTargetProfileTextPlaylistIds,
 			};
 		} else {
 			const completeResult = await completeJob(phaseJobIds.playlists);
@@ -315,6 +325,9 @@ export async function runExtensionSyncJob(
 					accountId,
 				});
 				return fail("Failed to start playlist tracks job");
+			}
+			if (startResult.value === "superseded") {
+				return fail("Playlist tracks job was already started by another run");
 			}
 
 			const dbPlaylistsResult = await getPlaylists(accountId);

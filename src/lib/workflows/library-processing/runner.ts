@@ -296,14 +296,6 @@ async function runMatchSnapshotRefreshJob(
 		const result = await executeMatchSnapshotRefreshJob(job, actor);
 
 		if (result.status === "superseded") {
-			await writeMeasurement(
-				job,
-				actor,
-				"match_snapshot_refresh",
-				startedAt,
-				"superseded",
-			);
-
 			let settlement: SettlementStatus = "settled";
 
 			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
@@ -325,6 +317,14 @@ async function runMatchSnapshotRefreshJob(
 				return superseded(job, actor, "match_snapshot_refresh");
 			}
 
+			await writeMeasurement(
+				job,
+				actor,
+				"match_snapshot_refresh",
+				startedAt,
+				"superseded",
+			);
+
 			const change = MatchSnapshotChanges.superseded({
 				accountId: result.accountId,
 				jobId: result.jobId,
@@ -344,15 +344,6 @@ async function runMatchSnapshotRefreshJob(
 				settlement,
 			};
 		}
-
-		await writeMeasurement(
-			job,
-			actor,
-			"match_snapshot_refresh",
-			startedAt,
-			"completed",
-			{ published: result.published, isEmpty: result.isEmpty },
-		);
 
 		let settlement: SettlementStatus = "settled";
 
@@ -374,6 +365,15 @@ async function runMatchSnapshotRefreshJob(
 		if (completedResult.value === "superseded") {
 			return superseded(job, actor, "match_snapshot_refresh");
 		}
+
+		await writeMeasurement(
+			job,
+			actor,
+			"match_snapshot_refresh",
+			startedAt,
+			"completed",
+			{ published: result.published, isEmpty: result.isEmpty },
+		);
 
 		const change = MatchSnapshotChanges.published({
 			accountId: result.accountId,
@@ -420,14 +420,6 @@ async function runMatchSnapshotRefreshJob(
 			};
 		}
 
-		await writeMeasurement(
-			job,
-			actor,
-			"match_snapshot_refresh",
-			startedAt,
-			"error",
-		);
-
 		const failedResult = await settleMatchSnapshotRefreshJobTerminal(
 			job,
 			"failed",
@@ -445,6 +437,14 @@ async function runMatchSnapshotRefreshJob(
 		} else if (failedResult.value === "superseded") {
 			return superseded(job, actor, "match_snapshot_refresh");
 		}
+
+		await writeMeasurement(
+			job,
+			actor,
+			"match_snapshot_refresh",
+			startedAt,
+			"error",
+		);
 
 		const change = MatchSnapshotChanges.failed({
 			accountId: job.account_id,

@@ -552,6 +552,35 @@ describe("runExtensionSyncJob", () => {
 			PAYLOAD_PATH,
 		);
 	});
+	it("a playlist-tracks phase already started elsewhere is not synced again (regression: a superseded startJob was ignored)", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(
+				jsonBytes({
+					likedSongs: [],
+					playlists: [],
+					playlistTracks: [{ playlistSpotifyId: "p1", tracks: [] }],
+				}),
+			),
+		);
+		mockStartJob.mockResolvedValue(Result.ok("superseded"));
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+		);
+
+		expect(outcome.status).toBe("failed");
+		expect(mockMapWithConcurrency).not.toHaveBeenCalled();
+		expect(mockCompleteJob).not.toHaveBeenCalledWith(
+			PHASE_JOB_IDS.playlist_tracks,
+		);
+		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			"failed",
+			expect.any(String),
+		);
+	});
+
 	it("a lease reclaimed before completion leaves the payload to the reclaiming worker", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
