@@ -27,7 +27,6 @@ const isRelease = process.env.RELEASE === "true";
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 
 const liveTestExcludes = [
-	"**/analysis-pipeline-full-flow.integration.test.ts",
 	"**/lyrics-service.integration.test.ts",
 	"**/playlist-profiling-integration.test.ts",
 ];

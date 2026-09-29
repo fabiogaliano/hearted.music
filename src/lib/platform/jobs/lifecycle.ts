@@ -1,9 +1,7 @@
 /**
  * Job lifecycle service - orchestrates job state transitions with retry and cleanup.
  *
- * Provides two key functions:
  * - startJob: Transitions pending → running with cleanup on failure
- * - finalizeJob: Transitions running → completed/failed based on progress
  *
  * The pending state is important for SQS queue integration - jobs wait in
  * pending status until a worker picks them up and calls startJob().
@@ -15,7 +13,6 @@ import { log } from "@/lib/observability/logger";
 import {
 	getJobById,
 	type Job,
-	type JobProgress,
 	type JobTransition,
 	markClaimedJobTerminal,
 	markJobCompleted,
@@ -98,30 +95,6 @@ export async function startJob(
 	}
 
 	return runningResult;
-}
-
-/**
- * Finalizes a job by marking it completed or failed with retry logic.
- *
- * Decision logic:
- * - Empty input (total === 0) → completed
- * - Any run where not every item failed (`failed < total`) → completed
- * - All failures (`failed === total` and `total > 0`) → failed
- *
- * @param jobId - The job ID to finalize
- * @param progress - The final progress state
- * @param errorMessage - Optional error message for failed jobs
- */
-export async function finalizeJob(
-	jobId: string,
-	progress: JobProgress,
-	errorMessage?: string,
-): Promise<Result<JobTransition, DbError>> {
-	const shouldComplete =
-		progress.total === 0 || progress.failed < progress.total;
-	return shouldComplete
-		? completeJob(jobId)
-		: failJob(jobId, errorMessage ?? "All items failed");
 }
 
 /**

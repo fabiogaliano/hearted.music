@@ -82,32 +82,6 @@ export function getJobs(accountId: string): Promise<Result<Job[], DbError>> {
 	);
 }
 
-export function createJob(
-	accountId: string,
-	type: JobType,
-): Promise<Result<Job, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const initialProgress: JobProgress = {
-		total: 0,
-		done: 0,
-		succeeded: 0,
-		failed: 0,
-	};
-
-	return fromSupabaseSingle(
-		supabase
-			.from("job")
-			.insert({
-				account_id: accountId,
-				type,
-				status: "pending",
-				progress: initialProgress,
-			})
-			.select()
-			.single(),
-	);
-}
-
 export function updateJobProgress(
 	id: string,
 	progress:
