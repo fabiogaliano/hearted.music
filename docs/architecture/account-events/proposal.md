@@ -128,8 +128,7 @@ is provably complete rather than silently omitting them:
 
 | Path | Timer | Why it stays a timer |
 | --- | --- | --- |
-| `src/worker/sweep.ts` | 60 s | Stale-lease reclaim / dead-letter / idle-enrichment recovery — a wall-clock repair path; `NOTIFY` is the wrong tool for "a lease went stale". |
-| `src/worker/poll-match-deck-jobs.ts` (`startMatchDeckJobSweep`) | 60 s | Deck-job stale-lease sweep, same rationale. |
+| `src/worker/sweep.ts` | 60 s | Stale-lease reclaim / dead-letter / idle-enrichment recovery, including deck jobs — a wall-clock repair path; `NOTIFY` is the wrong tool for "a lease went stale". |
 | `src/worker/poll-audio-feature-backfill.ts` (sweep) | 60 s | Audio-backfill stale-lease sweep, same rationale. |
 | `src/worker/execute.ts` (`startHeartbeat`) | 30 s | Per-job lease renewal while a job runs — liveness, not freshness. |
 | `src/worker/keep-alive.ts` | 4 d | DB keep-warm ping; not freshness. |
