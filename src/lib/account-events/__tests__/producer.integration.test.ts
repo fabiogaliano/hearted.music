@@ -72,7 +72,15 @@ describeLocal("writeAccountEvent", () => {
 	});
 
 	it("rolls back safely on error without inserting or notifying", async () => {
-		let notified = false;
+		let notifications = 0;
+
+		// The channel is global and its payload empty, so a commit by any other
+		// account (e.g. a previous suite's trailing write) also notifies. Every
+		// producer notify is paired with an insert in the same transaction, so
+		// foreign rows committed during the window bound the notifications this
+		// rollback is not responsible for.
+		const snapshot = await sql.reserve();
+		await snapshot`CREATE TEMP TABLE seen_event AS SELECT id FROM account_event WHERE account_id <> ${accountId}`;
 
 		const sqlListen = postgres(DATABASE_URL, {
 			prepare: false,
@@ -85,7 +93,7 @@ describeLocal("writeAccountEvent", () => {
 		await sqlListen.listen(
 			NOTIFY_CHANNEL_INSERTED,
 			(_payload) => {
-				notified = true;
+				notifications++;
 			},
 			() => {},
 		);
@@ -107,7 +115,15 @@ describeLocal("writeAccountEvent", () => {
 		// wait for NOTIFY to arrive (it shouldn't)
 		await new Promise((r) => setTimeout(r, 100));
 
-		expect(notified).toBe(false);
+		const [{ foreign_commits }] = await snapshot<
+			{ foreign_commits: number }[]
+		>`SELECT count(*)::int AS foreign_commits FROM account_event e
+			WHERE e.account_id <> ${accountId}
+			AND NOT EXISTS (SELECT 1 FROM seen_event s WHERE s.id = e.id)`;
+		await snapshot`DROP TABLE seen_event`;
+		snapshot.release();
+
+		expect(notifications).toBeLessThanOrEqual(foreign_commits);
 
 		// The previous test inserted one row, so count should still be 1
 		const rows =
