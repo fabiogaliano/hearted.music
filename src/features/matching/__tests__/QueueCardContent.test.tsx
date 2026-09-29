@@ -542,7 +542,14 @@ describe("QueueCardContent whole-card action handlers", () => {
 				connection: "mismatch",
 				withSuggestion: true,
 			});
-			await act(() => harness.matchingProps().onAdd("pl-1"));
+			// onAdd is typed void for Matching, so act can't await it; the
+			// mutation's settle-time navigation release marks the async add done.
+			act(() => {
+				harness.matchingProps().onAdd("pl-1");
+			});
+			await waitFor(() =>
+				expect(harness.sessionActions.releaseNavigation).toHaveBeenCalled(),
+			);
 			return harness;
 		}
 

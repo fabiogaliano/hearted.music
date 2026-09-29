@@ -1,17 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-	createMemoryHistory,
-	createRootRouteWithContext,
-	createRouter,
-	RouterProvider,
-} from "@tanstack/react-router";
+import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activeJobsKeys } from "@/lib/hooks/active-jobs-keys";
 import { accountEventsConnectionKey } from "@/lib/hooks/useAccountEvents";
 import { getActiveJobs } from "@/lib/server/jobs.functions";
 import { startOrResumeMatchDeck } from "@/lib/server/match-deck.functions";
-import { act, render } from "@/test/utils/render";
-import { Route as MatchRoute } from "../match";
+import { act } from "@/test/utils/render";
+import { ACCOUNT_ID, advance, renderMatchRoute } from "./match-route-harness";
 
 /**
  * QueueMatchPage's building-recovery poll (M8): mounts the real /match route
@@ -33,8 +27,6 @@ vi.mock("@/lib/server/settings.functions", () => ({
 
 vi.mock("@/lib/observability/sentry", () => ({ captureRouteError: vi.fn() }));
 
-const ACCOUNT_ID = "acct-1";
-
 // Mirrors BUILDING_POLL_INTERVAL_MS / MAX_BUILDING_POLLS in match.tsx — the
 // literal contract the poll must keep; a deliberate constant change should
 // update this alongside it.
@@ -54,24 +46,7 @@ const READY = {
 	},
 };
 
-// The generated route tree nests /match under /_authenticated; a bare root
-// with the same context shape is all the component and loader read.
-const rootRoute = createRootRouteWithContext<Record<string, unknown>>()();
-const matchRoute = MatchRoute.update({
-	id: "/match",
-	path: "/match",
-	getParentRoute: () => rootRoute,
-} as never);
-
 let queryClient: QueryClient;
-
-async function flush() {
-	await act(() => vi.advanceTimersByTimeAsync(0));
-}
-
-async function advance(ms: number) {
-	await act(() => vi.advanceTimersByTimeAsync(ms));
-}
 
 async function renderMatchPage({
 	firstVisibleMatchReady,
@@ -95,31 +70,12 @@ async function renderMatchPage({
 		);
 	}
 
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([matchRoute]),
-		history: createMemoryHistory({ initialEntries: ["/match"] }),
-		context: {
-			queryClient,
-			session: { accountId: ACCOUNT_ID },
-			account: {},
-			onboardingSession: { status: "complete" },
-		},
-	});
-
-	render(
-		<QueryClientProvider client={queryClient}>
-			<RouterProvider router={router} />
-		</QueryClientProvider>,
-	);
-	await flush();
-	await flush();
+	await renderMatchRoute({ queryClient });
 }
 
 const deckReads = () => vi.mocked(startOrResumeMatchDeck).mock.calls.length;
 
 beforeEach(() => {
-	// The router restores scroll on navigation; jsdom has no scrollTo.
-	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 	vi.useFakeTimers();
 	vi.clearAllMocks();
 	queryClient = new QueryClient({
@@ -195,14 +151,14 @@ describe("M8 — building-recovery poll is bounded, not one-shot", () => {
 		await act(() =>
 			queryClient.invalidateQueries({ queryKey: ["match-deck"] }),
 		);
-		await flush();
+		await advance(0);
 		// A later, distinct building spell (a fresh mid-session publish) must
 		// get its own bounded window, not inherit the old exhausted baseline.
 		vi.mocked(startOrResumeMatchDeck).mockResolvedValue(BUILDING as never);
 		await act(() =>
 			queryClient.invalidateQueries({ queryKey: ["match-deck"] }),
 		);
-		await flush();
+		await advance(0);
 		const readsBeforeSecondSpell = deckReads();
 
 		await advance(BUILDING_POLL_INTERVAL_MS * (MAX_BUILDING_POLLS + 2));
