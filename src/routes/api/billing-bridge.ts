@@ -11,8 +11,8 @@
  * short-circuited as a duplicate. A lease window protects against rows
  * stuck in 'processing' after a server crash mid-dispatch.
  *
- * Upstream contract: billing-service MUST treat 409 as transient-retryable.
- * Full contract: docs/monetization/bridge-retry-contract.md
+ * Upstream contract: billing-service MUST treat 409 as transient-retryable
+ * (in_progress and claim_lost responses below).
  *
  * Guard: Only available when BILLING_ENABLED=true.
  */
