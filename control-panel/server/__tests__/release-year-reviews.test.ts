@@ -7,7 +7,6 @@ import { read, tx } from "../db";
 import { HttpError } from "../http-error";
 import {
 	countReleaseYearBuckets,
-	mapRow,
 	parseReleaseYearQuery,
 	releaseYearReviewsPage,
 	revertReleaseYear,
@@ -15,9 +14,9 @@ import {
 	validateReleaseYear,
 } from "../release-year-reviews";
 
-describe("mapRow → UI shape", () => {
-	it("coerces nulls without throwing", () => {
-		const row = mapRow({
+describe("releaseYearReviewsPage → UI row shape", () => {
+	it("coerces nulls without throwing", async () => {
+		const dbRow = {
 			song_id: "song-2",
 			song_name: "Bare",
 			artist_label: null,
@@ -26,7 +25,10 @@ describe("mapRow → UI shape", () => {
 			release_year: null,
 			release_year_checked_at: null,
 			created_at: "2026-06-15T10:00:00Z",
-		});
+		};
+		vi.mocked(read).mockImplementation((async (text: string) =>
+			/count\(\*\) as total/.test(text) ? [{ total: "1" }] : [dbRow]) as typeof read);
+		const [row] = (await releaseYearReviewsPage(new URL("https://panel.test/api/release-year-reviews"))).rows;
 		expect(row.artistLabel).toBe("");
 		expect(row.albumName).toBeNull();
 		expect(row.imageUrl).toBeNull();

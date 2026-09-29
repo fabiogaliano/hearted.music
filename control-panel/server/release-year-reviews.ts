@@ -46,7 +46,7 @@ export interface ReleaseYearReviewRow {
 
 const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v));
 
-export function mapRow(r: Record<string, unknown>): ReleaseYearReviewRow {
+function mapRow(r: Record<string, unknown>): ReleaseYearReviewRow {
 	return {
 		songId: String(r.song_id),
 		songName: String(r.song_name ?? ""),

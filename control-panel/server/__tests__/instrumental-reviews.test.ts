@@ -6,13 +6,12 @@ import { read, type TxRun, tx } from "../db";
 import {
 	approveInstrumentalReview,
 	instrumentalReviewsPage,
-	mapRow,
 	rejectInstrumentalReview,
 } from "../instrumental-reviews";
 
-describe("mapRow → UI shape", () => {
-	it("coerces nulls without throwing", () => {
-		const row = mapRow({
+describe("instrumentalReviewsPage → UI row shape", () => {
+	it("coerces nulls without throwing", async () => {
+		const dbRow = {
 			id: "rev-2",
 			status: "pending",
 			signal: "instrumentalness",
@@ -25,7 +24,10 @@ describe("mapRow → UI shape", () => {
 			album_name: null,
 			image_url: null,
 			duration_ms: null,
-		});
+		};
+		vi.mocked(read).mockImplementation((async (text: string) =>
+			/count\(\*\) as total/.test(text) ? [{ total: "1" }] : [dbRow]) as typeof read);
+		const [row] = (await instrumentalReviewsPage(new URL("https://panel.test/api/instrumental-reviews"))).rows;
 		expect(row.instrumentalness).toBeNull();
 		expect(row.matchedGenre).toBeNull();
 		expect(row.artistLabel).toBe("");

@@ -57,7 +57,7 @@ export interface LyricsReviewRow {
 
 const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v));
 
-export function mapRow(r: Record<string, unknown>): LyricsReviewRow {
+function mapRow(r: Record<string, unknown>): LyricsReviewRow {
 	return {
 		songId: String(r.song_id),
 		songName: String(r.song_name ?? ""),

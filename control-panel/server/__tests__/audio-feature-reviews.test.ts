@@ -4,11 +4,18 @@ vi.mock("../db");
 vi.mock("@/lib/domains/enrichment/audio-feature-backfill/wake");
 
 import { wakeEnrichmentForSong } from "@/lib/domains/enrichment/audio-feature-backfill/wake";
-import { audioReviewsPage, mapRow, rejectAudioReview } from "../audio-feature-reviews";
+import { audioReviewsPage, rejectAudioReview } from "../audio-feature-reviews";
 import type { TxRun } from "../db";
 import { read, tx } from "../db";
 
-describe("mapRow → UI shape", () => {
+describe("audioReviewsPage → UI row shape", () => {
+	async function pageRow(dbRow: Record<string, unknown>) {
+		vi.mocked(read).mockImplementation((async (text: string) =>
+			/count\(\*\) as total/.test(text) ? [{ total: "1" }] : [dbRow]) as typeof read);
+		const page = await audioReviewsPage(new URL("https://panel.test/api/audio-feature-reviews"));
+		return page.rows[0];
+	}
+
 	const dbRow: Record<string, unknown> = {
 		id: "rev-1",
 		status: "pending",
@@ -43,8 +50,8 @@ describe("mapRow → UI shape", () => {
 		valence: 0.55,
 	};
 
-	it("coerces nulls and missing optional columns without throwing", () => {
-		const row = mapRow({
+	it("coerces nulls and missing optional columns without throwing", async () => {
+		const row = await pageRow({
 			id: "rev-2",
 			status: "pending",
 			source_type: "youtube_url",
@@ -68,10 +75,10 @@ describe("mapRow → UI shape", () => {
 	});
 
 	// The live driver runs postgres.js with fetch_types:false, so array columns
-	// arrive as raw Postgres array-literal STRINGS, not JS arrays. mapRow must
+	// arrive as raw Postgres array-literal STRINGS, not JS arrays. The page must
 	// parse them — otherwise artists/reasons silently render empty in the panel.
-	it("parses Postgres array-literal strings from the type-less driver", () => {
-		const row = mapRow({
+	it("parses Postgres array-literal strings from the type-less driver", async () => {
+		const row = await pageRow({
 			...dbRow,
 			artists: "{Oasis}",
 			match_reasons: '{"title match","duration within 3s"}',
@@ -82,8 +89,8 @@ describe("mapRow → UI shape", () => {
 		expect(row.clipStartsSeconds).toEqual([10, 90, 170]);
 	});
 
-	it("handles empty and comma-bearing array literals", () => {
-		const row = mapRow({
+	it("handles empty and comma-bearing array literals", async () => {
+		const row = await pageRow({
 			...dbRow,
 			artists: '{"Tyler, The Creator","Kali Uchis"}',
 			match_reasons: "{}",

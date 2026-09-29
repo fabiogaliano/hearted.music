@@ -291,6 +291,17 @@ describe("PostHog Adapter", () => {
 		}
 	});
 
+	it("reports unconfigured source status when the API key is missing", async () => {
+		vi.spyOn(prodCreds, "getPostHogCreds").mockReturnValue({
+			apiKey: null,
+			projectId: "185471",
+			apiHost: "https://eu.posthog.com",
+		});
+
+		const status = await postHogSourceStatus();
+		expect(status.status).toBe("unconfigured");
+	});
+
 	it("queries postHogSourceStatus successfully", async () => {
 		globalThis.fetch = vi.fn().mockResolvedValue(
 			new Response(

@@ -180,14 +180,3 @@ export type SpotifyClient = {
 		isPublic: boolean,
 	) => Promise<SetPlaylistVisibilityResult>;
 };
-
-// --- Unsupported Operation Error ---
-
-export class UnsupportedOperationError extends Error {
-	readonly code = "UNSUPPORTED_OPERATION" as const;
-
-	constructor(operation: string) {
-		super(`Unsupported operation: ${operation}`);
-		this.name = "UnsupportedOperationError";
-	}
-}

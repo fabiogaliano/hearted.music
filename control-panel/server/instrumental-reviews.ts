@@ -54,7 +54,7 @@ export interface InstrumentalReviewRow {
 
 const numOrNull = (v: unknown): number | null => (v == null ? null : Number(v));
 
-export function mapRow(r: Record<string, unknown>): InstrumentalReviewRow {
+function mapRow(r: Record<string, unknown>): InstrumentalReviewRow {
 	return {
 		id: String(r.id),
 		status: r.status as InstrumentalReviewRow["status"],

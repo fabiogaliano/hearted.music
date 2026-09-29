@@ -147,7 +147,7 @@ function asRecord(v: unknown): Record<string, unknown> {
 		: {};
 }
 
-export function mapRow(r: Record<string, unknown>): AudioFeatureReviewRow {
+function mapRow(r: Record<string, unknown>): AudioFeatureReviewRow {
 	return {
 		id: String(r.id),
 		status: r.status as AudioFeatureReviewRow["status"],
