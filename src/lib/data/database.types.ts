@@ -726,6 +726,7 @@ export type Database = {
 			};
 			billing_bridge_event: {
 				Row: {
+					claim_token: string | null;
 					created_at: string;
 					error_message: string | null;
 					event_kind: string;
@@ -736,6 +737,7 @@ export type Database = {
 					updated_at: string;
 				};
 				Insert: {
+					claim_token?: string | null;
 					created_at?: string;
 					error_message?: string | null;
 					event_kind: string;
@@ -746,6 +748,7 @@ export type Database = {
 					updated_at?: string;
 				};
 				Update: {
+					claim_token?: string | null;
 					created_at?: string;
 					error_message?: string | null;
 					event_kind?: string;
@@ -3532,6 +3535,7 @@ export type Database = {
 			};
 			claim_billing_bridge_event: {
 				Args: {
+					p_claim_token?: string;
 					p_event_kind: string;
 					p_lease_ms: number;
 					p_stripe_event_id: string;
@@ -4300,11 +4304,15 @@ export type Database = {
 				};
 			};
 			mark_billing_bridge_event_failed: {
-				Args: { p_error_message: string; p_stripe_event_id: string };
+				Args: {
+					p_claim_token?: string;
+					p_error_message: string;
+					p_stripe_event_id: string;
+				};
 				Returns: undefined;
 			};
 			mark_billing_bridge_event_processed: {
-				Args: { p_stripe_event_id: string };
+				Args: { p_claim_token?: string; p_stripe_event_id: string };
 				Returns: undefined;
 			};
 			mark_dead_extension_sync_jobs: {

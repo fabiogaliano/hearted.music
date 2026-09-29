@@ -123,10 +123,14 @@ export const Route = createFileRoute("/api/billing-bridge")({
 				}
 
 				const supabase = createAdminSupabaseClient();
+				// Finalizers only apply while this token still owns the row, so a
+				// run that outlives its lease can't overwrite a reclaimer's outcome.
+				const claimToken = crypto.randomUUID();
 				const claim = await supabase.rpc("claim_billing_bridge_event", {
 					p_stripe_event_id: payload.stripe_event_id,
 					p_event_kind: payload.event_kind,
 					p_lease_ms: BRIDGE_PROCESSING_LEASE_MS,
+					p_claim_token: claimToken,
 				});
 
 				if (claim.error || !isClaimOutcome(claim.data)) {
@@ -172,6 +176,7 @@ export const Route = createFileRoute("/api/billing-bridge")({
 						{
 							p_stripe_event_id: payload.stripe_event_id,
 							p_error_message: message,
+							p_claim_token: claimToken,
 						},
 					);
 					if (failMark.error) {
@@ -196,7 +201,10 @@ export const Route = createFileRoute("/api/billing-bridge")({
 
 				const processMark = await supabase.rpc(
 					"mark_billing_bridge_event_processed",
-					{ p_stripe_event_id: payload.stripe_event_id },
+					{
+						p_stripe_event_id: payload.stripe_event_id,
+						p_claim_token: claimToken,
+					},
 				);
 				if (processMark.error) {
 					// The handler succeeded but we couldn't record it. A retry
