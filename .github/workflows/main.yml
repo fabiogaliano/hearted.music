@@ -4,6 +4,15 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Deploys are gated on the triggering push's diff, so a push whose worker
+  # changes failed CI, fixed by a push that doesn't touch the worker, never
+  # ships the worker. This redeploys main's worker without a fake change.
+  workflow_dispatch:
+    inputs:
+      deploy_worker:
+        description: Redeploy the worker and gateway from main
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -350,9 +359,14 @@ jobs:
       && needs.verify.result == 'success'
       && (needs.db-security.result == 'success' || needs.db-security.result == 'skipped')
       && (needs.migrate-prod.result == 'success' || needs.migrate-prod.result == 'skipped')
-      && github.event_name == 'push'
-      && needs.detect.outputs.code == 'true'
-      && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
+      && (
+        (github.event_name == 'push'
+          && needs.detect.outputs.code == 'true'
+          && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true'))
+        || (github.event_name == 'workflow_dispatch'
+          && github.ref == 'refs/heads/main'
+          && inputs.deploy_worker)
+      )
     runs-on: ubuntu-latest
     environment: production-worker
     timeout-minutes: 10
