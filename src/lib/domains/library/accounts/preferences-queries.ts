@@ -105,22 +105,6 @@ export async function getOrCreatePreferences(
 	);
 }
 
-export async function isOnboardingComplete(
-	accountId: string,
-): Promise<Result<boolean, DbError>> {
-	const result = await getPreferences(accountId);
-
-	if (Result.isError(result)) {
-		return Result.err(result.error);
-	}
-
-	if (result.value === null) {
-		return Result.ok(false);
-	}
-
-	return Result.ok(result.value.onboarding_completed_at !== null);
-}
-
 /**
  * Updates the theme for an account.
  * Creates a preferences record if one doesn't exist.

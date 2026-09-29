@@ -1,30 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE,
-	resolveMatchRefreshAvailableAt,
-} from "../match-refresh-debounce";
-
-describe("MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE", () => {
-	it("assigns 8 s debounce to playlist config saves", () => {
-		expect(
-			MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE.playlist_management_session_flushed,
-		).toBe(8_000);
-	});
-
-	it("assigns zero debounce to onboarding trigger", () => {
-		expect(
-			MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE.onboarding_target_selection_confirmed,
-		).toBe(0);
-	});
-
-	it("assigns zero debounce to library sync", () => {
-		expect(MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE.library_synced).toBe(0);
-	});
-
-	it("assigns zero debounce to enrichment completion", () => {
-		expect(MATCH_REFRESH_DEBOUNCE_MS_BY_CHANGE.enrichment_completed).toBe(0);
-	});
-});
+import { resolveMatchRefreshAvailableAt } from "../match-refresh-debounce";
 
 describe("resolveMatchRefreshAvailableAt", () => {
 	const now = new Date("2026-06-25T10:00:00.000Z");

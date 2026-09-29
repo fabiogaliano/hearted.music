@@ -1,8 +1,6 @@
 /**
- * Integration tests for onboarding flow.
- *
- * Tests the complete user journey through onboarding steps.
- * Mocks server functions and job progress to simulate the full flow.
+ * Onboarding step-shell wiring: which phaseJobIds source reaches SyncingStep
+ * when navigation state and the DB snapshot disagree.
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +17,7 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import { render, screen, within } from "@/test/utils/render";
+import { render, screen } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 
 const mockSaveThemePreference = vi.fn();
@@ -105,25 +103,5 @@ describe("Onboarding Flow", () => {
 		expect(screen.getByTestId("syncing-step-phase-job-ids")).toHaveTextContent(
 			"null",
 		);
-	});
-
-	it("renders welcome step with app branding", () => {
-		renderOnboarding("welcome", createMockOnboardingData());
-
-		const stepContainer = document.querySelector('[data-step="welcome"]');
-		expect(stepContainer).toBeInTheDocument();
-
-		const container = within(stepContainer as HTMLElement);
-		expect(container.getByText(/hearted/i)).toBeInTheDocument();
-	});
-
-	it("renders pick-color step with theme options", () => {
-		renderOnboarding("pick-color", createMockOnboardingData());
-
-		const stepContainer = document.querySelector('[data-step="pick-color"]');
-		expect(stepContainer).toBeInTheDocument();
-
-		const container = within(stepContainer as HTMLElement);
-		expect(container.getByText(/Pick your/i)).toBeInTheDocument();
 	});
 });

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	MATCH_STORED_PAIRS_PER_PLAYLIST,
-	MATCH_STORED_PAIRS_PER_SONG,
-	retainStoredMatchPairs,
-} from "../retention";
+import { retainStoredMatchPairs } from "../retention";
 import type { MatchResult } from "../types";
 
 const ZERO_FACTORS = { embedding: 0, audio: 0, genre: 0 };
@@ -208,10 +204,5 @@ describe("retainStoredMatchPairs", () => {
 		expect(keys).toContain("s1:p1");
 		expect(keys).toContain("s2:p1");
 		expect(keys).not.toContain("s3:p1");
-	});
-
-	it("constants equal DEFAULT_MATCHING_CONFIG.maxResultsPerSong (10)", () => {
-		expect(MATCH_STORED_PAIRS_PER_SONG).toBe(10);
-		expect(MATCH_STORED_PAIRS_PER_PLAYLIST).toBe(10);
 	});
 });

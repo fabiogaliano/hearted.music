@@ -139,26 +139,6 @@ export async function registerPlaylist(
 	return sendSpotifyCommand("registerPlaylist", { playlistUri, userId });
 }
 
-export async function updatePlaylist(
-	playlistId: string,
-	attrs: { name?: string; description?: string },
-): Promise<CommandResponse<UpdatePlaylistResult>> {
-	return sendSpotifyCommand("updatePlaylist", {
-		playlistId,
-		...attrs,
-	});
-}
-
-export async function deletePlaylist(
-	playlistUri: string,
-	userId: string,
-): Promise<CommandResponse<DeletePlaylistResult>> {
-	return sendSpotifyCommand("deletePlaylist", {
-		playlistUri,
-		userId,
-	});
-}
-
 /**
  * Sets a playlist's cover image. `imageBase64` is a JPEG as base64 (raw or a
  * `data:image/...;base64,` data URL), max 10MB — the extension enforces the limit

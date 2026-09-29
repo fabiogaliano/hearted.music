@@ -1,30 +1,20 @@
 /**
  * Composes extension command execution with server acknowledgement
- * for playlist-level writes (create, update, delete).
+ * for playlist creation.
  *
  * Two-step model: extension executes the Spotify mutation,
  * then the server persists the confirmed outcome into app DB.
  */
 
-import {
-	acknowledgePlaylistCreate,
-	acknowledgePlaylistDelete,
-	acknowledgePlaylistUpdate,
-} from "@/lib/server/playlists.functions";
+import { acknowledgePlaylistCreate } from "@/lib/server/playlists.functions";
 import type { CommandResponse } from "../../../shared/spotify-command-protocol";
-import {
-	createPlaylist,
-	deletePlaylist,
-	updatePlaylist,
-} from "./spotify-client";
+import { createPlaylist } from "./spotify-client";
 
 type CreatePlaylistResult = {
 	uri: string;
 	revision: string;
 	rootlistRegistered: boolean;
 };
-type UpdatePlaylistResult = { revision: string };
-type DeletePlaylistResult = { revision: string };
 
 export type AcknowledgedResult<T> =
 	| { ok: true; data: T; acknowledged: true }
@@ -127,60 +117,4 @@ export async function createPlaylistAcknowledged(
 		rootlistRegistered: true,
 		acknowledgeError: ack.acknowledgeError,
 	};
-}
-
-export async function updatePlaylistAcknowledged(
-	playlistId: string,
-	attrs: {
-		name?: string;
-		description?: string;
-		songCount?: number;
-		imageUrl?: string | null;
-	},
-): Promise<AcknowledgedResult<UpdatePlaylistResult>> {
-	const response = await updatePlaylist(playlistId, {
-		name: attrs.name,
-		description: attrs.description,
-	});
-
-	if (!response.ok) {
-		return { ok: false, commandResponse: response };
-	}
-
-	try {
-		await acknowledgePlaylistUpdate({
-			data: { spotifyId: playlistId, ...attrs },
-		});
-		return { ok: true, data: response.data, acknowledged: true };
-	} catch (error) {
-		return {
-			ok: true,
-			data: response.data,
-			acknowledged: false,
-			acknowledgeError: error,
-		};
-	}
-}
-
-export async function deletePlaylistAcknowledged(
-	playlistUri: string,
-	userId: string,
-): Promise<AcknowledgedResult<DeletePlaylistResult>> {
-	const response = await deletePlaylist(playlistUri, userId);
-
-	if (!response.ok) {
-		return { ok: false, commandResponse: response };
-	}
-
-	try {
-		await acknowledgePlaylistDelete({ data: { uri: playlistUri } });
-		return { ok: true, data: response.data, acknowledged: true };
-	} catch (error) {
-		return {
-			ok: true,
-			data: response.data,
-			acknowledged: false,
-			acknowledgeError: error,
-		};
-	}
 }

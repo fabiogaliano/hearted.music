@@ -34,7 +34,7 @@ export const MatchingHeader = memo(function MatchingHeader({
 				{/* Focus moves to document.body after route navigation because
 				    pendingComponent remounts the route boundary mid-transition. No
 				    restoration is implemented — this is the accepted behavior (MSR-30
-				    option b); see MatchingHeader.test.tsx for coverage. */}
+				    option b). */}
 				<MatchModeToggle
 					mode={mode}
 					disabled={disabled}

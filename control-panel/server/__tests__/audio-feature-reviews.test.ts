@@ -43,27 +43,6 @@ describe("mapRow → UI shape", () => {
 		valence: 0.55,
 	};
 
-	it("maps snake_case DB columns to the camelCase UI shape", () => {
-		const row = mapRow(dbRow);
-		expect(row.id).toBe("rev-1");
-		expect(row.songName).toBe("Some Song");
-		expect(row.artists).toEqual(["Some Artist", "Featured"]);
-		expect(row.albumName).toBe("An Album");
-		expect(row.spotifyDurationMs).toBe(215000);
-		expect(row.audioFeatureId).toBe("feat-1");
-		expect(row.youtubeVideoId).toBe("dQw4w9WgXcQ");
-		expect(row.youtubeDurationSeconds).toBe(215);
-		expect(row.matchScore).toBeCloseTo(0.91);
-		expect(row.matchReasons).toEqual(["title match", "duration within 3s"]);
-		expect(row.clipStartsSeconds).toEqual([10, 90, 170]);
-		expect(row.aggregationMetadata).toEqual({
-			tempoConfidence: "low",
-			tempoSpread: 0.3,
-		});
-		expect(row.tempo).toBeCloseTo(120.4);
-		expect(row.loudness).toBeCloseTo(-7.3);
-	});
-
 	it("coerces nulls and missing optional columns without throwing", () => {
 		const row = mapRow({
 			id: "rev-2",

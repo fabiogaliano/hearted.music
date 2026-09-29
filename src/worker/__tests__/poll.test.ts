@@ -2,8 +2,8 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
-import type { Job } from "@/lib/platform/jobs/repository";
 import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
+import { makeJob } from "@/test/fixtures";
 import { claimAndDispatchLibraryProcessingJobs } from "../poll";
 
 vi.mock("@/lib/platform/jobs/library-processing-queue", () => ({
@@ -32,27 +32,6 @@ vi.mock("../config", () => ({
 vi.mock("../execute", () => ({
 	startHeartbeat: vi.fn(() => ({ stop: vi.fn() })),
 }));
-
-function makeJob(): Job {
-	return {
-		id: "job-1",
-		account_id: "acct-1",
-		type: "enrichment",
-		status: "pending",
-		progress: null,
-		error: null,
-		attempts: 0,
-		max_attempts: 3,
-		queue_priority: 0,
-		available_at: "2026-07-08T00:00:00Z",
-		started_at: null,
-		heartbeat_at: null,
-		completed_at: null,
-		satisfies_requested_at: null,
-		created_at: "2026-07-08T00:00:00Z",
-		updated_at: "2026-07-08T00:00:00Z",
-	};
-}
 
 describe("claimAndDispatchLibraryProcessingJobs", () => {
 	beforeEach(() => {

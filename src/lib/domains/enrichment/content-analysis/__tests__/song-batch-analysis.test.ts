@@ -411,22 +411,6 @@ describe("analyzeSongBatch", () => {
 		});
 	});
 
-	describe("does not touch job lifecycle", () => {
-		it("the module source does not import job lifecycle modules", async () => {
-			const fs = await import("node:fs");
-			const path = await import("node:path");
-			const source = fs.readFileSync(
-				path.resolve(__dirname, "../song-batch-analysis.ts"),
-				"utf-8",
-			);
-			expect(source).not.toContain("@/lib/platform/jobs/lifecycle");
-			expect(source).not.toContain("@/lib/data/jobs");
-			expect(source).not.toContain("createJob");
-			expect(source).not.toContain("startJob");
-			expect(source).not.toContain("finalizeJob");
-		});
-	});
-
 	describe("createSongBatchAnalyzerDeps", () => {
 		it("rejects invalid concurrency before creating provider services", () => {
 			const result = createSongBatchAnalyzerDeps({ concurrency: 0 });

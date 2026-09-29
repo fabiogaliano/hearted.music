@@ -61,47 +61,6 @@ export function getActiveEnrichmentJob(
 	return getActiveJob(accountId, "enrichment");
 }
 
-export async function createEnrichmentJob(
-	accountId: string,
-	progress: EnrichmentChunkProgress,
-): Promise<Result<Job, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("job")
-			.insert({
-				account_id: accountId,
-				type: "enrichment" as JobType,
-				status: "pending" as const,
-				progress: enrichmentProgressToJson(progress),
-			})
-			.select()
-			.single(),
-	);
-}
-
-export async function getOrCreateEnrichmentJob(
-	accountId: string,
-	progress: EnrichmentChunkProgress,
-): Promise<Result<Job, DbError>> {
-	const existing = await getActiveEnrichmentJob(accountId);
-	if (Result.isError(existing)) return existing;
-	if (existing.value) {
-		const job: Job = existing.value;
-		return Result.ok(job);
-	}
-
-	const created = await createEnrichmentJob(accountId, progress);
-
-	if (Result.isError(created) && created.error._tag === "ConstraintError") {
-		const retry = await getActiveEnrichmentJob(accountId);
-		if (Result.isError(retry)) return retry;
-		if (retry.value) return Result.ok(retry.value);
-	}
-
-	return created;
-}
-
 export async function ensureEnrichmentJob(opts: {
 	accountId: string;
 	satisfiesRequestedAt: string;

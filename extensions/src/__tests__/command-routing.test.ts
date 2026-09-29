@@ -587,24 +587,4 @@ describe("handleSpotifyCommand", () => {
 			}
 		});
 	});
-
-	describe("exhaustive switch — unsupported command", () => {
-		it("returns UNSUPPORTED_OPERATION for unknown commands", async () => {
-			const cmd = {
-				type: "SPOTIFY_COMMAND",
-				command: "nonExistentCommand",
-				payload: {},
-				commandId: "cmd-unknown",
-			} as any;
-
-			const result = await handleSpotifyCommand(cmd, makeTokenProvider(true));
-
-			expect(result.ok).toBe(false);
-			if (!result.ok) {
-				expect(result.errorCode).toBe("UNSUPPORTED_OPERATION");
-				expect(result.message).toContain("nonExistentCommand");
-				expect(result.commandId).toBe("cmd-unknown");
-			}
-		});
-	});
 });

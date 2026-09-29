@@ -11,6 +11,7 @@ import type {
 	LibraryProcessingApplyOutcome,
 	LibraryProcessingState,
 } from "@/lib/workflows/library-processing/types";
+import { makeJob } from "@/test/fixtures";
 import { runSweepTick, type SweepDeps, startSweep } from "../sweep";
 
 vi.mock("@/lib/observability/logger", () => ({
@@ -26,27 +27,6 @@ const captureException = vi.fn();
 vi.mock("@sentry/bun", () => ({
 	captureException: (...args: unknown[]) => captureException(...args),
 }));
-
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: overrides.id ?? "job-1",
-		account_id: "acct-1",
-		type: "enrichment",
-		status: "pending",
-		attempts: 0,
-		max_attempts: 3,
-		progress: null,
-		queue_priority: null,
-		error: null,
-		heartbeat_at: null,
-		started_at: null,
-		completed_at: null,
-		satisfies_requested_at: null,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
-		...overrides,
-	} as Job;
-}
 
 function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
 	return {

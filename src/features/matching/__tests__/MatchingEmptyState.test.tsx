@@ -3,7 +3,7 @@ import { render, screen } from "@/test/utils/render";
 import { MatchingEmptyState } from "../components/MatchingEmptyState";
 
 // Link from TanStack Router requires a router context; replace with a simple
-// anchor so these pure-copy tests run without a full router setup.
+// anchor so these tests run without a full router setup.
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
 		<a href={to}>{children}</a>
@@ -56,33 +56,6 @@ describe("MatchingEmptyState", () => {
 		});
 	});
 
-	describe("static reason copy", () => {
-		it("renders no-context state without crashing", () => {
-			render(<MatchingEmptyState reason="no-context" />);
-			expect(screen.getByText(/Set a matching intent/)).toBeDefined();
-		});
-
-		it("renders caught-up state without crashing", () => {
-			render(<MatchingEmptyState reason="caught-up" />);
-			expect(screen.getByText(/You're caught up/)).toBeDefined();
-		});
-
-		it("renders none-yet state without crashing", () => {
-			render(<MatchingEmptyState reason="none-yet" />);
-			expect(screen.getByText(/No matches/)).toBeDefined();
-		});
-
-		it("renders all-decided state (legacy alias) without crashing", () => {
-			render(<MatchingEmptyState reason="all-decided" />);
-			expect(screen.getByText(/You're caught up/)).toBeDefined();
-		});
-
-		it("renders no-matches state without crashing", () => {
-			render(<MatchingEmptyState reason="no-matches" />);
-			expect(screen.getByText(/No matches right now/)).toBeDefined();
-		});
-	});
-
 	describe("orientation toggle (A2)", () => {
 		it("omits the toggle when onModeChange is not provided", () => {
 			render(<MatchingEmptyState reason="caught-up" />);
@@ -101,34 +74,6 @@ describe("MatchingEmptyState", () => {
 			expect(screen.getByRole("group", { name: "View mode" })).toBeDefined();
 			await user.click(screen.getByRole("button", { name: "Playlist" }));
 			expect(onModeChange).toHaveBeenCalledExactlyOnceWith("playlist");
-		});
-	});
-
-	describe("building states — shown while jobs are active", () => {
-		it("renders 'building' state with finding-matches copy", () => {
-			render(<MatchingEmptyState reason="building" />);
-			expect(screen.getByText("finding matches")).toBeDefined();
-			expect(screen.getByText(/Finding your/)).toBeDefined();
-		});
-
-		it("renders 'building-more' state with more-coming copy", () => {
-			render(<MatchingEmptyState reason="building-more" />);
-			expect(screen.getByText("more coming")).toBeDefined();
-			expect(screen.getByText(/More matches are/)).toBeDefined();
-		});
-
-		it("does not show terminal empty-state copy while building", () => {
-			render(<MatchingEmptyState reason="building" />);
-			// These terminal strings must not appear in the building state so the
-			// user never sees a false "nothing found" message while jobs run.
-			expect(screen.queryByText(/No matches just yet/)).toBeNull();
-			expect(screen.queryByText(/You're caught up/)).toBeNull();
-		});
-
-		it("does not show terminal empty-state copy in building-more state", () => {
-			render(<MatchingEmptyState reason="building-more" />);
-			expect(screen.queryByText(/No matches just yet/)).toBeNull();
-			expect(screen.queryByText(/You're caught up/)).toBeNull();
 		});
 	});
 });

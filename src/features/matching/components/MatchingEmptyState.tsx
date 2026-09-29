@@ -7,12 +7,8 @@ import type { Reason } from "../queue-helpers";
 import type { MatchViewMode } from "../types";
 import { MatchModeToggle } from "./MatchModeToggle";
 
-// "no-matches" and "all-decided" are dead branches kept only as internal
-// fallbacks so the staticCopy map and its tests remain consistent.
-type ComponentReason = Reason | "no-matches" | "all-decided";
-
 interface Props {
-	reason: ComponentReason;
+	reason: Reason;
 	// Only meaningful for reason="filtered": entitled, undecided review items
 	// whose only matches sit below the user's strictness bar.
 	hiddenCount?: number;
@@ -49,24 +45,6 @@ const staticCopy = {
 		headline: ["No matches", "just yet."],
 		body: "We looked through your library and nothing lined up with your playlists this time. As it grows, fresh matches will land here.",
 		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
-	},
-	// Legacy alias — same display as caught-up, kept so old route branches still compile.
-	"all-decided": {
-		overline: "all caught up",
-		headline: ["You're caught up."],
-		body: "New matches will appear here after your next sync.",
-		link: { to: "/", hash: undefined, search: undefined, label: "Back home" },
-	},
-	"no-matches": {
-		overline: "quiet in here",
-		headline: ["No matches right now."],
-		body: "Some songs may be waiting just below your strictness setting.",
-		link: {
-			to: "/settings",
-			hash: "settings-section-matching",
-			search: { from: "match" as const },
-			label: "Adjust strictness",
-		},
 	},
 	// Shown while enrichment or match-refresh is running and no visible card
 	// has appeared yet — prevents a false final-empty state during first setup.

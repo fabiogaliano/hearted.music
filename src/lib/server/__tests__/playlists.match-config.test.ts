@@ -66,9 +66,7 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 	getPlaylistBySpotifyId: vi.fn(),
 	getPlaylistSongsPage: vi.fn(),
-	deletePlaylist: vi.fn(),
 	setPlaylistTarget: vi.fn(),
-	updatePlaylistMetadata: vi.fn(),
 	updatePlaylistGenrePills: vi.fn(),
 	updatePlaylistMatchIntent: (...args: unknown[]) =>
 		mockUpdatePlaylistMatchIntent(...args),

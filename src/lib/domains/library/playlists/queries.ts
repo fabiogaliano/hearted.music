@@ -7,12 +7,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type {
-	Json,
-	Tables,
-	TablesInsert,
-	TablesUpdate,
-} from "@/lib/data/database.types";
+import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
@@ -214,20 +209,6 @@ export function upsertPlaylists(
 }
 
 /**
- * Deletes a playlist by ID, scoped to the owning account.
- * Note: This cascades to playlist_song due to FK constraint.
- */
-export function deletePlaylist(
-	accountId: string,
-	id: string,
-): Promise<Result<null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMaybe(
-		supabase.from("playlist").delete().eq("id", id).eq("account_id", accountId),
-	);
-}
-
-/**
  * Deletes multiple playlists by ID in a single statement, scoped to the
  * owning account. Replaces per-row deletes in sync flows.
  */
@@ -318,55 +299,6 @@ export async function setPlaylistTargets(
 	}
 
 	return Result.ok(null);
-}
-
-/**
- * Updates acknowledged playlist metadata for a playlist identified by
- * (account_id, spotify_id).
- * Only the provided fields change; all other fields are preserved.
- */
-export function updatePlaylistMetadata(
-	accountId: string,
-	spotifyId: string,
-	metadata: {
-		name?: string;
-		description?: string | null;
-		song_count?: number;
-		image_url?: string | null;
-	},
-): Promise<Result<Playlist, DbError>> {
-	const fields: Pick<
-		TablesUpdate<"playlist">,
-		"name" | "description" | "song_count" | "image_url"
-	> = {};
-	if (metadata.name !== undefined) fields.name = metadata.name;
-	if (metadata.description !== undefined)
-		fields.description = metadata.description;
-	if (metadata.song_count !== undefined)
-		fields.song_count = metadata.song_count;
-	if (metadata.image_url !== undefined) fields.image_url = metadata.image_url;
-
-	if (Object.keys(fields).length === 0) {
-		return Promise.resolve(
-			Result.err(
-				new DatabaseError({
-					code: "EMPTY_UPDATE",
-					message: "No fields to update",
-				}),
-			),
-		);
-	}
-
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("playlist")
-			.update(fields)
-			.eq("account_id", accountId)
-			.eq("spotify_id", spotifyId)
-			.select()
-			.single(),
-	);
 }
 
 /**

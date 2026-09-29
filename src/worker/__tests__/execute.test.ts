@@ -1,10 +1,10 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "@/lib/platform/jobs/repository";
 import type {
 	MatchSnapshotRefreshOutcome,
 	MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
+import { makeJob } from "@/test/fixtures";
 import { executeMatchSnapshotRefreshJob } from "../execute";
 
 const {
@@ -62,15 +62,10 @@ vi.mock("../posthog-capture", () => ({
 	captureWorkerEvent: (...args: unknown[]) => mockCaptureWorkerEvent(...args),
 }));
 
-function makeJob(): Job {
-	return {
-		id: "job-1",
-		account_id: "acct-1",
-		progress: { plan: { needsTargetSongEnrichment: false } },
-		satisfies_requested_at: null,
-		// Only the four fields above are read by executeMatchSnapshotRefreshJob.
-	} as unknown as Job;
-}
+const refreshJob = makeJob({
+	type: "match_snapshot_refresh",
+	progress: { plan: { needsTargetSongEnrichment: false } },
+});
 
 function makeResult(
 	overrides: Partial<MatchSnapshotRefreshResult> = {},
@@ -114,7 +109,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult(),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		expect(mockCaptureWorkerEvent).toHaveBeenCalledWith({
 			distinctId: "acct-1",
@@ -141,7 +136,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			throw captureError;
 		});
 
-		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		// The snapshot is already published — analytics failure must not change the
 		// job outcome.
@@ -165,7 +160,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			status: "superseded",
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		expect(result.status).toBe("superseded");
 		expect(mockCaptureWorkerEvent).not.toHaveBeenCalled();
@@ -178,7 +173,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult(),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(2);
 		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
@@ -208,7 +203,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			Result.err(new Error("deck enqueue failed")),
 		);
 
-		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		expect(result.status).toBe("published");
 		// One Sentry capture per orientation whose enqueue failed — never a throw.
@@ -236,7 +231,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			},
 		);
 
-		const result = await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		// The failed orientation must never enqueue a hash-less (pre-M1) key —
 		// it is skipped entirely, not degraded to the old dedupe-prone key.
@@ -274,7 +269,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult({ published: false, snapshotId: null, noOp: true }),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(makeJob(), "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
 
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});

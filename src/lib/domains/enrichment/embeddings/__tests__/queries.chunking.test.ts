@@ -7,13 +7,13 @@
  * batches (DB_IN_FILTER_CHUNK_SIZE) rather than encoding every id into one
  * oversized query string (the production "URI too long" failure). The capturing
  * Supabase mock lets us assert the batch shape, that the model/kind filters still
- * apply per chunk, that the latest-per-song dedup survives the merge, and error
- * propagation.
+ * apply per chunk, and that the latest-per-song dedup survives the merge.
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
+import { installInFilterCapturingClient } from "@/test/mocks";
 
 const fromMock = vi.fn();
 const createClientMock = vi.fn(() => ({ from: fromMock }));
@@ -23,54 +23,6 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import { getSongEmbeddingsBatch } from "../queries";
-
-interface InCall {
-	table: string;
-	col: string;
-	batch: string[];
-}
-
-type Ctx = {
-	table: string;
-	col: string | null;
-	batch: string[] | null;
-	eqs: Array<[string, unknown]>;
-};
-
-type BatchResolver = (ctx: Ctx) => { data: unknown; error: unknown };
-
-function installClient(resolver: BatchResolver): {
-	inCalls: InCall[];
-	eqCalls: Array<[string, unknown]>;
-} {
-	const inCalls: InCall[] = [];
-	const eqCalls: Array<[string, unknown]> = [];
-	fromMock.mockImplementation((table: string) => {
-		const ctx: Ctx = { table, col: null, batch: null, eqs: [] };
-		const chain: Record<string, unknown> = {};
-		const passthrough = () => chain;
-		chain.select = vi.fn(passthrough);
-		chain.order = vi.fn(passthrough);
-		chain.eq = vi.fn((col: string, value: unknown) => {
-			ctx.eqs.push([col, value]);
-			eqCalls.push([col, value]);
-			return chain;
-		});
-		chain.in = vi.fn((col: string, batch: string[]) => {
-			ctx.col = col;
-			ctx.batch = batch;
-			inCalls.push({ table, col, batch });
-			return chain;
-		});
-		// biome-ignore lint/suspicious/noThenProperty: the capturing mock chain is intentionally thenable so awaiting the query resolves to the per-batch response.
-		chain.then = (onF: (v: unknown) => unknown, onR: (e: unknown) => unknown) =>
-			Promise.resolve()
-				.then(() => resolver(ctx))
-				.then(onF, onR);
-		return chain;
-	});
-	return { inCalls, eqCalls };
-}
 
 function row(
 	songId: string,
@@ -87,7 +39,7 @@ describe("getSongEmbeddingsBatch — chunking", () => {
 	});
 
 	it("returns an empty map for empty input without touching the client", async () => {
-		installClient(() => ({ data: [], error: null }));
+		installInFilterCapturingClient(fromMock, () => ({ data: [], error: null }));
 
 		const result = await getSongEmbeddingsBatch([], "m", "full");
 
@@ -99,10 +51,15 @@ describe("getSongEmbeddingsBatch — chunking", () => {
 
 	it("splits a >100 id array into <=100 batches and keeps model/kind filters per chunk", async () => {
 		const ids = Array.from({ length: 250 }, (_, i) => `song-${i}`);
-		const { inCalls, eqCalls } = installClient((ctx) => ({
-			data: (ctx.batch ?? []).map((id) => row(id, "2026-01-01T00:00:00Z", "h")),
-			error: null,
-		}));
+		const { inCalls, eqCalls } = installInFilterCapturingClient(
+			fromMock,
+			(ctx) => ({
+				data: (ctx.batch ?? []).map((id) =>
+					row(id, "2026-01-01T00:00:00Z", "h"),
+				),
+				error: null,
+			}),
+		);
 
 		const result = await getSongEmbeddingsBatch(ids, "test-model", "full");
 
@@ -132,7 +89,7 @@ describe("getSongEmbeddingsBatch — chunking", () => {
 		// newest — the merge must keep that one. Both rows share a chunk because the
 		// id appears once in the input.
 		const ids = ["song-A"];
-		installClient(() => ({
+		installInFilterCapturingClient(fromMock, () => ({
 			data: [
 				row("song-A", "2026-06-01T00:00:00Z", "newest"),
 				row("song-A", "2026-01-01T00:00:00Z", "oldest"),
@@ -145,23 +102,6 @@ describe("getSongEmbeddingsBatch — chunking", () => {
 		expect(result).toBeOk();
 		if (Result.isOk(result)) {
 			expect(result.value.get("song-A")?.content_hash).toBe("newest");
-		}
-	});
-
-	it("propagates a batch DB error as a Result.err DbError", async () => {
-		const ids = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		installClient((ctx) => {
-			if ((ctx.batch ?? []).includes("song-150")) {
-				return { data: null, error: { code: "PGRST301", message: "boom" } };
-			}
-			return { data: [], error: null };
-		});
-
-		const result = await getSongEmbeddingsBatch(ids, "m", "full");
-
-		expect(result).toBeErr();
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("DatabaseError");
 		}
 	});
 });

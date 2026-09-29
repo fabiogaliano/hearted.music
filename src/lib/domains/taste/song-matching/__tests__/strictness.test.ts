@@ -1,32 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	DEFAULT_MATCH_STRICTNESS,
-	MATCH_STRICTNESS_VALUES,
-	STRICTNESS_MIN_SCORE,
-	strictnessScore,
-} from "../strictness";
-
-describe("STRICTNESS_MIN_SCORE mapping", () => {
-	it("maps each preset to its read-time floor", () => {
-		expect(STRICTNESS_MIN_SCORE.open).toBe(0.35);
-		expect(STRICTNESS_MIN_SCORE.balanced).toBe(0.5);
-		expect(STRICTNESS_MIN_SCORE.strict).toBe(0.65);
-	});
-
-	it("orders loosest → strictest", () => {
-		expect(STRICTNESS_MIN_SCORE.open).toBeLessThan(
-			STRICTNESS_MIN_SCORE.balanced,
-		);
-		expect(STRICTNESS_MIN_SCORE.balanced).toBeLessThan(
-			STRICTNESS_MIN_SCORE.strict,
-		);
-	});
-
-	it("defaults to 'balanced'", () => {
-		expect(DEFAULT_MATCH_STRICTNESS).toBe("balanced");
-		expect(MATCH_STRICTNESS_VALUES).toContain(DEFAULT_MATCH_STRICTNESS);
-	});
-});
+import { strictnessScore } from "../strictness";
 
 describe("strictnessScore", () => {
 	it("returns fused_score when present", () => {

@@ -18,12 +18,10 @@ vi.stubGlobal("crypto", { randomUUID: mockRandomUUID });
 import {
 	addToPlaylist,
 	createPlaylist,
-	deletePlaylist,
 	fetchPlaylistMetadata,
 	queryArtistOverview,
 	registerPlaylist,
 	removeFromPlaylist,
-	updatePlaylist,
 } from "../spotify-client";
 
 beforeEach(() => {
@@ -133,52 +131,6 @@ describe("command serialization", () => {
 		});
 	});
 
-	it("updatePlaylist spreads attrs into payload", async () => {
-		mockSendExtensionCommand.mockResolvedValue({
-			ok: true,
-			data: { revision: "r2" },
-			commandId: MOCK_UUID,
-		});
-
-		await updatePlaylist("playlist-id", {
-			name: "New Name",
-			description: "New Desc",
-		});
-
-		expect(mockSendExtensionCommand).toHaveBeenCalledWith({
-			type: "SPOTIFY_COMMAND",
-			command: "updatePlaylist",
-			payload: {
-				playlistId: "playlist-id",
-				name: "New Name",
-				description: "New Desc",
-			},
-			commandId: MOCK_UUID,
-			protocolVersion: 1,
-		});
-	});
-
-	it("deletePlaylist sends correct message shape", async () => {
-		mockSendExtensionCommand.mockResolvedValue({
-			ok: true,
-			data: { revision: "r3" },
-			commandId: MOCK_UUID,
-		});
-
-		await deletePlaylist("spotify:playlist:abc", "user-123");
-
-		expect(mockSendExtensionCommand).toHaveBeenCalledWith({
-			type: "SPOTIFY_COMMAND",
-			command: "deletePlaylist",
-			payload: {
-				playlistUri: "spotify:playlist:abc",
-				userId: "user-123",
-			},
-			commandId: MOCK_UUID,
-			protocolVersion: 1,
-		});
-	});
-
 	it("queryArtistOverview sends correct message shape", async () => {
 		mockSendExtensionCommand.mockResolvedValue({
 			ok: true,
@@ -249,33 +201,6 @@ describe("extension unavailable", () => {
 			message: "Extension not available",
 			retryable: false,
 			commandId: MOCK_UUID,
-		});
-	});
-
-	const unavailableCommands = [
-		["addToPlaylist", () => addToPlaylist("uri", ["track"])],
-		["removeFromPlaylist", () => removeFromPlaylist("uri", ["uid"])],
-		["createPlaylist", () => createPlaylist("name", "user")],
-		["registerPlaylist", () => registerPlaylist("uri", "user")],
-		["updatePlaylist", () => updatePlaylist("id", { name: "n" })],
-		["deletePlaylist", () => deletePlaylist("uri", "user")],
-		["queryArtistOverview", () => queryArtistOverview("uri")],
-		["fetchPlaylistMetadata", () => fetchPlaylistMetadata("uri")],
-	] as const;
-
-	// Per-command cases (not one loop) so a regression localizes to the command
-	// that broke; toMatchObject asserts the contract without an ok-narrowing guard.
-	it.each(
-		unavailableCommands,
-	)("%s returns NETWORK_ERROR when the extension is unavailable", async (_name, invoke) => {
-		mockSendExtensionCommand.mockResolvedValue(null);
-
-		const result = await invoke();
-
-		expect(result).toMatchObject({
-			ok: false,
-			errorCode: "NETWORK_ERROR",
-			retryable: false,
 		});
 	});
 });

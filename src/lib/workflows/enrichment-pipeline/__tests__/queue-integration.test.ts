@@ -4,9 +4,6 @@ import type { Job } from "@/lib/platform/jobs/repository";
 
 let activeJobResponse: { data: unknown; error: unknown };
 let insertJobResponse: { data: unknown; error: unknown };
-// When set to a non-empty array, select-path calls shift from here instead
-// of reading activeJobResponse. Allows per-call sequencing for race tests.
-let activeJobResponseQueue: { data: unknown; error: unknown }[] = [];
 // Captures the row passed to .insert() so tests can assert the serialized
 // payload rather than the mock's echoed return value.
 let lastInsertPayload: Record<string, unknown> | null = null;
@@ -38,9 +35,6 @@ vi.mock("@/lib/data/client", () => ({
 				if (isInsertPath) {
 					return insertJobResponse;
 				}
-				if (activeJobResponseQueue.length > 0) {
-					return activeJobResponseQueue.shift();
-				}
 				return activeJobResponse;
 			});
 
@@ -50,10 +44,8 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import {
-	createEnrichmentJob,
 	ensureEnrichmentJob,
 	getActiveEnrichmentJob,
-	getOrCreateEnrichmentJob,
 } from "@/lib/platform/jobs/library-processing-queue";
 import { makeInitialProgress } from "../progress";
 
@@ -74,217 +66,6 @@ function fakeJob(overrides: Partial<Job> = {}): Job {
 		...overrides,
 	} as Job;
 }
-
-const defaultProgress = makeInitialProgress(5, 1, 0);
-
-describe("Queue integration: getOrCreateEnrichmentJob", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		activeJobResponse = {
-			data: null,
-			error: { code: "PGRST116", message: "not found" },
-		};
-		insertJobResponse = { data: null, error: null };
-		activeJobResponseQueue = [];
-		lastInsertPayload = null;
-	});
-
-	describe("sync-triggered queueing (no active job)", () => {
-		it("creates a new job when no active job exists", async () => {
-			const newJob = fakeJob({ id: "job-new-789" });
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = { data: newJob, error: null };
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeOk();
-			if (Result.isOk(result)) {
-				expect(result.value.id).toBe("job-new-789");
-				expect(result.value.type).toBe("enrichment");
-				expect(result.value.status).toBe("pending");
-			}
-		});
-
-		it("passes initial progress to createEnrichmentJob", async () => {
-			const progress = makeInitialProgress(10, 3, 0);
-			const newJob = fakeJob({ id: "job-batch-10", progress });
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = { data: newJob, error: null };
-
-			const result = await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
-
-			expect(result).toBeOk();
-			// The mock echoes any id, so the id alone proves nothing. Assert the
-			// serialized progress actually reached the insert payload — dropping it
-			// upstream is the regression this test exists to catch.
-			expect(lastInsertPayload).toMatchObject({
-				account_id: ACCOUNT_ID,
-				type: "enrichment",
-				status: "pending",
-			});
-			expect(
-				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
-			).toMatchObject({ batchSize: 10, batchSequence: 3 });
-		});
-
-		it("persists selectionMode in the serialized insert payload", async () => {
-			// The scheduler computes first_match_bootstrap when no first-visible card
-			// exists yet. If the serializer drops it, the worker silently falls back to
-			// normal selection — the regression this test guards.
-			const progress = makeInitialProgress(5, 0, 0, "first_match_bootstrap");
-			const newJob = fakeJob({ id: "job-bootstrap-1", progress });
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = { data: newJob, error: null };
-
-			const result = await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
-
-			expect(result).toBeOk();
-			expect(
-				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
-			).toMatchObject({ selectionMode: "first_match_bootstrap" });
-		});
-
-		it("serializes the default normal selectionMode", async () => {
-			const progress = makeInitialProgress(5, 0, 0);
-			const newJob = fakeJob({ id: "job-normal-1", progress });
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = { data: newJob, error: null };
-
-			await getOrCreateEnrichmentJob(ACCOUNT_ID, progress);
-
-			expect(
-				(lastInsertPayload as { progress: Record<string, unknown> }).progress,
-			).toMatchObject({ selectionMode: "normal" });
-		});
-	});
-
-	describe("onboarding-triggered queue reuse (active job exists)", () => {
-		it("returns existing active job without creating a new one", async () => {
-			const existingJob = fakeJob({
-				id: "job-existing-456",
-				status: "pending",
-			});
-			activeJobResponse = { data: existingJob, error: null };
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeOk();
-			if (Result.isOk(result)) {
-				expect(result.value.id).toBe("job-existing-456");
-			}
-		});
-
-		it("returns running job as active (not just pending)", async () => {
-			const runningJob = fakeJob({ id: "job-running-111", status: "running" });
-			activeJobResponse = { data: runningJob, error: null };
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeOk();
-			if (Result.isOk(result)) {
-				expect(result.value.id).toBe("job-running-111");
-				expect(result.value.status).toBe("running");
-			}
-		});
-	});
-
-	describe("error handling", () => {
-		it("propagates database error from getActiveEnrichmentJob", async () => {
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST301", message: "connection refused" },
-			};
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeErr();
-			if (Result.isError(result)) {
-				expect(result.error._tag).toBe("DatabaseError");
-				expect(result.error.message).toBe("connection refused");
-			}
-		});
-
-		it("propagates database error from createEnrichmentJob", async () => {
-			activeJobResponse = {
-				data: null,
-				error: { code: "PGRST116", message: "not found" },
-			};
-			insertJobResponse = {
-				data: null,
-				error: {
-					code: "23503",
-					message: "foreign key violation",
-					details: "account_id does not exist",
-				},
-			};
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeErr();
-			if (Result.isError(result)) {
-				expect(result.error._tag).toBe("ConstraintError");
-			}
-		});
-	});
-
-	describe("unique-violation fallback", () => {
-		it("falls back to reading the winner's job on unique constraint violation", async () => {
-			const winnerJob = fakeJob({ id: "job-winner-777" });
-
-			// Sequence: 1st read → not found, insert → unique violation,
-			// 2nd read (fallback) → winner's row
-			activeJobResponseQueue = [
-				{ data: null, error: { code: "PGRST116", message: "not found" } },
-				{ data: winnerJob, error: null },
-			];
-			insertJobResponse = {
-				data: null,
-				error: {
-					code: "23505",
-					message: "duplicate key",
-					details: "idx_unique_active_enrichment_per_account",
-				},
-			};
-
-			const result = await getOrCreateEnrichmentJob(
-				ACCOUNT_ID,
-				defaultProgress,
-			);
-
-			expect(result).toBeOk();
-			if (Result.isOk(result)) {
-				expect(result.value.id).toBe("job-winner-777");
-			}
-		});
-	});
-});
 
 describe("getActiveEnrichmentJob", () => {
 	beforeEach(() => {
@@ -319,48 +100,6 @@ describe("getActiveEnrichmentJob", () => {
 	});
 });
 
-describe("createEnrichmentJob", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("creates a job with enrichment type and pending status", async () => {
-		const progress = makeInitialProgress(5, 1, 0);
-		const createdJob = fakeJob({
-			id: "job-created-222",
-			progress,
-		});
-		insertJobResponse = { data: createdJob, error: null };
-
-		const result = await createEnrichmentJob(ACCOUNT_ID, progress);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value.id).toBe("job-created-222");
-			expect(result.value.type).toBe("enrichment");
-			expect(result.value.status).toBe("pending");
-		}
-	});
-
-	it("returns error on insert failure", async () => {
-		insertJobResponse = {
-			data: null,
-			error: {
-				code: "23505",
-				message: "duplicate key",
-				details: "unique constraint",
-			},
-		};
-
-		const result = await createEnrichmentJob(ACCOUNT_ID, defaultProgress);
-
-		expect(result).toBeErr();
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("ConstraintError");
-		}
-	});
-});
-
 describe("ensureEnrichmentJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -369,7 +108,6 @@ describe("ensureEnrichmentJob", () => {
 			error: { code: "PGRST116", message: "not found" },
 		};
 		insertJobResponse = { data: null, error: null };
-		activeJobResponseQueue = [];
 		lastInsertPayload = null;
 	});
 

@@ -20,37 +20,13 @@ vi.mock("@/lib/account-events/producer", () => ({
 }));
 
 import { writeAccountEvent } from "@/lib/account-events/producer";
-import type { Job } from "@/lib/platform/jobs/repository";
+import { makeJob } from "@/test/fixtures";
 import {
 	settleEnrichmentJobTerminal,
 	settleMatchSnapshotRefreshJobTerminal,
 } from "../settlement";
 
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: "job-1",
-		account_id: "acct-1",
-		type: "enrichment",
-		status: "running",
-		progress: {
-			done: 10,
-			total: 20,
-			succeeded: 8,
-			failed: 2,
-		},
-		error: null,
-		attempts: 1,
-		max_attempts: 3,
-		created_at: "2026-03-26T00:00:00Z",
-		updated_at: "2026-03-26T00:00:00Z",
-		started_at: "2026-03-26T00:00:00Z",
-		completed_at: null,
-		heartbeat_at: "2026-03-26T00:00:00Z",
-		queue_priority: 0,
-		satisfies_requested_at: null,
-		...overrides,
-	} as Job;
-}
+const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
 
 describe("settleEnrichmentJobTerminal", () => {
 	beforeEach(() => {
@@ -60,7 +36,7 @@ describe("settleEnrichmentJobTerminal", () => {
 	});
 
 	it("writes enrichment_completed account event with correct payload", async () => {
-		const job = makeJob();
+		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
 		const result = await settleEnrichmentJobTerminal(
 			job,
 			"completed",
@@ -79,7 +55,7 @@ describe("settleEnrichmentJobTerminal", () => {
 	});
 
 	it("writes enrichment_stopped account event with reason", async () => {
-		const job = makeJob();
+		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
 		const result = await settleEnrichmentJobTerminal(
 			job,
 			"failed",
@@ -103,7 +79,7 @@ describe("settleEnrichmentJobTerminal", () => {
 		// Mock the query inside tx to throw
 		txMock.mockRejectedValueOnce(new Error("Update failed"));
 
-		const job = makeJob();
+		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
 		const result = await settleEnrichmentJobTerminal(
 			job,
 			"completed",

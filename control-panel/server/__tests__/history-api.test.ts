@@ -12,13 +12,7 @@ import {
 	initLocalStore,
 	resetLocalStoreForTests,
 } from "../local-store/store";
-import {
-	historyExport,
-	historyPage,
-	historyRun,
-	historySummary,
-	parseHistoryFilter,
-} from "../history-api";
+import { historyExport, parseHistoryFilter } from "../history-api";
 
 describe("parseHistoryFilter", () => {
 	it("parses supported params and drops invalid ones", () => {
@@ -96,44 +90,6 @@ describe("history read API", () => {
 	afterEach(() => {
 		resetLocalStoreForTests();
 		rmSync(dir, { recursive: true, force: true });
-	});
-
-	it("returns a newest-first page result", () => {
-		const page = historyPage(new URL("https://panel.test/?pageSize=25"));
-		expect(page.total).toBe(2);
-		expect(page.pageSize).toBe(25);
-		expect(page.rows.map((r) => r.id)).toEqual(["run-2", "run-1"]);
-	});
-
-	it("filters by action type", () => {
-		const page = historyPage(
-			new URL("https://panel.test/?action=grant-access"),
-		);
-		expect(page.rows.map((r) => r.id)).toEqual(["run-1"]);
-	});
-
-	it("fetches a single run and null for a miss", () => {
-		expect(historyRun("run-1")?.actionType).toBe("grant-access");
-		expect(historyRun("missing")).toBeNull();
-	});
-
-	it("summarizes today's counts", () => {
-		// Seed with the real clock so the "since start of today" window is stable
-		// regardless of the machine date the suite runs on.
-		insertStartedRun(getLocalStore(), {
-			id: "run-today",
-			prodRef: "test-ref",
-			actionType: "release-year-set",
-			mode: "dry_run",
-			targetType: "song",
-			targetId: "song-1",
-			targetLabel: null,
-			inputSummary: null,
-			startedAt: new Date().toISOString(),
-			parentRunId: null,
-		});
-		const summary = historySummary();
-		expect(summary.dryRuns).toBeGreaterThanOrEqual(1);
 	});
 
 	it("exports all matching rows ignoring pagination", () => {

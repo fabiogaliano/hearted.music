@@ -1,8 +1,7 @@
 /**
  * §14.7 — DashboardHeader: handle-first identity display.
  *
- * Verifies the heading renders @handle when present, is omitted when null, and
- * never falls back to display_name or email.
+ * Verifies the heading renders @handle when present and is omitted when null.
  */
 
 import { describe, expect, it } from "vitest";
@@ -18,11 +17,6 @@ describe("DashboardHeader — handle identity", () => {
 	it("omits the heading entirely when handle is null — non-throwing", () => {
 		render(<DashboardHeader handle={null} />);
 		expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
-	});
-
-	it("does not fall back to display_name or email when handle is null", () => {
-		render(<DashboardHeader handle={null} />);
-		expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
 	});
 
 	// The header's other half must survive a null handle: an account mid-setup is

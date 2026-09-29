@@ -52,11 +52,11 @@ vi.mock("../service", () => ({
 		applyLibraryProcessingChangeMock(...args),
 }));
 
-import type { Job } from "@/lib/platform/jobs/repository";
 import {
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
+import { makeJob } from "@/test/fixtures";
 import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
@@ -67,27 +67,6 @@ import type { LibraryProcessingApplyError } from "../types";
 
 function settlementOf(outcome: RunJobOutcome) {
 	return outcome.status === "retrying" ? null : outcome.settlement;
-}
-
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: "job-1",
-		account_id: "acct-1",
-		type: "enrichment",
-		status: "running",
-		progress: {},
-		error: null,
-		attempts: 1,
-		max_attempts: 3,
-		created_at: "2026-03-26T00:00:00Z",
-		updated_at: "2026-03-26T00:00:00Z",
-		started_at: "2026-03-26T00:00:00Z",
-		completed_at: null,
-		heartbeat_at: "2026-03-26T00:00:00Z",
-		queue_priority: 0,
-		satisfies_requested_at: null,
-		...overrides,
-	} as Job;
 }
 
 const APPLY_OK_RESULT = Result.ok({

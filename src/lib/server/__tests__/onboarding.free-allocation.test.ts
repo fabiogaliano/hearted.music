@@ -42,7 +42,6 @@ const mockCompleteOnboarding = vi.fn();
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	completeOnboarding: (...args: unknown[]) => mockCompleteOnboarding(...args),
 	getOrCreatePreferences: vi.fn(),
-	isOnboardingComplete: vi.fn(),
 	ONBOARDING_STEPS: { safeParse: vi.fn() },
 	// SAVEABLE_ONBOARDING_STEPS must be a valid z.enum so the schema construction
 	// in saveOnboardingStep doesn't throw during module evaluation.

@@ -75,21 +75,3 @@ export interface ProductEventMap {
 }
 
 export type ProductEventName = keyof ProductEventMap;
-
-export type ProductEventArgs<E extends ProductEventName> =
-	ProductEventMap[E] extends EmptyProperties
-		? [event: E, properties?: ProductEventMap[E]]
-		: [event: E, properties: ProductEventMap[E]];
-
-/**
- * Attaches metadata (schema_version) and formats product event payload structure.
- */
-export function formatProductEventPayload<E extends ProductEventName>(
-	...args: ProductEventArgs<E>
-): Record<string, unknown> {
-	const properties = args[1];
-	return {
-		schema_version: EVENT_SCHEMA_VERSION,
-		...(properties ?? {}),
-	};
-}

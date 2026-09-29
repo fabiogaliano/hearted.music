@@ -4,18 +4,13 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	acknowledgePlaylistCreate,
-	acknowledgePlaylistDelete,
-	acknowledgePlaylistUpdate,
 	savePlaylistMatchConfig,
 } from "../playlists.functions";
 
 const {
 	mockAuthContext,
 	mockUpsertPlaylists,
-	mockGetPlaylistBySpotifyId,
 	mockGetPlaylistById,
-	mockDeletePlaylist,
-	mockUpdatePlaylistMetadata,
 	mockUpdatePlaylistMatchConfig,
 	mockApplyLibraryProcessingChange,
 	mockEnqueueDeckJob,
@@ -27,10 +22,7 @@ const {
 		account: null,
 	},
 	mockUpsertPlaylists: vi.fn(),
-	mockGetPlaylistBySpotifyId: vi.fn(),
 	mockGetPlaylistById: vi.fn(),
-	mockDeletePlaylist: vi.fn(),
-	mockUpdatePlaylistMetadata: vi.fn(),
 	mockUpdatePlaylistMatchConfig: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
@@ -65,14 +57,9 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	upsertPlaylists: (...args: unknown[]) => mockUpsertPlaylists(...args),
 	getPlaylists: vi.fn().mockResolvedValue({ ok: true, value: [] }),
 	getTargetPlaylists: vi.fn().mockResolvedValue({ ok: true, value: [] }),
-	getPlaylistBySpotifyId: (...args: unknown[]) =>
-		mockGetPlaylistBySpotifyId(...args),
 	getPlaylistById: (...args: unknown[]) => mockGetPlaylistById(...args),
 	getPlaylistSongs: vi.fn().mockResolvedValue({ ok: true, value: [] }),
-	deletePlaylist: (...args: unknown[]) => mockDeletePlaylist(...args),
 	setPlaylistTarget: vi.fn(),
-	updatePlaylistMetadata: (...args: unknown[]) =>
-		mockUpdatePlaylistMetadata(...args),
 	updatePlaylistMatchConfig: (...args: unknown[]) =>
 		mockUpdatePlaylistMatchConfig(...args),
 }));
@@ -161,127 +148,6 @@ describe("acknowledgePlaylistCreate", () => {
 				data: { uri: "spotify:playlist:abc123", name: "Test" },
 			}),
 		).rejects.toThrow("Failed to acknowledge playlist create");
-	});
-});
-
-describe("acknowledgePlaylistUpdate", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("updates metadata for the account-scoped playlist", async () => {
-		mockUpdatePlaylistMetadata.mockResolvedValue(
-			Result.ok(makePlaylist({ name: "Renamed" })),
-		);
-
-		const result = await acknowledgePlaylistUpdate({
-			data: { spotifyId: "abc123", name: "Renamed" },
-		});
-
-		expect(result).toEqual({ success: true });
-		expect(mockUpdatePlaylistMetadata).toHaveBeenCalledWith(
-			"acct-1",
-			"abc123",
-			{ name: "Renamed" },
-		);
-	});
-
-	it("passes both name and description when provided", async () => {
-		mockUpdatePlaylistMetadata.mockResolvedValue(
-			Result.ok(makePlaylist({ name: "New", description: "Desc" })),
-		);
-
-		await acknowledgePlaylistUpdate({
-			data: { spotifyId: "abc123", name: "New", description: "Desc" },
-		});
-
-		expect(mockUpdatePlaylistMetadata).toHaveBeenCalledWith(
-			"acct-1",
-			"abc123",
-			{ name: "New", description: "Desc" },
-		);
-	});
-
-	it("throws when metadata update fails", async () => {
-		mockUpdatePlaylistMetadata.mockResolvedValue(
-			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
-		);
-
-		await expect(
-			acknowledgePlaylistUpdate({
-				data: { spotifyId: "abc123", name: "Test" },
-			}),
-		).rejects.toThrow("Failed to acknowledge playlist update");
-	});
-});
-
-describe("acknowledgePlaylistDelete", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockAuthContext.session = { accountId: "acct-1" };
-	});
-
-	it("looks up and deletes the playlist row", async () => {
-		mockGetPlaylistBySpotifyId.mockResolvedValue(Result.ok(makePlaylist()));
-		mockDeletePlaylist.mockResolvedValue(Result.ok(null));
-
-		const result = await acknowledgePlaylistDelete({
-			data: { uri: "spotify:playlist:abc123" },
-		});
-
-		expect(result).toEqual({ success: true, alreadyAbsent: false });
-		expect(mockGetPlaylistBySpotifyId).toHaveBeenCalledWith("acct-1", "abc123");
-		expect(mockDeletePlaylist).toHaveBeenCalledWith("acct-1", "uuid-1");
-	});
-
-	it("treats already-absent row as idempotent success", async () => {
-		mockGetPlaylistBySpotifyId.mockResolvedValue(Result.ok(null));
-
-		const result = await acknowledgePlaylistDelete({
-			data: { uri: "spotify:playlist:abc123" },
-		});
-
-		expect(result).toEqual({ success: true, alreadyAbsent: true });
-		expect(mockDeletePlaylist).not.toHaveBeenCalled();
-	});
-
-	it("scopes lookup to authenticated account only", async () => {
-		mockAuthContext.session = { accountId: "acct-other" };
-		mockGetPlaylistBySpotifyId.mockResolvedValue(Result.ok(null));
-
-		await acknowledgePlaylistDelete({
-			data: { uri: "spotify:playlist:abc123" },
-		});
-
-		expect(mockGetPlaylistBySpotifyId).toHaveBeenCalledWith(
-			"acct-other",
-			"abc123",
-		);
-	});
-
-	it("throws when lookup fails", async () => {
-		mockGetPlaylistBySpotifyId.mockResolvedValue(
-			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
-		);
-
-		await expect(
-			acknowledgePlaylistDelete({
-				data: { uri: "spotify:playlist:abc123" },
-			}),
-		).rejects.toThrow("Failed to look up playlist for delete");
-	});
-
-	it("throws when delete fails", async () => {
-		mockGetPlaylistBySpotifyId.mockResolvedValue(Result.ok(makePlaylist()));
-		mockDeletePlaylist.mockResolvedValue(
-			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
-		);
-
-		await expect(
-			acknowledgePlaylistDelete({
-				data: { uri: "spotify:playlist:abc123" },
-			}),
-		).rejects.toThrow("Failed to acknowledge playlist delete");
 	});
 });
 

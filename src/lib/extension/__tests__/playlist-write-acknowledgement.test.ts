@@ -1,32 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockCreatePlaylist = vi.fn();
-const mockUpdatePlaylist = vi.fn();
-const mockDeletePlaylist = vi.fn();
 const mockAcknowledgeCreate = vi.fn();
-const mockAcknowledgeUpdate = vi.fn();
-const mockAcknowledgeDelete = vi.fn();
 
 vi.mock("../spotify-client", () => ({
 	createPlaylist: (...args: unknown[]) => mockCreatePlaylist(...args),
-	updatePlaylist: (...args: unknown[]) => mockUpdatePlaylist(...args),
-	deletePlaylist: (...args: unknown[]) => mockDeletePlaylist(...args),
 }));
 
 vi.mock("@/lib/server/playlists.functions", () => ({
 	acknowledgePlaylistCreate: (...args: unknown[]) =>
 		mockAcknowledgeCreate(...args),
-	acknowledgePlaylistUpdate: (...args: unknown[]) =>
-		mockAcknowledgeUpdate(...args),
-	acknowledgePlaylistDelete: (...args: unknown[]) =>
-		mockAcknowledgeDelete(...args),
 }));
 
-const {
-	createPlaylistAcknowledged,
-	updatePlaylistAcknowledged,
-	deletePlaylistAcknowledged,
-} = await import("../playlist-write-acknowledgement");
+const { createPlaylistAcknowledged } = await import(
+	"../playlist-write-acknowledgement"
+);
 
 describe("createPlaylistAcknowledged", () => {
 	beforeEach(() => vi.clearAllMocks());
@@ -134,150 +122,5 @@ describe("createPlaylistAcknowledged", () => {
 		}
 		// Initial attempt + 2 bounded retries.
 		expect(mockAcknowledgeCreate).toHaveBeenCalledTimes(3);
-	});
-});
-
-describe("updatePlaylistAcknowledged", () => {
-	beforeEach(() => vi.clearAllMocks());
-
-	it("executes command then acknowledges on success", async () => {
-		mockUpdatePlaylist.mockResolvedValue({
-			ok: true,
-			data: { revision: "r2" },
-			commandId: "cmd-2",
-		});
-		mockAcknowledgeUpdate.mockResolvedValue({ success: true });
-
-		const result = await updatePlaylistAcknowledged("pl-id", {
-			name: "Renamed",
-			songCount: 12,
-			imageUrl: "https://img.test/cover.jpg",
-		});
-
-		expect(result).toEqual({
-			ok: true,
-			data: { revision: "r2" },
-			acknowledged: true,
-		});
-		expect(mockUpdatePlaylist).toHaveBeenCalledWith("pl-id", {
-			name: "Renamed",
-			description: undefined,
-		});
-		expect(mockAcknowledgeUpdate).toHaveBeenCalledWith({
-			data: {
-				spotifyId: "pl-id",
-				name: "Renamed",
-				songCount: 12,
-				imageUrl: "https://img.test/cover.jpg",
-			},
-		});
-	});
-
-	it("short-circuits when command fails", async () => {
-		mockUpdatePlaylist.mockResolvedValue({
-			ok: false,
-			errorCode: "AUTH_REQUIRED",
-			message: "Not authenticated",
-			retryable: false,
-			commandId: "cmd-2",
-		});
-
-		const result = await updatePlaylistAcknowledged("pl-id", {
-			name: "Renamed",
-		});
-
-		expect(result.ok).toBe(false);
-		expect(mockAcknowledgeUpdate).not.toHaveBeenCalled();
-	});
-
-	it("returns success with acknowledged=false when acknowledgement fails", async () => {
-		mockUpdatePlaylist.mockResolvedValue({
-			ok: true,
-			data: { revision: "r2" },
-			commandId: "cmd-2",
-		});
-		mockAcknowledgeUpdate.mockRejectedValue(new Error("Server error"));
-
-		const result = await updatePlaylistAcknowledged("pl-id", {
-			description: "New desc",
-		});
-
-		expect(result).toMatchObject({
-			ok: true,
-			data: { revision: "r2" },
-			acknowledged: false,
-		});
-	});
-});
-
-describe("deletePlaylistAcknowledged", () => {
-	beforeEach(() => vi.clearAllMocks());
-
-	it("executes command then acknowledges on success", async () => {
-		mockDeletePlaylist.mockResolvedValue({
-			ok: true,
-			data: { revision: "r3" },
-			commandId: "cmd-3",
-		});
-		mockAcknowledgeDelete.mockResolvedValue({
-			success: true,
-			alreadyAbsent: false,
-		});
-
-		const result = await deletePlaylistAcknowledged(
-			"spotify:playlist:abc",
-			"user1",
-		);
-
-		expect(result).toEqual({
-			ok: true,
-			data: { revision: "r3" },
-			acknowledged: true,
-		});
-		expect(mockDeletePlaylist).toHaveBeenCalledWith(
-			"spotify:playlist:abc",
-			"user1",
-		);
-		expect(mockAcknowledgeDelete).toHaveBeenCalledWith({
-			data: { uri: "spotify:playlist:abc" },
-		});
-	});
-
-	it("short-circuits when command fails", async () => {
-		mockDeletePlaylist.mockResolvedValue({
-			ok: false,
-			errorCode: "RATE_LIMITED",
-			message: "Too fast",
-			retryable: true,
-			commandId: "cmd-3",
-		});
-
-		const result = await deletePlaylistAcknowledged(
-			"spotify:playlist:abc",
-			"user1",
-		);
-
-		expect(result.ok).toBe(false);
-		expect(mockAcknowledgeDelete).not.toHaveBeenCalled();
-	});
-
-	it("returns success with acknowledged=false when acknowledgement fails", async () => {
-		mockDeletePlaylist.mockResolvedValue({
-			ok: true,
-			data: { revision: "r3" },
-			commandId: "cmd-3",
-		});
-		mockAcknowledgeDelete.mockRejectedValue(new Error("DB down"));
-
-		const result = await deletePlaylistAcknowledged(
-			"spotify:playlist:abc",
-			"user1",
-		);
-
-		expect(result).toMatchObject({
-			ok: true,
-			data: { revision: "r3" },
-			acknowledged: false,
-		});
 	});
 });

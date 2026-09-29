@@ -2,6 +2,7 @@
  * Test fixtures with real data from Spotify account kapran0s (fabiogaliano)
  */
 
+import type { Job } from "@/lib/platform/jobs/repository";
 import type { SpotifyPlaylistDTO } from "@/lib/workflows/spotify-sync/types";
 
 export const TEST_ACCOUNT = {
@@ -253,5 +254,28 @@ export function toSpotifyPlaylistDTO(
 		owner: { id: ownerId },
 		track_count: playlist.song_count,
 		image_url: playlist.image_url,
+	};
+}
+
+/** A freshly enqueued `job` row; override the fields the case depends on. */
+export function makeJob(overrides: Partial<Job> = {}): Job {
+	return {
+		id: "job-1",
+		account_id: "acct-1",
+		type: "enrichment",
+		status: "pending",
+		attempts: 0,
+		max_attempts: 3,
+		progress: null,
+		queue_priority: null,
+		error: null,
+		available_at: "2026-07-08T00:00:00Z",
+		heartbeat_at: null,
+		started_at: null,
+		completed_at: null,
+		satisfies_requested_at: null,
+		created_at: "2026-07-08T00:00:00Z",
+		updated_at: "2026-07-08T00:00:00Z",
+		...overrides,
 	};
 }

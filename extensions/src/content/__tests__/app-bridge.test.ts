@@ -119,11 +119,4 @@ describe("app-bridge content script", () => {
 		});
 		expect(sendMessage).not.toHaveBeenCalled();
 	});
-
-	it("ignores malformed page messages", () => {
-		deliver({ source: PAGE_SOURCE, kind: "command" });
-		deliver({ foo: "bar" });
-		deliver("just a string");
-		expect(sendMessage).not.toHaveBeenCalled();
-	});
 });

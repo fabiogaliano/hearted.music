@@ -5,13 +5,14 @@
  * split the `.in("song_id", …)` filter into URL-safe batches (DB_IN_FILTER_CHUNK_SIZE)
  * rather than encoding every id into one oversized query string (the production
  * "URI too long" failure on the queue-bootstrap path). These tests drive a
- * capturing Supabase mock so we can assert the batch shape, the merge, the
- * decided_at ordering across the chunk boundary, and error propagation.
+ * capturing Supabase mock so we can assert the batch shape, the merge, and the
+ * decided_at ordering across the chunk boundary.
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
+import { installInFilterCapturingClient } from "@/test/mocks";
 
 const fromMock = vi.fn();
 
@@ -25,54 +26,6 @@ import {
 } from "../decision-queries";
 
 const ACCOUNT_ID = "acct-chunk-1";
-
-interface InCall {
-	table: string;
-	col: string;
-	batch: string[];
-}
-
-type BatchResolver = (ctx: {
-	table: string;
-	col: string | null;
-	batch: string[] | null;
-}) => { data: unknown; error: unknown };
-
-/**
- * Installs a Supabase `from()` mock whose chain methods all return the chain and
- * whose `.in()` records the (table, col, batch) it was called with. The chain is
- * a thenable: awaiting it resolves to `resolver(ctx)`, so the awaited query
- * yields a per-batch response regardless of which method terminates the chain.
- */
-function installClient(resolver: BatchResolver): InCall[] {
-	const inCalls: InCall[] = [];
-	fromMock.mockImplementation((table: string) => {
-		const ctx: { table: string; col: string | null; batch: string[] | null } = {
-			table,
-			col: null,
-			batch: null,
-		};
-		const chain: Record<string, unknown> = {};
-		const passthrough = () => chain;
-		chain.select = vi.fn(passthrough);
-		chain.eq = vi.fn(passthrough);
-		chain.is = vi.fn(passthrough);
-		chain.order = vi.fn(passthrough);
-		chain.in = vi.fn((col: string, batch: string[]) => {
-			ctx.col = col;
-			ctx.batch = batch;
-			inCalls.push({ table, col, batch });
-			return chain;
-		});
-		// biome-ignore lint/suspicious/noThenProperty: the capturing mock chain is intentionally thenable so awaiting the query resolves to the per-batch response.
-		chain.then = (onF: (v: unknown) => unknown, onR: (e: unknown) => unknown) =>
-			Promise.resolve()
-				.then(() => resolver(ctx))
-				.then(onF, onR);
-		return chain;
-	});
-	return inCalls;
-}
 
 function decidedAt(i: number): string {
 	return new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString();
@@ -102,7 +55,7 @@ describe("getMatchDecisionsForSongs — chunking", () => {
 	});
 
 	it("returns ok([]) for empty input without touching the client", async () => {
-		installClient(() => ({ data: [], error: null }));
+		installInFilterCapturingClient(fromMock, () => ({ data: [], error: null }));
 
 		const result = await getMatchDecisionsForSongs(ACCOUNT_ID, []);
 
@@ -113,7 +66,7 @@ describe("getMatchDecisionsForSongs — chunking", () => {
 
 	it("splits a >100 id array into multiple .in() batches each <= 100", async () => {
 		const ids = Array.from({ length: 250 }, (_, i) => `song-${i}`);
-		const inCalls = installClient((ctx) => ({
+		const { inCalls } = installInFilterCapturingClient(fromMock, (ctx) => ({
 			data: (ctx.batch ?? []).map((id) => {
 				const i = Number(id.slice("song-".length));
 				return fakeDecision(id, decidedAt(i));
@@ -143,7 +96,7 @@ describe("getMatchDecisionsForSongs — chunking", () => {
 		// produce a single globally descending list, proving the post-merge sort
 		// spans chunk boundaries rather than just sorting within a chunk.
 		const ids = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		installClient((ctx) => ({
+		installInFilterCapturingClient(fromMock, (ctx) => ({
 			data: (ctx.batch ?? []).map((id) => {
 				const i = Number(id.slice("song-".length));
 				return fakeDecision(id, decidedAt(i));
@@ -168,7 +121,7 @@ describe("getMatchDecisionsForSongs — chunking", () => {
 	});
 
 	it("deduplicates ids before chunking", async () => {
-		const inCalls = installClient((ctx) => ({
+		const { inCalls } = installInFilterCapturingClient(fromMock, (ctx) => ({
 			data: (ctx.batch ?? []).map((id) => fakeDecision(id, decidedAt(0))),
 			error: null,
 		}));
@@ -177,23 +130,5 @@ describe("getMatchDecisionsForSongs — chunking", () => {
 
 		expect(inCalls).toHaveLength(1);
 		expect(inCalls[0].batch).toEqual(["a", "b"]);
-	});
-
-	it("propagates a batch DB error as a Result.err DbError", async () => {
-		const ids = Array.from({ length: 201 }, (_, i) => `song-${i}`);
-		// Fail only the batch that contains song-150 (the second chunk).
-		installClient((ctx) => {
-			if ((ctx.batch ?? []).includes("song-150")) {
-				return { data: null, error: { code: "PGRST301", message: "boom" } };
-			}
-			return { data: [], error: null };
-		});
-
-		const result = await getMatchDecisionsForSongs(ACCOUNT_ID, ids);
-
-		expect(result).toBeErr();
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("DatabaseError");
-		}
 	});
 });

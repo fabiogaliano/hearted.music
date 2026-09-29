@@ -113,23 +113,6 @@ export function upsertMatchDecisions(
 }
 
 /**
- * Gets all match decisions for an account.
- * Returns empty array if none found.
- */
-export function getMatchDecisions(
-	accountId: string,
-): Promise<Result<MatchDecision[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("match_decision")
-			.select("*")
-			.eq("account_id", accountId)
-			.order("decided_at", { ascending: false }),
-	);
-}
-
-/**
  * Gets match decisions for specific songs belonging to an account.
  * Returns empty array if none found.
  *

@@ -224,17 +224,6 @@ export async function handleSpotifyCommand(
 	}
 
 	const token = cachedToken.accessToken;
-	const commandName = cmd.command as SpotifyCommandName;
-
-	if (!(commandName in commandExecutors)) {
-		return {
-			ok: false,
-			errorCode: "UNSUPPORTED_OPERATION",
-			message: `Unknown command: ${String((cmd as { command?: unknown }).command)}`,
-			retryable: false,
-			commandId: cmd.commandId,
-		};
-	}
 
 	try {
 		return await executeSpotifyCommand(cmd, token);

@@ -21,9 +21,7 @@ import {
 	type TasteProfile,
 } from "@/lib/domains/library/liked-songs/taste-profile-queries";
 import {
-	deletePlaylist,
 	getPlaylistById,
-	getPlaylistBySpotifyId,
 	getPlaylistSongsPage,
 	getPlaylists,
 	getTargetPlaylists,
@@ -31,7 +29,6 @@ import {
 	updatePlaylistGenrePills,
 	updatePlaylistMatchConfig,
 	updatePlaylistMatchIntent,
-	updatePlaylistMetadata,
 	upsertPlaylists,
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
@@ -490,110 +487,6 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 		}
 
 		return { success: true, spotifyId };
-	});
-
-// ============================================================================
-// Metadata update acknowledgement
-// ============================================================================
-
-const AcknowledgeUpdateSchema = z.object({
-	spotifyId: z.string().min(1),
-	name: z.string().min(1).max(500).optional(),
-	description: z.string().max(5000).nullable().optional(),
-	songCount: z.number().int().nonnegative().optional(),
-	imageUrl: z.string().nullable().optional(),
-});
-
-export const acknowledgePlaylistUpdate = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator((data) => AcknowledgeUpdateSchema.parse(data))
-	.handler(async ({ data, context }) => {
-		const { session } = context;
-		const metadata: {
-			name?: string;
-			description?: string | null;
-			song_count?: number;
-			image_url?: string | null;
-		} = {};
-		if (data.name !== undefined) metadata.name = data.name;
-		if (data.description !== undefined) metadata.description = data.description;
-		if (data.songCount !== undefined) metadata.song_count = data.songCount;
-		if (data.imageUrl !== undefined) metadata.image_url = data.imageUrl;
-
-		const result = await updatePlaylistMetadata(
-			session.accountId,
-			data.spotifyId,
-			metadata,
-		);
-
-		if (Result.isError(result)) {
-			// DB write failed for extension-initiated update — surfaces in Sentry since console is disabled in prod.
-			captureServerError(result.error, {
-				area: "playlists",
-				operation: "acknowledge_playlist_update",
-				accountId: session.accountId,
-			});
-			throw new Error(
-				`Failed to acknowledge playlist update: ${result.error.message}`,
-			);
-		}
-
-		return { success: true };
-	});
-
-// ============================================================================
-// Delete acknowledgement
-// ============================================================================
-
-const AcknowledgeDeleteSchema = z.object({
-	uri: z.string().regex(SPOTIFY_PLAYLIST_URI_RE),
-});
-
-export const acknowledgePlaylistDelete = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator((data) => AcknowledgeDeleteSchema.parse(data))
-	.handler(async ({ data, context }) => {
-		const { session } = context;
-		const spotifyId = parsePlaylistSpotifyId(data.uri);
-		if (!spotifyId) throw new Error(`Invalid Spotify URI: ${data.uri}`);
-
-		const existing = await getPlaylistBySpotifyId(session.accountId, spotifyId);
-		if (Result.isError(existing)) {
-			// DB error during look-up for extension-initiated delete — surfaces in Sentry since console is disabled in prod.
-			captureServerError(existing.error, {
-				area: "playlists",
-				operation: "acknowledge_playlist_delete",
-				accountId: session.accountId,
-				extra: { stage: "lookup" },
-			});
-			throw new Error(
-				`Failed to look up playlist for delete: ${existing.error.message}`,
-			);
-		}
-
-		// Idempotent: if already absent, treat as success
-		if (existing.value === null) {
-			return { success: true, alreadyAbsent: true };
-		}
-
-		const deleteResult = await deletePlaylist(
-			session.accountId,
-			existing.value.id,
-		);
-		if (Result.isError(deleteResult)) {
-			// DB delete failed for extension-initiated delete — surfaces in Sentry since console is disabled in prod.
-			captureServerError(deleteResult.error, {
-				area: "playlists",
-				operation: "acknowledge_playlist_delete",
-				accountId: session.accountId,
-				extra: { stage: "delete" },
-			});
-			throw new Error(
-				`Failed to acknowledge playlist delete: ${deleteResult.error.message}`,
-			);
-		}
-
-		return { success: true, alreadyAbsent: false };
 	});
 
 // ============================================================================

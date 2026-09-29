@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { JobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { makeJob } from "@/test/fixtures";
 import { reconcileLibraryProcessing } from "../reconciler";
 import type {
 	LibraryProcessingApplyOutcome,
@@ -56,27 +57,6 @@ const applyMock = vi.mocked(applyLibraryProcessingChange);
 const findTerminalActiveRefsMock = vi.mocked(findTerminalActiveRefs);
 const getMeasurementMock = vi.mocked(getLatestJobExecutionMeasurement);
 
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: overrides.id ?? "job-1",
-		account_id: overrides.account_id ?? "acct-1",
-		type: "enrichment",
-		status: "failed",
-		attempts: 3,
-		max_attempts: 3,
-		progress: null,
-		queue_priority: null,
-		error: null,
-		heartbeat_at: null,
-		started_at: null,
-		completed_at: null,
-		satisfies_requested_at: null,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
-		...overrides,
-	} as Job;
-}
-
 function makeState(
 	overrides: Partial<LibraryProcessingState> = {},
 ): LibraryProcessingState {
@@ -116,7 +96,12 @@ describe("recoverDeadLetteredLibraryProcessingJob", () => {
 		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
 
 		const result = await recoverDeadLetteredLibraryProcessingJob(
-			makeJob({ id: "j-dead", account_id: "acct-1", type: "enrichment" }),
+			makeJob({
+				status: "failed",
+				id: "j-dead",
+				account_id: "acct-1",
+				type: "enrichment",
+			}),
 		);
 
 		expect(applyMock).toHaveBeenCalledWith({
@@ -141,6 +126,7 @@ describe("recoverDeadLetteredLibraryProcessingJob", () => {
 
 		const result = await recoverDeadLetteredLibraryProcessingJob(
 			makeJob({
+				status: "failed",
 				id: "j-dead-ms",
 				account_id: "acct-2",
 				type: "match_snapshot_refresh" as Job["type"],
@@ -161,7 +147,7 @@ describe("recoverDeadLetteredLibraryProcessingJob", () => {
 
 	it("returns null for non-library-processing job types", async () => {
 		const result = await recoverDeadLetteredLibraryProcessingJob(
-			makeJob({ type: "sync_liked_songs" as Job["type"] }),
+			makeJob({ status: "failed", type: "sync_liked_songs" as Job["type"] }),
 		);
 
 		expect(result).toBeNull();
@@ -176,7 +162,7 @@ describe("recoverDeadLetteredLibraryProcessingJob", () => {
 		applyMock.mockResolvedValue(Result.err(applyError));
 
 		const result = await recoverDeadLetteredLibraryProcessingJob(
-			makeJob({ id: "j-fail" }),
+			makeJob({ status: "failed", id: "j-fail" }),
 		);
 
 		expect(result).not.toBeNull();
@@ -196,8 +182,9 @@ describe("recoverDeadLetteredLibraryProcessingJobs", () => {
 		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
 
 		const results = await recoverDeadLetteredLibraryProcessingJobs([
-			makeJob({ id: "j-1", type: "enrichment" }),
+			makeJob({ status: "failed", id: "j-1", type: "enrichment" }),
 			makeJob({
+				status: "failed",
 				id: "j-2",
 				type: "match_snapshot_refresh" as Job["type"],
 			}),
@@ -213,8 +200,12 @@ describe("recoverDeadLetteredLibraryProcessingJobs", () => {
 		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
 
 		const results = await recoverDeadLetteredLibraryProcessingJobs([
-			makeJob({ id: "j-1", type: "enrichment" }),
-			makeJob({ id: "j-2", type: "sync_liked_songs" as Job["type"] }),
+			makeJob({ status: "failed", id: "j-1", type: "enrichment" }),
+			makeJob({
+				status: "failed",
+				id: "j-2",
+				type: "sync_liked_songs" as Job["type"],
+			}),
 		]);
 
 		expect(results).toHaveLength(1);
@@ -231,8 +222,9 @@ describe("recoverDeadLetteredLibraryProcessingJobs", () => {
 			.mockResolvedValueOnce(Result.ok(makeApplyOutcome()));
 
 		const results = await recoverDeadLetteredLibraryProcessingJobs([
-			makeJob({ id: "j-1", type: "enrichment" }),
+			makeJob({ status: "failed", id: "j-1", type: "enrichment" }),
 			makeJob({
+				status: "failed",
 				id: "j-2",
 				type: "match_snapshot_refresh" as Job["type"],
 			}),

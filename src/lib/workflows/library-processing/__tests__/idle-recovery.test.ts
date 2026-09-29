@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { makeJob } from "@/test/fixtures";
 import type {
 	LibraryProcessingApplyOutcome,
 	LibraryProcessingState,
@@ -51,27 +51,6 @@ const getActiveEnrichmentJobMock = vi.mocked(getActiveEnrichmentJob);
 const getLatestJobMock = vi.mocked(getLatestJob);
 const hasMoreSongsMock = vi.mocked(hasMoreSongsNeedingEnrichmentWork);
 const applyMock = vi.mocked(applyLibraryProcessingChange);
-
-function makeJob(overrides: Partial<Job> = {}): Job {
-	return {
-		id: overrides.id ?? "job-1",
-		account_id: overrides.account_id ?? "acct-1",
-		type: "enrichment",
-		status: overrides.status ?? "completed",
-		attempts: 1,
-		max_attempts: 3,
-		progress: null,
-		queue_priority: null,
-		error: null,
-		heartbeat_at: null,
-		started_at: null,
-		completed_at: null,
-		satisfies_requested_at: null,
-		created_at: new Date().toISOString(),
-		updated_at: new Date().toISOString(),
-		...overrides,
-	} as Job;
-}
 
 function makeState(
 	overrides: Partial<LibraryProcessingState> = {},

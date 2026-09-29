@@ -72,7 +72,6 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 import {
-	getMatchDecisions,
 	getMatchDecisionsForSongs,
 	upsertMatchDecision,
 	upsertMatchDecisions,
@@ -352,55 +351,6 @@ describe("upsertMatchDecisions", () => {
 				decision: "added",
 			},
 		]);
-
-		expect(result).toBeErr();
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("DatabaseError");
-		}
-	});
-});
-
-describe("getMatchDecisions", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		upsertResponse = { data: null, error: null };
-		selectResponse = { data: null, error: null };
-	});
-
-	it("returns all decisions for an account", async () => {
-		const decisions = [
-			fakeDecision({ id: "dec-001" }),
-			fakeDecision({ id: "dec-002", decision: "dismissed" }),
-		];
-		selectResponse = { data: decisions, error: null };
-
-		const result = await getMatchDecisions(ACCOUNT_ID);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toHaveLength(2);
-			expect(result.value[0].id).toBe("dec-001");
-		}
-	});
-
-	it("returns empty array when no decisions exist", async () => {
-		selectResponse = { data: [], error: null };
-
-		const result = await getMatchDecisions(ACCOUNT_ID);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toEqual([]);
-		}
-	});
-
-	it("returns error on database failure", async () => {
-		selectResponse = {
-			data: null,
-			error: { code: "PGRST301", message: "connection refused" },
-		};
-
-		const result = await getMatchDecisions(ACCOUNT_ID);
 
 		expect(result).toBeErr();
 		if (Result.isError(result)) {

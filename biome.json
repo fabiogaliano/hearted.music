@@ -96,6 +96,36 @@
 		},
 		{
 			"includes": [
+				"**/src/lib/domains/enrichment/content-analysis/song-batch-analysis.ts",
+				"**/src/lib/workflows/enrichment-pipeline/stages/song-analysis.ts"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"**/platform/jobs/lifecycle",
+											"**/platform/jobs/repository",
+											"**/platform/jobs/item-failures",
+											"**/record-failure",
+											"**/billing/compensation",
+											"**/data/client"
+										],
+										"message": "Song analysis returns outcomes only; the pipeline orchestrator owns job lifecycle, failure recording, replacement credits, and DB writes."
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": [
 				"**/src/**/playground/**",
 				"**/src/**/_ProdPrimitives.tsx",
 				"**/src/stories/**"
