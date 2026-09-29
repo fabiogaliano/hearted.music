@@ -40,7 +40,6 @@ repo-wide conventions in [`../README.md`](../README.md).
 | --- | --- |
 | [`matching/score-normalization.md`](./matching/score-normalization.md) | Why fusion normalizes signals across the full candidate matrix |
 | [`matching/reranker.md`](./matching/reranker.md) | Cross-encoder reranking and offline replay evaluation |
-| [`matching/research/lyrics-matching.md`](./matching/research/lyrics-matching.md) | Genius→LRCLIB lyric-matching research and eval-harness methodology |
 | [`matching/roadmap.md`](./matching/roadmap.md) | Consolidated matching research and prioritized roadmap |
 
 ## Matching proposals (future work)
