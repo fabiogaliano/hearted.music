@@ -80,19 +80,22 @@ function isGzipPayload(bytes: Uint8Array): boolean {
 
 // Each phase's result is persisted on its phase job (see runPhase), so these
 // schemas are the stored contract a resumed run parses back.
+// Results stored before `tookOver` existed never came from a takeover.
+const TookOverSchema = z.boolean().default(false);
 const LikedSongsPhaseResultSchema = z.object({
 	total: z.number(),
 	added: z.number(),
 	removed: z.number(),
-	// Results stored before this field existed never came from a takeover.
-	tookOver: z.boolean().default(false),
+	tookOver: TookOverSchema,
 });
 const PlaylistsPhaseResultSchema = z.object({
 	removedTargetPlaylistIds: z.array(z.string()),
 	updatedTargetProfileTextPlaylistIds: z.array(z.string()),
+	tookOver: TookOverSchema,
 });
 const PlaylistTracksPhaseResultSchema = z.object({
 	changedPlaylistIds: z.array(z.string()),
+	tookOver: TookOverSchema,
 });
 
 interface PhaseResults {
@@ -342,11 +345,12 @@ export async function runExtensionSyncJob(
 			"Playlist",
 			"playlist_sync",
 			PlaylistsPhaseResultSchema,
-			async () => {
+			async ({ tookOver }) => {
 				if (extensionPlaylists.length === 0) {
 					return Result.ok({
 						removedTargetPlaylistIds: [],
 						updatedTargetProfileTextPlaylistIds: [],
+						tookOver,
 					});
 				}
 				const synced = await syncPlaylists(accountId, extensionPlaylists);
@@ -354,6 +358,7 @@ export async function runExtensionSyncJob(
 					removedTargetPlaylistIds: playlistSync.removedTargetPlaylistIds,
 					updatedTargetProfileTextPlaylistIds:
 						playlistSync.updatedTargetProfileTextPlaylistIds,
+					tookOver,
 				}));
 			},
 		);
@@ -366,9 +371,9 @@ export async function runExtensionSyncJob(
 			"Playlist tracks",
 			"playlist_tracks_sync",
 			PlaylistTracksPhaseResultSchema,
-			async () => {
+			async ({ tookOver }) => {
 				if (incomingPlaylistTracks.length === 0) {
-					return Result.ok({ changedPlaylistIds: [] });
+					return Result.ok({ changedPlaylistIds: [], tookOver });
 				}
 				const dbPlaylistsResult = await getPlaylists(accountId);
 				const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
@@ -400,6 +405,7 @@ export async function runExtensionSyncJob(
 					changedPlaylistIds: trackSyncResults.flatMap((r) =>
 						r.changedPlaylistId ? [r.changedPlaylistId] : [],
 					),
+					tookOver,
 				});
 			},
 		);
@@ -517,24 +523,33 @@ function classifyChange(
 		removed: boolean;
 	};
 } {
+	// After a takeover the crashed attempt may already have applied part of
+	// the phase's writes, hiding them from this run's diff. Every signal only
+	// requests idempotent downstream work, so over-reporting is safe where
+	// under-reporting would leave songs unenriched or matches stale until the
+	// next sync.
+	const { likedSongs, playlists, playlistTracks } = results;
+	const hasTargets = currentTargetIds.size > 0;
 	return {
-		// After a takeover the crashed attempt may already have applied the
-		// adds/removes, hiding them from this run's diff. Both signals only
-		// request idempotent downstream work, so over-reporting is safe where
-		// under-reporting would leave new songs unenriched until the next sync.
 		likedSongs: {
-			added: results.likedSongs.added > 0 || results.likedSongs.tookOver,
-			removed: results.likedSongs.removed > 0 || results.likedSongs.tookOver,
+			added: likedSongs.added > 0 || likedSongs.tookOver,
+			removed: likedSongs.removed > 0 || likedSongs.tookOver,
 		},
 		targetPlaylists: {
-			trackMembershipChanged: results.playlistTracks.changedPlaylistIds.some(
-				(id) => currentTargetIds.has(id),
-			),
-			profileTextChanged:
-				results.playlists.updatedTargetProfileTextPlaylistIds.some((id) =>
+			trackMembershipChanged:
+				playlistTracks.changedPlaylistIds.some((id) =>
 					currentTargetIds.has(id),
-				),
-			removed: results.playlists.removedTargetPlaylistIds.length > 0,
+				) ||
+				(playlistTracks.tookOver && hasTargets),
+			profileTextChanged:
+				playlists.updatedTargetProfileTextPlaylistIds.some((id) =>
+					currentTargetIds.has(id),
+				) ||
+				(playlists.tookOver && hasTargets),
+			// Not gated on current targets: the crashed run may have removed the
+			// last one.
+			removed:
+				playlists.removedTargetPlaylistIds.length > 0 || playlists.tookOver,
 		},
 	};
 }

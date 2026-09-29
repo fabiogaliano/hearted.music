@@ -6,8 +6,9 @@
  * Only the edges outside the job/library tables are mocked: the Storage
  * payload, the billing grant, and applyLibraryProcessingChange (captured so
  * the emitted change can be asserted, and hung once to model the crash).
- * The liked-songs read, or the return from its write, can be hung once too,
- * to model a crash mid-phase before or after the songs were written.
+ * The liked-songs read, or the return from a liked-songs or playlist-songs
+ * write, can be hung once too, to model a crash mid-phase before or after
+ * its writes landed.
  * Auto-skipped unless DATABASE_URL and SUPABASE_URL point at the local stack.
  */
 
@@ -34,11 +35,13 @@ const {
 	mockApplyLibraryProcessingChange,
 	hangNextLikedSongsRead,
 	hangAfterNextLikedSongsWrite,
+	hangAfterNextPlaylistSongsWrite,
 } = vi.hoisted(() => ({
 	mockDownloadSyncPayload: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	hangNextLikedSongsRead: { current: false },
 	hangAfterNextLikedSongsWrite: { current: false },
+	hangAfterNextPlaylistSongsWrite: { current: false },
 }));
 
 vi.mock("@sentry/bun", () => ({ captureException: vi.fn() }));
@@ -71,6 +74,26 @@ vi.mock("@/lib/domains/library/liked-songs/queries", async (importOriginal) => {
 			const written = await actual.upsert(...args);
 			if (hangAfterNextLikedSongsWrite.current) {
 				hangAfterNextLikedSongsWrite.current = false;
+				return new Promise(() => {});
+			}
+			return written;
+		},
+	};
+});
+
+vi.mock("@/lib/domains/library/playlists/queries", async (importOriginal) => {
+	const actual =
+		await importOriginal<
+			typeof import("@/lib/domains/library/playlists/queries")
+		>();
+	return {
+		...actual,
+		upsertPlaylistSongs: async (
+			...args: Parameters<typeof actual.upsertPlaylistSongs>
+		) => {
+			const written = await actual.upsertPlaylistSongs(...args);
+			if (hangAfterNextPlaylistSongsWrite.current) {
+				hangAfterNextPlaylistSongsWrite.current = false;
 				return new Promise(() => {});
 			}
 			return written;
@@ -170,6 +193,7 @@ afterEach(async () => {
 	vi.clearAllMocks();
 	hangNextLikedSongsRead.current = false;
 	hangAfterNextLikedSongsWrite.current = false;
+	hangAfterNextPlaylistSongsWrite.current = false;
 	if (!IS_LOCAL || !accountId) return;
 	await db()`DELETE FROM account WHERE id = ${accountId}`;
 	await db()`DELETE FROM song WHERE spotify_id IN ${db()(trackIds)}`;
@@ -330,6 +354,85 @@ describe.skipIf(!IS_LOCAL)(
         SELECT status FROM job WHERE id = ${parentId}
       `;
 			expect(parent?.status).toBe("completed");
+		});
+	},
+);
+
+describe.skipIf(!IS_LOCAL)(
+	"crash inside the playlist-tracks phase after a target playlist's songs were written (regression: the retry's diff found the membership unchanged, so target songs were not enriched or matched until the next sync)",
+	() => {
+		it("the retry reports the target playlist membership as changed", async () => {
+			const playlistSpotifyId = `test-pl-${account()}`;
+			await db()`
+        INSERT INTO playlist(account_id, spotify_id, name, description, is_target)
+        VALUES (${account()}, ${playlistSpotifyId}, 'Target', null, true)
+      `;
+			mockDownloadSyncPayload.mockResolvedValue(
+				Result.ok(
+					new TextEncoder().encode(
+						JSON.stringify({
+							likedSongs: trackIds.map(likedTrack),
+							playlists: [
+								{
+									id: playlistSpotifyId,
+									name: "Target",
+									description: null,
+									owner: { id: "owner" },
+									track_count: trackIds.length,
+									image_url: null,
+								},
+							],
+							playlistTracks: [
+								{
+									playlistSpotifyId,
+									tracks: trackIds.map(likedTrack),
+								},
+							],
+						}),
+					),
+				),
+			);
+			const phaseJobIds = {
+				liked_songs: await seedJob("sync_liked_songs"),
+				playlists: await seedJob("sync_playlists"),
+				playlist_tracks: await seedJob("sync_playlist_tracks"),
+			};
+			const parentId = await seedJob("extension_sync", {
+				payload_path: `${account()}/p.json`,
+				phase_job_ids: phaseJobIds,
+			});
+
+			const crashed = await claim();
+			expect(crashed.id).toBe(parentId);
+			hangAfterNextPlaylistSongsWrite.current = true;
+			void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
+			await vi.waitFor(
+				() => expect(hangAfterNextPlaylistSongsWrite.current).toBe(false),
+				{ timeout: 10_000 },
+			);
+
+			await db()`UPDATE job SET heartbeat_at = now() - interval '10 minutes' WHERE id = ${parentId}`;
+			const swept = await sweepStaleExtensionSyncJobs("5 minutes");
+			if (Result.isError(swept)) throw swept.error;
+			expect(swept.value.map((j) => j.id)).toContain(parentId);
+
+			const retry = await claim();
+			expect(retry.id).toBe(parentId);
+			mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
+
+			const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
+
+			expect(outcome).toEqual({ status: "completed" });
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+				expect.objectContaining({
+					changes: expect.objectContaining({
+						targetPlaylists: expect.objectContaining({
+							trackMembershipChanged: true,
+						}),
+					}),
+				}),
+			);
 		});
 	},
 );
