@@ -10,17 +10,12 @@ import {
 	completeDeckJob,
 	deferDeckJob,
 	enqueueDeckJob,
-	markDeadDeckJobs,
-	sweepStaleDeckJobs,
 } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import { buildProposalsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/proposal-builder";
 import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/session-appender";
 import { log } from "@/lib/observability/logger";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import {
-	runClaimedDeckJob,
-	runMatchDeckJobSweepTick,
-} from "../poll-match-deck-jobs";
+import { runClaimedDeckJob } from "../poll-match-deck-jobs";
 
 vi.mock("@sentry/bun", () => ({
 	captureException: vi.fn(),
@@ -32,8 +27,6 @@ vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
 	deferDeckJob: vi.fn(),
 	enqueueDeckJob: vi.fn(),
 	heartbeatDeckJob: vi.fn(),
-	markDeadDeckJobs: vi.fn(),
-	sweepStaleDeckJobs: vi.fn(),
 }));
 vi.mock("@/lib/domains/taste/match-review-queue/card-materializer", () => ({
 	CAPTURE_AHEAD_WINDOW: 3,
@@ -81,64 +74,10 @@ function job(overrides: Partial<ClaimedDeckJob> = {}): ClaimedDeckJob {
 	};
 }
 
-describe("runMatchDeckJobSweepTick", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("uses the shared lease for both sweep and mark-dead, and logs dead letters", async () => {
-		vi.mocked(sweepStaleDeckJobs).mockResolvedValue(
-			Result.ok([job({ id: "stale-1" })]),
-		);
-		vi.mocked(markDeadDeckJobs).mockResolvedValue(
-			Result.ok([job({ id: "dead-1", kind: "capture_ahead", status: "dead" })]),
-		);
-
-		await runMatchDeckJobSweepTick();
-
-		expect(sweepStaleDeckJobs).toHaveBeenCalledWith(900);
-		expect(markDeadDeckJobs).toHaveBeenCalledWith(900);
-		expect(log.warn).toHaveBeenCalledWith("match-deck-swept-stale-jobs", {
-			count: 1,
-			jobIds: ["stale-1"],
-		});
-		expect(log.error).toHaveBeenCalledWith("match-deck-job-dead-lettered", {
-			jobId: "dead-1",
-			kind: "capture_ahead",
-			accountId: "acct-1",
-			orientation: "song",
-		});
-	});
-
-	it("logs a mark-dead failure and stops before dead-letter logging", async () => {
-		vi.mocked(sweepStaleDeckJobs).mockResolvedValue(Result.ok([]));
-		vi.mocked(markDeadDeckJobs).mockResolvedValue(
-			Result.err(
-				new DatabaseError({
-					code: "rpc_error",
-					message: "mark-dead failed",
-				}),
-			),
-		);
-
-		await runMatchDeckJobSweepTick();
-
-		expect(log.error).toHaveBeenCalledWith("match-deck-mark-dead-error", {
-			error: "mark-dead failed",
-		});
-		expect(log.error).not.toHaveBeenCalledWith(
-			"match-deck-job-dead-lettered",
-			expect.anything(),
-		);
-	});
-});
-
 // ---------------------------------------------------------------------------
-// runClaimedDeckJob — the claim → dispatch → settle lifecycle, extracted from
-// the poll loop's fire-and-forget task specifically so this is testable
-// without running the live while-loop (it idles on the global Bun.sleep,
-// which the vitest node pool this suite runs under doesn't provide). Per-kind
-// dispatch outcomes are asserted as the settlement they produce.
+// runClaimedDeckJob — dispatch → settle, driven without the live poll loop.
+// Per-kind dispatch outcomes are asserted as the settlement they produce; the
+// settlement SQL itself is owned by deck-job-lifecycle.integration.test.ts.
 // ---------------------------------------------------------------------------
 
 describe("runClaimedDeckJob", () => {

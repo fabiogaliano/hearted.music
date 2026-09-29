@@ -36,14 +36,12 @@ import {
 import {
 	claimAndDispatchMatchDeckJobs,
 	getActiveMatchDeckJobCount,
-	runMatchDeckJobSweepTick,
 	startMatchDeckJobPolling,
-	startMatchDeckJobSweep,
 	stopMatchDeckJobPolling,
 } from "./poll-match-deck-jobs";
 import { shutdownWorkerPostHog } from "./posthog-capture";
 import { shutdownPostHogOtel } from "./posthog-otel";
-import { runDefaultSweepTick, startDefaultSweep } from "./sweep";
+import { runSweepTick, startSweep } from "./sweep";
 
 setWorkerFatalObserver((error, phase) => {
 	log.error(phase, { error: String(error) });
@@ -63,23 +61,20 @@ async function main() {
 
 	// Awaited startup recovery pass. If the previous worker crashed mid-job, a
 	// stale row may still be `running` and holding a unique active-job index,
-	// blocking fresh work for that account. Running the sweep before any poll
-	// loop or claim path opens means the loops start from a clean slate.
-	await runDefaultSweepTick();
+	// blocking fresh work for that account (or a deck job's stale heartbeat
+	// wedging its account+orientation). Running the sweep before any poll loop
+	// or claim path opens means the loops start from a clean slate.
+	await runSweepTick();
 	// Reclaim any backfill job whose worker died mid-run before the loop opens,
 	// so an expired lease can't keep the selector wedged in backfill_active.
 	if (workerConfig.isProduction) {
 		await runAudioFeatureBackfillSweepTick();
 	}
-	// Reclaim any deck job whose worker died mid-run (stale heartbeat) and
-	// dead-letter exhausted ones before the deck poll loop opens.
-	await runMatchDeckJobSweepTick();
 
-	const sweep = startDefaultSweep();
+	const sweep = startSweep();
 	const audioBackfillSweep = workerConfig.isProduction
 		? startAudioFeatureBackfillSweep()
 		: null;
-	const matchDeckSweep = startMatchDeckJobSweep();
 
 	// Primary wake-up for enqueued jobs: a NOTIFY drains the queue immediately;
 	// the poll loop is the at-most-once-delivery safety net.
@@ -113,7 +108,6 @@ async function main() {
 		dbBackup.stop();
 		sweep.stop();
 		audioBackfillSweep?.stop();
-		matchDeckSweep.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;
 		const drainPending = () =>

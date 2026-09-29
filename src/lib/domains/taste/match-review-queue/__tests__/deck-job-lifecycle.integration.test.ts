@@ -46,7 +46,7 @@ function db() {
 	return sql;
 }
 
-// Mirrors DECK_JOB_LEASE_SECONDS in src/worker/poll-match-deck-jobs.ts.
+// Mirrors DECK_JOB_LEASE_SECONDS in src/worker/sweep.ts.
 const LEASE_SECONDS = 900;
 
 // Seeded running rows stand in for a claim, so they carry a known token.
@@ -205,7 +205,7 @@ describe.skipIf(!IS_LOCAL)(
 				heartbeatAgeSeconds: LEASE_SECONDS + 300,
 			});
 
-			// Same order as runMatchDeckJobSweepTick: sweep leaves exhausted jobs
+			// Same order as the sweep tick's deck steps: sweep leaves exhausted jobs
 			// alone, mark_dead terminalizes them.
 			const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
 			if (Result.isError(swept)) throw swept.error;

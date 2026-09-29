@@ -1,8 +1,9 @@
 /**
- * Poll loop + stale-lease sweep for match-review deck jobs.
+ * Poll loop for match-review deck jobs; their stale-lease sweep and
+ * dead-lettering are steps of the shared sweep tick (sweep.ts).
  *
- * Runs as its own loop with a dedicated claim RPC (structural clone of
- * poll-audio-feature-backfill.ts). Concurrency is 1 and the claim is p_limit=1:
+ * Runs as its own loop with a dedicated claim RPC. Concurrency is 1 and the
+ * claim is p_limit=1:
  * the claim function serializes per (account, orientation) only against committed
  * running rows, so a single-slot poller is the safe drain shape (decisions log,
  * Phase 1a).
@@ -35,8 +36,6 @@ import {
 	deferDeckJob,
 	enqueueDeckJob,
 	heartbeatDeckJob,
-	markDeadDeckJobs,
-	sweepStaleDeckJobs,
 } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import { buildProposalsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/proposal-builder";
 import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/session-appender";
@@ -47,28 +46,12 @@ import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
+import { createPollLoop } from "./poll-loop";
 import { captureWorkerEvent } from "./posthog-capture";
 
 // Bounded retry backoff for a deferred job; attempts were already consumed at
 // claim, so mark_dead terminalizes after max_attempts regardless of this delay.
 const DEFER_BACKOFF_SECONDS = 30;
-
-// Shared with mark_dead (H1): a 'running' job only dead-letters once its
-// heartbeat is older than this same lease, so sweep's reclaim and mark_dead's
-// dead-letter agree on what "still running" means and a job on its final
-// attempt is never marked dead while still genuinely executing.
-const DECK_JOB_LEASE_SECONDS = 900;
-
-let shouldPoll = false;
-const activeJobs = new Set<string>();
-
-export function stopMatchDeckJobPolling(): void {
-	shouldPoll = false;
-}
-
-export function getActiveMatchDeckJobCount(): number {
-	return activeJobs.size;
-}
 
 function toOrientation(value: string): MatchOrientation | null {
 	return value === "song" || value === "playlist" ? value : null;
@@ -384,11 +367,9 @@ function logSettlementFailure(
 
 /**
  * Handles one claimed job end-to-end: heartbeat lease, dispatch, and settle
- * (complete/defer). Extracted from the poll loop's fire-and-forget task
- * (P3.2) so the claim → dispatch → settle lifecycle — including the N2
- * settlement-guard warn — can be driven directly in tests without running the
- * live while-loop, which idles on the global `Bun.sleep` the vitest node pool
- * doesn't provide. Pure extraction: same body, same single call site below.
+ * (complete/defer). Exported so the dispatch → settle lifecycle can be driven
+ * in tests without the live loop, which idles on the global `Bun.sleep` the
+ * vitest node pool doesn't provide.
  */
 export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
 	const heartbeat = setInterval(() => {
@@ -440,90 +421,37 @@ export async function runClaimedDeckJob(job: ClaimedDeckJob): Promise<void> {
 		logSettlementFailure("defer", job, deferred);
 	} finally {
 		clearInterval(heartbeat);
-		activeJobs.delete(job.id);
 	}
+}
+
+// Single slot: the claim serializes per (account, orientation) only against
+// committed running rows, so one in-flight job is the safe drain shape.
+const loop = createPollLoop<ClaimedDeckJob, DbError>({
+	concurrency: () => 1,
+	claim: claimDeckJob,
+	jobId: (job) => job.id,
+	onClaimError: (error) =>
+		log.error("match-deck-claim-error", { error: error.message }),
+	dispatch: (job, markDone) => {
+		void runClaimedDeckJob(job).finally(markDone);
+	},
+	pollIntervalMs: workerConfig.pollIntervalMs,
+	onLoopStart: () => log.info("match-deck-polling-start", {}),
+	onLoopStop: () => log.info("match-deck-polling-stopped", {}),
+});
+
+export function stopMatchDeckJobPolling(): void {
+	loop.stop();
+}
+
+export function getActiveMatchDeckJobCount(): number {
+	return loop.getActiveCount();
 }
 
 export async function claimAndDispatchMatchDeckJobs(): Promise<void> {
-	while (shouldPoll && activeJobs.size < 1) {
-		const claimResult = await claimDeckJob();
-		if (Result.isError(claimResult)) {
-			log.error("match-deck-claim-error", { error: claimResult.error.message });
-			return;
-		}
-
-		const job = claimResult.value;
-		if (!job) return;
-
-		activeJobs.add(job.id);
-		void runClaimedDeckJob(job);
-	}
+	return loop.claimAndDispatch();
 }
 
 export async function startMatchDeckJobPolling(): Promise<void> {
-	shouldPoll = true;
-	log.info("match-deck-polling-start", {});
-
-	while (shouldPoll) {
-		await claimAndDispatchMatchDeckJobs();
-		await Bun.sleep(workerConfig.pollIntervalMs);
-	}
-
-	log.info("match-deck-polling-stopped", {});
-}
-
-export async function runMatchDeckJobSweepTick(): Promise<void> {
-	const swept = await sweepStaleDeckJobs(DECK_JOB_LEASE_SECONDS);
-	if (Result.isError(swept)) {
-		log.error("match-deck-sweep-error", { error: swept.error.message });
-	} else if (swept.value.length > 0) {
-		log.warn("match-deck-swept-stale-jobs", {
-			count: swept.value.length,
-			jobIds: swept.value.map((j) => j.id),
-		});
-	}
-
-	const dead = await markDeadDeckJobs(DECK_JOB_LEASE_SECONDS);
-	if (Result.isError(dead)) {
-		log.error("match-deck-mark-dead-error", { error: dead.error.message });
-		return;
-	}
-	for (const job of dead.value) {
-		log.error("match-deck-job-dead-lettered", {
-			jobId: job.id,
-			kind: job.kind,
-			accountId: job.account_id,
-			orientation: job.orientation,
-		});
-		Sentry.captureMessage(`match deck job dead-lettered: ${job.kind}`, "error");
-	}
-}
-
-export function startMatchDeckJobSweep(): { stop: () => void } {
-	let timer: ReturnType<typeof setTimeout> | null = null;
-	let stopped = false;
-
-	const scheduleNext = () => {
-		if (stopped) return;
-		timer = setTimeout(() => {
-			void runMatchDeckJobSweepTick()
-				.catch((error) => {
-					log.error("match-deck-sweep-tick-threw", {
-						error: errorMessage(error),
-					});
-					Sentry.captureException(error, {
-						tags: { phase: "match-deck-sweep" },
-					});
-				})
-				.finally(scheduleNext);
-		}, workerConfig.sweepIntervalMs);
-	};
-
-	scheduleNext();
-	return {
-		stop: () => {
-			stopped = true;
-			if (timer !== null) clearTimeout(timer);
-		},
-	};
+	return loop.start();
 }

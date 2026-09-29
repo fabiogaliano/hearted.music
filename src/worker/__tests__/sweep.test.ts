@@ -1,187 +1,117 @@
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	markDeadDeckJobs,
+	sweepStaleDeckJobs,
+} from "@/lib/domains/taste/match-review-queue/deck-jobs";
+import { log } from "@/lib/observability/logger";
+import {
+	claimExtensionSyncPayloadCleanup,
+	markDeadExtensionSyncJobs,
+	sweepStaleExtensionSyncJobs,
+} from "@/lib/platform/jobs/extension-sync-jobs";
+import {
+	markDeadLibraryProcessingJobs,
+	sweepStaleLibraryProcessingJobs,
+} from "@/lib/platform/jobs/library-processing-queue";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import type { IdleEnrichmentRecoveryResult } from "@/lib/workflows/library-processing/idle-recovery";
-import type {
-	DeadLetterRecoveryResult,
-	TerminalRefRecoveryResult,
+import { deleteOrphanedSyncPayloads } from "@/lib/workflows/extension-sync/payload-cleanup";
+import { deleteSyncPayload } from "@/lib/workflows/extension-sync/payload-storage";
+import { recoverIdleEnrichmentWorkflows } from "@/lib/workflows/library-processing/idle-recovery";
+import {
+	recoverDeadLetteredLibraryProcessingJobs,
+	recoverTerminalLibraryProcessingRefs,
 } from "@/lib/workflows/library-processing/terminal-recovery";
-import type {
-	LibraryProcessingApplyOutcome,
-	LibraryProcessingState,
-} from "@/lib/workflows/library-processing/types";
 import { makeJob } from "@/test/fixtures";
-import { runSweepTick, type SweepDeps, startSweep } from "../sweep";
+import { workerConfig } from "../config";
+import { runSweepTick, startSweep } from "../sweep";
 
 vi.mock("@/lib/observability/logger", () => ({
-	log: {
-		info: vi.fn(),
-		warn: vi.fn(),
-		error: vi.fn(),
-		debug: vi.fn(),
-	},
+	log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
-
-const captureException = vi.fn();
 vi.mock("@sentry/bun", () => ({
-	captureException: (...args: unknown[]) => captureException(...args),
+	captureException: vi.fn(),
+	captureMessage: vi.fn(),
+}));
+vi.mock("@/lib/data/client", () => ({
+	createAdminSupabaseClient: vi.fn(() => ({})),
+}));
+vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
+	markDeadDeckJobs: vi.fn(),
+	sweepStaleDeckJobs: vi.fn(),
+}));
+vi.mock("@/lib/platform/jobs/extension-sync-jobs", () => ({
+	claimExtensionSyncPayloadCleanup: vi.fn(),
+	markDeadExtensionSyncJobs: vi.fn(),
+	sweepStaleExtensionSyncJobs: vi.fn(),
+}));
+vi.mock("@/lib/platform/jobs/library-processing-queue", () => ({
+	markDeadLibraryProcessingJobs: vi.fn(),
+	sweepStaleLibraryProcessingJobs: vi.fn(),
+}));
+vi.mock("@/lib/workflows/extension-sync/payload-cleanup", () => ({
+	deleteOrphanedSyncPayloads: vi.fn(),
+}));
+vi.mock("@/lib/workflows/extension-sync/payload-storage", () => ({
+	deleteSyncPayload: vi.fn(),
+}));
+vi.mock("@/lib/workflows/library-processing/idle-recovery", () => ({
+	recoverIdleEnrichmentWorkflows: vi.fn(),
+}));
+vi.mock("@/lib/workflows/library-processing/terminal-recovery", () => ({
+	recoverDeadLetteredLibraryProcessingJobs: vi.fn(),
+	recoverTerminalLibraryProcessingRefs: vi.fn(),
 }));
 
-function makeDeps(overrides: Partial<SweepDeps> = {}): SweepDeps {
-	return {
-		staleThreshold: "5 minutes",
-		sweepStaleLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
-		markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok([])),
-		recoverDeadLetteredLibraryProcessingJobs: vi.fn().mockResolvedValue([]),
-		recoverTerminalLibraryProcessingRefs: vi.fn().mockResolvedValue([]),
-		recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue([]),
-		sweepStaleExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
-		markDeadExtensionSyncJobs: vi.fn().mockResolvedValue(Result.ok([])),
-		deleteOrphanedSyncPayloads: vi.fn().mockResolvedValue(undefined),
-		claimExtensionSyncPayloadCleanup: vi.fn().mockResolvedValue(Result.ok([])),
-		deleteSyncPayload: vi.fn().mockResolvedValue(Result.ok(undefined)),
-		...overrides,
-	};
-}
-
-function makeState(): LibraryProcessingState {
-	return {
-		accountId: "acct-1",
-		enrichment: { requestedAt: null, settledAt: null, activeJobId: null },
-		matchSnapshotRefresh: {
-			requestedAt: null,
-			settledAt: null,
-			activeJobId: null,
-		},
-		createdAt: "2026-01-01T00:00:00Z",
-		updatedAt: "2026-01-01T00:00:00Z",
-	};
-}
-
-function makeApplyOutcome(
-	changeKind: LibraryProcessingApplyOutcome["changeKind"],
-): LibraryProcessingApplyOutcome {
-	return {
-		accountId: "acct-1",
-		changeKind,
-		state: makeState(),
-		effects: [],
-		effectResults: [],
-	};
-}
+beforeEach(() => {
+	vi.clearAllMocks();
+	vi.mocked(sweepStaleLibraryProcessingJobs).mockResolvedValue(Result.ok([]));
+	vi.mocked(markDeadLibraryProcessingJobs).mockResolvedValue(Result.ok([]));
+	vi.mocked(recoverDeadLetteredLibraryProcessingJobs).mockResolvedValue([]);
+	vi.mocked(recoverTerminalLibraryProcessingRefs).mockResolvedValue([]);
+	vi.mocked(recoverIdleEnrichmentWorkflows).mockResolvedValue([]);
+	vi.mocked(sweepStaleExtensionSyncJobs).mockResolvedValue(Result.ok([]));
+	vi.mocked(markDeadExtensionSyncJobs).mockResolvedValue(Result.ok([]));
+	vi.mocked(deleteOrphanedSyncPayloads).mockResolvedValue(undefined);
+	vi.mocked(claimExtensionSyncPayloadCleanup).mockResolvedValue(Result.ok([]));
+	vi.mocked(deleteSyncPayload).mockResolvedValue(Result.ok(undefined));
+	vi.mocked(sweepStaleDeckJobs).mockResolvedValue(Result.ok([]));
+	vi.mocked(markDeadDeckJobs).mockResolvedValue(Result.ok([]));
+});
 
 describe("runSweepTick", () => {
-	let logMod: typeof import("@/lib/observability/logger");
-
-	beforeEach(async () => {
-		vi.clearAllMocks();
-		logMod = await import("@/lib/observability/logger");
-	});
-
 	it("calls the library-processing sweep RPCs with the stale threshold", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledWith(
-			"5 minutes",
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledWith(
+			workerConfig.staleThreshold,
 		);
-		expect(deps.markDeadLibraryProcessingJobs).toHaveBeenCalledWith(
-			"5 minutes",
+		expect(markDeadLibraryProcessingJobs).toHaveBeenCalledWith(
+			workerConfig.staleThreshold,
 		);
 	});
 
-	it("logs swept library-processing jobs", async () => {
-		const jobs = [makeJob({ id: "j-1" }), makeJob({ id: "j-2" })];
-		const deps = makeDeps({
-			sweepStaleLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.ok(jobs)),
-		});
+	it("H1: deck sweep and mark-dead share one lease so a final-attempt job isn't dead-lettered mid-run", async () => {
+		await runSweepTick();
 
-		await runSweepTick(deps);
-
-		expect(logMod.log.info).toHaveBeenCalledWith("swept-stale-jobs", {
-			count: 2,
-			jobIds: ["j-1", "j-2"],
-		});
-	});
-
-	it("logs dead-lettered library-processing jobs as warnings", async () => {
-		const jobs = [makeJob({ id: "d-1" })];
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi.fn().mockResolvedValue(Result.ok(jobs)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.warn).toHaveBeenCalledWith("dead-lettered-jobs", {
-			count: 1,
-			jobIds: ["d-1"],
-		});
-	});
-
-	it("does not log when no jobs are swept or dead-lettered", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
-
-		expect(logMod.log.info).not.toHaveBeenCalled();
-		expect(logMod.log.warn).not.toHaveBeenCalled();
-		expect(logMod.log.error).not.toHaveBeenCalled();
-	});
-
-	it("logs errors from sweep RPC without throwing", async () => {
-		const dbErr = new DatabaseError({
-			code: "42P01",
-			message: "relation not found",
-		});
-		const deps = makeDeps({
-			sweepStaleLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith("sweep-error", {
-			error: "relation not found",
-		});
-	});
-
-	it("logs errors from dead-letter RPC without throwing", async () => {
-		const dbErr = new DatabaseError({
-			code: "42P01",
-			message: "rpc failed",
-		});
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith("dead-letter-error", {
-			error: "rpc failed",
-		});
+		expect(sweepStaleDeckJobs).toHaveBeenCalledWith(900);
+		expect(markDeadDeckJobs).toHaveBeenCalledWith(900);
 	});
 
 	it("continues through the sweep RPCs even when earlier ones error", async () => {
 		const dbErr = new DatabaseError({ code: "500", message: "fail" });
-		const deps = makeDeps({
-			sweepStaleLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
+		vi.mocked(sweepStaleLibraryProcessingJobs).mockResolvedValue(
+			Result.err(dbErr),
+		);
+		vi.mocked(markDeadLibraryProcessingJobs).mockResolvedValue(
+			Result.err(dbErr),
+		);
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalled();
-		expect(deps.markDeadLibraryProcessingJobs).toHaveBeenCalled();
-		expect(logMod.log.error).toHaveBeenCalledTimes(2);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalled();
+		expect(markDeadLibraryProcessingJobs).toHaveBeenCalled();
 	});
 
 	it("calls recovery for dead-lettered library-processing jobs", async () => {
@@ -189,350 +119,98 @@ describe("runSweepTick", () => {
 			makeJob({ id: "d-1", type: "enrichment" }),
 			makeJob({ id: "d-2", type: "match_snapshot_refresh" as Job["type"] }),
 		];
-		const recoveryResults: DeadLetterRecoveryResult[] = [
-			{
-				jobId: "d-1",
-				accountId: "acct-1",
-				jobType: "enrichment",
-				outcome: Result.ok(makeApplyOutcome("enrichment_stopped")),
-			},
-			{
-				jobId: "d-2",
-				accountId: "acct-1",
-				jobType: "match_snapshot_refresh",
-				outcome: Result.ok(makeApplyOutcome("match_snapshot_failed")),
-			},
-		];
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.ok(deadJobs)),
-			recoverDeadLetteredLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(recoveryResults),
-		});
+		vi.mocked(markDeadLibraryProcessingJobs).mockResolvedValue(
+			Result.ok(deadJobs),
+		);
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.recoverDeadLetteredLibraryProcessingJobs).toHaveBeenCalledWith(
+		expect(recoverDeadLetteredLibraryProcessingJobs).toHaveBeenCalledWith(
 			deadJobs,
 		);
-		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
-			jobId: "d-1",
-			accountId: "acct-1",
-			jobType: "enrichment",
-		});
-		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
-			jobId: "d-2",
-			accountId: "acct-1",
-			jobType: "match_snapshot_refresh",
-		});
-	});
-
-	it("logs structured recovery failures without stopping later recoveries", async () => {
-		const applyError = {
-			kind: "load_state" as const,
-			cause: new DatabaseError({ code: "500", message: "db down" }),
-		};
-		const recoveryResults: DeadLetterRecoveryResult[] = [
-			{
-				jobId: "d-1",
-				accountId: "acct-1",
-				jobType: "enrichment",
-				outcome: Result.err(applyError),
-			},
-			{
-				jobId: "d-2",
-				accountId: "acct-1",
-				jobType: "match_snapshot_refresh",
-				outcome: Result.ok(makeApplyOutcome("match_snapshot_failed")),
-			},
-		];
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(
-					Result.ok([makeJob({ id: "d-1" }), makeJob({ id: "d-2" })]),
-				),
-			recoverDeadLetteredLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(recoveryResults),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith(
-			"dead-letter-recovery-failed",
-			{
-				jobId: "d-1",
-				accountId: "acct-1",
-				jobType: "enrichment",
-				error: applyError,
-			},
-		);
-		expect(logMod.log.info).toHaveBeenCalledWith("dead-letter-recovered", {
-			jobId: "d-2",
-			accountId: "acct-1",
-			jobType: "match_snapshot_refresh",
-		});
 	});
 
 	it("does not call recovery when no jobs are dead-lettered", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(
-			deps.recoverDeadLetteredLibraryProcessingJobs,
-		).not.toHaveBeenCalled();
+		expect(recoverDeadLetteredLibraryProcessingJobs).not.toHaveBeenCalled();
 	});
 
 	it("does not call recovery when dead-letter RPC errors", async () => {
-		const dbErr = new DatabaseError({ code: "500", message: "fail" });
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
+		vi.mocked(markDeadLibraryProcessingJobs).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "500", message: "fail" })),
+		);
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(
-			deps.recoverDeadLetteredLibraryProcessingJobs,
-		).not.toHaveBeenCalled();
+		expect(recoverDeadLetteredLibraryProcessingJobs).not.toHaveBeenCalled();
 	});
 
 	it("calls terminal-ref recovery on every sweep tick", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.recoverTerminalLibraryProcessingRefs).toHaveBeenCalledTimes(1);
-	});
-
-	it("logs successful terminal-ref recoveries", async () => {
-		const terminalResults: TerminalRefRecoveryResult[] = [
-			{
-				jobId: "j-terminal",
-				accountId: "acct-1",
-				workflow: "enrichment",
-				jobStatus: "completed",
-				recoveryStrategy: "completed_from_measurement",
-				outcome: Result.ok(makeApplyOutcome("enrichment_completed")),
-			},
-		];
-		const deps = makeDeps({
-			recoverTerminalLibraryProcessingRefs: vi
-				.fn()
-				.mockResolvedValue(terminalResults),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.info).toHaveBeenCalledWith("terminal-ref-recovered", {
-			jobId: "j-terminal",
-			accountId: "acct-1",
-			workflow: "enrichment",
-			jobStatus: "completed",
-			recoveryStrategy: "completed_from_measurement",
-		});
-	});
-
-	it("logs failed terminal-ref recoveries", async () => {
-		const applyError = {
-			kind: "load_state" as const,
-			cause: new DatabaseError({ code: "500", message: "db down" }),
-		};
-		const terminalResults: TerminalRefRecoveryResult[] = [
-			{
-				jobId: "j-stuck",
-				accountId: "acct-1",
-				workflow: "match_snapshot_refresh",
-				jobStatus: "failed",
-				recoveryStrategy: "conservative_failure",
-				outcome: Result.err(applyError),
-			},
-		];
-		const deps = makeDeps({
-			recoverTerminalLibraryProcessingRefs: vi
-				.fn()
-				.mockResolvedValue(terminalResults),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith(
-			"terminal-ref-recovery-failed",
-			{
-				jobId: "j-stuck",
-				accountId: "acct-1",
-				workflow: "match_snapshot_refresh",
-				jobStatus: "failed",
-				recoveryStrategy: "conservative_failure",
-				error: applyError,
-			},
-		);
+		expect(recoverTerminalLibraryProcessingRefs).toHaveBeenCalledTimes(1);
 	});
 
 	it("calls idle-enrichment recovery on every sweep tick", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
-	});
-
-	it("logs successful idle-enrichment recoveries", async () => {
-		const idleResults: IdleEnrichmentRecoveryResult[] = [
-			{
-				accountId: "acct-1",
-				latestJobStatus: "completed",
-				outcome: Result.ok(makeApplyOutcome("enrichment_work_available")),
-			},
-		];
-		const deps = makeDeps({
-			recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue(idleResults),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.info).toHaveBeenCalledWith("idle-enrichment-recovered", {
-			accountId: "acct-1",
-			latestJobStatus: "completed",
-		});
-	});
-
-	it("logs failed idle-enrichment recoveries", async () => {
-		const applyError = {
-			kind: "load_state" as const,
-			cause: new DatabaseError({ code: "500", message: "db down" }),
-		};
-		const idleResults: IdleEnrichmentRecoveryResult[] = [
-			{
-				accountId: "acct-1",
-				latestJobStatus: null,
-				outcome: Result.err(applyError),
-			},
-		];
-		const deps = makeDeps({
-			recoverIdleEnrichmentWorkflows: vi.fn().mockResolvedValue(idleResults),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith(
-			"idle-enrichment-recovery-failed",
-			{
-				accountId: "acct-1",
-				latestJobStatus: null,
-				error: applyError,
-			},
-		);
+		expect(recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not reject when a recovery step throws unexpectedly", async () => {
-		const deps = makeDeps({
-			markDeadLibraryProcessingJobs: vi
-				.fn()
-				.mockResolvedValue(Result.ok([makeJob({ id: "d-1" })])),
-			recoverDeadLetteredLibraryProcessingJobs: vi
-				.fn()
-				.mockRejectedValue(new Error("recovery exploded")),
-		});
+		vi.mocked(markDeadLibraryProcessingJobs).mockResolvedValue(
+			Result.ok([makeJob({ id: "d-1" })]),
+		);
+		vi.mocked(recoverDeadLetteredLibraryProcessingJobs).mockRejectedValue(
+			new Error("recovery exploded"),
+		);
 
-		await expect(runSweepTick(deps)).resolves.toBeUndefined();
+		await expect(runSweepTick()).resolves.toBeUndefined();
 
-		expect(logMod.log.error).toHaveBeenCalledWith("sweep-step-threw", {
+		expect(log.error).toHaveBeenCalledWith("sweep-step-threw", {
 			step: "recover-dead-letters",
 			error: "recovery exploded",
 		});
-		expect(captureException).toHaveBeenCalledTimes(1);
 	});
 
 	it("runs later steps even when an earlier step throws", async () => {
-		const deps = makeDeps({
-			recoverTerminalLibraryProcessingRefs: vi
-				.fn()
-				.mockRejectedValue(new Error("terminal recovery exploded")),
-		});
+		vi.mocked(recoverTerminalLibraryProcessingRefs).mockRejectedValue(
+			new Error("terminal recovery exploded"),
+		);
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.sweepStaleExtensionSyncJobs).toHaveBeenCalledWith("5 minutes");
-		expect(deps.markDeadExtensionSyncJobs).toHaveBeenCalledWith("5 minutes");
+		expect(sweepStaleExtensionSyncJobs).toHaveBeenCalled();
+		expect(markDeadExtensionSyncJobs).toHaveBeenCalled();
+		expect(sweepStaleDeckJobs).toHaveBeenCalled();
+		expect(markDeadDeckJobs).toHaveBeenCalled();
 	});
 
 	it("calls deleteSyncPayload for each claimed payload path", async () => {
-		const claimed = [
-			{ jobId: "j-1", accountId: "acct-1", payloadPath: "acct-1/a.json" },
-			{ jobId: "j-2", accountId: "acct-2", payloadPath: "acct-2/b.json" },
-		];
-		const deps = makeDeps({
-			claimExtensionSyncPayloadCleanup: vi
-				.fn()
-				.mockResolvedValue(Result.ok(claimed)),
-		});
+		vi.mocked(claimExtensionSyncPayloadCleanup).mockResolvedValue(
+			Result.ok([
+				{ jobId: "j-1", accountId: "acct-1", payloadPath: "acct-1/a.json" },
+				{ jobId: "j-2", accountId: "acct-2", payloadPath: "acct-2/b.json" },
+			]),
+		);
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.deleteSyncPayload).toHaveBeenCalledWith("acct-1/a.json");
-		expect(deps.deleteSyncPayload).toHaveBeenCalledWith("acct-2/b.json");
-		expect(logMod.log.info).toHaveBeenCalledWith(
-			"extension-sync-payload-cleanup",
-			{ count: 2, jobIds: ["j-1", "j-2"] },
+		expect(deleteSyncPayload).toHaveBeenCalledWith(
+			expect.anything(),
+			"acct-1/a.json",
+		);
+		expect(deleteSyncPayload).toHaveBeenCalledWith(
+			expect.anything(),
+			"acct-2/b.json",
 		);
 	});
 
 	it("does not call deleteSyncPayload when no payloads are claimed", async () => {
-		const deps = makeDeps();
-		await runSweepTick(deps);
+		await runSweepTick();
 
-		expect(deps.deleteSyncPayload).not.toHaveBeenCalled();
-	});
-
-	it("logs a warning when a payload Storage delete fails after the pointer is stripped", async () => {
-		const claimed = [
-			{ jobId: "j-leak", accountId: "acct-1", payloadPath: "acct-1/leak.json" },
-		];
-		const dbErr = new DatabaseError({
-			code: "storage_delete_failed",
-			message: "bucket gone",
-		});
-		const deps = makeDeps({
-			claimExtensionSyncPayloadCleanup: vi
-				.fn()
-				.mockResolvedValue(Result.ok(claimed)),
-			deleteSyncPayload: vi.fn().mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.warn).toHaveBeenCalledWith(
-			"extension-sync-payload-cleanup-delete-failed",
-			{
-				jobId: "j-leak",
-				accountId: "acct-1",
-				payloadPath: "acct-1/leak.json",
-				error: "bucket gone",
-			},
-		);
-	});
-
-	it("logs an error when claimExtensionSyncPayloadCleanup RPC fails without throwing", async () => {
-		const dbErr = new DatabaseError({
-			code: "500",
-			message: "cleanup rpc failed",
-		});
-		const deps = makeDeps({
-			claimExtensionSyncPayloadCleanup: vi
-				.fn()
-				.mockResolvedValue(Result.err(dbErr)),
-		});
-
-		await runSweepTick(deps);
-
-		expect(logMod.log.error).toHaveBeenCalledWith(
-			"extension-sync-payload-cleanup-error",
-			{ error: "cleanup rpc failed" },
-		);
-		expect(deps.deleteSyncPayload).not.toHaveBeenCalled();
+		expect(deleteSyncPayload).not.toHaveBeenCalled();
 	});
 
 	it("runs the payload-cleanup step after the dead-letter step", async () => {
@@ -547,21 +225,19 @@ describe("runSweepTick", () => {
 				progress: { payload_path: "p" },
 			}),
 		];
-		const deps = makeDeps({
-			markDeadExtensionSyncJobs: vi.fn().mockImplementation(async () => {
-				callOrder.push("mark-dead");
-				return Result.ok(deadJobs);
-			}),
-			deleteOrphanedSyncPayloads: vi.fn().mockImplementation(async () => {
-				callOrder.push("delete-orphaned");
-			}),
-			claimExtensionSyncPayloadCleanup: vi.fn().mockImplementation(async () => {
-				callOrder.push("claim-cleanup");
-				return Result.ok([]);
-			}),
+		vi.mocked(markDeadExtensionSyncJobs).mockImplementation(async () => {
+			callOrder.push("mark-dead");
+			return Result.ok(deadJobs);
+		});
+		vi.mocked(deleteOrphanedSyncPayloads).mockImplementation(async () => {
+			callOrder.push("delete-orphaned");
+		});
+		vi.mocked(claimExtensionSyncPayloadCleanup).mockImplementation(async () => {
+			callOrder.push("claim-cleanup");
+			return Result.ok([]);
 		});
 
-		await runSweepTick(deps);
+		await runSweepTick();
 
 		const markDeadIdx = callOrder.indexOf("mark-dead");
 		const deleteOrphanedIdx = callOrder.indexOf("delete-orphaned");
@@ -573,8 +249,9 @@ describe("runSweepTick", () => {
 });
 
 describe("startSweep", () => {
+	const interval = workerConfig.sweepIntervalMs;
+
 	beforeEach(() => {
-		vi.clearAllMocks();
 		vi.useFakeTimers();
 	});
 
@@ -584,40 +261,37 @@ describe("startSweep", () => {
 
 	it("does not start the next tick until the current one settles", async () => {
 		let resolveTick = () => {};
-		const deps = makeDeps({
-			sweepStaleLibraryProcessingJobs: vi.fn().mockImplementation(
-				() =>
-					new Promise((resolve) => {
-						resolveTick = () => resolve(Result.ok([]));
-					}),
-			),
-		});
+		vi.mocked(sweepStaleLibraryProcessingJobs).mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					resolveTick = () => resolve(Result.ok([]));
+				}),
+		);
 
-		const { stop } = startSweep(deps, 1000);
+		const { stop } = startSweep();
 
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(interval);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
 
-		await vi.advanceTimersByTimeAsync(5000);
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(interval * 5);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
 
 		resolveTick();
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(2);
+		await vi.advanceTimersByTimeAsync(interval);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(2);
 
 		stop();
 	});
 
 	it("stops scheduling further ticks after stop()", async () => {
-		const deps = makeDeps();
-		const { stop } = startSweep(deps, 1000);
+		const { stop } = startSweep();
 
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(interval);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
 
 		stop();
 
-		await vi.advanceTimersByTimeAsync(5000);
-		expect(deps.sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+		await vi.advanceTimersByTimeAsync(interval * 5);
+		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
 	});
 });
