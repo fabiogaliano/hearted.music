@@ -45,20 +45,21 @@ async function claim(eventId: string, token?: string): Promise<string> {
 	return row.outcome;
 }
 
-async function markProcessed(eventId: string, token?: string): Promise<void> {
-	if (token) {
-		await db()`SELECT mark_billing_bridge_event_processed(${eventId}, ${token}::uuid)`;
-		return;
-	}
-	await db()`SELECT mark_billing_bridge_event_processed(${eventId})`;
+async function markProcessed(
+	eventId: string,
+	token?: string,
+): Promise<boolean> {
+	const [row] = token
+		? await db()`SELECT mark_billing_bridge_event_processed(${eventId}, ${token}::uuid) AS owned`
+		: await db()`SELECT mark_billing_bridge_event_processed(${eventId}) AS owned`;
+	return row.owned;
 }
 
-async function markFailed(eventId: string, token?: string): Promise<void> {
-	if (token) {
-		await db()`SELECT mark_billing_bridge_event_failed(${eventId}, 'handler threw', ${token}::uuid)`;
-		return;
-	}
-	await db()`SELECT mark_billing_bridge_event_failed(${eventId}, 'handler threw')`;
+async function markFailed(eventId: string, token?: string): Promise<boolean> {
+	const [row] = token
+		? await db()`SELECT mark_billing_bridge_event_failed(${eventId}, 'handler threw', ${token}::uuid) AS owned`
+		: await db()`SELECT mark_billing_bridge_event_failed(${eventId}, 'handler threw') AS owned`;
+	return row.owned;
 }
 
 async function expireLease(eventId: string): Promise<void> {
@@ -155,13 +156,25 @@ describeLocal("claim_billing_bridge_event", () => {
 		await expireLease(eventId);
 		expect(await claim(eventId, liveToken)).toBe("claimed");
 
-		await markFailed(eventId, staleToken);
+		expect(await markFailed(eventId, staleToken)).toBe(false);
 
 		expect(await readStatus(eventId)).toBe("processing");
 		expect(await claim(eventId, crypto.randomUUID())).toBe("in_progress");
 
-		await markProcessed(eventId, liveToken);
+		expect(await markProcessed(eventId, liveToken)).toBe(true);
 		expect(await readStatus(eventId)).toBe("processed");
+	});
+
+	it("regression: a stale lease holder's success is reported as a lost claim so the route does not ack it", async () => {
+		const eventId = newEventId();
+		const staleToken = crypto.randomUUID();
+
+		await claim(eventId, staleToken);
+		await expireLease(eventId);
+		expect(await claim(eventId, crypto.randomUUID())).toBe("claimed");
+
+		expect(await markProcessed(eventId, staleToken)).toBe(false);
+		expect(await readStatus(eventId)).toBe("processing");
 	});
 
 	it("still finalizes events claimed without a token by a pre-token deploy", async () => {

@@ -4309,11 +4309,11 @@ export type Database = {
 					p_error_message: string;
 					p_stripe_event_id: string;
 				};
-				Returns: undefined;
+				Returns: boolean;
 			};
 			mark_billing_bridge_event_processed: {
 				Args: { p_claim_token?: string; p_stripe_event_id: string };
-				Returns: undefined;
+				Returns: boolean;
 			};
 			mark_dead_extension_sync_jobs: {
 				Args: { stale_threshold: string };

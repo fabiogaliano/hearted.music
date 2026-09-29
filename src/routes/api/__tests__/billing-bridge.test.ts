@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
+import { captureWithWaitUntil } from "@/utils/posthog-server";
 import { Route } from "../billing-bridge";
 
 const SECRET = "bridge-test-secret";
@@ -79,12 +80,14 @@ async function signedRequest(
 	});
 }
 
-function claimReturns(outcome: ClaimOutcome) {
+// `stillOwned` is what the mark_* finalizers report: false once the lease
+// expired and another run reclaimed the event.
+function claimReturns(outcome: ClaimOutcome, { stillOwned = true } = {}) {
 	rpc.mockImplementation(async (fn: string) => {
 		if (fn === "claim_billing_bridge_event") {
 			return { data: outcome, error: null };
 		}
-		return { data: null, error: null };
+		return { data: stillOwned, error: null };
 	});
 }
 
@@ -130,6 +133,18 @@ describe("POST /api/billing-bridge", () => {
 			p_claim_token: claimArgs?.p_claim_token,
 		});
 		expect(rpcCallsTo("mark_billing_bridge_event_failed")).toEqual([]);
+		expect(captureWithWaitUntil).toHaveBeenCalledTimes(1);
+	});
+
+	it("regression: a run that lost its claim before finalizing answers 409 and emits no payment analytics", async () => {
+		claimReturns("claimed", { stillOwned: false });
+
+		const response = await post(
+			await signedRequest(packFulfilledBody("evt_lost")),
+		);
+
+		expect(response.status).toBe(409);
+		expect(captureWithWaitUntil).not.toHaveBeenCalled();
 	});
 
 	it("acknowledges an already-processed event without re-running the handler", async () => {

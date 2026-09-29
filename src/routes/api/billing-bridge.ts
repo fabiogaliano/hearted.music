@@ -226,6 +226,26 @@ export const Route = createFileRoute("/api/billing-bridge")({
 						{ status: 500 },
 					);
 				}
+				if (processMark.data !== true) {
+					// This run outlived its lease and another run reclaimed the event;
+					// that run's finalizer owns the outcome, which may yet be a
+					// failure. Same answer as in_progress: the upstream retry then
+					// sees duplicate_processed or reclaims, and analytics are left to
+					// the run that actually records the event as processed.
+					console.error(
+						`[billing-bridge] Lost claim before finalizing stripe_event=${payload.stripe_event_id}`,
+					);
+					captureServerError(
+						new Error("billing bridge claim lost before finalize"),
+						{
+							area: "billing_bridge",
+							operation: "mark_event_processed",
+							accountId: payload.account_id,
+							extra: { stripe_event_id: payload.stripe_event_id },
+						},
+					);
+					return Response.json({ error: "claim_lost" }, { status: 409 });
+				}
 
 				console.log(
 					`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
