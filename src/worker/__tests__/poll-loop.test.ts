@@ -66,4 +66,47 @@ describe("createPollLoop", () => {
 
 		expect(claim).toHaveBeenCalledTimes(2);
 	});
+
+	it("does not dispatch a job whose in-flight claim resolves after stop(), and releases it", async () => {
+		let resolveClaim: (result: ClaimResult) => void = () => {};
+		const claim = vi.fn(
+			() =>
+				new Promise<ClaimResult>((resolve) => {
+					resolveClaim = resolve;
+				}),
+		);
+		const dispatch = vi.fn();
+		let finishRelease: () => void = () => {};
+		const release = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					finishRelease = resolve;
+				}),
+		);
+		const loop = createPollLoop<Job, { message: string }>({
+			concurrency: () => 1,
+			claim,
+			jobId: (job) => job.id,
+			onClaimError: vi.fn(),
+			dispatch,
+			release,
+			pollIntervalMs: 1000,
+		});
+
+		const tick = loop.claimAndDispatch();
+		loop.stop();
+		// Shutdown must keep waiting while the claim can still return a job.
+		expect(loop.getActiveCount()).toBe(1);
+
+		resolveClaim(Result.ok({ id: "job-1" }));
+		await vi.waitFor(() =>
+			expect(release).toHaveBeenCalledWith({ id: "job-1" }),
+		);
+		expect(loop.getActiveCount()).toBe(1);
+
+		finishRelease();
+		await tick;
+		expect(dispatch).not.toHaveBeenCalled();
+		expect(loop.getActiveCount()).toBe(0);
+	});
 });

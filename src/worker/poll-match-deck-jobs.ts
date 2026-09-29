@@ -471,6 +471,13 @@ const loop = createPollLoop<ClaimedDeckJob, DbError>({
 	dispatch: (job, markDone) => {
 		void runClaimedDeckJob(job).finally(markDone);
 	},
+	// Zero backoff: the job never ran, so it should be claimable by the next
+	// worker at once. The attempt consumed at claim is not refunded — the same
+	// cost the lease sweep would charge.
+	release: async (job) => {
+		const released = await deferDeckJob(job.id, job.locked_by, 0);
+		logSettlementFailure("defer", job, released);
+	},
 	pollIntervalMs: workerConfig.pollIntervalMs,
 	onLoopStart: () => log.info("match-deck-polling-start", {}),
 	onLoopStop: () => log.info("match-deck-polling-stopped", {}),

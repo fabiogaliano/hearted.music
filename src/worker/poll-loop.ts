@@ -32,6 +32,12 @@ export interface PollLoopOptions<TJob, TError extends { message: string }> {
 	 * (typically in a `finally` inside a fire-and-forget task).
 	 */
 	dispatch: (job: TJob, markDone: () => void) => void | Promise<void>;
+	/**
+	 * Hands back a job whose claim resolved after `stop()`, so it is retried
+	 * now rather than stranded until the lease sweep. Loops that omit it rely
+	 * on the sweep to reclaim such a job.
+	 */
+	release?: (job: TJob) => Promise<void>;
 	pollIntervalMs: number;
 	onLoopStart?: () => void;
 	onLoopStop?: () => void;
@@ -57,8 +63,10 @@ export function createPollLoop<TJob, TError extends { message: string }>(
 		shouldPoll = false;
 	}
 
+	// Shutdown drains on this count; an in-flight claim may still return a job
+	// that must be released before the process exits.
 	function getActiveCount() {
-		return activeJobs.size;
+		return activeJobs.size + inFlightClaims;
 	}
 
 	async function claimAndDispatch(): Promise<void> {
@@ -85,6 +93,14 @@ export function createPollLoop<TJob, TError extends { message: string }>(
 
 			const id = options.jobId(job);
 			activeJobs.add(id);
+			if (!shouldPoll) {
+				try {
+					await options.release?.(job);
+				} finally {
+					activeJobs.delete(id);
+				}
+				return;
+			}
 			await options.dispatch(job, () => activeJobs.delete(id));
 		}
 	}
