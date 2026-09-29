@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { renderWithRouter, screen } from "@/test/utils/render";
+import { renderWithRouter, screen, within } from "@/test/utils/render";
 import { PublishResultRegion } from "../publish/PublishResultRegion";
 import type { PublishPlaylistResult } from "../usePublishPlaylist";
 
@@ -38,16 +38,35 @@ function renderRegion(result: PublishPlaylistResult) {
 }
 
 describe("PublishResultRegion", () => {
+	// Each terminal state is identified by the affordance only it offers, so
+	// the region is proven to render the matching state, not just any state.
 	it.each([
-		[successResult, "Playlist created"],
-		[partialResult, "Playlist created — songs couldn't be added"],
-		[unsyncedResult, "Created, not synced back"],
-	] as const)("focuses each terminal result when it appears", async (result, copy) => {
+		[
+			successResult,
+			{ role: "link", name: /view playlist/i },
+			{ role: "button", name: /done/i },
+		],
+		[
+			partialResult,
+			{ role: "button", name: /done/i },
+			{ role: "button", name: /retry/i },
+		],
+		[
+			unsyncedResult,
+			{ role: "button", name: /retry/i },
+			{ role: "link", name: /view playlist/i },
+		],
+	] as const)("focuses each terminal result when it appears", async (result, present, absent) => {
 		await renderRegion(result);
 
 		const region = screen.getByRole("status");
 		expect(region).toHaveFocus();
-		expect(screen.getByText(copy, { exact: true })).toBeInTheDocument();
+		expect(
+			within(region).getByRole(present.role, { name: present.name }),
+		).toBeInTheDocument();
+		expect(
+			within(region).queryByRole(absent.role, { name: absent.name }),
+		).not.toBeInTheDocument();
 	});
 
 	it("moves focus back to the region when the terminal status changes", async () => {

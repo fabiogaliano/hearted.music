@@ -11,8 +11,8 @@
  *  - CTA disabled when songIds is empty; enabled when songs present.
  *  - CTA disabled when the name is blank (whitespace-only).
  *  - CTA disabled while isSubmitting is true (prop-driven), aria-busy set.
- *  - CTA disabled while isResolvingArtists is true, with the shared
- *    "Updating preview…" hint.
+ *  - CTA disabled while isResolvingArtists is true, announcing the same
+ *    hint as a stale preview.
  *  - CTA disabled (harder) on isArtistResolutionError, with its own hint
  *    pointing at the ArtistConfig retry.
  *  - onSubmit called on click when the CTA is enabled.
@@ -178,11 +178,25 @@ describe("CreateBar — CTA disabled states", () => {
 		expect(btn).toHaveAttribute("aria-busy", "true");
 	});
 
-	it("is disabled while artist song resolution is in flight, with an 'Updating…' hint", () => {
-		render(<CreateBar {...makeProps({ isResolvingArtists: true })} />);
+	it("is disabled while artist song resolution is in flight, announcing the same hint as a stale preview", () => {
+		// The announced blocker is the only signal of *why* the CTA is disabled;
+		// resolving artists is the same "preview not current yet" cause.
+		const announcedHint = (container: HTMLElement) =>
+			container.querySelector('[aria-live="polite"]')?.textContent;
+
+		const stale = render(
+			<CreateBar {...makeProps({ isPreviewStale: true })} />,
+		);
+		const staleHint = announcedHint(stale.container);
+		stale.unmount();
+
+		const { container } = render(
+			<CreateBar {...makeProps({ isResolvingArtists: true })} />,
+		);
 		const btn = screen.getByRole("button", { name: /create playlist/i });
 		expect(btn).toBeDisabled();
-		expect(screen.getByText("Updating…")).toBeInTheDocument();
+		expect(staleHint).toBeTruthy();
+		expect(announcedHint(container)).toBe(staleHint);
 	});
 
 	it("renders a Retry button instead of the CTA on artist resolution error", () => {
