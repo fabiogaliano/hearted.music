@@ -13,7 +13,7 @@ import {
 	type MatchRefreshStageName,
 	type MatchSnapshotRefreshProgress,
 } from "@/lib/platform/jobs/progress/match-snapshot-refresh";
-import { updateJobProgress } from "@/lib/platform/jobs/repository";
+import { type Job, updateJobProgress } from "@/lib/platform/jobs/repository";
 import { loadLibraryProcessingState } from "@/lib/workflows/library-processing/queries";
 import {
 	loadCandidateDetails,
@@ -50,19 +50,24 @@ async function checkIfSuperseded(
 }
 
 async function persistRefreshProgress(
-	jobId: string | undefined,
+	job: Pick<Job, "id" | "attempts"> | undefined,
 	progress: MatchSnapshotRefreshProgress,
 ): Promise<void> {
-	if (!jobId) {
+	if (!job) {
 		return;
 	}
 
-	const result = await updateJobProgress(jobId, progress);
+	const result = await updateJobProgress(job, progress);
 	if (Result.isError(result)) {
 		log.error("match:progress-persist-failed", {
-			jobId,
+			jobId: job.id,
 			error: result.error.message,
 		});
+		return;
+	}
+	// The leaseLost checkpoints stop the run; this only records the dropped write.
+	if (result.value === "superseded") {
+		log.debug("match:progress-superseded", { jobId: job.id });
 	}
 }
 
@@ -202,7 +207,7 @@ function skipStage(
 }
 
 async function publishSnapshot(opts: {
-	jobId?: string;
+	job?: Pick<Job, "id" | "attempts">;
 	progress: MatchSnapshotRefreshProgress;
 	leaseLost?: AbortSignal;
 	writer: () => Promise<MatchSnapshotRefreshResult>;
@@ -213,7 +218,7 @@ async function publishSnapshot(opts: {
 		return { status: "lease_lost" };
 	}
 	startStage(opts.progress, "publishing");
-	await persistRefreshProgress(opts.jobId, opts.progress);
+	await persistRefreshProgress(opts.job, opts.progress);
 
 	const snapshotResult = await opts.writer();
 	finishStage(opts.progress, "publishing", 1, 0);
@@ -221,7 +226,7 @@ async function publishSnapshot(opts: {
 	opts.progress.noOp = snapshotResult.noOp;
 	opts.progress.isEmpty = snapshotResult.isEmpty;
 	opts.progress.currentStage = undefined;
-	await persistRefreshProgress(opts.jobId, opts.progress);
+	await persistRefreshProgress(opts.job, opts.progress);
 
 	return { status: "published", result: snapshotResult };
 }
@@ -229,7 +234,7 @@ async function publishSnapshot(opts: {
 export async function executeMatchSnapshotRefresh(
 	accountId: string,
 	plan: MatchSnapshotRefreshPlan,
-	jobId?: string,
+	job?: Pick<Job, "id" | "attempts">,
 	actor?: string,
 	satisfiesRequestedAt?: string,
 	leaseLost?: AbortSignal,
@@ -274,7 +279,7 @@ export async function executeMatchSnapshotRefresh(
 	// --- Stage: target_song_enrichment ---
 	if (plan.needsTargetSongEnrichment) {
 		startStage(progress, "target_song_enrichment");
-		await persistRefreshProgress(jobId, progress);
+		await persistRefreshProgress(job, progress);
 		const outcome = await runTargetSongEnrichment(accountId, who);
 		finishStage(
 			progress,
@@ -282,15 +287,15 @@ export async function executeMatchSnapshotRefresh(
 			outcome.succeeded ? 1 : 0,
 			outcome.succeeded ? 0 : 1,
 		);
-		await persistRefreshProgress(jobId, progress);
+		await persistRefreshProgress(job, progress);
 	} else {
 		skipStage(progress, "target_song_enrichment");
-		await persistRefreshProgress(jobId, progress);
+		await persistRefreshProgress(job, progress);
 	}
 
 	// --- Stage: playlist_profiling ---
 	startStage(progress, "playlist_profiling");
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	const { playlists, profiles } = await loadTargetPlaylistProfiles(
 		accountId,
@@ -299,7 +304,7 @@ export async function executeMatchSnapshotRefresh(
 
 	finishStage(progress, "playlist_profiling", playlists.length, 0);
 	progress.playlistCount = playlists.length;
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	log.info("match:playlists-profiled", {
 		actor: who,
@@ -315,7 +320,7 @@ export async function executeMatchSnapshotRefresh(
 		progress.candidateCount = 0;
 		progress.matchedSongCount = 0;
 		return publishSnapshot({
-			jobId,
+			job,
 			progress,
 			leaseLost,
 			writer: () => writeEmptySnapshot(accountId),
@@ -330,12 +335,12 @@ export async function executeMatchSnapshotRefresh(
 
 	// --- Stage: candidate_loading ---
 	startStage(progress, "candidate_loading");
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	const songIds = await loadCandidateSongIds(accountId);
 	finishStage(progress, "candidate_loading", songIds.length, 0);
 	progress.candidateCount = songIds.length;
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	log.info("match:candidates-loaded", {
 		actor: who,
@@ -350,7 +355,7 @@ export async function executeMatchSnapshotRefresh(
 	if (songIds.length === 0) {
 		progress.matchedSongCount = 0;
 		return publishSnapshot({
-			jobId,
+			job,
 			progress,
 			leaseLost,
 			writer: () =>
@@ -387,7 +392,7 @@ export async function executeMatchSnapshotRefresh(
 
 	// --- Stage: matching (scoring + retention + oriented ranking) ---
 	startStage(progress, "matching");
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	log.info("match:scoring", {
 		actor: who,
@@ -410,7 +415,7 @@ export async function executeMatchSnapshotRefresh(
 
 	if (Result.isError(scoringResult)) {
 		finishStage(progress, "matching", 0, 1);
-		await persistRefreshProgress(jobId, progress);
+		await persistRefreshProgress(job, progress);
 		log.error("match:scoring-failed", { actor: who });
 		throw new Error("[target-refresh] Matching failed");
 	}
@@ -440,7 +445,7 @@ export async function executeMatchSnapshotRefresh(
 	const matchedSongIds = [...new Set(storedPairs.map((p) => p.songId))];
 	finishStage(progress, "matching", matchedSongIds.length, 0);
 	progress.matchedSongCount = matchedSongIds.length;
-	await persistRefreshProgress(jobId, progress);
+	await persistRefreshProgress(job, progress);
 
 	logMatchOutcome(who, matches, matchingSongs, playlists);
 
@@ -450,7 +455,7 @@ export async function executeMatchSnapshotRefresh(
 
 	// --- Stage: publishing ---
 	return publishSnapshot({
-		jobId,
+		job,
 		progress,
 		leaseLost,
 		writer: () =>

@@ -66,7 +66,7 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
-	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
+	updateJobProgress: vi.fn().mockResolvedValue(Result.ok("applied")),
 }));
 
 vi.mock("@/lib/data/client", () => ({
@@ -187,6 +187,7 @@ function activationOutcomeSuccess(songIds: string[]): StageOutcome {
 	};
 }
 
+const CLAIMED_JOB = { id: "job-1", attempts: 1 };
 const EMPTY_LANGUAGE_DETECTION_STATS = {
 	candidates: 0,
 	detected: 0,
@@ -299,7 +300,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockRunAudioFeatures).toHaveBeenCalledOnce();
 		expect(mockRunGenreTagging).toHaveBeenCalledOnce();
@@ -318,7 +319,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-2"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockRunAudioFeatures).toHaveBeenCalledOnce();
 		expect(mockRunGenreTagging).toHaveBeenCalledOnce();
@@ -333,7 +334,7 @@ describe("executeWorkerChunk sub-batching", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -358,7 +359,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["a", "b"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		// audio_features called with both songs
 		const audioBatch = mockRunAudioFeatures.mock.calls[0][1] as PipelineBatch;
@@ -387,7 +388,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["a", "b"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockDetectLanguageForSongs).toHaveBeenCalledOnce();
 		expect(mockDetectLanguageForSongs).toHaveBeenCalledWith(["a", "b"]);
@@ -432,7 +433,7 @@ describe("executeWorkerChunk sub-batching", () => {
 
 		const resultPromise = executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -486,7 +487,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		await expect(
-			executeWorkerChunk("account-1", "job-1", 10, 0, "normal"),
+			executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal"),
 		).rejects.toThrow("Failed to record failure rows for stage audio_features");
 
 		expect(mockRunContentActivation).not.toHaveBeenCalled();
@@ -507,7 +508,7 @@ describe("executeWorkerChunk sub-batching", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -553,7 +554,7 @@ describe("executeWorkerChunk sub-batching", () => {
 			],
 		});
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledOnce();
 		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledWith(
@@ -593,7 +594,7 @@ describe("executeWorkerChunk sub-batching", () => {
 			],
 		});
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledOnce();
 		expect(mockGrantAnalysisFailureReplacementCredit).toHaveBeenCalledWith(
@@ -633,7 +634,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 		await expect(
-			executeWorkerChunk("account-1", "job-1", 10, 0, "normal"),
+			executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal"),
 		).rejects.toThrow();
 
 		expect(mockGrantAnalysisFailureReplacementCredit).not.toHaveBeenCalled();
@@ -666,7 +667,7 @@ describe("executeWorkerChunk sub-batching", () => {
 		);
 
 		await expect(
-			executeWorkerChunk("account-1", "job-1", 10, 0, "normal"),
+			executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal"),
 		).rejects.toThrow();
 	});
 
@@ -682,7 +683,7 @@ describe("executeWorkerChunk sub-batching", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -727,7 +728,7 @@ describe("executeWorkerChunk sub-batching", () => {
 
 		await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -753,7 +754,7 @@ describe("content activation", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1", "song-2"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockRunContentActivation).toHaveBeenCalledOnce();
 		const [ctx, songIds] = mockRunContentActivation.mock.calls[0] as [
@@ -773,7 +774,7 @@ describe("content activation", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["song-1"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockRunContentActivation).not.toHaveBeenCalled();
 	});
@@ -790,7 +791,7 @@ describe("content activation", () => {
 		mockSelectEnrichmentWorkPlan.mockResolvedValue(workPlan);
 		mockLoadBatchSongs.mockResolvedValue(makeBatch(["phase-a-only"]));
 
-		await executeWorkerChunk("account-1", "job-1", 10, 0, "normal");
+		await executeWorkerChunk("account-1", CLAIMED_JOB, 10, 0, "normal");
 
 		expect(mockRunContentActivation).not.toHaveBeenCalled();
 	});
@@ -824,7 +825,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -845,7 +846,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -866,7 +867,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -886,7 +887,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -912,7 +913,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -931,7 +932,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",
@@ -955,7 +956,7 @@ describe("newCandidatesAvailable readiness", () => {
 
 		const result = await executeWorkerChunk(
 			"account-1",
-			"job-1",
+			CLAIMED_JOB,
 			10,
 			0,
 			"normal",

@@ -429,7 +429,7 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
-	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
+	updateJobProgress: vi.fn().mockResolvedValue(Result.ok("applied")),
 }));
 
 vi.mock("@/lib/platform/jobs/item-failures", () => ({
@@ -476,6 +476,7 @@ import { executeWorkerChunk } from "../orchestrator";
 // Helpers
 // ---------------------------------------------------------------------------
 
+const CLAIMED_JOB = { id: "job-1", attempts: 1 };
 const ACCOUNT_ID = "test-account-id";
 const EMPTY_LANGUAGE_DETECTION_STATS = {
 	candidates: 0,
@@ -593,7 +594,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		it("orchestrator runs all four enrichment stages for self_hosted account", async () => {
 			const result = await executeWorkerChunk(
 				ACCOUNT_ID,
-				"job-1",
+				CLAIMED_JOB,
 				50,
 				0,
 				"normal",
@@ -614,7 +615,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("Phase B (analysis) receives all songs — not gated out", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
+			await executeWorkerChunk(ACCOUNT_ID, CLAIMED_JOB, 50, 0, "normal");
 
 			const analysisBatch = mockRunSongAnalysis.mock
 				.calls[0][1] as PipelineBatch;
@@ -622,7 +623,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("Phase C (embedding) receives all songs — not gated out", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
+			await executeWorkerChunk(ACCOUNT_ID, CLAIMED_JOB, 50, 0, "normal");
 
 			const embeddingBatch = mockRunSongEmbedding.mock
 				.calls[0][1] as PipelineBatch;
@@ -630,7 +631,7 @@ describe("S3-12: Provider-Disabled (self_hosted) Validation", () => {
 		});
 
 		it("content activation is called with all songs", async () => {
-			await executeWorkerChunk(ACCOUNT_ID, "job-1", 50, 0, "normal");
+			await executeWorkerChunk(ACCOUNT_ID, CLAIMED_JOB, 50, 0, "normal");
 
 			expect(mockRunContentActivation).toHaveBeenCalledOnce();
 			const [ctx, songIds] = mockRunContentActivation.mock.calls[0] as [

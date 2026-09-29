@@ -117,7 +117,7 @@ export async function executeEnrichmentJob(
 
 	const result: ChunkResult = await executeWorkerChunk(
 		accountId,
-		job.id,
+		job,
 		batchSize,
 		progress.batchSequence,
 		progress.selectionMode,
@@ -161,7 +161,7 @@ export async function executeMatchSnapshotRefreshJob(
 	const outcome = await executeMatchSnapshotRefresh(
 		accountId,
 		plan,
-		job.id,
+		job,
 		actor,
 		job.satisfies_requested_at ?? undefined,
 		leaseLost,

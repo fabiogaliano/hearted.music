@@ -26,7 +26,11 @@ import {
 	markDeadLibraryProcessingJobs,
 	sweepStaleLibraryProcessingJobs,
 } from "@/lib/platform/jobs/library-processing-queue";
-import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
+import {
+	type Job,
+	updateHeartbeat,
+	updateJobProgress,
+} from "@/lib/platform/jobs/repository";
 import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
@@ -113,6 +117,13 @@ async function readJob(id: string): Promise<JobRow> {
 	const row = rows[0];
 	if (!row) throw new Error(`job ${id} missing`);
 	return row;
+}
+
+async function readProgress(id: string): Promise<unknown> {
+	const rows = await db()<{ progress: unknown }[]>`
+    SELECT progress FROM job WHERE id = ${id}
+  `;
+	return rows[0]?.progress;
 }
 
 async function eventTypes(): Promise<string[]> {
@@ -312,6 +323,25 @@ describe.skipIf(!IS_LOCAL)(
 
 			expect(await sweptIds()).toContain(jobId);
 			expect(late).toHaveOkValue("superseded");
+		});
+
+		it("a stale worker's progress write cannot overwrite the reclaiming worker's progress (regression: id-only progress UPDATE let a stale write land after reclaim)", async () => {
+			const jobId = await seedPendingJob("enrichment");
+			const { stale, current } = await sweepAndReclaim(jobId);
+			const seeded = { done: 4, total: 5, succeeded: 3, failed: 1 };
+
+			const late = await updateJobProgress(stale, {
+				done: 1,
+				total: 9,
+				succeeded: 1,
+				failed: 0,
+			});
+			expect(await readProgress(jobId)).toEqual(seeded);
+			expect(late).toHaveOkValue("superseded");
+
+			const live = { done: 2, total: 5, succeeded: 2, failed: 0 };
+			expect(await updateJobProgress(current, live)).toHaveOkValue("applied");
+			expect(await readProgress(jobId)).toEqual(live);
 		});
 
 		it("a stale worker's requeue cannot re-pend the reclaimed run", async () => {

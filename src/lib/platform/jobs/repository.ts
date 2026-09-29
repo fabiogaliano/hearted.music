@@ -10,7 +10,6 @@ import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
-	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export type Job = Tables<"job">;
@@ -82,16 +81,27 @@ export function getJobs(accountId: string): Promise<Result<Job[], DbError>> {
 	);
 }
 
+/**
+ * Progress write for a claimed job, fenced like updateHeartbeat: a stale
+ * worker's write landing just before it notices lease loss would otherwise
+ * overwrite the new owner's progress.
+ */
 export function updateJobProgress(
-	id: string,
+	job: Pick<Job, "id" | "attempts">,
 	progress:
 		| JobProgress
 		| EnrichmentChunkProgress
 		| import("@/lib/platform/jobs/progress/match-snapshot-refresh").MatchSnapshotRefreshProgress,
-): Promise<Result<Job, DbError>> {
+): Promise<Result<JobTransition, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase.from("job").update({ progress }).eq("id", id).select().single(),
+	return transition(
+		supabase
+			.from("job")
+			.update({ progress })
+			.eq("id", job.id)
+			.eq("status", "running")
+			.eq("attempts", job.attempts)
+			.select("id"),
 	);
 }
 

@@ -10,7 +10,7 @@ import type {
 	EnrichmentChunkProgress,
 	EnrichmentSelectionMode,
 } from "@/lib/platform/jobs/progress/enrichment";
-import { updateJobProgress } from "@/lib/platform/jobs/repository";
+import { type Job, updateJobProgress } from "@/lib/platform/jobs/repository";
 import {
 	getEntitledDataEnrichedSongIds,
 	hasMoreSongsNeedingEnrichmentWork,
@@ -67,15 +67,20 @@ function applyStageSummary(
 }
 
 async function persistProgress(
-	jobId: string,
+	job: Pick<Job, "id" | "attempts">,
 	progress: EnrichmentChunkProgress,
 ): Promise<void> {
-	const result = await updateJobProgress(jobId, progress);
+	const result = await updateJobProgress(job, progress);
 	if (Result.isError(result)) {
 		log.error("persist-progress-failed", {
-			jobId,
+			jobId: job.id,
 			error: result.error.message,
 		});
+		return;
+	}
+	// The leaseLost checkpoints stop the chunk; this only records the dropped write.
+	if (result.value === "superseded") {
+		log.debug("persist-progress-superseded", { jobId: job.id });
 	}
 }
 
@@ -193,17 +198,18 @@ async function enrichSongs(
 	ctx: EnrichmentContext,
 	workPlan: EnrichmentWorkPlan,
 	batch: PipelineBatch,
-	jobId: string,
+	job: Pick<Job, "id" | "attempts">,
 	progress: InitializedEnrichmentChunkProgress,
 	leaseLost: AbortSignal | undefined,
 ): Promise<void> {
 	if (leaseLost?.aborted) return;
+	const jobId = job.id;
 
 	// Phase A: audio_features + genre_tagging (parallel, entitled songs only)
 	progress.currentStage = "audio_features";
 	progress.stages.audio_features.status = "running";
 	progress.stages.genre_tagging.status = "running";
-	await persistProgress(jobId, progress);
+	await persistProgress(job, progress);
 
 	const audioSubBatch = filterBatch(batch, workPlan.needAudioFeatures);
 	const genreSubBatch = filterBatch(batch, workPlan.needGenreTagging);
@@ -287,7 +293,7 @@ async function enrichSongs(
 	// Phase B: song_analysis (entitled only)
 	progress.currentStage = "song_analysis";
 	progress.stages.song_analysis.status = "running";
-	await persistProgress(jobId, progress);
+	await persistProgress(job, progress);
 
 	const analysisReadySongIds = await gateAnalysisOnAudioBackfill(
 		workPlan.needAnalysis,
@@ -362,7 +368,7 @@ async function enrichSongs(
 		// Phase C: song_embedding (entitled only)
 		progress.currentStage = "song_embedding";
 		progress.stages.song_embedding.status = "running";
-		await persistProgress(jobId, progress);
+		await persistProgress(job, progress);
 
 		const embeddingSubBatch = filterBatch(batch, workPlan.needEmbedding);
 		const embeddingAccountingResult =
@@ -403,7 +409,7 @@ async function enrichSongs(
 		// Phase D: content_activation (entitled + data-enriched songs)
 		progress.currentStage = "content_activation";
 		progress.stages.content_activation.status = "running";
-		await persistProgress(jobId, progress);
+		await persistProgress(job, progress);
 
 		const activationAccountingResult =
 			workPlan.needContentActivation.length > 0
@@ -457,7 +463,7 @@ export interface ChunkResult {
 
 export async function executeWorkerChunk(
 	accountId: string,
-	jobId: string,
+	job: Pick<Job, "id" | "attempts">,
 	batchSize: number,
 	batchSequence: number,
 	selectionMode: EnrichmentSelectionMode,
@@ -471,7 +477,10 @@ export async function executeWorkerChunk(
 		);
 	}
 
-	const ctx = { ...buildContext(accountId, embeddingResult.value), jobId };
+	const ctx = {
+		...buildContext(accountId, embeddingResult.value),
+		jobId: job.id,
+	};
 
 	const workPlan = await selectEnrichmentWorkPlan(
 		accountId,
@@ -492,7 +501,7 @@ export async function executeWorkerChunk(
 	);
 
 	// Candidate-side enrichment only (phases A-C)
-	await enrichSongs(ctx, workPlan, batch, jobId, progress, leaseLost);
+	await enrichSongs(ctx, workPlan, batch, job, progress, leaseLost);
 
 	// The job row now belongs to the reclaiming worker, so this run must not
 	// write its progress; the caller discards this result on a lost lease.
@@ -509,7 +518,7 @@ export async function executeWorkerChunk(
 	}
 
 	progress.currentStage = undefined;
-	await persistProgress(jobId, progress);
+	await persistProgress(job, progress);
 
 	let newCandidateSongIds: string[] = [];
 	let newCandidatesAvailable = batch.songIds.length > 0;

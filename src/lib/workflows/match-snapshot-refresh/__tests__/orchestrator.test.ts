@@ -71,7 +71,7 @@ vi.mock("@/lib/integrations/reranker/service", () => ({
 }));
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
-	updateJobProgress: vi.fn().mockResolvedValue(Result.ok(undefined)),
+	updateJobProgress: vi.fn().mockResolvedValue(Result.ok("applied")),
 }));
 
 vi.mock("@/lib/observability/account-label", () => ({
@@ -84,6 +84,7 @@ vi.mock("@/lib/workflows/library-processing/queries", () => ({
 		mockLoadLibraryProcessingState(...args),
 }));
 
+const CLAIMED_JOB = { id: "job-1", attempts: 1 };
 const { executeMatchSnapshotRefresh } = await import("../orchestrator");
 
 function makePlan() {
@@ -286,7 +287,7 @@ describe("executeMatchSnapshotRefresh — sequencing", () => {
 		const outcome = await executeMatchSnapshotRefresh(
 			"acc-1",
 			makePlan(),
-			"job-1",
+			CLAIMED_JOB,
 			"test-user",
 			undefined,
 			lease.signal,
