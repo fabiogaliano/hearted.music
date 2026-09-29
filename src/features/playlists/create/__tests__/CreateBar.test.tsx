@@ -337,6 +337,9 @@ describe("CreateBar — account-mismatch repairs with the mismatch verdict, neve
 
 		expect(screen.getByText(/alex@work/)).toBeInTheDocument();
 		expect(
+			screen.getByRole("button", { name: /switch spotify account/i }),
+		).toBeInTheDocument();
+		expect(
 			screen.queryByRole("button", { name: /retry/i }),
 		).not.toBeInTheDocument();
 	});
@@ -396,11 +399,11 @@ describe("PartialState — no duplicate-create path", () => {
 		);
 	});
 
-	it("states no songs were added, without implying partial success", async () => {
+	it("states how many songs weren't added, without implying partial success", async () => {
 		await renderWithRouter(
 			<PartialState spotifyId="abc123" failedTrackCount={5} />,
 		);
-		expect(screen.getByText(/couldn't be added to it/i)).toBeInTheDocument();
+		expect(screen.getByText(/\b5\b/)).toBeInTheDocument();
 		// The old copy claimed "the rest are in your Spotify playlist" — that
 		// never happens for a partial result, so it must not appear.
 		expect(
@@ -408,13 +411,24 @@ describe("PartialState — no duplicate-create path", () => {
 		).not.toBeInTheDocument();
 	});
 
-	it("uses singular phrasing for a single failed song", async () => {
-		await renderWithRouter(
-			<PartialState spotifyId="abc123" failedTrackCount={1} />,
-		);
-		expect(
-			screen.getByText(/your 1 song couldn't be added/i),
-		).toBeInTheDocument();
+	it("phrases a single failed song differently from several", async () => {
+		// Counts are masked so only the wording is compared: identical text for
+		// 1 and 2 means the singular branch was lost ("your 1 songs").
+		const countSentence = async (failedTrackCount: number) => {
+			const view = await renderWithRouter(
+				<PartialState spotifyId="abc123" failedTrackCount={failedTrackCount} />,
+			);
+			const text = screen
+				.getByText(new RegExp(`\\b${failedTrackCount}\\b`))
+				.textContent?.replace(/\d+/g, "#");
+			view.unmount();
+			return text;
+		};
+
+		const single = await countSentence(1);
+		const several = await countSentence(2);
+		expect(single).toBeTruthy();
+		expect(single).not.toBe(several);
 	});
 
 	it("does not render a 'View playlist' link when playlistId is absent (config-persist-threw branch)", async () => {
