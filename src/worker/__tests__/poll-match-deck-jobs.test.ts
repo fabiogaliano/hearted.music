@@ -29,6 +29,7 @@ vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
 	deferDeckJob: vi.fn(),
 	enqueueDeckJob: vi.fn(),
 	heartbeatDeckJob: vi.fn(),
+	releaseDeckJob: vi.fn(),
 }));
 vi.mock("@/lib/domains/taste/match-review-queue/card-materializer", () => ({
 	CAPTURE_AHEAD_WINDOW: 3,

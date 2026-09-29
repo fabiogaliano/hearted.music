@@ -146,6 +146,36 @@ export async function deferDeckJob(
 	return Result.ok(data !== null);
 }
 
+/**
+ * Hands back a job claimed but never run (the poll loop stopped mid-claim),
+ * refunding the attempt the claim consumed so a job claimed on its final
+ * attempt during a deploy isn't dead-lettered without running.
+ *
+ * The refund is a plain value, not `attempts - 1` in SQL: attempts only moves
+ * at claim, which requires 'pending', so while status = 'running' and
+ * locked_by = this claim's token it still equals the value the claim returned.
+ * The same fence makes a stale release a no-op on a reclaimed run.
+ */
+export async function releaseDeckJob(
+	job: ClaimedDeckJob,
+): Promise<Result<boolean, DbError>> {
+	const { data, error } = await createAdminSupabaseClient()
+		.from("match_review_deck_job")
+		.update({
+			status: "pending",
+			attempts: job.attempts - 1,
+			heartbeat_at: null,
+			locked_by: null,
+		})
+		.eq("id", job.id)
+		.eq("status", "running")
+		.eq("locked_by", job.locked_by)
+		.select("id")
+		.maybeSingle();
+	if (error) return Result.err(dbErr(error));
+	return Result.ok(data !== null);
+}
+
 /** Reclaims running jobs whose heartbeat has gone stale (crashed worker). */
 export async function sweepStaleDeckJobs(
 	leaseSeconds: number,

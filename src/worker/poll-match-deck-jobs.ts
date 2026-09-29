@@ -36,6 +36,7 @@ import {
 	deferDeckJob,
 	enqueueDeckJob,
 	heartbeatDeckJob,
+	releaseDeckJob,
 } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import { buildProposalsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/proposal-builder";
 import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/session-appender";
@@ -359,12 +360,12 @@ async function dispatchDeckJob(
 	}
 }
 
-// A settlement UPDATE (complete/defer) can itself fail — or match zero rows
-// when the fence fires after a concurrent sweep/dead-letter/reclaim. Control
-// flow is unchanged — the stale-lease sweep still reclaims the job — but log
-// both cases so a lingering job is diagnosable rather than silent.
+// A settlement UPDATE (complete/defer/release) can itself fail — or match zero
+// rows when the fence fires after a concurrent sweep/dead-letter/reclaim.
+// Control flow is unchanged — the stale-lease sweep still reclaims the job —
+// but log both cases so a lingering job is diagnosable rather than silent.
 function logSettlementFailure(
-	settlement: "complete" | "defer",
+	settlement: "complete" | "defer" | "release",
 	job: DeckJob,
 	result: Result<boolean, DbError>,
 ): void {
@@ -471,12 +472,9 @@ const loop = createPollLoop<ClaimedDeckJob, DbError>({
 	dispatch: (job, markDone) => {
 		void runClaimedDeckJob(job).finally(markDone);
 	},
-	// Zero backoff: the job never ran, so it should be claimable by the next
-	// worker at once. The attempt consumed at claim is not refunded — the same
-	// cost the lease sweep would charge.
 	release: async (job) => {
-		const released = await deferDeckJob(job.id, job.locked_by, 0);
-		logSettlementFailure("defer", job, released);
+		const released = await releaseDeckJob(job);
+		logSettlementFailure("release", job, released);
 	},
 	pollIntervalMs: workerConfig.pollIntervalMs,
 	onLoopStart: () => log.info("match-deck-polling-start", {}),
