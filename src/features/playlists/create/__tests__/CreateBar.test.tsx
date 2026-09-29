@@ -30,10 +30,11 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithRouter } from "@/test/utils/render";
 import { CreateBar } from "../publish/CreateBar";
 import type { SpotifyGateStatus } from "../useSpotifyGate";
 
@@ -82,36 +83,6 @@ function renderWithQueryClient(ui: ReactElement) {
 		<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
 	);
 }
-
-// PartialState and SuccessState use useNavigate for the "Done" → /playlists button.
-// SuccessState's primary action and PartialState's secondary "View playlist" link
-// use Link — mocked as a plain <a> so tests can assert the resolved href, mirroring
-// how "Open in Spotify" is asserted via getByRole("link", ...).toHaveAttribute("href").
-vi.mock("@tanstack/react-router", () => ({
-	useNavigate: () => vi.fn(),
-	Link: ({
-		to,
-		params,
-		children,
-		...rest
-	}: {
-		to: string;
-		params?: Record<string, string>;
-		children?: React.ReactNode;
-	}) => {
-		const href = params
-			? Object.entries(params).reduce(
-					(path, [key, value]) => path.replace(`$${key}`, value),
-					to,
-				)
-			: to;
-		return (
-			<a href={href} {...rest}>
-				{children}
-			</a>
-		);
-	},
-}));
 
 import { PartialState } from "../publish/PartialState";
 import { SuccessState } from "../publish/SuccessState";
@@ -375,8 +346,10 @@ describe("CreateBar — account-mismatch repairs with the mismatch verdict, neve
 });
 
 describe("PartialState — no duplicate-create path", () => {
-	it("renders 'Open in Spotify' and 'Done' but no 'Retry' affordance", () => {
-		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
+	it("renders 'Open in Spotify' and 'Done' but no 'Retry' affordance", async () => {
+		await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={2} />,
+		);
 		expect(
 			screen.getByRole("link", { name: /open in spotify/i }),
 		).toBeInTheDocument();
@@ -386,8 +359,22 @@ describe("PartialState — no duplicate-create path", () => {
 		).not.toBeInTheDocument();
 	});
 
-	it("links to the correct Spotify playlist URL", () => {
-		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
+	it("'Done' exits to the playlists index", async () => {
+		const user = userEvent.setup();
+		const { router } = await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={2} />,
+			{ url: "/playlists/create" },
+		);
+		await user.click(screen.getByRole("button", { name: /done/i }));
+		await waitFor(() =>
+			expect(router.state.location.pathname).toBe("/playlists"),
+		);
+	});
+
+	it("links to the correct Spotify playlist URL", async () => {
+		await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={2} />,
+		);
 		const link = screen.getByRole("link", { name: /open in spotify/i });
 		expect(link).toHaveAttribute(
 			"href",
@@ -395,8 +382,10 @@ describe("PartialState — no duplicate-create path", () => {
 		);
 	});
 
-	it("states no songs were added, without implying partial success", () => {
-		render(<PartialState spotifyId="abc123" failedTrackCount={5} />);
+	it("states no songs were added, without implying partial success", async () => {
+		await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={5} />,
+		);
 		expect(screen.getByText(/couldn't be added to it/i)).toBeInTheDocument();
 		// The old copy claimed "the rest are in your Spotify playlist" — that
 		// never happens for a partial result, so it must not appear.
@@ -405,22 +394,26 @@ describe("PartialState — no duplicate-create path", () => {
 		).not.toBeInTheDocument();
 	});
 
-	it("uses singular phrasing for a single failed song", () => {
-		render(<PartialState spotifyId="abc123" failedTrackCount={1} />);
+	it("uses singular phrasing for a single failed song", async () => {
+		await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={1} />,
+		);
 		expect(
 			screen.getByText(/your 1 song couldn't be added/i),
 		).toBeInTheDocument();
 	});
 
-	it("does not render a 'View playlist' link when playlistId is absent (config-persist-threw branch)", () => {
-		render(<PartialState spotifyId="abc123" failedTrackCount={2} />);
+	it("does not render a 'View playlist' link when playlistId is absent (config-persist-threw branch)", async () => {
+		await renderWithRouter(
+			<PartialState spotifyId="abc123" failedTrackCount={2} />,
+		);
 		expect(
 			screen.queryByRole("link", { name: /view playlist/i }),
 		).not.toBeInTheDocument();
 	});
 
-	it("renders a secondary 'View playlist' link to the detail route when playlistId is present", () => {
-		render(
+	it("renders a secondary 'View playlist' link to the detail route when playlistId is present", async () => {
+		await renderWithRouter(
 			<PartialState
 				spotifyId="abc123"
 				playlistId="a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7"
@@ -433,8 +426,8 @@ describe("PartialState — no duplicate-create path", () => {
 });
 
 describe("UnsyncedState — safe retry path", () => {
-	it("offers a Retry alongside Open in Spotify and Done", () => {
-		render(
+	it("offers a Retry alongside Open in Spotify and Done", async () => {
+		await renderWithRouter(
 			<UnsyncedState
 				spotifyId="abc123"
 				isRetrying={false}
@@ -452,7 +445,7 @@ describe("UnsyncedState — safe retry path", () => {
 	it("calls onRetry when Retry is clicked", async () => {
 		const user = userEvent.setup();
 		const onRetry = vi.fn();
-		render(
+		await renderWithRouter(
 			<UnsyncedState
 				spotifyId="abc123"
 				isRetrying={false}
@@ -464,8 +457,8 @@ describe("UnsyncedState — safe retry path", () => {
 		expect(onRetry).toHaveBeenCalledTimes(1);
 	});
 
-	it("disables Retry (aria-busy) while a retry is in flight", () => {
-		render(
+	it("disables Retry (aria-busy) while a retry is in flight", async () => {
+		await renderWithRouter(
 			<UnsyncedState
 				spotifyId="abc123"
 				isRetrying={true}
@@ -478,8 +471,8 @@ describe("UnsyncedState — safe retry path", () => {
 		expect(btn).toHaveAttribute("aria-busy", "true");
 	});
 
-	it("links to the correct Spotify playlist URL", () => {
-		render(
+	it("links to the correct Spotify playlist URL", async () => {
+		await renderWithRouter(
 			<UnsyncedState
 				spotifyId="abc123"
 				isRetrying={false}
@@ -492,9 +485,9 @@ describe("UnsyncedState — safe retry path", () => {
 		).toHaveAttribute("href", "https://open.spotify.com/playlist/abc123");
 	});
 
-	it("blocks Retry while the extension account is mismatched (invariant 2)", () => {
+	it("blocks Retry while the extension account is mismatched (invariant 2)", async () => {
 		const onRetry = vi.fn();
-		render(
+		await renderWithRouter(
 			<UnsyncedState
 				spotifyId="abc123"
 				isRetrying={false}
@@ -512,8 +505,8 @@ describe("UnsyncedState — safe retry path", () => {
 describe("SuccessState — routes into the managed-playlist loop", () => {
 	const PLAYLIST_ID = "a1b2c3d4-e5f6-4789-a0b1-c2d3e4f5a6b7";
 
-	it("renders a primary 'View playlist' link and a secondary 'Open in Spotify' link, no bare 'Done'", () => {
-		render(
+	it("renders a primary 'View playlist' link and a secondary 'Open in Spotify' link, no bare 'Done'", async () => {
+		await renderWithRouter(
 			<SuccessState
 				playlistName="Night Mix"
 				spotifyId="xyz789"
@@ -536,8 +529,8 @@ describe("SuccessState — routes into the managed-playlist loop", () => {
 		).not.toBeInTheDocument();
 	});
 
-	it("the primary action navigates to the new playlist's detail route", () => {
-		render(
+	it("the primary action navigates to the new playlist's detail route", async () => {
+		await renderWithRouter(
 			<SuccessState
 				playlistName="Night Mix"
 				spotifyId="xyz789"
@@ -548,8 +541,8 @@ describe("SuccessState — routes into the managed-playlist loop", () => {
 		expect(link).toHaveAttribute("href", "/playlists/night-mix--a1b2c3d4e5f6");
 	});
 
-	it("links to the correct Spotify playlist URL", () => {
-		render(
+	it("links to the correct Spotify playlist URL", async () => {
+		await renderWithRouter(
 			<SuccessState
 				playlistName="Night Mix"
 				spotifyId="xyz789"
@@ -563,8 +556,8 @@ describe("SuccessState — routes into the managed-playlist loop", () => {
 		);
 	});
 
-	it("displays the playlist name", () => {
-		render(
+	it("displays the playlist name", async () => {
+		await renderWithRouter(
 			<SuccessState
 				playlistName="Night Mix"
 				spotifyId="xyz789"

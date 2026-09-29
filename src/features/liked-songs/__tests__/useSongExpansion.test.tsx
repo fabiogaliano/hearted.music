@@ -1,21 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { generateSongSlug } from "@/lib/utils/slug";
+import {
+	fireEvent,
+	renderWithRouter,
+	screen,
+	waitFor,
+} from "@/test/utils/render";
 import { useSongExpansion } from "../hooks/useSongExpansion";
 import type { LikedSong } from "../types";
-
-const navigateMock = vi.fn();
-
-vi.mock("@tanstack/react-router", async () => {
-	const actual = await vi.importActual<typeof import("@tanstack/react-router")>(
-		"@tanstack/react-router",
-	);
-
-	return {
-		...actual,
-		useNavigate: () => navigateMock,
-	};
-});
 
 function createSong(overrides?: Partial<LikedSong["track"]>): LikedSong {
 	return {
@@ -96,17 +88,12 @@ function InteractiveHookHarness({
 	);
 }
 
-afterEach(() => {
-	navigateMock.mockReset();
-	cleanup();
-});
-
 describe("useSongExpansion", () => {
-	it("initializes the deep-linked song during the first render", () => {
+	it("initializes the deep-linked song during the first render", async () => {
 		const song = createSong();
 		const slug = generateSongSlug(song.track.artist, song.track.name);
 
-		render(<HookHarness songs={[song]} selectedSlug={slug} />);
+		await renderWithRouter(<HookHarness songs={[song]} selectedSlug={slug} />);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
 			song.track.id,
@@ -117,13 +104,13 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
 	});
 
-	it("enables prev/next when the deep-linked song is present in the loaded list", () => {
+	it("enables prev/next when the deep-linked song is present in the loaded list", async () => {
 		const previous = createSong({ id: "song-prev", name: "Tennis Court" });
 		const selected = createSong({ id: "song-sel", name: "Ribs" });
 		const next = createSong({ id: "song-next", name: "Team" });
 		const slug = generateSongSlug(selected.track.artist, selected.track.name);
 
-		render(
+		await renderWithRouter(
 			<HookHarness songs={[previous, selected, next]} selectedSlug={slug} />,
 		);
 
@@ -135,11 +122,11 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("has-next")).toHaveTextContent("true");
 	});
 
-	it("disables prev/next for a fallback-only deep-linked song", () => {
+	it("disables prev/next for a fallback-only deep-linked song", async () => {
 		const selected = createSong({ id: "song-sel", name: "Ribs" });
 		const slug = generateSongSlug(selected.track.artist, selected.track.name);
 
-		render(
+		await renderWithRouter(
 			<HookHarness
 				songs={[]}
 				selectedSlug={slug}
@@ -156,7 +143,7 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("has-next")).toHaveTextContent("false");
 	});
 
-	it("opens the deep-linked song from direct lookup when it is not in loaded pages", () => {
+	it("opens the deep-linked song from direct lookup when it is not in loaded pages", async () => {
 		const song = createSong({
 			id: "song-2",
 			spotify_track_id: "spotify-song-2",
@@ -165,7 +152,7 @@ describe("useSongExpansion", () => {
 		});
 		const slug = generateSongSlug(song.track.artist, song.track.name);
 
-		render(
+		await renderWithRouter(
 			<HookHarness
 				songs={[]}
 				selectedSlug={slug}
@@ -183,8 +170,8 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
 	});
 
-	it("stays closed when the deep-linked slug resolves to no song", () => {
-		render(
+	it("stays closed when the deep-linked slug resolves to no song", async () => {
+		await renderWithRouter(
 			<HookHarness
 				songs={[]}
 				selectedSlug="unknown-song"
@@ -196,15 +183,17 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");
 	});
 
-	it("opens the deep-linked song after songs load", () => {
+	it("opens the deep-linked song after songs load", async () => {
 		const song = createSong();
 		const slug = generateSongSlug(song.track.artist, song.track.name);
-		const { rerender } = render(<HookHarness songs={[]} selectedSlug={slug} />);
+		const { rerender } = await renderWithRouter(
+			<HookHarness songs={[]} selectedSlug={slug} />,
+		);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent("none");
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");
 
-		rerender(<HookHarness songs={[song]} selectedSlug={slug} />);
+		await rerender(<HookHarness songs={[song]} selectedSlug={slug} />);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
 			song.track.id,
@@ -212,7 +201,7 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("true");
 	});
 
-	it("updates selection when the URL song changes", () => {
+	it("updates selection when the URL song changes", async () => {
 		const firstSong = createSong();
 		const secondSong = createSong({
 			id: "song-2",
@@ -227,11 +216,11 @@ describe("useSongExpansion", () => {
 			secondSong.track.artist,
 			secondSong.track.name,
 		);
-		const { rerender } = render(
+		const { rerender } = await renderWithRouter(
 			<HookHarness songs={[firstSong, secondSong]} selectedSlug={firstSlug} />,
 		);
 
-		rerender(
+		await rerender(
 			<HookHarness songs={[firstSong, secondSong]} selectedSlug={secondSlug} />,
 		);
 
@@ -243,7 +232,7 @@ describe("useSongExpansion", () => {
 		);
 	});
 
-	it("keeps the locally selected song while the router is still catching up", () => {
+	it("keeps the locally selected song while the router is still catching up", async () => {
 		const firstSong = createSong();
 		const secondSong = createSong({
 			id: "song-2",
@@ -258,7 +247,7 @@ describe("useSongExpansion", () => {
 			secondSong.track.artist,
 			secondSong.track.name,
 		);
-		const { rerender } = render(
+		const { rerender, router } = await renderWithRouter(
 			<InteractiveHookHarness
 				songs={[firstSong, secondSong]}
 				selectedSlug={firstSlug}
@@ -271,9 +260,11 @@ describe("useSongExpansion", () => {
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent(
 			secondSong.track.id,
 		);
-		expect(navigateMock).toHaveBeenCalledTimes(1);
+		await waitFor(() =>
+			expect(router.state.location.search).toEqual({ song: secondSlug }),
+		);
 
-		rerender(
+		await rerender(
 			<InteractiveHookHarness
 				songs={[firstSong, secondSong]}
 				selectedSlug={secondSlug}
@@ -286,14 +277,14 @@ describe("useSongExpansion", () => {
 		);
 	});
 
-	it("closes when the URL song is removed", () => {
+	it("closes when the URL song is removed", async () => {
 		const song = createSong();
 		const slug = generateSongSlug(song.track.artist, song.track.name);
-		const { rerender } = render(
+		const { rerender } = await renderWithRouter(
 			<HookHarness songs={[song]} selectedSlug={slug} />,
 		);
 
-		rerender(<HookHarness songs={[song]} selectedSlug={null} />);
+		await rerender(<HookHarness songs={[song]} selectedSlug={null} />);
 
 		expect(screen.getByTestId("selected-song-id")).toHaveTextContent("none");
 		expect(screen.getByTestId("is-expanded")).toHaveTextContent("false");

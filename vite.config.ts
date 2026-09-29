@@ -50,7 +50,6 @@ const sharedTestExcludes = [
 // non-tsx extension. Routed to the jsdom project; everything else .test.ts runs
 // in the much cheaper node environment.
 const domTestFiles = [
-	"src/features/onboarding/__tests__/useStepNavigation.test.ts",
 	"src/features/onboarding/__tests__/demoSandboxStore.test.ts",
 	"src/features/billing/__tests__/useCheckoutFlow.test.ts",
 	"src/lib/extension/__tests__/reconnect-link.test.ts",

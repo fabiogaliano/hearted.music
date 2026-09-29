@@ -13,7 +13,7 @@ import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 import type { PlanSelectionConfig } from "@/lib/server/billing.functions";
 import { setupShortcutMock } from "@/test/mocks";
-import { render, screen, waitFor } from "@/test/utils/render";
+import { renderWithRouter, screen, waitFor } from "@/test/utils/render";
 import type { CheckoutIntent } from "../checkout-intent";
 import { PlanSelectionStep } from "../components/PlanSelectionStep";
 import type { CheckoutPollingState } from "../hooks/useCheckoutPolling";
@@ -43,11 +43,6 @@ vi.mock("@/lib/server/onboarding.functions", () => ({
 	markOnboardingComplete: () => mockMarkOnboardingComplete(),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-	useNavigate: () => vi.fn(),
-	useRouter: () => ({ navigate: vi.fn().mockResolvedValue(undefined) }),
-}));
-
 vi.mock("../hooks/useCheckoutPolling", () => ({
 	useCheckoutPolling: (intent: CheckoutIntent | null) =>
 		useCheckoutPollingMock(intent),
@@ -57,8 +52,9 @@ function renderWithClient(ui: ReactElement) {
 	const queryClient = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 0 } },
 	});
-	return render(
+	return renderWithRouter(
 		<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+		{ url: "/onboarding?step=plan-selection" },
 	);
 }
 
@@ -87,7 +83,7 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 		};
 		mockGetPlanSelectionConfig.mockResolvedValue(config);
 
-		renderWithClient(
+		await renderWithClient(
 			<PlanSelectionStep
 				syncStats={{
 					songs: 250,
@@ -136,7 +132,7 @@ describe("PlanSelectionStep — billing disabled with persisted intent", () => {
 		// Keep polling in-flight so nothing transitions on its own.
 		controlledPollingState = { status: "polling" };
 
-		renderWithClient(
+		await renderWithClient(
 			<PlanSelectionStep
 				syncStats={{
 					songs: 250,

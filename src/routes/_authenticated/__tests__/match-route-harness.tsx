@@ -1,13 +1,8 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-	createMemoryHistory,
-	createRootRouteWithContext,
-	createRouter,
-	RouterProvider,
-} from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
 import { vi } from "vitest";
 import type { OnboardingSession } from "@/lib/domains/library/accounts/onboarding-session";
-import { act, render } from "@/test/utils/render";
+import { act, renderWithRouter } from "@/test/utils/render";
 import { Route as MatchRoute } from "../match";
 
 /**
@@ -17,15 +12,6 @@ import { Route as MatchRoute } from "../match";
  */
 
 export const ACCOUNT_ID = "acct-1";
-
-// The generated route tree nests /match under /_authenticated; a bare root
-// with the same context shape is all the component and loader read.
-const rootRoute = createRootRouteWithContext<Record<string, unknown>>()();
-const matchRoute = MatchRoute.update({
-	id: "/match",
-	path: "/match",
-	getParentRoute: () => rootRoute,
-} as never);
 
 // Fake timers are expected: advancing time is what lets the router, the
 // loader's awaited query, and Suspense settle inside act.
@@ -42,24 +28,29 @@ export async function renderMatchRoute({
 	url?: string;
 	onboardingSession?: OnboardingSession;
 }) {
-	// The router restores scroll on navigation; jsdom has no scrollTo.
-	vi.spyOn(window, "scrollTo").mockImplementation(() => {});
-	const history = createMemoryHistory({ initialEntries: [url] });
-	const router = createRouter({
-		routeTree: rootRoute.addChildren([matchRoute]),
-		history,
-		context: {
-			queryClient,
-			session: { accountId: ACCOUNT_ID },
-			account: {},
-			onboardingSession,
-		},
-	});
-
-	render(
+	const { router, history } = await renderWithRouter(
 		<QueryClientProvider client={queryClient}>
-			<RouterProvider router={router} />
+			<Outlet />
 		</QueryClientProvider>,
+		{
+			url,
+			// The generated route tree nests /match under /_authenticated; the test
+			// root carries the same context shape, which is all the component and
+			// loader read.
+			routes: (root) => [
+				MatchRoute.update({
+					id: "/match",
+					path: "/match",
+					getParentRoute: () => root,
+				} as never),
+			],
+			context: {
+				queryClient,
+				session: { accountId: ACCOUNT_ID },
+				account: {},
+				onboardingSession,
+			},
+		},
 	);
 	await advance(0);
 	await advance(0);

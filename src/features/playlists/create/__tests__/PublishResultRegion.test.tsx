@@ -1,15 +1,7 @@
-import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { renderWithRouter, screen } from "@/test/utils/render";
 import { PublishResultRegion } from "../publish/PublishResultRegion";
 import type { PublishPlaylistResult } from "../usePublishPlaylist";
-
-vi.mock("@tanstack/react-router", () => ({
-	useNavigate: () => vi.fn(),
-	Link: ({ children, ...props }: { children: ReactNode; href?: string }) => (
-		<a {...props}>{children}</a>
-	),
-}));
 
 const successResult: PublishPlaylistResult = {
 	status: "success",
@@ -35,7 +27,7 @@ const unsyncedResult: PublishPlaylistResult = {
 };
 
 function renderRegion(result: PublishPlaylistResult) {
-	return render(
+	return renderWithRouter(
 		<PublishResultRegion
 			result={result}
 			isRetryingUnsynced={false}
@@ -50,16 +42,16 @@ describe("PublishResultRegion", () => {
 		[successResult, "Playlist created"],
 		[partialResult, "Playlist created — songs couldn't be added"],
 		[unsyncedResult, "Created, not synced back"],
-	] as const)("focuses each terminal result when it appears", (result, copy) => {
-		renderRegion(result);
+	] as const)("focuses each terminal result when it appears", async (result, copy) => {
+		await renderRegion(result);
 
 		const region = screen.getByRole("status");
 		expect(region).toHaveFocus();
 		expect(screen.getByText(copy, { exact: true })).toBeInTheDocument();
 	});
 
-	it("moves focus back to the region when the terminal status changes", () => {
-		const { rerender } = renderRegion(unsyncedResult);
+	it("moves focus back to the region when the terminal status changes", async () => {
+		const { rerender } = await renderRegion(unsyncedResult);
 		const retry = screen.getByRole("button", { name: "Retry" });
 		retry.focus();
 		expect(retry).toHaveFocus();
@@ -76,8 +68,8 @@ describe("PublishResultRegion", () => {
 		expect(screen.getByRole("status")).toHaveFocus();
 	});
 
-	it("disables the created-unsynced Retry while the extension account is mismatched", () => {
-		render(
+	it("disables the created-unsynced Retry while the extension account is mismatched", async () => {
+		await renderWithRouter(
 			<PublishResultRegion
 				result={unsyncedResult}
 				isRetryingUnsynced={false}

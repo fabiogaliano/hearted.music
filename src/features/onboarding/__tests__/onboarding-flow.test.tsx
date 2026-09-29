@@ -17,11 +17,10 @@ import {
 	setupOnboardingNavigationMock,
 	setupShortcutMock,
 } from "@/test/mocks";
-import { render, screen } from "@/test/utils/render";
+import { act, renderWithRouter, screen } from "@/test/utils/render";
 import { Onboarding } from "../Onboarding";
 
 const mockSaveThemePreference = vi.fn();
-const mockUseLocation = vi.fn(() => ({ state: {} }));
 
 vi.mock("../hooks/useOnboardingNavigation", () =>
 	setupOnboardingNavigationMock(),
@@ -38,11 +37,6 @@ vi.mock("../components/SyncingStep", () => ({
 			{phaseJobIds === null ? "null" : "non-null"}
 		</div>
 	),
-}));
-
-vi.mock("@tanstack/react-router", () => ({
-	useLocation: () => mockUseLocation(),
-	useNavigate: () => vi.fn(),
 }));
 
 const testPlaylists = [
@@ -69,27 +63,23 @@ function renderOnboarding(
 	step: OnboardingData["session"]["status"],
 	data: OnboardingData,
 ) {
-	return render(
+	return renderWithRouter(
 		<AuthenticatedThemeProvider initialThemeColor={data.theme ?? "rose"}>
 			<Onboarding step={step} data={data} accountId={data.accountId} />
 		</AuthenticatedThemeProvider>,
+		{ url: `/onboarding?step=${step}` },
 	);
 }
 
 describe("Onboarding Flow", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockUseLocation.mockReturnValue({ state: {} });
 		mockGoToStep.mockResolvedValue(undefined);
 		mockSaveThemePreference.mockResolvedValue(undefined);
 	});
 
-	it("uses explicit null phaseJobIds from navigation state over DB fallback", () => {
-		mockUseLocation.mockReturnValue({
-			state: { phaseJobIds: null },
-		});
-
-		renderOnboarding(
+	it("uses explicit null phaseJobIds from navigation state over DB fallback", async () => {
+		const { router } = await renderOnboarding(
 			"syncing",
 			createMockOnboardingData({
 				phaseJobIds: {
@@ -101,7 +91,19 @@ describe("Onboarding Flow", () => {
 		);
 
 		expect(screen.getByTestId("syncing-step-phase-job-ids")).toHaveTextContent(
-			"null",
+			"non-null",
+		);
+
+		await act(() =>
+			router.navigate({
+				to: "/onboarding",
+				search: { step: "syncing" },
+				state: { phaseJobIds: null },
+			}),
+		);
+
+		expect(screen.getByTestId("syncing-step-phase-job-ids")).toHaveTextContent(
+			/^null$/,
 		);
 	});
 });

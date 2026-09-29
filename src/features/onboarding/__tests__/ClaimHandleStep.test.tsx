@@ -10,23 +10,24 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@/test/utils/render";
+import {
+	act,
+	fireEvent,
+	renderWithRouter,
+	screen,
+	waitFor,
+} from "@/test/utils/render";
 import { ClaimHandleStep } from "../components/ClaimHandleStep";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 const mockCheckHandleAvailability = vi.fn();
 const mockClaimHandleAndAdvance = vi.fn();
-const mockNavigate = vi.fn().mockResolvedValue(undefined);
 const mockToastError = vi.fn();
 
 vi.mock("@/lib/server/account-handle.functions", () => ({
 	checkHandleAvailability: (args: unknown) => mockCheckHandleAvailability(args),
 	claimHandleAndAdvance: (args: unknown) => mockClaimHandleAndAdvance(args),
-}));
-
-vi.mock("@tanstack/react-router", () => ({
-	useRouter: () => ({ navigate: mockNavigate }),
 }));
 
 vi.mock("sonner", () => ({
@@ -62,7 +63,10 @@ function TestWrapper({
 }
 
 function renderStep(ui: ReactElement, queryClient = makeQueryClient()) {
-	return render(<TestWrapper queryClient={queryClient}>{ui}</TestWrapper>);
+	return renderWithRouter(
+		<TestWrapper queryClient={queryClient}>{ui}</TestWrapper>,
+		{ url: "/onboarding?step=claim-handle" },
+	);
 }
 
 const BASE_PROPS = {
@@ -88,8 +92,8 @@ describe("ClaimHandleStep", () => {
 
 	// ── Blank seed mount ──────────────────────────────────────────────────────
 
-	it("blank seed: shows helper and disabled Continue with empty field", () => {
-		renderStep(
+	it("blank seed: shows helper and disabled Continue with empty field", async () => {
+		await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -99,8 +103,8 @@ describe("ClaimHandleStep", () => {
 
 	// ── Owned seed mount ──────────────────────────────────────────────────────
 
-	it("owned seed: shows 'Using your current handle.' and enables Continue", () => {
-		renderStep(
+	it("owned seed: shows 'Using your current handle.' and enables Continue", async () => {
+		await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -114,8 +118,8 @@ describe("ClaimHandleStep", () => {
 		expect(btn).not.toBeDisabled();
 	});
 
-	it("owned seed: does not trigger an availability check on mount", () => {
-		renderStep(
+	it("owned seed: does not trigger an availability check on mount", async () => {
+		await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -128,7 +132,7 @@ describe("ClaimHandleStep", () => {
 	// ── Owned seed edited away ────────────────────────────────────────────────
 
 	it("editing away from owned value: shows reminder, disables Continue, offers reset", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -149,7 +153,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	it("edited-away owned: Enter/submit does nothing (no availability, no claim)", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -173,7 +177,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	it("reset action: restores owned handle and shows owned status", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -197,7 +201,7 @@ describe("ClaimHandleStep", () => {
 	// ── Live-lowercase ────────────────────────────────────────────────────────
 
 	it("live-lowercase: uppercased input is lowercased, no other chars stripped", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -209,7 +213,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	it("preserves @, spaces, and hyphens rather than stripping them", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -231,7 +235,7 @@ describe("ClaimHandleStep", () => {
 		["fabio."],
 		["fabio..g"],
 	])("invalid input %j shows an error and disables Continue", async (typed) => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -248,7 +252,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	it("overlength input shows an error and is not truncated", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -266,7 +270,7 @@ describe("ClaimHandleStep", () => {
 	// ── Reserved short-circuit ────────────────────────────────────────────────
 
 	it("reserved handle: shows 'That handle is reserved.' and suppresses availability check", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -282,7 +286,7 @@ describe("ClaimHandleStep", () => {
 	it("available: shows 'Available.' and enables Continue after debounce", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -306,7 +310,7 @@ describe("ClaimHandleStep", () => {
 			}),
 		);
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -327,7 +331,7 @@ describe("ClaimHandleStep", () => {
 			reason: "taken",
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -342,7 +346,7 @@ describe("ClaimHandleStep", () => {
 	it("availability error: shows error copy and 'Check again' retry; Continue disabled", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "error" });
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -362,7 +366,7 @@ describe("ClaimHandleStep", () => {
 	it("suggested seed: triggers availability check on mount immediately", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 
-		renderStep(
+		await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "suggested", handle: "fabio" }}
@@ -379,7 +383,7 @@ describe("ClaimHandleStep", () => {
 	it("suggested seed mount-time error: shows error state, keeps address visible, allows edit recovery", async () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "error" });
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "suggested", handle: "fabio" }}
@@ -411,7 +415,7 @@ describe("ClaimHandleStep", () => {
 			reason: "taken",
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -424,7 +428,7 @@ describe("ClaimHandleStep", () => {
 	});
 
 	it("keeps the address prefix visible for edited-away owned state", async () => {
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -452,7 +456,7 @@ describe("ClaimHandleStep", () => {
 		const queryClient = makeQueryClient();
 		const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 			queryClient,
 		);
@@ -465,9 +469,7 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalledWith(
-				expect.objectContaining({ to: "/onboarding" }),
-			);
+			expect(router.state.location.href).toBe("/onboarding?step=syncing");
 		});
 
 		// onboarding-session patched (spy captures the call even if client is different).
@@ -502,7 +504,7 @@ describe("ClaimHandleStep", () => {
 		// Use a spy to verify setQueryData calls regardless of gcTime GC.
 		const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 			queryClient,
 		);
@@ -515,7 +517,7 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalled();
+			expect(router.state.location.pathname).toBe("/playlists");
 		});
 
 		// Both caches patched. gcTime:0 GCs the data before we can read it,
@@ -560,7 +562,7 @@ describe("ClaimHandleStep", () => {
 		const queryClient = makeQueryClient();
 		const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 			queryClient,
 		);
@@ -573,7 +575,7 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalled();
+			expect(router.state.location.pathname).toBe("/playlists");
 		});
 
 		// Both caches patched.
@@ -618,7 +620,7 @@ describe("ClaimHandleStep", () => {
 			onboarding,
 		});
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -630,9 +632,7 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalledWith(
-				expect.objectContaining({ to: "/playlists" }),
-			);
+			expect(router.state.location.pathname).toBe("/playlists");
 		});
 	});
 
@@ -645,7 +645,7 @@ describe("ClaimHandleStep", () => {
 			reason: "taken",
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -682,7 +682,7 @@ describe("ClaimHandleStep", () => {
 			reason: "taken",
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -705,7 +705,7 @@ describe("ClaimHandleStep", () => {
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 		mockClaimHandleAndAdvance.mockRejectedValue(new Error("network error"));
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -742,7 +742,7 @@ describe("ClaimHandleStep", () => {
 			}),
 		);
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -769,8 +769,8 @@ describe("ClaimHandleStep", () => {
 
 	// ── A11y wiring ───────────────────────────────────────────────────────────
 
-	it("a11y: input has aria-describedby pointing to both stable ids", () => {
-		renderStep(
+	it("a11y: input has aria-describedby pointing to both stable ids", async () => {
+		await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -781,8 +781,8 @@ describe("ClaimHandleStep", () => {
 		);
 	});
 
-	it("a11y: static helper has stable id; dynamic region has stable id + aria-live=polite", () => {
-		renderStep(
+	it("a11y: static helper has stable id; dynamic region has stable id + aria-live=polite", async () => {
+		await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -796,8 +796,8 @@ describe("ClaimHandleStep", () => {
 		expect(status).toHaveAttribute("aria-live", "polite");
 	});
 
-	it("a11y: semantic <form> element is present", () => {
-		renderStep(
+	it("a11y: semantic <form> element is present", async () => {
+		await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -805,8 +805,8 @@ describe("ClaimHandleStep", () => {
 		expect(input.closest("form")).toBeTruthy();
 	});
 
-	it("a11y: input exposes a 'Handle' accessible name", () => {
-		renderStep(
+	it("a11y: input exposes a 'Handle' accessible name", async () => {
+		await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -823,7 +823,7 @@ describe("ClaimHandleStep", () => {
 			onboarding: makeOnboarding("flag-playlists"),
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -856,7 +856,7 @@ describe("ClaimHandleStep", () => {
 		// Use spy to verify setQueryData calls (gcTime:0 GCs data before read).
 		const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData");
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 			queryClient,
 		);
@@ -864,7 +864,7 @@ describe("ClaimHandleStep", () => {
 		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio");
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalled();
+			expect(router.state.location.pathname).toBe("/playlists");
 		});
 
 		// Both caches patched.
@@ -907,7 +907,7 @@ describe("ClaimHandleStep", () => {
 			}),
 		);
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -941,7 +941,7 @@ describe("ClaimHandleStep", () => {
 			reason: "empty",
 		});
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -967,7 +967,7 @@ describe("ClaimHandleStep", () => {
 		});
 
 		it("availability not called before 250ms; fires after 250ms", async () => {
-			renderStep(
+			await renderStep(
 				<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 			);
 
@@ -1014,7 +1014,7 @@ describe("ClaimHandleStep", () => {
 			.mockReturnValueOnce(firstPromise)
 			.mockResolvedValue({ status: "available" });
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -1066,7 +1066,7 @@ describe("ClaimHandleStep", () => {
 			}),
 		);
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -1113,7 +1113,7 @@ describe("ClaimHandleStep", () => {
 			}),
 		);
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep
 				{...BASE_PROPS}
 				claimHandleSeed={{ kind: "owned", handle: "fabio" }}
@@ -1167,7 +1167,7 @@ describe("ClaimHandleStep", () => {
 			onboarding,
 		});
 
-		const { user } = renderStep(
+		const { user, router } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
@@ -1180,18 +1180,10 @@ describe("ClaimHandleStep", () => {
 		await user.click(screen.getByRole("button", { name: /continue/i }));
 
 		await waitFor(() => {
-			expect(mockNavigate).toHaveBeenCalledWith(
-				expect.objectContaining({
-					to: "/onboarding",
-					search: { step: "plan-selection" },
-				}),
+			expect(router.state.location.href).toBe(
+				"/onboarding?step=plan-selection",
 			);
 		});
-		// Must NOT navigate to /playlists (the complete destination) for a
-		// non-complete step.
-		expect(mockNavigate).not.toHaveBeenCalledWith(
-			expect.objectContaining({ to: "/playlists" }),
-		);
 	});
 
 	// Test 7: Focus returns to input with caret at end after a retry settles.
@@ -1201,7 +1193,7 @@ describe("ClaimHandleStep", () => {
 		// Retry resolves successfully.
 		mockCheckHandleAvailability.mockResolvedValue({ status: "available" });
 
-		const { user } = renderStep(
+		const { user } = await renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
