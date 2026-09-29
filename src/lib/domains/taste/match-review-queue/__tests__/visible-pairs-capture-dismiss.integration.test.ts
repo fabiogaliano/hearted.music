@@ -1,13 +1,16 @@
 /**
- * First-presentation capture and whole-card dismiss against the real plpgsql:
- * capture_match_review_item_visible_pairs_atomic (20260625080000) and
- * dismiss_match_review_item_atomic (latest: 20260706000009). The unit suites
- * mock the RPC response, so the validation, first-capture-wins idempotency,
- * subject guard, and the dismiss fan-out over captured pairs only exist here.
+ * First-presentation capture and the card/suggestion actions against the real
+ * plpgsql: capture_match_review_item_visible_pairs_atomic (20260625080000) and
+ * the deck action RPCs (latest: 20260706000009) — dismiss-card, add, and
+ * dismiss-suggestion. The unit suites mock the RPC response, so the validation,
+ * first-capture-wins idempotency, subject guard, the dismiss fan-out over
+ * captured pairs, and the entitlement gate only exist here.
  *
  * Expected values come from the SQL: capture validates shape → dense ranks →
- * item lookup/resolved → idempotency → subject; dismiss writes one 'dismissed'
- * decision per captured pair that has no added/dismissed decision for the item.
+ * item lookup/resolved → idempotency → subject; dismiss-card writes one
+ * 'dismissed' decision + event per captured pair that has no added/dismissed
+ * decision for the item; add and dismiss-suggestion run item → XOR target →
+ * visible pair → owned playlist → entitlement before any write.
  *
  * Seeds via postgres.js (DATABASE_URL) and drives the production wrappers,
  * which go through the admin Supabase client. Auto-skipped unless both point
@@ -17,7 +20,11 @@
 import postgres from "postgres";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { captureVisiblePairsAtomic } from "../capture-visible-pairs";
-import { dismissQueueItemAtomically } from "../queries";
+import {
+	addQueueItemDecisionAtomically,
+	dismissQueueItemAtomically,
+	dismissQueueItemSuggestionAtomically,
+} from "../queries";
 import type { VisibleSuggestion } from "../visible-suggestion-list";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
@@ -167,6 +174,37 @@ async function decisionRows(itemId: string) {
     FROM match_decision
     WHERE queue_item_id = ${itemId}
     ORDER BY visible_rank
+  `;
+}
+
+async function eventRows(itemId: string) {
+	return db()`
+    SELECT song_id, playlist_id, event, served_orientation, visible_rank
+    FROM match_event
+    WHERE queue_item_id = ${itemId}
+    ORDER BY visible_rank
+  `;
+}
+
+async function deckState(orientation: Orientation) {
+	const sessionId = fixture().sessions[orientation];
+	const [session] = await db()`
+    SELECT deck_revision, resume_position FROM match_review_session WHERE id = ${sessionId}
+  `;
+	const [jobs] = await db()`
+    SELECT count(*)::int AS n FROM match_review_deck_job WHERE session_id = ${sessionId}
+  `;
+	return {
+		revision: session.deck_revision,
+		resumePosition: session.resume_position,
+		jobs: jobs.n,
+	};
+}
+
+async function unlock(songId: string) {
+	await db()`
+    INSERT INTO account_song_unlock(account_id, song_id, source)
+    VALUES (${fixture().accountId}, ${songId}, ${"admin"})
   `;
 }
 
@@ -350,27 +388,11 @@ describe.skipIf(!IS_LOCAL)(
 			expect(await pairRows(itemId)).toEqual([]);
 			expect((await itemRow(itemId)).visible_pairs_captured_at).toBeNull();
 		});
-
-		it("an empty capture still stamps the capture time and activates the item", async () => {
-			const { songs, accountId } = fixture();
-			const itemId = await makeItem({
-				orientation: "song",
-				subjectId: songs[0],
-			});
-
-			const result = await captureVisiblePairsAtomic(itemId, accountId, []);
-
-			expect(result).toEqual({ status: "empty" });
-			expect(await pairRows(itemId)).toEqual([]);
-			const item = await itemRow(itemId);
-			expect(item.state).toBe("active");
-			expect(item.visible_pairs_captured_at).not.toBeNull();
-		});
 	},
 );
 
 describe.skipIf(!IS_LOCAL)("dismiss_match_review_item_atomic", () => {
-	it("song card: dismisses every captured pair except one already added, and resolves the item", async () => {
+	it("song card: dismisses and logs every captured pair except one already added, and resolves the item", async () => {
 		const { songs, playlists, accountId } = fixture();
 		const itemId = await makeItem({ orientation: "song", subjectId: songs[0] });
 		await captureVisiblePairsAtomic(itemId, accountId, [
@@ -401,12 +423,22 @@ describe.skipIf(!IS_LOCAL)("dismiss_match_review_item_atomic", () => {
 				visible_rank: 2,
 			},
 		]);
+		// The added pair must not also enter the event history as dismissed.
+		expect(await eventRows(itemId)).toEqual([
+			{
+				song_id: songs[0],
+				playlist_id: playlists[1],
+				event: "dismissed",
+				served_orientation: "song",
+				visible_rank: 2,
+			},
+		]);
 		const item = await itemRow(itemId);
 		expect(item.state).toBe("resolved");
 		expect(item.resolution).toBe("dismissed");
 	});
 
-	it("playlist card: dismisses every captured song against the subject playlist and resolves the item", async () => {
+	it("playlist card: dismisses and logs every captured song against the subject playlist and resolves the item", async () => {
 		const { songs, playlists, accountId } = fixture();
 		const itemId = await makeItem({
 			orientation: "playlist",
@@ -420,24 +452,169 @@ describe.skipIf(!IS_LOCAL)("dismiss_match_review_item_atomic", () => {
 		const result = await dismissQueueItemAtomically(itemId, accountId);
 
 		expect(result).toHaveOkValue("dismissed");
-		expect(await decisionRows(itemId)).toEqual([
+		const expected = [
 			{
 				song_id: songs[1],
 				playlist_id: playlists[0],
-				decision: "dismissed",
 				served_orientation: "playlist",
 				visible_rank: 1,
 			},
 			{
 				song_id: songs[2],
 				playlist_id: playlists[0],
-				decision: "dismissed",
 				served_orientation: "playlist",
 				visible_rank: 2,
 			},
-		]);
+		];
+		expect(await decisionRows(itemId)).toEqual(
+			expected.map((row) => ({ ...row, decision: "dismissed" })),
+		);
+		expect(await eventRows(itemId)).toEqual(
+			expected.map((row) => ({ ...row, event: "dismissed" })),
+		);
+		const item = await itemRow(itemId);
+		expect(item.state).toBe("resolved");
+		expect(item.resolution).toBe("dismissed");
+	});
+
+	it("an empty first capture still makes the card dismissable, resolving it with no decisions or events", async () => {
+		const { songs, accountId } = fixture();
+		const itemId = await makeItem({ orientation: "song", subjectId: songs[0] });
+
+		expect(await captureVisiblePairsAtomic(itemId, accountId, [])).toEqual({
+			status: "empty",
+		});
+		expect((await itemRow(itemId)).state).toBe("active");
+
+		const result = await dismissQueueItemAtomically(itemId, accountId);
+
+		expect(result).toHaveOkValue("dismissed");
+		expect(await decisionRows(itemId)).toEqual([]);
+		expect(await eventRows(itemId)).toEqual([]);
 		const item = await itemRow(itemId);
 		expect(item.state).toBe("resolved");
 		expect(item.resolution).toBe("dismissed");
 	});
 });
+
+describe.skipIf(!IS_LOCAL)(
+	"dismiss_match_review_item_suggestion_atomic",
+	() => {
+		it("dismisses one suggestion without resolving the card, and a retry writes nothing twice", async () => {
+			const { songs, playlists, accountId } = fixture();
+			await unlock(songs[0]);
+			const itemId = await makeItem({
+				orientation: "song",
+				subjectId: songs[0],
+			});
+			await captureVisiblePairsAtomic(itemId, accountId, [
+				pair(songs[0], playlists[0], 1),
+				pair(songs[0], playlists[1], 2),
+			]);
+
+			const first = await dismissQueueItemSuggestionAtomically(
+				itemId,
+				accountId,
+				null,
+				playlists[1],
+			);
+			const retry = await dismissQueueItemSuggestionAtomically(
+				itemId,
+				accountId,
+				null,
+				playlists[1],
+			);
+
+			expect(first).toHaveOkValue("dismissed");
+			expect(retry).toHaveOkValue("dismissed");
+			const dismissedRow = {
+				song_id: songs[0],
+				playlist_id: playlists[1],
+				served_orientation: "song",
+				visible_rank: 2,
+			};
+			expect(await decisionRows(itemId)).toEqual([
+				{ ...dismissedRow, decision: "dismissed" },
+			]);
+			expect(await eventRows(itemId)).toEqual([
+				{ ...dismissedRow, event: "dismissed" },
+			]);
+			// Row-level: the card stays current (no resolve, no deck advance), but the
+			// deck revision moves once so clients refetch the shortened list.
+			const item = await itemRow(itemId);
+			expect(item.state).toBe("active");
+			expect(item.resolution).toBeNull();
+			expect(await deckState("song")).toEqual({
+				revision: 1,
+				resumePosition: null,
+				jobs: 1,
+			});
+		});
+	},
+);
+
+describe.skipIf(!IS_LOCAL)(
+	"entitlement gate on suggestion-level actions (add, dismiss-suggestion)",
+	() => {
+		const actions = [
+			{
+				action: "add",
+				run: addQueueItemDecisionAtomically,
+				succeeded: "added",
+			},
+			{
+				action: "dismiss-suggestion",
+				run: dismissQueueItemSuggestionAtomically,
+				succeeded: "dismissed",
+			},
+		] as const;
+		const cases = actions.flatMap((a) =>
+			(["song", "playlist"] as const).map((orientation) => ({
+				...a,
+				orientation,
+			})),
+		);
+
+		it.each(
+			cases,
+		)("$action on a $orientation card returns not_entitled for a locked song and writes nothing until it is unlocked", async ({
+			run,
+			succeeded,
+			orientation,
+		}) => {
+			const { songs, playlists, accountId } = fixture();
+			// Song card: the locked song is the subject. Playlist card: it is the
+			// suggestion — the item row itself carries no song_id to check.
+			const lockedSong = orientation === "song" ? songs[0] : songs[1];
+			const itemId = await makeItem({
+				orientation,
+				subjectId: orientation === "song" ? songs[0] : playlists[0],
+			});
+			await captureVisiblePairsAtomic(itemId, accountId, [
+				pair(lockedSong, playlists[0], 1),
+			]);
+			const [targetSong, targetPlaylist] =
+				orientation === "song" ? [null, playlists[0]] : [lockedSong, null];
+
+			const locked = await run(itemId, accountId, targetSong, targetPlaylist);
+
+			expect(locked).toHaveOkValue("not_entitled");
+			expect(await decisionRows(itemId)).toEqual([]);
+			expect(await eventRows(itemId)).toEqual([]);
+			expect(await deckState(orientation)).toEqual({
+				revision: 0,
+				resumePosition: null,
+				jobs: 0,
+			});
+			expect((await itemRow(itemId)).state).toBe("active");
+
+			// Same call once entitled proves the denial came from the entitlement
+			// check, not an earlier guard.
+			await unlock(lockedSong);
+			const unlocked = await run(itemId, accountId, targetSong, targetPlaylist);
+
+			expect(unlocked).toHaveOkValue(succeeded);
+			expect(await decisionRows(itemId)).toHaveLength(1);
+		});
+	},
+);

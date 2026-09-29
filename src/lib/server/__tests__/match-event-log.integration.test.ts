@@ -11,6 +11,8 @@
  * decision+event dual-write, the skip derivation in finish, and the NOT EXISTS
  * guard that keeps an added playlist from also being logged as skipped. Those
  * plpgsql branches are exactly what silently rots, so they're pinned here.
+ * Dismiss (card and suggestion) and the entitlement gate are owned by
+ * visible-pairs-capture-dismiss.integration.test.ts.
  *
  * match_decision models CURRENT STATE (added/dismissed only, feeds exclusion);
  * match_event models EVENT HISTORY (added/dismissed/skipped, never excludes).
@@ -46,22 +48,16 @@ const PLAYLIST_B = "00000000-0000-4000-8000-0000000ce0b1";
 // another's state.
 const SONG_ADD = "00000000-0000-4000-8000-0000000ce501";
 const ITEM_ADD = "00000000-0000-4000-8000-0000000ce401";
-const SONG_DIS = "00000000-0000-4000-8000-0000000ce502";
-const ITEM_DIS = "00000000-0000-4000-8000-0000000ce402";
 const SONG_SKIP = "00000000-0000-4000-8000-0000000ce503";
 const ITEM_SKIP = "00000000-0000-4000-8000-0000000ce403";
 const SONG_MIX = "00000000-0000-4000-8000-0000000ce504";
 const ITEM_MIX = "00000000-0000-4000-8000-0000000ce404";
-const SONG_AGUARD = "00000000-0000-4000-8000-0000000ce505";
-const ITEM_AGUARD = "00000000-0000-4000-8000-0000000ce405";
 // Captured-empty + uncaptured + XOR scenarios (review-fix Findings 2 & 5). These
 // items are seeded separately from ALL_ITEMS because they need bespoke capture
 // states (captured-empty, never-captured) rather than the default captured-with-
 // pairs state ALL_ITEMS uses.
 const SONG_EMPTY_FIN = "00000000-0000-4000-8000-0000000ce506";
 const ITEM_EMPTY_FIN = "00000000-0000-4000-8000-0000000ce406";
-const SONG_EMPTY_DIS = "00000000-0000-4000-8000-0000000ce507";
-const ITEM_EMPTY_DIS = "00000000-0000-4000-8000-0000000ce407";
 const SONG_UNCAP = "00000000-0000-4000-8000-0000000ce508";
 const ITEM_UNCAP = "00000000-0000-4000-8000-0000000ce408";
 const SONG_XOR = "00000000-0000-4000-8000-0000000ce509";
@@ -70,21 +66,16 @@ const ITEM_XOR = "00000000-0000-4000-8000-0000000ce409";
 const STRICTNESS = 0.5;
 const ALL_SONGS = [
 	SONG_ADD,
-	SONG_DIS,
 	SONG_SKIP,
 	SONG_MIX,
-	SONG_AGUARD,
 	SONG_EMPTY_FIN,
-	SONG_EMPTY_DIS,
 	SONG_UNCAP,
 	SONG_XOR,
 ] as const;
 const ALL_ITEMS = [
 	[ITEM_ADD, SONG_ADD],
-	[ITEM_DIS, SONG_DIS],
 	[ITEM_SKIP, SONG_SKIP],
 	[ITEM_MIX, SONG_MIX],
-	[ITEM_AGUARD, SONG_AGUARD],
 ] as const;
 
 async function seed() {
@@ -135,19 +126,13 @@ async function seed() {
 		position += 1;
 	}
 
-	// Captured-empty items: visible_pairs_captured_at is set but NO pair rows
-	// exist (the "no visible suggestions" card). Positions are offset well past the
-	// ALL_ITEMS range to avoid (session_id, position) collisions.
-	for (const [itemId, songId] of [
-		[ITEM_EMPTY_FIN, SONG_EMPTY_FIN],
-		[ITEM_EMPTY_DIS, SONG_EMPTY_DIS],
-	] as const) {
-		await client`
-      INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state, visible_pairs_captured_at)
-      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${songId}, ${SNAPSHOT}, ${position}, ${"active"}, now())
-    `;
-		position += 1;
-	}
+	// Captured-empty item: visible_pairs_captured_at is set but NO pair rows
+	// exist (the "no visible suggestions" card).
+	await client`
+    INSERT INTO match_review_queue_item(id, session_id, account_id, song_id, source_snapshot_id, position, state, visible_pairs_captured_at)
+    VALUES (${ITEM_EMPTY_FIN}, ${SESSION}, ${ACCOUNT}, ${SONG_EMPTY_FIN}, ${SNAPSHOT}, ${position}, ${"active"}, now())
+  `;
+	position += 1;
 
 	// Uncaptured item: visible_pairs_captured_at IS NULL (pairs never captured).
 	// finish/dismiss must return no_captured_pairs and not resolve it.
@@ -178,11 +163,9 @@ async function seed() {
 	// RPCs persist as model_rank.
 	const visible: Array<[string, string, number, number]> = [
 		[SONG_ADD, PLAYLIST_A, 0.9, 1],
-		[SONG_DIS, PLAYLIST_A, 0.9, 1],
 		[SONG_SKIP, PLAYLIST_A, 0.9, 1],
 		[SONG_MIX, PLAYLIST_A, 0.9, 1],
 		[SONG_MIX, PLAYLIST_B, 0.8, 2],
-		[SONG_AGUARD, PLAYLIST_A, 0.9, 1],
 	];
 	for (const [songId, playlistId, score, rank] of visible) {
 		await client`
@@ -197,11 +180,9 @@ async function seed() {
 	// ITEM_SKIP is included because MSR-28 added a no_captured_pairs guard to finish.
 	const capturedPairs: Array<[string, string, string, number, number]> = [
 		[ITEM_ADD, SONG_ADD, PLAYLIST_A, 1, 1],
-		[ITEM_DIS, SONG_DIS, PLAYLIST_A, 1, 1],
 		[ITEM_SKIP, SONG_SKIP, PLAYLIST_A, 1, 1],
 		[ITEM_MIX, SONG_MIX, PLAYLIST_A, 1, 1],
 		[ITEM_MIX, SONG_MIX, PLAYLIST_B, 2, 2],
-		[ITEM_AGUARD, SONG_AGUARD, PLAYLIST_A, 1, 1],
 	];
 	for (const [
 		itemId,
@@ -279,62 +260,6 @@ describeLocal("match queue RPCs write to match_event", () => {
 		expect(events[0].session_id).toBe(SESSION);
 	});
 
-	it("dismiss does not overwrite or dismiss an already-added playlist", async () => {
-		// The user adds A via the add RPC, then dismiss runs for the same item.
-		// The NOT EXISTS guard in the dismiss RPC must skip A so it is never written
-		// as 'dismissed' — keeping the decision 'added' and the event log clean.
-		const added =
-			await db()`SELECT add_match_review_item_decision_atomic(${ITEM_AGUARD}, ${ACCOUNT}, NULL::uuid, ${PLAYLIST_A}) AS r`;
-		expect(added[0].r).toBe("added");
-
-		// MSR-27: no p_decisions JSONB — the RPC reads from captured visible pairs.
-		const dismissed =
-			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_AGUARD}, ${ACCOUNT}) AS r`;
-		expect(dismissed[0].r).toBe("dismissed");
-
-		// Decision stays 'added' — the add won; the dismissed ON CONFLICT DO UPDATE
-		// is suppressed by the NOT EXISTS guard for pairs already added.
-		const decisions = await db()`
-      SELECT decision FROM match_decision
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_AGUARD} AND playlist_id = ${PLAYLIST_A}
-    `;
-		expect(decisions.map((d) => d.decision)).toEqual(["added"]);
-
-		// Exactly one event for A, and it's the 'added' one — no 'dismissed'.
-		const events = await db()`
-      SELECT event FROM match_event
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_AGUARD} AND playlist_id = ${PLAYLIST_A}
-    `;
-		expect(events.map((e) => e.event)).toEqual(["added"]);
-	});
-
-	it("dismiss writes a 'dismissed' decision and a 'dismissed' event", async () => {
-		// MSR-27: no p_decisions JSONB — the RPC derives decisions from captured
-		// visible pairs in match_review_item_visible_pair (seeded in beforeAll).
-		const result =
-			await db()`SELECT dismiss_match_review_item_atomic(${ITEM_DIS}, ${ACCOUNT}) AS r`;
-		expect(result[0].r).toBe("dismissed");
-
-		const decisions = await db()`
-      SELECT decision, model_rank, visible_rank, served_orientation FROM match_decision
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_DIS} AND playlist_id = ${PLAYLIST_A}
-    `;
-		expect(decisions.map((d) => d.decision)).toEqual(["dismissed"]);
-		// Ranks come from the captured pair rows — never recomputed at dismiss time.
-		expect(decisions[0].model_rank).toBe(1);
-		expect(decisions[0].visible_rank).toBe(1);
-		expect(decisions[0].served_orientation).toBe("song");
-
-		const events = await db()`
-      SELECT event, model_rank, visible_rank, served_orientation FROM match_event
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_DIS} AND playlist_id = ${PLAYLIST_A}
-    `;
-		expect(events.map((e) => e.event)).toEqual(["dismissed"]);
-		expect(events[0].model_rank).toBe(1);
-		expect(events[0].visible_rank).toBe(1);
-		expect(events[0].served_orientation).toBe("song");
-	});
-
 	it("finish logs a 'skipped' event but never a match_decision", async () => {
 		const result =
 			await db()`SELECT finish_match_review_item_atomic(${ITEM_SKIP}, ${ACCOUNT}) AS r`;
@@ -359,25 +284,6 @@ describeLocal("match queue RPCs write to match_event", () => {
       WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_SKIP}
     `;
 		expect(decisions).toHaveLength(0);
-	});
-
-	it("a skip does not enter the exclusion source (match_decision)", async () => {
-		// The matcher's exclusion set is derived from match_decision, which the
-		// previous finish left empty for SONG_SKIP. A skipped pair can therefore
-		// resurface in a later snapshot — the event log alone never excludes.
-		const decisions = await db()`
-      SELECT 1 FROM match_decision
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_SKIP} AND playlist_id = ${PLAYLIST_A}
-    `;
-		expect(decisions).toHaveLength(0);
-
-		// And the skip IS recorded in the event log (so it's a usable signal,
-		// just not an exclusion).
-		const events = await db()`
-      SELECT event FROM match_event
-      WHERE account_id = ${ACCOUNT} AND song_id = ${SONG_SKIP} AND event = ${"skipped"}
-    `;
-		expect(events).toHaveLength(1);
 	});
 
 	it("an added playlist is not also logged as skipped when the card finishes", async () => {
@@ -427,27 +333,6 @@ describeLocal(
 			// Captured-empty means zero pairs, so no skip events are written.
 			const events = await db()`
       SELECT 1 FROM match_event WHERE queue_item_id = ${ITEM_EMPTY_FIN}
-    `;
-			expect(events).toHaveLength(0);
-		});
-
-		it("dismiss on a captured-empty item resolves as dismissed with no decisions/events", async () => {
-			const result =
-				await db()`SELECT dismiss_match_review_item_atomic(${ITEM_EMPTY_DIS}, ${ACCOUNT}) AS r`;
-			expect(result[0].r).toBe("dismissed");
-
-			const item = await db()`
-      SELECT state, resolution FROM match_review_queue_item WHERE id = ${ITEM_EMPTY_DIS}
-    `;
-			expect(item[0].state).toBe("resolved");
-			expect(item[0].resolution).toBe("dismissed");
-
-			const decisions = await db()`
-      SELECT 1 FROM match_decision WHERE queue_item_id = ${ITEM_EMPTY_DIS}
-    `;
-			expect(decisions).toHaveLength(0);
-			const events = await db()`
-      SELECT 1 FROM match_event WHERE queue_item_id = ${ITEM_EMPTY_DIS}
     `;
 			expect(events).toHaveLength(0);
 		});
