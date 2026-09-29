@@ -198,9 +198,30 @@ export default defineConfig(({ command }) => {
 						name: "node",
 						environment: "node",
 						include: ["**/*.test.ts"],
-						exclude: [...sharedTestExcludes, ...domTestFiles],
+						exclude: [
+							...sharedTestExcludes,
+							...domTestFiles,
+							"**/*.integration.test.ts",
+						],
 						setupFiles: ["./src/test/setup.node.ts"],
 						server: { deps: { inline: ["tiny-warning"] } },
+					},
+				},
+				// Real-Postgres suites share one local database, and the claim/sweep
+				// RPCs they exercise act on every account's jobs — two files running
+				// at once claim or re-pend each other's seeded rows. One worker, after
+				// the unit projects, keeps them deterministic.
+				{
+					extends: true,
+					test: {
+						name: "integration",
+						environment: "node",
+						include: ["**/*.integration.test.ts"],
+						exclude: sharedTestExcludes,
+						setupFiles: ["./src/test/setup.node.ts"],
+						server: { deps: { inline: ["tiny-warning"] } },
+						maxWorkers: 1,
+						sequence: { groupOrder: 1 },
 					},
 				},
 				{

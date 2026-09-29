@@ -132,9 +132,12 @@ jobs:
 
   db-security:
     needs: detect
-    if: needs.detect.outputs.db_security == 'true'
+    # Every *.integration.test.ts runs here, not in verify (no database there,
+    # so they self-skip). Any code change can alter a query they pin, so this
+    # follows the code filter as well as the schema/data paths.
+    if: needs.detect.outputs.db_security == 'true' || needs.detect.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     concurrency:
       group: db-security-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -162,7 +165,7 @@ jobs:
           version: 2.101.0
           github-token: ${{ github.token }}
 
-      - name: Start local Supabase and run DB security invariants
+      - name: Start local Supabase and run DB integration tests
         run: |
           supabase start
           # Redirect, not `. <(...)`: process substitution hides a status failure from set -e.
@@ -176,12 +179,22 @@ jobs:
           set +a
           # Gate must fail, not silently skip, on a missing/non-local URL.
           : "${DATABASE_URL:?DATABASE_URL not exported}"
+          : "${SUPABASE_URL:?SUPABASE_URL not exported}"
+          : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY not exported}"
           case "$DATABASE_URL" in
             *127.0.0.1*|*localhost*) ;;
-            *) echo "::error::DATABASE_URL is not local; security invariants would skip"; exit 1 ;;
+            *) echo "::error::DATABASE_URL is not local; integration tests would skip"; exit 1 ;;
           esac
 
-          bun run test:fast src/lib/data/__tests__/security-invariants.integration.test.ts
+          bun run test:fast --project integration \
+            --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/integration.json"
+          # Each suite self-skips when its env gate is unmet, so a silent skip here
+          # means lost coverage, not a pass.
+          skipped=$(jq '.numPendingTests + .numTodoTests' "$RUNNER_TEMP/integration.json")
+          if [ "$skipped" -ne 0 ]; then
+            echo "::error::$skipped integration tests skipped; check the exported env"
+            exit 1
+          fi
 
   migrate-prod:
     needs: [detect, verify, db-security]
