@@ -180,7 +180,11 @@ jobs:
           # Gate must fail, not silently skip, on a missing/non-local URL.
           : "${DATABASE_URL:?DATABASE_URL not exported}"
           : "${SUPABASE_URL:?SUPABASE_URL not exported}"
-          : "${SUPABASE_SERVICE_ROLE_KEY:?SUPABASE_SERVICE_ROLE_KEY not exported}"
+          # config.toml disables GoTrue (Better Auth owns auth), so `status` prints
+          # no API keys. The gateway still accepts the CLI's fixed local-only
+          # defaults, which are public and useless against any real project.
+          export SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz}"
+          export SUPABASE_ANON_KEY="${SUPABASE_ANON_KEY:-sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH}"
           case "$DATABASE_URL" in
             *127.0.0.1*|*localhost*) ;;
             *) echo "::error::DATABASE_URL is not local; integration tests would skip"; exit 1 ;;
