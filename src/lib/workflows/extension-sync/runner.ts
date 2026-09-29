@@ -131,6 +131,7 @@ function captureExtensionSyncFailure(
 export async function runExtensionSyncJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<ExtensionSyncRunOutcome> {
 	const accountId = job.account_id;
 	const supabase = createAdminSupabaseClient();
@@ -173,6 +174,19 @@ export async function runExtensionSyncJob(
 		await failUnsettledPhaseJobs(reason);
 		await deletePayloadBestEffort(supabase, payloadPath, job.id, actor);
 		return { status: "failed", error: reason };
+	};
+
+	// The heartbeat saw the lease taken over. A phase already in flight still
+	// settles its own phase job (it won that job's start, so no one else can),
+	// which is what lets the reclaiming run resume from it; nothing new starts.
+	const stopForLostLease = (): ExtensionSyncRunOutcome => {
+		log.warn("extension-sync-lease-lost", {
+			actor,
+			jobId: job.id,
+			accountId,
+			attempts: job.attempts,
+		});
+		return { status: "superseded" };
 	};
 
 	// Download + validate the payload. Validation now lives here (the ingress
@@ -246,6 +260,9 @@ export async function runExtensionSyncJob(
 			resultSchema: z.ZodType<T>,
 			syncFn: () => Promise<Result<T, DbError | SyncFailedError>>,
 		): Promise<PhaseStep<T>> => {
+			if (leaseLost.aborted) {
+				return { status: "stopped", outcome: stopForLostLease() };
+			}
 			const phaseResult = await runPhase(
 				phaseJobIds[phase],
 				resultSchema,
@@ -390,12 +407,12 @@ export async function runExtensionSyncJob(
 		};
 
 		// Classify and emit one aggregated library-processing change.
-		const applyResult = await applyLibraryProcessingChange(
-			SyncChanges.librarySynced(
-				accountId,
-				classifyChange(results, await getTargetIds(accountId)),
-			),
+		const change = SyncChanges.librarySynced(
+			accountId,
+			classifyChange(results, await getTargetIds(accountId)),
 		);
+		if (leaseLost.aborted) return stopForLostLease();
+		const applyResult = await applyLibraryProcessingChange(change);
 		if (Result.isError(applyResult)) {
 			captureExtensionSyncFailure(applyResult.error, {
 				phase: "library_processing_apply",
@@ -404,6 +421,8 @@ export async function runExtensionSyncJob(
 			});
 			return fail("library_processing_apply_failed");
 		}
+
+		if (leaseLost.aborted) return stopForLostLease();
 
 		// Automatic waitlist path. Best-effort — never fails the sync. The reporter
 		// routes the grant's swallowed DB errors to the worker's @sentry/bun runtime

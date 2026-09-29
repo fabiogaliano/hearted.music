@@ -50,6 +50,9 @@ vi.mock("@/lib/domains/billing/liked-song-access-grant", () => ({
 
 const { runExtensionSyncJob } = await import("../runner");
 
+// A lease the heartbeat never reports lost.
+const LIVE_LEASE = new AbortController().signal;
+
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const IS_LOCAL =
@@ -162,7 +165,7 @@ describe.skipIf(!IS_LOCAL)(
 			mockApplyLibraryProcessingChange.mockReturnValueOnce(
 				new Promise(() => {}),
 			);
-			void runExtensionSyncJob(crashed, "actor");
+			void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
 			await vi.waitFor(
 				() => expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce(),
 				{ timeout: 10_000 },
@@ -178,7 +181,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(retry.attempts).toBe(2);
 			mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
 
-			const outcome = await runExtensionSyncJob(retry, "actor");
+			const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
 
 			expect(outcome).toEqual({ status: "completed" });
 			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledTimes(2);

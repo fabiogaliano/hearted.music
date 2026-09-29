@@ -35,7 +35,7 @@ const loop = createPollLoop<Job, { message: string }>({
 		(async () => {
 			const heartbeat = startHeartbeat(job);
 			try {
-				const outcome = await runClaimedJob(job, actor);
+				const outcome = await runClaimedJob(job, actor, heartbeat.leaseLost);
 				if (outcome.status === "completed") {
 					log.info("job-complete", {
 						actor,

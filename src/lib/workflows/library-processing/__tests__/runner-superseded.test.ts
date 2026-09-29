@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: vi.fn(),
 	markJobFailed: vi.fn(),
-	heartbeatJob: vi.fn(),
 }));
 
 const recordJobExecutionMeasurementMock = vi
@@ -49,6 +48,9 @@ vi.mock("../settlement", () => ({
 import { executeMatchSnapshotRefreshJob } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
 import { runClaimedJob } from "../runner";
+
+// A lease the heartbeat never reports lost.
+const LIVE_LEASE = new AbortController().signal;
 
 const supersedableRefreshJob = makeJob({
 	id: "job-2",
@@ -102,7 +104,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		await runClaimedJob(supersedableRefreshJob, "@test");
+		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
 		expect(settleMatchSnapshotRefreshJobTerminal).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "job-2" }),
@@ -120,7 +122,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		await runClaimedJob(supersedableRefreshJob, "@test");
+		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
 		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -142,7 +144,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		await runClaimedJob(supersedableRefreshJob, "@test");
+		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
 		expect(recordJobExecutionMeasurementMock).toHaveBeenCalledWith(
 			expect.objectContaining({ outcome: "superseded" }),
@@ -157,7 +159,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		await runClaimedJob(supersedableRefreshJob, "@test");
+		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
 		expect(captureWorkerJobFailure).not.toHaveBeenCalled();
 		expect(captureException).not.toHaveBeenCalled();
@@ -171,7 +173,11 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		const outcome = await runClaimedJob(supersedableRefreshJob, "@test");
+		const outcome = await runClaimedJob(
+			supersedableRefreshJob,
+			"@test",
+			LIVE_LEASE,
+		);
 
 		expect(outcome.status).toBe("completed");
 		expect(outcome.workflow).toBe("match_snapshot_refresh");
@@ -192,7 +198,11 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 			Result.ok("applied"),
 		);
 
-		const outcome = await runClaimedJob(supersedableRefreshJob, "@test");
+		const outcome = await runClaimedJob(
+			supersedableRefreshJob,
+			"@test",
+			LIVE_LEASE,
+		);
 
 		expect("settlement" in outcome ? outcome.settlement : null).toBe("settled");
 		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);

@@ -41,11 +41,21 @@ export type MatchSnapshotRefreshExecuteResult =
 			isEmpty: boolean;
 			snapshotId: string | null;
 	  }
-	| { status: "superseded"; accountId: string; jobId: string };
+	| { status: "superseded"; accountId: string; jobId: string }
+	// This worker's claim was taken over mid-run; nothing after the refresh
+	// itself was emitted or enqueued.
+	| { status: "lease_lost"; accountId: string; jobId: string };
 
+/**
+ * Renews the claim's lease until stopped. `leaseLost` aborts once the renewal
+ * reports the lease taken over, so the run can stop before its next side
+ * effect instead of finishing work the fenced settle would discard.
+ */
 export function startHeartbeat(job: Pick<Job, "id" | "attempts">): {
 	stop: () => void;
+	leaseLost: AbortSignal;
 } {
+	const lease = new AbortController();
 	const interval = setInterval(async () => {
 		const result = await updateHeartbeat(job);
 		if (Result.isError(result)) {
@@ -56,16 +66,20 @@ export function startHeartbeat(job: Pick<Job, "id" | "attempts">): {
 			return;
 		}
 		// The lease was swept and reclaimed or dead-lettered; renewing it can
-		// never succeed again, and the fenced settle will discard this run.
+		// never succeed again.
 		if (result.value === "superseded") {
 			log.warn("heartbeat-lease-lost", {
 				jobId: job.id,
 				attempts: job.attempts,
 			});
 			clearInterval(interval);
+			lease.abort();
 		}
 	}, workerConfig.heartbeatIntervalMs);
-	return { stop: () => clearInterval(interval) };
+	return {
+		stop: () => clearInterval(interval),
+		leaseLost: lease.signal,
+	};
 }
 
 export async function executeEnrichmentJob(
@@ -126,6 +140,7 @@ export async function executeEnrichmentJob(
 export async function executeMatchSnapshotRefreshJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<MatchSnapshotRefreshExecuteResult> {
 	const accountId = job.account_id;
 	const initialProgress =
@@ -152,6 +167,10 @@ export async function executeMatchSnapshotRefreshJob(
 	if (outcome.status === "superseded") {
 		log.info("■ MATCH SUPERSEDED", { actor, jobId: job.id, accountId });
 		return { status: "superseded", accountId, jobId: job.id };
+	}
+
+	if (leaseLost.aborted) {
+		return { status: "lease_lost", accountId, jobId: job.id };
 	}
 
 	const result = outcome.result;

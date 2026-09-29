@@ -89,24 +89,32 @@ async function tryRequeueForRetry(
 	return requeued.value;
 }
 
+/**
+ * `leaseLost` is the heartbeat's signal that this claim was taken over; the
+ * run checks it before settling so a stale worker stops without reporting,
+ * requeueing, or settling work that now belongs to the reclaiming worker.
+ */
 export async function runClaimedJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<RunJobOutcome> {
 	if (job.type === "match_snapshot_refresh") {
-		return runMatchSnapshotRefreshJob(job, actor);
+		return runMatchSnapshotRefreshJob(job, actor, leaseLost);
 	}
 
-	return runEnrichmentJob(job, actor);
+	return runEnrichmentJob(job, actor, leaseLost);
 }
 
 async function runEnrichmentJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
 		const result = await executeEnrichmentJob(job, actor);
+		if (leaseLost.aborted) return superseded(job, actor, "enrichment");
 
 		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
 		const eventReason = isBlocked ? "failed" : "completed";
@@ -231,6 +239,7 @@ async function runEnrichmentJob(
 
 		return { status: "completed", workflow: "enrichment", result, settlement };
 	} catch (error) {
+		if (leaseLost.aborted) return superseded(job, actor, "enrichment");
 		const message = errorMessage(error);
 		// Failure is returned as outcome, not thrown — capture here while the Error is intact.
 		captureWorkerJobFailure(error, {
@@ -290,10 +299,14 @@ async function runEnrichmentJob(
 async function runMatchSnapshotRefreshJob(
 	job: Job,
 	actor: string,
+	leaseLost: AbortSignal,
 ): Promise<RunJobOutcome> {
 	const startedAt = job.started_at ?? new Date().toISOString();
 	try {
-		const result = await executeMatchSnapshotRefreshJob(job, actor);
+		const result = await executeMatchSnapshotRefreshJob(job, actor, leaseLost);
+		if (result.status === "lease_lost" || leaseLost.aborted) {
+			return superseded(job, actor, "match_snapshot_refresh");
+		}
 
 		if (result.status === "superseded") {
 			let settlement: SettlementStatus = "settled";
@@ -395,6 +408,9 @@ async function runMatchSnapshotRefreshJob(
 			settlement,
 		};
 	} catch (error) {
+		if (leaseLost.aborted) {
+			return superseded(job, actor, "match_snapshot_refresh");
+		}
 		const message = errorMessage(error);
 		captureWorkerJobFailure(error, {
 			workflow: "match_snapshot_refresh",

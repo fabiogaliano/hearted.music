@@ -25,7 +25,11 @@ function dispatch(job: Job, actor: string, markDone: () => void): void {
 	(async () => {
 		const heartbeat = startHeartbeat(job);
 		try {
-			const outcome = await runExtensionSyncJob(job, actor);
+			const outcome = await runExtensionSyncJob(
+				job,
+				actor,
+				heartbeat.leaseLost,
+			);
 			switch (outcome.status) {
 				case "completed":
 					log.info("extension-sync-job-complete", { actor, jobId, accountId });

@@ -1,11 +1,16 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { updateHeartbeat } from "@/lib/platform/jobs/repository";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import type {
 	MatchSnapshotRefreshOutcome,
 	MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { makeJob } from "@/test/fixtures";
-import { executeMatchSnapshotRefreshJob } from "../execute";
+import { executeMatchSnapshotRefreshJob, startHeartbeat } from "../execute";
+
+// A lease the heartbeat never reports lost.
+const LIVE_LEASE = new AbortController().signal;
 
 const {
 	mockExecute,
@@ -109,7 +114,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult(),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
 		expect(mockCaptureWorkerEvent).toHaveBeenCalledWith({
 			distinctId: "acct-1",
@@ -136,7 +141,11 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			throw captureError;
 		});
 
-		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(
+			refreshJob,
+			"acct-1",
+			LIVE_LEASE,
+		);
 
 		// The snapshot is already published — analytics failure must not change the
 		// job outcome.
@@ -160,9 +169,34 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			status: "superseded",
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(
+			refreshJob,
+			"acct-1",
+			LIVE_LEASE,
+		);
 
 		expect(result.status).toBe("superseded");
+		expect(mockCaptureWorkerEvent).not.toHaveBeenCalled();
+		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+	});
+
+	it("emits and enqueues nothing once the heartbeat reported the lease lost during the refresh (regression: a taken-over run still announced and enqueued its publish)", async () => {
+		const lease = new AbortController();
+		mockExecute.mockImplementation(async () => {
+			lease.abort();
+			return {
+				status: "published",
+				result: makeResult(),
+			} satisfies MatchSnapshotRefreshOutcome;
+		});
+
+		const result = await executeMatchSnapshotRefreshJob(
+			refreshJob,
+			"acct-1",
+			lease.signal,
+		);
+
+		expect(result.status).toBe("lease_lost");
 		expect(mockCaptureWorkerEvent).not.toHaveBeenCalled();
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
@@ -173,7 +207,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult(),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(2);
 		expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
@@ -203,7 +237,11 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			Result.err(new Error("deck enqueue failed")),
 		);
 
-		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(
+			refreshJob,
+			"acct-1",
+			LIVE_LEASE,
+		);
 
 		expect(result.status).toBe("published");
 		// One Sentry capture per orientation whose enqueue failed — never a throw.
@@ -231,7 +269,11 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			},
 		);
 
-		const result = await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		const result = await executeMatchSnapshotRefreshJob(
+			refreshJob,
+			"acct-1",
+			LIVE_LEASE,
+		);
 
 		// The failed orientation must never enqueue a hash-less (pre-M1) key —
 		// it is skipped entirely, not degraded to the old dedupe-prone key.
@@ -269,8 +311,45 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			result: makeResult({ published: false, snapshotId: null, noOp: true }),
 		} satisfies MatchSnapshotRefreshOutcome);
 
-		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1");
+		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+	});
+});
+
+describe("startHeartbeat", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("signals leaseLost once a renewal is superseded, and stops renewing", async () => {
+		vi.useFakeTimers();
+		vi.mocked(updateHeartbeat)
+			.mockResolvedValueOnce(Result.ok("applied"))
+			.mockResolvedValueOnce(Result.ok("superseded"));
+		const heartbeat = startHeartbeat(refreshJob);
+
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(heartbeat.leaseLost.aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(heartbeat.leaseLost.aborted).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(updateHeartbeat).toHaveBeenCalledTimes(2);
+		heartbeat.stop();
+	});
+
+	it("keeps the lease on a failed renewal", async () => {
+		vi.useFakeTimers();
+		vi.mocked(updateHeartbeat).mockResolvedValue(
+			Result.err(new DatabaseError({ code: "ECONNRESET", message: "blip" })),
+		);
+		const heartbeat = startHeartbeat(refreshJob);
+
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(heartbeat.leaseLost.aborted).toBe(false);
+		heartbeat.stop();
 	});
 });

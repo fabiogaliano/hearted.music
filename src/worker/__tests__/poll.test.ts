@@ -30,7 +30,10 @@ vi.mock("../config", () => ({
 	},
 }));
 vi.mock("../execute", () => ({
-	startHeartbeat: vi.fn(() => ({ stop: vi.fn() })),
+	startHeartbeat: vi.fn(() => ({
+		stop: vi.fn(),
+		leaseLost: new AbortController().signal,
+	})),
 }));
 
 describe("claimAndDispatchLibraryProcessingJobs", () => {
@@ -68,6 +71,10 @@ describe("claimAndDispatchLibraryProcessingJobs", () => {
 
 		expect(claimLibraryProcessingJob).toHaveBeenCalledTimes(2);
 		expect(resolveAccountLabel).toHaveBeenCalledWith("acct-1");
-		expect(runClaimedJob).toHaveBeenCalledWith(job, "@acct");
+		expect(runClaimedJob).toHaveBeenCalledWith(
+			job,
+			"@acct",
+			expect.any(AbortSignal),
+		);
 	});
 });

@@ -65,6 +65,9 @@ import { captureWorkerEvent } from "@/worker/posthog-capture";
 import { type RunJobOutcome, runClaimedJob } from "../runner";
 import type { LibraryProcessingApplyError } from "../types";
 
+// A lease the heartbeat never reports lost.
+const LIVE_LEASE = new AbortController().signal;
+
 function settlementOf(outcome: RunJobOutcome) {
 	return "settlement" in outcome ? outcome.settlement : null;
 }
@@ -135,7 +138,7 @@ describe("runClaimedJob", () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 		vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-		const outcome = await runClaimedJob(makeJob(), "@test");
+		const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 		expect(outcome.status).toBe("completed");
 		expect(outcome.workflow).toBe("enrichment");
@@ -158,6 +161,7 @@ describe("runClaimedJob", () => {
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
 			"@test",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("completed");
@@ -171,7 +175,7 @@ describe("runClaimedJob", () => {
 		vi.mocked(executeEnrichmentJob).mockRejectedValue(thrown);
 		vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
-		const outcome = await runClaimedJob(makeJob(), "@test");
+		const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 		expect(outcome.status).toBe("failed");
 		if (outcome.status === "failed") {
@@ -200,6 +204,7 @@ describe("runClaimedJob", () => {
 		const outcome = await runClaimedJob(
 			makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
 			"@test",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -224,6 +229,7 @@ describe("runClaimedJob", () => {
 			const outcome = await runClaimedJob(
 				makeJob({ attempts: 1, max_attempts: 3 }),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(outcome.status).toBe("retrying");
@@ -252,6 +258,7 @@ describe("runClaimedJob", () => {
 					max_attempts: 3,
 				}),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(outcome.status).toBe("retrying");
@@ -267,6 +274,7 @@ describe("runClaimedJob", () => {
 			const outcome = await runClaimedJob(
 				makeJob({ attempts: 3, max_attempts: 3 }),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(outcome.status).toBe("failed");
@@ -290,6 +298,7 @@ describe("runClaimedJob", () => {
 			const outcome = await runClaimedJob(
 				makeJob({ attempts: 1, max_attempts: 3 }),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(outcome.status).toBe("failed");
@@ -301,7 +310,7 @@ describe("runClaimedJob", () => {
 		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 		vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-		const outcome = await runClaimedJob(makeJob(), "@test");
+		const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 		expect(outcome.status).toBe("completed");
 		if (outcome.status === "completed" && outcome.workflow === "enrichment") {
@@ -362,9 +371,73 @@ describe("runClaimedJob", () => {
 				Result.ok("superseded"),
 			);
 
-			const outcome = await runClaimedJob(job, "@test");
+			const outcome = await runClaimedJob(job, "@test", LIVE_LEASE);
 
 			expect(outcome.status).toBe("superseded");
+			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
+			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("a lease the heartbeat reports lost mid-run stops before any settle (regression: a taken-over run kept going and only the fenced settle discarded it)", () => {
+		const refreshJob = makeJob({ id: "job-2", type: "match_snapshot_refresh" });
+		const cases = [
+			{
+				name: "enrichment chunk returns",
+				job: makeJob(),
+				arrange: (lose: () => void) =>
+					vi.mocked(executeEnrichmentJob).mockImplementation(async () => {
+						lose();
+						return ENRICHMENT_EXEC_RESULT;
+					}),
+			},
+			{
+				name: "enrichment chunk throws",
+				job: makeJob({ attempts: 1, max_attempts: 3 }),
+				arrange: (lose: () => void) =>
+					vi.mocked(executeEnrichmentJob).mockImplementation(async () => {
+						lose();
+						throw new Error("chunk exploded");
+					}),
+			},
+			{
+				name: "match refresh reports the lost lease",
+				job: refreshJob,
+				arrange: (lose: () => void) =>
+					vi
+						.mocked(executeMatchSnapshotRefreshJob)
+						.mockImplementation(async () => {
+							lose();
+							return {
+								status: "lease_lost",
+								accountId: "acct-1",
+								jobId: "job-2",
+							};
+						}),
+			},
+			{
+				name: "match refresh throws",
+				job: { ...refreshJob, attempts: 1, max_attempts: 3 },
+				arrange: (lose: () => void) =>
+					vi
+						.mocked(executeMatchSnapshotRefreshJob)
+						.mockImplementation(async () => {
+							lose();
+							throw new Error("snapshot exploded");
+						}),
+			},
+		];
+
+		it.each(cases)("$name", async ({ job, arrange }) => {
+			const lease = new AbortController();
+			arrange(() => lease.abort());
+
+			const outcome = await runClaimedJob(job, "@test", lease.signal);
+
+			expect(outcome.status).toBe("superseded");
+			expect(settleEnrichmentJobTerminal).not.toHaveBeenCalled();
+			expect(settleMatchSnapshotRefreshJobTerminal).not.toHaveBeenCalled();
+			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -385,7 +458,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
 		});
@@ -406,7 +479,7 @@ describe("runClaimedJob", () => {
 			);
 			vi.mocked(markJobFailed).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
 		});
@@ -435,6 +508,7 @@ describe("runClaimedJob", () => {
 			await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(callOrder).toEqual(["measurement", "apply"]);
@@ -446,7 +520,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			const outcome = await runClaimedJob(makeJob(), "@test");
+			const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(settlementOf(outcome)).toBe("settled");
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledTimes(1);
@@ -460,7 +534,7 @@ describe("runClaimedJob", () => {
 				.mockResolvedValueOnce(Result.err(makePersistStateError()))
 				.mockResolvedValueOnce(APPLY_OK_RESULT);
 
-			const promise = runClaimedJob(makeJob(), "@test");
+			const promise = runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
@@ -480,7 +554,7 @@ describe("runClaimedJob", () => {
 				.mockImplementation(() => {});
 
 			try {
-				const promise = runClaimedJob(makeJob(), "@test");
+				const promise = runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 				await vi.advanceTimersByTimeAsync(60_000);
 				const outcome = await promise;
 
@@ -520,7 +594,7 @@ describe("runClaimedJob", () => {
 				.mockImplementation(() => {});
 
 			try {
-				const promise = runClaimedJob(makeJob(), "@test");
+				const promise = runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 				await vi.advanceTimersByTimeAsync(60_000);
 				const outcome = await promise;
 
@@ -558,6 +632,7 @@ describe("runClaimedJob", () => {
 			const outcome = await runClaimedJob(
 				makeJob({ id: "job-2", type: "match_snapshot_refresh" }),
 				"@test",
+				LIVE_LEASE,
 			);
 
 			expect(settlementOf(outcome)).toBe("settled");
@@ -581,7 +656,7 @@ describe("runClaimedJob", () => {
 				.mockImplementation(() => {});
 
 			try {
-				const promise = runClaimedJob(makeJob(), "@test");
+				const promise = runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 				await vi.advanceTimersByTimeAsync(60_000);
 				const outcome = await promise;
 
@@ -628,7 +703,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -644,7 +719,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(BLOCKED_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
 			expect(call?.kind).not.toBe("enrichment_completed");
@@ -683,7 +758,7 @@ describe("runClaimedJob", () => {
 				}),
 			);
 
-			const outcome = await runClaimedJob(makeJob(), "@test");
+			const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(outcome.status).toBe("completed");
 			// The apply was called with enrichment_stopped (not enrichment_completed),
@@ -697,7 +772,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -711,7 +786,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(PARTIAL_EXEC_RESULT);
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
 			expect(call?.kind).not.toBe("enrichment_stopped");
@@ -725,7 +800,7 @@ describe("runClaimedJob", () => {
 			});
 			vi.mocked(markJobCompleted).mockResolvedValue(Result.ok("applied"));
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			const call = applyLibraryProcessingChangeMock.mock.calls[0]?.[0];
 			expect(call?.kind).toBe("enrichment_completed");
@@ -739,7 +814,7 @@ describe("runClaimedJob", () => {
 			Result.ok("applied"),
 		);
 
-		await runClaimedJob(makeJob(), "@test");
+		await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -762,7 +837,7 @@ describe("runClaimedJob", () => {
 		it("captures enrichment_candidate_batch_ready when newCandidatesAvailable", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(vi.mocked(captureWorkerEvent)).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -784,7 +859,7 @@ describe("runClaimedJob", () => {
 				selectionMode: "first_match_bootstrap",
 			});
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			expect(vi.mocked(captureWorkerEvent)).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -805,7 +880,7 @@ describe("runClaimedJob", () => {
 				newCandidateSongIds: [],
 			});
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			const calls = vi.mocked(captureWorkerEvent).mock.calls;
 			const eventNames = calls.map((c) => c[0].event);
@@ -824,7 +899,7 @@ describe("runClaimedJob", () => {
 				}),
 			);
 
-			await runClaimedJob(makeJob(), "@test");
+			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
 			const calls = vi.mocked(captureWorkerEvent).mock.calls;
 			const eventNames = calls.map((c) => c[0].event);

@@ -128,6 +128,9 @@ vi.mock("@/lib/shared/utils/concurrency", () => ({
 
 const { runExtensionSyncJob } = await import("../runner");
 
+// A lease the heartbeat never reports lost.
+const LIVE_LEASE = new AbortController().signal;
+
 const ACCOUNT_ID = "acct-1";
 const PARENT_ID = "parent-1";
 const PAYLOAD_PATH = "acct-1/p.json";
@@ -262,6 +265,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({ status: "completed" });
@@ -297,6 +301,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob({ nonsense: true }),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -317,6 +322,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -351,6 +357,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -393,6 +400,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({
@@ -440,6 +448,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -475,6 +484,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("completed");
@@ -501,6 +511,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({ status: "completed" });
@@ -541,6 +552,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
@@ -581,6 +593,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({ status: "superseded" });
@@ -589,6 +602,56 @@ describe("runExtensionSyncJob", () => {
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 		expect(mockMaybeGrant).not.toHaveBeenCalled();
 		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("a lease the heartbeat reports lost mid-phase lets that phase settle but starts nothing after it (regression: a taken-over run kept syncing, emitting and granting)", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
+		);
+		const lease = new AbortController();
+		mockRunPhase.mockImplementationOnce(async () => {
+			lease.abort();
+			return Result.ok({
+				status: "completed",
+				value: { total: 1, added: 1, removed: 0 },
+			});
+		});
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+			lease.signal,
+		);
+
+		expect(outcome).toEqual({ status: "superseded" });
+		expect(mockRunPhase).toHaveBeenCalledOnce();
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockMaybeGrant).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+	});
+
+	it("a lease lost after the phases emits no library change and grants nothing", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
+		);
+		const lease = new AbortController();
+		mockGetTargetPlaylists.mockImplementation(async () => {
+			lease.abort();
+			return Result.ok([]);
+		});
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+			lease.signal,
+		);
+
+		expect(outcome).toEqual({ status: "superseded" });
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+		expect(mockMaybeGrant).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalled();
 	});
 
 	it("a lease reclaimed before completion leaves the payload to the reclaiming worker", async () => {
@@ -600,6 +663,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({ status: "superseded" });
@@ -615,6 +679,7 @@ describe("runExtensionSyncJob", () => {
 		const outcome = await runExtensionSyncJob(
 			parentJob(validProgress()),
 			"actor",
+			LIVE_LEASE,
 		);
 
 		expect(outcome).toEqual({ status: "superseded" });
