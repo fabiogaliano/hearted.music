@@ -134,19 +134,6 @@ describe("dismissQueueItemAtomically", () => {
 
 		expect(result).toBeErr();
 	});
-
-	it.todo(
-		"song orientation: writes dismissed decisions for all captured visible pairs not already added (integration)",
-	);
-	it.todo(
-		"playlist orientation: writes dismissed decisions for all captured visible pairs not already added (integration)",
-	);
-	it.todo(
-		"excludes pairs that already have an added decision for the same queue_item_id (integration)",
-	);
-	it.todo(
-		"resolves queue item state=resolved resolution=dismissed (integration)",
-	);
 });
 
 describe("finishQueueItemAtomically", () => {

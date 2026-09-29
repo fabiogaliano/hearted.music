@@ -54,7 +54,7 @@ describe("startNotifyListener", () => {
 		vi.useRealTimers();
 	});
 
-	it("coalesces bursts per channel and runs reconnect catch-up", async () => {
+	it("coalesces bursts per channel", async () => {
 		const onLibraryWake = vi.fn();
 		const onDeckWake = vi.fn();
 		const listener = startNotifyListener(
@@ -67,7 +67,6 @@ describe("startNotifyListener", () => {
 
 		expect(state.listenMock).toHaveBeenCalledTimes(2);
 
-		state.subscriptions.get("library_processing_job_created")?.onListen();
 		state.subscriptions.get("library_processing_job_created")?.onNotify();
 		state.subscriptions.get("library_processing_job_created")?.onNotify();
 		state.subscriptions.get("match_deck_job_created")?.onNotify();
@@ -82,6 +81,23 @@ describe("startNotifyListener", () => {
 
 		await listener.stop();
 		expect(state.endMock).toHaveBeenCalledWith({ timeout: 5 });
+	});
+
+	it("runs a catch-up wake on every (re)subscribe with no notification", async () => {
+		const onLibraryWake = vi.fn();
+		startNotifyListener({ library_processing_job_created: onLibraryWake }, 100);
+		const subscription = state.subscriptions.get(
+			"library_processing_job_created",
+		);
+
+		subscription?.onListen();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(onLibraryWake).toHaveBeenCalledTimes(1);
+
+		// Reconnect: postgres.js fires onlisten again after resubscribing.
+		subscription?.onListen();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(onLibraryWake).toHaveBeenCalledTimes(2);
 	});
 
 	it("disables LISTEN on the transaction pooler and leaves poll as the fallback", async () => {

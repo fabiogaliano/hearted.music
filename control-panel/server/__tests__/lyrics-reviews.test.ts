@@ -112,9 +112,13 @@ describe("countLyricsBuckets", () => {
 		]);
 		const counts = await countLyricsBuckets();
 		expect(counts).toEqual({ needsReview: 304, instrumental: 102 });
-		expect(vi.mocked(read).mock.calls[0]?.[0]).toMatch(
-			/from public\.liked_song ls/,
-		);
+		const sql = vi.mocked(read).mock.calls[0]?.[0];
+		expect(sql).toMatch(/fetch_status = 'not_found'/);
+		expect(sql).toMatch(/fetch_status = 'instrumental'/);
+		// Counts must match the queue: only songs an entitled account still likes.
+		expect(sql).toMatch(/\bunliked_at is null/);
+		expect(sql).toMatch(/account_song_unlock[\s\S]*revoked_at is null/);
+		expect(sql).toMatch(/unlimited_access_source/);
 	});
 });
 

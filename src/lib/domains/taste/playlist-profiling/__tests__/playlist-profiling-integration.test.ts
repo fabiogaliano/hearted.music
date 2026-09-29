@@ -78,6 +78,11 @@ let TEST_SONGS: Song[] = [];
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
+function expectOk<T>(result: Result<T, unknown>): T {
+	expect(result).toBeOk();
+	return result.unwrap();
+}
+
 function expectValidCentroid(centroid: number[] | null) {
 	if (centroid === null) {
 		// Null is valid if no embeddings available
@@ -172,43 +177,33 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 	}, 60000); // 1 minute timeout for embeddings
 
 	test("profile computation succeeds", () => {
-		expect(Result.isOk(profileResult)).toBe(true);
+		expect(profileResult).toBeOk();
 	});
 
 	test("profile includes playlist ID", () => {
-		if (!Result.isOk(profileResult)) return;
-
-		const profile = profileResult.value;
+		const profile = expectOk(profileResult);
 		expect(profile.playlistId).toBe(TEST_PLAYLIST_ID);
 	});
 
 	test("profile kind is content_v1", () => {
-		if (!Result.isOk(profileResult)) return;
-
-		const profile = profileResult.value;
+		const profile = expectOk(profileResult);
 		expect(profile.kind).toBe("content_v1");
 	});
 
 	test("profile includes all songs", () => {
-		if (!Result.isOk(profileResult)) return;
-
-		const profile = profileResult.value;
+		const profile = expectOk(profileResult);
 		expect(profile.songIds.length).toBe(TEST_SONGS.length);
 		expect(profile.songCount).toBe(TEST_SONGS.length);
 	});
 
 	describe("Embedding centroid", () => {
 		test("centroid is computed", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			expectValidCentroid(profile.embedding);
 		});
 
 		test("centroid has expected dimensions", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			if (profile.embedding === null) {
 				// No embeddings available
 				console.log("   ⚠️  No embeddings available for test songs");
@@ -223,16 +218,12 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 
 	describe("Audio centroid", () => {
 		test("audio centroid is computed", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			expectValidAudioCentroid(profile.audioCentroid);
 		});
 
 		test("audio centroid includes standard features", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			const { audioCentroid } = profile;
 
 			// Check for expected Spotify audio features
@@ -260,9 +251,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 		});
 
 		test("audio feature values are in valid ranges", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			const { audioCentroid } = profile;
 
 			// Most Spotify features are normalized 0-1
@@ -300,9 +289,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 
 	describe("Genre distribution", () => {
 		test("genre counts match test data", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			const { genreDistribution } = profile;
 
 			// Count expected genres from test data
@@ -324,9 +311,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 		});
 
 		test("genre counts are positive integers", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			const { genreDistribution } = profile;
 
 			for (const count of Object.values(genreDistribution)) {
@@ -338,18 +323,14 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 
 	describe("Content hashing", () => {
 		test("content hash is generated", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			expect(profile.contentHash).toBeDefined();
 			expect(typeof profile.contentHash).toBe("string");
 			expect(profile.contentHash.length).toBeGreaterThan(0);
 		});
 
 		test("content hash is deterministic", async () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const firstHash = profileResult.value.contentHash;
+			const firstHash = expectOk(profileResult).contentHash;
 
 			// Compute profile again with same songs
 			const secondResult = await service.computeProfile(
@@ -358,16 +339,11 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				{ skipCache: true, skipPersist: true },
 			);
 
-			if (Result.isOk(secondResult)) {
-				expect(secondResult.value.contentHash).toBe(firstHash);
-				console.log(`   ✓ Content hash is deterministic: ${firstHash}`);
-			}
+			expect(expectOk(secondResult).contentHash).toBe(firstHash);
 		});
 
 		test("content hash changes with different songs", async () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const firstHash = profileResult.value.contentHash;
+			const firstHash = expectOk(profileResult).contentHash;
 
 			// Compute profile with different songs
 			const differentSongs = TEST_SONGS.slice(0, 2); // Only first 2 songs
@@ -377,29 +353,20 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				{ skipCache: true, skipPersist: true },
 			);
 
-			if (Result.isOk(differentResult)) {
-				expect(differentResult.value.contentHash).not.toBe(firstHash);
-				console.log(
-					`   ✓ Content hash changes with different songs: ${differentResult.value.contentHash}`,
-				);
-			}
+			expect(expectOk(differentResult).contentHash).not.toBe(firstHash);
 		});
 	});
 
 	describe("Model bundle versioning", () => {
 		test("model bundle hash is included", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 			expect(profile.modelBundleHash).toBeDefined();
 			expect(typeof profile.modelBundleHash).toBe("string");
 			expect(profile.modelBundleHash.length).toBeGreaterThan(0);
 		});
 
 		test("model bundle hash is consistent", async () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const firstHash = profileResult.value.modelBundleHash;
+			const firstHash = expectOk(profileResult).modelBundleHash;
 
 			// Compute profile again
 			const secondResult = await service.computeProfile(
@@ -408,38 +375,26 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				{ skipCache: true, skipPersist: true },
 			);
 
-			if (Result.isOk(secondResult)) {
-				expect(secondResult.value.modelBundleHash).toBe(firstHash);
-				console.log(
-					`   ✓ Model bundle hash is consistent: ${firstHash.slice(0, 8)}...`,
-				);
-			}
+			expect(expectOk(secondResult).modelBundleHash).toBe(firstHash);
 		});
 	});
 
 	describe("Cache behavior", () => {
 		test("fromCache flag indicates cache status", () => {
-			if (!Result.isOk(profileResult)) return;
-
-			const profile = profileResult.value;
+			const profile = expectOk(profileResult);
 
 			// First computation with skipCache should not be from cache
 			expect(profile.fromCache).toBe(false);
 		});
 
 		test("skipCache option bypasses cache", async () => {
-			if (!Result.isOk(profileResult)) return;
-
-			// Compute with skipCache
 			const result = await service.computeProfile(
 				TEST_PLAYLIST_ID,
 				TEST_SONGS,
 				{ skipCache: true, skipPersist: true },
 			);
 
-			if (Result.isOk(result)) {
-				expect(result.value.fromCache).toBe(false);
-			}
+			expect(expectOk(result).fromCache).toBe(false);
 		});
 	});
 
@@ -456,10 +411,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				},
 			);
 
-			expect(Result.isOk(result)).toBe(true);
-			if (!Result.isOk(result)) return;
-
-			const profile = result.value;
+			const profile = expectOk(result);
 			expect(profile.embedding).not.toBeNull();
 			if (profile.embedding) {
 				expect(profile.embedding.length).toBeGreaterThan(100);
@@ -487,13 +439,13 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				},
 			);
 
-			if (Result.isOk(result1) && Result.isOk(result2)) {
-				expect(result1.value.contentHash).not.toBe(result2.value.contentHash);
-			}
+			expect(expectOk(result1).contentHash).not.toBe(
+				expectOk(result2).contentHash,
+			);
 		}, 30000);
 
 		test("content hash changes when description changes (with songs)", async () => {
-			if (!Result.isOk(profileResult)) return;
+			const original = expectOk(profileResult);
 
 			const withDescResult = await service.computeProfile(
 				TEST_PLAYLIST_ID,
@@ -506,17 +458,14 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				},
 			);
 
-			expect(Result.isOk(withDescResult)).toBe(true);
-			if (!Result.isOk(withDescResult)) return;
-
 			// Content hash must differ because intent text is now included
-			expect(withDescResult.value.contentHash).not.toBe(
-				profileResult.value.contentHash,
+			expect(expectOk(withDescResult).contentHash).not.toBe(
+				original.contentHash,
 			);
 		}, 30000);
 
 		test("description blends into embedding when songs exist", async () => {
-			if (!Result.isOk(profileResult)) return;
+			const original = expectOk(profileResult);
 
 			const withDescResult = await service.computeProfile(
 				TEST_PLAYLIST_ID,
@@ -529,11 +478,7 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				},
 			);
 
-			expect(Result.isOk(withDescResult)).toBe(true);
-			if (!Result.isOk(withDescResult)) return;
-
-			const original = profileResult.value;
-			const blended = withDescResult.value;
+			const blended = expectOk(withDescResult);
 
 			if (original.embedding && blended.embedding) {
 				// Same dimensions
@@ -550,18 +495,5 @@ describe.skipIf(!RUN_TEST)("Playlist Profiling Integration", () => {
 				expect(hasDifference).toBe(true);
 			}
 		}, 30000);
-	});
-});
-
-// ─────────────────────────────────────────────────────────────
-// Skipped Test Notice
-// ─────────────────────────────────────────────────────────────
-
-describe.skipIf(RUN_TEST)("Playlist Profiling Integration (Skipped)", () => {
-	test("requires PROFILING_TEST=true to run", () => {
-		console.log("\n⏭️  Playlist Profiling Integration test skipped");
-		console.log("   Set PROFILING_TEST=true to run this integration test");
-		console.log("   Requires: Database access, Embedding service");
-		expect(true).toBe(true);
 	});
 });

@@ -125,7 +125,12 @@ describe("countReleaseYearBuckets", () => {
 		vi.mocked(read).mockResolvedValue([{ pending: "7", unresolved: "3" }]);
 		const counts = await countReleaseYearBuckets();
 		expect(counts).toEqual({ pending: 7, unresolved: 3 });
-		expect(vi.mocked(read).mock.calls[0]?.[0]).toMatch(/from public\.liked_song ls/);
+		const sql = vi.mocked(read).mock.calls[0]?.[0];
+		// pending = never checked and still actively liked; unresolved = the complement
+		// among year-less songs, so the two buckets never double-count.
+		expect(sql).toMatch(/release_year_checked_at is null\s+and exists \(/);
+		expect(sql).toMatch(/release_year_checked_at is not null\s+or not exists \(/);
+		expect(sql).toMatch(/\bunliked_at is null/);
 	});
 });
 

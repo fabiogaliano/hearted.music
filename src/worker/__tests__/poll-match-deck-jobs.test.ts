@@ -18,7 +18,6 @@ import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-r
 import { log } from "@/lib/observability/logger";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
-	dispatchDeckJob,
 	runClaimedDeckJob,
 	runMatchDeckJobSweepTick,
 } from "../poll-match-deck-jobs";
@@ -134,43 +133,65 @@ describe("runMatchDeckJobSweepTick", () => {
 });
 
 // ---------------------------------------------------------------------------
-// dispatchDeckJob (P3.2) — direct unit tests over the exported dispatch
-// function, isolating per-kind outcome/error handling from the poll loop's
-// claim/settle machinery (covered separately below).
+// runClaimedDeckJob — the claim → dispatch → settle lifecycle, extracted from
+// the poll loop's fire-and-forget task specifically so this is testable
+// without running the live while-loop (it idles on the global Bun.sleep,
+// which the vitest node pool this suite runs under doesn't provide). Per-kind
+// dispatch outcomes are asserted as the settlement they produce.
 // ---------------------------------------------------------------------------
 
-describe("dispatchDeckJob", () => {
+describe("runClaimedDeckJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(completeDeckJob).mockResolvedValue(Result.ok(true));
+		vi.mocked(deferDeckJob).mockResolvedValue(Result.ok(true));
 	});
 
-	it("build_proposals: builds, chains append_sessions, and settles ok (happy path)", async () => {
+	function expectCompleted(jobId: string) {
+		expect(completeDeckJob).toHaveBeenCalledWith(jobId);
+		expect(deferDeckJob).not.toHaveBeenCalled();
+	}
+
+	function expectDeferred(jobId: string) {
+		expect(deferDeckJob).toHaveBeenCalledWith(jobId, 30);
+		expect(completeDeckJob).not.toHaveBeenCalled();
+	}
+
+	it("build_proposals: builds, chains append_sessions, and completes", async () => {
 		vi.mocked(buildProposalsForAccountOrientation).mockResolvedValue(
 			Result.ok(undefined),
 		);
 		vi.mocked(enqueueDeckJob).mockResolvedValue(Result.ok(null));
 
-		const result = await dispatchDeckJob(
-			job({ kind: "build_proposals", payload: { snapshotId: "snap-1" } }),
+		await runClaimedDeckJob(
+			job({
+				id: "job-build",
+				kind: "build_proposals",
+				payload: { snapshotId: "snap-1" },
+			}),
 		);
 
-		expect(Result.isError(result)).toBe(false);
+		expectCompleted("job-build");
 		expect(enqueueDeckJob).toHaveBeenCalledWith(
 			expect.objectContaining({ kind: "append_sessions" }),
 		);
 		expect(Sentry.captureException).not.toHaveBeenCalled();
 	});
 
-	it("append_sessions: a handler error is returned (poll loop defers on this)", async () => {
+	it("append_sessions: a handler error defers and is captured (P1.2 symmetry)", async () => {
 		vi.mocked(appendSessionsForAccountOrientation).mockResolvedValue(
 			Result.err(new DatabaseError({ code: "boom", message: "db exploded" })),
 		);
 
-		const result = await dispatchDeckJob(
-			job({ kind: "append_sessions", payload: { snapshotId: "snap-1" } }),
+		await runClaimedDeckJob(
+			job({
+				id: "job-append-fail",
+				kind: "append_sessions",
+				payload: { snapshotId: "snap-1" },
+			}),
 		);
 
-		expect(Result.isError(result)).toBe(true);
+		expectDeferred("job-append-fail");
 		expect(Sentry.captureException).toHaveBeenCalledWith(
 			expect.any(DatabaseError),
 			expect.objectContaining({
@@ -183,16 +204,20 @@ describe("dispatchDeckJob", () => {
 		);
 	});
 
-	it("append_sessions: superseded settles ok with NO defer signal and NO Sentry capture", async () => {
+	it("append_sessions: superseded completes with NO defer and NO Sentry capture", async () => {
 		vi.mocked(appendSessionsForAccountOrientation).mockResolvedValue(
 			Result.ok({ kind: "superseded" }),
 		);
 
-		const result = await dispatchDeckJob(
-			job({ kind: "append_sessions", payload: { snapshotId: "snap-1" } }),
+		await runClaimedDeckJob(
+			job({
+				id: "job-superseded",
+				kind: "append_sessions",
+				payload: { snapshotId: "snap-1" },
+			}),
 		);
 
-		expect(Result.isError(result)).toBe(false);
+		expectCompleted("job-superseded");
 		expect(Sentry.captureException).not.toHaveBeenCalled();
 	});
 
@@ -203,8 +228,9 @@ describe("dispatchDeckJob", () => {
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(7));
 		vi.mocked(enqueueDeckJob).mockResolvedValue(Result.ok(null));
 
-		await dispatchDeckJob(
+		await runClaimedDeckJob(
 			job({
+				id: "job-m5",
 				kind: "append_sessions",
 				orientation: "playlist",
 				account_id: "acct-9",
@@ -212,6 +238,7 @@ describe("dispatchDeckJob", () => {
 			}),
 		);
 
+		expectCompleted("job-m5");
 		expect(enqueueDeckJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: "capture_ahead",
@@ -228,8 +255,9 @@ describe("dispatchDeckJob", () => {
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(null));
 		vi.mocked(enqueueDeckJob).mockResolvedValue(Result.ok(null));
 
-		await dispatchDeckJob(
+		await runClaimedDeckJob(
 			job({
+				id: "job-m5-none",
 				kind: "append_sessions",
 				orientation: "song",
 				account_id: "acct-9",
@@ -237,6 +265,7 @@ describe("dispatchDeckJob", () => {
 			}),
 		);
 
+		expectCompleted("job-m5-none");
 		expect(enqueueDeckJob).toHaveBeenCalledWith(
 			expect.objectContaining({
 				kind: "capture_ahead",
@@ -246,13 +275,14 @@ describe("dispatchDeckJob", () => {
 		);
 	});
 
-	it("is silent when append_sessions applies zero cards", async () => {
+	it("append_sessions applying zero cards completes without chaining capture_ahead", async () => {
 		vi.mocked(appendSessionsForAccountOrientation).mockResolvedValue(
 			Result.ok({ kind: "applied", appendedCount: 0, sessionId: "sess-3" }),
 		);
 
-		const result = await dispatchDeckJob(
+		await runClaimedDeckJob(
 			job({
+				id: "job-zero",
 				kind: "append_sessions",
 				orientation: "song",
 				account_id: "acct-9",
@@ -260,26 +290,26 @@ describe("dispatchDeckJob", () => {
 			}),
 		);
 
-		expect(Result.isError(result)).toBe(false);
+		expectCompleted("job-zero");
 		expect(enqueueDeckJob).not.toHaveBeenCalled();
 	});
 
-	it("capture_ahead: happy path captures the window from the session's resume position", async () => {
+	it("capture_ahead: captures the window from the session's resume position and completes", async () => {
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(4));
 		vi.mocked(captureAheadForSession).mockResolvedValue(Result.ok(undefined));
 
-		const result = await dispatchDeckJob(
-			job({ kind: "capture_ahead", session_id: "sess-3" }),
+		await runClaimedDeckJob(
+			job({ id: "job-happy", kind: "capture_ahead", session_id: "sess-3" }),
 		);
 
-		expect(Result.isError(result)).toBe(false);
+		expectCompleted("job-happy");
 		expect(captureAheadForSession).toHaveBeenCalledWith(
 			expect.objectContaining({ sessionId: "sess-3", fromPosition: 4 }),
 		);
 		expect(Sentry.captureException).not.toHaveBeenCalled();
 	});
 
-	it("capture_ahead: a handler error is returned and captured (P1.2 symmetry)", async () => {
+	it("capture_ahead: a handler error defers and is captured (P1.2 symmetry)", async () => {
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(0));
 		vi.mocked(captureAheadForSession).mockResolvedValue(
 			Result.err(
@@ -287,11 +317,11 @@ describe("dispatchDeckJob", () => {
 			),
 		);
 
-		const result = await dispatchDeckJob(
-			job({ kind: "capture_ahead", session_id: "sess-4" }),
+		await runClaimedDeckJob(
+			job({ id: "job-fail", kind: "capture_ahead", session_id: "sess-4" }),
 		);
 
-		expect(Result.isError(result)).toBe(true);
+		expectDeferred("job-fail");
 		expect(Sentry.captureException).toHaveBeenCalledWith(
 			expect.any(DatabaseError),
 			expect.objectContaining({
@@ -303,66 +333,16 @@ describe("dispatchDeckJob", () => {
 			}),
 		);
 	});
-});
-
-// ---------------------------------------------------------------------------
-// runClaimedDeckJob — the claim → dispatch → settle lifecycle, extracted from
-// the poll loop's fire-and-forget task specifically so this is testable
-// without running the live while-loop (it idles on the global Bun.sleep,
-// which the vitest node pool this suite runs under doesn't provide).
-// ---------------------------------------------------------------------------
-
-describe("runClaimedDeckJob", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("claim → dispatch → complete (happy path)", async () => {
-		const testJob = job({
-			id: "job-happy",
-			kind: "capture_ahead",
-			session_id: "s1",
-		});
-		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(0));
-		vi.mocked(captureAheadForSession).mockResolvedValue(Result.ok(undefined));
-		vi.mocked(completeDeckJob).mockResolvedValue(Result.ok(true));
-
-		await runClaimedDeckJob(testJob);
-
-		expect(completeDeckJob).toHaveBeenCalledWith("job-happy");
-		expect(deferDeckJob).not.toHaveBeenCalled();
-	});
-
-	it("handler error → defer (job deferred, not completed)", async () => {
-		const testJob = job({
-			id: "job-fail",
-			kind: "capture_ahead",
-			session_id: "s1",
-		});
-		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(0));
-		vi.mocked(captureAheadForSession).mockResolvedValue(
-			Result.err(new DatabaseError({ code: "boom", message: "nope" })),
-		);
-		vi.mocked(deferDeckJob).mockResolvedValue(Result.ok(true));
-
-		await runClaimedDeckJob(testJob);
-
-		expect(deferDeckJob).toHaveBeenCalledWith("job-fail", 30);
-		expect(completeDeckJob).not.toHaveBeenCalled();
-	});
 
 	it("N2: a 0-row complete settle logs the match-deck-settlement-guard-hit warn", async () => {
-		const testJob = job({
-			id: "job-raced",
-			kind: "capture_ahead",
-			session_id: "s1",
-		});
 		vi.mocked(readSessionResumePosition).mockResolvedValue(Result.ok(0));
 		vi.mocked(captureAheadForSession).mockResolvedValue(Result.ok(undefined));
 		// 0-row match: the settlement guard fired (job concurrently dead-lettered).
 		vi.mocked(completeDeckJob).mockResolvedValue(Result.ok(false));
 
-		await runClaimedDeckJob(testJob);
+		await runClaimedDeckJob(
+			job({ id: "job-raced", kind: "capture_ahead", session_id: "s1" }),
+		);
 
 		expect(log.warn).toHaveBeenCalledWith("match-deck-settlement-guard-hit", {
 			settlement: "complete",

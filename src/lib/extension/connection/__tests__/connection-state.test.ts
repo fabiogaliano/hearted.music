@@ -99,8 +99,7 @@ describe("fetchExtensionConnection", () => {
 describe("extensionConnectionQueryOptions", () => {
 	// refetchInterval only reads `query.state.data` (plus the authFailedAt
 	// store) — a minimal stub is enough and sidesteps needing a real,
-	// fully-typed Query instance (same pattern as
-	// match.card-actions.test.ts's captureRefetchInterval).
+	// fully-typed Query instance.
 	function refetchIntervalOf(
 		options: ReturnType<typeof extensionConnectionQueryOptions>,
 	) {

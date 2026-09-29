@@ -136,10 +136,7 @@ function captureDeckJobDispatchError(
 	});
 }
 
-/** Exported for P3.2 dispatch-lifecycle tests; not called outside this loop. */
-export async function dispatchDeckJob(
-	job: DeckJob,
-): Promise<Result<void, DbError>> {
+async function dispatchDeckJob(job: DeckJob): Promise<Result<void, DbError>> {
 	const orientation = toOrientation(job.orientation);
 	if (!orientation) {
 		return Result.err(

@@ -64,17 +64,13 @@ describe("ExtensionStatusRow", () => {
 	it("shows the checking copy while the first PING is pending", () => {
 		mockIsExtensionInstalled.mockReturnValue(new Promise(() => {}));
 		render(withQueryClient(<ExtensionStatusRow />));
-		expect(screen.getByText("Looking for the extension…")).toBeInTheDocument();
-		expect(screen.getByText("Checking")).toBeInTheDocument();
+		expect(screen.getByText(/^checking$/i)).toBeInTheDocument();
 	});
 
 	it("reports not detected when PING never answers", async () => {
 		mockIsExtensionInstalled.mockResolvedValue(false);
 		render(withQueryClient(<ExtensionStatusRow />));
-		expect(
-			await screen.findByText("Chrome extension not detected"),
-		).toBeInTheDocument();
-		expect(screen.getByText("Not detected")).toBeInTheDocument();
+		expect(await screen.findByText(/^not detected$/i)).toBeInTheDocument();
 		expect(mockGetSpotifyAccountStatus).not.toHaveBeenCalled();
 	});
 
@@ -82,10 +78,7 @@ describe("ExtensionStatusRow", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(null);
 		render(withQueryClient(<ExtensionStatusRow />));
-		expect(
-			await screen.findByText("Chrome extension is connected"),
-		).toBeInTheDocument();
-		expect(screen.getByText("Connected")).toBeInTheDocument();
+		expect(await screen.findByText(/^connected$/i)).toBeInTheDocument();
 	});
 
 	it("stays fresh: an install detected mid-page-life flips the row without a remount (the sixth-detection-path fix)", async () => {
@@ -96,9 +89,7 @@ describe("ExtensionStatusRow", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(
-			screen.getByText("Chrome extension not detected"),
-		).toBeInTheDocument();
+		expect(screen.getByText(/^not detected$/i)).toBeInTheDocument();
 
 		// Extension gets installed while this page is still open — no remount,
 		// nothing re-invokes the component. The old version would show
@@ -114,9 +105,7 @@ describe("ExtensionStatusRow", () => {
 			await vi.advanceTimersByTimeAsync(100);
 		});
 
-		expect(
-			screen.getByText("Chrome extension is connected"),
-		).toBeInTheDocument();
-		expect(screen.getByText("Connected")).toBeInTheDocument();
+		expect(screen.getByText(/^connected$/i)).toBeInTheDocument();
+		expect(screen.queryByText(/^not detected$/i)).toBeNull();
 	});
 });

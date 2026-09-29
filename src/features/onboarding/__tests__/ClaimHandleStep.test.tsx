@@ -219,32 +219,35 @@ describe("ClaimHandleStep", () => {
 		expect(screen.getByDisplayValue("@fab-io")).toBeInTheDocument();
 	});
 
-	// ── Format error copy ─────────────────────────────────────────────────────
+	// ── Format errors ─────────────────────────────────────────────────────────
+	// Which reason each input maps to is owned by handle-rules.test.ts; here we
+	// only pin that any format failure surfaces in the live status region and
+	// blocks submit.
 
-	it("shows @ error copy when input contains @", async () => {
+	it.each([
+		["@fabio"],
+		["fab io"],
+		[".fabio"],
+		["fabio."],
+		["fabio..g"],
+	])("invalid input %j shows an error and disables Continue", async (typed) => {
 		const { user } = renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
 
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), "@fabio");
+		await user.type(screen.getByRole("textbox", { name: /handle/i }), typed);
+
 		expect(
-			screen.getByText("Don’t include @ — it’s added to your public URL."),
-		).toBeInTheDocument();
+			document.getElementById("claim-handle-status")?.textContent?.trim(),
+		).toBeTruthy();
 		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+		// Outlast the 250ms debounce: a format error must never reach the server,
+		// otherwise a "Checking…" status would satisfy the assertions above.
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(mockCheckHandleAvailability).not.toHaveBeenCalled();
 	});
 
-	it("shows invalid_chars copy for hyphens/spaces", async () => {
-		const { user } = renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
-
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fab io");
-		expect(
-			screen.getByText("Use only letters, numbers, periods, or underscores."),
-		).toBeInTheDocument();
-	});
-
-	it("shows too_long copy for overlength input and does not truncate", async () => {
+	it("overlength input shows an error and is not truncated", async () => {
 		const { user } = renderStep(
 			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
 		);
@@ -252,47 +255,12 @@ describe("ClaimHandleStep", () => {
 		const long = "a".repeat(31);
 		await user.type(screen.getByRole("textbox", { name: /handle/i }), long);
 
-		expect(
-			screen.getByText("Handles can be up to 30 characters."),
-		).toBeInTheDocument();
+		expect(document.getElementById("claim-handle-status")?.textContent).toMatch(
+			/30/,
+		);
+		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
 		// Full 31-char value must be in the field — no silent truncation.
 		expect(screen.getByDisplayValue(long)).toBeInTheDocument();
-	});
-
-	it("shows leading_period copy", async () => {
-		const { user } = renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
-
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), ".fabio");
-		expect(
-			screen.getByText("Periods can’t start a username."),
-		).toBeInTheDocument();
-	});
-
-	it("shows trailing_period copy", async () => {
-		const { user } = renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
-
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), "fabio.");
-		expect(
-			screen.getByText("Periods can’t end a username."),
-		).toBeInTheDocument();
-	});
-
-	it("shows consecutive_periods copy", async () => {
-		const { user } = renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
-
-		await user.type(
-			screen.getByRole("textbox", { name: /handle/i }),
-			"fabio..g",
-		);
-		expect(
-			screen.getByText("Periods can’t appear twice in a row."),
-		).toBeInTheDocument();
 	});
 
 	// ── Reserved short-circuit ────────────────────────────────────────────────

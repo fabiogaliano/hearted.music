@@ -9,8 +9,6 @@ vi.mock("../../shared/spotify-client/reads", () => ({
 
 import {
 	attachReleaseYearsToTracks,
-	fetchIdsNeedingLookup,
-	fetchReleaseYears,
 	hydrateLikedSongReleaseYears,
 	markReleaseYearCheckedOnTracks,
 	type PostToBackend,
@@ -60,48 +58,6 @@ describe("selectLikedTracksMissingReleaseYear", () => {
 			new Set(["d"]),
 		);
 		expect(selected.map((t) => t.track.id)).toEqual(["a", "c"]);
-	});
-});
-
-describe("fetchIdsNeedingLookup", () => {
-	it("returns the backend's needsLookup set", async () => {
-		const { post, calls } = stubBackend(() => ({ needsLookup: ["a", "c"] }));
-		const needs = await fetchIdsNeedingLookup(post, ["a", "b", "c"]);
-		expect([...needs].sort()).toEqual(["a", "c"]);
-		expect(calls[0].path).toBe("/api/extension/release-year/pending");
-		expect(calls[0].body).toEqual({ spotifyIds: ["a", "b", "c"] });
-	});
-
-	it("is best-effort: a non-OK response yields an empty set (skip hydration)", async () => {
-		const post: PostToBackend = async () =>
-			new Response("nope", { status: 500 });
-		expect((await fetchIdsNeedingLookup(post, ["a"])).size).toBe(0);
-	});
-});
-
-describe("fetchReleaseYears", () => {
-	it("resolves years, records every response as a lookup, and skips transient failures", async () => {
-		const reader = vi.fn(async (_token: string, uri: string) => {
-			if (uri.endsWith("err")) throw new Error("network");
-			if (uri.endsWith("noyear")) return { releaseYear: null };
-			return { releaseYear: 1999 };
-		});
-
-		const { resolved, lookups } = await fetchReleaseYears(
-			"tok",
-			[makeLiked("ok"), makeLiked("noyear"), makeLiked("err")],
-			reader,
-			2,
-		);
-
-		expect(resolved.get("ok")).toBe(1999);
-		expect(resolved.has("noyear")).toBe(false);
-		// A response (even "no year") becomes a lookup so the backend stamps it;
-		// a thrown (transient) one is omitted so a later sync retries it.
-		const byId = new Map(lookups.map((l) => [l.spotifyId, l.releaseYear]));
-		expect(byId.get("ok")).toBe(1999);
-		expect(byId.get("noyear")).toBeNull();
-		expect(byId.has("err")).toBe(false);
 	});
 });
 
@@ -187,6 +143,40 @@ describe("hydrateLikedSongReleaseYears", () => {
 			likedSongs.find((t) => t.track.id === "b")?.track.release_year_checked,
 		).toBeUndefined();
 		expect(lookups).toEqual([{ spotifyId: "a", releaseYear: 1990 }]);
+	});
+
+	it("records a no-year response as a checked lookup but leaves a thrown getTrack unrecorded for retry", async () => {
+		mockGetTrack.mockImplementation(async (_t: string, uri: string) => {
+			if (uri.endsWith(":err")) throw new Error("network");
+			if (uri.endsWith(":noyear")) return { releaseYear: null };
+			return { releaseYear: 1999 };
+		});
+		const { post } = stubBackend(() => ({
+			needsLookup: ["ok", "noyear", "err"],
+		}));
+
+		const { likedSongs, lookups } = await hydrateLikedSongReleaseYears(
+			"tok",
+			[makeLiked("ok"), makeLiked("noyear"), makeLiked("err")],
+			new Set(),
+			post,
+		);
+
+		const byId = new Map(likedSongs.map((t) => [t.track.id, t.track]));
+		expect(byId.get("ok")).toMatchObject({
+			release_year: 1999,
+			release_year_checked: true,
+		});
+		expect(byId.get("noyear")?.release_year).toBeUndefined();
+		expect(byId.get("noyear")?.release_year_checked).toBe(true);
+		expect(byId.get("err")?.release_year_checked).toBeUndefined();
+		expect(lookups).toEqual(
+			expect.arrayContaining([
+				{ spotifyId: "ok", releaseYear: 1999 },
+				{ spotifyId: "noyear", releaseYear: null },
+			]),
+		);
+		expect(lookups).toHaveLength(2);
 	});
 
 	it("excludes playlist-covered songs from the pending check entirely", async () => {

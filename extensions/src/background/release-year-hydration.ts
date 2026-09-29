@@ -26,12 +26,6 @@ const GET_TRACK_CONCURRENCY = 2;
 const HYDRATION_BUDGET = 200;
 const NO_EXCLUDED_TRACK_IDS: ReadonlySet<string> = new Set();
 
-/** Reads a track's release year; structurally satisfied by reads.getTrack. */
-export type ReleaseYearReader = (
-	token: string,
-	trackUri: string,
-) => Promise<{ releaseYear: number | null }>;
-
 /** Backend POST helper; structurally satisfied by the service worker's postToBackend. */
 export type PostToBackend = (
 	path: string,
@@ -76,7 +70,7 @@ export function selectLikedTracksMissingReleaseYear(
  * on any failure returns an empty set so this sync simply skips hydration rather
  * than falling back to a local guess that would re-fetch already-checked songs.
  */
-export async function fetchIdsNeedingLookup(
+async function fetchIdsNeedingLookup(
 	postToBackend: PostToBackend,
 	spotifyIds: string[],
 ): Promise<Set<string>> {
@@ -116,18 +110,16 @@ export async function fetchIdsNeedingLookup(
  * — the latter is what callers post to /release-year/checked so the backend
  * stamps them as checked. Transient failures are omitted so a later sync retries.
  */
-export async function fetchReleaseYears(
+async function fetchReleaseYears(
 	token: string,
 	tracks: SpotifyTrackDTO[],
-	reader: ReleaseYearReader = getTrack,
-	concurrency: number = GET_TRACK_CONCURRENCY,
 ): Promise<{ resolved: Map<string, number>; lookups: ReleaseYearLookup[] }> {
 	const resolved = new Map<string, number>();
 	const lookups: ReleaseYearLookup[] = [];
 
-	await mapWithConcurrency(tracks, concurrency, async (song) => {
+	await mapWithConcurrency(tracks, GET_TRACK_CONCURRENCY, async (song) => {
 		try {
-			const { releaseYear } = await reader(token, song.track.uri);
+			const { releaseYear } = await getTrack(token, song.track.uri);
 			lookups.push({ spotifyId: song.track.id, releaseYear });
 			if (releaseYear != null) {
 				resolved.set(song.track.id, releaseYear);

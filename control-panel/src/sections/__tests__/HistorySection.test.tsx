@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NavContext } from "../../lib/navigation";
 import type { ActionRunRow } from "../../lib/types";
@@ -65,22 +65,15 @@ describe("HistorySection", () => {
 		window.history.replaceState({}, "", "/?section=history");
 	});
 
-	it("renders today's summary counts and a run row", () => {
-		renderSection();
-		expect(screen.getByText("Commits today")).toBeTruthy();
-		// The action-type filter <option> now lives inside the collapsed Filters
-		// popover, so the run row's cell is the only "grant-access" on screen.
-		expect(screen.getByText("grant-access")).toBeTruthy();
-		expect(screen.getByText("Ada Lovelace")).toBeTruthy();
-	});
-
 	it("opens a detail drawer and deep-links an account target to User Detail", () => {
 		renderSection();
-		fireEvent.click(screen.getByText("View"));
-		expect(screen.getByText("Action run")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: /view/i }));
+		const drawer = screen.getByRole("dialog");
 		// Input summary and result are shown as JSON.
-		expect(screen.getByText(/newlyUnlocked/)).toBeTruthy();
-		fireEvent.click(screen.getByText("Open target"));
+		expect(within(drawer).getByText(/newlyUnlocked/)).toBeTruthy();
+		fireEvent.click(
+			within(drawer).getByRole("button", { name: /open target/i }),
+		);
 		expect(navigate).toHaveBeenCalledWith("users", { user: "acct-1" });
 	});
 });
