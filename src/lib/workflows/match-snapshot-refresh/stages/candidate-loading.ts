@@ -12,6 +12,8 @@
  */
 
 import { Result } from "better-result";
+import { createAdminSupabaseClient } from "@/lib/data/client";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import { getBatch } from "@/lib/domains/enrichment/audio-features/queries";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { getByIds } from "@/lib/domains/library/songs/queries";
@@ -20,13 +22,22 @@ import type {
 	MatchingSong,
 } from "@/lib/domains/taste/song-matching/types";
 import { log } from "@/lib/observability/logger";
-import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import { loadExclusionSet } from "@/lib/workflows/enrichment-pipeline/stages/matching";
 
 export async function loadCandidateSongIds(
 	accountId: string,
 ): Promise<string[]> {
-	return getEntitledDataEnrichedSongIds(accountId);
+	const result = await readEntitledDataEnrichedSongIds(
+		createAdminSupabaseClient(),
+		accountId,
+	);
+	if (Result.isError(result)) {
+		throw new Error(
+			`Failed to select entitled data-enriched songs: ${result.error.message}`,
+			{ cause: result.error },
+		);
+	}
+	return result.value;
 }
 
 export interface CandidateDetails {

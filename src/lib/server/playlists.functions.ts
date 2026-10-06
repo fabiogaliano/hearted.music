@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import {
 	getLanguageColumnsForSongs,
 	getLikedAtAggregates,
@@ -59,7 +61,6 @@ import {
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
 import {
 	FirstMatchSetupChanges,
 	PlaylistManagementChanges,
@@ -963,7 +964,7 @@ export const flushPlaylistManagementSession = createServerFn({
 
 /**
  * Returns compact filter option data for the current account's matching-eligible
- * library. The population is identical to getEntitledDataEnrichedSongIds so
+ * library. The population is identical to readEntitledDataEnrichedSongIds so
  * displayed counts and bounds are always aligned with actual suggestions.
  *
  * Decision — catalog payload: we include both "detected" (found in the library)
@@ -986,20 +987,26 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 
 		// One RPC call for the matching-eligible song ids, then three compact
 		// aggregation queries in parallel. No full song rows are loaded.
-		let eligibleSongIds: string[];
-		try {
-			eligibleSongIds = await getEntitledDataEnrichedSongIds(accountId);
-		} catch (err) {
-			// Eligibility RPC threw — surfaces in Sentry since console is disabled in prod.
-			captureServerError(err, {
+		const eligibleResult = await readEntitledDataEnrichedSongIds(
+			createAdminSupabaseClient(),
+			accountId,
+		);
+		if (Result.isError(eligibleResult)) {
+			captureServerError(eligibleResult.error, {
 				area: "playlists",
 				operation: "get_playlist_match_filter_options",
 				accountId,
 				extra: { stage: "eligibility" },
 			});
-			console.error("[filter-options] eligibility fetch failed:", err);
-			throw new Error("Failed to load filter options", { cause: err });
+			console.error(
+				"[filter-options] eligibility fetch failed:",
+				eligibleResult.error,
+			);
+			throw new Error("Failed to load filter options", {
+				cause: eligibleResult.error,
+			});
 		}
+		const eligibleSongIds = eligibleResult.value;
 
 		const [languageResult, releaseYearResult, likedAtResult] =
 			await Promise.all([

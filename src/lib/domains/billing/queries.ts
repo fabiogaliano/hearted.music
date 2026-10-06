@@ -172,3 +172,41 @@ export async function readBillingStateOrFreeTier(
 	captureServerError(result.error, { area: "billing", operation, accountId });
 	return FREE_BILLING_STATE;
 }
+
+const ENTITLED_PAGE_SIZE = 1_000;
+
+/**
+ * Liked song IDs the account is entitled to see matched and that are ready for
+ * matching candidacy (genres, song_analysis and song_embedding present; audio
+ * features optional). Revoked and locked songs are excluded.
+ *
+ * songIds scopes the check server-side to one batch; omitted, the full entitled
+ * set is read. PostgREST caps every response at max_rows, so a single call
+ * would silently truncate a large library: pages are read until one comes back
+ * empty, which stays correct whatever the server's cap is, and the order keeps
+ * pages disjoint.
+ */
+export async function readEntitledDataEnrichedSongIds(
+	supabase: AdminSupabaseClient,
+	accountId: string,
+	songIds?: string[],
+): Promise<Result<string[], DbError>> {
+	const args = songIds
+		? { p_account_id: accountId, p_song_ids: songIds }
+		: { p_account_id: accountId };
+
+	const entitled: string[] = [];
+	for (;;) {
+		const { data, error } = await supabase
+			.rpc("select_entitled_data_enriched_liked_song_ids", args)
+			.order("song_id")
+			.range(entitled.length, entitled.length + ENTITLED_PAGE_SIZE - 1);
+		if (error) {
+			return Result.err(
+				new DatabaseError({ code: error.code, message: error.message }),
+			);
+		}
+		if (!data || data.length === 0) return Result.ok(entitled);
+		for (const row of data) entitled.push(row.song_id);
+	}
+}

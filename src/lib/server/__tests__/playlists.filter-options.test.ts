@@ -17,7 +17,7 @@ const {
 		session: { accountId: "acct-test" },
 		account: null,
 	},
-	mockGetEntitledSongIds: vi.fn<(accountId: string) => Promise<string[]>>(),
+	mockGetEntitledSongIds: vi.fn<(accountId: string) => Promise<unknown>>(),
 	mockGetLanguageColumns: vi.fn<(ids: string[]) => Promise<unknown>>(),
 	mockGetReleaseYearAggregates: vi.fn<(ids: string[]) => Promise<unknown>>(),
 	mockGetLikedAtAggregates:
@@ -55,8 +55,8 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 	authMiddleware: {},
 }));
 
-vi.mock("@/lib/workflows/enrichment-pipeline/batch", () => ({
-	getEntitledDataEnrichedSongIds: (accountId: string) =>
+vi.mock("@/lib/domains/billing/queries", () => ({
+	readEntitledDataEnrichedSongIds: (_supabase: unknown, accountId: string) =>
 		mockGetEntitledSongIds(accountId),
 }));
 
@@ -102,8 +102,8 @@ describe("getPlaylistMatchFilterOptions", () => {
 	});
 
 	describe("eligibility population", () => {
-		it("uses getEntitledDataEnrichedSongIds — not all songs — as the candidate population", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["song-entitled"]);
+		it("uses the entitled data-enriched set — not all songs — as the candidate population", async () => {
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["song-entitled"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			defaultAggregates();
 
@@ -118,7 +118,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 		it("passes the full entitled song id list to all three aggregations", async () => {
 			const ids = ["s1", "s2", "s3"];
-			mockGetEntitledSongIds.mockResolvedValue(ids);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(ids));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			defaultAggregates();
 
@@ -132,7 +132,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 	describe("empty library", () => {
 		it("returns null release-year bounds and null oldest when no entitled songs exist", async () => {
-			mockGetEntitledSongIds.mockResolvedValue([]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult([]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),
@@ -151,7 +151,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("still returns the full catalog as selectable language options with count 0", async () => {
-			mockGetEntitledSongIds.mockResolvedValue([]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult([]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),
@@ -179,7 +179,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 	describe("language aggregation", () => {
 		it("counts primary and secondary language separately per song", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([
 					{
@@ -201,7 +201,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("never counts the same code more than once per song when primary equals secondary", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			// Both columns hold the same code — deduped per-song
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([
@@ -222,7 +222,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("accumulates counts across multiple songs correctly", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1", "s2", "s3"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1", "s2", "s3"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([
 					{ song_id: "s1", language: "en", language_secondary: null },
@@ -242,7 +242,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("orders detected languages before catalog-only entries", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([{ song_id: "s1", language: "pt", language_secondary: null }]),
 			);
@@ -262,7 +262,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("sorts detected entries by count descending", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1", "s2", "s3"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1", "s2", "s3"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([
 					{ song_id: "s1", language: "pt", language_secondary: null },
@@ -281,7 +281,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("sets source=detected for library languages and source=catalog for non-detected catalog languages", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([{ song_id: "s1", language: "en", language_secondary: null }]),
 			);
@@ -299,7 +299,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("excludes uncataloged detected codes from the returned options and logs a warning", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			// "xx" is not a real catalog code
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([{ song_id: "s1", language: "xx", language_secondary: null }]),
@@ -321,7 +321,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("logs each uncataloged code only once even when multiple songs share it", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1", "s2"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1", "s2"]));
 			mockGetLanguageColumns.mockResolvedValue(
 				okResult([
 					{ song_id: "s1", language: "xx", language_secondary: null },
@@ -343,7 +343,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("catalog-only entries are sorted alphabetically by label", async () => {
-			mockGetEntitledSongIds.mockResolvedValue([]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult([]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),
@@ -363,7 +363,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 	describe("release year aggregation", () => {
 		it("returns min and max from the aggregate", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: 1990, max: 2023, counts: [] }),
@@ -380,7 +380,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("returns null min/max when no songs have a release year", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),
@@ -397,7 +397,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("includes per-year counts in the response", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			const counts = [
 				{ year: 2020, count: 3 },
@@ -419,7 +419,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 	describe("liked-at aggregation", () => {
 		it("returns oldest as YYYY-MM-DD UTC string", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			defaultAggregates();
 			mockGetLikedAtAggregates.mockResolvedValue(
@@ -433,7 +433,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("returns today as current UTC YYYY-MM-DD string", async () => {
-			mockGetEntitledSongIds.mockResolvedValue([]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult([]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),
@@ -454,7 +454,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("returns UTC year counts from the aggregate", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			defaultAggregates();
 			const yearCounts = [
@@ -473,9 +473,9 @@ describe("getPlaylistMatchFilterOptions", () => {
 	});
 
 	describe("error propagation", () => {
-		it("logs [filter-options] prefix and re-throws when eligibility fetch rejects", async () => {
-			mockGetEntitledSongIds.mockRejectedValue(
-				new Error("entitlement db down"),
+		it("logs [filter-options] prefix and re-throws when eligibility fetch fails", async () => {
+			mockGetEntitledSongIds.mockResolvedValue(
+				errResult("entitlement db down"),
 			);
 
 			const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -486,14 +486,14 @@ describe("getPlaylistMatchFilterOptions", () => {
 
 			expect(errorSpy).toHaveBeenCalledWith(
 				expect.stringContaining("[filter-options]"),
-				expect.any(Error),
+				expect.objectContaining({ message: "entitlement db down" }),
 			);
 
 			errorSpy.mockRestore();
 		});
 
 		it("throws when language aggregation fails", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(errResult("db error"));
 			defaultAggregates();
 
@@ -507,7 +507,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("throws when release-year aggregation fails", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(errResult("db error"));
 			mockGetLikedAtAggregates.mockResolvedValue(
@@ -524,7 +524,7 @@ describe("getPlaylistMatchFilterOptions", () => {
 		});
 
 		it("throws when liked-at aggregation fails", async () => {
-			mockGetEntitledSongIds.mockResolvedValue(["s1"]);
+			mockGetEntitledSongIds.mockResolvedValue(okResult(["s1"]));
 			mockGetLanguageColumns.mockResolvedValue(okResult([]));
 			mockGetReleaseYearAggregates.mockResolvedValue(
 				okResult({ min: null, max: null, counts: [] }),

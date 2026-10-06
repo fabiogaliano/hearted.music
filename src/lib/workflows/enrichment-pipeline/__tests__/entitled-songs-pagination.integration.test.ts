@@ -5,9 +5,11 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { Result } from "better-result";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database } from "@/lib/data/database.types";
-import { getEntitledDataEnrichedSongIds } from "@/lib/workflows/enrichment-pipeline/batch";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -109,11 +111,15 @@ afterAll(async () => {
 	await db().from("song").delete().like("spotify_id", `${SONG_TAG}-%`);
 });
 
-describeLocal("getEntitledDataEnrichedSongIds", () => {
+describeLocal("readEntitledDataEnrichedSongIds", () => {
 	it("regression: returns every entitled song past the PostgREST row cap (a single read silently truncated at 1000)", async () => {
-		const ids = await getEntitledDataEnrichedSongIds(ACCOUNT_ID);
+		const result = await readEntitledDataEnrichedSongIds(
+			createAdminSupabaseClient(),
+			ACCOUNT_ID,
+		);
+		if (Result.isError(result)) throw result.error;
 
-		expect(ids).toHaveLength(SONG_COUNT);
-		expect(new Set(ids)).toEqual(new Set(SONG_IDS));
+		expect(result.value).toHaveLength(SONG_COUNT);
+		expect(new Set(result.value)).toEqual(new Set(SONG_IDS));
 	});
 });

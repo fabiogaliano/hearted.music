@@ -19,50 +19,6 @@ export interface PipelineBatch {
 	readonly spotifyIdBySongId: Map<string, string>;
 }
 
-const ENTITLED_PAGE_SIZE = 1_000;
-
-/**
- * Returns liked song IDs that are entitled and ready for matching candidacy.
- * Readiness requires genres, song_analysis, and song_embedding;
- * song_audio_feature is optional (the matching engine adapts when it is missing).
- * Used by match snapshot refresh for billing-aware candidate loading.
- * Revoked and locked songs are excluded.
- */
-export async function getEntitledDataEnrichedSongIds(
-	accountId: string,
-	songIds?: string[],
-): Promise<string[]> {
-	const supabase = createAdminSupabaseClient();
-	const args = songIds
-		? { p_account_id: accountId, p_song_ids: songIds }
-		: { p_account_id: accountId };
-
-	// songIds scopes the entitlement check to a specific batch server-side so the
-	// RPC returns at most that batch instead of the account's full entitled set.
-	// Omitted (full set) by the match-snapshot and waitlist candidate-loading
-	// callers; passed by the per-batch new-candidate probe in the orchestrator.
-	//
-	// PostgREST caps every response at max_rows, so a single call silently
-	// truncates a large library. Pages are read until one comes back empty, which
-	// stays correct whatever the server's cap is; the order keeps pages disjoint.
-	const songIdsOut: string[] = [];
-	for (;;) {
-		const { data, error } = await supabase
-			.rpc("select_entitled_data_enriched_liked_song_ids", args)
-			.order("song_id")
-			.range(songIdsOut.length, songIdsOut.length + ENTITLED_PAGE_SIZE - 1);
-
-		if (error) {
-			throw new Error(
-				`Failed to select entitled data-enriched songs: ${error.message}`,
-				{ cause: error },
-			);
-		}
-		if (!data || data.length === 0) return songIdsOut;
-		for (const row of data) songIdsOut.push(row.song_id);
-	}
-}
-
 /**
  * Selects the next batch by unioning two selector RPCs and merging their flags.
  * Returns a typed work plan with per-song stage flags and pre-partitioned sub-batches.
