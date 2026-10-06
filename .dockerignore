@@ -20,7 +20,6 @@ old_app
 openspec
 public
 scripts
-shared
 supabase
 *.md
 .env*
