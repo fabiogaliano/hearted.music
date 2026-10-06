@@ -44,16 +44,11 @@ export const getOnboardingSession =
 export const saveThemePreference = reject as unknown as (opts: {
 	data: { theme: ThemeColor };
 }) => Promise<void>;
-export const getLibrarySummary = reject as unknown as () => Promise<SyncStats>;
-export const executeSync = reject as unknown as () => Promise<void>;
 export const resetSyncJobs = reject as unknown as () => Promise<void>;
 export const saveOnboardingStep = reject as unknown as (opts: {
 	data: { step: string };
 }) => Promise<void>;
 export const markOnboardingComplete = reject as unknown as () => Promise<void>;
-export const saveDemoSongSelection = reject as unknown as (opts: {
-	data: { spotifyTrackId: string };
-}) => Promise<{ success: true }>;
 
 export const commitDemoSongAndEnterWalkthrough = reject as unknown as (opts: {
 	data: { spotifyTrackId: string };
