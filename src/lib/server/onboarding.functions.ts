@@ -25,6 +25,7 @@ import type {
 import { clearsSyncPhaseJobIds } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	clearPhaseJobIds,
+	enterSongWalkthrough,
 	getOrCreatePreferences,
 	reopenOnboarding,
 	SAVEABLE_ONBOARDING_STEPS,
@@ -619,16 +620,9 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 		// No ownership check: see saveDemoSongSelection. Demo songs come from the
 		// curated landing manifest, not the user's library, so requiring a
 		// liked_song row would reject most valid picks.
-		const { error: updateError } = await supabase
-			.from("user_preferences")
-			.update({
-				demo_song_id: song.id,
-				onboarding_step: "song-walkthrough",
-			})
-			.eq("account_id", session.accountId);
-
-		if (updateError) {
-			throw onboardingError("commit_demo_song_walkthrough", updateError);
+		const updateResult = await enterSongWalkthrough(session.accountId, song.id);
+		if (Result.isError(updateResult)) {
+			throw onboardingError("commit_demo_song_walkthrough", updateResult.error);
 		}
 
 		// Mirror saveOnboardingStep's side-effect: clear phase job IDs when
