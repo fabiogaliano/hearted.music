@@ -178,7 +178,7 @@ describe("applyFailurePolicy", () => {
 			{ count: 3, minutes: 48 * 60 },
 			{ count: 4, minutes: 96 * 60 },
 			{ count: 5, minutes: 168 * 60 },
-			{ count: 50, minutes: 168 * 60 },
+			{ count: 6, minutes: 168 * 60 },
 		];
 		for (const { count, minutes } of cases) {
 			const out = applyFailurePolicy({
@@ -191,6 +191,21 @@ describe("applyFailurePolicy", () => {
 			const delta = (out.suppressUntil as Date).getTime() - FIXED_NOW.getTime();
 			expect(minutesFromNow(delta)).toBe(minutes);
 		}
+	});
+
+	it.each([
+		7, 50,
+	])("analysis_retry_candidate stops retrying forever: terminal and compensated after %i priors", (count) => {
+		const out = applyFailurePolicy({
+			failureCode: FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE,
+			priorUnresolvedCount: count,
+			now: FIXED_NOW,
+		});
+		expect(out).toEqual({
+			isTerminal: true,
+			suppressUntil: null,
+			escalatedToInputsMissing: true,
+		});
 	});
 
 	it("analysis_lyrics_refresh_pending backs off from 24h to a 30d cap", () => {

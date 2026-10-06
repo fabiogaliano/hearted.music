@@ -5,8 +5,8 @@
  *   - looks up prior unresolved-row count (only for backoff-driven codes)
  *   - applies the policy
  *   - writes the row
- *   - for escalated blocked codes, rewrites to analysis_inputs_missing and
- *     fires replacement-credit compensation (§7.2)
+ *   - for escalated blocked/retry-candidate codes, rewrites to
+ *     analysis_inputs_missing and fires replacement-credit compensation (§7.2)
  *
  * Stage code should call this instead of recordJobItemFailure directly so the
  * suppression behavior stays centralized.
@@ -69,9 +69,10 @@ export async function recordStageFailure(
 		now: params.now,
 	});
 
-	// Blocked codes that hit the escalation threshold are recorded as
-	// analysis_inputs_missing so the DB row carries terminal semantics and the
-	// compensation RPC (gated on that exact code server-side) fires correctly.
+	// Blocked and retry-candidate codes that hit their escalation threshold are
+	// recorded as analysis_inputs_missing so the DB row carries terminal
+	// semantics and the compensation RPC (gated on that exact code server-side)
+	// fires correctly.
 	const effectiveCode = policy.escalatedToInputsMissing
 		? FAILURE_CODES.ANALYSIS_INPUTS_MISSING
 		: params.failureCode;

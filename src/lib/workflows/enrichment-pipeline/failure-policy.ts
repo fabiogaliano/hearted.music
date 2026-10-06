@@ -52,12 +52,22 @@ export const BACKOFF_CODES: ReadonlySet<string> = new Set<string>([
  */
 export const BLOCKED_ESCALATION_THRESHOLD = 4;
 
+/**
+ * Prior unresolved retry-candidate rows before the next "unknown" verdict is
+ * terminal. Without a cap these songs retried forever at the 7-day ceiling —
+ * ~1,900 songs re-enqueued ~110 enrichment jobs a day for months with no
+ * user activity. 7 priors ≈ four weeks of backoff, long enough for lyrics
+ * sources to catch up on a new release. The escalation reuses the blocked
+ * path's analysis_inputs_missing rewrite so the unlock is compensated.
+ */
+export const RETRY_CANDIDATE_ESCALATION_THRESHOLD = 7;
+
 interface FailurePolicyOutcome {
 	isTerminal: boolean;
 	suppressUntil: Date | null;
 	/**
-	 * True when a blocked code escalated to terminal because the prior unresolved
-	 * count reached BLOCKED_ESCALATION_THRESHOLD. The caller should rewrite the
+	 * True when a blocked or retry-candidate code escalated to terminal because
+	 * the prior unresolved count reached its threshold. The caller should rewrite the
 	 * failure code to ANALYSIS_INPUTS_MISSING and trigger replacement-credit
 	 * compensation (§7.2).
 	 */
@@ -158,6 +168,16 @@ export function applyFailurePolicy(
 		}
 
 		case FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE: {
+			if (
+				(input.priorUnresolvedCount ?? 0) >=
+				RETRY_CANDIDATE_ESCALATION_THRESHOLD
+			) {
+				return {
+					isTerminal: true,
+					suppressUntil: null,
+					escalatedToInputsMissing: true,
+				};
+			}
 			const ms = computeJitteredBackoffMs(
 				RETRY_CANDIDATE_BASE_MS,
 				RETRY_CANDIDATE_CAP_MS,
