@@ -28,6 +28,7 @@ export async function getReadyForAudioFeatures(
 	if (Result.isError(existingResult)) {
 		throw new Error(
 			`Failed to check existing audio features: ${existingResult.error.message}`,
+			{ cause: existingResult.error },
 		);
 	}
 
@@ -67,6 +68,7 @@ export async function runAudioFeatures(
 	if (Result.isError(availabilityResult)) {
 		throw new Error(
 			`Failed to resolve audio availability: ${availabilityResult.error.message}`,
+			{ cause: availabilityResult.error },
 		);
 	}
 	const stateBySong = new Map(

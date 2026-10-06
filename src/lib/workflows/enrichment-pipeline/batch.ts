@@ -46,6 +46,7 @@ export async function getEntitledDataEnrichedSongIds(
 	if (error) {
 		throw new Error(
 			`Failed to select entitled data-enriched songs: ${error.message}`,
+			{ cause: error },
 		);
 	}
 
@@ -108,11 +109,13 @@ export async function selectEnrichmentWorkPlan(
 	if (gatedResult.error) {
 		throw new Error(
 			`Failed to select enrichment work plan: ${gatedResult.error.message}`,
+			{ cause: gatedResult.error },
 		);
 	}
 	if (phase1Result.error) {
 		throw new Error(
 			`Failed to select Phase-1 enrichment work plan: ${phase1Result.error.message}`,
+			{ cause: phase1Result.error },
 		);
 	}
 
@@ -198,11 +201,13 @@ export async function hasMoreSongsNeedingEnrichmentWork(
 	if (gatedResult.error) {
 		throw new Error(
 			`Failed to probe songs needing enrichment work: ${gatedResult.error.message}`,
+			{ cause: gatedResult.error },
 		);
 	}
 	if (phase1Result.error) {
 		throw new Error(
 			`Failed to probe songs needing enrichment work: ${phase1Result.error.message}`,
+			{ cause: phase1Result.error },
 		);
 	}
 
@@ -216,7 +221,12 @@ export async function loadBatchSongs(
 ): Promise<PipelineBatch> {
 	const songsResult = await getSongsByIds(songIds);
 	if (Result.isError(songsResult)) {
-		throw new Error(`Failed to load batch songs: ${songsResult.error.message}`);
+		throw new Error(
+			`Failed to load batch songs: ${songsResult.error.message}`,
+			{
+				cause: songsResult.error,
+			},
+		);
 	}
 
 	const spotifyIdBySongId = new Map<string, string>();

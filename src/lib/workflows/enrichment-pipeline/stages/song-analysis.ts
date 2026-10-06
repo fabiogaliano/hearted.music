@@ -129,11 +129,13 @@ async function getReadyForSongAnalysis(
 	if (Result.isError(existingResult)) {
 		throw new Error(
 			`Failed to check existing analyses: ${existingResult.error.message}`,
+			{ cause: existingResult.error },
 		);
 	}
 	if (Result.isError(lyricsResult)) {
 		throw new Error(
 			`Failed to check latest lyrics snapshots: ${lyricsResult.error.message}`,
+			{ cause: lyricsResult.error },
 		);
 	}
 
