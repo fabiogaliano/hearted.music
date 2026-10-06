@@ -1,21 +1,18 @@
 // The read shape is owned by the Zod schema (read-schema.ts) so the UI can't
 // drift from what the prompt generates. SongDetail is UI-only and stays here.
 
-import type { z } from "zod";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import type {
 	ReadArcBeat,
 	ReadLineBeat,
+	SongAnalysisInstrumental,
 	SongRead,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import type { SongAnalysisInstrumentalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import type { ThemeColor } from "@/lib/theme/types";
 
 export type { ReadArcBeat, ReadLineBeat, SongRead };
-export type SongInstrumentalRead = z.infer<
-	typeof SongAnalysisInstrumentalSchema
->;
+export type SongInstrumentalRead = SongAnalysisInstrumental;
 
 export interface SongDetail {
 	id: string;

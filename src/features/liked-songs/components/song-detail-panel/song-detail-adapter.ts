@@ -17,8 +17,10 @@
  * confirmed-instrumental rows. Both null = unresolved or pre-v17.
  */
 
-import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import { SongAnalysisInstrumentalSchema } from "@/lib/domains/enrichment/content-analysis/song-analysis";
+import {
+	SongAnalysisInstrumentalSchema,
+	SongReadSchema,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { ThemeColor } from "@/lib/theme/types";
 import type { LikedSong } from "../../types";
 import type { SongDetail } from "./song-detail-types";
