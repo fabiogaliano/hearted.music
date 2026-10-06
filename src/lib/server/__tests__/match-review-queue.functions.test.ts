@@ -33,7 +33,6 @@ const {
 	mockComputeVisibleSuggestionList,
 	mockCaptureVisiblePairsAtomic,
 	mockReadQueueItemSongSuggestions,
-	mockCountCapturedVisiblePairs,
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
 	mockGetPlaylistById,
@@ -63,7 +62,6 @@ const {
 		mockComputeVisibleSuggestionList: vi.fn(),
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockReadQueueItemSongSuggestions: vi.fn(),
-		mockCountCapturedVisiblePairs: vi.fn(),
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 		mockGetPlaylistById: vi.fn(),
@@ -160,8 +158,6 @@ vi.mock("@/lib/domains/taste/match-review-queue/service", () => ({
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	addQueueItemDecisionAtomically: (...args: unknown[]) =>
 		mockAddQueueItemDecisionAtomically(...args),
-	countCapturedVisiblePairs: (...args: unknown[]) =>
-		mockCountCapturedVisiblePairs(...args),
 	readQueueItemSongSuggestions: (...args: unknown[]) =>
 		mockReadQueueItemSongSuggestions(...args),
 	dismissQueueItemAtomically: (...args: unknown[]) =>

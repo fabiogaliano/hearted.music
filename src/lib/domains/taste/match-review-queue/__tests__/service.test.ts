@@ -22,8 +22,6 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 
 vi.mock("../queries", () => ({
 	fetchActiveSession: vi.fn(),
-	insertMatchReviewSession: vi.fn(),
-	completeSession: vi.fn(),
 	fetchAppliedSnapshotIds: vi.fn(),
 	fetchQueuedSongIds: vi.fn(),
 	fetchQueuedPlaylistIds: vi.fn(),
@@ -31,7 +29,6 @@ vi.mock("../queries", () => ({
 	fetchMaxPosition: vi.fn(),
 	insertQueueItems: vi.fn(),
 	insertQueuePlaylistItems: vi.fn(),
-	insertSessionSnapshot: vi.fn(),
 	countUnresolvedItems: vi.fn(),
 	fetchPendingSongIds: vi.fn(),
 	fetchPendingPlaylistIds: vi.fn(),
@@ -110,16 +107,6 @@ function fakeSession() {
 	};
 }
 
-function fakeSnapshotRow() {
-	return {
-		session_id: SESSION_ID,
-		snapshot_id: SNAPSHOT_ID,
-		appended_item_count: 0,
-		applied_at: "2026-06-15T00:00:00Z",
-		visibility_config_hash: "legacy",
-	};
-}
-
 beforeEach(() => {
 	vi.clearAllMocks();
 
@@ -131,10 +118,6 @@ beforeEach(() => {
 
 	// Default query mocks — safe no-op defaults
 	vi.mocked(queries.fetchActiveSession).mockResolvedValue(Result.ok(null));
-	vi.mocked(queries.insertMatchReviewSession).mockResolvedValue(
-		Result.ok(fakeSession()),
-	);
-	vi.mocked(queries.completeSession).mockResolvedValue(Result.ok(null));
 	vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
 		Result.ok(new Set<string>()),
 	);
@@ -155,9 +138,6 @@ beforeEach(() => {
 	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
 	vi.mocked(queries.insertQueuePlaylistItems).mockResolvedValue(
 		Result.ok(undefined),
-	);
-	vi.mocked(queries.insertSessionSnapshot).mockResolvedValue(
-		Result.ok(fakeSnapshotRow()),
 	);
 	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
 	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
