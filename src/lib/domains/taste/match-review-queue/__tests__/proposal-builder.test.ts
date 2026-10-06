@@ -61,7 +61,9 @@ describe("buildOneProposal", () => {
 		});
 		const select = vi.fn().mockReturnValue({ single });
 		const upsert = vi.fn().mockReturnValue({ select });
-		const updateEq = vi.fn().mockResolvedValue({ error: null });
+		// update().eq("id").eq("status") — the second eq is the awaited one.
+		const statusEq = vi.fn().mockResolvedValue({ error: null });
+		const updateEq = vi.fn().mockReturnValue({ eq: statusEq });
 		const update = vi.fn().mockReturnValue({ eq: updateEq });
 		const deleteEq = vi.fn().mockResolvedValue({ error: null });
 		const deleteRows = vi.fn().mockReturnValue({ eq: deleteEq });
@@ -83,7 +85,7 @@ describe("buildOneProposal", () => {
 			from,
 		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
-		return { update, updateEq, upsert, insertSubjects };
+		return { update, updateEq, statusEq, upsert, insertSubjects };
 	}
 
 	it("marks the proposal stale when a newer snapshot published mid-build", async () => {
@@ -108,6 +110,24 @@ describe("buildOneProposal", () => {
 			hidden_review_item_count: 2,
 		});
 		expect(updateEq).toHaveBeenCalledWith("id", "prop-1");
+	});
+
+	it("regression: finishes the build only while it is still building, so a concurrent stale mark is never flipped back to ready", async () => {
+		const { statusEq } = mockProposalWrites();
+		vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
+			Result.ok(SNAPSHOT_ROW),
+		);
+
+		await buildOneProposal(
+			"acct-1",
+			"song",
+			"snap-1",
+			"balanced",
+			0.5,
+			Date.parse("2026-07-07T12:00:00Z"),
+		);
+
+		expect(statusEq).toHaveBeenCalledWith("status", "building");
 	});
 
 	it("marks the proposal ready when the snapshot is still latest", async () => {
