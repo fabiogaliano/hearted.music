@@ -181,6 +181,7 @@ function makeSupabaseMock(
 			better_auth_user_id: string | null;
 		} | null;
 		updateError?: { message: string } | null;
+		currentAccountError?: { code: string; message: string } | null;
 	} = {},
 ) {
 	const conflictResult = {
@@ -192,7 +193,7 @@ function makeSupabaseMock(
 			spotify_id: null,
 			better_auth_user_id: null,
 		},
-		error: null,
+		error: opts.currentAccountError ?? null,
 	};
 	const updateResult = { error: opts.updateError ?? null };
 
@@ -465,6 +466,53 @@ describe("runExtensionSyncJob", () => {
 			expect.any(String),
 		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalled();
+	});
+
+	it("regression: a failed account read fails the sync instead of skipping the spotify_id guard", async () => {
+		// The linked spotify_id would mismatch the payload, but the read errors —
+		// it used to be treated as "no account row" and the guard was skipped.
+		const supabaseMock = makeSupabaseMock({
+			currentAccount: null,
+			currentAccountError: { code: "PGRST301", message: "read timeout" },
+		});
+		mockCreateAdminSupabaseClient.mockReturnValue(supabaseMock);
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(
+				jsonBytes({
+					likedSongs: [],
+					playlists: [],
+					userProfile: { spotifyId: "spotify-other", displayName: "X" },
+				}),
+			),
+		);
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+			LIVE_LEASE,
+		);
+
+		expect(outcome.status).toBe("failed");
+		expect(supabaseMock.updateFn).not.toHaveBeenCalled();
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+	});
+
+	it("regression: a failed target-playlist read fails the sync instead of reporting no target changes", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
+		);
+		mockGetTargetPlaylists.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "PGRST301", message: "timeout" })),
+		);
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+			LIVE_LEASE,
+		);
+
+		expect(outcome.status).toBe("failed");
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 	});
 
 	it("completes normally when the account profile update succeeds", async () => {

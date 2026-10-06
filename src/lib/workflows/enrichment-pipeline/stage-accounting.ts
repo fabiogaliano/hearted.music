@@ -1,3 +1,4 @@
+import { captureException } from "@sentry/bun";
 import type { Result } from "better-result";
 import { FAILURE_CODES } from "./failure-policy";
 import {
@@ -35,6 +36,12 @@ export async function runStageWithAccounting(
 	try {
 		outcome = await run(candidateSongIds);
 	} catch (error) {
+		// A throw here is a code bug, not a provider error, yet it is recorded per
+		// song as a provider failure below — Sentry is the only place it shows.
+		captureException(error, {
+			tags: { workflow: "enrichment", stage },
+			extra: { jobId, accountId, songCount: candidateSongIds.length },
+		});
 		console.error(`[worker-chunk] Stage ${stage} threw:`, error);
 		outcome = makeThrownOutcome(stage, candidateSongIds, error, fallbackCode);
 	}

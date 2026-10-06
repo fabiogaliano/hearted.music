@@ -34,6 +34,10 @@ import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
 import {
+	fromSupabaseMaybe,
+	fromSupabaseSingle,
+} from "@/lib/shared/utils/result-wrappers/supabase";
+import {
 	deleteSyncPayload,
 	downloadSyncPayload,
 } from "@/lib/workflows/extension-sync/payload-storage";
@@ -252,7 +256,16 @@ export async function runExtensionSyncJob(
 	try {
 		const profileResult = await applyUserProfile(supabase, accountId, payload);
 		if (Result.isError(profileResult)) {
-			return fail(profileResult.error);
+			const profileError = profileResult.error;
+			// A string is a linking-guard rejection (expected user state); anything
+			// else is an operational DB failure.
+			if (typeof profileError === "string") return fail(profileError);
+			captureExtensionSyncFailure(profileError, {
+				phase: "user_profile",
+				jobId: job.id,
+				accountId,
+			});
+			return fail(`User profile sync failed: ${profileError.message}`);
 		}
 
 		type PhaseStep<T> =
@@ -417,10 +430,22 @@ export async function runExtensionSyncJob(
 			playlistTracks: tracksStep.value,
 		};
 
+		// An empty set on a read error would under-report target changes, which
+		// classifyChange treats as unsafe, so the sync fails instead.
+		const targetIdsResult = await getTargetIds(accountId);
+		if (Result.isError(targetIdsResult)) {
+			captureExtensionSyncFailure(targetIdsResult.error, {
+				phase: "target_playlists_read",
+				jobId: job.id,
+				accountId,
+			});
+			return fail("target_playlists_read_failed");
+		}
+
 		// Classify and emit one aggregated library-processing change.
 		const change = SyncChanges.librarySynced(
 			accountId,
-			classifyChange(results, await getTargetIds(accountId)),
+			classifyChange(results, targetIdsResult.value),
 		);
 		if (leaseLost.aborted) return stopForLostLease();
 		const applyResult = await applyLibraryProcessingChange(change);
@@ -505,11 +530,12 @@ export async function runExtensionSyncJob(
 	}
 }
 
-async function getTargetIds(accountId: string): Promise<Set<string>> {
+async function getTargetIds(
+	accountId: string,
+): Promise<Result<Set<string>, DbError>> {
 	const targetResult = await getTargetPlaylists(accountId);
-	return Result.isOk(targetResult)
-		? new Set(targetResult.value.map((p) => p.id))
-		: new Set<string>();
+	if (Result.isError(targetResult)) return targetResult;
+	return Result.ok(new Set(targetResult.value.map((p) => p.id)));
 }
 
 function classifyChange(
@@ -564,64 +590,68 @@ async function applyUserProfile(
 	supabase: ReturnType<typeof createAdminSupabaseClient>,
 	accountId: string,
 	payload: SyncPayload,
-): Promise<Result<void, string>> {
+): Promise<Result<void, string | DbError>> {
 	if (!payload.userProfile) return Result.ok(undefined);
 
-	const [{ data: conflictAccount }, { data: currentAccount }] =
-		await Promise.all([
+	// A failed read must fail the sync: treating it as "no row" would skip the
+	// linked-account guards below and let a mismatched payload through.
+	const [conflictResult, currentResult] = await Promise.all([
+		fromSupabaseMaybe(
 			supabase
 				.from("account")
 				.select("id")
 				.eq("spotify_id", payload.userProfile.spotifyId)
 				.neq("id", accountId)
 				.maybeSingle(),
+		),
+		fromSupabaseSingle(
 			supabase
 				.from("account")
 				.select("spotify_id, better_auth_user_id")
 				.eq("id", accountId)
 				.single(),
-		]);
+		),
+	]);
+	if (Result.isError(conflictResult)) return Result.err(conflictResult.error);
+	if (Result.isError(currentResult)) return Result.err(currentResult.error);
 
-	if (conflictAccount) {
+	if (conflictResult.value) {
 		return Result.err(
 			"This Spotify account is already linked to a different user",
 		);
 	}
 
-	if (currentAccount) {
-		if (
-			currentAccount.spotify_id &&
-			currentAccount.spotify_id !== payload.userProfile.spotifyId
-		) {
+	const currentAccount = currentResult.value;
+	if (
+		currentAccount.spotify_id &&
+		currentAccount.spotify_id !== payload.userProfile.spotifyId
+	) {
+		return Result.err("Sync payload spotify_id does not match linked account");
+	}
+
+	const accountUpdate: Pick<
+		TablesUpdate<"account">,
+		"spotify_id" | "display_name" | "image_url"
+	> = {};
+	if (!currentAccount.spotify_id) {
+		accountUpdate.spotify_id = payload.userProfile.spotifyId;
+	}
+	if (payload.userProfile.displayName) {
+		accountUpdate.display_name = payload.userProfile.displayName;
+	}
+	if (payload.userProfile.avatarUrl) {
+		accountUpdate.image_url = payload.userProfile.avatarUrl;
+	}
+
+	if (Object.keys(accountUpdate).length > 0) {
+		const { error: updateError } = await supabase
+			.from("account")
+			.update(accountUpdate)
+			.eq("id", accountId);
+		if (updateError) {
 			return Result.err(
-				"Sync payload spotify_id does not match linked account",
+				`Failed to update account profile: ${updateError.message}`,
 			);
-		}
-
-		const accountUpdate: Pick<
-			TablesUpdate<"account">,
-			"spotify_id" | "display_name" | "image_url"
-		> = {};
-		if (!currentAccount.spotify_id) {
-			accountUpdate.spotify_id = payload.userProfile.spotifyId;
-		}
-		if (payload.userProfile.displayName) {
-			accountUpdate.display_name = payload.userProfile.displayName;
-		}
-		if (payload.userProfile.avatarUrl) {
-			accountUpdate.image_url = payload.userProfile.avatarUrl;
-		}
-
-		if (Object.keys(accountUpdate).length > 0) {
-			const { error: updateError } = await supabase
-				.from("account")
-				.update(accountUpdate)
-				.eq("id", accountId);
-			if (updateError) {
-				return Result.err(
-					`Failed to update account profile: ${updateError.message}`,
-				);
-			}
 		}
 	}
 
