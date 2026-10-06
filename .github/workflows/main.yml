@@ -375,28 +375,39 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - name: Trigger Coolify deploy (Worker)
-        run: >-
-          curl
-          --request POST
-          --fail
-          --show-error
-          --retry 3
-          --retry-delay 2
-          --retry-all-errors
-          --max-time 30
-          -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-          "${{ secrets.COOLIFY_WORKER_DEPLOY_HOOK }}"
-
-      - name: Trigger Coolify deploy (Gateway)
-        run: >-
-          curl
-          --request POST
-          --fail
-          --show-error
-          --retry 3
-          --retry-delay 2
-          --retry-all-errors
-          --max-time 30
-          -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-          "${{ secrets.COOLIFY_GATEWAY_DEPLOY_HOOK }}"
+      # Coolify sits behind Cloudflare Access: without the service-token headers
+      # Access answers 302 to its login page, which `curl --fail` treats as
+      # success — that silently skipped every worker deploy from July to October.
+      # Only a 200 whose body carries a non-null deployment_uuid counts — Coolify
+      # also answers 200 with `"deployment_uuid":null` when it refuses.
+      - name: Trigger Coolify deploys (Worker, Gateway)
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          WORKER_HOOK: ${{ secrets.COOLIFY_WORKER_DEPLOY_HOOK }}
+          GATEWAY_HOOK: ${{ secrets.COOLIFY_GATEWAY_DEPLOY_HOOK }}
+        run: |
+          for target in WORKER GATEWAY; do
+            hook_var="${target}_HOOK"
+            status=$(curl \
+              --request POST \
+              --silent \
+              --show-error \
+              --retry 3 \
+              --retry-delay 2 \
+              --retry-all-errors \
+              --max-time 30 \
+              --output response.json \
+              --write-out '%{http_code}' \
+              -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+              -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+              -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+              "${!hook_var}")
+            echo "$target: HTTP $status"
+            cat response.json; echo
+            if [ "$status" != "200" ] || ! grep -q '"deployment_uuid":"' response.json; then
+              echo "::error::Coolify did not queue the $target deploy"
+              exit 1
+            fi
+          done
