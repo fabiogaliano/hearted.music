@@ -51,12 +51,14 @@ jobs:
               - 'biome.json'
               - 'components.json'
               - 'Dockerfile.worker'
+              - '.dockerignore'
               - 'ladle-vite.config.ts'
               - 'lefthook.yml'
               - 'vite.config.ts'
               - 'wrangler.jsonc'
             shared:
               - 'src/lib/**'
+              - 'shared/**'
               - 'package.json'
               - 'bun.lock'
               - 'tsconfig.json'
@@ -76,6 +78,7 @@ jobs:
             worker:
               - 'src/worker/**'
               - 'Dockerfile.worker'
+              - '.dockerignore'
             db_security:
               - 'supabase/**'
               - 'src/lib/data/**'
@@ -128,9 +131,22 @@ jobs:
         if: needs.detect.outputs.code == 'true' && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
         run: bun run build
 
-      - name: Smoke-build worker image
+      # Building isn't enough: an image missing a source dir (shared/ in Oct 2026)
+      # builds fine and crash-loops in prod on the first import. Started with no
+      # env, a complete image links its whole import graph and only then fails
+      # env validation; a broken one fails earlier with a resolve error.
+      - name: Smoke-build and start worker image
         if: needs.detect.outputs.code == 'true' && (needs.detect.outputs.worker == 'true' || needs.detect.outputs.shared == 'true')
-        run: docker build -f Dockerfile.worker .
+        run: |
+          docker build -f Dockerfile.worker -t worker-smoke .
+          for entry in src/worker/index.ts src/worker/gateway-entry.ts; do
+            out=$(docker run --rm --entrypoint bun worker-smoke --preload ./src/worker/instrument.ts "$entry" 2>&1 || true)
+            if ! grep -q "Invalid environment variables" <<<"$out"; then
+              echo "$out" | tail -20
+              echo "::error::$entry did not load its full import graph in the worker image"
+              exit 1
+            fi
+          done
 
       - name: Save Bun install cache
         if: needs.detect.outputs.code == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bun-cache-restore.outputs.cache-hit != 'true'
