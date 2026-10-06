@@ -17,10 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { dashboardKeys } from "@/features/dashboard/queries";
-import {
-	matchReviewKeys,
-	matchReviewSummaryKeys,
-} from "@/features/matching/queries";
+import { matchReviewSummaryKeys } from "@/features/matching/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	type MatchStrictness,
@@ -145,9 +142,6 @@ export function SettingsPage({
 				// created with by design; only the summary + threshold-based fallback change.
 				queryClient.invalidateQueries({
 					queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
-				});
-				queryClient.invalidateQueries({
-					queryKey: matchReviewKeys.review(accountId, "song"),
 				});
 				queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			} catch {
