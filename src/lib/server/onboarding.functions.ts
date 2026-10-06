@@ -26,6 +26,7 @@ import { clearsSyncPhaseJobIds } from "@/lib/domains/library/accounts/onboarding
 import {
 	clearPhaseJobIds,
 	getOrCreatePreferences,
+	reopenOnboarding,
 	SAVEABLE_ONBOARDING_STEPS,
 	updateOnboardingStep,
 	updateTheme,
@@ -414,6 +415,12 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 			throw onboardingError("save_onboarding_step", result.error);
 		}
 
+		// Already complete (e.g. a stale tab): the save is a no-op, not an error.
+		// The client's route guard resolves the session and leaves onboarding.
+		if (result.value === null) {
+			return { success: true };
+		}
+
 		if (clearsSyncPhaseJobIds(data.step)) {
 			const clearResult = await clearPhaseJobIds(session.accountId);
 			if (Result.isError(clearResult)) {
@@ -428,6 +435,23 @@ export const saveOnboardingStep = createServerFn({ method: "POST" })
 			}
 		}
 
+		return { success: true };
+	});
+
+/**
+ * Dev workflow panel only: clears completion so the panel can jump a finished
+ * account back to an earlier step. saveOnboardingStep refuses to reopen.
+ */
+export const reopenOnboardingForDev = createServerFn({ method: "POST" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<{ success: true }> => {
+		if (!import.meta.env.DEV) {
+			throw new Error("reopenOnboardingForDev is only available in dev");
+		}
+		const result = await reopenOnboarding(context.session.accountId);
+		if (Result.isError(result)) {
+			throw onboardingError("reopen_onboarding", result.error);
+		}
 		return { success: true };
 	});
 

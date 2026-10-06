@@ -178,24 +178,43 @@ export async function resolveMinMatchScore(accountId: string): Promise<number> {
 	);
 }
 
+/**
+ * Compare-and-set step write: only moves the step while onboarding is still
+ * open. `ok(null)` means onboarding was already complete — a stale tab saving
+ * a step must never reopen it (that re-ran the completion side effects,
+ * including the free allocation top-up).
+ */
 export function updateOnboardingStep(
 	accountId: string,
 	step: SaveableOnboardingStep,
-): Promise<Result<UserPreferences, DbError>> {
+): Promise<Result<UserPreferences | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
+	return fromSupabaseMaybe(
 		supabase
 			.from("user_preferences")
-			.upsert(
-				{
-					account_id: accountId,
-					onboarding_step: step,
-					onboarding_completed_at: null,
-				},
-				{ onConflict: "account_id" },
-			)
+			.update({ onboarding_step: step })
+			.eq("account_id", accountId)
+			.is("onboarding_completed_at", null)
 			.select()
-			.single(),
+			.maybeSingle(),
+	);
+}
+
+/**
+ * Dev-only rewind of a completed account. Never call from a production path:
+ * reopening onboarding lets completion (and its free allocation) run again.
+ */
+export function reopenOnboarding(
+	accountId: string,
+): Promise<Result<UserPreferences | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMaybe(
+		supabase
+			.from("user_preferences")
+			.update({ onboarding_completed_at: null })
+			.eq("account_id", accountId)
+			.select()
+			.maybeSingle(),
 	);
 }
 
