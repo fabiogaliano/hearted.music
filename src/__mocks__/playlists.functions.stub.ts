@@ -7,8 +7,7 @@
  * aliasing the whole module here severs that chain.
  *
  * savePlaylistMatchConfig is controllable so stories can exercise success,
- * failure, and pending (hang) states. The legacy separate-save stubs remain so
- * any older story paths that still import them don't break.
+ * failure, and pending (hang) states.
  */
 
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
@@ -17,22 +16,13 @@ import type {
 	getAccountTopGenres as getAccountTopGenresReal,
 	SavePlaylistMatchConfigInput,
 	SavePlaylistMatchConfigResult,
-	savePlaylistGenrePills as savePlaylistGenrePillsReal,
-	savePlaylistMatchIntent as savePlaylistMatchIntentReal,
 } from "@/lib/server/playlists.functions";
 
-// getAccountTopGenres/savePlaylistGenrePills/savePlaylistMatchIntent don't
-// export named result interfaces (their handlers use inline return-type
-// annotations), so their real shape is pulled through the function's own type
-// instead of a named type import.
+// getAccountTopGenres has no named result interface (its handler uses an inline
+// return-type annotation), so its real shape is pulled through the function's
+// own type instead of a named type import.
 type GetAccountTopGenresResult = Awaited<
 	ReturnType<typeof getAccountTopGenresReal>
->;
-type SavePlaylistGenrePillsResult = Awaited<
-	ReturnType<typeof savePlaylistGenrePillsReal>
->;
-type SavePlaylistMatchIntentResult = Awaited<
-	ReturnType<typeof savePlaylistMatchIntentReal>
 >;
 
 const STATIC_TOP_GENRES = [
@@ -78,47 +68,6 @@ export async function savePlaylistMatchConfig(args: {
 		genrePills,
 		matchFilters,
 	} satisfies SavePlaylistMatchConfigResult;
-}
-
-// Legacy separate-save stubs kept so any remaining import paths don't break.
-export type SaveGenrePillsBehavior = "success" | "fail";
-let saveBehavior: SaveGenrePillsBehavior = "success";
-export function setSaveGenrePillsBehavior(next: SaveGenrePillsBehavior) {
-	saveBehavior = next;
-}
-
-export async function savePlaylistGenrePills(args: {
-	data: { playlistId: string; genres: string[] };
-}): Promise<SavePlaylistGenrePillsResult> {
-	if (saveBehavior === "fail") {
-		throw new Error("stubbed genre pills save failure");
-	}
-	return {
-		success: true,
-		pills: sanitizeGenrePills(args.data.genres),
-	} satisfies SavePlaylistGenrePillsResult;
-}
-
-export type SaveMatchIntentBehavior = "success" | "fail" | "hang";
-let saveMatchIntentBehavior: SaveMatchIntentBehavior = "success";
-export function setSaveMatchIntentBehavior(next: SaveMatchIntentBehavior) {
-	saveMatchIntentBehavior = next;
-}
-
-export async function savePlaylistMatchIntent(args: {
-	data: { playlistId: string; matchIntent: string | null };
-}): Promise<SavePlaylistMatchIntentResult> {
-	if (saveMatchIntentBehavior === "fail") {
-		throw new Error("stubbed match intent save failure");
-	}
-	if (saveMatchIntentBehavior === "hang") {
-		return new Promise<SavePlaylistMatchIntentResult>(() => {});
-	}
-	const trimmed = args.data.matchIntent?.trim() ?? "";
-	return {
-		success: true,
-		matchIntent: trimmed.length > 0 ? trimmed : null,
-	} satisfies SavePlaylistMatchIntentResult;
 }
 
 export async function getPlaylistManagementData(): Promise<never> {
