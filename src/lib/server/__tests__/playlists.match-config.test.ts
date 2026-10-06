@@ -4,16 +4,12 @@ import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes";
 import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
-import {
-	savePlaylistMatchConfig,
-	savePlaylistMatchIntent,
-} from "../playlists.functions";
+import { savePlaylistMatchConfig } from "../playlists.functions";
 
 const {
 	mockAuthContext,
 	mockGetPlaylistById,
 	mockUpdatePlaylistMatchConfig,
-	mockUpdatePlaylistMatchIntent,
 	mockApplyLibraryProcessingChange,
 	mockEnqueueDeckJob,
 	mockGetLatestMatchSnapshot,
@@ -27,7 +23,6 @@ const {
 	},
 	mockGetPlaylistById: vi.fn(),
 	mockUpdatePlaylistMatchConfig: vi.fn(),
-	mockUpdatePlaylistMatchIntent: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
 	mockGetLatestMatchSnapshot: vi.fn(),
@@ -67,9 +62,6 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylistBySpotifyId: vi.fn(),
 	getPlaylistSongsPage: vi.fn(),
 	setPlaylistTarget: vi.fn(),
-	updatePlaylistGenrePills: vi.fn(),
-	updatePlaylistMatchIntent: (...args: unknown[]) =>
-		mockUpdatePlaylistMatchIntent(...args),
 	updatePlaylistMatchConfig: (...args: unknown[]) =>
 		mockUpdatePlaylistMatchConfig(...args),
 }));
@@ -692,89 +684,5 @@ describe("savePlaylistMatchConfig", () => {
 				matchFilters: { version: 1 },
 			},
 		);
-	});
-});
-
-describe("savePlaylistMatchIntent", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockGetPlaylistById.mockResolvedValue(
-			Result.ok(makePlaylist({ account_id: "acct-1" })),
-		);
-		mockUpdatePlaylistMatchIntent.mockResolvedValue(Result.ok(makePlaylist()));
-		mockApplyLibraryProcessingChange.mockResolvedValue(
-			Result.ok(makeApplyOutcome()),
-		);
-	});
-
-	it("emits match_intent_set with presence + length but never the intent text", async () => {
-		await savePlaylistMatchIntent({
-			data: { playlistId: "uuid-1", matchIntent: "  chill evening vibes  " },
-		});
-
-		// Trimmed before write — length reflects the trimmed value, and the raw
-		// text is deliberately absent from the analytics payload (privacy).
-		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
-			distinctId: "acct-1",
-			event: "match_intent_set",
-			properties: {
-				playlist_id: "uuid-1",
-				has_intent: true,
-				intent_length: "chill evening vibes".length,
-			},
-		});
-	});
-
-	it("reports has_intent=false when the intent is cleared", async () => {
-		await savePlaylistMatchIntent({
-			data: { playlistId: "uuid-1", matchIntent: "   " },
-		});
-
-		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith({
-			distinctId: "acct-1",
-			event: "match_intent_set",
-			properties: {
-				playlist_id: "uuid-1",
-				has_intent: false,
-				intent_length: 0,
-			},
-		});
-	});
-
-	it("does not emit when the ownership check fails", async () => {
-		mockGetPlaylistById.mockResolvedValue(
-			Result.err(new DatabaseError({ code: "08006", message: "db down" })),
-		);
-
-		await expect(
-			savePlaylistMatchIntent({
-				data: { playlistId: "uuid-1", matchIntent: "x" },
-			}),
-		).rejects.toThrow(/playlist not found/i);
-		expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
-	});
-
-	it("swallows a capture failure, still saves, and reports it to Sentry", async () => {
-		const captureError = new Error("posthog unavailable");
-		mockCaptureWithWaitUntil.mockRejectedValue(captureError);
-
-		const result = await savePlaylistMatchIntent({
-			data: { playlistId: "uuid-1", matchIntent: "vibes" },
-		});
-
-		// The intent is already written — a best-effort analytics failure must not
-		// turn the successful save into a thrown error.
-		expect(result).toEqual({ success: true, matchIntent: "vibes" });
-		await vi.waitFor(() =>
-			expect(mockCaptureServerError).toHaveBeenCalledTimes(1),
-		);
-		const [capturedError, context] = mockCaptureServerError.mock.calls[0] ?? [];
-		expect(capturedError).toBe(captureError);
-		expect(context).toMatchObject({
-			area: "analytics",
-			operation: "capture_match_intent_set",
-			accountId: "acct-1",
-			extra: { event: "match_intent_set" },
-		});
 	});
 });

@@ -321,51 +321,6 @@ export async function setPlaylistTargets(
 }
 
 /**
- * Writes sanitized genre_pills for a playlist identified by (account_id, id).
- * Ownership is enforced via account_id in the WHERE clause — the service-role
- * client bypasses RLS, so the account_id filter is the authorization boundary.
- */
-export function updatePlaylistGenrePills(
-	accountId: string,
-	playlistId: string,
-	pills: string[],
-): Promise<Result<Playlist, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("playlist")
-			.update({ genre_pills: pills })
-			.eq("id", playlistId)
-			.eq("account_id", accountId)
-			.select()
-			.single(),
-	);
-}
-
-/**
- * Writes match_intent (our own, Spotify-decoupled intent text) for a playlist
- * identified by (account_id, id). Ownership is enforced via account_id in the
- * WHERE clause — the service-role client bypasses RLS, so the account_id filter
- * is the authorization boundary.
- */
-export function updatePlaylistMatchIntent(
-	accountId: string,
-	playlistId: string,
-	value: string | null,
-): Promise<Result<Playlist, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("playlist")
-			.update({ match_intent: value })
-			.eq("id", playlistId)
-			.eq("account_id", accountId)
-			.select()
-			.single(),
-	);
-}
-
-/**
  * One statement covers all three fields so a handler crash mid-write cannot
  * leave match_intent and genre_pills updated while match_filters is still
  * stale (or vice versa). The caller must validate matchFilters into a
