@@ -16,6 +16,13 @@ export const workerConfig = {
 		MAX_WORKER_CONCURRENCY,
 	),
 	pollIntervalMs: Number(process.env.WORKER_POLL_INTERVAL_MS ?? 5_000),
+	// Library-processing and match-deck enqueues fire a NOTIFY, and a finished
+	// job reclaims its slot immediately, so their poll only catches lost
+	// notifications and deferred `available_at` retries. Every empty claim is
+	// an API request plus a persisted log row; at 5s that was ~1,400 req/h idle.
+	notifyBackedPollIntervalMs: Number(
+		process.env.WORKER_NOTIFY_BACKED_POLL_INTERVAL_MS ?? 60_000,
+	),
 	// Extension sync is woken primarily by LISTEN/NOTIFY (sub-second), so its
 	// poll loop only needs to be a safety net for NOTIFY's at-most-once delivery
 	// — a much longer interval than the library-processing loop.
@@ -27,6 +34,9 @@ export const workerConfig = {
 	),
 	staleThreshold: process.env.WORKER_STALE_THRESHOLD ?? "5 minutes",
 	sweepIntervalMs: Number(process.env.WORKER_SWEEP_INTERVAL_MS ?? 60_000),
+	idleEnrichmentRecoveryIntervalMs: Number(
+		process.env.WORKER_IDLE_ENRICHMENT_RECOVERY_INTERVAL_MS ?? 900_000,
+	),
 	// Must exceed the longest expected job (enrichment runs embeddings + LLM
 	// analysis for minutes) so a deploy can drain in-flight work instead of
 	// killing it and stranding the row in `processing` until the 5-minute stale

@@ -118,24 +118,6 @@ export async function runSweepTick(): Promise<void> {
 		}
 	});
 
-	await runStep("recover-idle-enrichment", async () => {
-		const idleRecoveryResults = await recoverIdleEnrichmentWorkflows();
-		for (const r of idleRecoveryResults) {
-			if (Result.isError(r.outcome)) {
-				log.error("idle-enrichment-recovery-failed", {
-					accountId: r.accountId,
-					latestJobStatus: r.latestJobStatus,
-					error: r.outcome.error,
-				});
-			} else {
-				log.info("idle-enrichment-recovered", {
-					accountId: r.accountId,
-					latestJobStatus: r.latestJobStatus,
-				});
-			}
-		}
-	});
-
 	await runStep("sweep-stale-extension-sync-jobs", async () => {
 		const swept = await sweepStaleExtensionSyncJobs(staleThreshold);
 		if (Result.isError(swept)) {
@@ -261,6 +243,50 @@ export function startSweep(): { stop: () => void } {
 				})
 				.finally(scheduleNext);
 		}, workerConfig.sweepIntervalMs);
+	};
+
+	scheduleNext();
+	return {
+		stop: () => {
+			stopped = true;
+			if (timer !== null) clearTimeout(timer);
+		},
+	};
+}
+
+// Idle recovery is a safety net for a missed library-processing wake, not a
+// queue drain: it probes every idle account's whole library (2 job lookups +
+// a full selector scan each), so at the 60s sweep cadence it was the largest
+// steady source of API traffic. Its own slower cadence bounds that cost.
+export async function runIdleEnrichmentRecoveryTick(): Promise<void> {
+	await runStep("recover-idle-enrichment", async () => {
+		const idleRecoveryResults = await recoverIdleEnrichmentWorkflows();
+		for (const r of idleRecoveryResults) {
+			if (Result.isError(r.outcome)) {
+				log.error("idle-enrichment-recovery-failed", {
+					accountId: r.accountId,
+					latestJobStatus: r.latestJobStatus,
+					error: r.outcome.error,
+				});
+			} else {
+				log.info("idle-enrichment-recovered", {
+					accountId: r.accountId,
+					latestJobStatus: r.latestJobStatus,
+				});
+			}
+		}
+	});
+}
+
+export function startIdleEnrichmentRecovery(): { stop: () => void } {
+	let timer: ReturnType<typeof setTimeout> | null = null;
+	let stopped = false;
+
+	const scheduleNext = () => {
+		if (stopped) return;
+		timer = setTimeout(() => {
+			void runIdleEnrichmentRecoveryTick().finally(scheduleNext);
+		}, workerConfig.idleEnrichmentRecoveryIntervalMs);
 	};
 
 	scheduleNext();

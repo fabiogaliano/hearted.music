@@ -26,7 +26,7 @@ vi.mock("../config", () => ({
 	workerConfig: {
 		concurrency: 2,
 		heartbeatIntervalMs: 1000,
-		pollIntervalMs: 5000,
+		notifyBackedPollIntervalMs: 5000,
 	},
 }));
 vi.mock("../execute", () => ({
@@ -64,12 +64,15 @@ describe("claimAndDispatchLibraryProcessingJobs", () => {
 		const job = makeJob();
 		vi.mocked(claimLibraryProcessingJob)
 			.mockResolvedValueOnce(Result.ok(job))
-			.mockResolvedValueOnce(Result.ok(null));
+			.mockResolvedValue(Result.ok(null));
 
 		await claimAndDispatchLibraryProcessingJobs();
-		await Promise.resolve();
 
-		expect(claimLibraryProcessingJob).toHaveBeenCalledTimes(2);
+		// Drains until empty (2 claims), then the finished job's freed slot
+		// claims once more.
+		await vi.waitFor(() =>
+			expect(claimLibraryProcessingJob).toHaveBeenCalledTimes(3),
+		);
 		expect(resolveAccountLabel).toHaveBeenCalledWith("acct-1");
 		expect(runClaimedJob).toHaveBeenCalledWith(
 			job,

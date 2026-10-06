@@ -101,7 +101,13 @@ export function createPollLoop<TJob, TError extends { message: string }>(
 				}
 				return;
 			}
-			await options.dispatch(job, () => activeJobs.delete(id));
+			await options.dispatch(job, () => {
+				activeJobs.delete(id);
+				// A job enqueued while every slot was busy already spent its NOTIFY
+				// wake, so without reclaiming here it would sit until the next poll
+				// tick — which is deliberately long for NOTIFY-backed loops.
+				if (shouldPoll) void claimAndDispatch();
+			});
 		}
 	}
 

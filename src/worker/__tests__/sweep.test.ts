@@ -25,7 +25,11 @@ import {
 } from "@/lib/workflows/library-processing/terminal-recovery";
 import { makeJob } from "@/test/fixtures";
 import { workerConfig } from "../config";
-import { runSweepTick, startSweep } from "../sweep";
+import {
+	runSweepTick,
+	startIdleEnrichmentRecovery,
+	startSweep,
+} from "../sweep";
 
 vi.mock("@/lib/observability/logger", () => ({
 	log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -152,10 +156,10 @@ describe("runSweepTick", () => {
 		expect(recoverTerminalLibraryProcessingRefs).toHaveBeenCalledTimes(1);
 	});
 
-	it("calls idle-enrichment recovery on every sweep tick", async () => {
+	it("does not run idle-enrichment recovery on the 60s sweep (it dominated idle API traffic)", async () => {
 		await runSweepTick();
 
-		expect(recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
+		expect(recoverIdleEnrichmentWorkflows).not.toHaveBeenCalled();
 	});
 
 	it("does not reject when a recovery step throws unexpectedly", async () => {
@@ -293,5 +297,33 @@ describe("startSweep", () => {
 
 		await vi.advanceTimersByTimeAsync(interval * 5);
 		expect(sweepStaleLibraryProcessingJobs).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("startIdleEnrichmentRecovery", () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it("runs on its own interval, not the sweep's", async () => {
+		const { stop } = startIdleEnrichmentRecovery();
+
+		await vi.advanceTimersByTimeAsync(
+			workerConfig.idleEnrichmentRecoveryIntervalMs - 1,
+		);
+		expect(recoverIdleEnrichmentWorkflows).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1);
+		expect(recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
+
+		stop();
+		await vi.advanceTimersByTimeAsync(
+			workerConfig.idleEnrichmentRecoveryIntervalMs * 3,
+		);
+		expect(recoverIdleEnrichmentWorkflows).toHaveBeenCalledTimes(1);
 	});
 });

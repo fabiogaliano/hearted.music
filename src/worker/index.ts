@@ -41,7 +41,12 @@ import {
 } from "./poll-match-deck-jobs";
 import { shutdownWorkerPostHog } from "./posthog-capture";
 import { shutdownPostHogOtel } from "./posthog-otel";
-import { runSweepTick, startSweep } from "./sweep";
+import {
+	runIdleEnrichmentRecoveryTick,
+	runSweepTick,
+	startIdleEnrichmentRecovery,
+	startSweep,
+} from "./sweep";
 
 setWorkerFatalObserver((error, phase) => {
 	log.error(phase, { error: String(error) });
@@ -65,6 +70,7 @@ async function main() {
 	// wedging its account+orientation). Running the sweep before any poll loop
 	// or claim path opens means the loops start from a clean slate.
 	await runSweepTick();
+	await runIdleEnrichmentRecoveryTick();
 	// Reclaim any backfill job whose worker died mid-run before the loop opens,
 	// so an expired lease can't keep the selector wedged in backfill_active.
 	if (workerConfig.isProduction) {
@@ -72,6 +78,7 @@ async function main() {
 	}
 
 	const sweep = startSweep();
+	const idleEnrichmentRecovery = startIdleEnrichmentRecovery();
 	const audioBackfillSweep = workerConfig.isProduction
 		? startAudioFeatureBackfillSweep()
 		: null;
@@ -107,6 +114,7 @@ async function main() {
 		keepAlive.stop();
 		dbBackup.stop();
 		sweep.stop();
+		idleEnrichmentRecovery.stop();
 		audioBackfillSweep?.stop();
 
 		const deadline = Date.now() + workerConfig.drainTimeoutMs;

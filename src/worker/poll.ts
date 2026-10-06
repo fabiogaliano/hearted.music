@@ -52,11 +52,11 @@ const loop = createPollLoop<Job, { message: string }>({
 			}
 		})();
 	},
-	pollIntervalMs: workerConfig.pollIntervalMs,
+	pollIntervalMs: workerConfig.notifyBackedPollIntervalMs,
 	onLoopStart: () =>
 		log.info("polling-start", {
 			concurrency: workerConfig.concurrency,
-			intervalMs: workerConfig.pollIntervalMs,
+			intervalMs: workerConfig.notifyBackedPollIntervalMs,
 		}),
 	onLoopStop: () => log.info("polling-stopped"),
 });

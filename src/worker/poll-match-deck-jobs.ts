@@ -476,7 +476,7 @@ const loop = createPollLoop<ClaimedDeckJob, DbError>({
 		const released = await releaseDeckJob(job);
 		logSettlementFailure("release", job, released);
 	},
-	pollIntervalMs: workerConfig.pollIntervalMs,
+	pollIntervalMs: workerConfig.notifyBackedPollIntervalMs,
 	onLoopStart: () => log.info("match-deck-polling-start", {}),
 	onLoopStop: () => log.info("match-deck-polling-stopped", {}),
 });
