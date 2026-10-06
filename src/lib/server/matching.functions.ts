@@ -6,20 +6,13 @@ import type { Json } from "@/lib/data/database.types";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
-import {
-	getMatchDecisionsForSongs,
-	upsertMatchDecision,
-} from "@/lib/domains/taste/song-matching/decision-queries";
+import { upsertMatchDecision } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
-	getMatchResults,
 	getServedRanksForSong,
-	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
-import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import type { DbError } from "@/lib/shared/errors/database";
 
 // ============================================================================
 // Shared types
@@ -87,8 +80,6 @@ export interface MatchingSongSuggestion {
 // Internal helpers
 // ============================================================================
 
-type MatchDecision = { song_id: string; playlist_id: string };
-
 /**
  * Resolves the served-ranking context for a song's decision(s): the snapshot the
  * user actually saw and the rank each playlist held in it. The client supplies
@@ -148,118 +139,6 @@ async function doPlaylistsBelongToAccount(
 	}
 
 	return (data?.length ?? 0) === uniquePlaylistIds.length;
-}
-
-/**
- * Result-typed so callers can distinguish a genuine DB failure (captured here,
- * for telemetry) from the valid "no matches yet" case — both used to collapse
- * to an untyped `null`, which silently swallowed real errors.
- */
-async function getMatchSnapshotData(
-	snapshotId: string,
-	accountId: string,
-): Promise<
-	Result<
-		{
-			matchResults: MatchResultRow[];
-			decisions: MatchDecision[];
-		},
-		DbError
-	>
-> {
-	const matchResultsResult = await getMatchResults(snapshotId);
-	if (Result.isError(matchResultsResult)) {
-		captureServerError(matchResultsResult.error, {
-			area: "matching",
-			operation: "get_match_snapshot_data",
-			accountId,
-			extra: { stage: "match_results", snapshotId },
-		});
-		return matchResultsResult;
-	}
-
-	const matchResults = matchResultsResult.value;
-	const matchedSongIds = [...new Set(matchResults.map((mr) => mr.song_id))];
-	const decisionsResult = await getMatchDecisionsForSongs(
-		accountId,
-		matchedSongIds,
-	);
-	if (Result.isError(decisionsResult)) {
-		captureServerError(decisionsResult.error, {
-			area: "matching",
-			operation: "get_match_snapshot_data",
-			accountId,
-			extra: { stage: "decisions", snapshotId },
-		});
-		return decisionsResult;
-	}
-
-	return Result.ok({
-		matchResults,
-		decisions: decisionsResult.value,
-	});
-}
-
-/**
- * Pure derivation: song IDs with at least one undecided match, plus ordering info.
- *
- * `minScore` is the read-time strictness bar: match_result rows whose
- * strictnessScore (fused_score ?? score) is below it are skipped *before* both
- * maxScore and hasUndecided accumulate, so a pair under the bar contributes
- * neither ordering weight nor "this song still has suggestions". A song whose
- * only undecided pairs are below the bar therefore drops out of the result
- * entirely. Pass 0 to consider every stored match.
- *
- * Strictness and ordering both key off strictnessScore — the fused retrieval
- * quality — never the reranker/legacy ordering value in `score` (E7).
- */
-export function deriveUndecidedSongs(
-	matchResults: MatchResultRow[],
-	decisions: MatchDecision[],
-	minScore: number,
-): Array<{ songId: string; maxScore: number }> {
-	const decidedPairs = new Set(
-		decisions.map((d) => `${d.song_id}:${d.playlist_id}`),
-	);
-
-	const songMap = new Map<
-		string,
-		{ maxScore: number; hasUndecided: boolean }
-	>();
-	for (const mr of matchResults) {
-		const rowScore = strictnessScore(mr);
-		if (rowScore < minScore) continue;
-		const existing = songMap.get(mr.song_id) ?? {
-			maxScore: 0,
-			hasUndecided: false,
-		};
-		const isUndecided = !decidedPairs.has(`${mr.song_id}:${mr.playlist_id}`);
-		songMap.set(mr.song_id, {
-			maxScore: Math.max(existing.maxScore, rowScore),
-			hasUndecided: existing.hasUndecided || isUndecided,
-		});
-	}
-
-	return Array.from(songMap.entries())
-		.filter(([, v]) => v.hasUndecided)
-		.map(([songId, v]) => ({ songId, maxScore: v.maxScore }));
-}
-
-/** Fetches match results + decisions, then derives undecided songs. */
-export async function getUndecidedSongs(
-	snapshotId: string,
-	accountId: string,
-	minScore: number,
-): Promise<Array<{ songId: string; maxScore: number }>> {
-	const snapshotData = await getMatchSnapshotData(snapshotId, accountId);
-	// getMatchSnapshotData already captured the error; degrade to empty here.
-	if (Result.isError(snapshotData)) return [];
-
-	return deriveUndecidedSongs(
-		snapshotData.value.matchResults,
-		snapshotData.value.decisions,
-		minScore,
-	);
 }
 
 // ============================================================================
