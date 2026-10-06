@@ -516,6 +516,8 @@ const SETTLEMENT_RETRY_OPTIONS: RetryOptions<LibraryProcessingApplyError> = {
 				return error.cause instanceof DatabaseError;
 			case "effect_ensure_failed":
 				return error.cause instanceof DatabaseError;
+			case "persist_conflict":
+				return true;
 		}
 	},
 };
