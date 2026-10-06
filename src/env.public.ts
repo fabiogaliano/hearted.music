@@ -23,6 +23,9 @@ export const clientEnv = {
 	VITE_CHROME_EXTENSION_ID: readOptionalClientEnv(
 		import.meta.env.VITE_CHROME_EXTENSION_ID,
 	),
+	VITE_USERJOT_PROJECT_ID: readOptionalClientEnv(
+		import.meta.env.VITE_USERJOT_PROJECT_ID,
+	),
 	VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: readOptionalClientEnv(
 		import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN,
 	),
