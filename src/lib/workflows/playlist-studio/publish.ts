@@ -25,6 +25,7 @@ import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { upsertMatchDecisions } from "@/lib/domains/taste/song-matching/decision-queries";
 import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 export interface PersistNewPlaylistConfigInput {
 	/**
@@ -144,6 +145,13 @@ export async function runPersistNewPlaylistConfig(
 	if (Result.isError(songsResult)) {
 		// Non-fatal: track URIs can't be resolved. Return empty so the
 		// orchestrator skips the add step rather than failing the whole commit.
+		// The user still gets an empty playlist, so this must reach Sentry.
+		captureServerError(songsResult.error, {
+			area: "playlists",
+			operation: "persist_new_playlist_config",
+			accountId,
+			extra: { stage: "song_lookup" },
+		});
 		console.error(
 			"[persistNewPlaylistConfig] song lookup failed:",
 			songsResult.error,
@@ -155,6 +163,12 @@ export async function runPersistNewPlaylistConfig(
 	// we can't safely resolve URIs, so skip the add step rather than trust the
 	// caller-supplied id list.
 	if (Result.isError(ownedResult)) {
+		captureServerError(ownedResult.error, {
+			area: "playlists",
+			operation: "persist_new_playlist_config",
+			accountId,
+			extra: { stage: "ownership_lookup" },
+		});
 		console.error(
 			"[persistNewPlaylistConfig] ownership lookup failed:",
 			ownedResult.error,

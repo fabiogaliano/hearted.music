@@ -932,6 +932,12 @@ export const flushPlaylistManagementSession = createServerFn({
 				}),
 			);
 			if (Result.isError(applyResult)) {
+				captureServerError(applyResult.error, {
+					area: "playlists",
+					operation: "flush_playlist_management_session",
+					accountId: session.accountId,
+					extra: { stage: "library_processing_apply" },
+				});
 				console.error(
 					"[playlists] library-processing apply failed:",
 					applyResult.error,
