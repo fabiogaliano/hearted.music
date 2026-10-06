@@ -312,8 +312,8 @@ export default defineConfig(({ command }) => {
 							),
 						}
 					: {}),
-				// CI may not have the local `file:../../uipane` package. Build/test use
-				// the internal stub so dev-only pane wiring never ships or blocks verify.
+				// Build/test use the internal stub so dev-only pane wiring never ships
+				// or blocks verify.
 				...(useUipaneStub
 					? {
 							"@/integrations/uipane": fileURLToPath(

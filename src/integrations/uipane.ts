@@ -6,4 +6,4 @@ export {
 	PaneStore,
 	useActiveTab,
 	usePane,
-} from "uipane";
+} from "tunekit";
