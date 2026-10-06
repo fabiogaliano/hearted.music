@@ -109,8 +109,12 @@ function coreFields(strict: boolean) {
 	};
 }
 
-/** Strict schema — rejects unknown keys at every depth, used for save validation. */
-const saveSchema = z
+/**
+ * Strict schema — rejects unknown keys at every depth. Server-fn edges that
+ * accept filters validate with it directly, so the edge and the save path can
+ * never disagree on what a valid filter is.
+ */
+export const MatchFiltersSaveSchema = z
 	.object({
 		...coreFields(true),
 		languages: languageCodesSchema(true).optional(),
@@ -132,7 +136,7 @@ const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
 export function parseSaveMatchFilters(
 	raw: unknown,
 ): Result<PlaylistMatchFiltersV1, string> {
-	const result = saveSchema.safeParse(raw);
+	const result = MatchFiltersSaveSchema.safeParse(raw);
 	if (!result.success) {
 		return Result.err(result.error.message);
 	}

@@ -21,6 +21,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { selectOwnedSongIds } from "@/lib/domains/library/liked-songs/queries";
 import { MAX_PINNED_SONG_IDS } from "@/lib/domains/playlists/draft-engine";
+import { MatchFiltersSaveSchema } from "@/lib/domains/taste/match-filters/schemas";
 import { insertStudioActions } from "@/lib/domains/taste/song-matching/studio-action-queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
@@ -43,47 +44,13 @@ export type { PersistNewPlaylistConfigResult } from "@/lib/workflows/playlist-st
 // Input schema
 // ============================================================================
 
-const MatchFiltersV1Schema = z
-	.object({
-		version: z.literal(1),
-		languages: z.object({ codes: z.array(z.string()) }).optional(),
-		releaseYear: z
-			.union([
-				z.object({ kind: z.literal("exact"), year: z.number().int() }),
-				z.object({ kind: z.literal("before"), end: z.number().int() }),
-				z.object({ kind: z.literal("after"), start: z.number().int() }),
-				z.object({
-					kind: z.literal("range"),
-					start: z.number().int(),
-					end: z.number().int(),
-				}),
-			])
-			.optional(),
-		likedAt: z
-			.union([
-				z.object({ kind: z.literal("before"), endDate: z.string() }),
-				z.object({ kind: z.literal("after"), startDate: z.string() }),
-				z.object({
-					kind: z.literal("range"),
-					startDate: z.string(),
-					end: z.union([
-						z.object({ kind: z.literal("date"), date: z.string() }),
-						z.object({ kind: z.literal("today") }),
-					]),
-				}),
-			])
-			.optional(),
-		vocalGender: z.enum(["female", "male"]).optional(),
-	})
-	.strict();
-
 const PreviewPlaylistDraftSchema = z.object({
 	/** Natural-language intent phrase (premium feature — may be ignored server-side). */
 	intent: z.string().max(5000).optional(),
 	/** User-declared genre pills. */
 	genrePills: z.array(z.string()).max(10),
 	/** Hard match filters applied before scoring. */
-	matchFilters: MatchFiltersV1Schema,
+	matchFilters: MatchFiltersSaveSchema,
 	/** Max songs in the preview (5–50, step 5). */
 	maxSongs: z.number().int().min(5).max(50),
 	/**
@@ -157,7 +124,7 @@ const PersistNewPlaylistConfigSchema = z.object({
 	/** Genre pills from the draft config. */
 	genrePills: z.array(z.string()).max(10),
 	/** Match filters from the draft config. */
-	matchFilters: MatchFiltersV1Schema,
+	matchFilters: MatchFiltersSaveSchema,
 	/** Whether the client reports intent was applied in the preview. */
 	intentApplied: z.boolean(),
 });
@@ -201,7 +168,7 @@ export const recordPlaylistMatchDecisions = createServerFn({ method: "POST" })
 const StudioActionContextSchema = z
 	.object({
 		genrePills: z.array(z.string()).max(10),
-		matchFilters: MatchFiltersV1Schema,
+		matchFilters: MatchFiltersSaveSchema,
 		intentPresent: z.boolean(),
 	})
 	.strict();
