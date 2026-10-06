@@ -173,6 +173,25 @@ export function getTargetPlaylists(
 }
 
 /**
+ * Whether any target-playlist song is outside the account's active liked
+ * library. Evaluated in SQL so the target song ids never travel in a URL.
+ */
+export async function hasTargetOnlySongs(
+	accountId: string,
+): Promise<Result<boolean, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { data, error } = await supabase.rpc("has_target_only_songs", {
+		p_account_id: accountId,
+	});
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(data === true);
+}
+
+/**
  * Creates or updates playlists for an account based on Spotify ID.
  * Uses (account_id, spotify_id) as the conflict target.
  * Returns all upserted playlists.

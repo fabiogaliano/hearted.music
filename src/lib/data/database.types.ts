@@ -4219,6 +4219,10 @@ export type Database = {
 				};
 				Returns: Json;
 			};
+			has_target_only_songs: {
+				Args: { p_account_id: string };
+				Returns: boolean;
+			};
 			heartbeat_audio_feature_backfill_job: {
 				Args: {
 					p_job_id: string;

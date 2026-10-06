@@ -2,10 +2,7 @@ import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
 import { getCount as getLikedSongCount } from "@/lib/domains/library/liked-songs/queries";
-import {
-	getPlaylistSongs,
-	getTargetPlaylists,
-} from "@/lib/domains/library/playlists/queries";
+import { hasTargetOnlySongs } from "@/lib/domains/library/playlists/queries";
 import {
 	hasFirstVisibleReviewSubject,
 	resolveReadinessPermissive,
@@ -151,55 +148,10 @@ export async function deriveNeedsTargetSongEnrichment(
 		return false;
 	}
 
-	const targetPlaylistsResult = await getTargetPlaylists(accountId);
-	if (
-		Result.isError(targetPlaylistsResult) ||
-		targetPlaylistsResult.value.length === 0
-	) {
-		return false;
-	}
-
-	const playlistSongResults = await Promise.all(
-		targetPlaylistsResult.value.map((playlist) =>
-			getPlaylistSongs(playlist.id),
-		),
-	);
-
-	const targetSongIds = new Set<string>();
-	for (const playlistSongResult of playlistSongResults) {
-		if (Result.isError(playlistSongResult)) {
-			continue;
-		}
-
-		for (const playlistSong of playlistSongResult.value) {
-			targetSongIds.add(playlistSong.song_id);
-		}
-	}
-
-	if (targetSongIds.size === 0) {
-		return false;
-	}
-
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("liked_song")
-		.select("song_id")
-		.eq("account_id", accountId)
-		.is("unliked_at", null)
-		.in("song_id", [...targetSongIds]);
-
-	if (error) {
-		return false;
-	}
-
-	const likedSongIds = new Set((data ?? []).map((row) => row.song_id));
-	for (const targetSongId of targetSongIds) {
-		if (!likedSongIds.has(targetSongId)) {
-			return true;
-		}
-	}
-
-	return false;
+	// On a failed probe, schedule the stage anyway: it is best-effort and skips
+	// already-enriched songs, while skipping it leaves target songs unprofiled.
+	const result = await hasTargetOnlySongs(accountId);
+	return Result.isError(result) || result.value;
 }
 
 /**
