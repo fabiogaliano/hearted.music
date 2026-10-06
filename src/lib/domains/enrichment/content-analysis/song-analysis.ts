@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { z } from "zod";
+import type { z } from "zod";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import {
 	get as getSongAnalysis,
@@ -30,20 +30,17 @@ import {
 	getInstrumentalPrompt,
 	getLyricalPrompt,
 } from "./prompts/registry";
-import { type SongRead, SongReadSchema } from "./read-schema";
+import {
+	type SongAnalysisInstrumental,
+	SongAnalysisInstrumentalSchema,
+	type SongRead,
+	SongReadSchema,
+} from "./read-schema";
 import {
 	type RewritePassUsage,
 	rewriteRead,
 	TARGET_RULES,
 } from "./voice/rewrite-pass";
-
-export const SongAnalysisInstrumentalSchema = z.object({
-	headline: z.string(),
-	compound_mood: z.string(),
-	mood_description: z.string(),
-	sonic_texture: z.string(),
-});
-type SongAnalysisInstrumental = z.infer<typeof SongAnalysisInstrumentalSchema>;
 
 export interface AnalyzeSongInput {
 	accountId?: string;

@@ -46,3 +46,16 @@ export const SongReadSchema = z.object({
 export type SongRead = z.infer<typeof SongReadSchema>;
 export type ReadArcBeat = z.infer<typeof ReadArcBeatSchema>;
 export type ReadLineBeat = z.infer<typeof ReadLineBeatSchema>;
+
+// Instrumental rows carry this shape instead of a SongRead. Lives here, not in
+// song-analysis.ts, because the client panel parses stored rows with it and
+// song-analysis.ts drags prompts and DB queries into the browser bundle.
+export const SongAnalysisInstrumentalSchema = z.object({
+	headline: z.string(),
+	compound_mood: z.string(),
+	mood_description: z.string(),
+	sonic_texture: z.string(),
+});
+export type SongAnalysisInstrumental = z.infer<
+	typeof SongAnalysisInstrumentalSchema
+>;
