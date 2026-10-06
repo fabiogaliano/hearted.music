@@ -69,12 +69,11 @@ describe("jobs.functions", () => {
 		mockGetJobById.mockResolvedValue(Result.ok(null));
 	});
 
-	it("reports firstMatchReady=false and firstVisibleMatchReady=false when no visible review subject exists", async () => {
+	it("reports firstVisibleMatchReady=false when no visible review subject exists", async () => {
 		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(false));
 
 		const result = await getActiveJobs();
 
-		expect(result.firstMatchReady).toBe(false);
 		expect(result.firstVisibleMatchReady).toBe(false);
 		// matchSnapshotRefresh is null and targetPlaylistMatchRefresh is absent when
 		// getJobById returns null (no jobs running) — guards against silent regressions
@@ -83,16 +82,15 @@ describe("jobs.functions", () => {
 		expect("targetPlaylistMatchRefresh" in result).toBe(false);
 	});
 
-	it("reports firstMatchReady=true and firstVisibleMatchReady=true when a visible review subject exists", async () => {
+	it("reports firstVisibleMatchReady=true when a visible review subject exists", async () => {
 		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
 
 		const result = await getActiveJobs();
 
-		expect(result.firstMatchReady).toBe(true);
 		expect(result.firstVisibleMatchReady).toBe(true);
 	});
 
-	it("degrades firstMatchReady and firstVisibleMatchReady to false when the helper returns a DB error", async () => {
+	it("degrades firstVisibleMatchReady to false when the helper returns a DB error", async () => {
 		// Transient errors must not surface as a thrown exception — graceful false.
 		mockHasFirstVisibleReviewSubject.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
@@ -100,15 +98,6 @@ describe("jobs.functions", () => {
 
 		const result = await getActiveJobs();
 
-		expect(result.firstMatchReady).toBe(false);
 		expect(result.firstVisibleMatchReady).toBe(false);
-	});
-
-	it("firstMatchReady always mirrors firstVisibleMatchReady (backward-compat alias)", async () => {
-		mockHasFirstVisibleReviewSubject.mockResolvedValue(Result.ok(true));
-
-		const result = await getActiveJobs();
-
-		expect(result.firstMatchReady).toBe(result.firstVisibleMatchReady);
 	});
 });

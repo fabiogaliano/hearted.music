@@ -29,10 +29,7 @@ export interface ActiveJobInfo {
 export interface ActiveJobs {
 	enrichment: ActiveJobInfo | null;
 	matchSnapshotRefresh: ActiveJobInfo | null;
-	// firstVisibleMatchReady is the authoritative check (visible queue subject).
-	// firstMatchReady is kept for backward-compatibility during migration and
-	// always mirrors firstVisibleMatchReady.
-	firstMatchReady: boolean;
+	// Whether the account has a visible review subject (the authoritative check).
 	firstVisibleMatchReady: boolean;
 }
 
@@ -78,7 +75,6 @@ export async function buildActiveJobsSnapshot(
 	return {
 		enrichment,
 		matchSnapshotRefresh,
-		firstMatchReady: firstVisibleMatchReady,
 		firstVisibleMatchReady,
 	};
 }
