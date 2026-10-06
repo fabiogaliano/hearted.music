@@ -9,11 +9,6 @@ import { matchDeckKeys } from "./deck-queries";
 
 export const matchReviewKeys = {
 	all: ["match-review"] as const,
-	// Prefix for all review (queue list) keys — useful for broad invalidation
-	// when strictness or session state changes affect all orientations.
-	reviewsRoot: ["match-review", "review"] as const,
-	review: (accountId: string, orientation: MatchOrientation) =>
-		["match-review", "review", accountId, orientation] as const,
 };
 
 // Queue-aware summary keys. Drive sidebar badge and dashboard CTA.

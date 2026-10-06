@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { dashboardKeys } from "@/features/dashboard/queries";
 import { matchDeckKeys } from "@/features/matching/deck-queries";
 import {
-	matchReviewKeys,
 	matchReviewSummaryKeys,
 	runMatchSnapshotRefreshEffects,
 } from "@/features/matching/queries";
@@ -42,7 +41,7 @@ afterEach(() => {
 });
 
 describe("runMatchSnapshotRefreshEffects", () => {
-	it("(a) invalidates matchDeckKeys.deckRoot and no longer invalidates matchReviewKeys.reviewsRoot", async () => {
+	it("(a) invalidates matchDeckKeys.deckRoot", async () => {
 		const qc = makeFakeQueryClient();
 
 		await runMatchSnapshotRefreshEffects(
@@ -56,10 +55,8 @@ describe("runMatchSnapshotRefreshEffects", () => {
 			(call: Array<{ queryKey?: unknown }>) => call[0]?.queryKey,
 		);
 		// Deck read model: the bounded deck read re-runs across every
-		// (account, orientation) deck query. Appends are worker-driven now, and the
-		// legacy reviewsRoot review-list family is gone.
+		// (account, orientation) deck query. Appends are worker-driven now.
 		expect(calledKeys).toContainEqual(matchDeckKeys.deckRoot);
-		expect(calledKeys).not.toContainEqual(matchReviewKeys.reviewsRoot);
 	});
 
 	it("(c) invalidates exactly the deck, summary, and dashboard keys (5 total)", async () => {
