@@ -18,8 +18,14 @@ vi.mock("../batch", () => ({
 	loadBatchSongs: (...args: unknown[]) => mockLoadBatchSongs(...(args as [])),
 	hasMoreSongsNeedingEnrichmentWork: (...args: unknown[]) =>
 		mockHasMoreSongsNeedingEnrichmentWork(...(args as [])),
-	getEntitledDataEnrichedSongIds: (...args: unknown[]) =>
-		mockGetEntitledDataEnrichedSongIds(...(args as [])),
+}));
+
+vi.mock("@/lib/domains/billing/queries", () => ({
+	// The real read returns a Result; the mock keeps returning plain id arrays.
+	readEntitledDataEnrichedSongIds: async (
+		_supabase: unknown,
+		...args: unknown[]
+	) => Result.ok(await mockGetEntitledDataEnrichedSongIds(...(args as []))),
 }));
 
 const mockRunAudioFeatures = vi.fn();

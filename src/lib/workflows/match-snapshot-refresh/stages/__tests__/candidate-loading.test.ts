@@ -2,9 +2,11 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEntitledSongIds = vi.fn();
-vi.mock("@/lib/workflows/enrichment-pipeline/batch", () => ({
-	getEntitledDataEnrichedSongIds: (...args: unknown[]) =>
-		mockGetEntitledSongIds(...args),
+vi.mock("@/lib/domains/billing/queries", () => ({
+	readEntitledDataEnrichedSongIds: async (
+		_supabase: unknown,
+		...args: unknown[]
+	) => Result.ok(await mockGetEntitledSongIds(...args)),
 }));
 
 const mockGetByIds = vi.fn();
@@ -38,7 +40,7 @@ function makeSongRow(id: string) {
 describe("loadCandidateSongIds", () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it("delegates to getEntitledDataEnrichedSongIds", async () => {
+	it("reads the entitled data-enriched set for the account", async () => {
 		mockGetEntitledSongIds.mockResolvedValue(["s1", "s2"]);
 		const ids = await loadCandidateSongIds("acc-1");
 		expect(ids).toEqual(["s1", "s2"]);

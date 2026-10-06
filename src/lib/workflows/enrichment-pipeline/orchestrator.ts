@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { grantAnalysisFailureReplacementCredit } from "@/lib/domains/billing/compensation";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import { getAudioFeatureAvailability } from "@/lib/domains/enrichment/audio-feature-backfill/jobs";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { detectLanguageForSongs } from "@/lib/domains/enrichment/language-detection/service";
@@ -12,7 +13,6 @@ import type {
 } from "@/lib/platform/jobs/progress/enrichment";
 import { type Job, updateJobProgress } from "@/lib/platform/jobs/repository";
 import {
-	getEntitledDataEnrichedSongIds,
 	hasMoreSongsNeedingEnrichmentWork,
 	loadBatchSongs,
 	type PipelineBatch,
@@ -118,10 +118,18 @@ async function loadEntitledReadyInBatch(
 		return new Set();
 	}
 
-	const entitledReady = await getEntitledDataEnrichedSongIds(accountId, [
-		...batchIds,
-	]);
-	return new Set(entitledReady.filter((songId) => batchIds.has(songId)));
+	const entitledReady = await readEntitledDataEnrichedSongIds(
+		createAdminSupabaseClient(),
+		accountId,
+		[...batchIds],
+	);
+	if (Result.isError(entitledReady)) {
+		throw new Error(
+			`Failed to select entitled data-enriched songs: ${entitledReady.error.message}`,
+			{ cause: entitledReady.error },
+		);
+	}
+	return new Set(entitledReady.value.filter((songId) => batchIds.has(songId)));
 }
 
 /**
