@@ -49,7 +49,7 @@ export function getActiveJob(
 			.in("status", ["pending", "running"])
 			.order("created_at", { ascending: false })
 			.limit(1)
-			.single(),
+			.maybeSingle(),
 	);
 }
 
@@ -66,7 +66,7 @@ export function getLatestJob(
 			.eq("type", type)
 			.order("created_at", { ascending: false })
 			.limit(1)
-			.single(),
+			.maybeSingle(),
 	);
 }
 

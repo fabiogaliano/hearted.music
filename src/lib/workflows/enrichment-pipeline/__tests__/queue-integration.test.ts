@@ -21,22 +21,15 @@ vi.mock("@/lib/data/client", () => ({
 				order: vi.fn().mockReturnThis(),
 				limit: vi.fn().mockReturnThis(),
 				single: vi.fn(),
+				maybeSingle: vi.fn(() => activeJobResponse),
 			};
 
-			let isInsertPath = false;
-
 			chain.insert = vi.fn((payload: Record<string, unknown>) => {
-				isInsertPath = true;
 				lastInsertPayload = payload;
 				return chain;
 			});
 
-			chain.single = vi.fn(() => {
-				if (isInsertPath) {
-					return insertJobResponse;
-				}
-				return activeJobResponse;
-			});
+			chain.single = vi.fn(() => insertJobResponse);
 
 			return chain;
 		}),
@@ -73,10 +66,7 @@ describe("getActiveEnrichmentJob", () => {
 	});
 
 	it("returns null when no active enrichment job exists", async () => {
-		activeJobResponse = {
-			data: null,
-			error: { code: "PGRST116", message: "not found" },
-		};
+		activeJobResponse = { data: null, error: null };
 
 		const result = await getActiveEnrichmentJob(ACCOUNT_ID);
 
@@ -103,10 +93,7 @@ describe("getActiveEnrichmentJob", () => {
 describe("ensureEnrichmentJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		activeJobResponse = {
-			data: null,
-			error: { code: "PGRST116", message: "not found" },
-		};
+		activeJobResponse = { data: null, error: null };
 		insertJobResponse = { data: null, error: null };
 		lastInsertPayload = null;
 	});
