@@ -31,6 +31,7 @@ import {
 	updateHeartbeat,
 	updateJobProgress,
 } from "@/lib/platform/jobs/repository";
+import { findTerminalActiveRefs } from "../queries";
 import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
@@ -360,3 +361,29 @@ describe.skipIf(!IS_LOCAL)(
 		});
 	},
 );
+
+describe.skipIf(!IS_LOCAL)("findTerminalActiveRefs", () => {
+	it("returns an active ref only when its embedded job is terminal", async () => {
+		const completedId = await seedPendingJob("enrichment");
+		const runningId = await seedPendingJob("match_snapshot_refresh");
+		await db()`UPDATE job SET status = 'completed', started_at = now(), completed_at = now() WHERE id = ${completedId}`;
+		await db()`UPDATE job SET status = 'running', attempts = 1, started_at = now(), heartbeat_at = now() WHERE id = ${runningId}`;
+		await db()`
+      INSERT INTO library_processing_state(
+        account_id, enrichment_active_job_id, match_snapshot_refresh_active_job_id
+      ) VALUES (${account()}, ${completedId}, ${runningId})
+      ON CONFLICT (account_id) DO UPDATE SET
+        enrichment_active_job_id = EXCLUDED.enrichment_active_job_id,
+        match_snapshot_refresh_active_job_id = EXCLUDED.match_snapshot_refresh_active_job_id
+    `;
+
+		const refs = await findTerminalActiveRefs();
+		if (Result.isError(refs)) throw refs.error;
+
+		// The sweep is global; only this account's refs are under test.
+		const mine = refs.value.filter((r) => r.state.accountId === account());
+		expect(mine.map((r) => [r.workflow, r.job.id])).toEqual([
+			["enrichment", completedId],
+		]);
+	});
+});
