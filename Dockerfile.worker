@@ -29,6 +29,8 @@ RUN apt-get update \
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json ./
 COPY src/ ./src/
+# Extension-sync code imports the wire schemas shared with the WebExtension.
+COPY shared/ ./shared/
 
 RUN find ./src -type d -name "__tests__" -exec rm -rf {} + 2>/dev/null; \
     find ./src -type d -name "__snapshots__" -exec rm -rf {} + 2>/dev/null; \
