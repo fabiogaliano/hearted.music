@@ -340,6 +340,27 @@ export default defineConfig(({ command }) => {
 							? "^dev-|\\.test\\.(ts|tsx)$"
 							: "\\.test\\.(ts|tsx)$",
 					},
+					// Server-only code that must never reach the client graph. Runs after
+					// server-fn compilation, so handler-only and type imports pass.
+					// Both lists replace the plugin defaults, so those are restated.
+					importProtection: {
+						client: {
+							files: [
+								"**/*.server.*",
+								"src/env.ts",
+								"src/lib/data/client.ts",
+								"src/lib/workflows/**",
+								"src/lib/integrations/**",
+								"src/lib/domains/enrichment/content-analysis/prompts/**",
+								"src/worker/**",
+							],
+							excludeFiles: [
+								"**/node_modules/**",
+								// Pure genre data; the client draft engine canonicalizes with it.
+								"src/lib/integrations/lastfm/whitelist.ts",
+							],
+						},
+					},
 				}),
 			viteReact(),
 			// Sentry must come last so it sees the final bundle for source map upload.
