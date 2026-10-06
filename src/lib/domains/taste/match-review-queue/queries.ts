@@ -18,7 +18,6 @@ import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseRpc,
-	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type {
 	MatchOrientation,
@@ -26,7 +25,6 @@ import type {
 	MatchReviewQueueItemRow,
 	MatchReviewSession,
 	MatchReviewSessionRow,
-	MatchReviewSessionSnapshotRow,
 	MatchReviewSubject,
 	QueueItemLifecycleState,
 	QueueItemResolution,
@@ -151,39 +149,6 @@ export function mapItemToDto(
 }
 
 /**
- * Inserts a new match review session for the given orientation.
- *
- * The unique partial index `idx_match_review_session_one_active_per_orientation`
- * (WHERE status = 'active') allows one active session per (account, orientation).
- * Two concurrent inserts for the same account AND orientation produce a unique
- * constraint violation (code 23505); the service layer falls back to fetching
- * the existing session. Song-mode and playlist-mode sessions are independent.
- */
-export async function insertMatchReviewSession(
-	accountId: string,
-	strictnessPreset: string,
-	strictnessMinScore: number,
-	orientation: MatchOrientation,
-): Promise<Result<MatchReviewSession, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseSingle(
-		supabase
-			.from("match_review_session")
-			.insert({
-				account_id: accountId,
-				status: "active",
-				strictness_preset: strictnessPreset,
-				strictness_min_score: strictnessMinScore,
-				orientation,
-			})
-			.select()
-			.single(),
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(mapSessionRow(result.value));
-}
-
-/**
  * Fetches the active session for a given (account, orientation) pair.
  * Returns null when no active session exists for that orientation.
  *
@@ -204,39 +169,6 @@ export async function fetchActiveSession(
 			.eq("account_id", accountId)
 			.eq("orientation", orientation)
 			.eq("status", "active")
-			.maybeSingle(),
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(result.value ? mapSessionRow(result.value) : null);
-}
-
-/**
- * Marks an active session completed. The `.eq("status", "active")` guard makes
- * the transition conditional so two concurrent rollovers can't double-complete:
- * the first writer wins and the loser matches no row (returns null). Used by the
- * lazy pass-rollover path — a caught-up session is completed so a fresh pass can
- * re-offer skipped songs without colliding with the one-active partial index.
- *
- * Returns Result.ok(null) when no active row matched (already completed/raced).
- */
-export async function completeSession(
-	sessionId: string,
-	accountId: string,
-): Promise<Result<MatchReviewSession | null, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const now = new Date().toISOString();
-	const result = await fromSupabaseMaybe(
-		supabase
-			.from("match_review_session")
-			.update({
-				status: "completed",
-				completed_at: now,
-				updated_at: now,
-			})
-			.eq("id", sessionId)
-			.eq("account_id", accountId)
-			.eq("status", "active")
-			.select()
 			.maybeSingle(),
 	);
 	if (Result.isError(result)) return result;
@@ -690,31 +622,6 @@ export async function readQueueItemSongSuggestions(
 	);
 }
 
-/**
- * Counts an item's captured visible pairs (pre-dismissal). Used to tell an
- * empty capture (no-visible-suggestions card) apart from a capture whose
- * suggestions were all row-dismissed after presentation (ready card, empty list).
- */
-export async function countCapturedVisiblePairs(
-	itemId: string,
-	accountId: string,
-): Promise<Result<number, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const { count, error } = await supabase
-		.from("match_review_item_visible_pair")
-		.select("*", { count: "exact", head: true })
-		.eq("queue_item_id", itemId)
-		.eq("account_id", accountId);
-
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-
-	return Result.ok(count ?? 0);
-}
-
 const DISMISS_QUEUE_ITEM_ATOMIC_STATUSES = [
 	"dismissed",
 	"not_found",
@@ -917,35 +824,6 @@ export async function fetchAppliedSnapshotIds(
 		new Set(
 			result.value.map((r) => `${r.snapshot_id}:${r.visibility_config_hash}`),
 		),
-	);
-}
-
-/**
- * Records that a (snapshot, visibility hash) pair has been applied to the
- * session. The composite PK (session_id, snapshot_id, visibility_config_hash)
- * makes a duplicate insert fail with a unique constraint violation — the
- * service treats that as a safe no-op. A new hash for the same snapshot allows
- * an additional row, enabling append-without-duplication when visibility config
- * changes (MSR-19 C9).
- */
-export async function insertSessionSnapshot(
-	sessionId: string,
-	snapshotId: string,
-	appendedItemCount: number,
-	visibilityConfigHash: string,
-): Promise<Result<MatchReviewSessionSnapshotRow, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseSingle(
-		supabase
-			.from("match_review_session_snapshot")
-			.insert({
-				session_id: sessionId,
-				snapshot_id: snapshotId,
-				appended_item_count: appendedItemCount,
-				visibility_config_hash: visibilityConfigHash,
-			})
-			.select()
-			.single(),
 	);
 }
 
