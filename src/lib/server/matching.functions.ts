@@ -5,19 +5,13 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json } from "@/lib/data/database.types";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
-import {
-	deriveVisibleSuggestions,
-	type MatchPairInput,
-	type RankingInput,
-} from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
+import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 import {
 	getMatchDecisionsForSongs,
 	upsertMatchDecision,
 } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
-	getMatchPairsForSong,
-	getMatchRankingsForSong,
 	getMatchResults,
 	getServedRanksForSong,
 	type MatchResultRow,
@@ -311,90 +305,36 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 
 		const matchSnapshot = snapshotResult.value;
 
-		const entitledCheck = await supabase.rpc("is_account_song_entitled", {
-			p_account_id: session.accountId,
-			p_song_id: data.songId,
-		});
-		if (entitledCheck.error) {
-			captureServerError(entitledCheck.error, {
-				area: "matching",
-				operation: "get_song_suggestions",
+		// Same visibility path as the deck (entitlement, ownership, decisions,
+		// strictness, playlist match filters), so the panel can never suggest a
+		// playlist the deck would hide for this song.
+		const minScore = await resolveMinMatchScore(session.accountId);
+		const listResult = await computeVisibleSuggestionList(
+			{
 				accountId: session.accountId,
-				extra: { stage: "entitlement_check", songId: data.songId },
-			});
-			return null;
-		}
-		// Song not entitled (locked) — expected business state, not a failure.
-		if (!entitledCheck.data) {
-			return null;
-		}
-
-		// Fetch pairs, rankings, decisions, and strictness bar in parallel —
-		// rankings carry model rank so suggestions are ordered by the ranking
-		// pipeline rather than legacy raw score (MSR-25, A5, E7, C12).
-		const [pairsResult, rankingsResult, decisionsResult, minScore] =
-			await Promise.all([
-				getMatchPairsForSong(matchSnapshot.id, data.songId),
-				getMatchRankingsForSong(matchSnapshot.id, data.songId),
-				getMatchDecisionsForSongs(session.accountId, [data.songId]),
-				resolveMinMatchScore(session.accountId),
-			]);
-
-		if (Result.isError(pairsResult)) {
-			captureServerError(pairsResult.error, {
-				area: "matching",
-				operation: "get_song_suggestions",
-				accountId: session.accountId,
-				extra: { stage: "pairs", songId: data.songId },
-			});
-			return { snapshotId: matchSnapshot.id, matches: [] };
-		}
-		if (Result.isError(rankingsResult)) {
-			captureServerError(rankingsResult.error, {
-				area: "matching",
-				operation: "get_song_suggestions",
-				accountId: session.accountId,
-				extra: { stage: "rankings", songId: data.songId },
-			});
-			return { snapshotId: matchSnapshot.id, matches: [] };
-		}
-		if (Result.isError(decisionsResult)) {
-			captureServerError(decisionsResult.error, {
-				area: "matching",
-				operation: "get_song_suggestions",
-				accountId: session.accountId,
-				extra: { stage: "decisions", songId: data.songId },
-			});
-			return { snapshotId: matchSnapshot.id, matches: [] };
-		}
-
-		const decidedPairKeys = new Set(
-			decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-		);
-
-		const pairs: MatchPairInput[] = pairsResult.value.map((r) => ({
-			songId: r.song_id,
-			playlistId: r.playlist_id,
-			score: r.score,
-			fusedScore: r.fused_score,
-		}));
-
-		const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
-			songId: r.song_id,
-			playlistId: r.playlist_id,
-			rank: r.rank,
-			orderingScore: r.ordering_score,
-		}));
-
-		const subject = { orientation: "song" as const, songId: data.songId };
-		const visibleSuggestions = deriveVisibleSuggestions(
-			subject,
-			pairs,
-			rankings,
-			decidedPairKeys,
+				subject: { orientation: "song", songId: data.songId },
+				sourceSnapshotId: matchSnapshot.id,
+			},
 			minScore,
 		);
 
+		switch (listResult.kind) {
+			case "not-entitled":
+				// Song locked or revoked: expected business state, not a failure.
+				return null;
+			case "db-error":
+				captureServerError(listResult.error, {
+					area: "matching",
+					operation: "get_song_suggestions",
+					accountId: session.accountId,
+					extra: { stage: "visible_suggestions", songId: data.songId },
+				});
+				return null;
+			case "ok":
+				break;
+		}
+
+		const visibleSuggestions = listResult.list.suggestions;
 		if (visibleSuggestions.length === 0) {
 			return { snapshotId: matchSnapshot.id, matches: [] };
 		}

@@ -14,6 +14,8 @@ const {
 	mockGetNewItemIds,
 	mockUpsertMatchDecision,
 	mockResolveMinMatchScore,
+	mockFetchSongFilterMeta,
+	mockFetchPlaylistsMatchFilters,
 	mockRpc,
 	mockSelect,
 	mockFrom,
@@ -39,6 +41,8 @@ const {
 		// Default 0 = no read-time bar, so existing entitlement/ordering
 		// expectations are unaffected. clearAllMocks keeps this implementation.
 		mockResolveMinMatchScore: vi.fn().mockResolvedValue(0),
+		mockFetchSongFilterMeta: vi.fn(),
+		mockFetchPlaylistsMatchFilters: vi.fn(),
 		mockRpc: vi.fn(),
 		mockSelect,
 		mockFrom,
@@ -108,9 +112,41 @@ vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 		mockResolveMinMatchScore(...args),
 }));
 
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/filter-metadata-queries",
+	() => ({
+		fetchSongFilterMeta: (...args: unknown[]) =>
+			mockFetchSongFilterMeta(...args),
+		fetchSongsFilterMeta: vi.fn(),
+		fetchPlaylistsMatchFilters: (...args: unknown[]) =>
+			mockFetchPlaylistsMatchFilters(...args),
+	}),
+);
+
+/**
+ * Serves both playlist reads on the suggestions path: the ownership check
+ * (select.eq.in) and the name lookup (select.in). Every row is owned.
+ */
+function mockPlaylistRows(
+	rows: Array<{ id: string; name: string; spotify_id: string }>,
+) {
+	const inFn = vi.fn().mockResolvedValue({ data: rows, error: null });
+	mockSelect.mockReturnValue({ in: inFn, eq: () => ({ in: inFn }) });
+}
+
 describe("getSongSuggestions (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockFetchSongFilterMeta.mockResolvedValue(
+			Result.ok({
+				language: "en",
+				languageSecondary: null,
+				releaseYear: 2020,
+				vocalGender: null,
+				likedAt: Date.parse("2026-01-01T00:00:00Z"),
+			}),
+		);
+		mockFetchPlaylistsMatchFilters.mockResolvedValue(Result.ok(new Map()));
 	});
 
 	it("returns matches ordered by song-orientation model rank, not raw score", async () => {
@@ -152,15 +188,10 @@ describe("getSongSuggestions (billing-aware)", () => {
 		);
 		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
-		mockSelect.mockReturnValue({
-			in: vi.fn().mockResolvedValue({
-				data: [
-					{ id: "pl-1", name: "Playlist 1", spotify_id: "sp-pl-1" },
-					{ id: "pl-2", name: "Playlist 2", spotify_id: "sp-pl-2" },
-				],
-				error: null,
-			}),
-		});
+		mockPlaylistRows([
+			{ id: "pl-1", name: "Playlist 1", spotify_id: "sp-pl-1" },
+			{ id: "pl-2", name: "Playlist 2", spotify_id: "sp-pl-2" },
+		]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
@@ -239,12 +270,11 @@ describe("getSongSuggestions (billing-aware)", () => {
 		);
 		mockResolveMinMatchScore.mockResolvedValue(0.5);
 
-		mockSelect.mockReturnValue({
-			in: vi.fn().mockResolvedValue({
-				data: [{ id: "pl-5", name: "Playlist 5", spotify_id: "sp-pl-5" }],
-				error: null,
-			}),
-		});
+		mockPlaylistRows([
+			{ id: "pl-3", name: "Playlist 3", spotify_id: "sp-pl-3" },
+			{ id: "pl-4", name: "Playlist 4", spotify_id: "sp-pl-4" },
+			{ id: "pl-5", name: "Playlist 5", spotify_id: "sp-pl-5" },
+		]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
@@ -252,6 +282,46 @@ describe("getSongSuggestions (billing-aware)", () => {
 		expect(result?.matches[0].playlistName).toBe("Playlist 5");
 		// fitScore = fused_score = 0.7, not the raw score 0.8.
 		expect(result?.matches[0].fitScore).toBeCloseTo(0.7);
+	});
+
+	it("regression: drops playlists whose match filters hide the song, as the deck does", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		mockGetMatchPairsForSong.mockResolvedValue(
+			Result.ok([
+				{
+					song_id: "song-1",
+					playlist_id: "pl-pt",
+					score: 0.9,
+					fused_score: 0.9,
+				},
+				{
+					song_id: "song-1",
+					playlist_id: "pl-any",
+					score: 0.8,
+					fused_score: 0.8,
+				},
+			]),
+		);
+		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
+		// The song is English; pl-pt only accepts Portuguese songs.
+		mockFetchPlaylistsMatchFilters.mockResolvedValue(
+			Result.ok(
+				new Map([
+					["pl-pt", { version: 1, languages: { codes: ["pt"] } }],
+					["pl-any", null],
+				]),
+			),
+		);
+		mockPlaylistRows([
+			{ id: "pl-pt", name: "Portuguese", spotify_id: "sp-pl-pt" },
+			{ id: "pl-any", name: "Anything", spotify_id: "sp-pl-any" },
+		]);
+
+		const result = await getSongSuggestions({ data: { songId: "song-1" } });
+
+		expect(result?.matches.map((m) => m.playlistId)).toEqual(["pl-any"]);
 	});
 });
 
