@@ -53,12 +53,40 @@ describe("runClaimedAudioFeatureBackfillJob", () => {
 
 		const run = runClaimedAudioFeatureBackfillJob(
 			sweptJob({ status: "running" }),
+			"claim-a",
 		);
 		await vi.advanceTimersByTimeAsync(30_000);
 		await run;
 
 		const processOptions = vi.mocked(processBackfillJob).mock.calls[0]?.[2];
 		expect(processOptions?.signal?.aborted).toBe(true);
+	});
+
+	it("regression: fences heartbeat and settlement on this claim's token, not a per-process id", async () => {
+		vi.useFakeTimers();
+		let finish: (outcome: "skipped") => void = () => {};
+		vi.mocked(processBackfillJob).mockImplementation(
+			async () =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		vi.mocked(heartbeatBackfillJob).mockResolvedValue(Result.ok(undefined));
+
+		const run = runClaimedAudioFeatureBackfillJob(
+			sweptJob({ id: "j-claimed", status: "running" }),
+			"claim-b",
+		);
+		await vi.advanceTimersByTimeAsync(30_000);
+		finish("skipped");
+		await run;
+
+		expect(vi.mocked(processBackfillJob).mock.calls[0]?.[1]).toBe("claim-b");
+		expect(heartbeatBackfillJob).toHaveBeenCalledWith(
+			"j-claimed",
+			"claim-b",
+			expect.any(Number),
+		);
 	});
 });
 
