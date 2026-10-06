@@ -25,18 +25,21 @@ import { errorMessage } from "@/lib/shared/errors/error-message";
 import { workerConfig } from "./config";
 import { createPollLoop } from "./poll-loop";
 
-// Stable per-process id so the settlement RPCs can fence writes to this worker.
-const WORKER_ID = `audio-backfill-${hostname()}-${process.pid}`;
+// Each claim gets its own token (stored as locked_by) so the settlement RPCs
+// fence writes to that one claim. A per-process id could not tell a stale run
+// of a reclaimed job apart from the run that now owns it in the same process.
+const WORKER_PREFIX = `audio-backfill-${hostname()}-${process.pid}`;
 // Long enough to cover a download plus three rate-limited clip uploads; the
 // sweep reclaims anything whose lease expires (crash/kill).
 const CLAIM_LEASE_SECONDS = 900;
 
 export async function runClaimedAudioFeatureBackfillJob(
 	job: BackfillJob,
+	claimToken: string,
 ): Promise<void> {
 	const lease = new AbortController();
 	const heartbeat = setInterval(() => {
-		void heartbeatBackfillJob(job.id, WORKER_ID, CLAIM_LEASE_SECONDS)
+		void heartbeatBackfillJob(job.id, claimToken, CLAIM_LEASE_SECONDS)
 			.then((result) => {
 				if (Result.isError(result)) {
 					log.warn("audio-backfill-heartbeat-failed", {
@@ -60,7 +63,7 @@ export async function runClaimedAudioFeatureBackfillJob(
 	}, workerConfig.heartbeatIntervalMs);
 
 	try {
-		const outcome = await processBackfillJob(job, WORKER_ID, {
+		const outcome = await processBackfillJob(job, claimToken, {
 			proxy: workerConfig.ytdlpProxy,
 			signal: lease.signal,
 		});
@@ -86,23 +89,33 @@ export async function runClaimedAudioFeatureBackfillJob(
 // The claim RPC returns a batch (limit=1 here); the shared poll loop expects
 // a single-job claim, so unwrap the array to preserve the pre-refactor
 // "claim one, dispatch immediately" shape.
-const loop = createPollLoop<BackfillJob, DbError>({
+interface ClaimedBackfillJob {
+	job: BackfillJob;
+	claimToken: string;
+}
+
+const loop = createPollLoop<ClaimedBackfillJob, DbError>({
 	concurrency: () => audioFeatureBackfillConfig.concurrency,
 	claim: async () => {
-		const result = await claimBackfillJobs(WORKER_ID, 1, CLAIM_LEASE_SECONDS);
+		const claimToken = `${WORKER_PREFIX}-${crypto.randomUUID()}`;
+		const result = await claimBackfillJobs(claimToken, 1, CLAIM_LEASE_SECONDS);
 		if (Result.isError(result)) return result;
-		return Result.ok(result.value[0] ?? null);
+		const job = result.value[0];
+		return Result.ok(job ? { job, claimToken } : null);
 	},
-	jobId: (job) => job.id,
+	jobId: (claimed) => claimed.job.id,
 	onClaimError: (error) =>
 		log.error("audio-backfill-claim-error", { error: error.message }),
-	dispatch: (job, markDone) => {
-		void runClaimedAudioFeatureBackfillJob(job).finally(markDone);
+	dispatch: (claimed, markDone) => {
+		void runClaimedAudioFeatureBackfillJob(
+			claimed.job,
+			claimed.claimToken,
+		).finally(markDone);
 	},
 	pollIntervalMs: workerConfig.pollIntervalMs,
 	onLoopStart: () =>
 		log.info("audio-backfill-polling-start", {
-			workerId: WORKER_ID,
+			workerId: WORKER_PREFIX,
 			concurrency: audioFeatureBackfillConfig.concurrency,
 		}),
 	onLoopStop: () => log.info("audio-backfill-polling-stopped"),
