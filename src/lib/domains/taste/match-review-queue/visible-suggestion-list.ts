@@ -336,7 +336,9 @@ async function fetchEntitledSongIds(
 }
 
 /**
- * Derives the visible suggestion list for a queue item.
+ * Derives the visible suggestion list for a queue item, or for any subject in
+ * a snapshot (the liked-songs panel passes one without a queue item, so it
+ * applies the same entitlement, ownership and filter rules as the deck).
  *
  * The item must already have passed the ownership check (loaded via
  * fetchOwnedQueueItem or equivalent) — this function does NOT re-verify queue
@@ -361,7 +363,10 @@ async function fetchEntitledSongIds(
  *  { kind: 'db-error', error } — unexpected query failure.
  */
 export async function computeVisibleSuggestionList(
-	item: MatchReviewQueueItemDto,
+	item: Pick<
+		MatchReviewQueueItemDto,
+		"accountId" | "subject" | "sourceSnapshotId"
+	>,
 	strictnessMinScore: number,
 	nowMs?: number,
 ): Promise<VisibleSuggestionListResult> {
