@@ -27,6 +27,7 @@ import { claimHandleAndAdvance } from "@/lib/server/account-handle.functions";
 import {
 	getOnboardingSession,
 	markOnboardingComplete,
+	reopenOnboardingForDev,
 	saveOnboardingStep,
 } from "@/lib/server/onboarding.functions";
 import { errorMessage } from "@/lib/shared/errors/error-message";
@@ -174,6 +175,11 @@ export function DevWorkflowPanel() {
 					await router.navigate({ to: resolved.allowedPath });
 					setLastAction(`${currentStep} → complete (${result.status})`);
 				} else {
+					// saveOnboardingStep is a no-op on a finished account, so rewinding
+					// one has to reopen it first.
+					if (currentStep === "complete") {
+						await reopenOnboardingForDev();
+					}
 					await saveOnboardingStep({ data: { step: nextStep } });
 
 					// Fetch the authoritative session so the resolver can make routing
