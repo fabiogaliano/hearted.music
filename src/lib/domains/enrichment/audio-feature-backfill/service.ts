@@ -27,6 +27,7 @@ import {
 	summarizeYtDlpFailure,
 } from "@/lib/integrations/youtube-audio/yt-dlp";
 import { log } from "@/lib/observability/logger";
+import { resolveSongStageFailuresForAllAccounts } from "@/lib/platform/jobs/item-failures";
 import {
 	ReccoBeatsApiError,
 	ReccoBeatsRateLimitError,
@@ -348,14 +349,18 @@ export async function processBackfillJob(
 		});
 
 		// Clear any stale pre-backfill source_not_found suppression for this song.
-		await supabase
-			.from("job_item_failure")
-			.update({ resolved_at: new Date().toISOString() })
-			.eq("item_id", job.song_id)
-			.eq("item_type", "song")
-			.eq("stage", "audio_features")
-			.eq("is_terminal", false)
-			.is("resolved_at", null);
+		// Best-effort: a leftover row only delays the stage until suppress_until.
+		const resolved = await resolveSongStageFailuresForAllAccounts({
+			songId: job.song_id,
+			stage: "audio_features",
+		});
+		if (Result.isError(resolved)) {
+			log.warn("youtube-audio-backfill-resolve-failures-failed", {
+				jobId: job.id,
+				songId: job.song_id,
+				error: resolved.error.message,
+			});
+		}
 
 		await wakeEnrichmentForSong(job.song_id);
 		return "completed";

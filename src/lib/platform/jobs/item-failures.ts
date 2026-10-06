@@ -81,6 +81,33 @@ export async function resolveJobStageFailures(params: {
 }
 
 /**
+ * Resolve a song stage's unresolved non-terminal failures for every account.
+ * For song-global artifacts (audio features belong to the song, not to an
+ * account): once one path produced the artifact, no account's suppression
+ * for that stage is still meaningful.
+ */
+export async function resolveSongStageFailuresForAllAccounts(params: {
+	songId: string;
+	stage: string;
+}): Promise<Result<void, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { error } = await supabase
+		.from("job_item_failure")
+		.update({ resolved_at: new Date().toISOString() })
+		.eq("item_id", params.songId)
+		.eq("item_type", "song")
+		.eq("stage", params.stage)
+		.eq("is_terminal", false)
+		.is("resolved_at", null);
+	if (error) {
+		return Result.err(
+			new DatabaseError({ code: error.code, message: error.message }),
+		);
+	}
+	return Result.ok(undefined);
+}
+
+/**
  * Count unresolved non-terminal failures for a song's stage + code. Used by
  * the failure-policy module to escalate transient backoff windows.
  */
