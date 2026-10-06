@@ -329,6 +329,10 @@ export async function buildOneProposal(
 	const latest = latestResult.value;
 	const isStillLatestSnapshot = latest !== null && latest.id === snapshotId;
 
+	// Compare-and-set on `building`: a newer snapshot's build can stale this
+	// proposal between the latest-snapshot check above and this write, and a
+	// blind write would flip that `stale` back to `ready`. Zero rows matched
+	// means someone already finished or superseded it, which is not an error.
 	const readyResult = await db
 		.from("match_review_proposal")
 		.update({
@@ -336,7 +340,8 @@ export async function buildOneProposal(
 			total_subjects: subjects.length,
 			hidden_review_item_count: hiddenReviewItemCount,
 		})
-		.eq("id", proposalId);
+		.eq("id", proposalId)
+		.eq("status", "building");
 	if (readyResult.error) return Result.err(dbErr(readyResult.error));
 
 	return Result.ok(undefined);
