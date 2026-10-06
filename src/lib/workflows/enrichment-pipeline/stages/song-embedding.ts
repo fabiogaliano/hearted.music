@@ -55,11 +55,13 @@ export async function getReadyForSongEmbedding(
 	if (Result.isError(analysisResult)) {
 		throw new Error(
 			`Failed to check existing analyses: ${analysisResult.error.message}`,
+			{ cause: analysisResult.error },
 		);
 	}
 	if (Result.isError(embeddingsResult)) {
 		throw new Error(
 			`Failed to check existing embeddings: ${embeddingsResult.error.message}`,
+			{ cause: embeddingsResult.error },
 		);
 	}
 
