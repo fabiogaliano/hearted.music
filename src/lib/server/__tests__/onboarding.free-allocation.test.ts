@@ -39,6 +39,8 @@ vi.mock("@/lib/server/onboarding-session", () => ({
 }));
 
 const mockCompleteOnboarding = vi.fn();
+const mockEnterSongWalkthrough = vi.fn();
+const mockClearPhaseJobIds = vi.fn();
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	completeOnboarding: (...args: unknown[]) => mockCompleteOnboarding(...args),
 	getOrCreatePreferences: vi.fn(),
@@ -48,7 +50,9 @@ vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	SAVEABLE_ONBOARDING_STEPS: { parse: vi.fn(), safeParse: vi.fn() },
 	updateOnboardingStep: vi.fn(),
 	updateTheme: vi.fn(),
-	clearPhaseJobIds: vi.fn(),
+	clearPhaseJobIds: (...args: unknown[]) => mockClearPhaseJobIds(...args),
+	enterSongWalkthrough: (...args: unknown[]) =>
+		mockEnterSongWalkthrough(...args),
 }));
 
 const mockReadBillingState = vi.fn();
@@ -102,24 +106,28 @@ vi.mock("@/lib/content/landing/demo-matches", () => ({
 
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import {
+	commitDemoSongAndEnterWalkthrough,
 	markOnboardingComplete,
-	saveDemoSongSelection,
 } from "../onboarding.functions";
 
-describe("saveDemoSongSelection", () => {
+describe("commitDemoSongAndEnterWalkthrough", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockEnterSongWalkthrough.mockResolvedValue(Result.ok(null));
+		mockClearPhaseJobIds.mockResolvedValue(Result.ok({}));
+		mockLoadOnboardingSession.mockResolvedValue({
+			session: { status: "song-walkthrough" },
+		});
 	});
 
 	// Demo songs come from the curated landing manifest, not the user's library,
 	// so a valid pick is frequently a song the account does not like. Ownership
 	// is enforced post-onboarding (addSongToPlaylist/dismissSong), never here.
-	it("saves a demo song the account does not own", async () => {
+	it("enters the walkthrough with a demo song the account does not own", async () => {
 		const single = vi.fn().mockResolvedValue({
 			data: { id: "song-1" },
 			error: null,
 		});
-		const updateEq = vi.fn().mockResolvedValue({ error: null });
 
 		mockCreateAdminSupabaseClient.mockReturnValue({
 			from: (table: string) => {
@@ -130,19 +138,17 @@ describe("saveDemoSongSelection", () => {
 						}),
 					};
 				}
-				if (table === "user_preferences") {
-					return {
-						update: () => ({ eq: updateEq }),
-					};
-				}
 				throw new Error(`Unexpected table: ${table}`);
 			},
 		});
 
-		await expect(
-			saveDemoSongSelection({ data: { spotifyTrackId: "spotify:track:abc" } }),
-		).resolves.toEqual({ success: true });
-		expect(updateEq).toHaveBeenCalled();
+		await commitDemoSongAndEnterWalkthrough({
+			data: { spotifyTrackId: "spotify:track:abc" },
+		});
+		expect(mockEnterSongWalkthrough).toHaveBeenCalledWith(
+			"acct-free-1",
+			"song-1",
+		);
 	});
 
 	it("rejects a spotify id that has no matching song row", async () => {
@@ -165,10 +171,11 @@ describe("saveDemoSongSelection", () => {
 		});
 
 		await expect(
-			saveDemoSongSelection({
+			commitDemoSongAndEnterWalkthrough({
 				data: { spotifyTrackId: "spotify:track:missing" },
 			}),
 		).rejects.toThrow(/lookup_demo_song/);
+		expect(mockEnterSongWalkthrough).not.toHaveBeenCalled();
 	});
 });
 

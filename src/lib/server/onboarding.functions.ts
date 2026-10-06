@@ -306,58 +306,6 @@ export const saveThemePreference = createServerFn({ method: "POST" })
 	});
 
 /**
- * Returns library summary counts from DB (populated by extension sync).
- * Replaces the old Spotify API-based discovery that required OAuth tokens.
- */
-export const getLibrarySummary = createServerFn({ method: "GET" })
-	.middleware([authMiddleware])
-	.handler(async ({ context }): Promise<SyncStats> => {
-		const { session } = context;
-
-		const [songsResult, playlistsResult, playlistSongsResult, artistsResult] =
-			await Promise.all([
-				getLikedSongCount(session.accountId),
-				getPlaylistCount(session.accountId),
-				getPlaylistSongCount(session.accountId),
-				getLibraryArtistCount(session.accountId),
-			]);
-
-		if (Result.isError(songsResult)) {
-			throw onboardingError("load_songs_count", songsResult.error);
-		}
-		if (Result.isError(playlistsResult)) {
-			throw onboardingError("load_playlists_count", playlistsResult.error);
-		}
-		if (Result.isError(playlistSongsResult)) {
-			throw onboardingError(
-				"load_playlist_songs_count",
-				playlistSongsResult.error,
-			);
-		}
-		if (Result.isError(artistsResult)) {
-			throw onboardingError("load_artists_count", artistsResult.error);
-		}
-
-		return {
-			songs: songsResult.value,
-			playlists: playlistsResult.value,
-			playlistSongs: playlistSongsResult.value,
-			artists: artistsResult.value,
-		};
-	});
-
-/**
- * No-op sync executor - sync is now handled externally by the Chrome extension.
- * Kept for type compatibility; the extension POSTs data directly via /api/extension/sync.
- */
-export const executeSync = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator(z.object({ phaseJobIds: PhaseJobIdsSchema }))
-	.handler(async (): Promise<{ success: true }> => {
-		return { success: true };
-	});
-
-/**
  * Clears phaseJobIds so SyncingStep starts fresh when a new sync is triggered.
  * Called from InstallExtensionStep before navigating to the syncing step.
  */
@@ -544,47 +492,6 @@ const saveDemoSongSelectionInputSchema = z.object({
 });
 
 /**
- * Saves the user's demo song selection during onboarding.
- * Looks up the song by Spotify ID and stores the UUID in user_preferences.
- */
-export const saveDemoSongSelection = createServerFn({ method: "POST" })
-	.middleware([authMiddleware])
-	.inputValidator(saveDemoSongSelectionInputSchema)
-	.handler(async ({ data, context }): Promise<{ success: true }> => {
-		const { session } = context;
-		const supabase = createAdminSupabaseClient();
-
-		const { data: song, error: songError } = await supabase
-			.from("song")
-			.select("id")
-			.eq("spotify_id", data.spotifyTrackId)
-			.single();
-
-		if (songError || !song) {
-			throw onboardingError(
-				"lookup_demo_song",
-				songError ??
-					new Error(`Song not found for spotify_id: ${data.spotifyTrackId}`),
-			);
-		}
-
-		// No ownership check: the demo songs shown in pick-demo-song are a curated
-		// landing manifest, not the user's library, so most won't be in their
-		// liked_song rows. Real ownership is enforced later where it matters — in
-		// addSongToPlaylist/dismissSong post-onboarding.
-		const { error: updateError } = await supabase
-			.from("user_preferences")
-			.update({ demo_song_id: song.id })
-			.eq("account_id", session.accountId);
-
-		if (updateError) {
-			throw onboardingError("save_demo_song_selection", updateError);
-		}
-
-		return { success: true };
-	});
-
-/**
  * Atomic transition from `pick-demo-song` → `song-walkthrough`.
  *
  * Writes `demo_song_id` and `onboarding_step` in a single UPDATE so the row
@@ -617,9 +524,10 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 			);
 		}
 
-		// No ownership check: see saveDemoSongSelection. Demo songs come from the
-		// curated landing manifest, not the user's library, so requiring a
-		// liked_song row would reject most valid picks.
+		// No ownership check: demo songs come from the curated landing manifest,
+		// not the user's library, so requiring a liked_song row would reject most
+		// valid picks. Ownership is enforced post-onboarding, where it matters
+		// (addSongToPlaylist/dismissSong).
 		const updateResult = await enterSongWalkthrough(session.accountId, song.id);
 		if (Result.isError(updateResult)) {
 			throw onboardingError("commit_demo_song_walkthrough", updateResult.error);
