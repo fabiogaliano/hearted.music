@@ -4,7 +4,7 @@ import type { Json } from "@/lib/data/database.types";
 import { log } from "@/lib/observability/logger";
 import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
-import { DatabaseError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	type RetryOptions,
@@ -61,7 +61,42 @@ export type RunJobOutcome =
 	| {
 			status: "superseded";
 			workflow: "enrichment" | "match_snapshot_refresh";
+	  }
+	// The work ran but recording completion failed even after retries. The job
+	// stays running for the stale sweep; it is never requeued from here, since
+	// that would re-run work that already finished.
+	| {
+			status: "settle_failed";
+			workflow: "enrichment" | "match_snapshot_refresh";
+			error: string;
 	  };
+
+// The terminal settle is fenced on status + attempts, so retrying it is safe.
+const TERMINAL_SETTLE_RETRY: RetryOptions<DbError> = {
+	maxRetries: 3,
+	baseDelayMs: 200,
+	isRetryable: (error) => error instanceof DatabaseError,
+};
+
+function settleFailed(
+	job: Job,
+	actor: string,
+	workflow: "enrichment" | "match_snapshot_refresh",
+	error: DbError,
+): RunJobOutcome {
+	log.error("mark-completed-failed", {
+		actor,
+		jobId: job.id,
+		accountId: job.account_id,
+		error: error.message,
+	});
+	captureWorkerJobFailure(error, {
+		workflow,
+		jobId: job.id,
+		accountId: job.account_id,
+	});
+	return { status: "settle_failed", workflow, error: error.message };
+}
 
 // App-thrown errors consume the same retry budget as worker crashes: requeue
 // while attempts remain (the claim RPC already counted this attempt), and only
@@ -119,19 +154,12 @@ async function runEnrichmentJob(
 		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
 		const eventReason = isBlocked ? "failed" : "completed";
 
-		const completedResult = await settleEnrichmentJobTerminal(
-			job,
-			"completed",
-			eventReason,
+		const completedResult = await withRetry(
+			() => settleEnrichmentJobTerminal(job, "completed", eventReason),
+			TERMINAL_SETTLE_RETRY,
 		);
 		if (Result.isError(completedResult)) {
-			log.error("mark-completed-failed", {
-				actor,
-				jobId: job.id,
-				accountId: job.account_id,
-				error: completedResult.error.message,
-			});
-			throw new Error(completedResult.error.message);
+			return settleFailed(job, actor, "enrichment", completedResult.error);
 		}
 		if (completedResult.value === "superseded") {
 			return superseded(job, actor, "enrichment");
@@ -311,20 +339,23 @@ async function runMatchSnapshotRefreshJob(
 		if (result.status === "superseded") {
 			let settlement: SettlementStatus = "settled";
 
-			const completedResult = await settleMatchSnapshotRefreshJobTerminal(
-				job,
-				"completed",
-				"superseded",
-				null,
+			const completedResult = await withRetry(
+				() =>
+					settleMatchSnapshotRefreshJobTerminal(
+						job,
+						"completed",
+						"superseded",
+						null,
+					),
+				TERMINAL_SETTLE_RETRY,
 			);
 			if (Result.isError(completedResult)) {
-				log.error("mark-completed-failed", {
+				return settleFailed(
+					job,
 					actor,
-					jobId: job.id,
-					accountId: job.account_id,
-					error: completedResult.error.message,
-				});
-				throw new Error(completedResult.error.message);
+					"match_snapshot_refresh",
+					completedResult.error,
+				);
 			}
 			if (completedResult.value === "superseded") {
 				return superseded(job, actor, "match_snapshot_refresh");
@@ -360,20 +391,23 @@ async function runMatchSnapshotRefreshJob(
 
 		let settlement: SettlementStatus = "settled";
 
-		const completedResult = await settleMatchSnapshotRefreshJobTerminal(
-			job,
-			"completed",
-			"published",
-			result.snapshotId,
+		const completedResult = await withRetry(
+			() =>
+				settleMatchSnapshotRefreshJobTerminal(
+					job,
+					"completed",
+					"published",
+					result.snapshotId,
+				),
+			TERMINAL_SETTLE_RETRY,
 		);
 		if (Result.isError(completedResult)) {
-			log.error("mark-completed-failed", {
+			return settleFailed(
+				job,
 				actor,
-				jobId: job.id,
-				accountId: job.account_id,
-				error: completedResult.error.message,
-			});
-			throw new Error(completedResult.error.message);
+				"match_snapshot_refresh",
+				completedResult.error,
+			);
 		}
 		if (completedResult.value === "superseded") {
 			return superseded(job, actor, "match_snapshot_refresh");
