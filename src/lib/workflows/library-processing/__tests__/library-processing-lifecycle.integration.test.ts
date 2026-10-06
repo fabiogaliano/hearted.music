@@ -31,7 +31,12 @@ import {
 	updateHeartbeat,
 	updateJobProgress,
 } from "@/lib/platform/jobs/repository";
-import { findTerminalActiveRefs } from "../queries";
+import {
+	findTerminalActiveRefs,
+	getOrCreateLibraryProcessingState,
+	persistLibraryProcessingState,
+	swapActiveJobRef,
+} from "../queries";
 import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
@@ -385,5 +390,61 @@ describe.skipIf(!IS_LOCAL)("findTerminalActiveRefs", () => {
 		expect(mine.map((r) => [r.workflow, r.job.id])).toEqual([
 			["enrichment", completedId],
 		]);
+	});
+});
+
+describe.skipIf(!IS_LOCAL)("library_processing_state compare-and-set", () => {
+	async function load() {
+		const loaded = await getOrCreateLibraryProcessingState(account());
+		if (Result.isError(loaded)) throw loaded.error;
+		return loaded.value;
+	}
+
+	it("regression: refuses a write built from a read that another runtime has since overtaken", async () => {
+		const read = await load();
+		// Another runtime writes after our read; the trigger bumps updated_at.
+		await db()`UPDATE library_processing_state SET enrichment_requested_at = now() WHERE account_id = ${account()}`;
+
+		const marker = "2026-10-06T00:00:00.000Z";
+		const staleWrite = await persistLibraryProcessingState({
+			...read,
+			matchSnapshotRefresh: {
+				...read.matchSnapshotRefresh,
+				requestedAt: marker,
+			},
+		});
+		expect(staleWrite).toHaveOkValue(null);
+
+		const reread = await load();
+		const freshWrite = await persistLibraryProcessingState({
+			...reread,
+			matchSnapshotRefresh: {
+				...reread.matchSnapshotRefresh,
+				requestedAt: marker,
+			},
+		});
+		if (Result.isError(freshWrite)) throw freshWrite.error;
+		expect(freshWrite.value?.enrichment.requestedAt).toBe(
+			reread.enrichment.requestedAt,
+		);
+	});
+
+	it("swaps an active ref only from the value it expects", async () => {
+		await load();
+		const first = await seedPendingJob("enrichment");
+		// One active enrichment job per account (partial unique index); the
+		// refused swap never writes, so any existing job id serves here.
+		const second = await seedPendingJob("match_snapshot_refresh");
+
+		expect(
+			await swapActiveJobRef(account(), "enrichment", null, first),
+		).toHaveOkValue(true);
+		// The ref is no longer null, so a swap that expects null must not land.
+		expect(
+			await swapActiveJobRef(account(), "enrichment", null, second),
+		).toHaveOkValue(false);
+
+		const state = await load();
+		expect(state.enrichment.activeJobId).toBe(first);
 	});
 });

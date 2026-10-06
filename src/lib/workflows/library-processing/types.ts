@@ -118,6 +118,8 @@ export type LibraryProcessingApplyCause =
 export type LibraryProcessingApplyError =
 	| { kind: "load_state"; cause: DbError }
 	| { kind: "persist_state"; cause: DbError }
+	// Every compare-and-set attempt lost to a concurrent writer.
+	| { kind: "persist_conflict" }
 	| {
 			kind: "effect_ensure_failed";
 			effectKind: LibraryProcessingEffect["kind"];

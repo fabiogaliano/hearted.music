@@ -134,11 +134,17 @@ export async function findTerminalActiveRefs(): Promise<
 	return Result.ok(refs);
 }
 
+/**
+ * Compare-and-set write of a reconciled state: applies only while the row still
+ * carries the updated_at it was loaded with (a trigger bumps it on every write,
+ * settlement's raw SQL included). `ok(null)` means another runtime wrote first;
+ * the caller reloads and reconciles again instead of writing stale columns back.
+ */
 export async function persistLibraryProcessingState(
 	state: LibraryProcessingState,
-): Promise<Result<LibraryProcessingState, DbError>> {
+): Promise<Result<LibraryProcessingState | null, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseSingle(
+	const result = await fromSupabaseMaybe(
 		supabase
 			.from("library_processing_state")
 			.update({
@@ -152,9 +158,44 @@ export async function persistLibraryProcessingState(
 					state.matchSnapshotRefresh.activeJobId,
 			})
 			.eq("account_id", state.accountId)
+			.eq("updated_at", state.updatedAt)
 			.select()
-			.single(),
+			.maybeSingle(),
 	);
 	if (Result.isError(result)) return result;
-	return Result.ok(toState(result.value));
+	return Result.ok(result.value ? toState(result.value) : null);
+}
+
+/**
+ * Moves one workflow's active job ref from `from` to `to` only if it still
+ * holds `from`, so a settle or apply that landed meanwhile is never
+ * overwritten. `ok(false)` means the ref moved underneath; the ensured job
+ * still runs and settles on its own.
+ */
+export async function swapActiveJobRef(
+	accountId: string,
+	workflow: "enrichment" | "match_snapshot_refresh",
+	from: string | null,
+	to: string | null,
+): Promise<Result<boolean, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const column =
+		workflow === "enrichment"
+			? "enrichment_active_job_id"
+			: "match_snapshot_refresh_active_job_id";
+	const values =
+		workflow === "enrichment"
+			? { enrichment_active_job_id: to }
+			: { match_snapshot_refresh_active_job_id: to };
+	const update = supabase
+		.from("library_processing_state")
+		.update(values)
+		.eq("account_id", accountId);
+	const guarded =
+		from === null ? update.is(column, null) : update.eq(column, from);
+	const result = await fromSupabaseMaybe(
+		guarded.select("account_id").maybeSingle(),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(result.value !== null);
 }

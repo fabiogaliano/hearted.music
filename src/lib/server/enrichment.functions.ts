@@ -36,12 +36,10 @@ export const requestLibraryPhase1Enrichment = createServerFn({ method: "POST" })
 			);
 
 			if (Result.isError(outcome)) {
-				const message = outcome.error.cause
-					? String(
-							"message" in outcome.error.cause
-								? outcome.error.cause.message
-								: outcome.error.cause,
-						)
+				const cause =
+					"cause" in outcome.error ? outcome.error.cause : undefined;
+				const message = cause
+					? String("message" in cause ? cause.message : cause)
 					: outcome.error.kind;
 				// log.error never reaches Sentry with enableLogs:false; capture explicitly
 				captureServerError(outcome.error, {
