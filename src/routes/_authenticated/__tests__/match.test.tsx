@@ -106,7 +106,6 @@ beforeEach(() => {
 	vi.mocked(getActiveJobs).mockResolvedValue({
 		enrichment: null,
 		matchSnapshotRefresh: null,
-		firstMatchReady: false,
 		firstVisibleMatchReady: false,
 	} as never);
 	vi.mocked(isExtensionInstalled).mockResolvedValue(false);

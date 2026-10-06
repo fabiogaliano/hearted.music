@@ -58,7 +58,6 @@ async function renderMatchPage({
 	const activeJobs = {
 		enrichment: null,
 		matchSnapshotRefresh: null,
-		firstMatchReady: firstVisibleMatchReady,
 		firstVisibleMatchReady,
 	};
 	vi.mocked(getActiveJobs).mockResolvedValue(activeJobs as never);

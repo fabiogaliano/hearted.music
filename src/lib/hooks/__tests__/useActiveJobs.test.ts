@@ -113,7 +113,6 @@ function makeActiveJobs(overrides: Partial<ActiveJobs> = {}): ActiveJobs {
 	return {
 		enrichment: null,
 		matchSnapshotRefresh: null,
-		firstMatchReady: false,
 		firstVisibleMatchReady: false,
 		...overrides,
 	};
