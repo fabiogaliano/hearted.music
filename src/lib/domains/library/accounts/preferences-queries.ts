@@ -201,6 +201,28 @@ export function updateOnboardingStep(
 }
 
 /**
+ * Writes the demo song and the walkthrough step in one UPDATE, so the row can
+ * never be at `song-walkthrough` without a `demo_song_id`.
+ */
+export function enterSongWalkthrough(
+	accountId: string,
+	demoSongId: string,
+): Promise<Result<UserPreferences | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMaybe(
+		supabase
+			.from("user_preferences")
+			.update({
+				demo_song_id: demoSongId,
+				onboarding_step: "song-walkthrough",
+			})
+			.eq("account_id", accountId)
+			.select()
+			.maybeSingle(),
+	);
+}
+
+/**
  * Dev-only rewind of a completed account. Never call from a production path:
  * reopening onboarding lets completion (and its free allocation) run again.
  */
