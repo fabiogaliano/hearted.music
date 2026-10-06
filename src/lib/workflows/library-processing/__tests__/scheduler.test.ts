@@ -38,26 +38,14 @@ vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	getCount: (...args: unknown[]) => getLikedSongCountMock(...args),
 }));
 
-const getTargetPlaylistsMock = vi.fn();
-const getPlaylistSongsMock = vi.fn();
+const hasTargetOnlySongsMock = vi.fn();
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
-	getTargetPlaylists: (...args: unknown[]) => getTargetPlaylistsMock(...args),
-	getPlaylistSongs: (...args: unknown[]) => getPlaylistSongsMock(...args),
+	hasTargetOnlySongs: (...args: unknown[]) => hasTargetOnlySongsMock(...args),
 }));
 
 vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: () => ({
-		from: () => ({
-			select: () => ({
-				eq: () => ({
-					is: () => ({
-						in: () => ({ data: [], error: null }),
-					}),
-				}),
-			}),
-		}),
-	}),
+	createAdminSupabaseClient: () => ({}),
 }));
 
 import {
@@ -92,8 +80,7 @@ describe("scheduler", () => {
 			makeBillingState({ queueBand: "standard" }),
 		);
 		getLikedSongCountMock.mockResolvedValue(Result.ok(100));
-		getTargetPlaylistsMock.mockResolvedValue(Result.ok([]));
-		getPlaylistSongsMock.mockResolvedValue(Result.ok([]));
+		hasTargetOnlySongsMock.mockResolvedValue(Result.ok(false));
 		// Default: first visible subject already exists → billing priority applies.
 		hasFirstVisibleReviewSubjectMock.mockResolvedValue(Result.ok(true));
 	});
@@ -299,12 +286,7 @@ describe("scheduler", () => {
 		});
 
 		it("passes needsTargetSongEnrichment when target playlists have unmatched songs", async () => {
-			getTargetPlaylistsMock.mockResolvedValue(
-				Result.ok([{ id: "playlist-1" }]),
-			);
-			getPlaylistSongsMock.mockResolvedValue(
-				Result.ok([{ song_id: "song-a" }, { song_id: "song-b" }]),
-			);
+			hasTargetOnlySongsMock.mockResolvedValue(Result.ok(true));
 
 			ensureMatchSnapshotRefreshJobMock.mockResolvedValue(
 				Result.ok({ id: "refresh-job-2", status: "pending" }),
@@ -553,11 +535,30 @@ describe("scheduler", () => {
 		});
 
 		it("returns true when target playlists have songs not in liked library", async () => {
-			getTargetPlaylistsMock.mockResolvedValue(
-				Result.ok([{ id: "playlist-1" }]),
-			);
-			getPlaylistSongsMock.mockResolvedValue(
-				Result.ok([{ song_id: "song-a" }, { song_id: "song-b" }]),
+			hasTargetOnlySongsMock.mockResolvedValue(Result.ok(true));
+
+			const result = await deriveNeedsTargetSongEnrichment("acct-1", {
+				kind: "onboarding_target_selection_confirmed",
+				accountId: "acct-1",
+			});
+
+			expect(result).toBe(true);
+		});
+
+		it("returns false when every target song is already liked", async () => {
+			hasTargetOnlySongsMock.mockResolvedValue(Result.ok(false));
+
+			const result = await deriveNeedsTargetSongEnrichment("acct-1", {
+				kind: "onboarding_target_selection_confirmed",
+				accountId: "acct-1",
+			});
+
+			expect(result).toBe(false);
+		});
+
+		it("regression: schedules target enrichment when the probe fails instead of skipping it", async () => {
+			hasTargetOnlySongsMock.mockResolvedValue(
+				Result.err(new DatabaseError({ code: "PGRST301", message: "timeout" })),
 			);
 
 			const result = await deriveNeedsTargetSongEnrichment("acct-1", {
@@ -568,24 +569,8 @@ describe("scheduler", () => {
 			expect(result).toBe(true);
 		});
 
-		it("returns false when no target playlists exist", async () => {
-			getTargetPlaylistsMock.mockResolvedValue(Result.ok([]));
-
-			const result = await deriveNeedsTargetSongEnrichment("acct-1", {
-				kind: "onboarding_target_selection_confirmed",
-				accountId: "acct-1",
-			});
-
-			expect(result).toBe(false);
-		});
-
 		it("returns true for library_synced with trackMembershipChanged", async () => {
-			getTargetPlaylistsMock.mockResolvedValue(
-				Result.ok([{ id: "playlist-1" }]),
-			);
-			getPlaylistSongsMock.mockResolvedValue(
-				Result.ok([{ song_id: "song-x" }]),
-			);
+			hasTargetOnlySongsMock.mockResolvedValue(Result.ok(true));
 
 			const result = await deriveNeedsTargetSongEnrichment("acct-1", {
 				kind: "library_synced",
