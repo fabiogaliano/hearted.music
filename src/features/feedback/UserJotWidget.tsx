@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { env } from "@/env";
+import { clientEnv } from "@/env.public";
 import { userJotSignatureQueryOptions } from "./queries";
 import {
 	identifyUserJot,
@@ -10,7 +10,7 @@ import {
 
 // Build-time constant: Vite inlines VITE_* vars, so the widget is fully inert
 // (no SDK load, no button, no query) when no project ID is configured.
-const PROJECT_ID = env.VITE_USERJOT_PROJECT_ID;
+const PROJECT_ID = clientEnv.VITE_USERJOT_PROJECT_ID;
 
 interface UserJotWidgetProps {
 	accountId: string;
