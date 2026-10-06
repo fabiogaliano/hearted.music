@@ -515,6 +515,57 @@ describe("runClaimedJob", () => {
 		});
 	});
 
+	describe("terminal settle failure", () => {
+		const settleError = new DatabaseError({
+			code: "PGRST",
+			message: "connection reset",
+		});
+
+		it("regression: retries the completed settle instead of requeueing an already-executed job", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+				Result.ok(true),
+			);
+			vi.mocked(settleEnrichmentJobTerminal)
+				.mockResolvedValueOnce(Result.err(settleError))
+				.mockResolvedValueOnce(Result.ok("applied"));
+
+			const promise = runClaimedJob(
+				makeJob({ attempts: 1, max_attempts: 3 }),
+				"@test",
+				LIVE_LEASE,
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			const outcome = await promise;
+
+			expect(outcome.status).toBe("completed");
+			expect(settleEnrichmentJobTerminal).toHaveBeenCalledTimes(2);
+			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+		});
+
+		it("leaves the job for the stale sweep when the settle keeps failing", async () => {
+			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
+			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
+				Result.ok(true),
+			);
+			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+				Result.err(settleError),
+			);
+
+			const promise = runClaimedJob(
+				makeJob({ attempts: 1, max_attempts: 3 }),
+				"@test",
+				LIVE_LEASE,
+			);
+			await vi.advanceTimersByTimeAsync(60_000);
+			const outcome = await promise;
+
+			expect(outcome.status).toBe("settle_failed");
+			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("settlement", () => {
 		it("returns settled when apply succeeds on first attempt", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
