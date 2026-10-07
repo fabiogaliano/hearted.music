@@ -29,7 +29,7 @@ import { parseExtensionSyncJobProgress } from "@/lib/platform/jobs/extension-syn
 import { failJob, settleClaimedJob } from "@/lib/platform/jobs/lifecycle";
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { Job } from "@/lib/platform/jobs/repository";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
@@ -650,7 +650,10 @@ async function applyUserProfile(
 			.eq("id", accountId);
 		if (updateError) {
 			return Result.err(
-				`Failed to update account profile: ${updateError.message}`,
+				new DatabaseError({
+					code: updateError.code,
+					message: `Failed to update account profile: ${updateError.message}`,
+				}),
 			);
 		}
 	}
