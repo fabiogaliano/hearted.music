@@ -97,7 +97,7 @@ export interface AccountEventPayloadMap {
 
 	enrichment_stopped: {
 		jobId: string;
-		reason: "user_cancelled" | "failed" | "superseded";
+		reason: "user_cancelled" | "failed" | "superseded" | "blocked";
 		counts: { done: number; total: number; succeeded: number; failed: number };
 	};
 

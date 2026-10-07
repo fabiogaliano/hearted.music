@@ -2,11 +2,16 @@ import { Result } from "better-result";
 import postgres from "postgres";
 import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
-import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
 import type { Job, JobTransition } from "@/lib/platform/jobs/repository";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
+import {
+	accountEventsOf,
+	finalErrorOf,
+	finalStatusOf,
+	type WorkerOutcome,
+} from "./worker-outcome";
 
 // Worker-only SQL instance for transactional job finalizes
 const sql = postgres(env.DATABASE_URL, {
@@ -60,141 +65,82 @@ async function fenceTerminal(
 	tx: postgres.TransactionSql<Record<string, never>>,
 	job: Job,
 	status: "completed" | "failed",
-	errorMsg: string | undefined,
+	errorMsg: string | null,
 ): Promise<boolean> {
 	const rows = await tx`
 		UPDATE job
 		SET status = ${status},
 		    completed_at = now(),
-		    error = ${errorMsg ?? null}
+		    error = ${errorMsg}
 		WHERE id = ${job.id} AND status = 'running' AND attempts = ${job.attempts}
 		RETURNING id
 	`;
 	return rows.length > 0;
 }
 
-export async function finalizeMatchSnapshotRefreshJob(
+/**
+ * Ends this claim's job with `outcome`: the fenced terminal status and the
+ * outcome's account events commit together, so no event is ever emitted for
+ * a run another claim owns.
+ */
+export async function finalizeLibraryProcessingJob(
 	job: Job,
-	status: "completed" | "failed",
-	reason: "published" | "superseded" | "failed",
-	snapshotId: string | null,
-	errorMsg?: string,
+	outcome: WorkerOutcome,
 ): Promise<Result<JobTransition, DbError>> {
 	try {
-		const outcome = await sql.begin(async (tx) => {
-			if (!(await fenceTerminal(tx, job, status, errorMsg))) {
+		const transition = await sql.begin(async (tx) => {
+			if (
+				!(await fenceTerminal(
+					tx,
+					job,
+					finalStatusOf(outcome),
+					finalErrorOf(outcome),
+				))
+			) {
 				return "superseded" as const;
 			}
 
-			await tx`
-				INSERT INTO library_processing_state (account_id)
-				VALUES (${job.account_id})
-				ON CONFLICT (account_id) DO NOTHING
-			`;
-
-			if (reason === "published") {
-				const marker = job.satisfies_requested_at;
+			if (outcome.workflow === "match_snapshot_refresh") {
 				await tx`
-					UPDATE library_processing_state
-					SET match_snapshot_refresh_settled_at = CASE
-							WHEN match_snapshot_refresh_settled_at IS NOT NULL
-								AND match_snapshot_refresh_settled_at > COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
-							THEN match_snapshot_refresh_settled_at
-							ELSE COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
-						END,
-						match_snapshot_refresh_active_job_id = CASE
+					INSERT INTO library_processing_state (account_id)
+					VALUES (${job.account_id})
+					ON CONFLICT (account_id) DO NOTHING
+				`;
+
+				if (outcome.status === "published") {
+					const marker = job.satisfies_requested_at;
+					await tx`
+						UPDATE library_processing_state
+						SET match_snapshot_refresh_settled_at = CASE
+								WHEN match_snapshot_refresh_settled_at IS NOT NULL
+									AND match_snapshot_refresh_settled_at > COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
+								THEN match_snapshot_refresh_settled_at
+								ELSE COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
+							END,
+							match_snapshot_refresh_active_job_id = CASE
+								WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
+								ELSE match_snapshot_refresh_active_job_id
+							END
+						WHERE account_id = ${job.account_id}
+					`;
+				} else {
+					await tx`
+						UPDATE library_processing_state
+						SET match_snapshot_refresh_active_job_id = CASE
 							WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
 							ELSE match_snapshot_refresh_active_job_id
 						END
-					WHERE account_id = ${job.account_id}
-				`;
-			} else {
-				await tx`
-					UPDATE library_processing_state
-					SET match_snapshot_refresh_active_job_id = CASE
-						WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
-						ELSE match_snapshot_refresh_active_job_id
-					END
-					WHERE account_id = ${job.account_id}
-				`;
+						WHERE account_id = ${job.account_id}
+					`;
+				}
 			}
 
-			if (reason === "published" && snapshotId) {
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "match_snapshot_published",
-					payload: { orientation: "song", snapshotId },
-				});
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "match_snapshot_published",
-					payload: { orientation: "playlist", snapshotId },
-				});
-			} else if (reason === "failed") {
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "match_snapshot_failed",
-					payload: {
-						orientation: null,
-						snapshotId: snapshotId,
-						reason: errorMsg ?? "unknown_error",
-					},
-				});
-			} else {
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "active_jobs_changed",
-					payload: {},
-				});
+			for (const event of accountEventsOf(outcome)) {
+				await writeAccountEvent(tx, event);
 			}
 			return "applied" as const;
 		});
-		return Result.ok(outcome);
-	} catch (error) {
-		const message = errorMessage(error);
-		return Result.err(new DatabaseError({ code: "finalize_failed", message }));
-	}
-}
-
-export async function finalizeEnrichmentJob(
-	job: Job,
-	status: "completed" | "failed",
-	eventReason: "completed" | "user_cancelled" | "failed" | "superseded",
-	errorMsg?: string,
-): Promise<Result<JobTransition, DbError>> {
-	const parsed = parseJobProgress(job.type, job.progress);
-	const counts =
-		parsed.type === "unknown"
-			? { done: 0, total: 0, succeeded: 0, failed: 0 }
-			: {
-					done: parsed.progress.done,
-					total: parsed.progress.total,
-					succeeded: parsed.progress.succeeded,
-					failed: parsed.progress.failed,
-				};
-
-	try {
-		const outcome = await sql.begin(async (tx) => {
-			if (!(await fenceTerminal(tx, job, status, errorMsg))) {
-				return "superseded" as const;
-			}
-
-			if (eventReason === "completed") {
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "enrichment_completed",
-					payload: { jobId: job.id, counts },
-				});
-			} else {
-				await writeAccountEvent(tx, {
-					accountId: job.account_id,
-					type: "enrichment_stopped",
-					payload: { jobId: job.id, reason: eventReason, counts },
-				});
-			}
-			return "applied" as const;
-		});
-		return Result.ok(outcome);
+		return Result.ok(transition);
 	} catch (error) {
 		const message = errorMessage(error);
 		return Result.err(new DatabaseError({ code: "finalize_failed", message }));

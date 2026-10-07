@@ -66,6 +66,7 @@ export async function executeEnrichmentJob(
 		selectionMode: progress.selectionMode,
 		readyCount: result.readyCount,
 		doneCount: result.doneCount,
+		totalCount: result.totalCount,
 		succeededCount: result.succeededCount,
 		failedCount: result.failedCount,
 	};
