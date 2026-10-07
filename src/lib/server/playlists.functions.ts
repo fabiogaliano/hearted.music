@@ -118,9 +118,7 @@ async function enqueueFilterProposalRebuild(
 			accountId,
 			extra: {
 				stage: "post_save_invalidation",
-				...(failure.step === "resolve_visibility_config_hash" && {
-					step: failure.step,
-				}),
+				step: failure.step,
 				orientation: failure.orientation,
 				snapshotId,
 			},
