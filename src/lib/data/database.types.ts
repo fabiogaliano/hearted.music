@@ -4174,6 +4174,10 @@ export type Database = {
 					total: number;
 				}[];
 			};
+			get_match_filter_options: {
+				Args: { p_account_id: string };
+				Returns: Json;
+			};
 			get_match_pairs_for_playlist: {
 				Args: { p_playlist_id: string; p_snapshot_id: string };
 				Returns: {
