@@ -41,7 +41,6 @@ export type LibraryProcessingChange =
 			jobId: string;
 			requestSatisfied: boolean;
 			newCandidatesAvailable: boolean;
-			newCandidateSongIds: string[];
 	  }
 	| {
 			kind: "enrichment_stopped";
@@ -53,13 +52,11 @@ export type LibraryProcessingChange =
 			kind: "match_snapshot_published";
 			accountId: string;
 			jobId: string;
-			snapshotId?: string;
 	  }
 	| {
 			kind: "match_snapshot_failed";
 			accountId: string;
 			jobId: string;
-			snapshotId?: string | null;
 	  }
 	| {
 			kind: "match_snapshot_superseded";
