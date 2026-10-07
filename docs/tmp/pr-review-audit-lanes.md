@@ -121,3 +121,11 @@ Order #36 → #34 → #35 → #37, re-verified in a scratch worktree against the
 - **Names picked per lane, not by sibling scan.** `decode*` vs `parse*`, `get_match_*` vs `get_account_*`, plain interface vs `TaggedError`, mixed outcome verbs. One grep each would have settled them.
 - **Behavior deltas found after the split.** Every lane has one or two unnamed changes (error precedence, lyrical-wins, `.catch(null)`, miss-build-on-drift) because commits were cut before the diff was read against main.
 - **Fixups pushed as commits.** #37's 358fcaca is review fallout committed on top instead of squashed into the commit it corrects; the PR body then drifts from the log.
+
+## 6. Applied (2026-10-07, additive commits; history not rewritten)
+
+- **#34** `829c723`: `await Promise.all` in `invalidateMatchSnapshotQueries`; deck/summary exclusion explained on `invalidateEntitlementQueries`; all-families-here rule in the header; `src/lib/query-keys.ts` row in `module-boundaries.md`.
+- **#35** `387fff3`, `2680632`: `parseSaveMatchFilters` and `SUPPORTED_LANGUAGE_CODES` deleted (strict-schema pins kept against `MatchFiltersSaveSchema.safeParse`); `schemas.ts` and `languages.ts` headers fixed; both orderers tie-break by label; draft-edge test asserts the issue path. Validator-before-ownership precedence recorded in the PR body.
+- **#36**: no code change yet. Lyrical-wins, per-field `.catch(null)` and the per-row server parse recorded in the PR body. Import sort dropped: Biome's `includes` does not cover `scripts/`.
+- **#37** `43dd3cc`: `DeckEntryError` is a `TaggedError`; `deck-entry.test.ts` pins the clock with fake timers. Drift-triggers-build recorded in the PR body; body lists all nine commits.
+- **Not done:** commit-body rewrites and squashing `358fcaca` need a force-push, which this session could not perform; the bodies' content is in the PR descriptions instead. Every rename in §3 is held for the naming review.
