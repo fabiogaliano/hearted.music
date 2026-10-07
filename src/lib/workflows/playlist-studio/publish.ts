@@ -21,7 +21,6 @@ import {
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { isIntentEligible } from "@/lib/domains/playlists/intent-eligibility";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
-import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { upsertMatchDecisions } from "@/lib/domains/taste/song-matching/decision-queries";
 import { sanitizeGenrePills } from "@/lib/integrations/lastfm/whitelist";
@@ -122,11 +121,7 @@ export async function runPersistNewPlaylistConfig(
 
 	const genrePills = sanitizeGenrePills(data.genrePills);
 
-	const filtersParseResult = parseSaveMatchFilters(data.matchFilters);
-	if (Result.isError(filtersParseResult)) {
-		throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
-	}
-	const matchFilters = normalizeMatchFilters(filtersParseResult.value);
+	const matchFilters = normalizeMatchFilters(data.matchFilters);
 
 	const updateResult = await updatePlaylistMatchConfig(accountId, playlistId, {
 		matchIntent: effectiveIntent,
