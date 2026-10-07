@@ -23,6 +23,10 @@ import {
 } from "@/features/matching/queue-helpers";
 import { seedBakedDeckCardReads } from "@/features/matching/seed-deck-cards";
 import { useMatchReviewCard } from "@/features/matching/useMatchReviewCard";
+import type {
+	StartOrResumeMatchDeckResult,
+	SubmitMatchDeckActionResult,
+} from "@/lib/domains/taste/match-review-queue/deck-view";
 import {
 	reportSpotifyAuthFailure,
 	reportSpotifyAuthSuccess,
@@ -32,11 +36,7 @@ import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outco
 import { addToPlaylist } from "@/lib/extension/spotify-client";
 import { useLockedMutation } from "@/lib/hooks/useLockedMutation";
 import type { useAnalytics } from "@/lib/observability/useAnalytics";
-import {
-	type StartOrResumeMatchDeckResult,
-	type SubmitMatchDeckActionResult,
-	submitMatchDeckAction,
-} from "@/lib/server/match-deck.functions";
+import { submitMatchDeckAction } from "@/lib/server/match-deck.functions";
 import { fonts } from "@/lib/theme/fonts";
 import type {
 	CompletionStats,

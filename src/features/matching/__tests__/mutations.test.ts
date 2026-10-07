@@ -34,14 +34,16 @@ import {
 	patchPresentCacheOnSuggestionDismiss,
 	patchTailCacheOnSuggestionDismiss,
 } from "@/features/matching/mutations";
+import type {
+	MatchingSong,
+	MatchReviewItemRead,
+	SubmitMatchDeckActionResult,
+} from "@/lib/domains/taste/match-review-queue/deck-view";
 import { matchDeckKeys } from "@/lib/query-keys";
-import type { SubmitMatchDeckActionResult } from "@/lib/server/match-deck.functions";
 import type {
 	ListMatchReviewItemSuggestionsPage,
-	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
-import type { MatchingSong } from "@/lib/server/matching.functions";
 
 // submitMatchDeckAction returns a raw TEXT actionStatus + the fresh deck view;
 // dismiss-suggestion reads only the status (via the classifier) and discards the

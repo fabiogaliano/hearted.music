@@ -9,13 +9,13 @@ import type { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Matching } from "@/features/matching/Matching";
 import { useMatchDeckSession } from "@/features/matching/useMatchDeckSession";
+import type { MatchDeckView } from "@/lib/domains/taste/match-review-queue/deck-view";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import {
 	dashboardKeys,
 	matchDeckKeys,
 	matchReviewSummaryKeys,
 } from "@/lib/query-keys";
-import type { MatchDeckView } from "@/lib/server/match-deck.functions";
 import { QueueCardContent } from "./QueueCardContent";
 import type { CompletionStats, MatchViewMode } from "./types";
 

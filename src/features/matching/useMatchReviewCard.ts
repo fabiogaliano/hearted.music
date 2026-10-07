@@ -5,10 +5,10 @@ import {
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
 import type {
+	MatchingSongSuggestion,
 	MatchReviewItemRead,
-	MatchReviewItemSuggestionCursor,
-} from "@/lib/server/match-review-queue.functions";
-import type { MatchingSongSuggestion } from "@/lib/server/matching.functions";
+} from "@/lib/domains/taste/match-review-queue/deck-view";
+import type { MatchReviewItemSuggestionCursor } from "@/lib/server/match-review-queue.functions";
 import { isDeckActionSuccess } from "./deck-action-status";
 import { matchDeckCardSuggestionsInfiniteQueryOptions } from "./deck-queries";
 import { dismissSuggestionMutation } from "./mutations";

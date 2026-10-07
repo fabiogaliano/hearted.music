@@ -3,15 +3,15 @@ import {
 	mutationOptions,
 	type QueryClient,
 } from "@tanstack/react-query";
+import type {
+	MatchReviewItemRead,
+	SubmitMatchDeckActionResult,
+} from "@/lib/domains/taste/match-review-queue/deck-view";
 import { captureRouteError } from "@/lib/observability/sentry";
 import { matchDeckKeys } from "@/lib/query-keys";
-import {
-	type SubmitMatchDeckActionResult,
-	submitMatchDeckAction,
-} from "@/lib/server/match-deck.functions";
+import { submitMatchDeckAction } from "@/lib/server/match-deck.functions";
 import type {
 	ListMatchReviewItemSuggestionsPage,
-	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
 import { isDeckActionSuccess } from "./deck-action-status";

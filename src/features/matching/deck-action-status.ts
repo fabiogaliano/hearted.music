@@ -1,4 +1,4 @@
-import type { MatchDeckAction } from "@/lib/server/match-deck.functions";
+import type { MatchDeckAction } from "@/lib/domains/taste/match-review-queue/deck-view";
 
 /**
  * Per-action success-token classifier for submitMatchDeckAction's raw

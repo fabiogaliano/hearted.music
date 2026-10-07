@@ -2,6 +2,10 @@
  * Test fixtures with real data from Spotify account kapran0s (fabiogaliano)
  */
 
+import type {
+	ActiveMatchDeckRpcResult,
+	ReadMatchDeckCardRpcResult,
+} from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import type { Job } from "@/lib/platform/jobs/repository";
 import type { SpotifyPlaylistDTO } from "@/lib/workflows/spotify-sync/types";
 
@@ -277,5 +281,67 @@ export function makeJob(overrides: Partial<Job> = {}): Job {
 		created_at: "2026-07-08T00:00:00Z",
 		updated_at: "2026-07-08T00:00:00Z",
 		...overrides,
+	};
+}
+
+function deckSongSuggestionRows(n: number) {
+	return Array.from({ length: n }, (_, i) => ({
+		song_id: `song-${i + 1}`,
+		name: `S${i + 1}`,
+		artists: [`Artist ${i + 1}`],
+		album_name: null,
+		image_url: null,
+		spotify_id: `sp-${i + 1}`,
+		genres: [],
+		fit_score: 0.9 - i * 0.01,
+		visible_rank: i + 1,
+		model_rank: i + 1,
+	}));
+}
+
+/** read_match_deck_card `ready` payload for a playlist card with `suggestionCount` song rows. */
+export function deckPlaylistCardRpc(
+	suggestionCount: number,
+	total: number,
+): ReadMatchDeckCardRpcResult {
+	return {
+		status: "ready",
+		playlist: {
+			id: "pl-1",
+			spotify_id: "sp-pl-1",
+			name: "My Playlist",
+			match_intent: "chill",
+			image_url: "img",
+			song_count: 10,
+		},
+		suggestions: deckSongSuggestionRows(suggestionCount),
+		total_active_count: total,
+	};
+}
+
+/** Active start_or_resume_match_deck payload whose current card is `presentation`. */
+export function activeDeckRpc(
+	presentation: ReadMatchDeckCardRpcResult,
+): ActiveMatchDeckRpcResult {
+	return {
+		status: "active" as const,
+		version: 1,
+		accountId: "acct-1",
+		orientation: "playlist",
+		sessionId: "s1",
+		snapshotId: "snap-1",
+		visibilityConfigHash: "vc_playlist_0.5_rtf",
+		revision: 3,
+		progress: {
+			total: 5,
+			remaining: 4,
+			caughtUp: false,
+			hiddenReviewItemCount: 1,
+		},
+		itemIds: ["item-1", "item-2"],
+		cards: {
+			current: { itemId: "item-1", position: 0, presentation },
+			next: null,
+		},
 	};
 }

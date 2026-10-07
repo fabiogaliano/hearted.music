@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json } from "@/lib/data/database.types";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
 import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
@@ -13,68 +12,6 @@ import {
 } from "@/lib/domains/taste/song-matching/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-
-// ============================================================================
-// Shared types
-// ============================================================================
-
-export interface MatchingSong {
-	id: string;
-	spotifyId: string;
-	name: string;
-	artist: string;
-	album: string | null;
-	albumArtUrl: string | null;
-	genres: string[];
-	audioFeatures: {
-		tempo: number | null;
-		energy: number | null;
-		valence: number | null;
-	} | null;
-	analysis: {
-		headline: string;
-		compound_mood: string;
-		mood_description: string;
-		interpretation: string;
-		themes: Array<{ name: string; description: string }>;
-		journey: Array<{ section: string; mood: string; description: string }>;
-		key_lines: Array<{ line: string; insight: string }>;
-		sonic_texture: string;
-	} | null;
-}
-
-export interface MatchingPlaylistMatch {
-	playlist: {
-		id: string;
-		name: string;
-		description: string | null;
-		trackCount: number | null;
-		imageUrl: string | null;
-		spotifyId: string;
-	};
-	score: number;
-	rank: number | null;
-	factors: Json;
-}
-
-/** Playlist subject shape for playlist-orientation review cards. */
-export interface MatchingPlaylistForReview {
-	id: string;
-	spotifyId: string;
-	name: string;
-	description: string | null;
-	imageUrl: string | null;
-	trackCount: number | null;
-}
-
-/**
- * Song candidate row in playlist-mode: song data + fitScore for match percent display.
- * fitScore = strictnessScore(row) — never the reranker/ordering score (A5, E7).
- */
-export interface MatchingSongSuggestion {
-	song: MatchingSong;
-	fitScore: number;
-}
 
 // ============================================================================
 // Internal helpers

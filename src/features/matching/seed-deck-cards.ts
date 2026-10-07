@@ -9,7 +9,7 @@
 
 import type { QueryClient } from "@tanstack/react-query";
 import { readMatchDeckCardQueryOptions } from "@/features/matching/deck-queries";
-import type { MatchDeckCard } from "@/lib/server/match-deck.functions";
+import type { MatchDeckCard } from "@/lib/domains/taste/match-review-queue/deck-view";
 
 export async function seedBakedDeckCardReads(
 	queryClient: Pick<QueryClient, "setQueryData" | "prefetchQuery">,

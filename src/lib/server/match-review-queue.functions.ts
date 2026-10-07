@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { MatchingSongSuggestion } from "@/lib/domains/taste/match-review-queue/deck-view";
 import type {
 	QueueItemSongSuggestionCursor,
 	QueueItemSongSuggestionRow,
@@ -47,68 +48,12 @@ import {
 	resolvePreferredMatchReviewSummary,
 	type ServerMatchReviewSummaryResult,
 } from "./match-review-summary.server";
-import type {
-	MatchingPlaylistForReview,
-	MatchingPlaylistMatch,
-	MatchingSong,
-	MatchingSongSuggestion,
-} from "./matching.functions";
 
 const NoInputSchema = z.undefined();
 
 /** Tail page size for listMatchReviewItemSuggestions (P3). Larger than the first
  * page since it loads in the background/on scroll rather than blocking paint. */
 const PLAYLIST_CARD_TAIL_PAGE_SIZE = 24;
-
-// Typed item read result — co-located because it is owned by this file's read
-// path and nothing outside Phase 3 currently consumes it.
-export type MatchReviewItemRead =
-	| {
-			status: "ready";
-			itemId: string;
-			// Song orientation: review subject is a song; suggestions are playlists.
-			mode: "song";
-			reviewItem: MatchingSong;
-			suggestions: MatchingPlaylistMatch[];
-			/** min(suggestion count, SONG_CARD_SUGGESTION_CAP). Mirrors the playlist
-			 *  arm so both orientations share one pagination contract (R-D). */
-			suggestionTotal: number;
-			/** Always null in Phase 3: song suggestions are playlists and there is no
-			 *  song-mode tail endpoint, so the (song-keyed) cursor is never emitted. */
-			nextCursor: QueueItemSongSuggestionCursor | null;
-	  }
-	| {
-			status: "ready";
-			itemId: string;
-			// Playlist orientation: review subject is a playlist; suggestions are songs.
-			mode: "playlist";
-			reviewItem: MatchingPlaylistForReview;
-			// First page only (PLAYLIST_CARD_FIRST_PAGE_SIZE rows) — the rest pages in
-			// via listMatchReviewItemSuggestions.
-			suggestions: MatchingSongSuggestion[];
-			/** min(post-dismissal active count, PLAYLIST_CARD_SUGGESTION_CAP) — read on
-			 *  the cursorless first-page call only (see readQueueItemSongSuggestions). */
-			suggestionTotal: number;
-			/** Keyset cursor for the next tail page, or null when the first page was
-			 *  the whole (capped) suggestion set. */
-			nextCursor: QueueItemSongSuggestionCursor | null;
-	  }
-	| {
-			status: "unavailable";
-			itemId: string;
-			reason:
-				| "not-entitled"
-				| "missing-song"
-				| "snapshot-not-owned"
-				| "no-visible-suggestions"
-				| "already-resolved";
-			message: string;
-	  }
-	| {
-			status: "retryable-error";
-			itemId: string;
-			message: string;
-	  };
 
 /**
  * Ownership read that preserves the miss-vs-error distinction. `Result.ok(null)`
@@ -175,21 +120,6 @@ function mapSuggestionRow(
 		// fitScore = strictnessScore from the captured pair — never reranker/ordering (A5, E7).
 		fitScore: row.fitScore,
 	};
-}
-
-/**
- * Orientation-aware copy for the no-visible-suggestions card. A song-orientation
- * subject is matched against playlists; a playlist-orientation subject against
- * songs — so this must name the suggestion side. The UI renders itemData.message
- * verbatim, so a hard-coded "playlist matches" would mislabel a playlist card
- * whose missing suggestions are actually songs (A1 orientation correctness).
- */
-export function noVisibleSuggestionsMessage(
-	orientation: MatchOrientation,
-): string {
-	return orientation === "playlist"
-		? "No song matches are visible under your current settings."
-		: "No playlist matches are visible under your current settings.";
 }
 
 /** Cursor alias for the client — mirrors the domain layer's keyset cursor shape. */

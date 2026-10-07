@@ -7,13 +7,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { SubmitMatchDeckActionResult } from "@/lib/server/match-deck.functions";
+import type {
+	MatchingSong,
+	MatchReviewItemRead,
+	SubmitMatchDeckActionResult,
+} from "@/lib/domains/taste/match-review-queue/deck-view";
 import type {
 	ListMatchReviewItemSuggestionsPage,
-	MatchReviewItemRead,
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
-import type { MatchingSong } from "@/lib/server/matching.functions";
 
 const listMatchReviewItemSuggestionsMock = vi.fn();
 const submitMatchDeckActionMock = vi.fn();
