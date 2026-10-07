@@ -6,9 +6,10 @@
  * English label and optional aliases/endonyms to make search more user-friendly
  * (e.g. searching "Deutsch" finds German).
  *
- * Ordering for the picker is: selected first, then detected by count descending,
- * then catalog-only alphabetically by label. The `orderLanguageOptions` helper
- * implements this given a detected-count map.
+ * Two orderers share one rule set: detected languages by count descending, then
+ * catalog-only alphabetically by label, with label breaking count ties.
+ * `buildLanguageOptions` applies it to the server's filter-options payload;
+ * `orderLanguageOptions` applies it to the picker, with selected codes first.
  */
 
 import type {
@@ -159,7 +160,9 @@ export function buildLanguageOptions(
 			source: "detected",
 		});
 	}
-	detectedOptions.sort((a, b) => b.count - a.count);
+	detectedOptions.sort(
+		(a, b) => b.count - a.count || a.label.localeCompare(b.label),
+	);
 
 	const detectedCodes = new Set(detectedOptions.map((option) => option.code));
 	const catalogOnly: PlaylistMatchFilterOptions["languages"] = CATALOG.filter(
