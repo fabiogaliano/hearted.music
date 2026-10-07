@@ -1,6 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { QueueItemSongSuggestionRow } from "@/lib/domains/taste/match-review-queue/queries";
+import type { MatchReviewQueueItemDto } from "@/lib/domains/taste/match-review-queue/types";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { listMatchReviewItemSuggestions } from "../match-review-queue.functions";
 
@@ -17,7 +18,6 @@ const PLAYLIST_CARD_TAIL_PAGE_SIZE = 24;
 const {
 	mockAuthContext,
 	mockRpc,
-	mockFrom,
 	mockGetMatchResultDetailsForSong,
 	mockGetMatchDecisionsForSongs,
 	mockGetServedRanksForSong,
@@ -36,17 +36,14 @@ const {
 	mockCaptureException,
 	mockCaptureWithWaitUntil,
 	mockGetPlaylistById,
+	mockGetOwnedQueueItem,
 } = vi.hoisted(() => {
-	// Shared from mock — overridden per-test via mockFrom.mockImplementation
-	const mockFrom = vi.fn();
-
 	return {
 		mockAuthContext: {
 			session: { accountId: "acct-1" },
 			account: null,
 		},
 		mockRpc: vi.fn(),
-		mockFrom,
 		mockGetMatchResultDetailsForSong: vi.fn(),
 		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
@@ -65,6 +62,7 @@ const {
 		mockCaptureException: vi.fn(),
 		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 		mockGetPlaylistById: vi.fn(),
+		mockGetOwnedQueueItem: vi.fn(),
 	};
 });
 
@@ -107,7 +105,7 @@ vi.mock("@/lib/observability/posthog-server", () => ({
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
 		rpc: mockRpc,
-		from: mockFrom,
+		from: vi.fn(),
 	}),
 }));
 
@@ -168,126 +166,39 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 	fetchQueueItems: vi.fn(),
 	finishQueueItemAtomically: (...args: unknown[]) =>
 		mockFinishQueueItemAtomically(...args),
-	// mapItemToDto is a pure row→DTO mapper used inside fetchOwnedQueueItem.
-	// Inline implementation keeps the conversion in test context without needing
-	// vi.importActual, since the function has no DB dependencies.
-	mapItemToDto: (data: Record<string, unknown>) => ({
-		id: data.id,
-		sessionId: data.session_id,
-		accountId: data.account_id,
-		subject:
-			data.orientation === "song"
-				? { orientation: "song" as const, songId: data.song_id }
-				: { orientation: "playlist" as const, playlistId: data.playlist_id },
-		sourceSnapshotId: data.source_snapshot_id,
-		position: data.position,
-		state: data.state,
-		resolution: data.resolution,
-		sourceScore: data.source_fit_score,
-		wasNewAtEnqueue: data.was_new_at_enqueue,
-		presentedAt: data.presented_at,
-		resolvedAt: data.resolved_at,
-		visiblePairsCapturedAt: data.visible_pairs_captured_at ?? null,
-		createdAt: data.created_at,
-		updatedAt: data.updated_at,
-	}),
+	getOwnedQueueItem: (...args: unknown[]) => mockGetOwnedQueueItem(...args),
 }));
 
 // ---------------------------------------------------------------------------
 // Helpers for building test fixtures
 // ---------------------------------------------------------------------------
 
-// Matches the raw DB row shape that Supabase returns (snake_case).
-// fetchOwnedQueueItem reads these fields via mapItemToDto which requires
-// orientation and source_fit_score (the MSR-06 renamed column).
-const BASE_ITEM = {
+const BASE_ITEM: MatchReviewQueueItemDto = {
 	id: "item-1",
-	session_id: "session-1",
-	account_id: "acct-1",
-	song_id: "song-1",
-	playlist_id: null,
-	orientation: "song",
-	source_snapshot_id: "snap-1",
+	sessionId: "session-1",
+	accountId: "acct-1",
+	subject: { orientation: "song", songId: "song-1" },
+	sourceSnapshotId: "snap-1",
 	position: 0,
 	state: "pending",
 	resolution: null,
-	source_fit_score: 0.85,
-	was_new_at_enqueue: false,
-	visible_pairs_captured_at: null as string | null,
-	presented_at: null,
-	resolved_at: null,
-	created_at: "2026-01-01T00:00:00Z",
-	updated_at: "2026-01-01T00:00:00Z",
+	sourceScore: 0.85,
+	wasNewAtEnqueue: false,
+	presentedAt: null,
+	resolvedAt: null,
+	visiblePairsCapturedAt: null,
+	createdAt: "2026-01-01T00:00:00Z",
+	updatedAt: "2026-01-01T00:00:00Z",
 };
 
-function mockItemOwnership(item: Record<string, unknown> | null) {
-	mockFrom.mockImplementation((table: string) => {
-		if (table === "match_review_queue_item") {
-			return {
-				select: vi.fn().mockReturnValue({
-					eq: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							maybeSingle: vi
-								.fn()
-								.mockResolvedValue({ data: item, error: null }),
-						}),
-					}),
-				}),
-			};
-		}
-		if (table === "match_review_session") {
-			return {
-				select: vi.fn().mockReturnValue({
-					eq: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							maybeSingle: vi.fn().mockResolvedValue({
-								data: { strictness_min_score: 0 },
-								error: null,
-							}),
-						}),
-					}),
-				}),
-			};
-		}
-		if (table === "match_decision") {
-			return {
-				select: vi.fn().mockReturnValue({
-					eq: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockResolvedValue({
-								// default: 0 adds linked to item
-								count: 0,
-								error: null,
-							}),
-						}),
-					}),
-				}),
-			};
-		}
-		if (table === "playlist") {
-			return {
-				select: vi.fn().mockReturnValue({
-					eq: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							maybeSingle: vi.fn().mockResolvedValue({
-								data: { id: "pl-1" },
-								error: null,
-							}),
-						}),
-					}),
-				}),
-			};
-		}
-		return { select: vi.fn() };
-	});
-}
-
-const BASE_PLAYLIST_ITEM = {
+const BASE_PLAYLIST_ITEM: MatchReviewQueueItemDto = {
 	...BASE_ITEM,
-	orientation: "playlist",
-	song_id: null,
-	playlist_id: "pl-review",
+	subject: { orientation: "playlist", playlistId: "pl-review" },
 };
+
+function mockItemOwnership(item: MatchReviewQueueItemDto | null) {
+	mockGetOwnedQueueItem.mockResolvedValue(Result.ok(item));
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -427,23 +338,11 @@ describe("listMatchReviewItemSuggestions", () => {
 		// A transient read failure on the ownership check must NOT collapse to the
 		// empty-page "ownership miss" shape — that would look like "no more pages"
 		// and truncate the tail forever. It must surface as a retryable error.
-		mockFrom.mockImplementation((table: string) => {
-			if (table === "match_review_queue_item") {
-				return {
-					select: vi.fn().mockReturnValue({
-						eq: vi.fn().mockReturnValue({
-							eq: vi.fn().mockReturnValue({
-								maybeSingle: vi.fn().mockResolvedValue({
-									data: null,
-									error: { code: "PGRST301", message: "ownership boom" },
-								}),
-							}),
-						}),
-					}),
-				};
-			}
-			return { select: vi.fn() };
-		});
+		mockGetOwnedQueueItem.mockResolvedValue(
+			Result.err(
+				new DatabaseError({ code: "PGRST301", message: "ownership boom" }),
+			),
+		);
 
 		await expect(
 			listMatchReviewItemSuggestions({

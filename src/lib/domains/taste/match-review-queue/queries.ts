@@ -55,7 +55,7 @@ function toOrientation(s: string): MatchOrientation {
 /**
  * The subset of match_review_queue_item columns mapItemToDto consumes. Typing the
  * mapper to exactly these lets fetchQueueItems narrow its `select` to the DTO
- * columns (P1) while a full `*` row (fetchOwnedQueueItem) still satisfies it —
+ * columns (P1) while a full `*` row (getOwnedQueueItem) still satisfies it —
  * structural subtyping means a wider row is assignable to the narrower shape.
  */
 type MatchReviewQueueItemDtoColumns = Pick<
@@ -148,6 +148,29 @@ export function mapItemToDto(
 		createdAt: row.created_at,
 		updatedAt: row.updated_at,
 	};
+}
+
+/**
+ * Reads one queue item the account owns. `ok(null)` is a genuine miss (no row,
+ * or another account's item); `err` is an operational read failure, which the
+ * caller decides whether to degrade or surface — collapsing it to a miss can
+ * silently truncate a card's suggestion tail.
+ */
+export async function getOwnedQueueItem(
+	accountId: string,
+	itemId: string,
+): Promise<Result<MatchReviewQueueItemDto | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("match_review_queue_item")
+			.select("*")
+			.eq("id", itemId)
+			.eq("account_id", accountId)
+			.maybeSingle(),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(result.value ? mapItemToDto(result.value) : null);
 }
 
 /**

@@ -6,7 +6,6 @@
  */
 
 import { Result } from "better-result";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
@@ -34,7 +33,8 @@ import {
 } from "./deck-view";
 import { buildOneProposal } from "./proposal-builder";
 import { enqueueBuildProposals } from "./proposal-rebuild";
-import { type MatchOrientation, MatchOrientationSchema } from "./types";
+import { getOwnedQueueItem } from "./queries";
+import type { MatchOrientation } from "./types";
 import { resolveVisibilityConfigHash } from "./visibility-config-hash";
 
 /**
@@ -184,7 +184,7 @@ export async function resolveMatchDeck(
 	return Result.ok({ entry: "promotion_incomplete", view: BUILDING });
 }
 
-/** Reverse the frozen preset↔minScore map (mirrors service.ts:152-154). */
+/** Reverses STRICTNESS_MIN_SCORE; an unmapped minScore falls back to the default preset. */
 function presetForMinScore(minScore: number): string {
 	return (
 		Object.entries(STRICTNESS_MIN_SCORE).find(([, v]) => v === minScore)?.[0] ??
@@ -427,10 +427,6 @@ function reportDeckError(
 	});
 }
 
-function narrowOrientation(value: unknown): MatchOrientation | null {
-	return MatchOrientationSchema.safeParse(value).data ?? null;
-}
-
 /**
  * Loads the owning session/orientation/position for a not-captured card and
  * captures just this one item (reusing captureAheadForSession, window 1) so the
@@ -441,28 +437,25 @@ async function materializeOnDemand(
 	accountId: string,
 	itemId: string,
 ): Promise<{ orientation: MatchOrientation } | null> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("match_review_queue_item")
-		.select("session_id, orientation, position")
-		.eq("id", itemId)
-		.eq("account_id", accountId)
-		.maybeSingle();
-	if (error) {
-		reportDeckError(error, "read_match_deck_card_load_item", accountId, {
-			itemId,
-		});
+	const itemResult = await getOwnedQueueItem(accountId, itemId);
+	if (Result.isError(itemResult)) {
+		reportDeckError(
+			itemResult.error,
+			"read_match_deck_card_load_item",
+			accountId,
+			{ itemId },
+		);
 		return null;
 	}
-	if (!data) return null;
-	const orientation = narrowOrientation(data.orientation);
-	if (!orientation) return null;
+	const item = itemResult.value;
+	if (!item) return null;
+	const orientation = item.subject.orientation;
 
 	const captureResult = await captureAheadForSession({
 		accountId,
-		sessionId: data.session_id,
+		sessionId: item.sessionId,
 		orientation,
-		fromPosition: data.position,
+		fromPosition: item.position,
 		window: 1,
 	});
 	if (Result.isError(captureResult)) {

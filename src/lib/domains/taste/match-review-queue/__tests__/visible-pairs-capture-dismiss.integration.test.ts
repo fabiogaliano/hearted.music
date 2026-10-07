@@ -24,6 +24,7 @@ import {
 	addQueueItemDecisionAtomically,
 	dismissQueueItemAtomically,
 	dismissQueueItemSuggestionAtomically,
+	getOwnedQueueItem,
 } from "../queries";
 import type { VisibleSuggestion } from "../visible-suggestion-list";
 
@@ -618,3 +619,20 @@ describe.skipIf(!IS_LOCAL)(
 		});
 	},
 );
+
+describe.skipIf(!IS_LOCAL)("getOwnedQueueItem", () => {
+	it("reads the account's own item and misses the same item for any other account", async () => {
+		const { accountId, songs } = fixture();
+		const itemId = await makeItem({ orientation: "song", subjectId: songs[0] });
+
+		const owned = (await getOwnedQueueItem(accountId, itemId)).unwrap();
+		expect(owned).toMatchObject({
+			id: itemId,
+			accountId,
+			subject: { orientation: "song", songId: songs[0] },
+		});
+		expect(await getOwnedQueueItem(crypto.randomUUID(), itemId)).toHaveOkValue(
+			null,
+		);
+	});
+});
