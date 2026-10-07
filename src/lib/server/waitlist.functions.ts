@@ -40,14 +40,16 @@ export const joinWaitlist = createServerFn({ method: "POST" })
 			return { success: false, error: "Something went wrong. Try again." };
 		}
 
-		await sendWaitlistConfirmation(email).catch((err: unknown) => {
-			captureServerError(err, {
+		const sent = await sendWaitlistConfirmation(email).catch(
+			(err: unknown) => ({ ok: false as const, reason: err }),
+		);
+		if (!sent.ok) {
+			captureServerError(sent.reason, {
 				area: "waitlist",
 				operation: "join_waitlist",
 				extra: { stage: "confirmation_email" },
 			});
-			console.error("[waitlist] email failed:", err);
-		});
+		}
 
 		return { success: true };
 	});
