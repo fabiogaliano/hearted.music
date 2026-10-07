@@ -16,12 +16,16 @@ const {
 	mockSentryCapture,
 	mockEnqueueDeckJob,
 	mockResolveVisibilityConfigHash,
+	mockGetLatestMatchSnapshot,
+	mockHasLiveProposal,
 } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
 	mockCaptureWorkerEvent: vi.fn(),
 	mockSentryCapture: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
 	mockResolveVisibilityConfigHash: vi.fn(),
+	mockGetLatestMatchSnapshot: vi.fn(),
+	mockHasLiveProposal: vi.fn(),
 }));
 
 vi.mock("@sentry/bun", () => ({
@@ -39,6 +43,15 @@ vi.mock(
 			mockResolveVisibilityConfigHash(...args),
 	}),
 );
+
+vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
+	getLatestMatchSnapshot: (...args: unknown[]) =>
+		mockGetLatestMatchSnapshot(...args),
+}));
+
+vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
+	hasLiveProposal: (...args: unknown[]) => mockHasLiveProposal(...args),
+}));
 
 vi.mock("@/lib/workflows/match-snapshot-refresh/orchestrator", () => ({
 	executeMatchSnapshotRefresh: (...args: unknown[]) => mockExecute(...args),
@@ -295,14 +308,55 @@ describe("executeMatchSnapshotRefreshJob", () => {
 		expect(result.status).toBe("published");
 	});
 
-	it("does not enqueue deck jobs when nothing published (no-op refresh)", async () => {
-		mockExecute.mockResolvedValue({
+	describe("a no-op refresh", () => {
+		const noOpOutcome = {
 			status: "published",
 			result: makeResult({ published: false, snapshotId: null, noOp: true }),
-		} satisfies MatchSnapshotRefreshOutcome);
+		} satisfies MatchSnapshotRefreshOutcome;
 
-		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
+		beforeEach(() => {
+			mockExecute.mockResolvedValue(noOpOutcome);
+			mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		});
 
-		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+		it("enqueues nothing when the latest snapshot's proposals are already live", async () => {
+			mockHasLiveProposal.mockResolvedValue(Result.ok(true));
+
+			await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
+
+			expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+		});
+
+		it("regression: a rerun of a refresh that published and died before enqueueing builds the latest snapshot's missing proposals", async () => {
+			mockHasLiveProposal.mockImplementation(
+				async (key: { orientation: string }) =>
+					Result.ok(key.orientation === "playlist"),
+			);
+
+			await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
+
+			expect(mockHasLiveProposal).toHaveBeenCalledWith({
+				accountId: "acct-1",
+				orientation: "song",
+				snapshotId: "snap-1",
+				visibilityConfigHash: "vc_test_song",
+			});
+			expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
+			expect(mockEnqueueDeckJob).toHaveBeenCalledWith(
+				expect.objectContaining({
+					orientation: "song",
+					kind: "build_proposals",
+					idempotencyKey: "build:acct-1:song:snap-1:vc_test_song",
+				}),
+			);
+		});
+
+		it("enqueues nothing before any snapshot exists", async () => {
+			mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
+
+			await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
+
+			expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -201,6 +201,33 @@ export async function fetchActiveSession(
 }
 
 /**
+ * Whether a proposal for this exact (account, orientation, snapshot, visibility
+ * hash) key is ready or being built. `stale` and `failed` rows don't count:
+ * neither will ever serve the deck for this key.
+ */
+export async function hasLiveProposal(input: {
+	accountId: string;
+	orientation: MatchOrientation;
+	snapshotId: string;
+	visibilityConfigHash: string;
+}): Promise<Result<boolean, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const result = await fromSupabaseMaybe(
+		supabase
+			.from("match_review_proposal")
+			.select("id")
+			.eq("account_id", input.accountId)
+			.eq("orientation", input.orientation)
+			.eq("snapshot_id", input.snapshotId)
+			.eq("visibility_config_hash", input.visibilityConfigHash)
+			.in("status", ["building", "ready"])
+			.maybeSingle(),
+	);
+	if (Result.isError(result)) return result;
+	return Result.ok(result.value !== null);
+}
+
+/**
  * Returns the highest position already in the session, or -1 when the queue is
  * empty. The service adds 1 to get the next append start position.
  */
