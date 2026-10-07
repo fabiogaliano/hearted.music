@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
+import type { CheckoutIntent } from "@/features/billing/checkout-intent";
 import { makeBillingState as billing } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500, UNLIMITED_YEARLY } from "@/lib/domains/billing/offers";
 import { isCheckoutFulfilled } from "../checkout-fulfillment";

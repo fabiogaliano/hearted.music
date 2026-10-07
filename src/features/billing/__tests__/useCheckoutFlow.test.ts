@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadCheckoutIntent } from "@/features/onboarding/checkout-intent";
+import { loadCheckoutIntent } from "@/features/billing/checkout-intent";
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";
 

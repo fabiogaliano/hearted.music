@@ -8,7 +8,7 @@
 
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { clearCheckoutIntent } from "@/features/onboarding/checkout-intent";
+import { clearCheckoutIntent } from "@/features/billing/checkout-intent";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 
 export const Route = createFileRoute("/_authenticated/checkout/cancel")({

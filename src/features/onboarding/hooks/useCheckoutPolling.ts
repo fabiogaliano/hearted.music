@@ -8,7 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
-import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
+import type { CheckoutIntent } from "@/features/billing/checkout-intent";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { getBillingState } from "@/lib/server/billing.functions";
 

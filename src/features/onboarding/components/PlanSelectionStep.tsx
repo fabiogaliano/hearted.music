@@ -13,6 +13,12 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Kbd } from "@/components/ui/kbd";
+import {
+	type CheckoutIntent,
+	type CheckoutOffer,
+	clearCheckoutIntent,
+	loadCheckoutIntent,
+} from "@/features/billing/checkout-intent";
 import { useCheckoutFlow } from "@/features/billing/hooks/useCheckoutFlow";
 import { billingKeys } from "@/features/billing/query-keys";
 import { resolveSession } from "@/features/onboarding/step-resolver";
@@ -43,12 +49,6 @@ import {
 	type SyncStats,
 } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import {
-	type CheckoutIntent,
-	type CheckoutOffer,
-	clearCheckoutIntent,
-	loadCheckoutIntent,
-} from "../checkout-intent";
 import { useCheckoutPolling } from "../hooks/useCheckoutPolling";
 
 type ConfigState =

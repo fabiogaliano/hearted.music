@@ -10,7 +10,7 @@
  * must delegate here; no call site should reinvent the check.
  */
 
-import type { CheckoutIntent } from "@/features/onboarding/checkout-intent";
+import type { CheckoutIntent } from "@/features/billing/checkout-intent";
 import type { BillingState } from "@/lib/domains/billing/state";
 
 export function isCheckoutFulfilled(
