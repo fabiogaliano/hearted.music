@@ -2,9 +2,9 @@
 
 Base `main@2fda60d3`. Lines cite the PR head unless marked `(main)`. No PR touches an off-limits file; none overlaps the worker-outcome worktree's ten uncommitted files.
 
-Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `7169ddb3`, #36 `e37463bd`, #37 `358fcaca`. Every claim spot-checked below still holds on those heads; the only section that moved is #37 (three commits pushed since the first pass, see its **Status**). Short paths in this doc map to `src/lib/domains/taste/match-review-queue/` (deck), `src/lib/domains/enrichment/content-analysis/` (analysis), `src/lib/domains/billing/` and `src/lib/domains/taste/match-filters/` (billing lane).
+Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `7169ddb3`, #36 `e37463bd`, #37 `358fcaca`. Every claim spot-checked below still holds on those heads; the only section that moved is #37 (three commits pushed since the first pass, see its **Status**). **Snapshot scope.** §1–§5 describe those four heads and are kept as written; §6–§7 record what landed after them. Current heads: #34 `829c723`, #35 `deec868`, #36 `33bbadd`, #37 `ff81eb3`. Pre-amendment statements below (`DeckEntryError` as a plain interface, `decodeStoredAnalysis`, the `none` arm, `DeckRead`, `materialized`) are true of the snapshot heads and no longer of the branches; merge from the current heads, not the snapshot. "Finding #N" cites `docs/tmp/audit-followup-deep-refactor.md`, the audit these lanes follow up, which exists only in the maintainer's working tree. Short paths in this doc map to `src/lib/domains/taste/match-review-queue/` (deck), `src/lib/domains/enrichment/content-analysis/` (analysis), `src/lib/domains/billing/` and `src/lib/domains/taste/match-filters/` (billing lane).
 
-## 1. Verdicts
+## 1. Verdicts (first pass)
 
 | PR | Verdict | Reason |
 |---|---|---|
@@ -12,6 +12,8 @@ Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `716
 | #34 query keys | merge after amendments | Valid; one isolated behavior commit; three factories moved without a lib consumer; lib-root placement undocumented. |
 | #35 billing entitlement | merge after amendments | Valid; migration reuses the selector and is correctly granted; dead code left behind, names off the sibling pattern, one unnamed precedence change. |
 | #37 deck entry | merge after amendments | Was "wait": the 6th commit is now pushed and the body is filled. Commits 6–8 sound; `DeckEntryError` is still not a `TaggedError`; module still holds two operations; one stray fixup commit. |
+
+After §6–§7 every amendment below is landed on the branch, recorded in the PR body, or dropped with its reason beside it, and the §3 renames are landed. The one open item is squashing #37's `358fcaca`, which needs a force-push; all four PRs are otherwise mergeable at their current heads.
 
 ## 2. Per PR
 
@@ -31,7 +33,7 @@ Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `716
 1. Commit 1 body: name lyrical-wins, per-field `.catch(null)`, and the per-row server parse.
 2. Fix or remove `none` (`read-schema.ts:80-81`); prefer the hoisted shape.
 3. Rename `decodeStoredAnalysis` → `parseStoredAnalysis`.
-4. Sort imports in `lyrical-v30.ts` and `regen.ts`.
+4. ~~Sort imports in `lyrical-v30.ts` and `regen.ts`.~~ Dropped (§6): Biome's `includes` is `**/src/**/*`, so `scripts/` is never checked and the sort errors are not a CI failure.
 
 ### #34 `refactor/client-query-keys`
 
@@ -55,7 +57,7 @@ Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `716
 
 **Validity.** f6d663f3 preserves order, strings and newness writes (`song-entitlement.ts:105-123` vs `content-activation.ts:145-179 (main)`); `none` still issues no RPC (`:121-122`). 22065ec8 has an unnamed precedence change: the validator now rejects before the ownership read (`playlists.functions.ts:485-512 (main)`), so bad filters on an unowned playlist give ZodError, not "Playlist not found". 7169ddb3 is safe: `persistNewPlaylistConfig` already validates (`playlist-draft.functions.ts:125-127`).
 
-**Migration.** `get_match_filter_options` calls `select_entitled_data_enriched_liked_song_ids` (`migration:28`), no predicate copy; `SECURITY DEFINER`, `search_path = public` (`:17-24`); revokes from `PUBLIC, anon, authenticated` and grants `service_role` (`:90-94`), the harden-RPC pattern. Expand-only. jsonb is right here (three bounded aggregates, one round trip); #3 should still be set-returning. Partial `database.types.ts` entry (`:4177-4180`) is acceptable; fix generator drift separately. Follow-up: `get_account_release_year_counts` copies the same predicate and still feeds `taste-profile-queries.ts:218-224`.
+**Migration.** `get_match_filter_options` calls `select_entitled_data_enriched_liked_song_ids` (`migration:28`), no predicate copy; `SECURITY DEFINER`, `search_path = public` (`:17-24`); revokes from `PUBLIC, anon, authenticated` and grants `service_role` (`:90-94`), the harden-RPC pattern. Expand-only. jsonb is right here (three bounded aggregates, one round trip); the finding #3 RPC (`loadVisibilityInputs`) should still be set-returning. Partial `database.types.ts` entry (`:4177-4180`) is acceptable; fix generator drift separately. Follow-up: `get_account_release_year_counts` copies the same predicate and still feeds `taste-profile-queries.ts:218-224`.
 
 **Placement.** Billing is a domain here; `applyEntitlementToSongs` hides two reads, a switch and two RPCs behind three args. Provenance read inside billing is right (`BillingState` is the client model, `state.ts:70`). Shared wrappers with `unlimited-subscription-gift.ts:123` / `unlocks.ts:198` would need flags: correctly not done. `buildLanguageOptions` imports only types (`languages.ts:14-17`).
 
@@ -84,7 +86,7 @@ Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `716
 
 **Placement.** `deck-view.ts` passes (contract types + mappers hiding the status switch). `MatchOrientationSchema` in `types.ts:21-22` right. `deck-entry.ts` is misnamed for its contents (header admits both, `:1-6`). `DeckEntryError` is a plain interface (`deck-entry.ts:65-72`); every other domain error is a `TaggedError` (`song-matching/types.ts`, `lyrics/providers/*`).
 
-**Naming.** `entry: "active" | "promoted" | "no_snapshot" | "promotion_incomplete"` matches the analysis doc and the existing event vocabulary. `DeckRead = "entry" | "after_action"` (`deck-entry.ts:62`) replaced the proposed `knownVisibilityConfigHash`, rightly (after-action probes with a null hash); rename `DeckReadKind`. `DeckCardRead.materialized` is set whenever the cold path ran (`:74-77,559-561`): `coldPath`.
+**Naming.** `entry: "active" | "promoted" | "no_snapshot" | "promotion_incomplete"` matches the analysis doc and the existing event vocabulary. `DeckRead = "entry" | "after_action"` (`deck-entry.ts:62`) replaced the proposed `knownVisibilityConfigHash`, rightly (after-action probes with a null hash); rename `DeckReadKind`. `DeckCardRead.materialized` is set whenever the cold path ran (`:74-77,559-561`): `coldPath`. Landed as `DeckReadMode` and `materialization` (§7, `ff81eb3`): `XRead` is already the payload noun in this module (`SongRead`, `MatchReviewItemRead`) and behavior-switch unions end in `Mode`; the field holds `{ recovered; orientation } | null`, a record of the attempt whose `recovered` can be false, so a name stating where the read ran (`materialized`, `coldPath`) over-promised.
 
 **Smaller shape.** Two PRs: commits 1–3 (schemas, mergeable now) and 4–8 (moves). Leave `resolveDeckCard`/`materializeOnDemand` in the server fn; `deck-entry.ts` becomes entry + miss path (~400 lines) and `DeckCardRead` disappears.
 
@@ -104,7 +106,7 @@ Re-verified 2026-10-07 against the heads GitHub serves: #34 `b2fc0b29`, #35 `716
 2. **`get_match_filter_options`** → `get_account_match_filter_options` (recommended: five `get_account_*` siblings) · keep. TS `readMatchFilterOptions`: keep (`fromSupabaseRpc` reads in billing and match-review-queue use `read*`).
 3. **`decodeStoredAnalysis`** → `parseStoredAnalysis` (recommended: `parse*` is the only verb for this in `src/lib`) · keep. **`none`** → hoisted shape with `read: null` (recommended) · `unreadable` · keep.
 4. **`invalidateEntitlementQueries`** keep with comment (recommended) · `invalidateBillingQueries` (truer to the set, loses the glossary word).
-5. **`DeckEntry`** keep; `DeckRead` → `DeckReadKind`; `materialized` → `coldPath`.
+5. **`DeckEntry`** keep; `DeckRead` → `DeckReadKind`; `materialized` → `coldPath`. Landed as `DeckReadMode` and `materialization`, rationale under #37 **Naming**.
 6. **`buildLanguageOptions`** keep; **`getExperimentLyricalPrompt`** keep.
 
 Synonym pairs left: eligible/visible/undecided (untouched); orientation/mode (`deck-view.ts:90,104` uses `mode` inside the domain); activate/unlock/apply/grant; get/read/fetch (three verbs across 26 domain reads); options/aggregates/counts; analysis/content/read (`onboarding-session.ts:6`); refresh/invalidate; card/item; deck/queue/session.
@@ -113,7 +115,7 @@ Synonym pairs left: eligible/visible/undecided (untouched); orientation/mode (`d
 
 Order #36 → #34 → #35 → #37, re-verified in a scratch worktree against the current heads. The first three merge clean. #37 at 358fcaca still conflicts in the same three files, all import blocks: `QueueMatchSession.tsx`, `mutations.ts`, `__tests__/mutations.test.ts` (#34 re-points key imports to `@/lib/query-keys`; #37 re-points type imports to `deck-view.ts` and, in `mutations.ts`, drops the `SubmitMatchDeckActionResult` import #34 keeps). Each resolves by keeping both sides' import lines. After hand resolution on the first pass: typecheck showed only main's five baseline errors (`tunekit` not installed locally, `DevWorkflowPanel.tsx`), Biome clean, 49 tests across the four touched suites passed. **#37 rebases on #34**; no other pair overlaps. No two PRs change the same exported symbol; the only shared test file is `mutations.test.ts` (#34/#37, imports only).
 
-#3 `loadVisibilityInputs`: unconstrained. #35 leaves `readEntitledDataEnrichedSongIds` and every targeted `.in()` site; #37 leaves `queries.ts:409-423,897 (main)` untouched. `DeckJobSpec`: `deck-jobs.ts:240` unchanged.
+Finding #3 (`loadVisibilityInputs`, the remaining DB-derived `.in()` round trip): unconstrained by these lanes. #35 leaves `readEntitledDataEnrichedSongIds` and every targeted `.in()` site; #37 leaves `queries.ts:409-423,897 (main)` untouched. `DeckJobSpec`: `deck-jobs.ts:240` unchanged.
 
 ## 5. What the run got wrong
 
@@ -126,9 +128,9 @@ Order #36 → #34 → #35 → #37, re-verified in a scratch worktree against the
 
 - **#34** `829c723`: `await Promise.all` in `invalidateMatchSnapshotQueries`; deck/summary exclusion explained on `invalidateEntitlementQueries`; all-families-here rule in the header; `src/lib/query-keys.ts` row in `module-boundaries.md`.
 - **#35** `387fff3`, `2680632`: `parseSaveMatchFilters` and `SUPPORTED_LANGUAGE_CODES` deleted (strict-schema pins kept against `MatchFiltersSaveSchema.safeParse`); `schemas.ts` and `languages.ts` headers fixed; both orderers tie-break by label; draft-edge test asserts the issue path. Validator-before-ownership precedence recorded in the PR body.
-- **#36**: no code change yet. Lyrical-wins, per-field `.catch(null)` and the per-row server parse recorded in the PR body. Import sort dropped: Biome's `includes` does not cover `scripts/`.
+- **#36**: no code change in this pass (the rename and hoisted shape landed afterwards in `33bbadd`, §7). Lyrical-wins, per-field `.catch(null)` and the per-row server parse recorded in the PR body. Import sort dropped: Biome's `includes` does not cover `scripts/`.
 - **#37** `43dd3cc`: `DeckEntryError` is a `TaggedError`; `deck-entry.test.ts` pins the clock with fake timers. Drift-triggers-build recorded in the PR body; body lists all nine commits.
-- **Not done:** commit-body rewrites and squashing `358fcaca` need a force-push, which this session could not perform; the bodies' content is in the PR descriptions instead. Every rename in §3 is held for the naming review.
+- **Not done:** commit-body rewrites and squashing `358fcaca` need a force-push, which this session could not perform; the bodies' content is in the PR descriptions instead. Every rename in §3 was held for the naming review; §7 records them landing.
 
 ## 7. Renames landed (2026-10-07, all seven approved)
 
@@ -136,6 +138,6 @@ Order #36 → #34 → #35 → #37, re-verified in a scratch worktree against the
 |---|---|---|
 | #36 | `33bbadd` | `decodeStoredAnalysis` → `parseStoredAnalysis`; `StoredAnalysis` hoisted to `{ audioFeatures; read: StoredRead \| null }`, `none` arm gone |
 | #35 | `deec868` | `applyEntitlementToSongs` → `unlockEntitledSongs`; `activated_unlimited` → `unlocked_unlimited`; RPC `get_match_filter_options` → `get_account_match_filter_options` (migration renamed in place, unshipped) |
-| #37 | see branch | `DeckRead` → `DeckReadMode`; `DeckCardRead.materialized` → `materialization`; card cold path split into `deck-card.ts`; `reportDeckError` exported once from `deck-view.ts` |
+| #37 | `ff81eb3` | `DeckRead` → `DeckReadMode`; `DeckCardRead.materialized` → `materialization`; card cold path split into `deck-card.ts`; `reportDeckError` exported once from `deck-view.ts` |
 
 Grid rules that decided them, worth keeping: `parse*` for stored-shape parsing; `unlock` is the glossary verb for entitlement writes and `activate` is taken; `get_account_*` for per-account SQL aggregates; `XRead` is a payload noun and behavior-switch unions end in `Mode`; a module holds one operation unless two share knowledge beyond a helper.
