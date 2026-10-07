@@ -1,10 +1,7 @@
 import { Result } from "better-result";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
-import {
-	getLatestJobExecutionMeasurement,
-	type JobExecutionMeasurement,
-} from "@/lib/platform/jobs/execution-measurements";
+import { getLatestJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import { EnrichmentChanges, MatchSnapshotChanges } from "./changes";
@@ -16,6 +13,11 @@ import type {
 	LibraryProcessingChange,
 	LibraryProcessingWorkflow,
 } from "./types";
+import {
+	changeOf,
+	finalStatusOf,
+	workerOutcomeFromMeasurement,
+} from "./worker-outcome";
 
 function isLibraryProcessingWorkflow(
 	type: string,
@@ -92,55 +94,20 @@ export interface TerminalRefRecoveryResult {
 	outcome: Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>;
 }
 
-interface EnrichmentMeasurementDetails {
-	requestSatisfied: boolean;
-	newCandidatesAvailable: boolean;
-}
-
-function parseEnrichmentMeasurementDetails(
-	measurement: JobExecutionMeasurement,
-): EnrichmentMeasurementDetails | null {
-	if (measurement.workflow !== "enrichment") return null;
-	if (measurement.outcome !== "completed") return null;
-	const details = measurement.details;
-	if (!details || typeof details !== "object" || Array.isArray(details))
-		return null;
-
-	const d = details as Record<string, unknown>;
-	if (typeof d.requestSatisfied !== "boolean") return null;
-	if (typeof d.newCandidatesAvailable !== "boolean") return null;
-
-	return {
-		requestSatisfied: d.requestSatisfied,
-		newCandidatesAvailable: d.newCandidatesAvailable,
-	};
-}
-
-function isMatchSnapshotMeasurementValid(
-	measurement: JobExecutionMeasurement,
-): boolean {
-	if (measurement.workflow !== "match_snapshot_refresh") return false;
-	if (measurement.outcome !== "completed") return false;
-	const details = measurement.details;
-	if (!details || typeof details !== "object" || Array.isArray(details)) {
-		return false;
-	}
-
-	const d = details as Record<string, unknown>;
-	return typeof d.published === "boolean" && typeof d.isEmpty === "boolean";
-}
-
-// A completed job whose measurement outcome is "superseded" exited via the
-// cooperative cancellation path — not a failure. Recovery replays the
-// superseded change so settledAt stays unchanged and the stale workflow
-// can re-ensure a fresh job.
-function isMatchSnapshotMeasurementSuperseded(
-	measurement: JobExecutionMeasurement,
-): boolean {
-	return (
-		measurement.workflow === "match_snapshot_refresh" &&
-		measurement.outcome === "superseded"
-	);
+function conservativeChange(
+	workflow: LibraryProcessingWorkflow,
+	job: Job,
+): LibraryProcessingChange {
+	return workflow === "enrichment"
+		? EnrichmentChanges.stopped({
+				accountId: job.account_id,
+				jobId: job.id,
+				reason: "error",
+			})
+		: MatchSnapshotChanges.failed({
+				accountId: job.account_id,
+				jobId: job.id,
+			});
 }
 
 async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
@@ -148,92 +115,32 @@ async function buildTerminalRefChange(ref: TerminalActiveRef): Promise<{
 	strategy: TerminalRefRecoveryResult["recoveryStrategy"];
 }> {
 	const { workflow, job } = ref;
+	const conservative = {
+		change: conservativeChange(workflow, job),
+		strategy: "conservative_failure" as const,
+	};
 
-	if (job.status === "failed") {
-		return {
-			change:
-				workflow === "enrichment"
-					? EnrichmentChanges.stopped({
-							accountId: job.account_id,
-							jobId: job.id,
-							reason: "error",
-						})
-					: MatchSnapshotChanges.failed({
-							accountId: job.account_id,
-							jobId: job.id,
-						}),
-			strategy: "conservative_failure",
-		};
-	}
+	// A failed run's change is the conservative one, so its measurement could
+	// only confirm it.
+	if (job.status === "failed") return conservative;
 
 	const measurementResult = await getLatestJobExecutionMeasurement(job.id);
 	if (Result.isError(measurementResult) || !measurementResult.value) {
-		return {
-			change:
-				workflow === "enrichment"
-					? EnrichmentChanges.stopped({
-							accountId: job.account_id,
-							jobId: job.id,
-							reason: "error",
-						})
-					: MatchSnapshotChanges.failed({
-							accountId: job.account_id,
-							jobId: job.id,
-						}),
-			strategy: "conservative_failure",
-		};
+		return conservative;
 	}
 
-	if (workflow === "enrichment") {
-		const details = parseEnrichmentMeasurementDetails(measurementResult.value);
-		if (details) {
-			return {
-				change: EnrichmentChanges.completed({
-					accountId: job.account_id,
-					jobId: job.id,
-					requestSatisfied: details.requestSatisfied,
-					newCandidatesAvailable: details.newCandidatesAvailable,
-				}),
-				strategy: "completed_from_measurement",
-			};
-		}
-		return {
-			change: EnrichmentChanges.stopped({
-				accountId: job.account_id,
-				jobId: job.id,
-				reason: "error",
-			}),
-			strategy: "conservative_failure",
-		};
+	// Trust the measurement only when it describes the ending the job row
+	// records; a contradicting row is not this run's outcome.
+	const outcome = workerOutcomeFromMeasurement(measurementResult.value);
+	if (
+		outcome === null ||
+		outcome.workflow !== workflow ||
+		finalStatusOf(outcome) !== job.status
+	) {
+		return conservative;
 	}
 
-	if (isMatchSnapshotMeasurementSuperseded(measurementResult.value)) {
-		return {
-			change: MatchSnapshotChanges.superseded({
-				accountId: job.account_id,
-				jobId: job.id,
-			}),
-			strategy: "completed_from_measurement",
-		};
-	}
-
-	if (isMatchSnapshotMeasurementValid(measurementResult.value)) {
-		return {
-			change: MatchSnapshotChanges.published({
-				accountId: job.account_id,
-				jobId: job.id,
-			}),
-			strategy: "completed_from_measurement",
-		};
-	}
-
-	return {
-		change: MatchSnapshotChanges.failed({
-			accountId: job.account_id,
-			jobId: job.id,
-		}),
-		strategy: "conservative_failure",
-	};
+	return { change: changeOf(outcome), strategy: "completed_from_measurement" };
 }
 
 export async function recoverTerminalLibraryProcessingRefs(): Promise<
