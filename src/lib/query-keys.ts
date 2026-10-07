@@ -1,9 +1,11 @@
 /**
- * Every client cache key factory. Lib hooks (SSE, active-jobs polling) and
+ * Every client cache key factory, plus the named invalidation sets that more
+ * than one path must agree on. Lib hooks (SSE, active-jobs polling) and
  * features both invalidate these caches, so the keys live below both and
  * import nothing but types.
  */
 
+import type { QueryClient } from "@tanstack/react-query";
 import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
@@ -128,3 +130,42 @@ export const draftPreviewKeys = {
 			config.suggestionsOffset,
 		] as const,
 };
+
+/**
+ * Caches a finished match-snapshot refresh makes stale. Called on the
+ * running-to-idle edge of the refresh job (useActiveJobCompletionEffects).
+ */
+export async function invalidateMatchSnapshotQueries(
+	queryClient: QueryClient,
+	accountId: string,
+): Promise<void> {
+	// Deck read model: a mid-session snapshot refresh must re-run the bounded deck
+	// read so newly appended subjects surface. Appends are worker-driven now
+	// (append_sessions jobs), so there is no request-path sync to await first.
+	// deckRoot invalidates every (account, orientation) deck query; per-card
+	// read/suggestion keys hang off matchDeckKeys.card and are intentionally left
+	// alone — refetching an individual card mid-review would interrupt the user's
+	// current card.
+	queryClient.invalidateQueries({
+		queryKey: matchDeckKeys.deckRoot,
+	});
+
+	// Queue-aware summary: drives sidebar badge + dashboard CTA count. Using
+	// summariesRoot invalidates all orientation summary queries in one call.
+	queryClient.invalidateQueries({
+		queryKey: matchReviewSummaryKeys.summariesRoot,
+	});
+
+	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's
+	// reviewCount — without invalidating it the preview fan refreshes while the
+	// count stays stale. pageData keeps the route-loader cache fresh.
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.stats(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.pageData(accountId),
+	});
+	queryClient.invalidateQueries({
+		queryKey: dashboardKeys.matchPreviews(accountId),
+	});
+}

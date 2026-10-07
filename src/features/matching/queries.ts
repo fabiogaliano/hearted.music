@@ -1,10 +1,6 @@
-import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
-import {
-	dashboardKeys,
-	matchDeckKeys,
-	matchReviewSummaryKeys,
-} from "@/lib/query-keys";
+import { matchReviewSummaryKeys } from "@/lib/query-keys";
 import {
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
@@ -33,44 +29,5 @@ export function preferredMatchReviewSummaryQueryOptions(accountId: string) {
 		queryKey: matchReviewSummaryKeys.preferredSummary(accountId),
 		queryFn: () => getPreferredMatchReviewSummary({ data: undefined }),
 		staleTime: 60_000,
-	});
-}
-
-// Extracted so the invalidation sequence can be unit-tested without a
-// running React tree or real timers. The hook's falling-edge branch delegates
-// entirely to this function; runtime behavior is identical to the previous
-// inline async IIFE.
-export async function runMatchSnapshotRefreshEffects(
-	queryClient: QueryClient,
-	accountId: string,
-): Promise<void> {
-	// Deck read model: a mid-session snapshot refresh must re-run the bounded deck
-	// read so newly appended subjects surface. Appends are worker-driven now
-	// (append_sessions jobs), so there is no request-path sync to await first.
-	// deckRoot invalidates every (account, orientation) deck query; per-card
-	// read/suggestion keys hang off matchDeckKeys.card and are intentionally left
-	// alone — refetching an individual card mid-review would interrupt the user's
-	// current card.
-	queryClient.invalidateQueries({
-		queryKey: matchDeckKeys.deckRoot,
-	});
-
-	// Queue-aware summary: drives sidebar badge + dashboard CTA count. Using
-	// summariesRoot invalidates all orientation summary queries in one call.
-	queryClient.invalidateQueries({
-		queryKey: matchReviewSummaryKeys.summariesRoot,
-	});
-
-	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's
-	// reviewCount — without invalidating it the preview fan refreshes while the
-	// count stays stale. pageData keeps the route-loader cache fresh.
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.stats(accountId),
-	});
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.pageData(accountId),
-	});
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.matchPreviews(accountId),
 	});
 }
