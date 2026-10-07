@@ -18,7 +18,6 @@ import {
 	DEFAULT_ONBOARDING_STEP,
 	ONBOARDING_STEP_VALUES,
 	type OnboardingStep,
-	SAVEABLE_ONBOARDING_STEP_VALUES,
 	type SaveableOnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
@@ -45,9 +44,6 @@ import {
 export type UserPreferences = Tables<"user_preferences">;
 
 export const ONBOARDING_STEPS = z.enum(ONBOARDING_STEP_VALUES);
-export const SAVEABLE_ONBOARDING_STEPS = z.enum(
-	SAVEABLE_ONBOARDING_STEP_VALUES,
-);
 export type { OnboardingStep, SaveableOnboardingStep };
 
 /**

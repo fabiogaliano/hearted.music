@@ -22,13 +22,15 @@ import type {
 	OnboardingAuthPayload,
 	WalkthroughSong,
 } from "@/lib/domains/library/accounts/onboarding-session";
-import { clearsSyncPhaseJobIds } from "@/lib/domains/library/accounts/onboarding-steps";
+import {
+	clearsSyncPhaseJobIds,
+	SAVEABLE_ONBOARDING_STEPS,
+} from "@/lib/domains/library/accounts/onboarding-steps";
 import {
 	clearPhaseJobIds,
 	enterSongWalkthrough,
 	getOrCreatePreferences,
 	reopenOnboarding,
-	SAVEABLE_ONBOARDING_STEPS,
 	updateOnboardingStep,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";

@@ -7,8 +7,8 @@ import {
 	isOnboardingStepBefore,
 	ONBOARDING_STEP_VALUES,
 	SAVEABLE_ONBOARDING_STEP_VALUES,
+	SAVEABLE_ONBOARDING_STEPS,
 } from "../onboarding-steps";
-import { SAVEABLE_ONBOARDING_STEPS } from "../preferences-queries";
 
 describe("compareOnboardingSteps", () => {
 	it("returns negative when a comes before b", () => {

@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // The claim_handle RPC (supabase/migrations/*_create_claim_handle_rpc.sql)
 // hardcodes the "claim-handle and later" subset of this tuple in its not_ready
 // gate. SQL can't import this module, so when adding/renaming/reordering steps
@@ -37,6 +39,12 @@ export const SAVEABLE_ONBOARDING_STEP_VALUES = [
 
 export type SaveableOnboardingStep =
 	(typeof SAVEABLE_ONBOARDING_STEP_VALUES)[number];
+
+// Lives in this pure module because the saveOnboardingStep input validator
+// that uses it is not stripped from the client bundle.
+export const SAVEABLE_ONBOARDING_STEPS = z.enum(
+	SAVEABLE_ONBOARDING_STEP_VALUES,
+);
 
 export const DEFAULT_ONBOARDING_STEP = ONBOARDING_STEP_VALUES[0];
 
