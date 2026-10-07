@@ -220,7 +220,6 @@ async function runEnrichmentJob(
 			jobId: result.jobId,
 			requestSatisfied,
 			newCandidatesAvailable: result.newCandidatesAvailable,
-			newCandidateSongIds: result.newCandidateSongIds,
 		});
 		const settlement = await settleLibraryProcessing(change, {
 			actor,
@@ -430,7 +429,6 @@ async function runMatchSnapshotRefreshJob(
 		const change = MatchSnapshotChanges.published({
 			accountId: result.accountId,
 			jobId: result.jobId,
-			snapshotId: result.snapshotId ?? undefined,
 		});
 		settlement = await settleLibraryProcessing(change, {
 			actor,
@@ -504,7 +502,6 @@ async function runMatchSnapshotRefreshJob(
 		const change = MatchSnapshotChanges.failed({
 			accountId: job.account_id,
 			jobId: job.id,
-			snapshotId: null,
 		});
 		const settlement = await settleLibraryProcessing(change, {
 			actor,

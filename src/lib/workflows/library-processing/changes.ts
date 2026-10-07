@@ -18,7 +18,6 @@ export const MatchSnapshotChanges = {
 	published(opts: {
 		accountId: string;
 		jobId: string;
-		snapshotId?: string;
 	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_published" }> {
 		return { kind: "match_snapshot_published", ...opts };
 	},
@@ -26,7 +25,6 @@ export const MatchSnapshotChanges = {
 	failed(opts: {
 		accountId: string;
 		jobId: string;
-		snapshotId?: string | null;
 	}): Extract<LibraryProcessingChange, { kind: "match_snapshot_failed" }> {
 		return { kind: "match_snapshot_failed", ...opts };
 	},
@@ -53,7 +51,6 @@ export const EnrichmentChanges = {
 		jobId: string;
 		requestSatisfied: boolean;
 		newCandidatesAvailable: boolean;
-		newCandidateSongIds: string[];
 	}): Extract<LibraryProcessingChange, { kind: "enrichment_completed" }> {
 		return { kind: "enrichment_completed", ...opts };
 	},

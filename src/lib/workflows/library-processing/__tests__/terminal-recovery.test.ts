@@ -449,7 +449,6 @@ describe("recoverTerminalLibraryProcessingRefs", () => {
 			jobId: "j-comp",
 			requestSatisfied: true,
 			newCandidatesAvailable: false,
-			newCandidateSongIds: [],
 		});
 	});
 
