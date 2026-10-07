@@ -97,7 +97,8 @@ export interface AccountEventPayloadMap {
 
 	enrichment_stopped: {
 		jobId: string;
-		reason: "user_cancelled" | "failed" | "superseded" | "blocked";
+		/** failed: the run errored; blocked: it ran but attempted nothing while work was owed. */
+		reason: "failed" | "blocked";
 		counts: { done: number; total: number; succeeded: number; failed: number };
 	};
 

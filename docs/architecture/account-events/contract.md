@@ -103,7 +103,7 @@ interface AccountEventPayloadMap {
   };
   enrichment_stopped: {
     jobId: string;
-    reason: "user_cancelled" | "failed" | "superseded" | "blocked";
+    reason: "failed" | "blocked";
     counts: { done: number; total: number; succeeded: number; failed: number };
   };
   billing_state_changed: Record<string, never>; // empty; client refetches getBillingState()
