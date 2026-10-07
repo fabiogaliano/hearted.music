@@ -11,6 +11,7 @@ import {
 	type MatchSnapshotRefreshExecuteResult,
 	type MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshPlanSchema,
+	type MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { captureWorkerEvent } from "./posthog-capture";
 
@@ -160,33 +161,7 @@ export async function executeMatchSnapshotRefreshJob(
 		});
 	}
 
-	// Deck read model (plan §6, R2): a fresh published snapshot triggers proposal
-	// building for BOTH orientations; each build_proposals handler then chains
-	// append_sessions. Enqueued here at the worker boundary — the equivalent seam
-	// to the plan's "inside executeMatchSnapshotRefresh" — right after publish, so
-	// the pure orchestrator (with its unit-test mocks and 3 return points) stays
-	// analytics/side-effect free. Best-effort: the snapshot is already durable and
-	// the read path self-heals on a proposal miss, so an enqueue failure must not
-	// fail a completed match job.
-	if (result.published && result.snapshotId) {
-		const snapshotId = result.snapshotId;
-		const failures = await enqueueProposalRebuild(accountId, snapshotId);
-		for (const failure of failures) {
-			Sentry.captureException(failure.error, {
-				tags: {
-					area: "match_deck",
-					operation: failure.step,
-					runtime: "worker",
-				},
-				extra: {
-					accountId,
-					jobId: job.id,
-					orientation: failure.orientation,
-					snapshotId,
-				},
-			});
-		}
-	}
+	await enqueueDeckProposalBuilds(job, result);
 
 	return {
 		status: "published",
@@ -196,4 +171,37 @@ export async function executeMatchSnapshotRefreshJob(
 		isEmpty: result.isEmpty,
 		snapshotId: result.snapshotId,
 	};
+}
+
+/**
+ * Deck read model (plan §6, R2): a fresh published snapshot triggers proposal
+ * building for BOTH orientations; each build_proposals handler then chains
+ * append_sessions. Enqueued here at the worker boundary so the orchestrator
+ * stays side-effect free. Best-effort: the snapshot is already durable and the
+ * read path self-heals on a proposal miss, so an enqueue failure must not fail
+ * a completed match job.
+ */
+async function enqueueDeckProposalBuilds(
+	job: Job,
+	result: MatchSnapshotRefreshResult,
+): Promise<void> {
+	if (!result.published || !result.snapshotId) return;
+	const accountId = job.account_id;
+	const snapshotId = result.snapshotId;
+	const failures = await enqueueProposalRebuild(accountId, snapshotId);
+	for (const failure of failures) {
+		Sentry.captureException(failure.error, {
+			tags: {
+				area: "match_deck",
+				operation: failure.step,
+				runtime: "worker",
+			},
+			extra: {
+				accountId,
+				jobId: job.id,
+				orientation: failure.orientation,
+				snapshotId,
+			},
+		});
+	}
 }
