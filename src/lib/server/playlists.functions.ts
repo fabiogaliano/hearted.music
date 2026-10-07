@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json } from "@/lib/data/database.types";
 import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import {
 	getLanguageColumnsForSongs,
@@ -44,12 +43,11 @@ import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
 } from "@/lib/domains/taste/match-filters/types";
-import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
+import { enqueueProposalRebuild } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
 import {
 	hasFirstVisibleReviewSubject,
 	resolveReadinessPermissive,
 } from "@/lib/domains/taste/match-review-queue/readiness";
-import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	canonicalizeGenre,
@@ -111,44 +109,22 @@ async function enqueueFilterProposalRebuild(
 		return;
 	}
 	const snapshotId = snapshotResult.value.id;
-	for (const orientation of ["song", "playlist"] as const) {
-		// The filter change that triggered this rebuild already landed, so the hash
-		// computed here is the NEW one — folding it into the idempotency key (M1)
-		// lets this enqueue win against an in-flight build of the stale filters
-		// instead of deduping away and leaving an active session stuck on them.
-		const hashResult = await resolveVisibilityConfigHash(
+	// The filter change already landed, so the rebuild is keyed on the new hash.
+	const failures = await enqueueProposalRebuild(accountId, snapshotId);
+	for (const failure of failures) {
+		captureServerError(failure.error, {
+			area: "playlists",
+			operation,
 			accountId,
-			orientation,
-		);
-		if (Result.isError(hashResult)) {
-			captureServerError(hashResult.error, {
-				area: "playlists",
-				operation,
-				accountId,
-				extra: {
-					stage: "post_save_invalidation",
-					step: "resolve_visibility_config_hash",
-					orientation,
-					snapshotId,
-				},
-			});
-			continue;
-		}
-		const enqueued = await enqueueDeckJob({
-			accountId,
-			orientation,
-			kind: "build_proposals",
-			idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${hashResult.value.hash}`,
-			payload: { snapshotId } as Json,
+			extra: {
+				stage: "post_save_invalidation",
+				...(failure.step === "resolve_visibility_config_hash" && {
+					step: failure.step,
+				}),
+				orientation: failure.orientation,
+				snapshotId,
+			},
 		});
-		if (Result.isError(enqueued)) {
-			captureServerError(enqueued.error, {
-				area: "playlists",
-				operation,
-				accountId,
-				extra: { stage: "post_save_invalidation", orientation, snapshotId },
-			});
-		}
 	}
 }
 

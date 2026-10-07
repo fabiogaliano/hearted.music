@@ -180,7 +180,8 @@ export function reconcileLibraryProcessing(
 		case "playlist_management_session_flushed": {
 			// Only membership and scoring changes require a full snapshot recompute.
 			// Read-time filter changes (predicates evaluated at queue-read time) do not
-			// invalidate the snapshot — those are handled by syncing active sessions.
+			// invalidate the snapshot; the playlist server fns enqueue a proposal
+			// rebuild for them directly (enqueueProposalRebuild).
 			if (change.targetMembershipChanged || change.scoringConfigChanged) {
 				matchSnapshotRefresh = advanceRequestedAt(
 					matchSnapshotRefresh,

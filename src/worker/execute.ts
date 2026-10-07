@@ -1,9 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
-import { enqueueDeckJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
-import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
-import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
+import { enqueueProposalRebuild } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
 import { log } from "@/lib/observability/logger";
 import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
@@ -237,43 +234,21 @@ export async function executeMatchSnapshotRefreshJob(
 	// fail a completed match job.
 	if (result.published && result.snapshotId) {
 		const snapshotId = result.snapshotId;
-		const orientations: MatchOrientation[] = ["song", "playlist"];
-		for (const orientation of orientations) {
-			// Fold the current visibility hash into the idempotency key (M1) so a
-			// build enqueued here can't dedupe against an in-flight build of stale
-			// filters/strictness — the whole point of "matching the plan's key".
-			const hashResult = await resolveVisibilityConfigHash(
-				accountId,
-				orientation,
-			);
-			if (Result.isError(hashResult)) {
-				Sentry.captureException(hashResult.error, {
-					tags: {
-						area: "match_deck",
-						operation: "resolve_visibility_config_hash",
-						runtime: "worker",
-					},
-					extra: { accountId, jobId: job.id, orientation, snapshotId },
-				});
-				continue;
-			}
-			const enqueued = await enqueueDeckJob({
-				accountId,
-				orientation,
-				kind: "build_proposals",
-				idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${hashResult.value.hash}`,
-				payload: { snapshotId } as Json,
+		const failures = await enqueueProposalRebuild(accountId, snapshotId);
+		for (const failure of failures) {
+			Sentry.captureException(failure.error, {
+				tags: {
+					area: "match_deck",
+					operation: failure.step,
+					runtime: "worker",
+				},
+				extra: {
+					accountId,
+					jobId: job.id,
+					orientation: failure.orientation,
+					snapshotId,
+				},
 			});
-			if (Result.isError(enqueued)) {
-				Sentry.captureException(enqueued.error, {
-					tags: {
-						area: "match_deck",
-						operation: "enqueue_build_proposals",
-						runtime: "worker",
-					},
-					extra: { accountId, jobId: job.id, orientation, snapshotId },
-				});
-			}
 		}
 	}
 
