@@ -105,7 +105,7 @@ vi.mock("@/lib/domains/billing/liked-song-access-grant", () => ({
 	maybeGrantLikedSongAccessAfterSync: async () => undefined,
 }));
 
-const { runExtensionSyncJob } = await import("../runner");
+const { runExtensionSyncJob } = await import("../extension-sync-runner");
 const { runPhase } = await import("@/lib/workflows/spotify-sync/sync-helpers");
 
 // A lease the heartbeat never reports lost.

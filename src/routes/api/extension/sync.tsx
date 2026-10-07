@@ -23,7 +23,7 @@
  * as-is under an extension that matches the wire format, and the Bun worker
  * sniffs the gzip magic bytes and decompresses before parsing.
  *
- * The Bun worker (src/lib/workflows/extension-sync/runner.ts) claims the parent
+ * The Bun worker (src/worker/extension-sync-runner.ts) claims the parent
  * job, downloads + decompresses (if needed) + validates the payload, and runs
  * the phases with no subrequest/CPU ceiling. Cost here is constant (~5
  * subrequests) regardless of library size.
