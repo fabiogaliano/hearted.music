@@ -19,6 +19,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type {
@@ -321,18 +322,13 @@ async function fetchEntitledSongIds(
 	songIds: readonly string[],
 ): Promise<Result<Set<string>, DbError>> {
 	if (songIds.length === 0) return Result.ok(new Set());
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase.rpc(
-		"select_entitled_data_enriched_liked_song_ids",
-		{ p_account_id: accountId },
+	const result = await readEntitledDataEnrichedSongIds(
+		createAdminSupabaseClient(),
+		accountId,
+		[...songIds],
 	);
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	const entitled = new Set((data ?? []).map((r) => r.song_id));
-	return Result.ok(new Set(songIds.filter((id) => entitled.has(id))));
+	if (Result.isError(result)) return result;
+	return Result.ok(new Set(result.value));
 }
 
 /**

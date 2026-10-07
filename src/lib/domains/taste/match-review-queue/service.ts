@@ -14,6 +14,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
@@ -152,23 +153,13 @@ export async function getOrderedUndecidedSongIds(
 		minScoreOverride ?? resolveMinMatchScore(accountId),
 		getMatchResults(snapshotId),
 		getNewItemIds(accountId, "song"),
-		createAdminSupabaseClient().rpc(
-			"select_entitled_data_enriched_liked_song_ids",
-			{ p_account_id: accountId },
-		),
+		readEntitledDataEnrichedSongIds(createAdminSupabaseClient(), accountId),
 		fetchTargetPlaylistFilters(accountId),
 	]);
 	if (Result.isError(matchResultsResult)) return matchResultsResult;
 	if (Result.isError(newSongIdsResult)) return newSongIdsResult;
 	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
-	if (entitledResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: entitledResult.error.code,
-				message: entitledResult.error.message,
-			}),
-		);
-	}
+	if (Result.isError(entitledResult)) return entitledResult;
 	const matchResults = matchResultsResult.value;
 	if (matchResults.length === 0)
 		return Result.ok({ songIds: [], hiddenReviewItemCount: 0 });
@@ -187,9 +178,7 @@ export async function getOrderedUndecidedSongIds(
 	const decidedPairs = new Set(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
-	const entitledSet = new Set<string>(
-		(entitledResult.data ?? []).map((r) => r.song_id),
-	);
+	const entitledSet = new Set<string>(entitledResult.value);
 	const policy: VisibilityPolicy = {
 		orientation: "song",
 		minScore,
@@ -255,22 +244,12 @@ export async function getOrderedUndecidedPlaylistIds(
 		await Promise.all([
 			minScoreOverride ?? resolveMinMatchScore(accountId),
 			getMatchResults(snapshotId),
-			createAdminSupabaseClient().rpc(
-				"select_entitled_data_enriched_liked_song_ids",
-				{ p_account_id: accountId },
-			),
+			readEntitledDataEnrichedSongIds(createAdminSupabaseClient(), accountId),
 			fetchTargetPlaylistFilters(accountId),
 		]);
 	if (Result.isError(matchResultsResult)) return matchResultsResult;
 	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
-	if (entitledResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: entitledResult.error.code,
-				message: entitledResult.error.message,
-			}),
-		);
-	}
+	if (Result.isError(entitledResult)) return entitledResult;
 	const matchResults = matchResultsResult.value;
 	if (matchResults.length === 0)
 		return Result.ok({ playlistIds: [], hiddenReviewItemCount: 0 });
@@ -293,9 +272,7 @@ export async function getOrderedUndecidedPlaylistIds(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 
-	const entitledSet = new Set<string>(
-		(entitledResult.data ?? []).map((r) => r.song_id),
-	);
+	const entitledSet = new Set<string>(entitledResult.value);
 
 	// Same visibility policy the queue-append path builds, so this preview matches
 	// what the queue would enqueue: orientation, the live strictness bar, and the

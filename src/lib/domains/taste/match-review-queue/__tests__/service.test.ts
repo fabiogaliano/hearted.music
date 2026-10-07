@@ -53,6 +53,44 @@ vi.mock("@/lib/data/client", () => ({
 	})),
 }));
 
+// readEntitledDataEnrichedSongIds pages with .rpc().order().range(); this
+// file's fixtures resolve rpc() directly, so read the rows through that mock.
+vi.mock("@/lib/domains/billing/queries", async (importOriginal) => {
+	const actual =
+		await importOriginal<typeof import("@/lib/domains/billing/queries")>();
+	const { Result } = await import("better-result");
+	const { DatabaseError } = await import("@/lib/shared/errors/database");
+	return {
+		...actual,
+		readEntitledDataEnrichedSongIds: async (
+			supabase: {
+				rpc: (
+					name: string,
+					args: unknown,
+				) => Promise<{
+					data: Array<{ song_id: string }> | null;
+					error: { code: string; message: string } | null;
+				}>;
+			},
+			accountId: string,
+			songIds?: string[],
+		) => {
+			const { data, error } = await supabase.rpc(
+				"select_entitled_data_enriched_liked_song_ids",
+				songIds
+					? { p_account_id: accountId, p_song_ids: songIds }
+					: { p_account_id: accountId },
+			);
+			if (error) {
+				return Result.err(
+					new DatabaseError({ code: error.code, message: error.message }),
+				);
+			}
+			return Result.ok((data ?? []).map((row) => row.song_id));
+		},
+	};
+});
+
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	resolveMinMatchScore: vi.fn(async () => 0.5),
 }));
