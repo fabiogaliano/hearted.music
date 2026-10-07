@@ -1,7 +1,8 @@
 /**
  * Server fns for the Match deck read model (plan §4/§7/§8/§9). The contract
- * lives in match-review-queue/deck-view.ts and the reads in deck-entry.ts; this
- * file adds auth, input validation, the Result→throw boundary and product events.
+ * lives in match-review-queue/deck-view.ts, the entry read in deck-entry.ts and
+ * the card read in deck-card.ts; this file adds auth, input validation, the
+ * Result→throw boundary and product events.
  *   - startOrResumeMatchDeck — one bounded /match-entry call (plan §8).
  *   - readMatchDeckCard — one card, materialized on demand when the worker
  *     hasn't captured it yet (R-E).
@@ -13,17 +14,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
+import { resolveDeckCard } from "@/lib/domains/taste/match-review-queue/deck-card";
 import {
 	type DeckEntryError,
 	type ResolvedMatchDeck,
-	resolveDeckCard,
 	resolveMatchDeck,
 } from "@/lib/domains/taste/match-review-queue/deck-entry";
-import type {
-	MatchDeckAction,
-	MatchReviewItemRead,
-	StartOrResumeMatchDeckResult,
-	SubmitMatchDeckActionResult,
+import {
+	type MatchDeckAction,
+	type MatchReviewItemRead,
+	reportDeckError,
+	type StartOrResumeMatchDeckResult,
+	type SubmitMatchDeckActionResult,
 } from "@/lib/domains/taste/match-review-queue/deck-view";
 import {
 	addQueueItemDecisionAtomically,
@@ -37,23 +39,8 @@ import {
 	MatchOrientationSchema,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
-import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import type { DbError } from "@/lib/shared/errors/database";
-
-function reportDeckError(
-	error: unknown,
-	operation: string,
-	accountId: string,
-	extra?: Record<string, unknown>,
-): void {
-	captureServerError(error, {
-		area: "match_review_queue",
-		operation,
-		accountId,
-		extra,
-	});
-}
 
 const PREPARE_FAILED = "Could not prepare your match deck. Please try again.";
 const LOAD_FAILED = "Could not load your match deck. Please try again.";
@@ -168,7 +155,7 @@ export const readMatchDeckCard = createServerFn({ method: "GET" })
 	.handler(async ({ data, context }): Promise<MatchReviewItemRead> => {
 		const accountId = context.session.accountId;
 		const read = await resolveDeckCard(accountId, data.itemId);
-		if (read.materialized) {
+		if (read.materialization) {
 			// The on-demand materialize fired (the swiper outran capture-ahead).
 			// `recovered` separates a self-heal from a still-cold read. Best-effort.
 			captureProductEventBestEffort({
@@ -178,8 +165,8 @@ export const readMatchDeckCard = createServerFn({ method: "GET" })
 				operation: "capture_match_deck_materialize_on_read",
 				properties: {
 					item_id: data.itemId,
-					recovered: read.materialized.recovered,
-					orientation: read.materialized.orientation,
+					recovered: read.materialization.recovered,
+					orientation: read.materialization.orientation,
 				},
 			});
 		}

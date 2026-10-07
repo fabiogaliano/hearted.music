@@ -1,8 +1,8 @@
 /**
- * Deck entry: start or resume the Match deck for one orientation (plan §8) and
- * read single deck cards (plan §7), as domain operations the deck server fns
- * call. Entry is hash → probe → miss build → promote, returned as one Result
- * whose `entry` says which branch resolved it.
+ * Deck entry: start or resume the Match deck for one orientation (plan §8), as
+ * the domain operation the deck server fn calls. Entry is hash → probe → miss
+ * build → promote, returned as one Result whose `entry` says which branch
+ * resolved it. Single-card reads live in deck-card.ts.
  */
 
 import { Result, TaggedError } from "better-result";
@@ -13,27 +13,20 @@ import {
 } from "@/lib/domains/taste/song-matching/strictness";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
-import { captureAheadForSession } from "./card-materializer";
-import { SONG_CARD_SUGGESTION_CAP } from "./card-suggestion-caps";
 import { findInFlightBuildProposalsJob } from "./deck-jobs";
 import {
 	activeDeckOrNull,
-	callReadMatchDeckCard,
 	callStartOrResumeMatchDeck,
 	type StartOrResumeMatchDeckRpcResult,
 } from "./deck-read-queries";
 import {
-	captureUnexpectedCardShape,
 	deckWindow,
 	type MatchDeckBuildingState,
 	type MatchDeckView,
-	type MatchReviewItemRead,
-	mapReadDeckCardToItemRead,
 	mapStartOrResumeToView,
 } from "./deck-view";
 import { buildOneProposal } from "./proposal-builder";
 import { enqueueBuildProposals } from "./proposal-rebuild";
-import { getOwnedQueueItem } from "./queries";
 import type { MatchOrientation } from "./types";
 import { resolveVisibilityConfigHash } from "./visibility-config-hash";
 
@@ -59,7 +52,7 @@ export type DeckEntry = ResolvedMatchDeck["entry"];
  * still active in practice and RPC branch 1 never reads the hash, so it probes
  * with a null hash and only hashes when the probe can't answer.
  */
-export type DeckRead = "entry" | "after_action";
+export type DeckReadMode = "entry" | "after_action";
 
 /** The step that failed, so the boundary can tag the capture and pick the copy. */
 export class DeckEntryError extends TaggedError("DeckEntryError")<{
@@ -70,15 +63,6 @@ export class DeckEntryError extends TaggedError("DeckEntryError")<{
 		| "miss_build";
 	cause: DbError;
 }> {}
-
-/** A card read; `materialized` is set when the cold path (R-E) ran. */
-export interface DeckCardRead {
-	card: MatchReviewItemRead;
-	materialized: {
-		recovered: boolean;
-		orientation: MatchOrientation | null;
-	} | null;
-}
 
 const BUILDING: MatchDeckBuildingState = { status: "building" };
 
@@ -94,7 +78,7 @@ const BUILDING: MatchDeckBuildingState = { status: "building" };
 export async function resolveMatchDeck(
 	accountId: string,
 	orientation: MatchOrientation,
-	read: DeckRead,
+	read: DeckReadMode,
 ): Promise<Result<ResolvedMatchDeck, DeckEntryError>> {
 	const window = deckWindow(orientation);
 
@@ -423,158 +407,4 @@ async function buildFirstWindowAndPromote(input: {
 	//    (active, or a residual miss the caller maps to "building").
 	await enqueueFullBuild();
 	return reinvoked;
-}
-
-// ============================================================================
-// Single card reads — pure read + on-demand materialize fallback (R-E)
-// ============================================================================
-
-function reportDeckError(
-	error: unknown,
-	operation: string,
-	accountId: string,
-	extra?: Record<string, unknown>,
-): void {
-	captureServerError(error, {
-		area: "match_review_queue",
-		operation,
-		accountId,
-		extra,
-	});
-}
-
-/**
- * Loads the owning session/orientation/position for a not-captured card and
- * captures just this one item (reusing captureAheadForSession, window 1) so the
- * re-read finds pairs. Best-effort: a capture failure still lets the re-read
- * surface the not_captured fallback rather than throwing.
- */
-async function materializeOnDemand(
-	accountId: string,
-	itemId: string,
-): Promise<{ orientation: MatchOrientation } | null> {
-	const itemResult = await getOwnedQueueItem(accountId, itemId);
-	if (Result.isError(itemResult)) {
-		reportDeckError(
-			itemResult.error,
-			"read_match_deck_card_load_item",
-			accountId,
-			{ itemId },
-		);
-		return null;
-	}
-	const item = itemResult.value;
-	if (!item) return null;
-	const orientation = item.subject.orientation;
-
-	const captureResult = await captureAheadForSession({
-		accountId,
-		sessionId: item.sessionId,
-		orientation,
-		fromPosition: item.position,
-		window: 1,
-	});
-	if (Result.isError(captureResult)) {
-		reportDeckError(
-			captureResult.error,
-			"read_match_deck_card_materialize",
-			accountId,
-			{ itemId, orientation },
-		);
-	}
-	return { orientation };
-}
-
-/**
- * Reads one deck card (plan §7) by item id. A card the worker hasn't captured
- * yet is materialized on demand and re-read once (R-E); every failure degrades
- * to the retryable card rather than an error.
- */
-export async function resolveDeckCard(
-	accountId: string,
-	itemId: string,
-): Promise<DeckCardRead> {
-	// Orientation is unknown up front (itemId only), so read the whole capped set
-	// (both caps are 100) — never truncates either arm; nextCursor stays null.
-	const window = SONG_CARD_SUGGESTION_CAP;
-
-	const firstResult = await callReadMatchDeckCard(
-		itemId,
-		accountId,
-		window,
-		true,
-	);
-	if (Result.isError(firstResult)) {
-		reportDeckError(firstResult.error, "read_match_deck_card", accountId, {
-			itemId,
-		});
-		return {
-			card: {
-				status: "retryable-error",
-				itemId,
-				message: "Couldn't load this match card. Try again.",
-			},
-			materialized: null,
-		};
-	}
-
-	const first = firstResult.value;
-	captureUnexpectedCardShape(accountId, itemId, first);
-	if (first.status !== "not_captured") {
-		// Orientation only feeds the no_visible_suggestions copy, and that payload
-		// doesn't carry it — null → orientation-neutral copy (never a mislabel).
-		return {
-			card: mapReadDeckCardToItemRead(first, itemId, window, null),
-			materialized: null,
-		};
-	}
-
-	// R-E cold path: worker hasn't captured ahead yet — materialize this one item
-	// and re-read ONCE. Still not_captured → the mapper's retryable fallback.
-	const materialized = await materializeOnDemand(accountId, itemId);
-
-	let coldResult: MatchReviewItemRead;
-	let recovered = false;
-	if (!materialized) {
-		coldResult = mapReadDeckCardToItemRead(first, itemId, window, null);
-	} else {
-		const secondResult = await callReadMatchDeckCard(
-			itemId,
-			accountId,
-			window,
-			true,
-		);
-		if (Result.isError(secondResult)) {
-			reportDeckError(
-				secondResult.error,
-				"read_match_deck_card_recapture",
-				accountId,
-				{ itemId, orientation: materialized.orientation },
-			);
-			coldResult = {
-				status: "retryable-error",
-				itemId,
-				message: "Couldn't load this match card. Try again.",
-			};
-		} else {
-			captureUnexpectedCardShape(accountId, itemId, secondResult.value);
-			recovered = secondResult.value.status !== "not_captured";
-			// The re-read may now resolve to no_visible_suggestions; materialize gave
-			// us the real orientation, so the copy names the correct suggestion side.
-			coldResult = mapReadDeckCardToItemRead(
-				secondResult.value,
-				itemId,
-				window,
-				materialized.orientation,
-			);
-		}
-	}
-
-	return {
-		card: coldResult,
-		materialized: {
-			recovered,
-			orientation: materialized?.orientation ?? null,
-		},
-	};
 }
