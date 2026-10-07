@@ -1,5 +1,10 @@
 import * as Sentry from "@sentry/bun";
-import { enqueueProposalRebuild } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
+import { Result } from "better-result";
+import {
+	enqueueMissingProposalBuilds,
+	enqueueProposalRebuild,
+} from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { log } from "@/lib/observability/logger";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
 import type { Job } from "@/lib/platform/jobs/repository";
@@ -185,23 +190,46 @@ async function enqueueDeckProposalBuilds(
 	job: Job,
 	result: MatchSnapshotRefreshResult,
 ): Promise<void> {
-	if (!result.published || !result.snapshotId) return;
 	const accountId = job.account_id;
-	const snapshotId = result.snapshotId;
-	const failures = await enqueueProposalRebuild(accountId, snapshotId);
-	for (const failure of failures) {
-		Sentry.captureException(failure.error, {
-			tags: {
-				area: "match_deck",
-				operation: failure.step,
-				runtime: "worker",
-			},
-			extra: {
-				accountId,
-				jobId: job.id,
+	const report = (
+		error: unknown,
+		operation: string,
+		extra: { orientation?: string; snapshotId?: string },
+	) =>
+		Sentry.captureException(error, {
+			tags: { area: "match_deck", operation, runtime: "worker" },
+			extra: { accountId, jobId: job.id, ...extra },
+		});
+
+	if (result.published && result.snapshotId) {
+		const snapshotId = result.snapshotId;
+		for (const failure of await enqueueProposalRebuild(accountId, snapshotId)) {
+			report(failure.error, failure.step, {
 				orientation: failure.orientation,
 				snapshotId,
-			},
+			});
+		}
+		return;
+	}
+	if (!result.noOp) return;
+
+	// A no-op still owes the builds when an earlier run of this job published
+	// the same snapshot and died before enqueueing them: the rerun's publish
+	// names no snapshot, so it targets the latest one, which has this hash.
+	const latest = await getLatestMatchSnapshot(accountId);
+	if (Result.isError(latest)) {
+		report(latest.error, "resolve_latest_snapshot", {});
+		return;
+	}
+	if (!latest.value) return;
+	const snapshotId = latest.value.id;
+	for (const failure of await enqueueMissingProposalBuilds(
+		accountId,
+		snapshotId,
+	)) {
+		report(failure.error, failure.step, {
+			orientation: failure.orientation,
+			snapshotId,
 		});
 	}
 }
