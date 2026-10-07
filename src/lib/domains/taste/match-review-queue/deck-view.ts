@@ -222,6 +222,21 @@ export function deckWindow(orientation: MatchOrientation): number {
 		: SONG_CARD_SUGGESTION_CAP;
 }
 
+/** One Sentry shape for every deck read failure, keyed by operation. */
+export function reportDeckError(
+	error: unknown,
+	operation: string,
+	accountId: string,
+	extra?: Record<string, unknown>,
+): void {
+	captureServerError(error, {
+		area: "match_review_queue",
+		operation,
+		accountId,
+		extra,
+	});
+}
+
 /**
  * P1.1: mapReadDeckCardToItemRead is a pure mapper by design (no accountId
  * param — its own tests fabricate RPC shapes with zero side effects), so its
