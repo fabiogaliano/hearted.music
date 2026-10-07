@@ -87,8 +87,10 @@ export async function fromSupabaseMaybe<T>(
  * function signature change on the DB side would otherwise surface as a
  * silent runtime shape mismatch instead of a typed failure at the call site.
  *
- * `data ?? []` treats a null RPC result as an empty row set (matches
- * fromSupabaseMany) before validation runs.
+ * `data` reaches the schema unchanged: a JSONB-object RPC can legitimately
+ * return null, and defaulting it to `[]` would hand an object schema a row set.
+ * A set-returning RPC never yields null through PostgREST, so a row-set schema
+ * treats null as a shape mismatch.
  *
  * @example
  * const result = await fromSupabaseRpc(
@@ -109,7 +111,7 @@ export async function fromSupabaseRpc<S extends z.ZodType>(
 		return Result.err(mapPostgrestError(error));
 	}
 
-	const parsed = schema.safeParse(data ?? []);
+	const parsed = schema.safeParse(data);
 	if (!parsed.success) {
 		return Result.err(
 			new DatabaseError({

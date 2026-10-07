@@ -1,8 +1,9 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-	ReadMatchDeckCardRpcResult,
-	StartOrResumeMatchDeckRpcResult,
+import {
+	type ActiveMatchDeckRpcResult,
+	ReadMatchDeckCardResultSchema,
+	type ReadMatchDeckCardRpcResult,
 } from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
@@ -72,11 +73,15 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...a: unknown[]) => mockGetLatestMatchSnapshot(...a),
 }));
 
-vi.mock("@/lib/domains/taste/match-review-queue/deck-read-queries", () => ({
-	callStartOrResumeMatchDeck: (...a: unknown[]) =>
-		mockCallStartOrResumeMatchDeck(...a),
-	callReadMatchDeckCard: (...a: unknown[]) => mockCallReadMatchDeckCard(...a),
-}));
+vi.mock(
+	"@/lib/domains/taste/match-review-queue/deck-read-queries",
+	async (importOriginal) => ({
+		...(await importOriginal()),
+		callStartOrResumeMatchDeck: (...a: unknown[]) =>
+			mockCallStartOrResumeMatchDeck(...a),
+		callReadMatchDeckCard: (...a: unknown[]) => mockCallReadMatchDeckCard(...a),
+	}),
+);
 
 vi.mock("@/lib/domains/taste/match-review-queue/card-materializer", () => ({
 	captureAheadForSession: (...a: unknown[]) => mockCaptureAheadForSession(...a),
@@ -222,7 +227,7 @@ const SONG_READY_RPC = {
 
 function activeStartRpc(
 	presentation: ReadMatchDeckCardRpcResult,
-): StartOrResumeMatchDeckRpcResult {
+): ActiveMatchDeckRpcResult {
 	return {
 		status: "active" as const,
 		version: 1,
@@ -481,9 +486,9 @@ describe("mapStartOrResumeToView", () => {
 
 describe("mapStartOrResumeToView drift capture (captureUnexpectedCardShape)", () => {
 	it("captures a ready card with no song/playlist subject and maps it to the retryable-error fallback", () => {
-		const rpc = activeStartRpc({
-			status: "ready",
-		} as ReadMatchDeckCardRpcResult);
+		const rpc = activeStartRpc(
+			ReadMatchDeckCardResultSchema.parse({ status: "ready" }),
+		);
 
 		const view = mapStartOrResumeToView(rpc, 8);
 
@@ -496,9 +501,9 @@ describe("mapStartOrResumeToView drift capture (captureUnexpectedCardShape)", ()
 	});
 
 	it("captures an unknown presentation status but the mapper still returns (retryable-error)", () => {
-		const rpc = activeStartRpc({
-			status: "renamed",
-		} as unknown as ReadMatchDeckCardRpcResult);
+		const rpc = activeStartRpc(
+			ReadMatchDeckCardResultSchema.parse({ status: "renamed" }),
+		);
 
 		const view = mapStartOrResumeToView(rpc, 8);
 
@@ -511,9 +516,9 @@ describe("mapStartOrResumeToView drift capture (captureUnexpectedCardShape)", ()
 	});
 
 	it("does NOT capture on not_captured (a known status the mapper handles as its cold path)", () => {
-		const rpc = activeStartRpc({
-			status: "not_captured",
-		} as ReadMatchDeckCardRpcResult);
+		const rpc = activeStartRpc(
+			ReadMatchDeckCardResultSchema.parse({ status: "not_captured" }),
+		);
 
 		const view = mapStartOrResumeToView(rpc, 8);
 
