@@ -19,7 +19,7 @@ const ROOT = resolve(
 	"..",
 	"..",
 );
-const EMAIL_FILE = resolve(ROOT, "src/lib/email/waitlist-confirmation.ts");
+const EMAIL_FILE = resolve(ROOT, "src/lib/platform/email/send-waitlist-confirmation.ts");
 
 async function getEmailHtml(): Promise<string> {
 	const file = await Bun.file(EMAIL_FILE).text();
