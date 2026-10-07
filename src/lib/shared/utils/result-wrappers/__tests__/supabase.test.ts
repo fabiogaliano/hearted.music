@@ -25,15 +25,15 @@ describe("fromSupabaseRpc", () => {
 		}
 	});
 
-	it("treats a null data payload as an empty row set", async () => {
+	it("hands a null data payload to the schema unchanged, so a row-set schema rejects it instead of defaulting to []", async () => {
 		const result = await fromSupabaseRpc(
 			RowsSchema,
 			Promise.resolve({ data: null, error: null }),
 		);
 
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toEqual([]);
+		expect(result).toBeErr();
+		if (Result.isError(result)) {
+			expect(result.error).toMatchObject({ code: "rpc_shape_mismatch" });
 		}
 	});
 

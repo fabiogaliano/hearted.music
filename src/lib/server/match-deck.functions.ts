@@ -27,13 +27,12 @@ import {
 	SONG_CARD_SUGGESTION_CAP,
 } from "@/lib/domains/taste/match-review-queue/card-suggestion-caps";
 import {
+	type ActiveMatchDeckRpcResult,
+	activeDeckOrNull,
 	callReadMatchDeckCard,
 	callStartOrResumeMatchDeck,
 	type DeckCardEnvelope,
-	type DeckCardPlaylistSuggestionRow,
-	type DeckCardSongSuggestionRow,
 	type ReadMatchDeckCardRpcResult,
-	type StartOrResumeMatchDeckRpcResult,
 } from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import {
 	addQueueItemDecisionAtomically,
@@ -151,41 +150,23 @@ function reportDeckError(
 }
 
 /**
- * P1.1/L3: statuses mapReadDeckCardToItemRead's fallback arms treat as
- * "expected, self-heals" — everything else reaching those arms is a contract
- * break. `not_captured` is deliberately included: the cold-after-R-E case is
- * already tracked via the match_deck_materialize_on_read product event
- * (resolveDeckCard), not a shape violation worth a Sentry capture.
- */
-const KNOWN_CARD_STATUSES = new Set<ReadMatchDeckCardRpcResult["status"]>([
-	"ready",
-	"not_captured",
-	"not_found",
-	"playlist_gone",
-	"song_gone",
-	"no_visible_suggestions",
-]);
-
-/**
  * P1.1: mapReadDeckCardToItemRead is a pure mapper by design (no accountId
- * param — its own tests fabricate raw RPC shapes with zero side effects), so
- * the two silent fallback arms (L3: unknown status; a `ready` payload with
- * neither `song` nor `playlist`) can't capture themselves. Hoisted here to
- * every call site instead, where accountId is in scope.
+ * param — its own tests fabricate RPC shapes with zero side effects), so its
+ * unrecognized-payload fallback (L3: unknown status, or a known status whose
+ * payload drifted) can't capture itself. Hoisted here to every call site
+ * instead, where accountId is in scope. `not_captured` is a known status: the
+ * cold-after-R-E case is tracked via the match_deck_materialize_on_read product
+ * event (resolveDeckCard), not a shape violation worth a Sentry capture.
  */
 function captureUnexpectedCardShape(
 	accountId: string,
 	itemId: string,
 	rpc: ReadMatchDeckCardRpcResult,
 ): void {
-	const readyNoSubject = rpc.status === "ready" && !rpc.song && !rpc.playlist;
-	const unknownStatus = !KNOWN_CARD_STATUSES.has(rpc.status);
-	if (!readyNoSubject && !unknownStatus) return;
+	if (!("unrecognized" in rpc)) return;
 	reportDeckError(
 		new Error(
-			`read_match_deck_card mapped to retryable-error: status=${rpc.status}${
-				readyNoSubject ? " (ready, no song/playlist subject)" : ""
-			}`,
+			`read_match_deck_card mapped to retryable-error: status=${rpc.status} (unrecognized payload)`,
 		),
 		"map_read_deck_card_to_item_read",
 		accountId,
@@ -285,9 +266,10 @@ export function mapReadDeckCardToItemRead(
 	pageSize: number,
 	orientation: MatchOrientation | null,
 ): MatchReviewItemRead {
+	if ("unrecognized" in rpc) return retryableCard(itemId);
 	switch (rpc.status) {
 		case "ready": {
-			if (rpc.song) {
+			if ("song" in rpc) {
 				const song = rpc.song;
 				const reviewItem: MatchingSong = {
 					id: song.id,
@@ -304,11 +286,11 @@ export function mapReadDeckCardToItemRead(
 								valence: song.audio_feature.valence,
 							}
 						: null,
+					// The stored analysis is versioned jsonb this card type doesn't
+					// decode; it reaches the client as stored.
 					analysis: (song.analysis ?? null) as MatchingSong["analysis"] | null,
 				};
-				const playlistRows = (rpc.suggestions ??
-					[]) as DeckCardPlaylistSuggestionRow[];
-				const suggestions: MatchingPlaylistMatch[] = playlistRows.map(
+				const suggestions: MatchingPlaylistMatch[] = rpc.suggestions.map(
 					(row) => ({
 						playlist: {
 							id: row.playlist_id,
@@ -331,67 +313,59 @@ export function mapReadDeckCardToItemRead(
 					reviewItem,
 					suggestions,
 					suggestionTotal: Math.min(
-						rpc.total_active_count ?? 0,
+						rpc.total_active_count,
 						SONG_CARD_SUGGESTION_CAP,
 					),
 					nextCursor: null,
 				};
 			}
-			if (rpc.playlist) {
-				const pl = rpc.playlist;
-				const reviewItem: MatchingPlaylistForReview = {
-					id: pl.id,
-					spotifyId: pl.spotify_id,
-					name: pl.name,
-					description: pl.match_intent,
-					imageUrl: pl.image_url,
-					trackCount: pl.song_count,
-				};
-				const songRows = (rpc.suggestions ?? []) as DeckCardSongSuggestionRow[];
-				const suggestions: MatchingSongSuggestion[] = songRows.map((row) => ({
-					song: {
-						id: row.song_id,
-						spotifyId: row.spotify_id,
-						name: row.name,
-						artist: row.artists[0] ?? "Unknown Artist",
-						album: row.album_name,
-						albumArtUrl: row.image_url,
-						genres: row.genres,
-						// Audio features + analysis are not surfaced on the playlist-mode
-						// card; fetching them would add joins with no UI benefit.
-						audioFeatures: null,
-						analysis: null,
-					},
-					// fitScore = strictnessScore from the captured pair (A5, E7).
-					fitScore: row.fit_score,
-				}));
-				const suggestionTotal = Math.min(
-					rpc.total_active_count ?? 0,
-					PLAYLIST_CARD_SUGGESTION_CAP,
-				);
-				return {
-					status: "ready",
-					itemId,
-					mode: "playlist",
-					reviewItem,
-					suggestions,
-					suggestionTotal,
-					nextCursor: deriveSuggestionNextCursor(
-						songRows.map((r) => ({
-							fitScore: r.fit_score,
-							modelRank: r.model_rank,
-							songId: r.song_id,
-						})),
-						pageSize,
-						suggestionTotal,
-					),
-				};
-			}
-			// ready but neither subject present — a shape violation; surface retryable.
+			const pl = rpc.playlist;
+			const reviewItem: MatchingPlaylistForReview = {
+				id: pl.id,
+				spotifyId: pl.spotify_id,
+				name: pl.name,
+				description: pl.match_intent,
+				imageUrl: pl.image_url,
+				trackCount: pl.song_count,
+			};
+			const songRows = rpc.suggestions;
+			const suggestions: MatchingSongSuggestion[] = songRows.map((row) => ({
+				song: {
+					id: row.song_id,
+					spotifyId: row.spotify_id,
+					name: row.name,
+					artist: row.artists[0] ?? "Unknown Artist",
+					album: row.album_name,
+					albumArtUrl: row.image_url,
+					genres: row.genres,
+					// Audio features + analysis are not surfaced on the playlist-mode
+					// card; fetching them would add joins with no UI benefit.
+					audioFeatures: null,
+					analysis: null,
+				},
+				// fitScore = strictnessScore from the captured pair (A5, E7).
+				fitScore: row.fit_score,
+			}));
+			const suggestionTotal = Math.min(
+				rpc.total_active_count,
+				PLAYLIST_CARD_SUGGESTION_CAP,
+			);
 			return {
-				status: "retryable-error",
+				status: "ready",
 				itemId,
-				message: "Couldn't load this match card. Try again.",
+				mode: "playlist",
+				reviewItem,
+				suggestions,
+				suggestionTotal,
+				nextCursor: deriveSuggestionNextCursor(
+					songRows.map((r) => ({
+						fitScore: r.fit_score,
+						modelRank: r.model_rank,
+						songId: r.song_id,
+					})),
+					pageSize,
+					suggestionTotal,
+				),
 			};
 		}
 		case "not_found":
@@ -424,15 +398,18 @@ export function mapReadDeckCardToItemRead(
 					? noVisibleSuggestionsMessage(orientation)
 					: "No matches are visible under your current settings.",
 			};
-		default:
-			// not_captured (cold path after R-E couldn't recover) or any unexpected
-			// status — retryable so the client can re-fetch.
-			return {
-				status: "retryable-error",
-				itemId,
-				message: "Couldn't load this match card. Try again.",
-			};
+		case "not_captured":
+			// Cold path after R-E couldn't recover — retryable so the client re-fetches.
+			return retryableCard(itemId);
 	}
+}
+
+function retryableCard(itemId: string): MatchReviewItemRead {
+	return {
+		status: "retryable-error",
+		itemId,
+		message: "Couldn't load this match card. Try again.",
+	};
 }
 
 function mapCardEnvelope(
@@ -463,13 +440,13 @@ function mapCardEnvelope(
  * stable and never throws.
  */
 export function mapStartOrResumeToView(
-	rpc: StartOrResumeMatchDeckRpcResult,
+	rpc: ActiveMatchDeckRpcResult,
 	pageSize: number,
 ): MatchDeckView {
 	const orientation: MatchOrientation =
 		rpc.orientation === "playlist" ? "playlist" : "song";
 
-	let snapshotId = rpc.snapshotId ?? null;
+	let snapshotId = rpc.snapshotId;
 	if (snapshotId === null) {
 		Sentry.addBreadcrumb({
 			category: "match_deck",
@@ -485,40 +462,33 @@ export function mapStartOrResumeToView(
 		snapshotId = "";
 	}
 
-	const progress = rpc.progress ?? {
-		total: 0,
-		remaining: 0,
-		caughtUp: true,
-		hiddenReviewItemCount: 0,
-	};
-
 	return {
 		version: 1,
-		accountId: rpc.accountId ?? "",
+		accountId: rpc.accountId,
 		orientation,
-		sessionId: rpc.sessionId ?? "",
+		sessionId: rpc.sessionId,
 		snapshotId,
 		visibilityConfigHash: rpc.visibilityConfigHash ?? "",
-		revision: rpc.revision ?? 0,
+		revision: rpc.revision,
 		progress: {
-			total: progress.total,
-			remaining: progress.remaining,
-			caughtUp: progress.caughtUp,
-			hiddenReviewItemCount: progress.hiddenReviewItemCount,
+			total: rpc.progress.total,
+			remaining: rpc.progress.remaining,
+			caughtUp: rpc.progress.caughtUp,
+			hiddenReviewItemCount: rpc.progress.hiddenReviewItemCount,
 		},
-		itemIds: rpc.itemIds ?? [],
+		itemIds: rpc.itemIds,
 		cards: {
 			current: mapCardEnvelope(
-				rpc.cards?.current ?? null,
+				rpc.cards.current,
 				pageSize,
 				orientation,
-				rpc.accountId ?? "",
+				rpc.accountId,
 			),
 			next: mapCardEnvelope(
-				rpc.cards?.next ?? null,
+				rpc.cards.next,
 				pageSize,
 				orientation,
-				rpc.accountId ?? "",
+				rpc.accountId,
 			),
 		},
 	};
@@ -572,11 +542,9 @@ async function resolveMatchDeckView(
 				cause: probeResult.error,
 			});
 		}
-		if (
-			probeResult.value.status === "active" &&
-			probeResult.value.visibilityConfigHash != null
-		) {
-			const view = mapStartOrResumeToView(probeResult.value, window);
+		const probed = activeDeckOrNull(probeResult.value);
+		if (probed && probed.visibilityConfigHash != null) {
+			const view = mapStartOrResumeToView(probed, window);
 			if (emitEntryMetrics) {
 				captureDeckEntryHit(accountId, orientation, "active", view);
 			}
@@ -620,8 +588,9 @@ async function resolveMatchDeckView(
 		});
 	}
 
-	if (rpcResult.value.status === "active") {
-		const view = mapStartOrResumeToView(rpcResult.value, window);
+	const active = activeDeckOrNull(rpcResult.value);
+	if (active) {
+		const view = mapStartOrResumeToView(active, window);
 		if (emitEntryMetrics) {
 			captureDeckEntryHit(accountId, orientation, "active", view);
 		}
@@ -672,8 +641,9 @@ async function resolveMatchDeckView(
 			cause: builtResult.error,
 		});
 	}
-	if (builtResult.value.status === "active") {
-		const view = mapStartOrResumeToView(builtResult.value, window);
+	const promoted = activeDeckOrNull(builtResult.value);
+	if (promoted) {
+		const view = mapStartOrResumeToView(promoted, window);
 		if (emitEntryMetrics) {
 			captureDeckEntryHit(accountId, orientation, "promoted", view);
 		}
@@ -764,14 +734,9 @@ async function resolveDeckCard(
 	const first = firstResult.value;
 	captureUnexpectedCardShape(accountId, itemId, first);
 	if (first.status !== "not_captured") {
-		// Orientation is only carried on a `ready` payload; on no_visible_suggestions
-		// it's absent, so null → orientation-neutral copy (never a mislabel).
-		return mapReadDeckCardToItemRead(
-			first,
-			itemId,
-			window,
-			narrowOrientation(first.item?.orientation),
-		);
+		// Orientation only feeds the no_visible_suggestions copy, and that payload
+		// doesn't carry it — null → orientation-neutral copy (never a mislabel).
+		return mapReadDeckCardToItemRead(first, itemId, window, null);
 	}
 
 	// R-E cold path: worker hasn't captured ahead yet — materialize this one item

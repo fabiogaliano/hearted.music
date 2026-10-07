@@ -20,7 +20,10 @@
 
 import postgres from "postgres";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
-import { callStartOrResumeMatchDeck } from "../deck-read-queries";
+import {
+	activeDeckOrNull,
+	callStartOrResumeMatchDeck,
+} from "../deck-read-queries";
 import { insertQueueItems } from "../queries";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
@@ -284,10 +287,11 @@ describe.skipIf(!IS_LOCAL)("start_or_resume_match_deck", () => {
 	it("resumes the active session after a finished card and never promotes a newer ready proposal over it", async () => {
 		const { accountId, songs, playlists } = fixture();
 		const { snapshotId } = await seedPromotable();
-		const started = (
-			await callStartOrResumeMatchDeck(accountId, "song", HASH)
-		).unwrap();
-		const [first, second] = started.itemIds ?? [];
+		const started = activeDeckOrNull(
+			(await callStartOrResumeMatchDeck(accountId, "song", HASH)).unwrap(),
+		);
+		if (!started) throw new Error("expected the promotion to start a deck");
+		const [first, second] = started.itemIds;
 		const [finished] =
 			await db()`SELECT finish_match_review_item_atomic(${first}, ${accountId}) AS r`;
 		expect(finished.r).toBe("skipped");
