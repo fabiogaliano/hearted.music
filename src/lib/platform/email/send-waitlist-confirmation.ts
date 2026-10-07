@@ -1,26 +1,8 @@
-/**
- * Waitlist confirmation email via Resend.
- *
- * Skips silently if RESEND_API_KEY is not set (local dev).
- */
-
-import { Resend } from "resend";
-import { env } from "@/env";
 import { getPublicAppOrigin } from "@/lib/config/public-app-origin";
-
-const FROM_EMAIL = "hi@hearted.music";
-const FROM_NAME = "hearted.";
+import { sendEmail } from "@/lib/platform/email/resend-client";
 
 export async function sendWaitlistConfirmation(email: string) {
-	if (!env.RESEND_API_KEY) {
-		console.info("[email] RESEND_API_KEY not set, skipping confirmation email");
-		return;
-	}
-
-	const resend = new Resend(env.RESEND_API_KEY);
-
-	await resend.emails.send({
-		from: `${FROM_NAME} <${FROM_EMAIL}>`,
+	return sendEmail({
 		to: email,
 		subject: "noted.",
 		text: waitlistPlainText(),
