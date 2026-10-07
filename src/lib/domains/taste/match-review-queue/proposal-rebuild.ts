@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import type { DbError } from "@/lib/shared/errors/database";
 import { type DeckJob, enqueueDeckJob } from "./deck-jobs";
-import { hasLiveProposal } from "./queries";
+import { hasReadyProposal } from "./queries";
 import type { MatchOrientation } from "./types";
 import { resolveVisibilityConfigHash } from "./visibility-config-hash";
 
@@ -31,7 +31,7 @@ export interface ProposalRebuildFailure {
 	orientation: MatchOrientation;
 	step:
 		| "resolve_visibility_config_hash"
-		| "find_live_proposal"
+		| "find_ready_proposal"
 		| "enqueue_build_proposals";
 	error: DbError;
 }
@@ -79,11 +79,13 @@ export async function enqueueProposalRebuild(
 
 /**
  * Enqueues proposal builds for `snapshotId` only for the orientations with no
- * ready or building proposal under their current visibility hash. A no-op
+ * ready proposal under their current visibility hash. A no-op
  * refresh needs this: its publish names no snapshot, so a run that published
  * and then died before enqueueing re-runs as a no-op and would otherwise leave
  * the build owed until a user hits the deck's miss path. Unlike
  * enqueueProposalRebuild it never rebuilds a proposal that already exists.
+ * A "today"-bounded filter folds the UTC date into the hash, so the first
+ * no-op after midnight finds no ready proposal and rebuilds that orientation.
  */
 export async function enqueueMissingProposalBuilds(
 	accountId: string,
@@ -109,16 +111,16 @@ export async function enqueueMissingProposalBuilds(
 			snapshotId,
 			visibilityConfigHash: hashResult.value.hash,
 		};
-		const live = await hasLiveProposal(key);
-		if (Result.isError(live)) {
+		const ready = await hasReadyProposal(key);
+		if (Result.isError(ready)) {
 			failures.push({
 				orientation,
-				step: "find_live_proposal",
-				error: live.error,
+				step: "find_ready_proposal",
+				error: ready.error,
 			});
 			continue;
 		}
-		if (live.value) continue;
+		if (ready.value) continue;
 		const enqueued = await enqueueBuildProposals(key);
 		if (Result.isError(enqueued)) {
 			failures.push({

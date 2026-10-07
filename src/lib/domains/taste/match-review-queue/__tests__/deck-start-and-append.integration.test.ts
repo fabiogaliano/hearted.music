@@ -1,7 +1,8 @@
 /**
  * The two SQL paths that create queue items, against the real plpgsql:
  * start_or_resume_match_deck (latest: 20260708000020) and
- * insert_queue_song_items (20260625060000). Their unit suites mock the RPC
+ * insert_queue_song_items (20260625060000), plus hasReadyProposal, which decides
+ * whether a no-op refresh still owes a proposal build. Their unit suites mock the RPC
  * response, so branch selection (resume vs promote vs miss), the seed copy that
  * re-checks dismissals, the promotion-race re-read, and the insert's
  * dedupe-vs-position-collision split only exist here.
@@ -24,7 +25,7 @@ import {
 	activeDeckOrNull,
 	callStartOrResumeMatchDeck,
 } from "../deck-read-queries";
-import { insertQueueItems } from "../queries";
+import { hasReadyProposal, insertQueueItems } from "../queries";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
@@ -112,11 +113,12 @@ async function makeProposal(opts: {
 	seeds: Array<{ position: number; playlistId: string; visibleRank: number }>;
 	totalSubjects?: number;
 	hidden?: number;
+	status?: "building" | "ready";
 }): Promise<string> {
 	const id = crypto.randomUUID();
 	await db()`
     INSERT INTO match_review_proposal(id, account_id, orientation, snapshot_id, visibility_config_hash, strictness_preset, strictness_min_score, read_time_filters_hash, status, total_subjects, hidden_review_item_count)
-    VALUES (${id}, ${fixture().accountId}, ${"song"}, ${opts.snapshotId}, ${HASH}, ${"balanced"}, ${0.5}, ${"rtf"}, ${"ready"}, ${opts.totalSubjects ?? opts.subjects.length}, ${opts.hidden ?? 0})
+    VALUES (${id}, ${fixture().accountId}, ${"song"}, ${opts.snapshotId}, ${HASH}, ${"balanced"}, ${0.5}, ${"rtf"}, ${opts.status ?? "ready"}, ${opts.totalSubjects ?? opts.subjects.length}, ${opts.hidden ?? 0})
   `;
 	for (const [position, songId] of opts.subjects.entries()) {
 		await db()`
@@ -464,5 +466,29 @@ describe.skipIf(!IS_LOCAL)("insert_queue_song_items", () => {
 			{ song_id: songs[0], position: 0 },
 		]);
 		expect(await queueItems(sessionId)).toHaveLength(1);
+	});
+});
+
+describe.skipIf(!IS_LOCAL)("hasReadyProposal", () => {
+	it("regression: a proposal a dead build left `building` does not count, so a no-op refresh re-enqueues its build", async () => {
+		const { accountId, songs } = fixture();
+		const snapshotId = await makeSnapshot();
+		const proposalId = await makeProposal({
+			snapshotId,
+			subjects: [songs[0]],
+			seeds: [],
+			status: "building",
+		});
+		const key = {
+			accountId,
+			orientation: "song" as const,
+			snapshotId,
+			visibilityConfigHash: HASH,
+		};
+
+		expect(await hasReadyProposal(key)).toHaveOkValue(false);
+
+		await db()`UPDATE match_review_proposal SET status = ${"ready"} WHERE id = ${proposalId}`;
+		expect(await hasReadyProposal(key)).toHaveOkValue(true);
 	});
 });
