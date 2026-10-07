@@ -11,7 +11,7 @@ import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/s
 import * as songData from "@/lib/domains/library/songs/queries";
 import { LastFmService } from "@/lib/integrations/lastfm/service";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
-import { AudioFeaturesService } from "@/lib/integrations/audio/service";
+import { AudioFeaturesService } from "@/lib/domains/enrichment/audio-features/service";
 import { ReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { fetchLrclibPlainLyrics } from "../lib/lrclib-plain-lyrics";
 

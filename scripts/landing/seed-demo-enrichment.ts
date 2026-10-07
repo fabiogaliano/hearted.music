@@ -28,7 +28,7 @@ import * as songQueries from "@/lib/domains/library/songs/queries";
 import {
 	createAudioFeaturesService,
 	type TrackInfo,
-} from "@/lib/integrations/audio/service";
+} from "@/lib/domains/enrichment/audio-features/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import { selectProvider } from "@/lib/integrations/providers/factory";
