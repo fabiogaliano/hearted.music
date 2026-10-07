@@ -11,16 +11,14 @@ import {
 	readQueueItemSongSuggestions,
 } from "@/lib/domains/taste/match-review-queue/queries";
 import { deriveSuggestionNextCursor } from "@/lib/domains/taste/match-review-queue/suggestion-cursor";
-import type {
-	MatchOrientation,
-	MatchReviewQueueItemDto,
+import {
+	type MatchOrientation,
+	MatchOrientationSchema,
+	type MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
-
-/** Validates orientation inputs at every queue boundary (D12, every queue boundary takes orientation explicitly). */
-export const MatchOrientationSchema = z.enum(["song", "playlist"] as const);
 
 /**
  * The errors thrown out of the queue boundary below intentionally hide DB

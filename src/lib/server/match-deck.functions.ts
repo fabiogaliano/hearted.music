@@ -43,9 +43,10 @@ import {
 	mapItemToDto,
 } from "@/lib/domains/taste/match-review-queue/queries";
 import { deriveSuggestionNextCursor } from "@/lib/domains/taste/match-review-queue/suggestion-cursor";
-import type {
-	MatchOrientation,
-	MatchReviewQueueItemDto,
+import {
+	type MatchOrientation,
+	MatchOrientationSchema,
+	type MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { resolveVisibilityConfigHash } from "@/lib/domains/taste/match-review-queue/visibility-config-hash";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
@@ -135,9 +136,6 @@ export type SubmitMatchDeckActionResult = {
  */
 const PLAYLIST_CARD_FIRST_PAGE_SIZE = 8;
 
-/** Orientation is validated at every deck boundary, mirroring the queue fns. */
-const OrientationSchema = z.enum(["song", "playlist"] as const);
-
 function reportDeckError(
 	error: unknown,
 	operation: string,
@@ -196,7 +194,7 @@ function captureUnexpectedCardShape(
 }
 
 function narrowOrientation(value: unknown): MatchOrientation | null {
-	return value === "song" || value === "playlist" ? value : null;
+	return MatchOrientationSchema.safeParse(value).data ?? null;
 }
 
 /**
@@ -870,7 +868,7 @@ async function loadOwnedItem(
 // Server functions
 // ============================================================================
 
-const StartMatchDeckSchema = z.object({ orientation: OrientationSchema });
+const StartMatchDeckSchema = z.object({ orientation: MatchOrientationSchema });
 
 /**
  * The one bounded /match-entry call (plan §8): start or resume the deck for the
