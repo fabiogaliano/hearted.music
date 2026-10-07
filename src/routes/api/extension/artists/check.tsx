@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { z } from "zod";
 import { getWithImagesBySpotifyIds } from "@/lib/domains/library/artists/queries";
-import { getAuthSession } from "@/lib/platform/auth/auth.server";
-import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
+import { resolveExtensionAccountId } from "@/lib/server/extension-auth";
 import {
 	extensionCorsPreflightResponse,
 	getExtensionCorsHeaders,
@@ -13,35 +12,13 @@ const ArtistCheckPayloadSchema = z.object({
 	artistIds: z.array(z.string()).max(5000),
 });
 
-async function getAuthenticatedAccountId(
-	request: Request,
-): Promise<string | null> {
-	const authContext = await getAuthSession();
-	if (authContext) {
-		return authContext.session.accountId;
-	}
-
-	const authHeader = request.headers.get("Authorization");
-	if (!authHeader?.startsWith("Bearer ")) {
-		return null;
-	}
-
-	const token = authHeader.slice(7);
-	const tokenResult = await validateExtensionApiToken(token);
-	if (Result.isOk(tokenResult) && tokenResult.value) {
-		return tokenResult.value;
-	}
-
-	return null;
-}
-
 export const Route = createFileRoute("/api/extension/artists/check")({
 	server: {
 		handlers: {
 			OPTIONS: async ({ request }) => extensionCorsPreflightResponse(request),
 			POST: async ({ request }) => {
 				const corsHeaders = getExtensionCorsHeaders(request);
-				const accountId = await getAuthenticatedAccountId(request);
+				const accountId = await resolveExtensionAccountId(request);
 
 				if (!accountId) {
 					return Response.json(
