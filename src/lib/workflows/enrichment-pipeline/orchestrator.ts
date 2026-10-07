@@ -465,6 +465,7 @@ export interface ChunkResult {
 	newCandidateSongIds: string[];
 	readyCount: number;
 	doneCount: number;
+	totalCount: number;
 	succeededCount: number;
 	failedCount: number;
 }
@@ -520,6 +521,7 @@ export async function executeWorkerChunk(
 			newCandidateSongIds: [],
 			readyCount: batch.songIds.length,
 			doneCount: progress.done,
+			totalCount: progress.total,
 			succeededCount: progress.succeeded,
 			failedCount: progress.failed,
 		};
@@ -553,6 +555,7 @@ export async function executeWorkerChunk(
 		newCandidateSongIds,
 		readyCount: batch.songIds.length,
 		doneCount: progress.done,
+		totalCount: progress.total,
 		succeededCount: progress.succeeded,
 		failedCount: progress.failed,
 	};

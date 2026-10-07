@@ -31,6 +31,7 @@ import {
 	updateHeartbeat,
 	updateJobProgress,
 } from "@/lib/platform/jobs/repository";
+import { makeWorkerOutcomes } from "@/test/fixtures";
 import {
 	findTerminalActiveRefs,
 	getOrCreateLibraryProcessingState,
@@ -38,10 +39,13 @@ import {
 	swapActiveJobRef,
 } from "../queries";
 import {
-	finalizeEnrichmentJob,
-	finalizeMatchSnapshotRefreshJob,
+	finalizeLibraryProcessingJob,
 	requeueLibraryProcessingJobForRetry,
 } from "../settlement";
+
+function outcomesFor(job: Job) {
+	return makeWorkerOutcomes({ jobId: job.id, accountId: job.account_id });
+}
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
@@ -183,7 +187,10 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		expect(running.heartbeat_is_null).toBe(false);
 
 		expect(
-			await finalizeEnrichmentJob(job, "completed", "completed"),
+			await finalizeLibraryProcessingJob(
+				job,
+				outcomesFor(job).enrichmentCompleted,
+			),
 		).toHaveOkValue("applied");
 		const done = await readJob(jobId);
 		expect(done.status).toBe("completed");
@@ -254,7 +261,10 @@ describe.skipIf(!IS_LOCAL)("stale sweep and dead-letter", () => {
 		expect(failed.error).toBe("max attempts exhausted after stale detection");
 
 		// Dead-letter recovery owns the reconcile; the late worker must stay silent.
-		const late = await finalizeEnrichmentJob(job, "completed", "completed");
+		const late = await finalizeLibraryProcessingJob(
+			job,
+			outcomesFor(job).enrichmentCompleted,
+		);
 		expect((await readJob(jobId)).status).toBe("failed");
 		expect(await eventTypes()).toEqual([]);
 		expect(late).toHaveOkValue("superseded");
@@ -268,7 +278,10 @@ describe.skipIf(!IS_LOCAL)(
 			const jobId = await seedPendingJob("enrichment");
 			const { stale, current } = await sweepAndReclaim(jobId);
 
-			const late = await finalizeEnrichmentJob(stale, "completed", "completed");
+			const late = await finalizeLibraryProcessingJob(
+				stale,
+				outcomesFor(stale).enrichmentCompleted,
+			);
 			const afterStale = await readJob(jobId);
 			expect(afterStale.status).toBe("running");
 			expect(afterStale.attempts).toBe(2);
@@ -277,7 +290,10 @@ describe.skipIf(!IS_LOCAL)(
 			expect(late).toHaveOkValue("superseded");
 
 			expect(
-				await finalizeEnrichmentJob(current, "completed", "completed"),
+				await finalizeLibraryProcessingJob(
+					current,
+					outcomesFor(current).enrichmentCompleted,
+				),
 			).toHaveOkValue("applied");
 			expect((await readJob(jobId)).status).toBe("completed");
 			expect(await eventTypes()).toEqual(["enrichment_completed"]);
@@ -291,12 +307,10 @@ describe.skipIf(!IS_LOCAL)(
       `;
 			const { stale } = await sweepAndReclaim(jobId);
 
-			const late = await finalizeMatchSnapshotRefreshJob(
-				stale,
-				"completed",
-				"published",
-				null,
-			);
+			const late = await finalizeLibraryProcessingJob(stale, {
+				...outcomesFor(stale).refreshPublished,
+				snapshotId: null,
+			});
 			expect((await readJob(jobId)).status).toBe("running");
 			const [state] = await db()<
 				{ active: string | null; settled_is_null: boolean }[]

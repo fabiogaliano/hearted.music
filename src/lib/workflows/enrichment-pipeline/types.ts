@@ -75,6 +75,8 @@ export interface EnrichmentExecuteResult {
 	selectionMode: EnrichmentSelectionMode;
 	readyCount: number;
 	doneCount: number;
+	/** Stage-work items the chunk planned; `doneCount` counts toward it. */
+	totalCount: number;
 	succeededCount: number;
 	failedCount: number;
 }

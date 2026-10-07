@@ -1,6 +1,5 @@
 import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
 import { log } from "@/lib/observability/logger";
 import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
@@ -10,14 +9,10 @@ import {
 	type RetryOptions,
 	withRetry,
 } from "@/lib/shared/utils/result-wrappers/generic";
-import {
-	EnrichmentChanges,
-	MatchSnapshotChanges,
-} from "@/lib/workflows/library-processing/changes";
+import type { EnrichmentExecuteResult } from "@/lib/workflows/enrichment-pipeline/types";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
-	finalizeEnrichmentJob,
-	finalizeMatchSnapshotRefreshJob,
+	finalizeLibraryProcessingJob,
 	requeueLibraryProcessingJobForRetry,
 } from "@/lib/workflows/library-processing/settlement";
 import type {
@@ -25,6 +20,16 @@ import type {
 	LibraryProcessingChange,
 	LibraryProcessingWorkflow,
 } from "@/lib/workflows/library-processing/types";
+import {
+	changeOf,
+	enrichmentRunOutcome,
+	finalStatusOf,
+	matchSnapshotRefreshRunOutcome,
+	measurementOf,
+	type OutcomeMeasurement,
+	type WorkerOutcome,
+} from "@/lib/workflows/library-processing/worker-outcome";
+import type { MatchSnapshotRefreshExecuteResult } from "@/lib/workflows/match-snapshot-refresh/types";
 import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
@@ -83,47 +88,6 @@ const FINALIZE_RETRY: RetryOptions<DbError> = {
 	isRetryable: (error) => error instanceof DatabaseError,
 };
 
-function finalizeFailed(ctx: RunContext, error: DbError): RunJobOutcome {
-	const { job, actor, workflow } = ctx;
-	log.error("finalize-failed", {
-		actor,
-		jobId: job.id,
-		accountId: job.account_id,
-		error: error.message,
-	});
-	captureWorkerJobFailure(error, {
-		workflow,
-		jobId: job.id,
-		accountId: job.account_id,
-	});
-	return { status: "finalize_failed", workflow, error: error.message };
-}
-
-// App-thrown errors consume the same retry budget as worker crashes: requeue
-// while attempts remain (the claim RPC already counted this attempt), and only
-// finalize as failed once max_attempts is exhausted — or when the requeue
-// itself can't land (lease lost, or the write failed).
-async function tryRequeueForRetry(
-	ctx: RunContext,
-	message: string,
-): Promise<boolean> {
-	const { job, actor, workflow } = ctx;
-	if (job.attempts >= job.max_attempts) return false;
-
-	const requeued = await requeueLibraryProcessingJobForRetry(job, message);
-	if (Result.isError(requeued)) {
-		log.error("requeue-for-retry-failed", {
-			actor,
-			jobId: job.id,
-			accountId: job.account_id,
-			workflow,
-			error: requeued.error.message,
-		});
-		return false;
-	}
-	return requeued.value;
-}
-
 /**
  * `leaseLost` is the heartbeat's signal that this claim was taken over; the
  * run checks it before finalizing so a stale worker stops without reporting,
@@ -148,295 +112,209 @@ async function runEnrichmentJob(
 	ctx: RunContext,
 	leaseLost: AbortSignal,
 ): Promise<RunJobOutcome> {
-	const { job, actor } = ctx;
-	const startedAt = job.started_at ?? new Date().toISOString();
+	const startedAt = ctx.job.started_at ?? new Date().toISOString();
+	let result: EnrichmentExecuteResult;
 	try {
-		const result = await executeEnrichmentJob(job, actor, leaseLost);
-		if (leaseLost.aborted) return leaseLostOutcome(ctx);
+		result = await executeEnrichmentJob(ctx.job, ctx.actor, leaseLost);
+	} catch (error) {
+		return recordRunError(ctx, startedAt, leaseLost, error);
+	}
+	if (leaseLost.aborted) return leaseLostOutcome(ctx);
 
-		const isBlocked = result.doneCount === 0 && result.hasMoreSongs;
-		const eventReason = isBlocked ? "failed" : "completed";
+	const recorded = await recordWorkerOutcome(
+		ctx,
+		startedAt,
+		enrichmentRunOutcome(result),
+	);
 
-		const completedResult = await withRetry(
-			() => finalizeEnrichmentJob(job, "completed", eventReason),
-			FINALIZE_RETRY,
-		);
-		if (Result.isError(completedResult)) {
-			return finalizeFailed(ctx, completedResult.error);
-		}
-		if (completedResult.value === "superseded") {
-			return leaseLostOutcome(ctx);
-		}
-
-		// A chunk that attempted zero songs while work is still owed is blocked —
-		// report stopped(blocked) so the reconciler leaves the workflow stale
-		// without immediately re-ensuring another job, preventing a no-progress
-		// hot loop.
-
-		if (isBlocked) {
-			await writeMeasurement(ctx, startedAt, "blocked", {
-				batchSequence: result.batchSequence,
-				readyCount: result.readyCount,
-				doneCount: result.doneCount,
+	if (recorded.status === "completed" && result.newCandidatesAvailable) {
+		// Event 3: new candidate songs are ready for snapshot matching.
+		try {
+			captureWorkerEvent({
+				distinctId: result.accountId,
+				event: "enrichment_candidate_batch_ready",
+				properties: {
+					new_candidate_count: result.newCandidateSongIds.length,
+					batch_sequence: result.batchSequence,
+					selection_mode: result.selectionMode,
+				},
 			});
-
-			const change = EnrichmentChanges.stopped({
-				accountId: result.accountId,
-				jobId: result.jobId,
-				reason: "blocked",
-			});
-			const settlement = await settleLibraryProcessing(ctx, change);
-
-			return {
-				status: "completed",
-				workflow: "enrichment",
-				settlement,
-			};
+		} catch {
+			// Non-fatal — candidate data is already processed; analytics failure
+			// must not affect the outcome returned to the runner.
 		}
 
-		const requestSatisfied = !result.hasMoreSongs;
-
-		await writeMeasurement(ctx, startedAt, "completed", {
-			requestSatisfied,
-			newCandidatesAvailable: result.newCandidatesAvailable,
-			batchSequence: result.batchSequence,
-			readyCount: result.readyCount,
-			doneCount: result.doneCount,
-			succeededCount: result.succeededCount,
-			failedCount: result.failedCount,
-		});
-
-		const change = EnrichmentChanges.completed({
-			accountId: result.accountId,
-			jobId: result.jobId,
-			requestSatisfied,
-			newCandidatesAvailable: result.newCandidatesAvailable,
-		});
-		const settlement = await settleLibraryProcessing(ctx, change);
-
-		if (result.newCandidatesAvailable) {
-			// Event 3: new candidate songs are ready for snapshot matching.
+		// Event 2: a match-snapshot refresh job was queued as a result of these
+		// new candidates (settlement drives the scheduler). Priority and
+		// available_at aren't accessible here (computed inside executeEffect),
+		// so first_visible_match_ready_before_queue is inferred from selectionMode
+		// instead — bootstrap mode means the visible match wasn't ready yet.
+		if (recorded.settlement === "settled") {
 			try {
 				captureWorkerEvent({
 					distinctId: result.accountId,
-					event: "enrichment_candidate_batch_ready",
+					event: "first_match_refresh_queued",
 					properties: {
-						new_candidate_count: result.newCandidateSongIds.length,
 						batch_sequence: result.batchSequence,
 						selection_mode: result.selectionMode,
+						first_visible_match_ready_before_queue:
+							result.selectionMode !== "first_match_bootstrap",
 					},
 				});
 			} catch {
-				// Non-fatal — candidate data is already processed; analytics failure
-				// must not affect the outcome returned to the runner.
-			}
-
-			// Event 2: a match-snapshot refresh job was queued as a result of these
-			// new candidates (settlement drives the scheduler). Priority and
-			// available_at aren't accessible here (computed inside executeEffect),
-			// so first_visible_match_ready_before_queue is inferred from selectionMode
-			// instead — bootstrap mode means the visible match wasn't ready yet.
-			if (settlement === "settled") {
-				try {
-					captureWorkerEvent({
-						distinctId: result.accountId,
-						event: "first_match_refresh_queued",
-						properties: {
-							batch_sequence: result.batchSequence,
-							selection_mode: result.selectionMode,
-							first_visible_match_ready_before_queue:
-								result.selectionMode !== "first_match_bootstrap",
-						},
-					});
-				} catch {
-					// Non-fatal — the refresh is already queued.
-				}
+				// Non-fatal — the refresh is already queued.
 			}
 		}
-
-		return { status: "completed", workflow: "enrichment", settlement };
-	} catch (error) {
-		if (leaseLost.aborted) return leaseLostOutcome(ctx);
-		const message = errorMessage(error);
-		// Failure is returned as outcome, not thrown — capture here while the Error is intact.
-		captureWorkerJobFailure(error, {
-			workflow: "enrichment",
-			jobId: job.id,
-			accountId: job.account_id,
-		});
-
-		if (await tryRequeueForRetry(ctx, message)) {
-			await writeMeasurement(ctx, startedAt, "error", {
-				retrying: true,
-			});
-			return { status: "retrying", workflow: "enrichment", error: message };
-		}
-
-		const failedResult = await finalizeEnrichmentJob(
-			job,
-			"failed",
-			"failed",
-			message,
-		);
-		if (Result.isError(failedResult)) {
-			log.error("mark-failed-error", {
-				actor,
-				jobId: job.id,
-				accountId: job.account_id,
-				error: failedResult.error.message,
-			});
-		} else if (failedResult.value === "superseded") {
-			return leaseLostOutcome(ctx);
-		}
-
-		await writeMeasurement(ctx, startedAt, "error");
-
-		const change = EnrichmentChanges.stopped({
-			accountId: job.account_id,
-			jobId: job.id,
-			reason: "error",
-		});
-		const settlement = await settleLibraryProcessing(ctx, change);
-
-		return {
-			status: "failed",
-			workflow: "enrichment",
-			error: message,
-			settlement,
-		};
 	}
+
+	return recorded;
 }
 
 async function runMatchSnapshotRefreshJob(
 	ctx: RunContext,
 	leaseLost: AbortSignal,
 ): Promise<RunJobOutcome> {
-	const { job, actor } = ctx;
-	const startedAt = job.started_at ?? new Date().toISOString();
+	const startedAt = ctx.job.started_at ?? new Date().toISOString();
+	let result: MatchSnapshotRefreshExecuteResult;
 	try {
-		const result = await executeMatchSnapshotRefreshJob(job, actor, leaseLost);
-		if (result.status === "lease_lost" || leaseLost.aborted) {
-			return leaseLostOutcome(ctx);
-		}
-
-		if (result.status === "superseded") {
-			let settlement: SettlementStatus = "settled";
-
-			const completedResult = await withRetry(
-				() =>
-					finalizeMatchSnapshotRefreshJob(job, "completed", "superseded", null),
-				FINALIZE_RETRY,
-			);
-			if (Result.isError(completedResult)) {
-				return finalizeFailed(ctx, completedResult.error);
-			}
-			if (completedResult.value === "superseded") {
-				return leaseLostOutcome(ctx);
-			}
-
-			await writeMeasurement(ctx, startedAt, "superseded");
-
-			const change = MatchSnapshotChanges.superseded({
-				accountId: result.accountId,
-				jobId: result.jobId,
-			});
-			settlement = await settleLibraryProcessing(ctx, change);
-
-			return {
-				status: "completed",
-				workflow: "match_snapshot_refresh",
-				settlement,
-			};
-		}
-
-		let settlement: SettlementStatus = "settled";
-
-		const completedResult = await withRetry(
-			() =>
-				finalizeMatchSnapshotRefreshJob(
-					job,
-					"completed",
-					"published",
-					result.snapshotId,
-				),
-			FINALIZE_RETRY,
+		result = await executeMatchSnapshotRefreshJob(
+			ctx.job,
+			ctx.actor,
+			leaseLost,
 		);
-		if (Result.isError(completedResult)) {
-			return finalizeFailed(ctx, completedResult.error);
-		}
-		if (completedResult.value === "superseded") {
-			return leaseLostOutcome(ctx);
-		}
-
-		await writeMeasurement(ctx, startedAt, "completed", {
-			published: result.published,
-			isEmpty: result.isEmpty,
-		});
-
-		const change = MatchSnapshotChanges.published({
-			accountId: result.accountId,
-			jobId: result.jobId,
-		});
-		settlement = await settleLibraryProcessing(ctx, change);
-
-		return {
-			status: "completed",
-			workflow: "match_snapshot_refresh",
-			settlement,
-		};
 	} catch (error) {
-		if (leaseLost.aborted) {
-			return leaseLostOutcome(ctx);
-		}
-		const message = errorMessage(error);
-		captureWorkerJobFailure(error, {
-			workflow: "match_snapshot_refresh",
+		return recordRunError(ctx, startedAt, leaseLost, error);
+	}
+	if (result.status === "lease_lost" || leaseLost.aborted) {
+		return leaseLostOutcome(ctx);
+	}
+
+	return recordWorkerOutcome(
+		ctx,
+		startedAt,
+		matchSnapshotRefreshRunOutcome(result),
+	);
+}
+
+// App-thrown errors consume the same retry budget as worker crashes: requeue
+// while attempts remain (the claim RPC already counted this attempt), and only
+// finalize as failed once max_attempts is exhausted — or when the requeue
+// itself can't land (lease lost, or the write failed).
+async function recordRunError(
+	ctx: RunContext,
+	startedAt: string,
+	leaseLost: AbortSignal,
+	error: unknown,
+): Promise<RunJobOutcome> {
+	const { job, workflow } = ctx;
+	if (leaseLost.aborted) return leaseLostOutcome(ctx);
+	const message = errorMessage(error);
+	// Failure is returned as outcome, not thrown — capture here while the Error is intact.
+	captureWorkerJobFailure(error, {
+		workflow,
+		jobId: job.id,
+		accountId: job.account_id,
+	});
+
+	if (await tryRequeueForRetry(ctx, message)) {
+		await writeMeasurement(ctx, startedAt, {
+			job_id: job.id,
+			account_id: job.account_id,
+			workflow,
+			outcome: "error",
+			details: { retrying: true },
+		});
+		return { status: "retrying", workflow, error: message };
+	}
+
+	return recordWorkerOutcome(ctx, startedAt, {
+		jobId: job.id,
+		accountId: job.account_id,
+		workflow,
+		status: "failed",
+		error: message,
+	});
+}
+
+async function tryRequeueForRetry(
+	ctx: RunContext,
+	message: string,
+): Promise<boolean> {
+	const { job, actor, workflow } = ctx;
+	if (job.attempts >= job.max_attempts) return false;
+
+	const requeued = await requeueLibraryProcessingJobForRetry(job, message);
+	if (Result.isError(requeued)) {
+		log.error("requeue-for-retry-failed", {
+			actor,
 			jobId: job.id,
 			accountId: job.account_id,
+			workflow,
+			error: requeued.error.message,
 		});
+		return false;
+	}
+	return requeued.value;
+}
 
-		if (await tryRequeueForRetry(ctx, message)) {
-			await writeMeasurement(ctx, startedAt, "error", { retrying: true });
-			return {
-				status: "retrying",
-				workflow: "match_snapshot_refresh",
-				error: message,
-			};
-		}
+/**
+ * Finalizes the job with `outcome`, then records it and hands its change to
+ * library-processing. A completed run is retried until it finalizes: the
+ * work is done and only the bookkeeping is owed. A failed run gets a single
+ * attempt; if it misses, the stale sweep ends the job instead.
+ */
+async function recordWorkerOutcome(
+	ctx: RunContext,
+	startedAt: string,
+	outcome: WorkerOutcome,
+): Promise<RunJobOutcome> {
+	const { job, actor, workflow } = ctx;
+	const finalStatus = finalStatusOf(outcome);
 
-		const failedResult = await finalizeMatchSnapshotRefreshJob(
-			job,
-			"failed",
-			"failed",
-			null,
-			message,
+	if (finalStatus === "completed") {
+		const finalized = await withRetry(
+			() => finalizeLibraryProcessingJob(job, outcome),
+			FINALIZE_RETRY,
 		);
-		if (Result.isError(failedResult)) {
-			log.error("mark-failed-error", {
+		if (Result.isError(finalized)) return finalizeFailed(ctx, finalized.error);
+		if (finalized.value === "superseded") return leaseLostOutcome(ctx);
+	} else {
+		const finalized = await finalizeLibraryProcessingJob(job, outcome);
+		if (Result.isError(finalized)) {
+			log.error("finalize-failed-error", {
 				actor,
 				jobId: job.id,
 				accountId: job.account_id,
-				error: failedResult.error.message,
+				error: finalized.error.message,
 			});
-		} else if (failedResult.value === "superseded") {
+		} else if (finalized.value === "superseded") {
 			return leaseLostOutcome(ctx);
 		}
-
-		await writeMeasurement(ctx, startedAt, "error");
-
-		const change = MatchSnapshotChanges.failed({
-			accountId: job.account_id,
-			jobId: job.id,
-		});
-		const settlement = await settleLibraryProcessing(ctx, change);
-
-		return {
-			status: "failed",
-			workflow: "match_snapshot_refresh",
-			error: message,
-			settlement,
-		};
 	}
+
+	await writeMeasurement(ctx, startedAt, measurementOf(outcome));
+	const settlement = await settleLibraryProcessing(ctx, changeOf(outcome));
+
+	if (outcome.status === "failed") {
+		return { status: "failed", workflow, error: outcome.error, settlement };
+	}
+	return { status: "completed", workflow, settlement };
+}
+
+function finalizeFailed(ctx: RunContext, error: DbError): RunJobOutcome {
+	const { job, actor, workflow } = ctx;
+	log.error("finalize-failed", {
+		actor,
+		jobId: job.id,
+		accountId: job.account_id,
+		error: error.message,
+	});
+	captureWorkerJobFailure(error, {
+		workflow,
+		jobId: job.id,
+		accountId: job.account_id,
+	});
+	return { status: "finalize_failed", workflow, error: error.message };
 }
 
 function leaseLostOutcome(ctx: RunContext): RunJobOutcome {
@@ -523,22 +401,21 @@ async function settleLibraryProcessing(
 async function writeMeasurement(
 	ctx: RunContext,
 	startedAt: string,
-	outcome: string,
-	details?: Record<string, Json>,
+	measurement: OutcomeMeasurement,
 ): Promise<void> {
-	const { job, actor, workflow } = ctx;
+	const { job, actor } = ctx;
 	try {
 		const result = await recordJobExecutionMeasurement({
-			jobId: job.id,
-			accountId: job.account_id,
-			workflow,
+			jobId: measurement.job_id,
+			accountId: measurement.account_id,
+			workflow: ctx.workflow,
 			queuePriority: job.queue_priority ?? null,
 			attemptNumber: job.attempts,
 			queuedAt: job.created_at,
 			startedAt,
 			finishedAt: new Date().toISOString(),
-			outcome,
-			details,
+			outcome: measurement.outcome,
+			details: measurement.details,
 		});
 		if (Result.isError(result)) {
 			log.warn("measurement-write-failed", {
