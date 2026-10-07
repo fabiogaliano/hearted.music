@@ -19,10 +19,10 @@ vi.mock("@/lib/server/match-review-queue.functions", () => ({
 
 import {
 	matchDeckCardSuggestionsInfiniteQueryOptions,
-	matchDeckKeys,
 	matchDeckQueryOptions,
 	readMatchDeckCardQueryOptions,
 } from "@/features/matching/deck-queries";
+import { matchDeckKeys } from "@/lib/query-keys";
 
 describe("matchDeckQueryOptions", () => {
 	it("keys per (account, orientation) and calls startOrResumeMatchDeck with the orientation", async () => {

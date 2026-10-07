@@ -28,15 +28,13 @@ vi.mock("@/lib/observability/sentry", () => ({
 	captureRouteError: (...args: unknown[]) => captureRouteErrorMock(...args),
 }));
 
-import {
-	matchDeckKeys,
-	readMatchDeckCardQueryOptions,
-} from "@/features/matching/deck-queries";
+import { readMatchDeckCardQueryOptions } from "@/features/matching/deck-queries";
 import {
 	dismissSuggestionMutation,
 	patchPresentCacheOnSuggestionDismiss,
 	patchTailCacheOnSuggestionDismiss,
 } from "@/features/matching/mutations";
+import { matchDeckKeys } from "@/lib/query-keys";
 import type { SubmitMatchDeckActionResult } from "@/lib/server/match-deck.functions";
 import type {
 	ListMatchReviewItemSuggestionsPage,

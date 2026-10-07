@@ -1,17 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { billingKeys } from "@/features/billing/query-keys";
-import { dashboardKeys } from "@/features/dashboard/queries";
-import { likedSongsKeys } from "@/features/liked-songs/queries";
-import { matchDeckKeys } from "@/features/matching/deck-queries";
 import {
 	type AccountEventPayloadMap,
 	type ActiveJobsSnapshot,
 	type AnyAccountEventEnvelope,
 	CURSOR_RESPONSE_HEADER,
 } from "@/lib/account-events/contract";
+import {
+	activeJobsKeys,
+	billingKeys,
+	dashboardKeys,
+	likedSongsKeys,
+	matchDeckKeys,
+} from "@/lib/query-keys";
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
-import { activeJobsKeys } from "./active-jobs-keys";
 
 export type ConnectionState =
 	| "connecting"

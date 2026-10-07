@@ -1,10 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { playlistKeys } from "@/lib/query-keys";
 import {
 	flushPlaylistManagementSession,
 	setPlaylistTargetMutation,
 } from "@/lib/server/playlists.functions";
-import { playlistKeys } from "../queries";
 
 interface PlaylistSessionState {
 	targetMembershipChanged: boolean;

@@ -5,11 +5,11 @@ import {
 } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { matchReviewSummaryKeys } from "@/features/matching/queries";
 import { ALL_DEMO_INTENT_EXAMPLES } from "@/lib/content/landing/demo-intent-examples";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { matchReviewSummaryKeys, playlistKeys } from "@/lib/query-keys";
 import { savePlaylistMatchConfig } from "@/lib/server/playlists.functions";
 import { fonts } from "@/lib/theme/fonts";
 import { CoverFlowPlaylists } from "./components/CoverFlowPlaylists";
@@ -23,7 +23,6 @@ import {
 } from "./playlistRouteRef";
 import {
 	accountTopGenresQueryOptions,
-	playlistKeys,
 	playlistManagementQueryOptions,
 	playlistMatchFilterOptionsQueryOptions,
 	playlistTracksInfiniteQueryOptions,

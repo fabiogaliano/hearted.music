@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { playlistKeys } from "@/features/playlists/queries";
+import { playlistKeys } from "@/lib/query-keys";
 import { matchExperience, matchingSongs } from "@/stories/fixtures";
 import { Matching } from "./Matching";
 import type {

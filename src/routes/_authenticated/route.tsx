@@ -32,7 +32,6 @@ import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWelcomeDialog";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
-import { billingKeys } from "@/features/billing/query-keys";
 import { UserJotWidget } from "@/features/feedback/UserJotWidget";
 import { preferredMatchReviewSummaryQueryOptions } from "@/features/matching/queries";
 import {
@@ -53,6 +52,7 @@ import {
 	AUTH_SESSION_QUERY_KEY,
 	ONBOARDING_SESSION_QUERY_KEY,
 } from "@/lib/platform/auth/query-keys";
+import { billingKeys } from "@/lib/query-keys";
 import { requireAuthSession } from "@/lib/server/auth.functions";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { getInitialConsentState } from "@/lib/server/consent.functions";

@@ -1,28 +1,14 @@
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
-import { dashboardKeys } from "@/features/dashboard/queries";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
+import {
+	dashboardKeys,
+	matchDeckKeys,
+	matchReviewSummaryKeys,
+} from "@/lib/query-keys";
 import {
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
 } from "@/lib/server/match-review-queue.functions";
-import { matchDeckKeys } from "./deck-queries";
-
-export const matchReviewKeys = {
-	all: ["match-review"] as const,
-};
-
-// Queue-aware summary keys. Drive sidebar badge and dashboard CTA.
-// Invalidated on matchSnapshotRefresh completion (useActiveJobs) and after
-// queue mutations that change the pending count.
-export const matchReviewSummaryKeys = {
-	// Prefix for all summary keys — use for broad invalidation across orientations.
-	summariesRoot: ["match-review", "summary"] as const,
-	summary: (accountId: string, orientation: MatchOrientation) =>
-		["match-review", "summary", accountId, orientation] as const,
-	// Preference-driven summary: resolves orientation from stored user preference.
-	preferredSummary: (accountId: string) =>
-		["match-review", "summary", accountId, "preferred"] as const,
-};
 
 export function matchReviewSummaryQueryOptions(
 	accountId: string,

@@ -8,6 +8,7 @@
 
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { draftPreviewKeys } from "@/lib/query-keys";
 import { getIntentEligibility } from "@/lib/server/billing.functions";
 import { previewPlaylistDraft } from "@/lib/server/playlist-draft.functions";
 import {
@@ -35,23 +36,6 @@ export const DEFAULT_DRAFT_CONFIG: DraftConfig = {
 	pinnedSongIds: [],
 	excludedSongIds: [],
 	suggestionsOffset: 0,
-};
-
-// Keys are stable and derived from the full config so any parameter change
-// triggers a fresh fetch while identical configs share the cache.
-export const draftPreviewKeys = {
-	all: ["playlist-draft-preview"] as const,
-	preview: (config: DraftConfig) =>
-		[
-			"playlist-draft-preview",
-			config.maxSongs,
-			config.intent ?? null,
-			config.genrePills,
-			config.matchFilters,
-			config.pinnedSongIds,
-			config.excludedSongIds,
-			config.suggestionsOffset,
-		] as const,
 };
 
 /**

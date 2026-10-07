@@ -4,6 +4,7 @@ import {
 	type QueryClient,
 } from "@tanstack/react-query";
 import { captureRouteError } from "@/lib/observability/sentry";
+import { matchDeckKeys } from "@/lib/query-keys";
 import {
 	type SubmitMatchDeckActionResult,
 	submitMatchDeckAction,
@@ -14,7 +15,7 @@ import type {
 	MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
 import { isDeckActionSuccess } from "./deck-action-status";
-import { matchDeckKeys, readMatchDeckCardQueryOptions } from "./deck-queries";
+import { readMatchDeckCardQueryOptions } from "./deck-queries";
 
 type TailPagesData = InfiniteData<
 	ListMatchReviewItemSuggestionsPage,

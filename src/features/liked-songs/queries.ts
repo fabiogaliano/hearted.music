@@ -10,6 +10,7 @@ import {
 } from "@/lib/domains/library/liked-songs/constants";
 import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
+import { likedSongsKeys } from "@/lib/query-keys";
 import {
 	getLikedSongBySlug,
 	getLikedSongsDeepLinkBootstrap,
@@ -22,39 +23,6 @@ import { getSongSuggestions } from "@/lib/server/matching.functions";
 import { getWalkthroughCompanionSongs } from "@/lib/server/onboarding.functions";
 
 export type FilterOption = LikedSongFilter;
-
-/**
- * Collapse undefined / null / "" / "   " into a single canonical "no search"
- * value so the React Query cache treats every empty form as the same key.
- */
-function normalizeSearch(search?: string | null): string {
-	if (!search) return "";
-	return search.trim();
-}
-
-export const likedSongsKeys = {
-	all: ["liked-songs"] as const,
-	stats: (accountId: string) => ["liked-songs", "stats", accountId] as const,
-	bySlug: (accountId: string, slug: string) =>
-		[...likedSongsKeys.all, "by-slug", accountId, slug] as const,
-	deepLinkBootstrap: (accountId: string, slug: string) =>
-		[...likedSongsKeys.all, "deep-link-bootstrap", accountId, slug] as const,
-	infinite: (filter: FilterOption, search?: string | null) =>
-		[
-			...likedSongsKeys.all,
-			"infinite",
-			{ filter, search: normalizeSearch(search) },
-		] as const,
-	page: (filter: FilterOption, cursor?: string, search?: string | null) =>
-		[
-			...likedSongsKeys.all,
-			"page",
-			{ filter, cursor, search: normalizeSearch(search) },
-		] as const,
-	songSuggestions: (songId: string) =>
-		[...likedSongsKeys.all, "song-suggestions", songId] as const,
-	pageLive: ["liked-songs", "page-live"] as const,
-};
 
 export function likedSongsStatsQueryOptions(accountId: string) {
 	return queryOptions({
@@ -105,11 +73,10 @@ export function likedSongsInfiniteQueryOptions(
 	filter: FilterOption,
 	search?: string | null,
 ) {
-	const normalizedSearch = normalizeSearch(search);
-	const searchArg = normalizedSearch.length > 0 ? normalizedSearch : undefined;
+	const searchArg = search?.trim() || undefined;
 
 	return infiniteQueryOptions({
-		queryKey: likedSongsKeys.infinite(filter, normalizedSearch),
+		queryKey: likedSongsKeys.infinite(filter, search),
 		queryFn: async ({ pageParam }) => {
 			return getLikedSongsPage({
 				data: {

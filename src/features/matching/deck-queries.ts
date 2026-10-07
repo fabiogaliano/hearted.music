@@ -1,5 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
+import { matchDeckKeys } from "@/lib/query-keys";
 import {
 	readMatchDeckCard,
 	startOrResumeMatchDeck,
@@ -8,22 +9,6 @@ import {
 	listMatchReviewItemSuggestions,
 	type MatchReviewItemSuggestionCursor,
 } from "@/lib/server/match-review-queue.functions";
-
-/**
- * Query keys for the Phase 3 deck read model. Separate from matchReviewKeys so
- * the deck query family can run alongside the legacy families through the
- * cutover (the route swap is Phase 4). Deck state is one source of truth per
- * (account, orientation); per-card reads and tail suggestions hang off itemId.
- */
-export const matchDeckKeys = {
-	all: ["match-deck"] as const,
-	// Prefix for all deck (start/resume) keys — broad invalidation on snapshot
-	// refresh or a strictness/filter change that affects every orientation.
-	deckRoot: ["match-deck", "deck"] as const,
-	deck: (accountId: string, orientation: MatchOrientation) =>
-		["match-deck", "deck", accountId, orientation] as const,
-	card: (itemId: string) => ["match-deck", "card", itemId] as const,
-};
 
 /**
  * The single deck query the route renders from (plan §8/§10): one bounded

@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
+import { dashboardKeys } from "@/lib/query-keys";
 import {
 	type DashboardPageData,
 	getDashboardPageData,
@@ -7,17 +8,6 @@ import {
 	getMatchPreviews,
 	getRecentActivity,
 } from "@/lib/server/dashboard.functions";
-
-export const dashboardKeys = {
-	all: ["dashboard"] as const,
-	pageData: (accountId: string) =>
-		["dashboard", "page-data", accountId] as const,
-	stats: (accountId: string) => ["dashboard", "stats", accountId] as const,
-	recentActivity: (accountId: string) =>
-		["dashboard", "recent-activity", accountId] as const,
-	matchPreviews: (accountId: string) =>
-		["dashboard", "match-previews", accountId] as const,
-};
 
 /**
  * Aggregate query: fetches all dashboard data in a single authenticated

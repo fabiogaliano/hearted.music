@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { dashboardKeys } from "@/features/dashboard/queries";
-import { matchDeckKeys } from "@/features/matching/deck-queries";
+import { runMatchSnapshotRefreshEffects } from "@/features/matching/queries";
 import {
+	dashboardKeys,
+	matchDeckKeys,
 	matchReviewSummaryKeys,
-	runMatchSnapshotRefreshEffects,
-} from "@/features/matching/queries";
-import { playlistKeys } from "@/features/playlists/queries";
+	playlistKeys,
+} from "@/lib/query-keys";
 import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 import { accountEventsConnectionKey } from "../useAccountEvents";
 import { useActiveJobs } from "../useActiveJobs";
