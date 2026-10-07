@@ -1,7 +1,6 @@
 /**
  * Shared account resolution for extension API routes: Better Auth session cookie
- * first, then the extension's Bearer API token. Mirrors the inline guard the
- * sync/status and artists/check routes already use. Returns null when neither
+ * first, then the extension's Bearer API token. Returns null when neither
  * authenticates the caller.
  */
 
