@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
-import type { AudioFeaturesFailureKind } from "@/lib/integrations/audio/service";
+import type { AudioFeaturesFailureKind } from "@/lib/domains/enrichment/audio-features/service";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import type { EnrichmentContext } from "../types";
@@ -21,7 +21,7 @@ vi.mock("@/lib/domains/enrichment/audio-feature-backfill/jobs", () => ({
 	enqueueSearchJob: (...args: unknown[]) => mockEnqueueSearchJob(...args),
 }));
 
-vi.mock("@/lib/integrations/audio/service", () => ({
+vi.mock("@/lib/domains/enrichment/audio-features/service", () => ({
 	createAudioFeaturesService: () => ({
 		getOrFetchFeatures: (...args: unknown[]) => mockGetOrFetchFeatures(...args),
 	}),

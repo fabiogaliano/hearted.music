@@ -11,7 +11,7 @@ import {
 	type AudioFeaturesFailureKind,
 	createAudioFeaturesService,
 	type TrackInfo,
-} from "@/lib/integrations/audio/service";
+} from "@/lib/domains/enrichment/audio-features/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { log } from "@/lib/observability/logger";
 import type { PipelineBatch } from "../batch";

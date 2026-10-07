@@ -5,6 +5,10 @@
 
 import { Result } from "better-result";
 import {
+	createAudioFeaturesService,
+	type TrackInfo,
+} from "@/lib/domains/enrichment/audio-features/service";
+import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
@@ -17,10 +21,6 @@ import { getByIds } from "@/lib/domains/library/songs/queries";
 import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
-import {
-	createAudioFeaturesService,
-	type TrackInfo,
-} from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { log } from "@/lib/observability/logger";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";

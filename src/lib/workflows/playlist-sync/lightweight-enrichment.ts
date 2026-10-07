@@ -14,6 +14,10 @@
 
 import { Result } from "better-result";
 import {
+	createAudioFeaturesService,
+	type TrackInfo,
+} from "@/lib/domains/enrichment/audio-features/service";
+import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
 } from "@/lib/domains/enrichment/genre-tagging/service";
@@ -25,10 +29,6 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { getByIds } from "@/lib/domains/library/songs/queries";
-import {
-	createAudioFeaturesService,
-	type TrackInfo,
-} from "@/lib/integrations/audio/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import type { DbError } from "@/lib/shared/errors/database";
 import { chunkArray, mapWithConcurrency } from "@/lib/shared/utils/concurrency";

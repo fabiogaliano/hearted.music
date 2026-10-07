@@ -23,7 +23,7 @@ import type { Song } from "@/lib/domains/library/songs/queries";
 import {
 	createAudioFeaturesService,
 	type TrackInfo,
-} from "@/lib/integrations/audio/service";
+} from "@/lib/domains/enrichment/audio-features/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { createGenreEnrichmentService } from "@/lib/domains/enrichment/genre-tagging/service";
 import { SongAnalysisService } from "@/lib/domains/enrichment/content-analysis/song-analysis";
