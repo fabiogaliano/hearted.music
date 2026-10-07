@@ -14,9 +14,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	getMatchReviewSummary,
 	getPreferredMatchReviewSummary,
+} from "../match-review-queue.functions";
+import {
 	resolveMatchReviewSummary,
 	resolvePreferredMatchReviewSummary,
-} from "../match-review-queue.functions";
+} from "../match-review-summary.server";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
