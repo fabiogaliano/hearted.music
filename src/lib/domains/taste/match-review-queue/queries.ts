@@ -201,11 +201,12 @@ export async function fetchActiveSession(
 }
 
 /**
- * Whether a proposal for this exact (account, orientation, snapshot, visibility
- * hash) key is ready or being built. `stale` and `failed` rows don't count:
- * neither will ever serve the deck for this key.
+ * Whether a ready proposal exists for this exact (account, orientation,
+ * snapshot, visibility hash) key. A `building` row doesn't count: a build that
+ * errored or was dead-lettered leaves it `building` for good, and an in-flight
+ * build is already deduped by the build job's idempotency key.
  */
-export async function hasLiveProposal(input: {
+export async function hasReadyProposal(input: {
 	accountId: string;
 	orientation: MatchOrientation;
 	snapshotId: string;
@@ -220,7 +221,7 @@ export async function hasLiveProposal(input: {
 			.eq("orientation", input.orientation)
 			.eq("snapshot_id", input.snapshotId)
 			.eq("visibility_config_hash", input.visibilityConfigHash)
-			.in("status", ["building", "ready"])
+			.eq("status", "ready")
 			.maybeSingle(),
 	);
 	if (Result.isError(result)) return result;

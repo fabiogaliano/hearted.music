@@ -17,7 +17,7 @@ const {
 	mockEnqueueDeckJob,
 	mockResolveVisibilityConfigHash,
 	mockGetLatestMatchSnapshot,
-	mockHasLiveProposal,
+	mockHasReadyProposal,
 } = vi.hoisted(() => ({
 	mockExecute: vi.fn(),
 	mockCaptureWorkerEvent: vi.fn(),
@@ -25,7 +25,7 @@ const {
 	mockEnqueueDeckJob: vi.fn(),
 	mockResolveVisibilityConfigHash: vi.fn(),
 	mockGetLatestMatchSnapshot: vi.fn(),
-	mockHasLiveProposal: vi.fn(),
+	mockHasReadyProposal: vi.fn(),
 }));
 
 vi.mock("@sentry/bun", () => ({
@@ -50,7 +50,7 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
-	hasLiveProposal: (...args: unknown[]) => mockHasLiveProposal(...args),
+	hasReadyProposal: (...args: unknown[]) => mockHasReadyProposal(...args),
 }));
 
 vi.mock("@/lib/workflows/match-snapshot-refresh/orchestrator", () => ({
@@ -319,8 +319,8 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		});
 
-		it("enqueues nothing when the latest snapshot's proposals are already live", async () => {
-			mockHasLiveProposal.mockResolvedValue(Result.ok(true));
+		it("enqueues nothing when the latest snapshot's proposals are already ready", async () => {
+			mockHasReadyProposal.mockResolvedValue(Result.ok(true));
 
 			await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
@@ -328,14 +328,14 @@ describe("executeMatchSnapshotRefreshJob", () => {
 		});
 
 		it("regression: a rerun of a refresh that published and died before enqueueing builds the latest snapshot's missing proposals", async () => {
-			mockHasLiveProposal.mockImplementation(
+			mockHasReadyProposal.mockImplementation(
 				async (key: { orientation: string }) =>
 					Result.ok(key.orientation === "playlist"),
 			);
 
 			await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
-			expect(mockHasLiveProposal).toHaveBeenCalledWith({
+			expect(mockHasReadyProposal).toHaveBeenCalledWith({
 				accountId: "acct-1",
 				orientation: "song",
 				snapshotId: "snap-1",
