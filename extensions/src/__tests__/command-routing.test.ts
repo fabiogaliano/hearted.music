@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SpotifyTokenPayload } from "../../../shared/extension-wire-protocol";
 import type { TokenProvider } from "../background/command-handler";
 import { handleSpotifyCommand } from "../background/command-handler";
-import type { SpotifyCommand, SpotifyTokenPayload } from "../shared/types";
+import type { SpotifyCommand } from "../shared/types";
 
 vi.mock("../shared/spotify-client/reads", () => ({
 	queryArtistOverview: vi.fn().mockResolvedValue({
