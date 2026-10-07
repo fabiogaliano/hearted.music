@@ -8,6 +8,7 @@
 
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { getIntentEligibility } from "@/lib/server/billing.functions";
 import { previewPlaylistDraft } from "@/lib/server/playlist-draft.functions";
 import {
 	resolveLikedArtistSongs,
@@ -114,5 +115,17 @@ export function likedArtistSearchQueryOptions(query: string) {
 		queryKey: ["liked-artist-search", query] as const,
 		queryFn: () => searchLikedArtists({ data: { query } }),
 		staleTime: 60_000,
+	});
+}
+
+const INTENT_ELIGIBILITY_KEY = ["playlist-intent-eligibility"] as const;
+
+export function intentEligibilityQueryOptions() {
+	return queryOptions({
+		queryKey: INTENT_ELIGIBILITY_KEY,
+		queryFn: () => getIntentEligibility(),
+		// Eligibility shifts only when a subscription or large unlock event happens;
+		// 5 minutes is safely long enough without staling the page.
+		staleTime: 5 * 60_000,
 	});
 }

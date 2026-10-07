@@ -115,17 +115,6 @@ export default defineConfig({
 					),
 				),
 			},
-			// Intent eligibility server function pulls auth + billing tables.
-			// Stub exposes a controllable boolean (premium vs free).
-			{
-				find: /^@\/features\/playlists\/create\/intentEligibility$/,
-				replacement: fileURLToPath(
-					new URL(
-						"./src/__mocks__/intentEligibility.stub.ts",
-						import.meta.url,
-					),
-				),
-			},
 			// The extension orchestrator calls the real Spotify extension — no-op in Ladle.
 			{
 				find: /^@\/lib\/extension\/create-playlist-from-draft$/,

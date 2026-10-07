@@ -45,7 +45,6 @@ import type {
 	PlaylistIdeaVM,
 	ResolvedIdeaVM,
 } from "../ideaTypes";
-import { intentEligibilityQueryOptions } from "../intentEligibility";
 import {
 	buildPlaylistIdeas,
 	formatGateHint,
@@ -54,6 +53,7 @@ import {
 	shuffleIdeas,
 	slotOptionsFor,
 } from "../playlistIdeas";
+import { intentEligibilityQueryOptions } from "../queries";
 import { tasteProfileQueryOptions } from "../tasteProfile";
 import { IdeaSlot } from "./IdeaSlot";
 

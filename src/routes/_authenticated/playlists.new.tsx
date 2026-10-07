@@ -19,7 +19,7 @@
  */
 
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { intentEligibilityQueryOptions } from "@/features/playlists/create/intentEligibility";
+import { intentEligibilityQueryOptions } from "@/features/playlists/create/queries";
 import { requestLibraryPhase1Enrichment } from "@/lib/server/enrichment.functions";
 
 export const Route = createFileRoute("/_authenticated/playlists/new")({

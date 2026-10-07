@@ -15,13 +15,20 @@ import {
 	UNLIMITED_QUARTERLY,
 	UNLIMITED_YEARLY,
 } from "@/lib/domains/billing/offers";
-import { readBillingState } from "@/lib/domains/billing/queries";
+import {
+	readBillingState,
+	readBillingStateOrFreeTier,
+} from "@/lib/domains/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	parseStripeCheckoutUrl,
 	parseStripePortalUrl,
 } from "@/lib/domains/billing/stripe-redirects";
 import { requestSongUnlock as orchestrateUnlock } from "@/lib/domains/billing/unlocks";
+import {
+	buildIntentGate,
+	type IntentGateVM,
+} from "@/lib/domains/playlists/intent-eligibility";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 
@@ -410,4 +417,26 @@ export const getPlanSelectionConfig = createServerFn({ method: "GET" })
 			billingEnabled: env.BILLING_ENABLED,
 			quarterlyPlanEnabled: env.QUARTERLY_PLAN_ENABLED,
 		};
+	});
+
+/**
+ * Intent-field gate for playlist creation. Returns the full gate (allowed +
+ * criteria) so the locked treatment can say why it is locked.
+ */
+export const getIntentEligibility = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.handler(async ({ context }): Promise<IntentGateVM> => {
+		const { accountId } = context.session;
+		const supabase = createAdminSupabaseClient();
+
+		// On billing error, readBillingStateOrFreeTier degrades to the free tier,
+		// which buildIntentGate turns into a locked gate — never accidentally
+		// granting access.
+		const billingState = await readBillingStateOrFreeTier(
+			supabase,
+			accountId,
+			"get_intent_eligibility",
+		);
+
+		return buildIntentGate(billingState);
 	});

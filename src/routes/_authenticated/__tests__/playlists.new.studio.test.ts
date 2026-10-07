@@ -45,11 +45,9 @@ async function loadRoute(): Promise<StudioRoute> {
 		createFileRoute: () => (routeConfig: unknown) => routeConfig,
 		useLocation: vi.fn(),
 	}));
-	vi.doMock("@/features/playlists/create/intentEligibility", () => ({
-		intentEligibilityQueryOptions: intentEligibilityQueryOptionsMock,
-	}));
 	vi.doMock("@/features/playlists/create/queries", () => ({
 		DEFAULT_DRAFT_CONFIG,
+		intentEligibilityQueryOptions: intentEligibilityQueryOptionsMock,
 		playlistDraftPreviewQueryOptions: playlistDraftPreviewQueryOptionsMock,
 	}));
 	vi.doMock("@/features/playlists/create/StudioScreen", () => ({
