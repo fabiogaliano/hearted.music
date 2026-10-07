@@ -20,6 +20,7 @@ import {
 	resolveMatchDeck,
 } from "@/lib/domains/taste/match-review-queue/deck-entry";
 import type {
+	MatchDeckAction,
 	MatchReviewItemRead,
 	StartOrResumeMatchDeckResult,
 	SubmitMatchDeckActionResult,
@@ -38,6 +39,7 @@ import {
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import type { DbError } from "@/lib/shared/errors/database";
 
 function reportDeckError(
 	error: unknown,
@@ -199,6 +201,46 @@ const SubmitMatchDeckActionSchema = z.discriminatedUnion("type", [
 	z.object({ type: z.literal("dismiss-card"), itemId: z.uuid() }),
 ]);
 
+const DECK_ACTION_FAILURES: Record<MatchDeckAction["type"], string> = {
+	"add-suggestion": "Could not add this suggestion. Please try again.",
+	"dismiss-suggestion": "Could not dismiss this suggestion. Please try again.",
+	"finish-card": "Could not finish this card. Please try again.",
+	"dismiss-card": "Could not dismiss this card. Please try again.",
+};
+
+/**
+ * Routes the suggestion id to the orientation-correct column (song subject →
+ * playlist suggestion column, and vice versa), mirroring
+ * addSongToPlaylistFromQueueItem.
+ */
+function dispatchDeckAction(
+	action: MatchDeckAction,
+	accountId: string,
+	orientation: MatchOrientation,
+): Promise<Result<string, DbError>> {
+	const isSong = orientation === "song";
+	switch (action.type) {
+		case "add-suggestion":
+			return addQueueItemDecisionAtomically(
+				action.itemId,
+				accountId,
+				isSong ? null : action.suggestionId,
+				isSong ? action.suggestionId : null,
+			);
+		case "dismiss-suggestion":
+			return dismissQueueItemSuggestionAtomically(
+				action.itemId,
+				accountId,
+				isSong ? null : action.suggestionId,
+				isSong ? action.suggestionId : null,
+			);
+		case "finish-card":
+			return finishQueueItemAtomically(action.itemId, accountId);
+		case "dismiss-card":
+			return dismissQueueItemAtomically(action.itemId, accountId);
+	}
+}
+
 /**
  * One deck-aware command boundary (plan §9, R-A). Dispatches to the EXISTING
  * atomic domain wrappers — which already do the decision + deck side effects
@@ -206,9 +248,8 @@ const SubmitMatchDeckActionSchema = z.discriminatedUnion("type", [
  * RETURNS TEXT — then reads the fresh view. The raw TEXT action status is surfaced
  * (never collapsed to a bool); the view reflects the promoted next card.
  *
- * Orientation is derived from the owned item so the two suggestion actions route
- * suggestionId to the correct column (song subject → playlist suggestion column,
- * and vice versa), mirroring addSongToPlaylistFromQueueItem.
+ * Orientation is derived from the owned item so the two suggestion actions can
+ * route suggestionId to the correct column.
  */
 export const submitMatchDeckAction = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
@@ -235,84 +276,18 @@ export const submitMatchDeckAction = createServerFn({ method: "POST" })
 			throw new Error("This review item could not be found.");
 		}
 		const orientation = item.subject.orientation;
-		const isSong = orientation === "song";
 
-		let actionStatus: string;
-		switch (action.type) {
-			case "add-suggestion": {
-				const result = await addQueueItemDecisionAtomically(
-					action.itemId,
-					accountId,
-					isSong ? null : action.suggestionId,
-					isSong ? action.suggestionId : null,
-				);
-				if (Result.isError(result)) {
-					reportDeckError(result.error, "submit_match_deck_action", accountId, {
-						orientation,
-						type: action.type,
-					});
-					throw new Error("Could not add this suggestion. Please try again.", {
-						cause: result.error,
-					});
-				}
-				actionStatus = result.value;
-				break;
-			}
-			case "dismiss-suggestion": {
-				const result = await dismissQueueItemSuggestionAtomically(
-					action.itemId,
-					accountId,
-					isSong ? null : action.suggestionId,
-					isSong ? action.suggestionId : null,
-				);
-				if (Result.isError(result)) {
-					reportDeckError(result.error, "submit_match_deck_action", accountId, {
-						orientation,
-						type: action.type,
-					});
-					throw new Error(
-						"Could not dismiss this suggestion. Please try again.",
-						{ cause: result.error },
-					);
-				}
-				actionStatus = result.value;
-				break;
-			}
-			case "finish-card": {
-				const result = await finishQueueItemAtomically(
-					action.itemId,
-					accountId,
-				);
-				if (Result.isError(result)) {
-					reportDeckError(result.error, "submit_match_deck_action", accountId, {
-						orientation,
-						type: action.type,
-					});
-					throw new Error("Could not finish this card. Please try again.", {
-						cause: result.error,
-					});
-				}
-				actionStatus = result.value;
-				break;
-			}
-			case "dismiss-card": {
-				const result = await dismissQueueItemAtomically(
-					action.itemId,
-					accountId,
-				);
-				if (Result.isError(result)) {
-					reportDeckError(result.error, "submit_match_deck_action", accountId, {
-						orientation,
-						type: action.type,
-					});
-					throw new Error("Could not dismiss this card. Please try again.", {
-						cause: result.error,
-					});
-				}
-				actionStatus = result.value;
-				break;
-			}
+		const dispatched = await dispatchDeckAction(action, accountId, orientation);
+		if (Result.isError(dispatched)) {
+			reportDeckError(dispatched.error, "submit_match_deck_action", accountId, {
+				orientation,
+				type: action.type,
+			});
+			throw new Error(DECK_ACTION_FAILURES[action.type], {
+				cause: dispatched.error,
+			});
 		}
+		const actionStatus = dispatched.value;
 
 		// Read-after-write: the action already advanced the deck in-txn, so the
 		// fresh view reflects the promoted next card / caught-up state. Not an
