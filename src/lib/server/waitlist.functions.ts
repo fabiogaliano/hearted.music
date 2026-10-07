@@ -8,8 +8,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { sendWaitlistConfirmation } from "@/lib/email/waitlist-confirmation";
 import { captureServerError } from "@/lib/observability/capture-server-error";
+import { sendWaitlistConfirmation } from "@/lib/platform/email/send-waitlist-confirmation";
 
 const waitlistSchema = z.object({
 	email: z.email(),
