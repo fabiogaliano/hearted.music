@@ -74,12 +74,9 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 // MSR-21: dashboard.functions.ts now calls resolvePreferredMatchReviewSummary
 // (reads stored match_view_mode preference) instead of resolveMatchReviewSummary
 // with a hard-coded 'song' orientation.
-vi.mock("@/lib/server/match-review-queue.functions", () => ({
+vi.mock("@/lib/server/match-review-summary.server", () => ({
 	resolvePreferredMatchReviewSummary: (...args: unknown[]) =>
 		mockResolvePreferredMatchReviewSummary(...args),
-	// Other exports from the module are not exercised by these tests.
-	getMatchReviewSummary: vi.fn(),
-	listMatchReviewItemSuggestions: vi.fn(),
 }));
 
 describe("getDashboardStats (queue-aware)", () => {

@@ -24,7 +24,7 @@ import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/ty
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
 import { getLastCompletedSync } from "@/lib/platform/jobs/sync-phase-jobs";
-import { resolvePreferredMatchReviewSummary } from "@/lib/server/match-review-queue.functions";
+import { resolvePreferredMatchReviewSummary } from "@/lib/server/match-review-summary.server";
 
 // ============================================================================
 // Types
