@@ -1,10 +1,9 @@
 import * as Sentry from "@sentry/bun";
-import { Result } from "better-result";
 import { enqueueProposalRebuild } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
 import { log } from "@/lib/observability/logger";
 import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
-import { type Job, updateHeartbeat } from "@/lib/platform/jobs/repository";
+import type { Job } from "@/lib/platform/jobs/repository";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refresh/orchestrator";
@@ -12,7 +11,6 @@ import {
 	type MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshPlanSchema,
 } from "@/lib/workflows/match-snapshot-refresh/types";
-import { workerConfig } from "./config";
 import { captureWorkerEvent } from "./posthog-capture";
 
 export interface EnrichmentExecuteResult {
@@ -42,42 +40,6 @@ export type MatchSnapshotRefreshExecuteResult =
 	// This worker's claim was taken over mid-run; nothing after the refresh
 	// itself was emitted or enqueued.
 	| { status: "lease_lost"; accountId: string; jobId: string };
-
-/**
- * Renews the claim's lease until stopped. `leaseLost` aborts once the renewal
- * reports the lease taken over, so the run can stop before its next side
- * effect instead of finishing work the fenced settle would discard.
- */
-export function startHeartbeat(job: Pick<Job, "id" | "attempts">): {
-	stop: () => void;
-	leaseLost: AbortSignal;
-} {
-	const lease = new AbortController();
-	const interval = setInterval(async () => {
-		const result = await updateHeartbeat(job);
-		if (Result.isError(result)) {
-			log.warn("heartbeat-failed", {
-				jobId: job.id,
-				error: result.error.message,
-			});
-			return;
-		}
-		// The lease was swept and reclaimed or dead-lettered; renewing it can
-		// never succeed again.
-		if (result.value === "superseded") {
-			log.warn("heartbeat-lease-lost", {
-				jobId: job.id,
-				attempts: job.attempts,
-			});
-			clearInterval(interval);
-			lease.abort();
-		}
-	}, workerConfig.heartbeatIntervalMs);
-	return {
-		stop: () => clearInterval(interval),
-		leaseLost: lease.signal,
-	};
-}
 
 export async function executeEnrichmentJob(
 	job: Job,
