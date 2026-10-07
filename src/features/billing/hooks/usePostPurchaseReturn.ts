@@ -14,7 +14,7 @@ import {
 	loadCheckoutIntent,
 } from "@/features/billing/checkout-intent";
 import type { BillingState } from "@/lib/domains/billing/state";
-import { billingKeys, dashboardKeys, likedSongsKeys } from "@/lib/query-keys";
+import { billingKeys, invalidateEntitlementQueries } from "@/lib/query-keys";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { isCheckoutFulfilled } from "../checkout-fulfillment";
 
@@ -26,10 +26,7 @@ const POLL_TIMEOUT_MS = 30_000;
  * exists in sessionStorage, polls billing state until the purchase is
  * confirmed, then invalidates caches so the UI reflects the new state.
  */
-export function usePostPurchaseReturn(
-	accountId: string,
-	billingState: BillingState,
-) {
+export function usePostPurchaseReturn(billingState: BillingState) {
 	const queryClient = useQueryClient();
 	const hasRunRef = useRef(false);
 
@@ -43,12 +40,7 @@ export function usePostPurchaseReturn(
 
 		if (isCheckoutFulfilled(intent, billingState)) {
 			clearCheckoutIntent();
-			queryClient.invalidateQueries({ queryKey: billingKeys.state });
-			queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
-			queryClient.invalidateQueries({
-				queryKey: likedSongsKeys.stats(accountId),
-			});
-			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			void invalidateEntitlementQueries(queryClient);
 			return;
 		}
 
@@ -57,12 +49,7 @@ export function usePostPurchaseReturn(
 
 		const invalidateAll = () => {
 			clearCheckoutIntent();
-			queryClient.invalidateQueries({ queryKey: billingKeys.state });
-			queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
-			queryClient.invalidateQueries({
-				queryKey: likedSongsKeys.stats(accountId),
-			});
-			queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+			void invalidateEntitlementQueries(queryClient);
 		};
 
 		const poll = async () => {
@@ -97,5 +84,5 @@ export function usePostPurchaseReturn(
 			cancelled = true;
 			clearTimeout(timeoutId);
 		};
-	}, [queryClient, accountId, billingState]);
+	}, [queryClient, billingState]);
 }

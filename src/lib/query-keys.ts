@@ -132,6 +132,24 @@ export const draftPreviewKeys = {
 };
 
 /**
+ * Caches whose contents depend on what the account is entitled to see. Every
+ * path that changes entitlements (checkout return, song unlock, the SSE
+ * billing_state_changed event) invalidates this one set, so no surface keeps
+ * showing a song as locked after another has refreshed.
+ */
+export async function invalidateEntitlementQueries(
+	queryClient: QueryClient,
+): Promise<void> {
+	// likedSongsKeys.all is a prefix of likedSongsKeys.stats, so the stats
+	// count refreshes with it.
+	await Promise.all([
+		queryClient.invalidateQueries({ queryKey: billingKeys.state }),
+		queryClient.invalidateQueries({ queryKey: likedSongsKeys.all }),
+		queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+	]);
+}
+
+/**
  * Caches a finished match-snapshot refresh makes stale. Called on the
  * running-to-idle edge of the refresh job (useActiveJobCompletionEffects).
  */
