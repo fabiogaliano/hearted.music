@@ -11,10 +11,6 @@ import {
 } from "@/lib/shared/utils/result-wrappers/generic";
 import type { EnrichmentExecuteResult } from "@/lib/workflows/enrichment-pipeline/types";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import {
-	finalizeLibraryProcessingJob,
-	requeueLibraryProcessingJobForRetry,
-} from "@/lib/workflows/library-processing/settlement";
 import type {
 	LibraryProcessingApplyError,
 	LibraryProcessingChange,
@@ -34,6 +30,7 @@ import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "./execute";
+import { finalizeJob, requeueLibraryProcessingJobForRetry } from "./finalize";
 import { captureWorkerJobFailure } from "./job-failure-reporting";
 import { captureWorkerEvent } from "./posthog-capture";
 
@@ -273,13 +270,13 @@ async function recordWorkerOutcome(
 
 	if (finalStatus === "completed") {
 		const finalized = await withRetry(
-			() => finalizeLibraryProcessingJob(job, outcome),
+			() => finalizeJob(job, outcome),
 			FINALIZE_RETRY,
 		);
 		if (Result.isError(finalized)) return finalizeFailed(ctx, finalized.error);
 		if (finalized.value === "superseded") return leaseLostOutcome(ctx);
 	} else {
-		const finalized = await finalizeLibraryProcessingJob(job, outcome);
+		const finalized = await finalizeJob(job, outcome);
 		if (Result.isError(finalized)) {
 			log.error("finalize-failed-error", {
 				actor,

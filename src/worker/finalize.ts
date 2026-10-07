@@ -11,7 +11,7 @@ import {
 	finalErrorOf,
 	finalStatusOf,
 	type WorkerOutcome,
-} from "./worker-outcome";
+} from "@/lib/workflows/library-processing/worker-outcome";
 
 // Worker-only SQL instance for transactional job finalizes
 const sql = postgres(env.DATABASE_URL, {
@@ -83,7 +83,7 @@ async function fenceTerminal(
  * outcome's account events commit together, so no event is ever emitted for
  * a run another claim owns.
  */
-export async function finalizeLibraryProcessingJob(
+export async function finalizeJob(
 	job: Job,
 	outcome: WorkerOutcome,
 ): Promise<Result<JobTransition, DbError>> {
