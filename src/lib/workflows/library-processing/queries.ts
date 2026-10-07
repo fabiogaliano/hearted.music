@@ -117,6 +117,8 @@ export async function findTerminalActiveRefs(): Promise<
 	}
 
 	const refs: TerminalActiveRef[] = [];
+	// The embeds are non-inner so one terminal ref still comes back while the
+	// other is running; rows whose refs are all running yield nothing here.
 	for (const { enrichment_job, refresh_job, ...row } of rows ?? []) {
 		const state = toState(row);
 		if (enrichment_job) {
