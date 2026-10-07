@@ -45,7 +45,9 @@ const loop = createPollLoop<Job, { message: string }>({
 					});
 				}
 			} catch {
-				// Already logged + marked failed inside runner
+				// runClaimedJob reports job failures as outcomes, so a throw here
+				// escaped its own error handling and nothing marked the job failed:
+				// it stays running until the stale sweep re-pends or dead-letters it.
 			} finally {
 				heartbeat.stop();
 				markDone();

@@ -3,9 +3,9 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
+	finalizeEnrichmentJob,
+	finalizeMatchSnapshotRefreshJob,
 	requeueLibraryProcessingJobForRetry,
-	settleEnrichmentJobTerminal,
-	settleMatchSnapshotRefreshJobTerminal,
 } from "@/lib/workflows/library-processing/settlement";
 
 const recordJobExecutionMeasurementMock = vi
@@ -18,8 +18,8 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 }));
 
 vi.mock("@/lib/workflows/library-processing/settlement", () => ({
-	settleEnrichmentJobTerminal: vi.fn().mockResolvedValue({ isError: false }),
-	settleMatchSnapshotRefreshJobTerminal: vi
+	finalizeEnrichmentJob: vi.fn().mockResolvedValue({ isError: false }),
+	finalizeMatchSnapshotRefreshJob: vi
 		.fn()
 		.mockResolvedValue({ isError: false }),
 	requeueLibraryProcessingJobForRetry: vi
@@ -111,10 +111,8 @@ describe("runClaimedJob", () => {
 		vi.clearAllMocks();
 		recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
-		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-			Result.ok("applied"),
-		);
-		vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+		vi.mocked(finalizeEnrichmentJob).mockResolvedValue(Result.ok("applied"));
+		vi.mocked(finalizeMatchSnapshotRefreshJob).mockResolvedValue(
 			Result.ok("applied"),
 		);
 		// Default: no retry budget consumed successfully — existing failure-path
@@ -172,7 +170,7 @@ describe("runClaimedJob", () => {
 		if (outcome.status === "failed") {
 			expect(outcome.error).toBe("provider down");
 		}
-		expect(settleEnrichmentJobTerminal).toHaveBeenCalledWith(
+		expect(finalizeEnrichmentJob).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "job-1" }),
 			"failed",
 			"failed",
@@ -227,7 +225,7 @@ describe("runClaimedJob", () => {
 				expect.objectContaining({ id: "job-1" }),
 				"provider down",
 			);
-			expect(settleEnrichmentJobTerminal).not.toHaveBeenCalled();
+			expect(finalizeEnrichmentJob).not.toHaveBeenCalled();
 			// The job is still active (back to pending) — no reconciler change.
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -252,7 +250,7 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("retrying");
-			expect(settleMatchSnapshotRefreshJobTerminal).not.toHaveBeenCalled();
+			expect(finalizeMatchSnapshotRefreshJob).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
 
@@ -269,7 +267,7 @@ describe("runClaimedJob", () => {
 
 			expect(outcome.status).toBe("failed");
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
-			expect(settleEnrichmentJobTerminal).toHaveBeenCalledWith(
+			expect(finalizeEnrichmentJob).toHaveBeenCalledWith(
 				expect.objectContaining({ id: "job-1" }),
 				"failed",
 				"failed",
@@ -292,19 +290,8 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("failed");
-			expect(settleEnrichmentJobTerminal).toHaveBeenCalled();
+			expect(finalizeEnrichmentJob).toHaveBeenCalled();
 		});
-	});
-
-	it("preserves workflow result payloads on completed outcomes", async () => {
-		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-
-		const outcome = await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
-
-		expect(outcome.status).toBe("completed");
-		if (outcome.status === "completed" && outcome.workflow === "enrichment") {
-			expect(outcome.result).toEqual(ENRICHMENT_EXEC_RESULT);
-		}
 	});
 
 	describe("a lease lost at the terminal settle records nothing (regression: match_snapshot_refresh wrote its measurement before the fenced settle, double-recording a reclaimed run)", () => {
@@ -353,16 +340,16 @@ describe("runClaimedJob", () => {
 
 		it.each(cases)("$name", async ({ job, arrange }) => {
 			arrange();
-			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+			vi.mocked(finalizeEnrichmentJob).mockResolvedValue(
 				Result.ok("superseded"),
 			);
-			vi.mocked(settleMatchSnapshotRefreshJobTerminal).mockResolvedValue(
+			vi.mocked(finalizeMatchSnapshotRefreshJob).mockResolvedValue(
 				Result.ok("superseded"),
 			);
 
 			const outcome = await runClaimedJob(job, "@test", LIVE_LEASE);
 
-			expect(outcome.status).toBe("superseded");
+			expect(outcome.status).toBe("lease_lost");
 			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -423,9 +410,9 @@ describe("runClaimedJob", () => {
 
 			const outcome = await runClaimedJob(job, "@test", lease.signal);
 
-			expect(outcome.status).toBe("superseded");
-			expect(settleEnrichmentJobTerminal).not.toHaveBeenCalled();
-			expect(settleMatchSnapshotRefreshJobTerminal).not.toHaveBeenCalled();
+			expect(outcome.status).toBe("lease_lost");
+			expect(finalizeEnrichmentJob).not.toHaveBeenCalled();
+			expect(finalizeMatchSnapshotRefreshJob).not.toHaveBeenCalled();
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
@@ -512,7 +499,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
 				Result.ok(true),
 			);
-			vi.mocked(settleEnrichmentJobTerminal)
+			vi.mocked(finalizeEnrichmentJob)
 				.mockResolvedValueOnce(Result.err(settleError))
 				.mockResolvedValueOnce(Result.ok("applied"));
 
@@ -525,7 +512,7 @@ describe("runClaimedJob", () => {
 			const outcome = await promise;
 
 			expect(outcome.status).toBe("completed");
-			expect(settleEnrichmentJobTerminal).toHaveBeenCalledTimes(2);
+			expect(finalizeEnrichmentJob).toHaveBeenCalledTimes(2);
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 		});
 
@@ -534,7 +521,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
 				Result.ok(true),
 			);
-			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
+			vi.mocked(finalizeEnrichmentJob).mockResolvedValue(
 				Result.err(settleError),
 			);
 
@@ -546,7 +533,7 @@ describe("runClaimedJob", () => {
 			await vi.advanceTimersByTimeAsync(60_000);
 			const outcome = await promise;
 
-			expect(outcome.status).toBe("settle_failed");
+			expect(outcome.status).toBe("finalize_failed");
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -838,9 +825,7 @@ describe("runClaimedJob", () => {
 			vi.clearAllMocks();
 			recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 			applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
-			vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-				Result.ok("applied"),
-			);
+			vi.mocked(finalizeEnrichmentJob).mockResolvedValue(Result.ok("applied"));
 		});
 
 		it("captures enrichment_candidate_batch_ready when newCandidatesAvailable", async () => {

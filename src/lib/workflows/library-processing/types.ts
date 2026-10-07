@@ -1,5 +1,8 @@
 import type { DbError } from "@/lib/shared/errors/database";
 
+/** The job types library-processing state tracks; each is one `job.type`. */
+export type LibraryProcessingWorkflow = "enrichment" | "match_snapshot_refresh";
+
 export interface LibraryProcessingWorkflowState {
 	requestedAt: string | null;
 	settledAt: string | null;
