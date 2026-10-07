@@ -182,10 +182,9 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 					operation: "get_liked_songs_deeplink_bootstrap",
 					accountId: session.accountId,
 				});
-				throw new Error(
-					`Liked-songs deep-link bootstrap failed: ${result.error.message}`,
-					{ cause: result.error },
-				);
+				throw new Error("Liked-songs deep-link bootstrap failed", {
+					cause: result.error,
+				});
 			}
 
 			const { selectedRow, pages } = result.value;
