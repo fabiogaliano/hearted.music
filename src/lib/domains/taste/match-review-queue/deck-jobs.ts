@@ -208,7 +208,7 @@ export async function markDeadDeckJobs(
 
 /**
  * Looks up an in-flight (pending or running) `build_proposals` job for this
- * (account, orientation) — the request-path miss handler (match-deck-miss-path.ts,
+ * (account, orientation) — the request-path miss handler (deck-entry.ts,
  * P0 race fix) uses this to defer to the worker instead of running the same
  * five-call, non-transactional build concurrently with it. A plain `.eq()`/`.in()`
  * lookup on the job table's own columns, not a DB-derived id set re-entering as

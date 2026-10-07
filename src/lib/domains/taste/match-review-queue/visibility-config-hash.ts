@@ -11,7 +11,7 @@
  * call. Callers that can avoid needing the hash at all — e.g.
  * start_or_resume_match_deck's branch 1 (active session), which never reads
  * p_visibility_config_hash — should skip calling this rather than call it
- * defensively (see resolveMatchDeckView's skipHashComputation mode, M10).
+ * defensively (see resolveMatchDeck's "after_action" read, M10).
  */
 
 import { Result } from "better-result";

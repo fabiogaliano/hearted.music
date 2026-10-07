@@ -1,30 +1,43 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { StartOrResumeMatchDeckRpcResult } from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { activeDeckRpc, deckPlaylistCardRpc } from "@/test/fixtures";
 
 // ---------------------------------------------------------------------------
-// Mocks — buildFirstWindowAndPromote orchestrates three DB-bound collaborators.
-// All are mocked so the test is DB-free; captureServerError is mocked to keep the
-// best-effort enqueue-failure branch off Sentry and let us assert the trace.
+// Mocks — the entry's miss path orchestrates the hash, the RPC, the latest
+// snapshot, the proposal builder and the deck-job queue. All are mocked so the
+// test is DB-free; captureServerError is mocked to keep the best-effort
+// branches off Sentry and let us assert the trace.
 // ---------------------------------------------------------------------------
 
-const mockBuildOneProposal = vi.fn();
+const mockResolveVisibilityConfigHash = vi.fn();
 const mockCallStartOrResumeMatchDeck = vi.fn();
+const mockGetLatestMatchSnapshot = vi.fn();
+const mockBuildOneProposal = vi.fn();
 const mockEnqueueDeckJob = vi.fn();
 const mockFindInFlightBuildProposalsJob = vi.fn();
 const mockCaptureServerError = vi.fn();
 
-vi.mock("@/lib/domains/taste/match-review-queue/proposal-builder", () => ({
-	buildOneProposal: (...a: unknown[]) => mockBuildOneProposal(...a),
+vi.mock("../visibility-config-hash", () => ({
+	resolveVisibilityConfigHash: (...a: unknown[]) =>
+		mockResolveVisibilityConfigHash(...a),
 }));
 
-vi.mock("@/lib/domains/taste/match-review-queue/deck-read-queries", () => ({
+vi.mock("../deck-read-queries", async (importOriginal) => ({
+	...(await importOriginal()),
 	callStartOrResumeMatchDeck: (...a: unknown[]) =>
 		mockCallStartOrResumeMatchDeck(...a),
 }));
 
-vi.mock("@/lib/domains/taste/match-review-queue/deck-jobs", () => ({
+vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
+	getLatestMatchSnapshot: (...a: unknown[]) => mockGetLatestMatchSnapshot(...a),
+}));
+
+vi.mock("../proposal-builder", () => ({
+	buildOneProposal: (...a: unknown[]) => mockBuildOneProposal(...a),
+}));
+
+vi.mock("../deck-jobs", () => ({
 	enqueueDeckJob: (...a: unknown[]) => mockEnqueueDeckJob(...a),
 	findInFlightBuildProposalsJob: (...a: unknown[]) =>
 		mockFindInFlightBuildProposalsJob(...a),
@@ -34,67 +47,48 @@ vi.mock("@/lib/observability/capture-server-error", () => ({
 	captureServerError: (...a: unknown[]) => mockCaptureServerError(...a),
 }));
 
-import { buildFirstWindowAndPromote } from "../match-deck-miss-path";
+import { resolveMatchDeck } from "../deck-entry";
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const INPUT = {
-	accountId: "acct-1",
-	orientation: "playlist" as const,
-	snapshotId: "snap-1",
-	preset: "balanced",
-	minScore: 0.5,
-	visibilityConfigHash: "vc_playlist_0.5_rtf",
-	nowMs: 1_700_000_000_000,
-	window: 8,
-};
+const HASH = "vc_playlist_0.5_rtf";
 
-function activeRpc(): StartOrResumeMatchDeckRpcResult {
-	return {
-		status: "active",
-		version: 1,
-		accountId: "acct-1",
-		orientation: "playlist",
-		sessionId: "s1",
-		snapshotId: "snap-1",
-		visibilityConfigHash: "vc_playlist_0.5_rtf",
-		revision: 1,
-		progress: {
-			total: 3,
-			remaining: 3,
-			caughtUp: false,
-			hiddenReviewItemCount: 0,
-		},
-		itemIds: ["item-1"],
-		cards: { current: null, next: null },
-	};
+const MISS_RPC = { status: "miss" as const, reason: "no_ready_proposal" };
+
+/** Entry for a playlist deck whose first start_or_resume call misses. */
+function enterMissedDeck() {
+	return resolveMatchDeck("acct-1", "playlist", "entry");
 }
-
-const MISS_RPC: StartOrResumeMatchDeckRpcResult = {
-	status: "miss",
-	reason: "no_ready_proposal",
-};
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	mockResolveVisibilityConfigHash.mockResolvedValue(
+		Result.ok({ hash: HASH, minScore: 0.5 }),
+	);
+	// The entry's own call misses; the miss path's re-invoke promotes.
+	mockCallStartOrResumeMatchDeck
+		.mockResolvedValueOnce(Result.ok(MISS_RPC))
+		.mockResolvedValue(Result.ok(activeDeckRpc(deckPlaylistCardRpc(2, 2))));
+	mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 	mockBuildOneProposal.mockResolvedValue(Result.ok(undefined));
-	mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(activeRpc()));
 	mockEnqueueDeckJob.mockResolvedValue(Result.ok(null));
 	mockFindInFlightBuildProposalsJob.mockResolvedValue(Result.ok(null));
 });
 
-describe("buildFirstWindowAndPromote", () => {
-	it("builds the current preset, re-invokes, and returns the promoted active result", async () => {
-		const active = activeRpc();
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
-
-		const result = await buildFirstWindowAndPromote(INPUT);
+describe("resolveMatchDeck miss path", () => {
+	it("builds the current preset, re-invokes with the same hash and window, and returns the promoted view", async () => {
+		const result = await enterMissedDeck();
 
 		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toBe(active);
+		expect(result.value.entry).toBe("promoted");
+		if (result.value.entry !== "promoted") throw new Error("expected a view");
+		expect(result.value.view.sessionId).toBe("s1");
 
+		// One nowMs is threaded into the hash and the build so the re-invoke's
+		// branch-2 search key matches the built proposal's hash.
+		const hashNowMs = mockResolveVisibilityConfigHash.mock.calls[0][2];
 		// buildOneProposal(accountId, orientation, snapshotId, preset, minScore, nowMs)
 		expect(mockBuildOneProposal).toHaveBeenCalledWith(
 			"acct-1",
@@ -102,13 +96,15 @@ describe("buildFirstWindowAndPromote", () => {
 			"snap-1",
 			"balanced",
 			0.5,
-			1_700_000_000_000,
+			hashNowMs,
 		);
-		// Re-invoke uses the SAME hash + window the caller threaded in.
-		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledWith(
+		// Re-invoke uses the SAME hash + the playlist deck window.
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(2);
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenNthCalledWith(
+			2,
 			"acct-1",
 			"playlist",
-			"vc_playlist_0.5_rtf",
+			HASH,
 			8,
 		);
 		// Best-effort full build so the next entry after a preset change is a hit.
@@ -116,58 +112,64 @@ describe("buildFirstWindowAndPromote", () => {
 			accountId: "acct-1",
 			orientation: "playlist",
 			kind: "build_proposals",
-			idempotencyKey: "build:acct-1:playlist:snap-1:vc_playlist_0.5_rtf",
+			idempotencyKey: `build:acct-1:playlist:snap-1:${HASH}`,
 			payload: { snapshotId: "snap-1" },
 		});
 	});
 
-	it("still returns the active result when the best-effort enqueue fails (Result.err)", async () => {
-		const active = activeRpc();
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
+	it("still returns the promoted view when the best-effort enqueue fails (Result.err)", async () => {
 		mockEnqueueDeckJob.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "x", message: "enqueue boom" })),
 		);
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		// The enqueue failure is traced but never fails the request.
 		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toBe(active);
+		expect(result.value.entry).toBe("promoted");
 		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
 	});
 
-	it("surfaces the buildOneProposal error and does not promote", async () => {
+	it("surfaces the buildOneProposal error as a miss_build failure and does not promote", async () => {
 		const buildError = new DatabaseError({ code: "y", message: "build boom" });
 		mockBuildOneProposal.mockResolvedValue(Result.err(buildError));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		if (!Result.isError(result)) throw new Error("expected err");
-		expect(result.error).toBe(buildError);
+		expect(result.error.step).toBe("miss_build");
+		expect(result.error.cause).toBe(buildError);
 		// No re-invoke and no enqueue once the build fails.
-		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
-	it("returns the miss unchanged when the re-invoke still misses (caller maps to building)", async () => {
+	it("returns building with promotion_incomplete when the re-invoke still misses", async () => {
+		mockCallStartOrResumeMatchDeck.mockReset();
 		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(MISS_RPC));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
-		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value.status).toBe("miss");
+		expect(result).toHaveOkValue({
+			entry: "promotion_incomplete",
+			view: { status: "building" },
+		});
 		// The full build is still enqueued so a later entry becomes a hit.
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
 	});
 
-	it("surfaces a re-invoke RPC error without enqueuing", async () => {
+	it("surfaces a re-invoke RPC error as a miss_build failure without enqueuing", async () => {
 		const rpcError = new DatabaseError({ code: "z", message: "rpc boom" });
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.err(rpcError));
+		mockCallStartOrResumeMatchDeck.mockReset();
+		mockCallStartOrResumeMatchDeck
+			.mockResolvedValueOnce(Result.ok(MISS_RPC))
+			.mockResolvedValueOnce(Result.err(rpcError));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		if (!Result.isError(result)) throw new Error("expected err");
-		expect(result.error).toBe(rpcError);
+		expect(result.error.step).toBe("miss_build");
+		expect(result.error.cause).toBe(rpcError);
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 
@@ -183,12 +185,11 @@ describe("buildFirstWindowAndPromote", () => {
 			Result.ok({ id: "job-1", status: "pending" }),
 		);
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
-		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toEqual({
-			status: "miss",
-			reason: "no_ready_proposal",
+		expect(result).toHaveOkValue({
+			entry: "promotion_incomplete",
+			view: { status: "building" },
 		});
 		expect(mockFindInFlightBuildProposalsJob).toHaveBeenCalledWith(
 			"acct-1",
@@ -196,7 +197,7 @@ describe("buildFirstWindowAndPromote", () => {
 		);
 		// No racing build, and no re-invoke (nothing changed to promote).
 		expect(mockBuildOneProposal).not.toHaveBeenCalled();
-		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
 		// The best-effort full-build enqueue still runs.
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
 	});
@@ -212,13 +213,10 @@ describe("buildFirstWindowAndPromote", () => {
 			.mockResolvedValueOnce(Result.err(lookupError))
 			.mockResolvedValueOnce(Result.ok(null));
 
-		const active = activeRpc();
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
-
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toBe(active);
+		expect(result.value.entry).toBe("promoted");
 		expect(mockBuildOneProposal).toHaveBeenCalledTimes(1);
 		// Asserted via mock.calls (not toHaveBeenCalledWith): better-result's
 		// TaggedError/Err implement Symbol.iterator for Result.gen, which panics
@@ -237,7 +235,7 @@ describe("buildFirstWindowAndPromote", () => {
 	// build_proposals key AFTER the step-0 check but DURING the inline build. If it
 	// did, the handler must NOT promote its own re-invoke over a possibly-truncated
 	// subject set — it defers to the worker instead. The check fails open like
-	// step 0. findInFlightBuildProposalsJob is now called twice on the happy path.
+	// step 0. findInFlightBuildProposalsJob is called twice on the happy path.
 	// -------------------------------------------------------------------------
 
 	it("defers to the worker when a build_proposals job appears AFTER step 0 but before the re-invoke (post-build re-check)", async () => {
@@ -245,23 +243,22 @@ describe("buildFirstWindowAndPromote", () => {
 			.mockResolvedValueOnce(Result.ok(null))
 			.mockResolvedValueOnce(Result.ok({ id: "job-2", status: "running" }));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
-		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toEqual({
-			status: "miss",
-			reason: "no_ready_proposal",
+		expect(result).toHaveOkValue({
+			entry: "promotion_incomplete",
+			view: { status: "building" },
 		});
 		// The inline build already ran (step 0 was clear), but the worker claimed the
 		// same key mid-build, so we defer instead of promoting our own re-invoke.
 		expect(mockBuildOneProposal).toHaveBeenCalledTimes(1);
 		expect(mockFindInFlightBuildProposalsJob).toHaveBeenCalledTimes(2);
-		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
 		// The best-effort full-build enqueue still runs (the deferred-to worker path).
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
 	});
 
-	it("fails open on a post-build lookup error: still re-invokes, returns the active result, and traces the post-build check", async () => {
+	it("fails open on a post-build lookup error: still re-invokes, returns the promoted view, and traces the post-build check", async () => {
 		mockFindInFlightBuildProposalsJob
 			.mockResolvedValueOnce(Result.ok(null))
 			.mockResolvedValueOnce(
@@ -270,16 +267,13 @@ describe("buildFirstWindowAndPromote", () => {
 				),
 			);
 
-		const active = activeRpc();
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(Result.ok(active));
-
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		if (Result.isError(result)) throw new Error("expected ok");
 		// A post-build lookup failure must not block the request: fall through to the
 		// re-invoke exactly like step 0's fail-open.
-		expect(result.value).toBe(active);
-		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
+		expect(result.value.entry).toBe("promoted");
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(2);
 		// Asserted via mock.calls (not toHaveBeenCalledWith): better-result errors
 		// implement Symbol.iterator and panic under vitest deep-equal.
 		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
@@ -289,23 +283,22 @@ describe("buildFirstWindowAndPromote", () => {
 		});
 	});
 
-	it("degrades a unique_violation from buildOneProposal to the miss result instead of throwing", async () => {
+	it("degrades a unique_violation from buildOneProposal to building instead of failing", async () => {
 		const raceError = new DatabaseError({
 			code: "23505",
 			message: "duplicate key value violates unique constraint",
 		});
 		mockBuildOneProposal.mockResolvedValue(Result.err(raceError));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
-		if (Result.isError(result)) throw new Error("expected ok");
-		expect(result.value).toEqual({
-			status: "miss",
-			reason: "no_ready_proposal",
+		expect(result).toHaveOkValue({
+			entry: "promotion_incomplete",
+			view: { status: "building" },
 		});
 		// The loser never re-invokes (nothing new to promote) but still traces
 		// the race and keeps the best-effort full-build enqueue.
-		expect(mockCallStartOrResumeMatchDeck).not.toHaveBeenCalled();
+		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(1);
 		expect(mockEnqueueDeckJob).toHaveBeenCalledTimes(1);
 		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
 		const [erroredArg, contextArg] = mockCaptureServerError.mock.calls[0];
@@ -319,10 +312,10 @@ describe("buildFirstWindowAndPromote", () => {
 		const buildError = new DatabaseError({ code: "other", message: "boom" });
 		mockBuildOneProposal.mockResolvedValue(Result.err(buildError));
 
-		const result = await buildFirstWindowAndPromote(INPUT);
+		const result = await enterMissedDeck();
 
 		if (!Result.isError(result)) throw new Error("expected err");
-		expect(result.error).toBe(buildError);
+		expect(result.error.cause).toBe(buildError);
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
 	});
 });

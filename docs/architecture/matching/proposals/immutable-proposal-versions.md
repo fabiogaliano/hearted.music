@@ -308,7 +308,7 @@ build can safely overlap:
 
 Keep the existing job in-flight checks at first. After production soak, simplify:
 
-- remove the post-build re-check in `match-deck-miss-path.ts`
+- remove the post-build re-check in `match-review-queue/deck-entry.ts`
 - keep or remove the step-0 worker defer based on product latency preference,
   not data safety
 - keep `23505`/deadlock handling only where still relevant
@@ -381,7 +381,7 @@ versions for the same key become valid.
 After a production soak with publication metrics:
 
 1. Remove the post-build in-flight re-check.
-2. Reword `match-deck-miss-path.ts` comments around worker races.
+2. Reword the `match-review-queue/deck-entry.ts` miss-path comments around worker races.
 3. Keep product-oriented defer behavior only if it improves latency/load.
 
 ### Phase 5 — cleanup and retention

@@ -4,9 +4,9 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { activeDeckRpc, deckPlaylistCardRpc } from "@/test/fixtures";
 
 // ---------------------------------------------------------------------------
-// Mocks — the deck server fns are wrappers over the deck-read RPCs + the atomic
-// domain wrappers + the miss-path builder. Everything DB-bound is mocked; the
-// pure helpers (visibility hash, caps, cursor) run for real.
+// Mocks — the deck server fns run the real deck entry over the deck-read RPCs,
+// the atomic domain wrappers and the proposal builder. Everything DB-bound is
+// mocked; the pure helpers (visibility hash, caps, cursor) run for real.
 // ---------------------------------------------------------------------------
 
 const mockAuthContext = { session: { accountId: "acct-1" }, account: null };
@@ -19,7 +19,8 @@ const mockGetLatestMatchSnapshot = vi.fn();
 const mockCallStartOrResumeMatchDeck = vi.fn();
 const mockCallReadMatchDeckCard = vi.fn();
 const mockCaptureAheadForSession = vi.fn();
-const mockBuildFirstWindowAndPromote = vi.fn();
+const mockBuildOneProposal = vi.fn();
+const mockCaptureProductEvent = vi.fn();
 const mockAddQueueItemDecisionAtomically = vi.fn();
 const mockDismissQueueItemAtomically = vi.fn();
 const mockDismissQueueItemSuggestionAtomically = vi.fn();
@@ -83,9 +84,13 @@ vi.mock("@/lib/domains/taste/match-review-queue/card-materializer", () => ({
 	captureAheadForSession: (...a: unknown[]) => mockCaptureAheadForSession(...a),
 }));
 
-vi.mock("../match-deck-miss-path", () => ({
-	buildFirstWindowAndPromote: (...a: unknown[]) =>
-		mockBuildFirstWindowAndPromote(...a),
+vi.mock("@/lib/domains/taste/match-review-queue/proposal-builder", () => ({
+	buildOneProposal: (...a: unknown[]) => mockBuildOneProposal(...a),
+}));
+
+vi.mock("@/lib/observability/capture-product-event", () => ({
+	captureProductEventBestEffort: (...a: unknown[]) =>
+		mockCaptureProductEvent(...a),
 }));
 
 vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
@@ -174,7 +179,7 @@ function mockRowRead(row: unknown, error: unknown = null) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	// Defaults for the shared resolveMatchDeckView path.
+	// Defaults for the shared resolveMatchDeck path.
 	mockResolveMinMatchScore.mockResolvedValue(0.5);
 	mockFetchTargetPlaylistFilters.mockResolvedValue(Result.ok(new Map()));
 	mockCallStartOrResumeMatchDeck.mockResolvedValue(
@@ -218,7 +223,7 @@ describe("startOrResumeMatchDeck", () => {
 			data: { orientation: "song" },
 		});
 		expect(result).toEqual({ status: "building" });
-		expect(mockBuildFirstWindowAndPromote).not.toHaveBeenCalled();
+		expect(mockBuildOneProposal).not.toHaveBeenCalled();
 		// Song deck window = whole capped set.
 		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledWith(
 			"acct-1",
@@ -228,44 +233,25 @@ describe("startOrResumeMatchDeck", () => {
 		);
 	});
 
-	it("miss + snapshot → builds the first window (approach X) and returns the promoted view", async () => {
+	it("emits one match_deck_hit for an active entry and one match_deck_miss_reason for an entry with no snapshot", async () => {
+		await startOrResumeMatchDeck({ data: { orientation: "playlist" } });
+		expect(mockCaptureProductEvent).toHaveBeenCalledTimes(1);
+		expect(mockCaptureProductEvent.mock.calls[0][0]).toMatchObject({
+			event: "match_deck_hit",
+			properties: { orientation: "playlist", source: "active" },
+		});
+
+		mockCaptureProductEvent.mockClear();
 		mockCallStartOrResumeMatchDeck.mockResolvedValue(
 			Result.ok({ status: "miss", reason: "no_ready_proposal" }),
 		);
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-9" }));
-		mockBuildFirstWindowAndPromote.mockResolvedValue(
-			Result.ok(activeDeckRpc(deckPlaylistCardRpc(2, 2))),
-		);
-
-		const result = await startOrResumeMatchDeck({
-			data: { orientation: "playlist" },
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok(null));
+		await startOrResumeMatchDeck({ data: { orientation: "song" } });
+		expect(mockCaptureProductEvent).toHaveBeenCalledTimes(1);
+		expect(mockCaptureProductEvent.mock.calls[0][0]).toMatchObject({
+			event: "match_deck_miss_reason",
+			properties: { orientation: "song", reason: "no_snapshot" },
 		});
-		expect("version" in result).toBe(true);
-		expect(mockBuildFirstWindowAndPromote).toHaveBeenCalledTimes(1);
-		// Same nowMs-derived hash + snapshot threaded into the build.
-		expect(mockBuildFirstWindowAndPromote.mock.calls[0][0]).toMatchObject({
-			accountId: "acct-1",
-			orientation: "playlist",
-			snapshotId: "snap-9",
-			preset: "balanced",
-			minScore: 0.5,
-			window: 8,
-		});
-	});
-
-	it("miss + snapshot but the build still misses → building", async () => {
-		mockCallStartOrResumeMatchDeck.mockResolvedValue(
-			Result.ok({ status: "miss", reason: "no_ready_proposal" }),
-		);
-		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-9" }));
-		mockBuildFirstWindowAndPromote.mockResolvedValue(
-			Result.ok({ status: "miss", reason: "no_ready_proposal" }),
-		);
-
-		const result = await startOrResumeMatchDeck({
-			data: { orientation: "song" },
-		});
-		expect(result).toEqual({ status: "building" });
 	});
 });
 
@@ -421,6 +407,18 @@ describe("submitMatchDeckAction", () => {
 			"acct-1",
 		);
 		expect(result.actionStatus).toBe("dismissed");
+	});
+
+	it("does not count its read-after-write as a deck entry (no hit/miss event)", async () => {
+		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
+
+		await submitMatchDeckAction({
+			data: { type: "dismiss-card", itemId: "item-1" },
+		});
+
+		const events = mockCaptureProductEvent.mock.calls.map(([e]) => e.event);
+		expect(events).toEqual(["match_deck_action"]);
 	});
 
 	it("throws when the item is missing (stale client / foreign item)", async () => {

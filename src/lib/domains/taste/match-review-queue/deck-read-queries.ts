@@ -186,7 +186,7 @@ export function activeDeckOrNull(
  * so a ready proposal for the exact policy is found; `window` bounds the current
  * and next card suggestion lists.
  *
- * `visibilityConfigHash` accepts `null` for the M10 skip-hash-computation probe:
+ * `visibilityConfigHash` accepts `null` for the M10 "after_action" probe:
  * branch 1 (active session) never reads p_visibility_config_hash, so a null
  * probe is safe there; branch 2's exact-match filter never matches a null hash,
  * so a null probe is guaranteed to report `status: "miss"` when there is no
