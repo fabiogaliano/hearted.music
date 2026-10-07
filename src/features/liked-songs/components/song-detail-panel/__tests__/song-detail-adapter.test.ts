@@ -3,12 +3,12 @@
  *
  * Verifies that an instrumental-shaped analysis row produces a non-null
  * instrumentalRead (not read = null), and that a lyrical row keeps the existing
- * lyrical path intact. Blobs go through the server's decodeStoredAnalysis, so
+ * lyrical path intact. Blobs go through the server's parseStoredAnalysis, so
  * these cover the stored JSON -> panel path end to end.
  */
 
 import { describe, expect, it } from "vitest";
-import { decodeStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import { parseStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { LikedSong } from "../../../types";
 import { likedSongToSongDetail } from "../song-detail-adapter";
 
@@ -42,7 +42,7 @@ function makeSong(
 	};
 }
 
-const INSTRUMENTAL_ANALYSIS_BLOB = decodeStoredAnalysis({
+const INSTRUMENTAL_ANALYSIS_BLOB = parseStoredAnalysis({
 	headline: "The texture of arriving nowhere in particular",
 	compound_mood: "Ambient Drift",
 	sonic_texture: "Deep Electronic",
@@ -53,7 +53,7 @@ const INSTRUMENTAL_ANALYSIS_BLOB = decodeStoredAnalysis({
 	audio_features: { tempo: 96, energy: 0.38, valence: 0.25 },
 });
 
-const LYRICAL_ANALYSIS_BLOB = decodeStoredAnalysis({
+const LYRICAL_ANALYSIS_BLOB = parseStoredAnalysis({
 	image: "the long way home, alone this time",
 	lens: "license as eulogy",
 	tension: "Aching Disbelief",

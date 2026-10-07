@@ -1,7 +1,7 @@
 import type { ActivityItem, DashboardProps } from "@/features/dashboard/types";
 import type { LikedSong } from "@/features/liked-songs/types";
 import type { Playlist, SongForMatching } from "@/features/matching/types";
-import { decodeStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import { parseStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { PlaylistTrack } from "@/lib/server/playlists.functions";
 import data from "./fixtures.json";
 import matchExperienceData from "./match-experience.json";
@@ -12,7 +12,7 @@ export const allLikedSongs: LikedSong[] = data.likedSongs.map((song) => ({
 	...song,
 	analysis: song.analysis && {
 		...song.analysis,
-		analysis: decodeStoredAnalysis(song.analysis.analysis),
+		analysis: parseStoredAnalysis(song.analysis.analysis),
 	},
 })) as LikedSong[];
 // The JSON fixture predates the extension account-conflict props; supply them
