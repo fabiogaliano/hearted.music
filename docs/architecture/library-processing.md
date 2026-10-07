@@ -212,6 +212,7 @@ One sync request emits one aggregated `library_synced` change. Rules:
 | `completed`, `requestSatisfied=true`, `newCandidatesAvailable=true` | Set `enrichment.settledAt`; clear `activeJobId`; advance `matchSnapshotRefresh.requestedAt` if targets exist |
 | `stopped`, `reason=local_limit` | Do not advance `settledAt`; update `activeJobId`; leave workflow stale |
 | `stopped`, `reason=error` | Do not advance `settledAt`; update `activeJobId`; reconcile retry separately |
+| `stopped`, `reason=blocked` (chunk attempted nothing while work is owed) | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring, so a chunk that can make no progress does not hot-loop |
 
 ### Match Snapshot Refresh Outcomes
 
@@ -220,6 +221,7 @@ One sync request emits one aggregated `library_synced` change. Rules:
 | `published` (successful attempt) | Set `matchSnapshotRefresh.settledAt` to satisfied marker; clear `activeJobId` |
 | `published`, non-empty snapshot | Derived `firstMatchReady` becomes true |
 | `published`, explicit empty state (no targets remain) | Still a successful settlement |
+| `superseded` (a newer request arrived before publish) | Do not advance `settledAt`; clear `activeJobId`; the still-stale workflow re-ensures a job |
 | `failed` | Do not advance `settledAt`; update `activeJobId`; reconcile retry separately |
 
 ### Failure Handling In V1
@@ -305,14 +307,41 @@ In v1: derive it in the existing server-function layer, include it in the dashbo
 
 ---
 
-## Measurement
+## Worker Outcomes And Measurement
 
-One durable measurement row per claimed job attempt for `enrichment` and `match_snapshot_refresh`. Retries produce additional rows.
+How a claimed run ended is one value, `WorkerOutcome` (`src/lib/workflows/library-processing/worker-outcome.ts`). Every record of that ending is a pure projection of it, so the records cannot disagree:
 
-Shared columns: `job_id`, `account_id`, `workflow`, `queue_priority`, `attempt_number`, `queued_at`, `started_at`, `finished_at`, `outcome`, `created_at`. Plus a small `details` JSONB for workflow-specific metrics.
+| Outcome | `finalStatusOf` (job row) | `measurementOf` outcome | `accountEventsOf` | `changeOf` |
+|---|---|---|---|---|
+| enrichment `completed` | `completed` | `completed` | `enrichment_completed` (run's counts) | `enrichment_completed` |
+| enrichment `blocked` | `completed` | `blocked` | `enrichment_stopped`, reason `blocked` | `enrichment_stopped`, reason `blocked` |
+| enrichment `failed` | `failed` | `error` | `enrichment_stopped`, reason `failed` | `enrichment_stopped`, reason `error` |
+| refresh `published` | `completed` | `completed` | `match_snapshot_published` ×2 (song, playlist); `active_jobs_changed` on a no-op | `match_snapshot_published` |
+| refresh `superseded` | `completed` | `superseded` | `active_jobs_changed` | `match_snapshot_superseded` |
+| refresh `failed` | `failed` | `error` | `match_snapshot_failed` | `match_snapshot_failed` |
 
-- Enrichment `details`: per-stage summary with `readyCount`, `doneCount`, `succeededCount`, `failedCount`
-- Refresh `details`: `published`, `isEmpty`
+A run whose lease was taken over ends as `lease_lost` and records nothing; the reclaiming claim owns the outcome. A run that threw while attempts remain is requeued and writes only an `error` measurement with `retrying: true`, which is not an outcome.
+
+### Finalize
+
+`finalizeJob` (`src/worker/finalize.ts`) commits, in one transaction: the job row's terminal status fenced on `status = 'running' AND attempts = <claim>`, the measurement row, then the account events. It writes no `library_processing_state`: freshness moves only through the change the runner applies next. A completed run's finalize retries transient errors; a failed run's gets one attempt and the stale sweep covers a miss. After an errored attempt the row is re-read, and a row carrying this claim's status, attempts and error text counts as applied (the commit landed and only its reply was lost).
+
+### Measurement Rows
+
+One durable row per claimed job attempt for `enrichment` and `match_snapshot_refresh`; retries produce additional rows.
+
+Shared columns: `job_id`, `account_id`, `workflow`, `queue_priority`, `attempt_number`, `queued_at`, `started_at`, `finished_at`, `outcome`, `created_at`, plus `details` JSONB:
+
+- Enrichment `completed`: `requestSatisfied`, `newCandidatesAvailable`, `batchSequence`, `readyCount`, `doneCount`, `totalCount`, `succeededCount`, `failedCount`
+- Enrichment `blocked`: `batchSequence` and the same counts
+- Refresh `completed`: `published`, `isEmpty`, `snapshotId` (null on a no-op)
+- `error`: `error` (the failure text), or `retrying: true` for a requeued attempt
+
+`outcome` strings and existing `details` keys are persisted and must not be renamed. `workerOutcomeFromMeasurement` decodes a row back into its outcome; rows written before `totalCount`, `error` and `snapshotId` existed decode with neutral defaults.
+
+### Terminal Recovery
+
+When an active ref names a terminal job (the runner's apply never landed), recovery decodes that job's latest measurement and applies `changeOf(outcome)`, the same change the runner would have applied. It trusts the measurement only when its workflow and final status match the job row; otherwise, or with no readable measurement, it applies the conservative failure change.
 
 Not in scope: credit charging, ledger writes, billing enforcement.
 
