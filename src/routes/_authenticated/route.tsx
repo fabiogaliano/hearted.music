@@ -201,7 +201,7 @@ function AuthenticatedLayout() {
 	useActiveJobCompletionEffects(session.accountId, isComplete);
 	// Post-purchase return must observe the *real* billing state — it handles
 	// real Stripe redirects, not display.
-	usePostPurchaseReturn(session.accountId, billingState);
+	usePostPurchaseReturn(billingState);
 
 	// Preferred summary: reads user's stored match_view_mode preference and
 	// returns the summary + orientation used, so the sidebar badge and Match link
