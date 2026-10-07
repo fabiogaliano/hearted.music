@@ -77,37 +77,36 @@ const StoredEnvelopeSchema = z.object({
 });
 
 /**
- * The one decode of a stored song analysis. `none` covers missing rows, locked
- * rows and shapes that match neither read (e.g. older generations); it still
- * carries the stored audio features because the panel falls back to them when
- * the track row has none.
+ * The one parse of a stored song analysis. The audio features live in the
+ * blob's envelope and are kept whatever the read turns out to be, because the
+ * panel falls back to them when the track row has none. `read` is null when
+ * the blob matches neither shape (e.g. older generations).
  */
-export type StoredAnalysis =
-	| {
-			kind: "lyrical";
-			read: SongRead;
-			audioFeatures: StoredAudioFeatures | null;
-	  }
-	| {
-			kind: "instrumental";
-			read: SongAnalysisInstrumental;
-			audioFeatures: StoredAudioFeatures | null;
-	  }
-	| { kind: "none"; audioFeatures: StoredAudioFeatures | null };
+export type StoredRead =
+	| { kind: "lyrical"; value: SongRead }
+	| { kind: "instrumental"; value: SongAnalysisInstrumental };
 
-export function decodeStoredAnalysis(raw: Json | null): StoredAnalysis {
+export type StoredAnalysis = {
+	audioFeatures: StoredAudioFeatures | null;
+	read: StoredRead | null;
+};
+
+export function parseStoredAnalysis(raw: Json | null): StoredAnalysis {
 	const envelope = StoredEnvelopeSchema.safeParse(raw);
 	const audioFeatures = envelope.success ? envelope.data.audio_features : null;
+	return { audioFeatures, read: parseStoredRead(raw) };
+}
 
-	// Lyrical first: the panel has always preferred the lyrical read when a blob
-	// could satisfy both shapes.
+// Lyrical first: the panel has always preferred the lyrical read when a blob
+// could satisfy both shapes.
+function parseStoredRead(raw: Json | null): StoredRead | null {
 	const lyrical = SongReadSchema.safeParse(raw);
 	if (lyrical.success) {
-		return { kind: "lyrical", read: lyrical.data, audioFeatures };
+		return { kind: "lyrical", value: lyrical.data };
 	}
 	const instrumental = SongAnalysisInstrumentalSchema.safeParse(raw);
 	if (instrumental.success) {
-		return { kind: "instrumental", read: instrumental.data, audioFeatures };
+		return { kind: "instrumental", value: instrumental.data };
 	}
-	return { kind: "none", audioFeatures };
+	return null;
 }
