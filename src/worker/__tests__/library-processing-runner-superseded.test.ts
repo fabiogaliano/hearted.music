@@ -31,11 +31,11 @@ vi.mock("@/lib/workflows/library-processing/service", () => ({
 }));
 
 import { captureException } from "@sentry/bun";
-import { finalizeLibraryProcessingJob } from "@/lib/workflows/library-processing/settlement";
 import { makeJob } from "@/test/fixtures";
+import { finalizeJob } from "@/worker/finalize";
 
-vi.mock("@/lib/workflows/library-processing/settlement", () => ({
-	finalizeLibraryProcessingJob: vi.fn(),
+vi.mock("@/worker/finalize", () => ({
+	finalizeJob: vi.fn(),
 }));
 
 import { executeMatchSnapshotRefreshJob } from "@/worker/execute";
@@ -93,13 +93,11 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
-		expect(finalizeLibraryProcessingJob).toHaveBeenCalledWith(
+		expect(finalizeJob).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "job-2" }),
 			expect.objectContaining({
 				workflow: "match_snapshot_refresh",
@@ -112,9 +110,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
@@ -134,9 +130,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
@@ -149,9 +143,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
 
@@ -163,9 +155,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(
 			supersedableRefreshJob,
@@ -182,9 +172,7 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,
 		);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 
 		const outcome = await runClaimedJob(
 			supersedableRefreshJob,
