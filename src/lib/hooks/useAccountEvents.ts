@@ -8,8 +8,8 @@ import {
 } from "@/lib/account-events/contract";
 import {
 	activeJobsKeys,
-	billingKeys,
 	dashboardKeys,
+	invalidateEntitlementQueries,
 	likedSongsKeys,
 	matchDeckKeys,
 } from "@/lib/query-keys";
@@ -251,7 +251,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					});
 					break;
 				case "billing_state_changed":
-					queryClient.invalidateQueries({ queryKey: billingKeys.state });
+					void invalidateEntitlementQueries(queryClient);
 					break;
 				case "token_expiring":
 					scheduleReconnect({ forceRemint: true });

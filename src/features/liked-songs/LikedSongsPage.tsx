@@ -124,7 +124,7 @@ export function LikedSongsPage({
 		showPaywall: openPaywall,
 		confirmUnlock,
 		dismiss: dismissFlow,
-	} = useSongUnlock(accountId);
+	} = useSongUnlock();
 
 	const queryFilter = toQueryFilter(filter);
 	const handleFilterChange = useCallback(

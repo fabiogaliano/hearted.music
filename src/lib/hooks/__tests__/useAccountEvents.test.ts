@@ -194,11 +194,43 @@ describe("useAccountEvents", () => {
 			}
 		});
 
+		// Each processed billing_state_changed frame invalidates billing state
+		// once; counting those calls counts processed frames.
 		await waitFor(() => {
-			expect(invalidateSpy).toHaveBeenCalledTimes(1);
-			expect(invalidateSpy).toHaveBeenCalledWith({
-				queryKey: billingKeys.state,
-			});
+			const billingStateInvalidations = invalidateSpy.mock.calls.filter(
+				([options]) =>
+					JSON.stringify(options?.queryKey) ===
+					JSON.stringify(billingKeys.state),
+			);
+			expect(billingStateInvalidations).toHaveLength(1);
+		});
+	});
+
+	it("refreshes liked songs and dashboard on billing_state_changed, not just billing state (unlocks from another tab or a webhook left songs locked)", async () => {
+		setupMockFetch();
+		const { result } = renderHook(() => useAccountEvents(ACCOUNT_ID), {
+			wrapper,
+		});
+
+		await waitFor(() => {
+			expect(result.current.connectionState).toBe("connected");
+		});
+
+		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+		act(() => {
+			for (const stream of createdStreams) {
+				stream.push(buildFrame("billing_state_changed", {}, 400));
+			}
+		});
+
+		await waitFor(() => {
+			const calledKeys = invalidateSpy.mock.calls.flatMap(([options]) =>
+				options ? [options.queryKey] : [],
+			);
+			expect(calledKeys).toContainEqual(billingKeys.state);
+			expect(calledKeys).toContainEqual(likedSongsKeys.all);
+			expect(calledKeys).toContainEqual(dashboardKeys.all);
 		});
 	});
 
