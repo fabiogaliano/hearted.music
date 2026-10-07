@@ -16,9 +16,9 @@
  */
 
 import { createFileRoute, useLocation } from "@tanstack/react-router";
-import { intentEligibilityQueryOptions } from "@/features/playlists/create/intentEligibility";
 import {
 	DEFAULT_DRAFT_CONFIG,
+	intentEligibilityQueryOptions,
 	playlistDraftPreviewQueryOptions,
 } from "@/features/playlists/create/queries";
 import { StudioScreen } from "@/features/playlists/create/StudioScreen";

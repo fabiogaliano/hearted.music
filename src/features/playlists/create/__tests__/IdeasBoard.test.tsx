@@ -22,7 +22,7 @@ vi.mock("@/lib/server/billing.functions", () => ({
 }));
 
 import { IdeasBoard } from "../ideas/IdeasBoard";
-import { intentEligibilityQueryOptions } from "../intentEligibility";
+import { intentEligibilityQueryOptions } from "../queries";
 import { tasteProfileQueryOptions } from "../tasteProfile";
 
 const PROFILE: TasteProfileVM = {

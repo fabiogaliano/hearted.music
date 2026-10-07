@@ -12,6 +12,7 @@ const mockReadBillingStateOrFreeTier = vi.fn();
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
+		inputValidator: () => builder(),
 		handler:
 			(fn: (args: { context: typeof mockAuthContext }) => unknown) => () =>
 				fn({ context: mockAuthContext }),
@@ -34,7 +35,7 @@ vi.mock("@/lib/domains/billing/queries", () => ({
 		mockReadBillingStateOrFreeTier(...args),
 }));
 
-import { getIntentEligibility } from "../intentEligibility";
+import { getIntentEligibility } from "../billing.functions";
 
 beforeEach(() => {
 	vi.clearAllMocks();

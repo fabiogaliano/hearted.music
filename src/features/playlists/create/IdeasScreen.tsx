@@ -19,7 +19,7 @@ import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { IdeasBoard } from "./ideas/IdeasBoard";
 import type { ResolvedIdeaVM } from "./ideaTypes";
-import { intentEligibilityQueryOptions } from "./intentEligibility";
+import { intentEligibilityQueryOptions } from "./queries";
 import { buildStudioSeed } from "./studioSeed";
 
 interface IdeasScreenProps {

@@ -8,6 +8,7 @@
  */
 
 import type { BillingState } from "@/lib/domains/billing/state";
+import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import type {
 	CreateCheckoutSessionResponse,
 	CreatePortalSessionResponse,
@@ -43,3 +44,11 @@ export const getPlanSelectionConfig =
 export function getSubscriptionUpgradeQuote(): Promise<SubscriptionUpgradeQuote> {
 	return reject();
 }
+
+// Unlocked by default; stories that need the locked treatment seed the
+// intent-eligibility query cache directly.
+export const getIntentEligibility = (): Promise<IntentGateVM> =>
+	Promise.resolve({
+		allowed: true,
+		criteria: [{ id: "backstage-pass", label: "Backstage Pass", met: true }],
+	});

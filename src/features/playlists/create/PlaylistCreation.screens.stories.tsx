@@ -20,7 +20,7 @@ import type { IntentGateVM } from "@/lib/domains/playlists/intent-eligibility";
 import { fonts } from "@/lib/theme/fonts";
 import { IdeasBoard } from "./ideas/IdeasBoard";
 import type { ResolvedIdeaVM, TasteProfileVM } from "./ideaTypes";
-import { intentEligibilityQueryOptions } from "./intentEligibility";
+import { intentEligibilityQueryOptions } from "./queries";
 import { tasteProfileQueryOptions } from "./tasteProfile";
 
 export default { title: "Playlist Creation" };
