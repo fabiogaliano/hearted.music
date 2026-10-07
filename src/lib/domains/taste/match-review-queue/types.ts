@@ -6,6 +6,7 @@
  * strings.
  */
 
+import { z } from "zod";
 import type { Tables } from "@/lib/data/database.types";
 
 export type MatchReviewSessionRow = Tables<"match_review_session">;
@@ -17,7 +18,8 @@ export type MatchReviewSessionSnapshotRow =
  * Canonical internal direction for a match review pass (A2, B1).
  * Use `orientation` for domain/server/schema; UI toggle uses `mode` (B2).
  */
-export type MatchOrientation = "song" | "playlist";
+export const MatchOrientationSchema = z.enum(["song", "playlist"]);
+export type MatchOrientation = z.infer<typeof MatchOrientationSchema>;
 
 /**
  * Discriminated union for the reviewed entity in a queue item (B3).

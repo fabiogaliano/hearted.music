@@ -14,6 +14,7 @@ import {
 	updateMatchStrictness,
 	updateTheme,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { MatchOrientationSchema } from "@/lib/domains/taste/match-review-queue/types";
 import {
 	DEFAULT_MATCH_STRICTNESS,
 	MATCH_STRICTNESS_VALUES,
@@ -107,7 +108,7 @@ export const updateMatchStrictnessPreference = createServerFn({
 	});
 
 const setMatchViewModeInput = z.object({
-	mode: z.enum(["song", "playlist"]),
+	mode: MatchOrientationSchema,
 });
 
 /**

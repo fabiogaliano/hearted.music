@@ -21,25 +21,22 @@ import {
 	type SaveableOnboardingStep,
 } from "@/lib/domains/library/accounts/onboarding-steps";
 import {
+	type MatchOrientation,
+	MatchOrientationSchema,
+} from "@/lib/domains/taste/match-review-queue/types";
+import {
 	DEFAULT_MATCH_STRICTNESS,
 	type MatchStrictness,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
-
-/**
- * UI-layer orientation stored in the user's match-view preference (C10, B2).
- * Mirrored from features/matching/types without a cross-layer import so this
- * lib module stays within the lib dependency boundary.
- */
-type MatchViewMode = "song" | "playlist";
-const DEFAULT_MATCH_VIEW_MODE: MatchViewMode = "playlist";
-
 import type { PhaseJobIds } from "@/lib/platform/jobs/progress/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
+
+const DEFAULT_MATCH_VIEW_MODE: MatchOrientation = "playlist";
 
 export type UserPreferences = Tables<"user_preferences">;
 
@@ -362,17 +359,16 @@ export function saveConsentPreference(
  */
 export async function getPreferredMatchViewMode(
 	accountId: string,
-): Promise<MatchViewMode> {
+): Promise<MatchOrientation> {
 	const result = await getOrCreatePreferences(accountId);
 	if (Result.isError(result)) {
 		return DEFAULT_MATCH_VIEW_MODE;
 	}
 
-	const stored = result.value.match_view_mode;
-	if (stored === "song" || stored === "playlist") {
-		return stored;
-	}
-	return DEFAULT_MATCH_VIEW_MODE;
+	return (
+		MatchOrientationSchema.safeParse(result.value.match_view_mode).data ??
+		DEFAULT_MATCH_VIEW_MODE
+	);
 }
 
 /**
@@ -382,7 +378,7 @@ export async function getPreferredMatchViewMode(
  */
 export function setPreferredMatchViewMode(
 	accountId: string,
-	mode: MatchViewMode,
+	mode: MatchOrientation,
 ): Promise<Result<UserPreferences, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	return fromSupabaseSingle(

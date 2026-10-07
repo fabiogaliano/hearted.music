@@ -30,6 +30,7 @@ import type {
 	QueueItemResolution,
 	SessionStatus,
 } from "./types";
+import { MatchOrientationSchema } from "./types";
 
 /**
  * Narrows a raw DB string to QueueItemLifecycleState. Throws if the DB emits
@@ -46,7 +47,8 @@ function toLifecycleState(s: string): QueueItemLifecycleState {
  * outside the CHECK constraint — indicates an unapplied migration.
  */
 function toOrientation(s: string): MatchOrientation {
-	if (s === "song" || s === "playlist") return s;
+	const parsed = MatchOrientationSchema.safeParse(s);
+	if (parsed.success) return parsed.data;
 	throw new Error(`Unexpected match_orientation from DB: ${s}`);
 }
 
