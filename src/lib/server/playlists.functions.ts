@@ -176,7 +176,7 @@ export const getPlaylistManagementData = createServerFn({
 				operation: "get_playlist_management_data",
 				accountId: session.accountId,
 			});
-			throw new Error(`Failed to load playlists: ${allResult.error.message}`);
+			throw new Error("Failed to load playlists", { cause: allResult.error });
 		}
 
 		const targetIds = new Set(
@@ -380,7 +380,9 @@ export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 				operation: "set_playlist_target",
 				accountId: session.accountId,
 			});
-			throw new Error(`Failed to set playlist target: ${result.error.message}`);
+			throw new Error("Failed to set playlist target", {
+				cause: result.error,
+			});
 		}
 
 		// When the user adds their first target playlist and a visible match card
@@ -480,9 +482,9 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 				operation: "acknowledge_playlist_create",
 				accountId: session.accountId,
 			});
-			throw new Error(
-				`Failed to acknowledge playlist create: ${result.error.message}`,
-			);
+			throw new Error("Failed to acknowledge playlist create", {
+				cause: result.error,
+			});
 		}
 
 		return { success: true, spotifyId };
@@ -578,9 +580,9 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 					operation: "save_playlist_match_config",
 					accountId: session.accountId,
 				});
-				throw new Error(
-					`Failed to save match config: ${updateResult.error.message}`,
-				);
+				throw new Error("Failed to save match config", {
+					cause: updateResult.error,
+				});
 			}
 
 			// Determine what actually changed so we can route to the correct
