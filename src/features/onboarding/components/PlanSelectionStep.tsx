@@ -20,6 +20,7 @@ import {
 	loadCheckoutIntent,
 } from "@/features/billing/checkout-intent";
 import { useCheckoutFlow } from "@/features/billing/hooks/useCheckoutFlow";
+import { billingStateQueryOptions } from "@/features/billing/queries";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import {
 	isPackOffer,
@@ -30,16 +31,13 @@ import {
 } from "@/lib/domains/billing/offers";
 import { formatOfferPrice } from "@/lib/domains/billing/pricing";
 import {
-	type BillingState,
 	FREE_BILLING_STATE,
 	hasUnlimitedAccess,
 } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
-import { billingKeys } from "@/lib/query-keys";
 import {
-	getBillingState,
 	getPlanSelectionConfig,
 	type PlanSelectionConfig,
 } from "@/lib/server/billing.functions";
@@ -80,10 +78,7 @@ export function PlanSelectionStep({
 		null,
 	);
 
-	const { data: billingState } = useQuery<BillingState>({
-		queryKey: billingKeys.state,
-		queryFn: () => getBillingState(),
-	});
+	const { data: billingState } = useQuery(billingStateQueryOptions());
 
 	const checkoutFlow = useCheckoutFlow(billingState ?? FREE_BILLING_STATE, {
 		onCheckoutStarted: (intent) =>

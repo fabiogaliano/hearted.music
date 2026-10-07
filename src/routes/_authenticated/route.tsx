@@ -32,6 +32,7 @@ import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { UpgradeDialog } from "@/features/billing/components/UpgradeDialog";
 import { WaitlistWelcomeDialog } from "@/features/billing/components/WaitlistWelcomeDialog";
 import { usePostPurchaseReturn } from "@/features/billing/hooks/usePostPurchaseReturn";
+import { billingStateQueryOptions } from "@/features/billing/queries";
 import { UserJotWidget } from "@/features/feedback/UserJotWidget";
 import { preferredMatchReviewSummaryQueryOptions } from "@/features/matching/queries";
 import {
@@ -54,7 +55,6 @@ import {
 } from "@/lib/platform/auth/query-keys";
 import { billingKeys } from "@/lib/query-keys";
 import { requireAuthSession } from "@/lib/server/auth.functions";
-import { getBillingState } from "@/lib/server/billing.functions";
 import { getInitialConsentState } from "@/lib/server/consent.functions";
 import { getOnboardingSession } from "@/lib/server/onboarding.functions";
 import { getWaitlistWelcome } from "@/lib/server/waitlist-welcome.functions";
@@ -106,8 +106,7 @@ export const Route = createFileRoute("/_authenticated")({
 		});
 		const billingStatePromise = queryClient
 			.ensureQueryData({
-				queryKey: billingKeys.state,
-				queryFn: () => getBillingState(),
+				...billingStateQueryOptions(),
 				staleTime: 5 * 60 * 1000,
 			})
 			.then((value) => ({ ok: true as const, value }))
