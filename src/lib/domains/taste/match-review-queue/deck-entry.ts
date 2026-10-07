@@ -5,7 +5,7 @@
  * whose `entry` says which branch resolved it.
  */
 
-import { Result } from "better-result";
+import { Result, TaggedError } from "better-result";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	DEFAULT_MATCH_STRICTNESS,
@@ -62,14 +62,14 @@ export type DeckEntry = ResolvedMatchDeck["entry"];
 export type DeckRead = "entry" | "after_action";
 
 /** The step that failed, so the boundary can tag the capture and pick the copy. */
-export interface DeckEntryError {
+export class DeckEntryError extends TaggedError("DeckEntryError")<{
 	step:
 		| "visibility_hash"
 		| "start_or_resume"
 		| "latest_snapshot"
 		| "miss_build";
 	cause: DbError;
-}
+}> {}
 
 /** A card read; `materialized` is set when the cold path (R-E) ran. */
 export interface DeckCardRead {
@@ -106,7 +106,12 @@ export async function resolveMatchDeck(
 			window,
 		);
 		if (Result.isError(probeResult)) {
-			return Result.err({ step: "start_or_resume", cause: probeResult.error });
+			return Result.err(
+				new DeckEntryError({
+					step: "start_or_resume",
+					cause: probeResult.error,
+				}),
+			);
 		}
 		const probed = activeDeckOrNull(probeResult.value);
 		if (probed && probed.visibilityConfigHash != null) {
@@ -128,7 +133,9 @@ export async function resolveMatchDeck(
 		nowMs,
 	);
 	if (Result.isError(hashResult)) {
-		return Result.err({ step: "visibility_hash", cause: hashResult.error });
+		return Result.err(
+			new DeckEntryError({ step: "visibility_hash", cause: hashResult.error }),
+		);
 	}
 	const { hash: visibilityConfigHash, minScore } = hashResult.value;
 
@@ -139,7 +146,9 @@ export async function resolveMatchDeck(
 		window,
 	);
 	if (Result.isError(rpcResult)) {
-		return Result.err({ step: "start_or_resume", cause: rpcResult.error });
+		return Result.err(
+			new DeckEntryError({ step: "start_or_resume", cause: rpcResult.error }),
+		);
 	}
 	const active = activeDeckOrNull(rpcResult.value);
 	if (active) {
@@ -153,7 +162,12 @@ export async function resolveMatchDeck(
 	// "no ready proposal yet" (approach-X first-window build).
 	const snapshotResult = await getLatestMatchSnapshot(accountId);
 	if (Result.isError(snapshotResult)) {
-		return Result.err({ step: "latest_snapshot", cause: snapshotResult.error });
+		return Result.err(
+			new DeckEntryError({
+				step: "latest_snapshot",
+				cause: snapshotResult.error,
+			}),
+		);
 	}
 	if (!snapshotResult.value) {
 		return Result.ok({ entry: "no_snapshot", view: BUILDING });
@@ -170,7 +184,9 @@ export async function resolveMatchDeck(
 		window,
 	});
 	if (Result.isError(builtResult)) {
-		return Result.err({ step: "miss_build", cause: builtResult.error });
+		return Result.err(
+			new DeckEntryError({ step: "miss_build", cause: builtResult.error }),
+		);
 	}
 	const promoted = activeDeckOrNull(builtResult.value);
 	if (promoted) {
