@@ -198,7 +198,10 @@ describe("measurementOf keeps the persisted outcome strings and details keys", (
 
 describe("workerOutcomeFromMeasurement", () => {
 	it.each(
-		Object.entries(outcomes),
+		Object.entries({
+			...outcomes,
+			refreshNoOpPublished: { ...outcomes.refreshPublished, snapshotId: null },
+		}),
 	)("round-trips %s through its measurement", (_, outcome) => {
 		expect(workerOutcomeFromMeasurement(measurementOf(outcome))).toEqual(
 			outcome,
