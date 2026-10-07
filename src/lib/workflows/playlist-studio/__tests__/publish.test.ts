@@ -246,22 +246,6 @@ describe("runPersistNewPlaylistConfig", () => {
 
 		expect(result.trackUris).toEqual([]);
 	});
-
-	it("throws on invalid match filters before any write", async () => {
-		await expect(
-			runPersistNewPlaylistConfig(
-				fakeSupabase,
-				"acct-1",
-				baseInput({
-					matchFilters: {
-						version: 1,
-						languages: { codes: ["xx-invented"] },
-					},
-				}),
-			),
-		).rejects.toThrow("Invalid match filters");
-		expect(updatePlaylistMatchConfigMock).not.toHaveBeenCalled();
-	});
 });
 
 describe("runRecordPlaylistMatchDecisions", () => {

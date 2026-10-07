@@ -184,6 +184,19 @@ describe("playlist-draft.functions adapter", () => {
 		expect(runPersistNewPlaylistConfigMock).not.toHaveBeenCalled();
 	});
 
+	it("persistNewPlaylistConfig rejects invalid match filters before calling the workflow", async () => {
+		await expect(async () => {
+			await persistNewPlaylistConfig({
+				data: {
+					...validPersistInput,
+					matchFilters: { version: 1, languages: { codes: ["xx-invented"] } },
+				},
+			});
+		}).rejects.toThrow();
+
+		expect(runPersistNewPlaylistConfigMock).not.toHaveBeenCalled();
+	});
+
 	it("recordPlaylistMatchDecisions threads the resolved accountId into the workflow", async () => {
 		runRecordPlaylistMatchDecisionsMock.mockResolvedValue({ recorded: 0 });
 
