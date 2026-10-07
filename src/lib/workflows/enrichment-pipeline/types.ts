@@ -1,5 +1,6 @@
 import { TaggedError } from "better-result";
 import type { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
+import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 
 export type EnrichmentStageName =
 	| "audio_features"
@@ -61,4 +62,19 @@ export interface EnrichmentContext {
 	readonly accountId: string;
 	readonly embeddingService: EmbeddingService;
 	readonly jobId?: string;
+}
+
+/** What one worker-run enrichment chunk reports back to the runner. */
+export interface EnrichmentExecuteResult {
+	accountId: string;
+	jobId: string;
+	batchSequence: number;
+	hasMoreSongs: boolean;
+	newCandidatesAvailable: boolean;
+	newCandidateSongIds: string[];
+	selectionMode: EnrichmentSelectionMode;
+	readyCount: number;
+	doneCount: number;
+	succeededCount: number;
+	failedCount: number;
 }
