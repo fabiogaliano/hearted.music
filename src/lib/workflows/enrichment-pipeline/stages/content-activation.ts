@@ -1,6 +1,6 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { applyEntitlementToSongs } from "@/lib/domains/billing/song-entitlement";
+import { unlockEntitledSongs } from "@/lib/domains/billing/song-entitlement";
 import { markItemsNew } from "@/lib/domains/library/liked-songs/status-queries";
 import { FAILURE_CODES } from "../failure-policy";
 import type { StageOutcome } from "../stage-outcomes";
@@ -31,7 +31,7 @@ export async function runContentActivation(
 		return { kind: "skipped", stage: STAGE, candidateSongIds: [] };
 	}
 
-	const entitlement = await applyEntitlementToSongs(
+	const entitlement = await unlockEntitledSongs(
 		createAdminSupabaseClient(),
 		ctx.accountId,
 		songIds,
@@ -41,7 +41,7 @@ export async function runContentActivation(
 	}
 
 	// The unlimited activation RPC writes newness in the same statement.
-	if (entitlement.value.kind !== "activated_unlimited") {
+	if (entitlement.value.kind !== "unlocked_unlimited") {
 		const markResult = await markItemsNew(ctx.accountId, "song", songIds);
 		if (Result.isError(markResult)) {
 			return failAll(

@@ -10,8 +10,7 @@ vi.mock("@/lib/data/client", () => ({
 }));
 
 vi.mock("@/lib/domains/billing/song-entitlement", () => ({
-	applyEntitlementToSongs: (...args: unknown[]) =>
-		mockApplyEntitlement(...args),
+	unlockEntitledSongs: (...args: unknown[]) => mockApplyEntitlement(...args),
 }));
 
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
@@ -63,7 +62,7 @@ describe("runContentActivation", () => {
 
 	it("does not mark songs new itself after unlimited activation", async () => {
 		mockApplyEntitlement.mockResolvedValue(
-			Result.ok({ kind: "activated_unlimited" }),
+			Result.ok({ kind: "unlocked_unlimited" }),
 		);
 
 		const outcome = await runContentActivation(makeCtx(), ["song-1", "song-2"]);

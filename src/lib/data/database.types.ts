@@ -4174,7 +4174,7 @@ export type Database = {
 					total: number;
 				}[];
 			};
-			get_match_filter_options: {
+			get_account_match_filter_options: {
 				Args: { p_account_id: string };
 				Returns: Json;
 			};
