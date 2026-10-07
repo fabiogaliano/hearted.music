@@ -1,26 +1,18 @@
 /**
- * Phase 3 server contracts for the Match deck read model (plan §4/§7/§8/§9).
- *
- * The public deck contract lives in match-review-queue/deck-view.ts; this file
- * holds its three server fns:
- *   - startOrResumeMatchDeck — one bounded /match-entry call (plan §8). Active →
- *     the full MatchDeckView; miss + snapshot → approach-X first-window build
- *     (R-B); miss + no snapshot → the building empty state.
- *   - readMatchDeckCard — a pure card read with an on-demand materialize fallback
- *     for the not-yet-captured cold path (R-E).
+ * Server fns for the Match deck read model (plan §4/§7/§8/§9). The contract
+ * lives in match-review-queue/deck-view.ts and the reads in deck-entry.ts; this
+ * file adds auth, input validation, the Result→throw boundary and product events.
+ *   - startOrResumeMatchDeck — one bounded /match-entry call (plan §8).
+ *   - readMatchDeckCard — one card, materialized on demand when the worker
+ *     hasn't captured it yet (R-E).
  *   - submitMatchDeckAction — dispatch to the existing atomic domain wrappers
  *     (they already do the deck side effects in-txn and keep RETURNS TEXT), then
  *     read the fresh view (R-A: read-after-write, no return-type migration).
- *
- * This ships ALONGSIDE the legacy query families; nothing legacy is deleted here
- * (that is Phase 4/5). New RPCs are typed via the deck escape hatch until
- * `bun run gen:types` runs.
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import {
 	type DeckEntryError,
 	type ResolvedMatchDeck,
@@ -37,12 +29,11 @@ import {
 	dismissQueueItemAtomically,
 	dismissQueueItemSuggestionAtomically,
 	finishQueueItemAtomically,
-	mapItemToDto,
+	getOwnedQueueItem,
 } from "@/lib/domains/taste/match-review-queue/queries";
 import {
 	type MatchOrientation,
 	MatchOrientationSchema,
-	type MatchReviewQueueItemDto,
 } from "@/lib/domains/taste/match-review-queue/types";
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
@@ -139,38 +130,6 @@ function captureDeckEntry(
 }
 
 // ============================================================================
-// submitMatchDeckAction — read-after-write dispatch (R-A)
-// ============================================================================
-
-/**
- * Loads the owned queue item so the suggestion actions can route suggestionId to
- * the orientation-correct column and every action can rebuild the view against
- * the item's orientation. Throws on an operational read failure; returns null for
- * a missing/foreign item.
- */
-async function loadOwnedItem(
-	accountId: string,
-	itemId: string,
-): Promise<MatchReviewQueueItemDto | null> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("match_review_queue_item")
-		.select("*")
-		.eq("id", itemId)
-		.eq("account_id", accountId)
-		.maybeSingle();
-	if (error) {
-		reportDeckError(error, "submit_match_deck_action_load_item", accountId, {
-			itemId,
-		});
-		throw new Error("Could not process your action. Please try again.", {
-			cause: error,
-		});
-	}
-	return data ? mapItemToDto(data) : null;
-}
-
-// ============================================================================
 // Server functions
 // ============================================================================
 
@@ -258,7 +217,19 @@ export const submitMatchDeckAction = createServerFn({ method: "POST" })
 		const accountId = context.session.accountId;
 		const action = data;
 
-		const item = await loadOwnedItem(accountId, action.itemId);
+		const itemResult = await getOwnedQueueItem(accountId, action.itemId);
+		if (Result.isError(itemResult)) {
+			reportDeckError(
+				itemResult.error,
+				"submit_match_deck_action_load_item",
+				accountId,
+				{ itemId: action.itemId },
+			);
+			throw new Error("Could not process your action. Please try again.", {
+				cause: itemResult.error,
+			});
+		}
+		const item = itemResult.value;
 		if (!item) {
 			// Stale client / foreign item — no orientation to rebuild a view against.
 			throw new Error("This review item could not be found.");

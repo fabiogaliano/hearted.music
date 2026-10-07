@@ -1,5 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { MatchReviewQueueItemDto } from "@/lib/domains/taste/match-review-queue/types";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { activeDeckRpc, deckPlaylistCardRpc } from "@/test/fixtures";
 
@@ -10,7 +11,7 @@ import { activeDeckRpc, deckPlaylistCardRpc } from "@/test/fixtures";
 // ---------------------------------------------------------------------------
 
 const mockAuthContext = { session: { accountId: "acct-1" }, account: null };
-const mockFrom = vi.fn();
+const mockGetOwnedQueueItem = vi.fn();
 const mockAddBreadcrumb = vi.fn();
 const mockCaptureException = vi.fn();
 const mockResolveMinMatchScore = vi.fn();
@@ -52,12 +53,6 @@ vi.mock("@tanstack/react-start", () => {
 vi.mock("@sentry/cloudflare", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
 	addBreadcrumb: (...args: unknown[]) => mockAddBreadcrumb(...args),
-}));
-
-vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: () => ({
-		from: (...a: unknown[]) => mockFrom(...a),
-	}),
 }));
 
 vi.mock("@/lib/platform/auth/auth.middleware", () => ({ authMiddleware: {} }));
@@ -104,27 +99,7 @@ vi.mock("@/lib/domains/taste/match-review-queue/queries", () => ({
 		mockDismissQueueItemSuggestionAtomically(...a),
 	finishQueueItemAtomically: (...a: unknown[]) =>
 		mockFinishQueueItemAtomically(...a),
-	// Pure row→DTO mapper, inlined so loadOwnedItem resolves orientation without DB.
-	mapItemToDto: (data: Record<string, unknown>) => ({
-		id: data.id,
-		sessionId: data.session_id,
-		accountId: data.account_id,
-		subject:
-			data.orientation === "song"
-				? { orientation: "song" as const, songId: data.song_id }
-				: { orientation: "playlist" as const, playlistId: data.playlist_id },
-		sourceSnapshotId: data.source_snapshot_id,
-		position: data.position,
-		state: data.state,
-		resolution: data.resolution,
-		sourceScore: data.source_fit_score,
-		wasNewAtEnqueue: data.was_new_at_enqueue,
-		presentedAt: data.presented_at,
-		resolvedAt: data.resolved_at,
-		visiblePairsCapturedAt: data.visible_pairs_captured_at ?? null,
-		createdAt: data.created_at,
-		updatedAt: data.updated_at,
-	}),
+	getOwnedQueueItem: (...a: unknown[]) => mockGetOwnedQueueItem(...a),
 }));
 
 import {
@@ -137,44 +112,31 @@ import {
 // Fixtures
 // ---------------------------------------------------------------------------
 
-const PLAYLIST_ITEM_ROW = {
+const PLAYLIST_ITEM: MatchReviewQueueItemDto = {
 	id: "item-1",
-	session_id: "s1",
-	account_id: "acct-1",
-	orientation: "playlist",
-	song_id: null,
-	playlist_id: "pl-1",
-	source_snapshot_id: "snap-1",
+	sessionId: "s1",
+	accountId: "acct-1",
+	subject: { orientation: "playlist", playlistId: "pl-1" },
+	sourceSnapshotId: "snap-1",
 	position: 0,
 	state: "active",
 	resolution: null,
-	source_fit_score: 0.5,
-	was_new_at_enqueue: false,
-	presented_at: null,
-	resolved_at: null,
-	visible_pairs_captured_at: "t",
-	created_at: "",
-	updated_at: "",
+	sourceScore: 0.5,
+	wasNewAtEnqueue: false,
+	presentedAt: null,
+	resolvedAt: null,
+	visiblePairsCapturedAt: "t",
+	createdAt: "",
+	updatedAt: "",
 };
 
-const SONG_ITEM_ROW = {
-	...PLAYLIST_ITEM_ROW,
-	orientation: "song",
-	song_id: "song-1",
-	playlist_id: null,
+const SONG_ITEM: MatchReviewQueueItemDto = {
+	...PLAYLIST_ITEM,
+	subject: { orientation: "song", songId: "song-1" },
 };
 
-/** select(...).eq(...).eq(...).maybeSingle() chain for loadOwnedItem / materialize. */
-function mockRowRead(row: unknown, error: unknown = null) {
-	mockFrom.mockReturnValue({
-		select: () => ({
-			eq: () => ({
-				eq: () => ({
-					maybeSingle: () => Promise.resolve({ data: row, error }),
-				}),
-			}),
-		}),
-	});
+function mockOwnedItem(item: MatchReviewQueueItemDto | null) {
+	mockGetOwnedQueueItem.mockResolvedValue(Result.ok(item));
 }
 
 beforeEach(() => {
@@ -279,7 +241,7 @@ describe("readMatchDeckCard", () => {
 		mockCallReadMatchDeckCard
 			.mockResolvedValueOnce(Result.ok({ status: "not_captured" }))
 			.mockResolvedValueOnce(Result.ok(deckPlaylistCardRpc(2, 2)));
-		mockRowRead({ session_id: "s1", orientation: "playlist", position: 4 });
+		mockOwnedItem({ ...PLAYLIST_ITEM, position: 4 });
 		mockCaptureAheadForSession.mockResolvedValue(Result.ok(undefined));
 
 		const read = await readMatchDeckCard({ data: { itemId: "item-1" } });
@@ -298,7 +260,7 @@ describe("readMatchDeckCard", () => {
 		mockCallReadMatchDeckCard.mockResolvedValue(
 			Result.ok({ status: "not_captured" }),
 		);
-		mockRowRead({ session_id: "s1", orientation: "song", position: 0 });
+		mockOwnedItem(SONG_ITEM);
 		mockCaptureAheadForSession.mockResolvedValue(Result.ok(undefined));
 
 		const read = await readMatchDeckCard({ data: { itemId: "item-1" } });
@@ -312,7 +274,7 @@ describe("readMatchDeckCard", () => {
 
 describe("submitMatchDeckAction", () => {
 	it("add-suggestion on a PLAYLIST item routes suggestionId to the song column, then reads the fresh view", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockAddQueueItemDecisionAtomically.mockResolvedValue(Result.ok("added"));
 
 		const result = await submitMatchDeckAction({
@@ -335,7 +297,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("add-suggestion on a SONG item routes suggestionId to the playlist column", async () => {
-		mockRowRead(SONG_ITEM_ROW);
+		mockOwnedItem(SONG_ITEM);
 		mockAddQueueItemDecisionAtomically.mockResolvedValue(Result.ok("added"));
 
 		await submitMatchDeckAction({
@@ -355,7 +317,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("dismiss-suggestion on a SONG item routes to the playlist column", async () => {
-		mockRowRead(SONG_ITEM_ROW);
+		mockOwnedItem(SONG_ITEM);
 		mockDismissQueueItemSuggestionAtomically.mockResolvedValue(
 			Result.ok("dismissed"),
 		);
@@ -378,7 +340,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("finish-card dispatches to finishQueueItemAtomically and surfaces the raw status", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockFinishQueueItemAtomically.mockResolvedValue(
 			Result.ok("completed_added"),
 		);
@@ -395,7 +357,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("dismiss-card dispatches to dismissQueueItemAtomically", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
 
 		const result = await submitMatchDeckAction({
@@ -410,7 +372,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("does not count its read-after-write as a deck entry (no hit/miss event)", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
 
 		await submitMatchDeckAction({
@@ -422,7 +384,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("throws when the item is missing (stale client / foreign item)", async () => {
-		mockRowRead(null);
+		mockOwnedItem(null);
 		await expect(
 			submitMatchDeckAction({
 				data: { type: "finish-card", itemId: "item-1" },
@@ -431,7 +393,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("throws (and reports) when the dispatch wrapper errors", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "x", message: "boom" })),
 		);
@@ -450,7 +412,7 @@ describe("submitMatchDeckAction", () => {
 	// -------------------------------------------------------------------------
 
 	it("read-after-write probes with a null hash and skips the hash trio on an active session (M10)", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
 
 		await submitMatchDeckAction({
@@ -468,7 +430,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("falls back to computing the real hash when the read-after-write probe reports no active session", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
 		mockCallStartOrResumeMatchDeck
 			.mockResolvedValueOnce(
@@ -498,7 +460,7 @@ describe("submitMatchDeckAction", () => {
 	});
 
 	it("falls back to computing the real hash when the null-hash probe hits a legacy active session with no visibility hash", async () => {
-		mockRowRead(PLAYLIST_ITEM_ROW);
+		mockOwnedItem(PLAYLIST_ITEM);
 		mockDismissQueueItemAtomically.mockResolvedValue(Result.ok("dismissed"));
 		mockCallStartOrResumeMatchDeck
 			.mockResolvedValueOnce(
