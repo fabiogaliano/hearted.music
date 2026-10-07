@@ -23,6 +23,7 @@ vi.mock("@/lib/observability/capture-server-error", () => ({
 }));
 
 import {
+	activeDeckOrNull,
 	callReadMatchDeckCard,
 	callStartOrResumeMatchDeck,
 } from "../deck-read-queries";
@@ -52,6 +53,45 @@ describe("callStartOrResumeMatchDeck drift capture", () => {
 			operation: "call_start_or_resume_match_deck",
 			accountId: "acct-1",
 			extra: { orientation: "playlist", status: "renamed" },
+		});
+	});
+
+	it("an active deck with an unrecognized orientation decodes as unrecognized and is captured, not rendered as a song deck", async () => {
+		mockRpc.mockResolvedValue({
+			data: {
+				status: "active",
+				version: 1,
+				accountId: "acct-1",
+				orientation: "album",
+				sessionId: "s1",
+				snapshotId: "snap-1",
+				visibilityConfigHash: "vc_playlist_0.5_rtf",
+				revision: 0,
+				progress: {
+					total: 0,
+					remaining: 0,
+					caughtUp: true,
+					hiddenReviewItemCount: 0,
+				},
+				itemIds: [],
+				cards: { current: null, next: null },
+			},
+			error: null,
+		});
+
+		const result = await callStartOrResumeMatchDeck(
+			"acct-1",
+			"playlist",
+			"vc_playlist_0.5_rtf",
+		);
+
+		if (Result.isError(result)) throw new Error("expected ok");
+		expect(activeDeckOrNull(result.value)).toBeNull();
+		expect(mockCaptureServerError).toHaveBeenCalledTimes(1);
+		const [, contextArg] = mockCaptureServerError.mock.calls[0];
+		expect(contextArg).toMatchObject({
+			operation: "call_start_or_resume_match_deck",
+			extra: { status: "active" },
 		});
 	});
 

@@ -17,7 +17,7 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { DbError } from "@/lib/shared/errors/database";
 import { fromSupabaseRpc } from "@/lib/shared/utils/result-wrappers/supabase";
-import type { MatchOrientation } from "./types";
+import { type MatchOrientation, MatchOrientationSchema } from "./types";
 
 // Row and subject schemas validate only the fields the mappers read, so an RPC
 // column addition doesn't need a schema update here.
@@ -133,7 +133,7 @@ const ActiveMatchDeckSchema = z.object({
 	status: z.literal("active"),
 	version: z.literal(1),
 	accountId: z.string(),
-	orientation: z.string(),
+	orientation: MatchOrientationSchema,
 	sessionId: z.string(),
 	// A legacy active session with no active proposal and no ledger row has no
 	// snapshot (Phase 1b carry-forward; the view mapper coerces per R-F).
