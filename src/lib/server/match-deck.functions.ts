@@ -443,8 +443,7 @@ export function mapStartOrResumeToView(
 	rpc: ActiveMatchDeckRpcResult,
 	pageSize: number,
 ): MatchDeckView {
-	const orientation: MatchOrientation =
-		rpc.orientation === "playlist" ? "playlist" : "song";
+	const orientation = rpc.orientation;
 
 	let snapshotId = rpc.snapshotId;
 	if (snapshotId === null) {
