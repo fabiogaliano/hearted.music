@@ -12,7 +12,7 @@
 // Type-only imports so this module never pulls in server runtime deps.
 
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
-import type { ActiveJobs } from "@/lib/server/jobs.functions";
+import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 
 /**
  * Live-frame payload for `active_jobs_snapshot`.

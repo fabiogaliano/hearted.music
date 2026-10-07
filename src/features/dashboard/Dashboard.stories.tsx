@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
-import type { ActiveJobs } from "@/lib/server/jobs.functions";
+import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 import { allLikedSongs, simulateDashboard } from "@/stories/fixtures";
 import { Dashboard } from "./Dashboard";
 

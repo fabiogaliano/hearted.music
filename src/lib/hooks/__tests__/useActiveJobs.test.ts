@@ -9,7 +9,7 @@ import {
 	runMatchSnapshotRefreshEffects,
 } from "@/features/matching/queries";
 import { playlistKeys } from "@/features/playlists/queries";
-import type { ActiveJobs } from "@/lib/server/jobs.functions";
+import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 import { accountEventsConnectionKey } from "../useAccountEvents";
 import { useActiveJobs } from "../useActiveJobs";
 

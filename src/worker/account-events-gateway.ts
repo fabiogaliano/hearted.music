@@ -10,7 +10,7 @@ import {
 } from "@/lib/account-events/contract";
 import { verifyEventToken } from "@/lib/account-events/token";
 import { log } from "@/lib/observability/logger";
-import { buildActiveJobsSnapshot } from "@/lib/server/jobs.functions";
+import { buildActiveJobsSnapshot } from "@/lib/workflows/library-processing/active-jobs";
 
 type StreamController = ReadableStreamDefaultController<string>;
 
