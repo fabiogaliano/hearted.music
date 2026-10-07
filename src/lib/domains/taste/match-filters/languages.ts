@@ -112,10 +112,6 @@ const CATALOG_BY_CODE = new Map<string, CatalogEntry>(
 	CATALOG.map((entry) => [entry.code, entry]),
 );
 
-export const SUPPORTED_LANGUAGE_CODES: ReadonlySet<string> = new Set(
-	CATALOG.map((e) => e.code),
-);
-
 export function lookupLanguage(
 	code: string,
 ): MatchFilterLanguageOption | undefined {

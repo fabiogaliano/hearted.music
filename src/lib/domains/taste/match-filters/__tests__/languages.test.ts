@@ -3,7 +3,6 @@ import {
 	isLanguageCatalogCode,
 	lookupLanguage,
 	orderLanguageOptions,
-	SUPPORTED_LANGUAGE_CODES,
 	searchLanguages,
 } from "../languages";
 
@@ -98,14 +97,6 @@ describe("isLanguageCatalogCode", () => {
 	it("returns false for an uncataloged code", () => {
 		expect(isLanguageCatalogCode("xx-invented")).toBe(false);
 		expect(isLanguageCatalogCode("")).toBe(false);
-	});
-});
-
-describe("SUPPORTED_LANGUAGE_CODES", () => {
-	it("is a set containing known codes", () => {
-		expect(SUPPORTED_LANGUAGE_CODES.has("en")).toBe(true);
-		expect(SUPPORTED_LANGUAGE_CODES.has("ko")).toBe(true);
-		expect(SUPPORTED_LANGUAGE_CODES.has("xx-invented")).toBe(false);
 	});
 });
 
