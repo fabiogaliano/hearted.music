@@ -12,7 +12,6 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { dashboardKeys } from "@/features/dashboard/queries";
 import { pairExtension } from "@/lib/extension/connect";
 import { repairConnection } from "@/lib/extension/connection/repair";
 import { reportSpotifyAuthSuccess } from "@/lib/extension/connection/report-failure";
@@ -22,6 +21,7 @@ import {
 	requestExtensionSync,
 } from "@/lib/extension/detect";
 import { useExtensionSyncStatus } from "@/lib/extension/useExtensionSyncStatus";
+import { dashboardKeys } from "@/lib/query-keys";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,

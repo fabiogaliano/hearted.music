@@ -16,12 +16,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { MOCK_FILTER_OPTIONS } from "@/features/playlists/components/match-filters/mock-filter-options";
-import { playlistKeys } from "@/features/playlists/queries";
 import {
 	FIXTURE_SUGGESTIONS,
 	SONG_FIXTURES,
 } from "@/lib/domains/playlists/fixtures";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { playlistKeys } from "@/lib/query-keys";
 import { FiltersConfig } from "./config/FiltersConfig";
 import { GenreConfig } from "./config/GenreConfig";
 import { IntentEditor } from "./config/IntentEditor";

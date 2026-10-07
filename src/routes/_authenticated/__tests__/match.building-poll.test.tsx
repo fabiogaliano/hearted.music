@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activeJobsKeys } from "@/lib/hooks/active-jobs-keys";
 import { accountEventsConnectionKey } from "@/lib/hooks/useAccountEvents";
+import { activeJobsKeys } from "@/lib/query-keys";
 import { getActiveJobs } from "@/lib/server/jobs.functions";
 import { startOrResumeMatchDeck } from "@/lib/server/match-deck.functions";
 import { act } from "@/test/utils/render";

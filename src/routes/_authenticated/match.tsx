@@ -10,19 +10,14 @@ import {
 	useNavigate,
 } from "@tanstack/react-router";
 import { Suspense, useCallback, useEffect, useRef } from "react";
-import { dashboardKeys } from "@/features/dashboard/queries";
 import { MatchingEmptyState } from "@/features/matching/components/MatchingEmptyState";
-import {
-	matchDeckKeys,
-	matchDeckQueryOptions,
-} from "@/features/matching/deck-queries";
+import { matchDeckQueryOptions } from "@/features/matching/deck-queries";
 import {
 	hasNonCanonicalMatchMode,
 	modeFromSearch,
 	validateMatchSearch,
 } from "@/features/matching/match-search";
 import { QueueMatchContent } from "@/features/matching/QueueMatchSession";
-import { matchReviewSummaryKeys } from "@/features/matching/queries";
 import { deriveEmptyStateReason } from "@/features/matching/queue-helpers";
 import { seedBakedDeckCardReads } from "@/features/matching/seed-deck-cards";
 import type { MatchViewMode } from "@/features/matching/types";
@@ -34,6 +29,11 @@ import {
 } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { captureRouteError } from "@/lib/observability/sentry";
+import {
+	dashboardKeys,
+	matchDeckKeys,
+	matchReviewSummaryKeys,
+} from "@/lib/query-keys";
 import { setMatchViewModePreference } from "@/lib/server/settings.functions";
 import { fonts } from "@/lib/theme/fonts";
 

@@ -1,6 +1,7 @@
 import { type InfiniteData, QueryClient } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import { LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS } from "@/lib/domains/library/liked-songs/constants";
+import { likedSongsKeys } from "@/lib/query-keys";
 import type {
 	LikedSongsDeepLinkBootstrapResult,
 	LikedSongsPageResult,
@@ -9,7 +10,6 @@ import {
 	clearLikedSongsPageLive,
 	likedSongBySlugQueryOptions,
 	likedSongsInfiniteQueryOptions,
-	likedSongsKeys,
 	markLikedSongsPageLive,
 	resolveLikedSongsDeepLinkBootstrap,
 	seedLikedSongsDeepLinkCaches,

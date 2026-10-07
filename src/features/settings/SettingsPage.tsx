@@ -16,14 +16,13 @@ import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { dashboardKeys } from "@/features/dashboard/queries";
-import { matchReviewSummaryKeys } from "@/features/matching/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import {
 	type MatchStrictness,
 	STRICTNESS_MIN_SCORE,
 } from "@/lib/domains/taste/song-matching/strictness";
 import { signOut } from "@/lib/platform/auth/auth-client";
+import { dashboardKeys, matchReviewSummaryKeys } from "@/lib/query-keys";
 import {
 	updateMatchStrictnessPreference,
 	updateThemePreference,

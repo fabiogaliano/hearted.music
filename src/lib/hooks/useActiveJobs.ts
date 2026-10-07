@@ -1,9 +1,9 @@
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { runMatchSnapshotRefreshEffects } from "@/features/matching/queries";
+import { activeJobsKeys } from "@/lib/query-keys";
 import { getActiveJobs } from "@/lib/server/jobs.functions";
 import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
-import { activeJobsKeys } from "./active-jobs-keys";
 import {
 	accountEventsConnectionKey,
 	type ConnectionState,

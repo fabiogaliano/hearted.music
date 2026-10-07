@@ -13,12 +13,10 @@ import {
 	clearCheckoutIntent,
 	loadCheckoutIntent,
 } from "@/features/billing/checkout-intent";
-import { dashboardKeys } from "@/features/dashboard/queries";
-import { likedSongsKeys } from "@/features/liked-songs/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
+import { billingKeys, dashboardKeys, likedSongsKeys } from "@/lib/query-keys";
 import { getBillingState } from "@/lib/server/billing.functions";
 import { isCheckoutFulfilled } from "../checkout-fulfillment";
-import { billingKeys } from "../query-keys";
 
 const POLL_INTERVAL_MS = 2_000;
 const POLL_TIMEOUT_MS = 30_000;

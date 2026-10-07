@@ -1,10 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-
-import { billingKeys } from "@/features/billing/query-keys";
+import { billingKeys, likedSongsKeys } from "@/lib/query-keys";
 import type { RequestSongUnlockResponse } from "@/lib/server/billing.functions";
 import { requestSongUnlock } from "@/lib/server/billing.functions";
-import { likedSongsKeys } from "../queries";
 
 export type UnlockFlowState =
 	| { step: "idle" }

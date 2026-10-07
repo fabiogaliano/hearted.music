@@ -1,4 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { playlistKeys } from "@/lib/query-keys";
 import {
 	getAccountTopGenres,
 	getPlaylistManagementData,
@@ -7,17 +8,6 @@ import {
 } from "@/lib/server/playlists.functions";
 
 export const PLAYLIST_TRACKS_PAGE_SIZE = 25;
-
-export const playlistKeys = {
-	all: ["playlists"] as const,
-	management: (accountId: string) =>
-		["playlists", "management", accountId] as const,
-	tracks: (playlistId: string) => ["playlists", "tracks", playlistId] as const,
-	topGenres: (accountId: string) =>
-		["playlists", "top-genres", accountId] as const,
-	filterOptions: (accountId: string) =>
-		["playlists", "filter-options", accountId] as const,
-};
 
 export function playlistManagementQueryOptions(accountId: string) {
 	return queryOptions({

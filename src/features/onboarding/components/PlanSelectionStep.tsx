@@ -20,7 +20,6 @@ import {
 	loadCheckoutIntent,
 } from "@/features/billing/checkout-intent";
 import { useCheckoutFlow } from "@/features/billing/hooks/useCheckoutFlow";
-import { billingKeys } from "@/features/billing/query-keys";
 import { resolveSession } from "@/features/onboarding/step-resolver";
 import {
 	isPackOffer,
@@ -38,6 +37,7 @@ import {
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
+import { billingKeys } from "@/lib/query-keys";
 import {
 	getBillingState,
 	getPlanSelectionConfig,
