@@ -86,7 +86,10 @@ export type FinalizeTransition = "applied" | "lease_lost";
  * Ends this claim's job with `outcome` in one transaction: the fenced terminal
  * status, the execution measurement and the account events commit together,
  * so a run is either fully recorded or not at all, and nothing is recorded for
- * a run another claim owns ("lease_lost").
+ * a run another claim owns ("lease_lost"). It writes no
+ * library_processing_state: freshness moves only through the change the
+ * caller applies next, or through terminal recovery replaying that change
+ * from this measurement while the workflow's active ref still names the job.
  *
  * A completed run's work is already done, so its finalize is retried through
  * transient errors. A failed run gets one attempt; if it misses, the stale
@@ -158,41 +161,6 @@ async function finalizeOnce(
 				))
 			) {
 				return "lease_lost" as const;
-			}
-
-			if (outcome.workflow === "match_snapshot_refresh") {
-				await tx`
-					INSERT INTO library_processing_state (account_id)
-					VALUES (${job.account_id})
-					ON CONFLICT (account_id) DO NOTHING
-				`;
-
-				if (outcome.status === "published") {
-					const marker = job.satisfies_requested_at;
-					await tx`
-						UPDATE library_processing_state
-						SET match_snapshot_refresh_settled_at = CASE
-								WHEN match_snapshot_refresh_settled_at IS NOT NULL
-									AND match_snapshot_refresh_settled_at > COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
-								THEN match_snapshot_refresh_settled_at
-								ELSE COALESCE(${marker}::timestamptz, match_snapshot_refresh_requested_at, now())
-							END,
-							match_snapshot_refresh_active_job_id = CASE
-								WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
-								ELSE match_snapshot_refresh_active_job_id
-							END
-						WHERE account_id = ${job.account_id}
-					`;
-				} else {
-					await tx`
-						UPDATE library_processing_state
-						SET match_snapshot_refresh_active_job_id = CASE
-							WHEN match_snapshot_refresh_active_job_id = ${job.id} THEN NULL
-							ELSE match_snapshot_refresh_active_job_id
-						END
-						WHERE account_id = ${job.account_id}
-					`;
-				}
 			}
 
 			const measurement = measurementOf(outcome);

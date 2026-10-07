@@ -99,12 +99,10 @@ describe("finalizeJob writes one run's records in one transaction", () => {
 		]);
 	});
 
-	it("match refresh: fence, active ref, then measurement, then events", async () => {
+	it("match refresh: fence, then measurement, then events; library_processing_state is left to the reconciler", async () => {
 		expect(await finalize(outcomes.refreshPublished)).toHaveOkValue("applied");
 		expect(db.log).toEqual([
 			"fence",
-			"state",
-			"state",
 			"measurement",
 			"event:match_snapshot_published",
 			"event:match_snapshot_published",
