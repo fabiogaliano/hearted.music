@@ -205,8 +205,7 @@ export type SubmitMatchDeckActionResult = {
 // ============================================================================
 
 /**
- * First-page row count for a playlist deck card's suggestion list — mirrors the
- * private PLAYLIST_CARD_FIRST_PAGE_SIZE in match-review-queue.functions.ts (a
+ * First-page row count for a playlist deck card's suggestion list (a
  * first-paint tuning number, not a shared contract). Song decks read the whole
  * capped set instead (nextCursor is always null there).
  */
