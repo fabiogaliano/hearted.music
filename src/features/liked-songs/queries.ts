@@ -9,6 +9,7 @@ import {
 	LIKED_SONGS_PAGE_SIZE,
 } from "@/lib/domains/library/liked-songs/constants";
 import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
 	getLikedSongBySlug,
 	getLikedSongsDeepLinkBootstrap,
@@ -19,7 +20,6 @@ import {
 } from "@/lib/server/liked-songs.functions";
 import { getSongSuggestions } from "@/lib/server/matching.functions";
 import { getWalkthroughCompanionSongs } from "@/lib/server/onboarding.functions";
-import { generateSongSlug } from "@/lib/utils/slug";
 
 export type FilterOption = LikedSongFilter;
 

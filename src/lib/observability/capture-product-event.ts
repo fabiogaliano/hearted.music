@@ -1,5 +1,5 @@
 import { captureServerError } from "@/lib/observability/capture-server-error";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
+import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
 
 /**
  * Best-effort product-event capture for Cloudflare server functions.

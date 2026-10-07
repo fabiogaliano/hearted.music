@@ -66,7 +66,7 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 		mockUpdatePlaylistMatchConfig(...args),
 }));
 
-vi.mock("@/utils/posthog-server", () => ({
+vi.mock("@/lib/observability/posthog-server", () => ({
 	captureWithWaitUntil: (...args: unknown[]) =>
 		mockCaptureWithWaitUntil(...args),
 }));

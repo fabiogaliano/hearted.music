@@ -5,9 +5,9 @@
 
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 import { fonts } from "@/lib/theme/fonts";
-import { generateSongSlug } from "@/lib/utils/slug";
 import type { ActivityItem as ActivityItemType } from "../types";
 
 interface ActivityItemProps {

@@ -8,6 +8,11 @@
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database, Tables, TablesInsert } from "@/lib/data/database.types";
+// RPC results are typed via LikedSongPageRow (derived from the generated
+// Database["public"]["Functions"] return type), so fromSupabaseMany's
+// generic `T[] | null` shape is reused as-is instead of adding a parallel
+// zod-validated RPC wrapper — the generated types already are the schema.
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import {
 	chunkedWrite,
@@ -18,11 +23,6 @@ import {
 	fromSupabaseMany,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-// RPC results are typed via LikedSongPageRow (derived from the generated
-// Database["public"]["Functions"] return type), so fromSupabaseMany's
-// generic `T[] | null` shape is reused as-is instead of adding a parallel
-// zod-validated RPC wrapper — the generated types already are the schema.
-import { generateSongSlug } from "@/lib/utils/slug";
 import {
 	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
 	LIKED_SONGS_PAGE_SIZE,

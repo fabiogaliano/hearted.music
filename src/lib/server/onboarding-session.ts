@@ -24,8 +24,8 @@ import {
 	ONBOARDING_STEPS,
 	type UserPreferences,
 } from "@/lib/domains/library/accounts/preferences-queries";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { OnboardingError } from "@/lib/shared/errors/domain/onboarding";
-import { generateSongSlug } from "@/lib/utils/slug";
 
 /**
  * Project a persisted `(onboarding_step, demo_song_id)` pair plus the

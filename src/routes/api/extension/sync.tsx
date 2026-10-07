@@ -34,6 +34,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
 import { validateExtensionApiToken } from "@/lib/platform/auth/extension-api-tokens";
 import { beginExtensionSync } from "@/lib/platform/jobs/extension-sync-jobs";
@@ -47,7 +48,6 @@ import {
 	deleteSyncPayload,
 	uploadSyncPayload,
 } from "@/lib/workflows/extension-sync/payload-storage";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,

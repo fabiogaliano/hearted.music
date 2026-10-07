@@ -1,7 +1,7 @@
 import { useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { getThemeHue } from "@/lib/theme/colors";
+import { type ColorPalette, generatePalette } from "@/lib/theme/palette";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { type ColorPalette, generatePalette } from "@/lib/utils/palette";
 
 interface HeartRippleBackgroundProps {
 	ref?: React.Ref<HeartRippleHandle>;

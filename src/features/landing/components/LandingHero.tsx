@@ -8,8 +8,8 @@ import {
 	landingSongToSongDetail,
 } from "@/lib/content/landing/landing-songs";
 import { fonts } from "@/lib/theme/fonts";
+import { extractHue, getPastelColor } from "@/lib/theme/hsl";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { extractHue, getPastelColor } from "@/lib/utils/color";
 import { AnimatedHeart } from "./AnimatedHeart";
 import { heroStyles } from "./heroStyles";
 import { LandingPanel } from "./LandingPanel";

@@ -16,7 +16,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { generateSongSlug } from "@/lib/utils/slug";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 
 import type { LikedSong } from "../types";
 

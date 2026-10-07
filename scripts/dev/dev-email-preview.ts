@@ -30,7 +30,7 @@ async function getEmailHtml(): Promise<string> {
 	return match[1];
 }
 
-// Exact palette generation from src/lib/utils/palette.ts
+// Exact palette generation from src/lib/theme/palette.ts
 function generatePalette(hue: number) {
 	const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
 		const hNorm = h / 360;

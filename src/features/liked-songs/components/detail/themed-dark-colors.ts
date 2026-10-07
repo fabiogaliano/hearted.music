@@ -1,5 +1,5 @@
+import { extractHue } from "@/lib/theme/hsl";
 import type { ThemeConfig } from "@/lib/theme/types";
-import { extractHue } from "@/lib/utils/color";
 
 interface ThemedDarkColors {
 	bg: string;

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
+import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
 import { Route } from "../billing-bridge";
 
 const SECRET = "bridge-test-secret";
@@ -36,7 +36,7 @@ vi.mock("@/lib/observability/capture-server-error", () => ({
 	captureServerError: vi.fn(),
 }));
 
-vi.mock("@/utils/posthog-server", () => ({
+vi.mock("@/lib/observability/posthog-server", () => ({
 	captureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
 }));
 
