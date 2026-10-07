@@ -1,5 +1,5 @@
-import { lyricalV17 } from "./lyrical-v17";
-import type { PromptVersion } from "./types";
+import { lyricalV17 } from "@/lib/domains/enrichment/content-analysis/prompts/lyrical-v17";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
 // v28 = lyrical-v17.ts + TWO register edits, the synthesis of the Phase-4 H5–H9 smoke winners (H10).
 // Branches from v17. The free smoke (Flash n=3 × 9 golds, the tier1 cross-sentence antithesis rule)

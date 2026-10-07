@@ -1,5 +1,5 @@
-import { lyricalV17 } from "./lyrical-v17";
-import type { PromptVersion } from "./types";
+import { lyricalV17 } from "@/lib/domains/enrichment/content-analysis/prompts/lyrical-v17";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
 // v29 = lyrical-v17.ts + ONE register edit (Phase-4 iteration H11). Branches from v17.
 //

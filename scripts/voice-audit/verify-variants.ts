@@ -5,9 +5,9 @@
 // differs from v17, and shows the exact changed region so the edit can be eyeballed before any
 // generation budget is spent. Run: bun scripts/voice-audit/verify-variants.ts
 
-import { getLyricalPrompt } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
+import { getExperimentLyricalPrompt } from "./prompts/registry";
 
-const base = getLyricalPrompt("17").template;
+const base = getExperimentLyricalPrompt("17").template;
 const variants = ["23", "24", "25", "26", "27", "28", "29", "30"];
 
 function lineDiff(a: string, b: string): { from: string[]; to: string[] } {
@@ -25,7 +25,7 @@ function lineDiff(a: string, b: string): { from: string[]; to: string[] } {
 }
 
 for (const v of variants) {
-	const t = getLyricalPrompt(v).template;
+	const t = getExperimentLyricalPrompt(v).template;
 	const identical = t === base;
 	const dChars = t.length - base.length;
 	console.log(`\n${"=".repeat(80)}\nv${v}  (Δ ${dChars >= 0 ? "+" : ""}${dChars} chars, identical-to-v17=${identical})`);
@@ -42,7 +42,7 @@ for (const v of variants) {
 
 // Pairwise: every variant must differ from every other (no accidental dupes).
 console.log(`\n${"=".repeat(80)}\nuniqueness check:`);
-const templates = new Map(variants.map((v) => [v, getLyricalPrompt(v).template]));
+const templates = new Map(variants.map((v) => [v, getExperimentLyricalPrompt(v).template]));
 let allUnique = true;
 for (let i = 0; i < variants.length; i++) {
 	for (let j = i + 1; j < variants.length; j++) {

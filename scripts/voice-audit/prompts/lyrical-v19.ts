@@ -1,4 +1,4 @@
-import type { PromptVersion } from "./types";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
 // v19 = lyrical-v17.ts + ONE targeted register edit (Phase-4 iteration). v17/v18 both lost all 9 golds
 // 0/27 win-or-tie; grounding was SOLVED (100%) but the dominant, nameable failure was the essayistic /

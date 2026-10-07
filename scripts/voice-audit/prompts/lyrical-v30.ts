@@ -1,5 +1,5 @@
 import { lyricalV29, POSITIVE_MENU_LINE } from "./lyrical-v29";
-import type { PromptVersion } from "./types";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
 // v30 = v29 (positive-menu generation) + the commenter's XML wrapper applied to the GENERATION guidance
 // (Phase-4 H13 — "mix the two concepts," user-requested). The source idea's commenter (Sable-Keech)
