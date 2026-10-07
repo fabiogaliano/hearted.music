@@ -14,18 +14,17 @@ import type {
 	LibraryProcessingApplyError,
 	LibraryProcessingApplyOutcome,
 	LibraryProcessingChange,
+	LibraryProcessingWorkflow,
 } from "./types";
 
-type LibraryProcessingJobType = "enrichment" | "match_snapshot_refresh";
-
-function isLibraryProcessingJobType(
+function isLibraryProcessingWorkflow(
 	type: string,
-): type is LibraryProcessingJobType {
+): type is LibraryProcessingWorkflow {
 	return type === "enrichment" || type === "match_snapshot_refresh";
 }
 
 function buildRecoveryChange(job: Job) {
-	if (!isLibraryProcessingJobType(job.type)) {
+	if (!isLibraryProcessingWorkflow(job.type)) {
 		return null;
 	}
 
@@ -87,7 +86,7 @@ export async function recoverDeadLetteredLibraryProcessingJobs(
 export interface TerminalRefRecoveryResult {
 	jobId: string;
 	accountId: string;
-	workflow: "enrichment" | "match_snapshot_refresh";
+	workflow: LibraryProcessingWorkflow;
 	jobStatus: string;
 	recoveryStrategy: "completed_from_measurement" | "conservative_failure";
 	outcome: Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>;

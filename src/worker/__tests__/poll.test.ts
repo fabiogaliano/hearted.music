@@ -43,19 +43,6 @@ describe("claimAndDispatchLibraryProcessingJobs", () => {
 		vi.mocked(runClaimedJob).mockResolvedValue({
 			status: "completed",
 			workflow: "enrichment",
-			result: {
-				accountId: "acct-1",
-				jobId: "job-1",
-				batchSequence: 0,
-				hasMoreSongs: false,
-				newCandidatesAvailable: false,
-				newCandidateSongIds: [],
-				selectionMode: "normal",
-				readyCount: 0,
-				doneCount: 0,
-				succeededCount: 0,
-				failedCount: 0,
-			},
 			settlement: "settled",
 		});
 	});

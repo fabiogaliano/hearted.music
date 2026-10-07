@@ -25,13 +25,13 @@ vi.mock("@/lib/account-events/producer", () => ({
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { makeJob } from "@/test/fixtures";
 import {
-	settleEnrichmentJobTerminal,
-	settleMatchSnapshotRefreshJobTerminal,
+	finalizeEnrichmentJob,
+	finalizeMatchSnapshotRefreshJob,
 } from "../settlement";
 
 const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
 
-describe("settleEnrichmentJobTerminal", () => {
+describe("finalizeEnrichmentJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
@@ -40,11 +40,7 @@ describe("settleEnrichmentJobTerminal", () => {
 
 	it("writes enrichment_completed account event with correct payload", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await settleEnrichmentJobTerminal(
-			job,
-			"completed",
-			"completed",
-		);
+		const result = await finalizeEnrichmentJob(job, "completed", "completed");
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -59,7 +55,7 @@ describe("settleEnrichmentJobTerminal", () => {
 
 	it("writes enrichment_stopped account event with reason", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await settleEnrichmentJobTerminal(
+		const result = await finalizeEnrichmentJob(
 			job,
 			"failed",
 			"user_cancelled",
@@ -83,24 +79,20 @@ describe("settleEnrichmentJobTerminal", () => {
 		txMock.mockRejectedValueOnce(new Error("Update failed"));
 
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await settleEnrichmentJobTerminal(
-			job,
-			"completed",
-			"completed",
-		);
+		const result = await finalizeEnrichmentJob(job, "completed", "completed");
 
 		expect(result.isErr()).toBe(true);
 		if (!result.isOk()) {
 			expect(result.error).toBeInstanceOf(DatabaseError);
 			if (result.error instanceof DatabaseError) {
-				expect(result.error.code).toBe("settlement_failed");
+				expect(result.error.code).toBe("finalize_failed");
 			}
 		}
 		expect(writeAccountEvent).not.toHaveBeenCalled();
 	});
 });
 
-describe("settleMatchSnapshotRefreshJobTerminal", () => {
+describe("finalizeMatchSnapshotRefreshJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
@@ -110,7 +102,7 @@ describe("settleMatchSnapshotRefreshJobTerminal", () => {
 	it("writes published events for both orientations with the snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await settleMatchSnapshotRefreshJobTerminal(
+		const result = await finalizeMatchSnapshotRefreshJob(
 			job,
 			"completed",
 			"published",
@@ -133,7 +125,7 @@ describe("settleMatchSnapshotRefreshJobTerminal", () => {
 	it("writes active_jobs_changed when a published refresh no-ops", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await settleMatchSnapshotRefreshJobTerminal(
+		const result = await finalizeMatchSnapshotRefreshJob(
 			job,
 			"completed",
 			"published",
@@ -151,7 +143,7 @@ describe("settleMatchSnapshotRefreshJobTerminal", () => {
 	it("writes active_jobs_changed when a refresh is superseded", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await settleMatchSnapshotRefreshJobTerminal(
+		const result = await finalizeMatchSnapshotRefreshJob(
 			job,
 			"completed",
 			"superseded",
@@ -169,7 +161,7 @@ describe("settleMatchSnapshotRefreshJobTerminal", () => {
 	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await settleMatchSnapshotRefreshJobTerminal(
+		const result = await finalizeMatchSnapshotRefreshJob(
 			job,
 			"failed",
 			"failed",

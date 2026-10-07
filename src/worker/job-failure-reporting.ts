@@ -1,7 +1,8 @@
 import { captureException } from "@sentry/bun";
+import type { LibraryProcessingWorkflow } from "@/lib/workflows/library-processing/types";
 
 interface WorkerJobFailureContext {
-	workflow: "enrichment" | "match_snapshot_refresh";
+	workflow: LibraryProcessingWorkflow;
 	jobId: string;
 	accountId: string;
 }

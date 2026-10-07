@@ -8,7 +8,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
-// Worker-only SQL instance for transactional job settlements
+// Worker-only SQL instance for transactional job finalizes
 const sql = postgres(env.DATABASE_URL, {
 	max: 1,
 	prepare: false,
@@ -73,7 +73,7 @@ async function fenceTerminal(
 	return rows.length > 0;
 }
 
-export async function settleMatchSnapshotRefreshJobTerminal(
+export async function finalizeMatchSnapshotRefreshJob(
 	job: Job,
 	status: "completed" | "failed",
 	reason: "published" | "superseded" | "failed",
@@ -152,13 +152,11 @@ export async function settleMatchSnapshotRefreshJobTerminal(
 		return Result.ok(outcome);
 	} catch (error) {
 		const message = errorMessage(error);
-		return Result.err(
-			new DatabaseError({ code: "settlement_failed", message }),
-		);
+		return Result.err(new DatabaseError({ code: "finalize_failed", message }));
 	}
 }
 
-export async function settleEnrichmentJobTerminal(
+export async function finalizeEnrichmentJob(
 	job: Job,
 	status: "completed" | "failed",
 	eventReason: "completed" | "user_cancelled" | "failed" | "superseded",
@@ -199,8 +197,6 @@ export async function settleEnrichmentJobTerminal(
 		return Result.ok(outcome);
 	} catch (error) {
 		const message = errorMessage(error);
-		return Result.err(
-			new DatabaseError({ code: "settlement_failed", message }),
-		);
+		return Result.err(new DatabaseError({ code: "finalize_failed", message }));
 	}
 }
