@@ -3,6 +3,11 @@
  * than one path must agree on. Lib hooks (SSE, active-jobs polling) and
  * features both invalidate these caches, so the keys live below both and
  * import nothing but types.
+ *
+ * All families live here, including the ones only a feature reads today:
+ * prefix invalidation (`likedSongsKeys.all` covering `stats`) only holds while
+ * no two families share a leading segment, and one file is where that is
+ * checked.
  */
 
 import type { QueryClient } from "@tanstack/react-query";
@@ -136,6 +141,11 @@ export const draftPreviewKeys = {
  * path that changes entitlements (checkout return, song unlock, the SSE
  * billing_state_changed event) invalidates this one set, so no surface keeps
  * showing a song as locked after another has refreshed.
+ *
+ * Deck and review-summary caches are deliberately not here: an entitlement
+ * change schedules a match-snapshot refresh, and its completion edge
+ * invalidates those through invalidateMatchSnapshotQueries. Refreshing them
+ * here too would show the pre-refresh deck twice.
  */
 export async function invalidateEntitlementQueries(
 	queryClient: QueryClient,
@@ -157,33 +167,29 @@ export async function invalidateMatchSnapshotQueries(
 	queryClient: QueryClient,
 	accountId: string,
 ): Promise<void> {
-	// Deck read model: a mid-session snapshot refresh must re-run the bounded deck
-	// read so newly appended subjects surface. Appends are worker-driven now
-	// (append_sessions jobs), so there is no request-path sync to await first.
-	// deckRoot invalidates every (account, orientation) deck query; per-card
-	// read/suggestion keys hang off matchDeckKeys.card and are intentionally left
-	// alone — refetching an individual card mid-review would interrupt the user's
-	// current card.
-	queryClient.invalidateQueries({
-		queryKey: matchDeckKeys.deckRoot,
-	});
-
-	// Queue-aware summary: drives sidebar badge + dashboard CTA count. Using
-	// summariesRoot invalidates all orientation summary queries in one call.
-	queryClient.invalidateQueries({
-		queryKey: matchReviewSummaryKeys.summariesRoot,
-	});
-
-	// Dashboard surfaces updated by the new snapshot. stats backs the CTA's
-	// reviewCount — without invalidating it the preview fan refreshes while the
-	// count stays stale. pageData keeps the route-loader cache fresh.
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.stats(accountId),
-	});
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.pageData(accountId),
-	});
-	queryClient.invalidateQueries({
-		queryKey: dashboardKeys.matchPreviews(accountId),
-	});
+	await Promise.all([
+		// Deck read model: a mid-session snapshot refresh must re-run the bounded
+		// deck read so newly appended subjects surface. Appends are worker-driven
+		// (append_sessions jobs), so there is no request-path sync to await first.
+		// deckRoot invalidates every (account, orientation) deck query; per-card
+		// read/suggestion keys hang off matchDeckKeys.card and are intentionally
+		// left alone — refetching an individual card mid-review would interrupt
+		// the user's current card.
+		queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot }),
+		// Queue-aware summary: drives sidebar badge + dashboard CTA count.
+		// summariesRoot covers every orientation's summary in one call.
+		queryClient.invalidateQueries({
+			queryKey: matchReviewSummaryKeys.summariesRoot,
+		}),
+		// Dashboard surfaces updated by the new snapshot. stats backs the CTA's
+		// reviewCount — without it the preview fan refreshes while the count stays
+		// stale. pageData keeps the route-loader cache fresh.
+		queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(accountId) }),
+		queryClient.invalidateQueries({
+			queryKey: dashboardKeys.pageData(accountId),
+		}),
+		queryClient.invalidateQueries({
+			queryKey: dashboardKeys.matchPreviews(accountId),
+		}),
+	]);
 }
