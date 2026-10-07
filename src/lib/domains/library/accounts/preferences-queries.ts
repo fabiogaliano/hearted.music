@@ -198,7 +198,8 @@ export function updateOnboardingStep(
 
 /**
  * Writes the demo song and the walkthrough step in one UPDATE, so the row can
- * never be at `song-walkthrough` without a `demo_song_id`.
+ * never be at `song-walkthrough` without a `demo_song_id`. Guarded like
+ * updateOnboardingStep: `ok(null)` means onboarding was already complete.
  */
 export function enterSongWalkthrough(
 	accountId: string,
@@ -213,6 +214,7 @@ export function enterSongWalkthrough(
 				onboarding_step: "song-walkthrough",
 			})
 			.eq("account_id", accountId)
+			.is("onboarding_completed_at", null)
 			.select()
 			.maybeSingle(),
 	);

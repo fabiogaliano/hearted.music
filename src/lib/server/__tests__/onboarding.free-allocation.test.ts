@@ -110,7 +110,9 @@ import {
 describe("commitDemoSongAndEnterWalkthrough", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockEnterSongWalkthrough.mockResolvedValue(Result.ok(null));
+		mockEnterSongWalkthrough.mockResolvedValue(
+			Result.ok({ account_id: "acct-free-1" }),
+		);
 		mockClearPhaseJobIds.mockResolvedValue(Result.ok({}));
 		mockLoadOnboardingSession.mockResolvedValue({
 			session: { status: "song-walkthrough" },
@@ -173,6 +175,25 @@ describe("commitDemoSongAndEnterWalkthrough", () => {
 			}),
 		).rejects.toThrow(/lookup_demo_song/);
 		expect(mockEnterSongWalkthrough).not.toHaveBeenCalled();
+	});
+
+	it("regression: a stale tab on a completed account writes nothing further", async () => {
+		const single = vi.fn().mockResolvedValue({
+			data: { id: "song-1" },
+			error: null,
+		});
+		mockCreateAdminSupabaseClient.mockReturnValue({
+			from: () => ({ select: () => ({ eq: () => ({ single }) }) }),
+		});
+		// ok(null): the completion guard matched no row.
+		mockEnterSongWalkthrough.mockResolvedValue(Result.ok(null));
+
+		await commitDemoSongAndEnterWalkthrough({
+			data: { spotifyTrackId: "spotify:track:abc" },
+		});
+
+		expect(mockClearPhaseJobIds).not.toHaveBeenCalled();
+		expect(mockLoadOnboardingSession).toHaveBeenCalled();
 	});
 });
 

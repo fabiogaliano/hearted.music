@@ -8,7 +8,10 @@ import { createClient } from "@supabase/supabase-js";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
-import { updateOnboardingStep } from "@/lib/domains/library/accounts/preferences-queries";
+import {
+	enterSongWalkthrough,
+	updateOnboardingStep,
+} from "@/lib/domains/library/accounts/preferences-queries";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -100,5 +103,20 @@ describeLocal("updateOnboardingStep", () => {
 		const prefs = await readPreferences(accountId);
 		expect(prefs.onboarding_step).toBe("plan-selection");
 		expect(prefs.onboarding_completed_at).toBeNull();
+	});
+
+	it("regression: entering the walkthrough after completion changes nothing", async () => {
+		const completedAt = "2026-10-01T12:00:00+00:00";
+		const accountId = await seedPreferences({
+			step: "plan-selection",
+			completedAt,
+		});
+
+		// No song row needed: the guarded UPDATE matches no row, so no FK check.
+		const result = await enterSongWalkthrough(accountId, crypto.randomUUID());
+
+		expect(result).toHaveOkValue(null);
+		const prefs = await readPreferences(accountId);
+		expect(prefs.onboarding_step).toBe("plan-selection");
 	});
 });

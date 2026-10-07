@@ -534,6 +534,14 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 		if (Result.isError(updateResult)) {
 			throw onboardingError("commit_demo_song_walkthrough", updateResult.error);
 		}
+		// Already complete (stale tab): nothing was written; the authoritative
+		// payload routes the client out of onboarding.
+		if (updateResult.value === null) {
+			return loadOnboardingSession({
+				accountId: session.accountId,
+				accountHandle: context.account.handle,
+			});
+		}
 
 		// Mirror saveOnboardingStep's side-effect: clear phase job IDs when
 		// transitioning past syncing-related steps. Non-critical; log-only.
