@@ -129,3 +129,13 @@ Order #36 → #34 → #35 → #37, re-verified in a scratch worktree against the
 - **#36**: no code change yet. Lyrical-wins, per-field `.catch(null)` and the per-row server parse recorded in the PR body. Import sort dropped: Biome's `includes` does not cover `scripts/`.
 - **#37** `43dd3cc`: `DeckEntryError` is a `TaggedError`; `deck-entry.test.ts` pins the clock with fake timers. Drift-triggers-build recorded in the PR body; body lists all nine commits.
 - **Not done:** commit-body rewrites and squashing `358fcaca` need a force-push, which this session could not perform; the bodies' content is in the PR descriptions instead. Every rename in §3 is held for the naming review.
+
+## 7. Renames landed (2026-10-07, all seven approved)
+
+| PR | Commit | Rename |
+|---|---|---|
+| #36 | `33bbadd` | `decodeStoredAnalysis` → `parseStoredAnalysis`; `StoredAnalysis` hoisted to `{ audioFeatures; read: StoredRead \| null }`, `none` arm gone |
+| #35 | `deec868` | `applyEntitlementToSongs` → `unlockEntitledSongs`; `activated_unlimited` → `unlocked_unlimited`; RPC `get_match_filter_options` → `get_account_match_filter_options` (migration renamed in place, unshipped) |
+| #37 | see branch | `DeckRead` → `DeckReadMode`; `DeckCardRead.materialized` → `materialization`; card cold path split into `deck-card.ts`; `reportDeckError` exported once from `deck-view.ts` |
+
+Grid rules that decided them, worth keeping: `parse*` for stored-shape parsing; `unlock` is the glossary verb for entitlement writes and `activate` is taken; `get_account_*` for per-account SQL aggregates; `XRead` is a payload noun and behavior-switch unions end in `Mode`; a module holds one operation unless two share knowledge beyond a helper.
