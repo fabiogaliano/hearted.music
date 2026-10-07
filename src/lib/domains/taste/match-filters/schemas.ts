@@ -1,16 +1,16 @@
 /**
  * Zod schemas for PlaylistMatchFiltersV1.
  *
- * Two parsers with intentionally distinct names to prevent accidental misuse:
+ * Two shapes with intentionally distinct behavior:
  *
- * - `parseSaveMatchFilters`: STRICT — rejects unknown keys, used before writes.
- *   Returns a `Result` so callers branch on validity without try/catch.
+ * - `MatchFiltersSaveSchema`: STRICT — rejects unknown keys at every depth. The
+ *   server-fn input validators run it, so a bad save fails at the edge before
+ *   any read or write.
  * - `parseStoredMatchFilters`: FORGIVING — ignores unknown stored keys, but any
  *   known field with invalid data normalizes the entire object to `{ version: 1 }`.
  *   It can't fail, so it returns the value plus a `wasNormalized` flag directly.
  */
 
-import { Result } from "better-result";
 import { z } from "zod";
 import { isValidDateOnly } from "./dates";
 import { isLanguageCatalogCode } from "./languages";
@@ -128,20 +128,6 @@ const storedSchema = z.object({
 });
 
 const DEFAULT_FILTERS: PlaylistMatchFiltersV1 = { version: 1 };
-
-/**
- * Parse and validate a value intended for write.
- * Rejects unknown keys so accidental extra fields from callers are caught.
- */
-export function parseSaveMatchFilters(
-	raw: unknown,
-): Result<PlaylistMatchFiltersV1, string> {
-	const result = MatchFiltersSaveSchema.safeParse(raw);
-	if (!result.success) {
-		return Result.err(result.error.message);
-	}
-	return Result.ok(result.data satisfies PlaylistMatchFiltersV1);
-}
 
 /**
  * Parse a value loaded from storage.

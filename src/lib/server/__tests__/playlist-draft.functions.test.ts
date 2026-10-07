@@ -192,7 +192,13 @@ describe("playlist-draft.functions adapter", () => {
 					matchFilters: { version: 1, languages: { codes: ["xx-invented"] } },
 				},
 			});
-		}).rejects.toThrow();
+		}).rejects.toMatchObject({
+			issues: [
+				expect.objectContaining({
+					path: expect.arrayContaining(["matchFilters"]),
+				}),
+			],
+		});
 
 		expect(runPersistNewPlaylistConfigMock).not.toHaveBeenCalled();
 	});
