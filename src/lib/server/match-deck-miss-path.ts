@@ -77,15 +77,13 @@
  */
 
 import { Result } from "better-result";
-import {
-	enqueueDeckJob,
-	findInFlightBuildProposalsJob,
-} from "@/lib/domains/taste/match-review-queue/deck-jobs";
+import { findInFlightBuildProposalsJob } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import {
 	callStartOrResumeMatchDeck,
 	type StartOrResumeMatchDeckRpcResult,
 } from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import { buildOneProposal } from "@/lib/domains/taste/match-review-queue/proposal-builder";
+import { enqueueBuildProposals } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
 import type { MatchOrientation } from "@/lib/domains/taste/match-review-queue/types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
@@ -128,12 +126,11 @@ export async function buildFirstWindowAndPromote(input: {
 	// finds a ready proposal instead of re-entering this path. Shared by the
 	// step-0 defer branch and the normal build-then-enqueue path below.
 	async function enqueueFullBuild(): Promise<void> {
-		const enqueued = await enqueueDeckJob({
+		const enqueued = await enqueueBuildProposals({
 			accountId,
 			orientation,
-			kind: "build_proposals",
-			idempotencyKey: `build:${accountId}:${orientation}:${snapshotId}:${visibilityConfigHash}`,
-			payload: { snapshotId },
+			snapshotId,
+			visibilityConfigHash,
 		});
 		if (Result.isError(enqueued)) {
 			captureServerError(enqueued.error, {
