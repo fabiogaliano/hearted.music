@@ -12,14 +12,14 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import {
 	type CheckoutIntent,
 	type CheckoutOffer,
 	clearCheckoutIntent,
 	loadCheckoutIntent,
 	saveCheckoutIntent,
-} from "@/features/onboarding/checkout-intent";
+} from "@/features/billing/checkout-intent";
+import { checkoutErrorMessage } from "@/features/billing/error-copy";
 import { isPackOffer } from "@/lib/domains/billing/offers";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { parseStripeCheckoutUrl } from "@/lib/domains/billing/stripe-redirects";
