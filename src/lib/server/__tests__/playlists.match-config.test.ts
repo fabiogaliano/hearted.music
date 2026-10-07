@@ -34,7 +34,17 @@ const {
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: () => builder(),
+		inputValidator: (validator: (data: unknown) => unknown) => ({
+			handler:
+				(
+					fn: (args: {
+						context: typeof mockAuthContext;
+						data: unknown;
+					}) => unknown,
+				) =>
+				async (input?: { data?: unknown }) =>
+					fn({ context: mockAuthContext, data: validator(input?.data) }),
+		}),
 		handler:
 			(
 				fn: (args: {
@@ -101,13 +111,15 @@ vi.mock(
 	}),
 );
 
-// parseSaveMatchFilters uses isLanguageCatalogCode; we do NOT mock schemas.ts
+// MatchFiltersSaveSchema uses isLanguageCatalogCode; we do NOT mock schemas.ts
 // so the strict validator runs against real catalog logic. Language tests only
 // use known-good codes ("en") or omit the languages field entirely.
 
+const PLAYLIST_ID = "11111111-1111-4111-8111-111111111111";
+
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {
-		id: "uuid-1",
+		id: PLAYLIST_ID,
 		account_id: "acct-1",
 		spotify_id: "abc123",
 		name: "Test Playlist",
@@ -147,10 +159,16 @@ function makeApplyOutcome(): LibraryProcessingApplyOutcome {
 }
 
 const BASE_INPUT = {
-	playlistId: "uuid-1",
+	playlistId: PLAYLIST_ID,
 	matchIntent: "chill evening vibes",
 	genrePills: ["rock"],
 	matchFilters: { version: 1 as const },
+};
+
+const MATCH_FILTERS_REJECTED = {
+	issues: [
+		expect.objectContaining({ path: expect.arrayContaining(["matchFilters"]) }),
+	],
 };
 
 describe("savePlaylistMatchConfig", () => {
@@ -224,7 +242,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchIntent: "chill vibes" }),
 		);
 	});
@@ -237,7 +255,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchIntent: intentWithInternalWs }),
 		);
 	});
@@ -249,7 +267,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchIntent: null }),
 		);
 	});
@@ -261,7 +279,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchIntent: null }),
 		);
 	});
@@ -273,7 +291,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchIntent: null }),
 		);
 	});
@@ -288,7 +306,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ genrePills: ["hip-hop", "rock"] }),
 		);
 	});
@@ -315,7 +333,7 @@ describe("savePlaylistMatchConfig", () => {
 					matchFilters: { version: 1, unknownKey: "oops" } as never,
 				},
 			}),
-		).rejects.toThrow("Invalid match filters");
+		).rejects.toMatchObject(MATCH_FILTERS_REJECTED);
 
 		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();
 	});
@@ -329,7 +347,7 @@ describe("savePlaylistMatchConfig", () => {
 					matchFilters: { version: 1, vocalGender: "unknown" } as never,
 				},
 			}),
-		).rejects.toThrow("Invalid match filters");
+		).rejects.toMatchObject(MATCH_FILTERS_REJECTED);
 
 		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();
 	});
@@ -347,7 +365,7 @@ describe("savePlaylistMatchConfig", () => {
 
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchFilters: filters }),
 		);
 	});
@@ -677,7 +695,7 @@ describe("savePlaylistMatchConfig", () => {
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledTimes(1);
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			{
 				matchIntent: "focused work",
 				genrePills: ["jazz"],

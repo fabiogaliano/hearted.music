@@ -29,7 +29,7 @@ import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
 import { buildLanguageOptions } from "@/lib/domains/taste/match-filters/languages";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
-import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
+import { MatchFiltersSaveSchema } from "@/lib/domains/taste/match-filters/schemas";
 import type {
 	PlaylistMatchFilterOptions,
 	PlaylistMatchFiltersV1,
@@ -455,13 +455,6 @@ export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 		return { success: true, spotifyId };
 	});
 
-export type SavePlaylistMatchConfigInput = {
-	playlistId: string;
-	matchIntent: string | null;
-	genrePills: string[];
-	matchFilters: PlaylistMatchFiltersV1;
-};
-
 export type SavePlaylistMatchConfigResult = {
 	matchIntent: string | null;
 	genrePills: string[];
@@ -473,9 +466,13 @@ export type SavePlaylistMatchConfigResult = {
 const SaveMatchConfigSchema = z.object({
 	playlistId: z.uuid(),
 	matchIntent: z.string().max(5000).nullable(),
-	genrePills: z.array(z.string()),
-	matchFilters: z.unknown(),
+	genrePills: z.array(z.string()).max(10),
+	matchFilters: MatchFiltersSaveSchema,
 });
+
+export type SavePlaylistMatchConfigInput = z.input<
+	typeof SaveMatchConfigSchema
+>;
 
 export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
@@ -524,14 +521,10 @@ export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 
 			const genrePills = sanitizeGenrePills(data.genrePills);
 
-			const filtersParseResult = parseSaveMatchFilters(data.matchFilters);
-			if (Result.isError(filtersParseResult)) {
-				throw new Error(`Invalid match filters: ${filtersParseResult.error}`);
-			}
 			// Validation accepts e.g. duplicate language codes; normalize to the
 			// canonical form before persisting and returning so storage never holds
 			// (and clients never round-trip) a denormalized object.
-			const matchFilters = normalizeMatchFilters(filtersParseResult.value);
+			const matchFilters = normalizeMatchFilters(data.matchFilters);
 
 			const updateResult = await updatePlaylistMatchConfig(
 				session.accountId,
