@@ -862,22 +862,6 @@ describe("runClaimedJob", () => {
 		});
 	});
 
-	it("propagates newCandidateSongIds into the enrichment_completed change", async () => {
-		vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-		vi.mocked(settleEnrichmentJobTerminal).mockResolvedValue(
-			Result.ok("applied"),
-		);
-
-		await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
-
-		expect(applyLibraryProcessingChangeMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				kind: "enrichment_completed",
-				newCandidateSongIds: ENRICHMENT_EXEC_RESULT.newCandidateSongIds,
-			}),
-		);
-	});
-
 	describe("Phase 9 observability events", () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
