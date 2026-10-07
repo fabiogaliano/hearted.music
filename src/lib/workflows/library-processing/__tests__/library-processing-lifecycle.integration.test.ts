@@ -29,6 +29,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { getLatestJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import {
 	claimLibraryProcessingJob,
 	markDeadLibraryProcessingJobs,
@@ -50,6 +51,8 @@ import {
 	persistLibraryProcessingState,
 	swapActiveJobRef,
 } from "../queries";
+import { applyLibraryProcessingChange } from "../service";
+import { changeOf, workerOutcomeFromMeasurement } from "../worker-outcome";
 
 // The real client, except that a transaction can be made to commit and then
 // throw, as when the connection drops before the COMMIT reply arrives.
@@ -175,6 +178,21 @@ async function eventTypes(): Promise<string[]> {
 	return rows.map((r) => r.type);
 }
 
+async function refreshFreshness(): Promise<{
+	settled: string | null;
+	active: string | null;
+}> {
+	const [row] = await db()<{ settled: Date | null; active: string | null }[]>`
+    SELECT match_snapshot_refresh_settled_at AS settled,
+           match_snapshot_refresh_active_job_id AS active
+    FROM library_processing_state WHERE account_id = ${account()}
+  `;
+	return {
+		settled: row?.settled ? row.settled.toISOString() : null,
+		active: row?.active ?? null,
+	};
+}
+
 async function measurementOutcomes(jobId: string): Promise<string[]> {
 	const rows = await db()<{ outcome: string }[]>`
     SELECT outcome FROM job_execution_measurement WHERE job_id = ${jobId} ORDER BY created_at
@@ -249,6 +267,38 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		expect((await readJob(jobId)).status).toBe("completed");
 		expect(await eventTypes()).toEqual(["enrichment_completed"]);
 		expect(await measurementOutcomes(jobId)).toEqual(["completed"]);
+	});
+
+	it("a finalized published refresh leaves freshness to the reconciler, and its measurement alone settles it at the job's marker", async () => {
+		const marker = "2026-10-01T00:00:00.000Z";
+		const jobId = await seedPendingJob("match_snapshot_refresh");
+		await db()`UPDATE job SET satisfies_requested_at = ${marker} WHERE id = ${jobId}`;
+		await db()`
+      INSERT INTO library_processing_state(
+        account_id, match_snapshot_refresh_requested_at, match_snapshot_refresh_active_job_id
+      ) VALUES (${account()}, ${marker}, ${jobId})
+    `;
+		const job = await claim();
+
+		expect(
+			await finalizeJob(job, outcomesFor(job).refreshPublished),
+		).toHaveOkValue("applied");
+		expect(await refreshFreshness()).toEqual({
+			settled: null,
+			active: jobId,
+		});
+
+		// What terminal recovery replays when the runner's apply never landed.
+		const measurement = await getLatestJobExecutionMeasurement(jobId);
+		if (Result.isError(measurement) || !measurement.value) {
+			throw new Error("finalize wrote no measurement");
+		}
+		const outcome = workerOutcomeFromMeasurement(measurement.value);
+		if (!outcome) throw new Error("measurement did not decode");
+		const applied = await applyLibraryProcessingChange(changeOf(outcome));
+		if (Result.isError(applied)) throw new Error(applied.error.kind);
+
+		expect(await refreshFreshness()).toEqual({ settled: marker, active: null });
 	});
 
 	it("a job whose available_at is in the future is not claimable", async () => {
