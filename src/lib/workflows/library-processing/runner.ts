@@ -62,9 +62,11 @@ export type RunJobOutcome =
 			status: "superseded";
 			workflow: "enrichment" | "match_snapshot_refresh";
 	  }
-	// The work ran but recording completion failed even after retries. The job
-	// stays running for the stale sweep; it is never requeued from here, since
-	// that would re-run work that already finished.
+	// The work ran but recording completion failed even after retries (the DB
+	// is persistently unavailable). The job is left running rather than requeued
+	// on the spot; once its heartbeat lapses the stale sweep re-pends it (or
+	// dead-letters it when attempts are spent), so the work re-runs then. Both
+	// workflows are idempotent, so that costs time, not correctness.
 	| {
 			status: "settle_failed";
 			workflow: "enrichment" | "match_snapshot_refresh";
