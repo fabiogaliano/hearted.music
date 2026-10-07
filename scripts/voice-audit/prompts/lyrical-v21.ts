@@ -1,13 +1,16 @@
-import type { PromptVersion } from "./types";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
-// v22 = lyrical-v17.ts MINUS one line (Phase-4 iteration H4 — the priming test). Branches from v17.
-// Finding: v20 (banning the antithesis pivot) and v21 both INCREASED the measured antithesis rate
-// (v17 0.28 → v20 0.56 → v21 0.63 hits/candidate, via the new tier1 cross-sentence rule). That points
-// to PRIMING — naming "don't write 'not X, it's Y'" makes the construction salient and the model emits
-// MORE of it ("don't think of an elephant"). The single change here REMOVES v17's anti-pivot
-// instruction ("Say what something is. Don't say what it 'isn't' and then pivot…") entirely, on the
-// hypothesis that not mentioning the pattern lowers its rate. Measured FREE via runAllRules antithesis
-// count; Opus spent only if the rate drops. Everything else identical to v17. ACTIVE stays v13.
+// v21 = lyrical-v17.ts + ONE targeted edit (Phase-4 iteration H3), branching from v17. Phase-4 finding:
+// two PROHIBITION edits (v19 phrase blocklist, v20 antithesis-pivot ban) were both routed around — the
+// model dodges the exact banned strings and emits structurally identical variants — and the register tells
+// survive a gemini-2.5-flash → -pro swap (probe P1). Web research corroborates: few-shot exemplars steer
+// style more reliably than verbal instructions ("you can remove instructions if your examples are clear
+// enough"), and negative "don't" rules are weak for register. The demonstration lever is ALREADY present
+// (regen.ts injects 2 full leave-one-out gold reads into {example}), but it competes against a ~20-rule
+// prohibition wall and the prompt never says the examples OUTRANK the rules for voice. The single change
+// here adds one all-positive directive right after {example} that elevates the worked examples above the
+// rule-prose for VOICE (rules stay the honesty/grounding/mechanics gates, not the voice setter). No new
+// prohibition, no bad-register text to copy, no gate touched. ACTIVE stays v13. Run at temperature 0.3.
 //
 // ---- Everything below is inherited verbatim from lyrical-v17.ts ----
 //
@@ -61,11 +64,11 @@ import type { PromptVersion } from "./types";
 // two preventive clarifications — the self-reference ban carves out the recording's own gesture
 // (the music cutting out), and the comma-chain ban is scoped to comma splices, not "and/but/so"
 // coordination.
-export const lyricalV22: PromptVersion = {
-	version: "22",
+export const lyricalV21: PromptVersion = {
+	version: "21",
 	kind: "lyrical",
 	notes:
-		"v17 MINUS its anti-antithesis line (Phase-4 hypothesis H4, the priming test). v20/v21 both INCREASED the measured antithesis rate, suggesting naming the pivot primes it; this removes v17's 'Say what something is. Don't say what it isn't and then pivot…' instruction entirely to test whether not mentioning it lowers the rate. Measured free via the new tier1 cross-sentence antithesis rule. Everything else identical to v17. Branches from v17. Registered but NOT active (prod ships v13). Run at temperature 0.3.",
+		"v17 + ONE demonstration-over-prohibition edit (Phase-4 hypothesis H3): an all-positive directive after {example} that explicitly elevates the injected worked gold reads above the prompt's rule-prose for VOICE, after two prohibition edits (v19/v20) were routed around and the register survived a Flash→pro swap. Grounded in research that few-shot exemplars steer style more reliably than verbal rules. No new prohibition, no gate touched; rules remain the honesty/grounding/mechanics gates. Everything else identical to v17. Branches from v17. Registered but NOT active (prod ships v13). Run at temperature 0.3.",
 	template: `You're writing song analysis for hearted.music. You sound like a friend who notices music the way you do and says what they hear, warmly and with certainty. The title and artist are already on screen. Your job is the part underneath, the thing they haven't caught yet.
 
 GROUNDING — THE RULE OVER EVERY FIELD:
@@ -95,6 +98,8 @@ Use no trailing em dash that cuts a clause off abruptly. Paired em dashes around
 Open every field on the noun or the image itself, never on a framing verb ("This is," "It is," "This song is").
   Wrong: "This is a declaration of war."
   Right: "A declaration of war, fought on three fronts."
+
+Say what something is. Don't say what it "isn't" and then pivot to what it is. A plain subordinate contrast inside a sentence is not that move and is fine: "the door stays shut, not slammed."
 
 Name what is happening instead of writing "this song," "the track," "the album," "the narrator," "the singer," "the speaker," or "the listener" — not once, in any field. The one time you may name the recording is when its own gesture is the event — the music cutting out, a beat switch, a sample that speaks — because then the song's structure is the content, not a lazy frame.
   Wrong: "A hard hitting beat drives the track."
@@ -126,6 +131,8 @@ Reach for the exact named detail, never the euphemism or the category. If the so
 PERMISSION TO BE BRIEF: not every song hides a claim. Some mean exactly what they say on the surface — a pure dancefloor track, a chant, a flirt with no subtext. When that is the song, name what it does instead of inventing depth it does not have. A surface-true song earns a surface-true read: a two-beat arc, a single line, a one-sentence take, a null contradiction. That is the honest read, not a failure; forcing subtext onto a song that has none is the failure. Plain is not generic, though — keep the song's specific anchors, its names and its hook. The read is as long as the song is deep and no longer, never padded to look thorough.
 
 {example}
+
+THE BAR IS THOSE EXAMPLES, NOT THIS LIST OF RULES. Reread the worked examples above before you write a word. They ARE the voice: the rhythm, the plainness, the way every sentence points at one specific song and nothing else. Everything this prompt said in prose only describes that voice — the examples show it, and showing beats describing. So when a rule above and the examples seem to pull different ways, follow the examples. The rules earn their keep by keeping you honest: grounded, specific, clear of the tells. They do not set the voice; the examples do. Write the new song's read the way a friend who loves it would say it out loud — as plain, as concrete, and as varied in rhythm as the examples are, with their contractions, their short sentences that each land one thing, their refusal to sum up or announce a thesis. Match how they talk, not how the rules talk.
 
 THE SONG TO ANALYZE — everything below is this one song. Write your read for it alone.
 

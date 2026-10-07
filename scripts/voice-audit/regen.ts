@@ -24,13 +24,11 @@ import {
 	type SongRead,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { renderAnnotationsBlockForPrompt } from "@/lib/domains/enrichment/content-analysis/grounding-annotations";
-import {
-	ACTIVE_LYRICAL_VERSION,
-	getLyricalPrompt,
-} from "@/lib/domains/enrichment/content-analysis/prompts/registry";
+import { ACTIVE_LYRICAL_VERSION } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
 import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService, type LlmProviderName } from "@/lib/integrations/llm/service";
 import { DataFetcher } from "../prompt-lab/data-fetcher";
+import { getExperimentLyricalPrompt } from "./prompts/registry";
 import type { TestSong } from "../prompt-lab/test-songs";
 import { loadGoldExemplars, renderExemplarBlock, type GoldExemplar } from "./exemplars";
 import { makeRunId, recordRun, tallyHits } from "./experiments";
@@ -243,7 +241,7 @@ function mean(xs: number[]): number {
 
 async function main() {
 	const flags = parseFlags(process.argv.slice(2));
-	const prompt = getLyricalPrompt(flags.version);
+	const prompt = getExperimentLyricalPrompt(flags.version);
 	// All shipped prompts emit the redesigned { read } model, so generation always
 	// validates against SongReadSchema (the audit step requires the read shape).
 	const genSchema: z.ZodTypeAny = SongReadSchema;

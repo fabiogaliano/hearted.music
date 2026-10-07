@@ -22,7 +22,7 @@ import { Result } from "better-result";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
-import { getLyricalPrompt } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
+import { getExperimentLyricalPrompt } from "./prompts/registry";
 import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { resolveLlmConfig } from "@/lib/integrations/llm/config";
 import { LlmService } from "@/lib/integrations/llm/service";
@@ -104,7 +104,7 @@ async function main() {
 		process.exit(1);
 	}
 	const llm = new LlmService(resolution.config);
-	const template = getLyricalPrompt(VERSION).template;
+	const template = getExperimentLyricalPrompt(VERSION).template;
 	const exampleBlock = buildFixedProdExampleBlock();
 	const fetcher = new DataFetcher({
 		cacheDir: join(SCRIPT_DIR, "../prompt-lab/.cache"),

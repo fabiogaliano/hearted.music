@@ -1,4 +1,4 @@
-import type { PromptVersion } from "./types";
+import type { PromptVersion } from "@/lib/domains/enrichment/content-analysis/prompts/types";
 
 // v20 = lyrical-v17.ts + ONE targeted register edit (Phase-4 iteration H2). Branches from v17, NOT from the
 // dead v19 (whose phrase-blocklist approach was routed around — see scripts/voice-audit/experiments/changelog.md). The pro probe (P1) and
