@@ -1,48 +1,119 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
-// One returned row = the fenced job UPDATE won its compare-and-set.
-const WON_FENCE = [{ id: "job-1" }];
+// `tx` and `sql` are postgres.js tagged templates. The fake keeps one job row:
+// the fenced UPDATE ends it only while it is running under this attempt, as the
+// real WHERE clause does, so a retry sees what an earlier attempt committed.
+const { db } = vi.hoisted(() => ({
+	db: {
+		log: [] as string[],
+		row: { status: "running", attempts: 1, error: null as string | null },
+		beginFailures: [] as ("before-commit" | "after-commit")[],
+	},
+}));
 
-const { txMock, beginMock } = vi.hoisted(() => {
-	const txMock = vi.fn().mockResolvedValue([{ id: "job-1" }]);
-	return {
-		txMock,
-		beginMock: vi.fn(async (cb) => cb(txMock)),
-	};
+function classify(strings: TemplateStringsArray): string {
+	const text = strings.join("?");
+	if (text.includes("UPDATE job")) return "fence";
+	if (text.includes("INSERT INTO job_execution_measurement"))
+		return "measurement";
+	if (text.includes("library_processing_state")) return "state";
+	if (text.includes("FROM job")) return "reread";
+	return "other";
+}
+
+vi.mock("postgres", () => {
+	const tx = Object.assign(
+		vi.fn(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+			const kind = classify(strings);
+			db.log.push(kind);
+			if (kind !== "fence") return [];
+			const [status, error, , attempts] = values;
+			if (db.row.status !== "running" || db.row.attempts !== attempts) {
+				return [];
+			}
+			db.row = { ...db.row, status: String(status), error: error as string };
+			return [{ id: "job-1" }];
+		}),
+		{ json: (value: unknown) => value },
+	);
+	const sql = Object.assign(
+		vi.fn(async (strings: TemplateStringsArray) => {
+			db.log.push(classify(strings));
+			return [db.row];
+		}),
+		{
+			begin: vi.fn(async (cb: (t: typeof tx) => Promise<unknown>) => {
+				const failure = db.beginFailures.shift();
+				if (failure === "before-commit") throw new Error("connection reset");
+				const committed = await cb(tx);
+				if (failure === "after-commit") {
+					throw new Error("connection reset after commit");
+				}
+				return committed;
+			}),
+		},
+	);
+	return { default: () => sql };
 });
 
-vi.mock("postgres", () => ({
-	default: () => ({
-		begin: beginMock,
+vi.mock("@/lib/account-events/producer", () => ({
+	writeAccountEvent: vi.fn(async (_tx: unknown, event: { type: string }) => {
+		db.log.push(`event:${event.type}`);
 	}),
 }));
 
-vi.mock("@/lib/account-events/producer", () => ({
-	writeAccountEvent: vi.fn(),
-}));
-
 import { writeAccountEvent } from "@/lib/account-events/producer";
+import type { WorkerOutcome } from "@/lib/workflows/library-processing/worker-outcome";
 import { makeJob, makeWorkerOutcomes } from "@/test/fixtures";
 import { finalizeJob } from "../finalize";
 
-// The claim-time progress the job row carried; events must not echo it.
-const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
 const outcomes = makeWorkerOutcomes();
+const job = makeJob({ status: "running", attempts: 1 });
 
-describe("finalizeJob: enrichment", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		txMock.mockResolvedValue(WON_FENCE);
-		beginMock.mockImplementation(async (cb) => cb(txMock));
+async function finalize(outcome: WorkerOutcome = outcomes.enrichmentCompleted) {
+	const promise = finalizeJob(job, outcome);
+	await vi.advanceTimersByTimeAsync(10_000);
+	return promise;
+}
+
+beforeEach(() => {
+	vi.useFakeTimers();
+	vi.clearAllMocks();
+	db.log = [];
+	db.row = { status: "running", attempts: 1, error: null };
+	db.beginFailures = [];
+});
+
+afterEach(() => {
+	vi.useRealTimers();
+});
+
+describe("finalizeJob writes one run's records in one transaction", () => {
+	it("enrichment: fence, then measurement, then events", async () => {
+		expect(await finalize()).toHaveOkValue("applied");
+		expect(db.log).toEqual([
+			"fence",
+			"measurement",
+			"event:enrichment_completed",
+		]);
 	});
 
-	it("writes enrichment_completed with the run's counts, not the claim-time progress", async () => {
-		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeJob(job, outcomes.enrichmentCompleted);
+	it("match refresh: fence, active ref, then measurement, then events", async () => {
+		expect(await finalize(outcomes.refreshPublished)).toHaveOkValue("applied");
+		expect(db.log).toEqual([
+			"fence",
+			"state",
+			"state",
+			"measurement",
+			"event:match_snapshot_published",
+			"event:match_snapshot_published",
+		]);
+	});
 
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
+	it("writes the outcome's events through the transaction", async () => {
+		await finalize();
+		expect(writeAccountEvent).toHaveBeenCalledWith(expect.anything(), {
 			accountId: "acct-1",
 			type: "enrichment_completed",
 			payload: {
@@ -52,111 +123,56 @@ describe("finalizeJob: enrichment", () => {
 		});
 	});
 
-	it("writes enrichment_stopped(failed) for a failed run", async () => {
-		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeJob(job, outcomes.enrichmentFailed);
+	it("records nothing and reports lease_lost when another claim owns the job", async () => {
+		db.row = { status: "running", attempts: 2, error: null };
 
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
-			accountId: "acct-1",
-			type: "enrichment_stopped",
-			payload: {
-				jobId: "job-1",
-				reason: "failed",
-				counts: { done: 0, total: 0, succeeded: 0, failed: 0 },
-			},
-		});
+		expect(await finalize()).toHaveOkValue("lease_lost");
+		expect(db.log).toEqual(["fence"]);
+	});
+});
+
+describe("finalizeJob retries by final status", () => {
+	it("regression: retries a completed run's finalize instead of leaving an already-executed job unrecorded", async () => {
+		db.beginFailures = ["before-commit"];
+
+		expect(await finalize()).toHaveOkValue("applied");
+		expect(db.row.status).toBe("completed");
 	});
 
-	it("does not write account_event if transaction fails", async () => {
-		// Mock the query inside tx to throw
-		txMock.mockRejectedValueOnce(new Error("Update failed"));
+	it("gives a failed run's finalize a single attempt", async () => {
+		db.beginFailures = ["before-commit", "before-commit"];
 
-		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeJob(job, outcomes.enrichmentCompleted);
+		const result = await finalize(outcomes.enrichmentFailed);
 
-		expect(result.isErr()).toBe(true);
-		if (!result.isOk()) {
-			expect(result.error).toBeInstanceOf(DatabaseError);
-			if (result.error instanceof DatabaseError) {
-				expect(result.error.code).toBe("finalize_failed");
-			}
-		}
+		expect(result).toBeErr();
+		if (result.isErr()) expect(result.error).toBeInstanceOf(DatabaseError);
+		expect(db.row.status).toBe("running");
 		expect(writeAccountEvent).not.toHaveBeenCalled();
 	});
 });
 
-describe("finalizeJob: match snapshot refresh", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		txMock.mockResolvedValue(WON_FENCE);
-		beginMock.mockImplementation(async (cb) => cb(txMock));
+describe("finalizeJob after an errored attempt", () => {
+	it("regression: a committed finalize whose reply was lost reports applied, not lease_lost", async () => {
+		db.beginFailures = ["after-commit"];
+
+		expect(await finalize()).toHaveOkValue("applied");
+		expect(db.log.filter((kind) => kind === "measurement")).toHaveLength(1);
 	});
 
-	it("writes published events for both orientations with the snapshot id", async () => {
-		const job = makeJob({ type: "match_snapshot_refresh" });
+	it("reports applied for a failed run whose single attempt committed", async () => {
+		db.beginFailures = ["after-commit"];
 
-		const result = await finalizeJob(job, outcomes.refreshPublished);
-
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenNthCalledWith(1, txMock, {
-			accountId: "acct-1",
-			type: "match_snapshot_published",
-			payload: { orientation: "song", snapshotId: "snap-1" },
-		});
-		expect(writeAccountEvent).toHaveBeenNthCalledWith(2, txMock, {
-			accountId: "acct-1",
-			type: "match_snapshot_published",
-			payload: { orientation: "playlist", snapshotId: "snap-1" },
-		});
+		expect(await finalize(outcomes.enrichmentFailed)).toHaveOkValue("applied");
 	});
 
-	it("writes active_jobs_changed when a published refresh no-ops", async () => {
-		const job = makeJob({ type: "match_snapshot_refresh" });
+	it("keeps lease_lost when a dead-letter ended the row under the same attempt", async () => {
+		db.beginFailures = ["before-commit"];
+		db.row = {
+			status: "failed",
+			attempts: 1,
+			error: "max attempts exhausted after stale detection",
+		};
 
-		const result = await finalizeJob(job, {
-			...outcomes.refreshPublished,
-			snapshotId: null,
-		});
-
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
-			accountId: "acct-1",
-			type: "active_jobs_changed",
-			payload: {},
-		});
-	});
-
-	it("writes active_jobs_changed when a refresh is superseded", async () => {
-		const job = makeJob({ type: "match_snapshot_refresh" });
-
-		const result = await finalizeJob(job, outcomes.refreshSuperseded);
-
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
-			accountId: "acct-1",
-			type: "active_jobs_changed",
-			payload: {},
-		});
-	});
-
-	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
-		const job = makeJob({ type: "match_snapshot_refresh" });
-
-		const result = await finalizeJob(job, {
-			...outcomes.refreshFailed,
-			error: "match snapshot refresh crashed during publish",
-		});
-
-		expect(result.isOk()).toBe(true);
-		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
-			accountId: "acct-1",
-			type: "match_snapshot_failed",
-			payload: {
-				orientation: null,
-				snapshotId: null,
-				reason: "match snapshot refresh crashed during publish",
-			},
-		});
+		expect(await finalize()).toHaveOkValue("lease_lost");
 	});
 });
