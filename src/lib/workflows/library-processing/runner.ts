@@ -544,6 +544,7 @@ interface SettlementLogContext {
 }
 
 const SETTLEMENT_RETRY_OPTIONS: RetryOptions<LibraryProcessingApplyError> = {
+	maxRetries: 3,
 	isRetryable: (error) => {
 		switch (error.kind) {
 			case "load_state":
