@@ -2,7 +2,7 @@ import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
 import type { Job } from "@/lib/platform/jobs/repository";
-import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
+import { runClaimedJob } from "@/worker/library-processing-runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
 import { createPollLoop } from "./poll-loop";

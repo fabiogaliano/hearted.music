@@ -6,7 +6,7 @@ import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
 	settleMatchSnapshotRefreshJobTerminal,
-} from "../settlement";
+} from "@/lib/workflows/library-processing/settlement";
 
 vi.mock("@/lib/platform/jobs/repository", () => ({
 	markJobCompleted: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 		recordJobExecutionMeasurementMock(...args),
 }));
 
-vi.mock("../settlement", () => ({
+vi.mock("@/lib/workflows/library-processing/settlement", () => ({
 	settleEnrichmentJobTerminal: vi.fn().mockResolvedValue({ isError: false }),
 	settleMatchSnapshotRefreshJobTerminal: vi
 		.fn()
@@ -47,7 +47,7 @@ vi.mock("@/worker/posthog-capture", () => ({
 
 const applyLibraryProcessingChangeMock = vi.fn();
 
-vi.mock("../service", () => ({
+vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		applyLibraryProcessingChangeMock(...args),
 }));
@@ -56,14 +56,17 @@ import {
 	markJobCompleted,
 	markJobFailed,
 } from "@/lib/platform/jobs/repository";
+import type { LibraryProcessingApplyError } from "@/lib/workflows/library-processing/types";
 import { makeJob } from "@/test/fixtures";
 import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "@/worker/execute";
 import { captureWorkerEvent } from "@/worker/posthog-capture";
-import { type RunJobOutcome, runClaimedJob } from "../runner";
-import type { LibraryProcessingApplyError } from "../types";
+import {
+	type RunJobOutcome,
+	runClaimedJob,
+} from "../library-processing-runner";
 
 // A lease the heartbeat never reports lost.
 const LIVE_LEASE = new AbortController().signal;

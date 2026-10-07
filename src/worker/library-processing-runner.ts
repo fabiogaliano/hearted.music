@@ -11,24 +11,27 @@ import {
 	withRetry,
 } from "@/lib/shared/utils/result-wrappers/generic";
 import {
-	type EnrichmentExecuteResult,
-	executeEnrichmentJob,
-	executeMatchSnapshotRefreshJob,
-	type MatchSnapshotRefreshExecuteResult,
-} from "@/worker/execute";
-import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
-import { captureWorkerEvent } from "@/worker/posthog-capture";
-import { EnrichmentChanges, MatchSnapshotChanges } from "./changes";
-import { applyLibraryProcessingChange } from "./service";
+	EnrichmentChanges,
+	MatchSnapshotChanges,
+} from "@/lib/workflows/library-processing/changes";
+import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
 import {
 	requeueLibraryProcessingJobForRetry,
 	settleEnrichmentJobTerminal,
 	settleMatchSnapshotRefreshJobTerminal,
-} from "./settlement";
+} from "@/lib/workflows/library-processing/settlement";
 import type {
 	LibraryProcessingApplyError,
 	LibraryProcessingChange,
-} from "./types";
+} from "@/lib/workflows/library-processing/types";
+import {
+	type EnrichmentExecuteResult,
+	executeEnrichmentJob,
+	executeMatchSnapshotRefreshJob,
+	type MatchSnapshotRefreshExecuteResult,
+} from "./execute";
+import { captureWorkerJobFailure } from "./job-failure-reporting";
+import { captureWorkerEvent } from "./posthog-capture";
 
 type SettlementStatus = "settled" | "settlement_failed";
 

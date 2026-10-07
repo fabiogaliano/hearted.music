@@ -11,7 +11,7 @@ where the outcome is known. Contract §2; proposal §8.1.
 
 ## Steps
 
-- [ ] Pick the settle boundary: `src/lib/workflows/library-processing/runner.ts`
+- [ ] Pick the settle boundary: `src/worker/library-processing-runner.ts`
       (or its helper layer) vs `src/worker/poll.ts` — whichever owns the final
       job-settled transaction
 - [ ] On terminal success, `writeAccountEvent` with `enrichment_completed`

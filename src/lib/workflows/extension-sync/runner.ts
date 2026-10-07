@@ -8,7 +8,7 @@
  * phase jobs, applies the post-sync library-processing + billing tail, then
  * settles the parent job and deletes the Storage object.
  *
- * Mirrors src/lib/workflows/library-processing/runner.ts in shape.
+ * Mirrors src/worker/library-processing-runner.ts in shape.
  */
 
 import { gunzipSync } from "node:zlib";
