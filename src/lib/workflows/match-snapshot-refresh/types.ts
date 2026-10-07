@@ -23,3 +23,18 @@ export type MatchSnapshotRefreshOutcome =
 	| { status: "superseded" }
 	// The heartbeat saw this claim taken over; the snapshot was not published.
 	| { status: "lease_lost" };
+
+/** What one worker-run match snapshot refresh reports back to the runner. */
+export type MatchSnapshotRefreshExecuteResult =
+	| {
+			status: "published";
+			accountId: string;
+			jobId: string;
+			published: boolean;
+			isEmpty: boolean;
+			snapshotId: string | null;
+	  }
+	| { status: "superseded"; accountId: string; jobId: string }
+	// This worker's claim was taken over mid-run; nothing after the refresh
+	// itself was emitted or enqueued.
+	| { status: "lease_lost"; accountId: string; jobId: string };
