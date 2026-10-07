@@ -13,6 +13,7 @@ Ownership rules for top-level source modules under `src/lib/`.
 | `src/lib/integrations` | External service adapters | Spotify, AI providers, etc. Thin wrappers around third-party APIs. |
 | `src/lib/shared` | Shared utilities and types | Error types, result wrappers, generic helpers. No business logic. |
 | `src/lib/content` | Static app content | JSON-backed helpers, legal documents, landing-page content, demo data. Not DB-backed, not domain persistence. |
+| `src/lib/query-keys.ts` | Client cache keys | Every TanStack Query key factory and the named invalidation sets. A lib-root file, not a module: lib hooks and features both import it, and prefix invalidation needs all families checked in one place. Imports types only. |
 
 ## Rules
 
