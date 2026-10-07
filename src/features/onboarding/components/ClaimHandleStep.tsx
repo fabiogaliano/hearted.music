@@ -125,11 +125,9 @@ export function ClaimHandleStep({
 		claimHandleSeed.kind === "blank" ? "" : claimHandleSeed.handle;
 
 	const [value, setValue] = useState(initialValue);
+	// While a claim is in flight the field is readOnly and availability checks
+	// pause until the request returns.
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
-	// When submit is in flight, we freeze the field readOnly and disable
-	// new availability checks until the request settles.
-	const [submitInFlight, setSubmitInFlight] = useState(false);
 
 	// Submit-time unavailable verdict — overrides the query result as the
 	// authoritative current-value verdict once returned by claimHandleAndAdvance.
@@ -213,7 +211,7 @@ export function ClaimHandleStep({
 		debouncedIsFormatValid &&
 		!debouncedIsLocallyReserved &&
 		debouncedValue.length > 0 &&
-		!submitInFlight &&
+		!isSubmitting &&
 		submitTimeUnavailable === null;
 
 	// Query key includes ownedHandleSnapshot so that if the account later claims
@@ -386,14 +384,14 @@ export function ClaimHandleStep({
 
 	const handleChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
-			if (submitInFlight) return;
+			if (isSubmitting) return;
 			// Live-lowercase; preserve all other chars exactly (no slugification).
 			const lowered = e.target.value.toLowerCase();
 			setValue(lowered);
 			// Clear any submit-time unavailable verdict as soon as the user edits.
 			setSubmitTimeUnavailable(null);
 		},
-		[submitInFlight],
+		[isSubmitting],
 	);
 
 	// ── Reset (owned-edited-away → restore owned handle) ─────────────────────
@@ -442,7 +440,6 @@ export function ClaimHandleStep({
 			// ── Real claim branch ────────────────────────────────────────────────
 
 			const submittedHandle = value; // snapshot before any state change
-			setSubmitInFlight(true);
 			setIsSubmitting(true);
 
 			let result: Awaited<ReturnType<typeof claimHandleAndAdvance>>;
@@ -453,7 +450,6 @@ export function ClaimHandleStep({
 			} catch {
 				// Operational failure — toast and restore editability.
 				toast.error("Couldn’t save your handle. Please try again.");
-				setSubmitInFlight(false);
 				setIsSubmitting(false);
 				requestAnimationFrame(() => focusInputAtEnd(inputRef.current));
 				return;
@@ -484,14 +480,12 @@ export function ClaimHandleStep({
 				// Submit-time unavailable — becomes the authoritative verdict for this value.
 				// Drive the dynamic region from reason; hide preview; keep user on step.
 				setSubmitTimeUnavailable(result.reason);
-				setSubmitInFlight(false);
 				setIsSubmitting(false);
 				requestAnimationFrame(() => focusInputAtEnd(inputRef.current));
 				return;
 			}
 
 			// Fallback: unexpected result — restore editability.
-			setSubmitInFlight(false);
 			setIsSubmitting(false);
 			requestAnimationFrame(() => focusInputAtEnd(inputRef.current));
 		},
@@ -643,7 +637,7 @@ export function ClaimHandleStep({
 							"theme-border-color flex items-baseline border-b",
 							"transition-[border-color] duration-150 ease-out",
 							"focus-within:border-[color:var(--t-primary)]",
-							submitInFlight ? "opacity-70" : "",
+							isSubmitting ? "opacity-70" : "",
 						]
 							.filter(Boolean)
 							.join(" ")}
@@ -661,7 +655,7 @@ export function ClaimHandleStep({
 							type="text"
 							value={value}
 							onChange={handleChange}
-							readOnly={submitInFlight}
+							readOnly={isSubmitting}
 							// biome-ignore lint/a11y/noAutofocus: §8.3 mandates autoFocus on mount — dedicated single-field onboarding step; intentional expected.
 							autoFocus
 							autoCapitalize="none"
