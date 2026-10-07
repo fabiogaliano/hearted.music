@@ -8,7 +8,7 @@
  * phase jobs, applies the post-sync library-processing + billing tail, then
  * settles the parent job and deletes the Storage object.
  *
- * Mirrors src/worker/library-processing-runner.ts in shape.
+ * Mirrors ./library-processing-runner.ts in shape.
  */
 
 import { gunzipSync } from "node:zlib";
@@ -56,7 +56,7 @@ import {
 import {
 	type SyncPayload,
 	SyncPayloadSchema,
-} from "../../../../shared/spotify-sync-payload-schema";
+} from "../../shared/spotify-sync-payload-schema";
 
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }

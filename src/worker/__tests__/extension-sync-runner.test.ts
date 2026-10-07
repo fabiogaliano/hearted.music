@@ -126,7 +126,7 @@ vi.mock("@/lib/shared/utils/concurrency", () => ({
 	mapWithConcurrency: (...a: unknown[]) => mockMapWithConcurrency(...a),
 }));
 
-const { runExtensionSyncJob } = await import("../runner");
+const { runExtensionSyncJob } = await import("../extension-sync-runner");
 
 // A lease the heartbeat never reports lost.
 const LIVE_LEASE = new AbortController().signal;
