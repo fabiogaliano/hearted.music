@@ -1,45 +1,18 @@
 import * as Sentry from "@sentry/bun";
 import { enqueueProposalRebuild } from "@/lib/domains/taste/match-review-queue/proposal-rebuild";
 import { log } from "@/lib/observability/logger";
-import type { EnrichmentSelectionMode } from "@/lib/platform/jobs/progress/enrichment";
 import { parseJobProgress } from "@/lib/platform/jobs/progress/parse";
 import type { Job } from "@/lib/platform/jobs/repository";
 import type { ChunkResult } from "@/lib/workflows/enrichment-pipeline/orchestrator";
 import { executeWorkerChunk } from "@/lib/workflows/enrichment-pipeline/orchestrator";
+import type { EnrichmentExecuteResult } from "@/lib/workflows/enrichment-pipeline/types";
 import { executeMatchSnapshotRefresh } from "@/lib/workflows/match-snapshot-refresh/orchestrator";
 import {
+	type MatchSnapshotRefreshExecuteResult,
 	type MatchSnapshotRefreshPlan,
 	MatchSnapshotRefreshPlanSchema,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { captureWorkerEvent } from "./posthog-capture";
-
-export interface EnrichmentExecuteResult {
-	accountId: string;
-	jobId: string;
-	batchSequence: number;
-	hasMoreSongs: boolean;
-	newCandidatesAvailable: boolean;
-	newCandidateSongIds: string[];
-	selectionMode: EnrichmentSelectionMode;
-	readyCount: number;
-	doneCount: number;
-	succeededCount: number;
-	failedCount: number;
-}
-
-export type MatchSnapshotRefreshExecuteResult =
-	| {
-			status: "published";
-			accountId: string;
-			jobId: string;
-			published: boolean;
-			isEmpty: boolean;
-			snapshotId: string | null;
-	  }
-	| { status: "superseded"; accountId: string; jobId: string }
-	// This worker's claim was taken over mid-run; nothing after the refresh
-	// itself was emitted or enqueued.
-	| { status: "lease_lost"; accountId: string; jobId: string };
 
 export async function executeEnrichmentJob(
 	job: Job,
