@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { billingKeys, likedSongsKeys } from "@/lib/query-keys";
+import { invalidateEntitlementQueries } from "@/lib/query-keys";
 import type { RequestSongUnlockResponse } from "@/lib/server/billing.functions";
 import { requestSongUnlock } from "@/lib/server/billing.functions";
 
@@ -24,7 +24,7 @@ export type UnlockFlowState =
 	| { step: "paywall" }
 	| { step: "error"; message: string };
 
-export function useSongUnlock(accountId: string) {
+export function useSongUnlock() {
 	const queryClient = useQueryClient();
 	const [flowState, setFlowState] = useState<UnlockFlowState>({ step: "idle" });
 
@@ -58,13 +58,7 @@ export function useSongUnlock(accountId: string) {
 		}
 
 		if (response.success) {
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: likedSongsKeys.all }),
-				queryClient.invalidateQueries({
-					queryKey: likedSongsKeys.stats(accountId),
-				}),
-				queryClient.invalidateQueries({ queryKey: billingKeys.state }),
-			]);
+			await invalidateEntitlementQueries(queryClient);
 
 			setFlowState({
 				step: "success",
@@ -101,7 +95,7 @@ export function useSongUnlock(accountId: string) {
 					break;
 			}
 		}
-	}, [flowState, queryClient, accountId]);
+	}, [flowState, queryClient]);
 
 	const dismiss = useCallback(() => {
 		setFlowState({ step: "idle" });
