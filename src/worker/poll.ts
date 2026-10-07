@@ -4,7 +4,7 @@ import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processin
 import type { Job } from "@/lib/platform/jobs/repository";
 import { runClaimedJob } from "@/worker/library-processing-runner";
 import { workerConfig } from "./config";
-import { startHeartbeat } from "./execute";
+import { startHeartbeat } from "./job-lease";
 import { createPollLoop } from "./poll-loop";
 
 function describeWork(type: string): string {
