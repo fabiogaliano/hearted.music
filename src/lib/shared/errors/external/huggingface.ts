@@ -9,7 +9,7 @@ export class HuggingFaceApiError extends TaggedError("HuggingFaceApiError")<{
 	endpoint: string;
 	statusCode?: number;
 	message: string;
-}>() {
+}> {
 	constructor(endpoint: string, statusCode?: number, detail?: string) {
 		super({
 			endpoint,
@@ -25,7 +25,7 @@ export class HuggingFaceRateLimitError extends TaggedError(
 )<{
 	retryAfterMs?: number;
 	message: string;
-}>() {
+}> {
 	constructor(retryAfterMs?: number) {
 		super({
 			retryAfterMs,

@@ -11,7 +11,7 @@ export class DimensionMismatchError extends TaggedError(
 	expected: number;
 	actual: number;
 	message: string;
-}>() {
+}> {
 	constructor(expected: number, actual: number) {
 		super({
 			expected,
@@ -25,7 +25,7 @@ export class DimensionMismatchError extends TaggedError(
 export class MissingAnalysisError extends TaggedError("MissingAnalysisError")<{
 	songId: string;
 	message: string;
-}>() {
+}> {
 	constructor(songId: string) {
 		super({
 			songId,

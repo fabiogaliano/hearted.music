@@ -9,7 +9,7 @@ export class DeepInfraApiError extends TaggedError("DeepInfraApiError")<{
 	endpoint: string;
 	statusCode?: number;
 	message: string;
-}>() {
+}> {
 	constructor(endpoint: string, statusCode?: number, detail?: string) {
 		super({
 			endpoint,
@@ -25,7 +25,7 @@ export class DeepInfraRateLimitError extends TaggedError(
 )<{
 	retryAfterMs?: number;
 	message: string;
-}>() {
+}> {
 	constructor(retryAfterMs?: number) {
 		super({
 			retryAfterMs,

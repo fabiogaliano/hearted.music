@@ -13,7 +13,7 @@ export class OnboardingError extends TaggedError("OnboardingError")<{
 	operation: string;
 	cause: OnboardingErrorCause;
 	message: string;
-}>() {
+}> {
 	constructor(operation: string, cause: OnboardingErrorCause) {
 		const tag = "_tag" in cause ? cause._tag : cause.name;
 		super({

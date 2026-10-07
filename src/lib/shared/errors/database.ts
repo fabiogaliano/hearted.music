@@ -14,7 +14,7 @@ export class NotFoundError extends TaggedError("NotFoundError")<{
 	entity: string;
 	id?: string;
 	message: string;
-}>() {
+}> {
 	constructor(entity: string, id?: string) {
 		super({
 			entity,
@@ -29,7 +29,7 @@ export class ConstraintError extends TaggedError("ConstraintError")<{
 	constraint: string;
 	detail?: string;
 	message: string;
-}>() {
+}> {
 	constructor(constraint: string, detail?: string) {
 		super({
 			constraint,
@@ -44,7 +44,7 @@ export class RLSError extends TaggedError("RLSError")<{
 	operation: DbOperation;
 	table: string;
 	message: string;
-}>() {
+}> {
 	constructor(operation: DbOperation, table: string) {
 		super({
 			operation,
@@ -58,7 +58,7 @@ export class RLSError extends TaggedError("RLSError")<{
 export class DatabaseError extends TaggedError("DatabaseError")<{
 	code: string;
 	message: string;
-}>() {}
+}> {}
 
 /** All database-related errors */
 export type DbError =

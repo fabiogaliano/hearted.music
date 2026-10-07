@@ -106,7 +106,7 @@ export class StageAccountingError extends TaggedError("StageAccountingError")<{
 		| "compensation";
 	cause: DbError | OutcomeValidationError;
 	message: string;
-}>() {}
+}> {}
 
 function findDuplicateSongIds(songIds: string[]): string[] {
 	const seen = new Set<string>();

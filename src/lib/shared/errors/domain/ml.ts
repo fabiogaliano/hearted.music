@@ -19,7 +19,7 @@ export class MLApiError extends TaggedError("MLApiError")<{
 	operation: string;
 	message: string;
 	statusCode?: number;
-}>() {
+}> {
 	constructor(
 		provider: string,
 		operation: string,
@@ -42,7 +42,7 @@ export class MLRateLimitError extends TaggedError("MLRateLimitError")<{
 	provider: string;
 	retryAfterMs?: number;
 	message: string;
-}>() {
+}> {
 	constructor(provider: string, retryAfterMs?: number) {
 		super({
 			provider,
@@ -63,7 +63,7 @@ export class MLProviderUnavailableError extends TaggedError(
 	provider: string;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(provider: string, reason: string) {
 		super({
 			provider,
@@ -80,7 +80,7 @@ export class MLConfigError extends TaggedError("MLConfigError")<{
 	provider: string;
 	field: string;
 	message: string;
-}>() {
+}> {
 	constructor(provider: string, field: string, details: string) {
 		super({
 			provider,
@@ -98,7 +98,7 @@ export class MLTimeoutError extends TaggedError("MLTimeoutError")<{
 	operation: string;
 	timeoutMs: number;
 	message: string;
-}>() {
+}> {
 	constructor(provider: string, operation: string, timeoutMs: number) {
 		super({
 			provider,
@@ -118,7 +118,7 @@ export class MLUnsupportedOperationError extends TaggedError(
 	provider: string;
 	operation: string;
 	message: string;
-}>() {
+}> {
 	constructor(provider: string, operation: string) {
 		super({
 			provider,

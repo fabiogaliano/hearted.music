@@ -21,7 +21,7 @@ export class YtDlpError extends TaggedError("YtDlpError")<{
 	code: YtDlpErrorCode;
 	exitCode?: number;
 	stderr?: string;
-}>() {}
+}> {}
 
 export type FfmpegErrorCode =
 	| "unavailable"
@@ -39,4 +39,4 @@ export class FfmpegError extends TaggedError("FfmpegError")<{
 	code: FfmpegErrorCode;
 	exitCode?: number;
 	stderr?: string;
-}>() {}
+}> {}

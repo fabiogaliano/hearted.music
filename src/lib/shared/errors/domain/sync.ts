@@ -21,7 +21,7 @@ export class SyncFailedError extends TaggedError("SyncFailedError")<{
 	reason: string;
 	message: string;
 	cause?: unknown;
-}>() {
+}> {
 	constructor(
 		syncType: SyncType,
 		accountId: string,

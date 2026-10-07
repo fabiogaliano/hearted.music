@@ -39,7 +39,7 @@ export class NeteaseFetchError extends TaggedError("NeteaseFetchError")<{
 	/** NetEase top-level `code` when the body returned a non-200 app-level error. */
 	apiCode?: number;
 	message: string;
-}>() {
+}> {
 	constructor(url: string, opts?: { statusCode?: number; apiCode?: number }) {
 		const httpPart =
 			opts?.statusCode !== undefined ? ` (HTTP ${opts.statusCode})` : "";
@@ -58,7 +58,7 @@ export class NeteaseParseError extends TaggedError("NeteaseParseError")<{
 	url: string;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(url: string, reason: string) {
 		super({ url, reason, message: `NetEase response parse failed: ${reason}` });
 	}

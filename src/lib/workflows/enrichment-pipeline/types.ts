@@ -19,7 +19,7 @@ export class PipelineBootstrapError extends TaggedError(
 )<{
 	message: string;
 	cause?: unknown;
-}>() {
+}> {
 	constructor(message: string, cause?: unknown) {
 		super({ message, cause });
 	}

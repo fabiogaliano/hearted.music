@@ -36,7 +36,7 @@ export class LrclibFetchError extends TaggedError("LrclibFetchError")<{
 	url: string;
 	statusCode?: number;
 	message: string;
-}>() {
+}> {
 	constructor(url: string, statusCode?: number) {
 		super({
 			url,
@@ -50,7 +50,7 @@ export class LrclibParseError extends TaggedError("LrclibParseError")<{
 	url: string;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(url: string, reason: string) {
 		super({ url, reason, message: `LRCLIB response parse failed: ${reason}` });
 	}

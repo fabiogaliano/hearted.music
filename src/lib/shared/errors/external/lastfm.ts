@@ -8,7 +8,7 @@ import { TaggedError } from "better-result";
 export class LastFmRateLimitError extends TaggedError("LastFmRateLimitError")<{
 	retryAfter?: number;
 	message: string;
-}>() {
+}> {
 	constructor(retryAfter?: number) {
 		super({
 			retryAfter,
@@ -25,7 +25,7 @@ export class LastFmNotFoundError extends TaggedError("LastFmNotFoundError")<{
 	track?: string;
 	album?: string;
 	message: string;
-}>() {
+}> {
 	constructor(artist: string, track?: string, album?: string) {
 		const context = track
 			? `${artist} - ${track}`
@@ -46,7 +46,7 @@ export class LastFmApiError extends TaggedError("LastFmApiError")<{
 	code: number;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(code: number, reason: string) {
 		super({
 			code,
@@ -60,7 +60,7 @@ export class LastFmApiError extends TaggedError("LastFmApiError")<{
 export class LastFmConfigError extends TaggedError("LastFmConfigError")<{
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(reason: string) {
 		super({
 			reason,

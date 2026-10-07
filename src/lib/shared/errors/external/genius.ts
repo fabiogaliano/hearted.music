@@ -9,7 +9,7 @@ export class GeniusNotFoundError extends TaggedError("GeniusNotFoundError")<{
 	artist: string;
 	title: string;
 	message: string;
-}>() {
+}> {
 	constructor(artist: string, title: string) {
 		super({
 			artist,
@@ -24,7 +24,7 @@ export class GeniusFetchError extends TaggedError("GeniusFetchError")<{
 	url: string;
 	statusCode?: number;
 	message: string;
-}>() {
+}> {
 	constructor(url: string, statusCode?: number) {
 		super({
 			url,
@@ -38,7 +38,7 @@ export class GeniusFetchError extends TaggedError("GeniusFetchError")<{
 export class GeniusConfigError extends TaggedError("GeniusConfigError")<{
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(reason: string) {
 		super({
 			reason,

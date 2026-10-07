@@ -16,7 +16,7 @@ export class ReccoBeatsRateLimitError extends TaggedError(
 )<{
 	message: string;
 	retryAfterMs?: number;
-}>() {
+}> {
 	constructor(retryAfterMs?: number) {
 		super({
 			message: retryAfterMs
@@ -36,7 +36,7 @@ export class ReccoBeatsNotFoundError extends TaggedError(
 )<{
 	message: string;
 	spotifyTrackId: string;
-}>() {
+}> {
 	constructor(spotifyTrackId: string) {
 		super({
 			message: `Track not found: ${spotifyTrackId}`,
@@ -52,7 +52,7 @@ export class ReccoBeatsApiError extends TaggedError("ReccoBeatsApiError")<{
 	message: string;
 	statusCode: number;
 	cause?: unknown;
-}>() {
+}> {
 	constructor(statusCode: number, message: string, cause?: unknown) {
 		super({
 			message: `ReccoBeats API error (${statusCode}): ${message}`,

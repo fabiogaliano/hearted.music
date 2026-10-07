@@ -161,7 +161,7 @@ class MatchingDataError extends TaggedError("MatchingDataError")<{
 	message: string;
 	songId?: string;
 	playlistId?: string;
-}>() {
+}> {
 	constructor(message: string, songId?: string, playlistId?: string) {
 		super({ message, songId, playlistId });
 	}
@@ -171,7 +171,7 @@ class MatchingDataError extends TaggedError("MatchingDataError")<{
 class MatchingComputeError extends TaggedError("MatchingComputeError")<{
 	message: string;
 	cause?: unknown;
-}>() {
+}> {
 	constructor(message: string, cause?: unknown) {
 		super({ message, cause });
 	}

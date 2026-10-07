@@ -10,7 +10,7 @@ export class AnalysisFailedError extends TaggedError("AnalysisFailedError")<{
 	playlistId?: string;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(opts: { songId?: string; playlistId?: string; reason: string }) {
 		const target = opts.songId
 			? `song ${opts.songId}`
@@ -33,7 +33,7 @@ export class NoLyricsAvailableError extends TaggedError(
 	title: string;
 	message: string;
 	cause?: unknown;
-}>() {
+}> {
 	constructor(songId: string, artist: string, title: string, cause?: unknown) {
 		super({
 			songId,
@@ -50,7 +50,7 @@ export class PipelineConfigError extends TaggedError("PipelineConfigError")<{
 	provider?: string;
 	reason: string;
 	message: string;
-}>() {
+}> {
 	constructor(reason: string, provider?: string) {
 		super({
 			provider,

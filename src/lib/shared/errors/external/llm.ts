@@ -12,7 +12,7 @@ export class LlmProviderError extends TaggedError("LlmProviderError")<{
 	/** Upstream's own retryability verdict, when it supplied one. */
 	retryable?: boolean;
 	message: string;
-}>() {
+}> {
 	constructor(opts: {
 		provider: string;
 		model: string;
@@ -35,7 +35,7 @@ export class LlmRateLimitError extends TaggedError("LlmRateLimitError")<{
 	provider: string;
 	retryAfterMs?: number;
 	message: string;
-}>() {
+}> {
 	constructor(opts: { provider: string; retryAfterMs?: number }) {
 		super({
 			provider: opts.provider,

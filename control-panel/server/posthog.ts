@@ -21,7 +21,7 @@ const MAX_RESPONSE_BYTES = 2 * 1024 * 1024; // 2MB limit
 
 export class PostHogConfigError extends TaggedError("PostHogConfigError")<{
 	message: string;
-}>() {
+}> {
 	constructor(message: string) {
 		super({ message });
 	}
@@ -30,7 +30,7 @@ export class PostHogConfigError extends TaggedError("PostHogConfigError")<{
 export class PostHogFetchError extends TaggedError("PostHogFetchError")<{
 	status?: number;
 	message: string;
-}>() {
+}> {
 	constructor(message: string, status?: number) {
 		super({ message, status });
 	}

@@ -18,7 +18,7 @@ export type NetworkErrorReason = z.infer<typeof NetworkErrorReasonSchema>;
 export class NetworkError extends TaggedError("NetworkError")<{
 	reason: NetworkErrorReason;
 	message: string;
-}>() {
+}> {
 	constructor(reason: NetworkErrorReason) {
 		super({
 			reason,
