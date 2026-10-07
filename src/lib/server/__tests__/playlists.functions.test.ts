@@ -33,7 +33,17 @@ const {
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: () => builder(),
+		inputValidator: (validator: (data: unknown) => unknown) => ({
+			handler:
+				(
+					fn: (args: {
+						context: typeof mockAuthContext;
+						data: unknown;
+					}) => unknown,
+				) =>
+				async (input?: { data?: unknown }) =>
+					fn({ context: mockAuthContext, data: validator(input?.data) }),
+		}),
 		handler:
 			(
 				fn: (args: {
@@ -90,9 +100,11 @@ vi.mock(
 	}),
 );
 
+const PLAYLIST_ID = "11111111-1111-4111-8111-111111111111";
+
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {
-		id: "uuid-1",
+		id: PLAYLIST_ID,
 		account_id: "acct-1",
 		spotify_id: "abc123",
 		name: "Test Playlist",
@@ -168,7 +180,7 @@ describe("savePlaylistMatchConfig", () => {
 	it("normalizes duplicate language codes before persisting and returning", async () => {
 		const result = await savePlaylistMatchConfig({
 			data: {
-				playlistId: "uuid-1",
+				playlistId: PLAYLIST_ID,
 				matchIntent: null,
 				genrePills: [],
 				matchFilters: {
@@ -182,7 +194,7 @@ describe("savePlaylistMatchConfig", () => {
 		expect(result.matchFilters).toEqual(deduped);
 		expect(mockUpdatePlaylistMatchConfig).toHaveBeenCalledWith(
 			"acct-1",
-			"uuid-1",
+			PLAYLIST_ID,
 			expect.objectContaining({ matchFilters: deduped }),
 		);
 	});
@@ -195,7 +207,7 @@ describe("savePlaylistMatchConfig", () => {
 		await expect(
 			savePlaylistMatchConfig({
 				data: {
-					playlistId: "uuid-1",
+					playlistId: PLAYLIST_ID,
 					matchIntent: null,
 					genrePills: [],
 					matchFilters: { version: 1 },
@@ -209,13 +221,19 @@ describe("savePlaylistMatchConfig", () => {
 		await expect(
 			savePlaylistMatchConfig({
 				data: {
-					playlistId: "uuid-1",
+					playlistId: PLAYLIST_ID,
 					matchIntent: null,
 					genrePills: [],
 					matchFilters: { version: 1, languages: { codes: ["xx-invented"] } },
 				},
 			}),
-		).rejects.toThrow("Invalid match filters");
+		).rejects.toMatchObject({
+			issues: [
+				expect.objectContaining({
+					path: expect.arrayContaining(["matchFilters"]),
+				}),
+			],
+		});
 		expect(mockUpdatePlaylistMatchConfig).not.toHaveBeenCalled();
 	});
 });
