@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runMatchSnapshotRefreshEffects } from "@/features/matching/queries";
 import {
 	dashboardKeys,
+	invalidateMatchSnapshotQueries,
 	matchDeckKeys,
 	matchReviewSummaryKeys,
 	playlistKeys,
@@ -40,11 +40,11 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-describe("runMatchSnapshotRefreshEffects", () => {
+describe("invalidateMatchSnapshotQueries", () => {
 	it("(a) invalidates matchDeckKeys.deckRoot", async () => {
 		const qc = makeFakeQueryClient();
 
-		await runMatchSnapshotRefreshEffects(
+		await invalidateMatchSnapshotQueries(
 			qc as unknown as QueryClient,
 			ACCOUNT_ID,
 		);
@@ -64,7 +64,7 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		// request-path sync and no legacy reviewsRoot invalidation remain.
 		const qc = makeFakeQueryClient();
 
-		await runMatchSnapshotRefreshEffects(
+		await invalidateMatchSnapshotQueries(
 			qc as unknown as QueryClient,
 			ACCOUNT_ID,
 		);
@@ -89,7 +89,7 @@ describe("runMatchSnapshotRefreshEffects", () => {
 		// snapshot refresh does not change playlist rows, so refetching them is waste.
 		const qc = makeFakeQueryClient();
 
-		await runMatchSnapshotRefreshEffects(
+		await invalidateMatchSnapshotQueries(
 			qc as unknown as QueryClient,
 			ACCOUNT_ID,
 		);
