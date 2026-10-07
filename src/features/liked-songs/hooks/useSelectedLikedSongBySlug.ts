@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { generateSongSlug } from "@/lib/utils/slug";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { likedSongBySlugQueryOptions } from "../queries";
 import type { LikedSong } from "../types";
 

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import { extractHue, getPastelColor } from "@/lib/theme/hsl";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { extractHue, getPastelColor } from "@/lib/utils/color";
 
 // Mix of musical notes and tiny hearts - music + feelings
 const PARTICLE_SYMBOLS = ["♪", "♥\uFE0E", "♫", "♥\uFE0E", "♩", "♥\uFE0E"];

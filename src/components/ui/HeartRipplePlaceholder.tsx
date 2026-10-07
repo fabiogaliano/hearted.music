@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { getThemeHue } from "@/lib/theme/colors";
+import { generatePalette, vec3ToRgbString } from "@/lib/theme/palette";
 import { useTheme } from "@/lib/theme/ThemeHueProvider";
-import { generatePalette, vec3ToRgbString } from "@/lib/utils/palette";
 
 interface HeartRipplePlaceholderProps {
 	className?: string;

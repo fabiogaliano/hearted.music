@@ -20,7 +20,7 @@
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateSongSlug } from "@/lib/utils/slug";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
 	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
 	LIKED_SONGS_PAGE_SIZE,

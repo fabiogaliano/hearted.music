@@ -34,8 +34,8 @@ import {
 } from "@/lib/platform/routing/stale-chunk";
 import { themes } from "@/lib/theme/colors";
 import { fonts } from "@/lib/theme/fonts";
+import { extractHue, getPastelColor } from "@/lib/theme/hsl";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
-import { extractHue, getPastelColor } from "@/lib/utils/color";
 import appCss from "../styles.css?url";
 
 const DevToolsShell = import.meta.env.DEV

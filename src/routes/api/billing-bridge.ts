@@ -34,12 +34,12 @@ import {
 } from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
 import { captureServerError } from "@/lib/observability/capture-server-error";
+import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
 import {
 	clientIpFrom,
 	withinRateLimit,
 } from "@/lib/platform/rate-limit/edge-rate-limit";
 import { errorMessage } from "@/lib/shared/errors/error-message";
-import { captureWithWaitUntil } from "@/utils/posthog-server";
 
 // Long enough to outlast any realistic handler run, short enough that a
 // crashed worker's stuck row becomes reclaimable within the same Stripe

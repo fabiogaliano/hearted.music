@@ -99,7 +99,7 @@ vi.mock("@sentry/cloudflare", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
 
-vi.mock("@/utils/posthog-server", () => ({
+vi.mock("@/lib/observability/posthog-server", () => ({
 	captureWithWaitUntil: (...args: unknown[]) =>
 		mockCaptureWithWaitUntil(...args),
 }));

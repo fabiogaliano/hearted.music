@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateSongSlug } from "@/lib/utils/slug";
+import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
 	fireEvent,
 	renderWithRouter,
