@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import type { Json } from "@/lib/data/database.types";
 
 const ReadArcBeatSchema = z.object({
 	label: z.string(),
@@ -59,3 +60,54 @@ export const SongAnalysisInstrumentalSchema = z.object({
 export type SongAnalysisInstrumental = z.infer<
 	typeof SongAnalysisInstrumentalSchema
 >;
+
+// song-analysis.ts stores the read FLAT with an extra `audio_features` key, so a
+// stored blob is `{ ...SongRead | SongAnalysisInstrumental, audio_features? }`.
+// Each metric decodes on its own: a malformed or missing feature must never cost
+// the song its read.
+const StoredAudioFeaturesSchema = z.object({
+	tempo: z.number().nullable().catch(null),
+	energy: z.number().nullable().catch(null),
+	valence: z.number().nullable().catch(null),
+});
+export type StoredAudioFeatures = z.infer<typeof StoredAudioFeaturesSchema>;
+
+const StoredEnvelopeSchema = z.object({
+	audio_features: StoredAudioFeaturesSchema.nullable().catch(null),
+});
+
+/**
+ * The one decode of a stored song analysis. `none` covers missing rows, locked
+ * rows and shapes that match neither read (e.g. older generations); it still
+ * carries the stored audio features because the panel falls back to them when
+ * the track row has none.
+ */
+export type StoredAnalysis =
+	| {
+			kind: "lyrical";
+			read: SongRead;
+			audioFeatures: StoredAudioFeatures | null;
+	  }
+	| {
+			kind: "instrumental";
+			read: SongAnalysisInstrumental;
+			audioFeatures: StoredAudioFeatures | null;
+	  }
+	| { kind: "none"; audioFeatures: StoredAudioFeatures | null };
+
+export function decodeStoredAnalysis(raw: Json | null): StoredAnalysis {
+	const envelope = StoredEnvelopeSchema.safeParse(raw);
+	const audioFeatures = envelope.success ? envelope.data.audio_features : null;
+
+	// Lyrical first: the panel has always preferred the lyrical read when a blob
+	// could satisfy both shapes.
+	const lyrical = SongReadSchema.safeParse(raw);
+	if (lyrical.success) {
+		return { kind: "lyrical", read: lyrical.data, audioFeatures };
+	}
+	const instrumental = SongAnalysisInstrumentalSchema.safeParse(raw);
+	if (instrumental.success) {
+		return { kind: "instrumental", read: instrumental.data, audioFeatures };
+	}
+	return { kind: "none", audioFeatures };
+}

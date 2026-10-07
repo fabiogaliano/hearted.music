@@ -86,7 +86,7 @@ type WalkthroughSong = {
 
 type WalkthroughSongAnalysis = {
   id: string;
-  content: AnalysisContent;
+  content: StoredAnalysis;  // decoded server-side by decodeStoredAnalysis
   model: string;
   createdAt: string | null;
 };

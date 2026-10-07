@@ -3,11 +3,12 @@
  *
  * Verifies that an instrumental-shaped analysis row produces a non-null
  * instrumentalRead (not read = null), and that a lyrical row keeps the existing
- * lyrical path intact. Both schemas are parsed in parallel; exactly one wins.
+ * lyrical path intact. Blobs go through the server's decodeStoredAnalysis, so
+ * these cover the stored JSON -> panel path end to end.
  */
 
 import { describe, expect, it } from "vitest";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import { decodeStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { LikedSong } from "../../../types";
 import { likedSongToSongDetail } from "../song-detail-adapter";
 
@@ -41,19 +42,18 @@ function makeSong(
 	};
 }
 
-// Cast through AnalysisContent — the adapter's safeParse calls handle the
-// discriminating at runtime; the stored JSON is untyped in practice.
-const INSTRUMENTAL_ANALYSIS_BLOB = {
+const INSTRUMENTAL_ANALYSIS_BLOB = decodeStoredAnalysis({
 	headline: "The texture of arriving nowhere in particular",
 	compound_mood: "Ambient Drift",
 	sonic_texture: "Deep Electronic",
 	mood_description:
 		"A slow unwinding, like watching city lights from a moving train at 3am. It doesn't want to take you anywhere specific — it wants you to stop needing to go.",
-	// The adapter ignores this extra key (Zod strips it), matching production storage.
+	// song-analysis.ts stores audio features alongside the read; the decoder keeps
+	// them out of the read itself.
 	audio_features: { tempo: 96, energy: 0.38, valence: 0.25 },
-} as unknown as AnalysisContent;
+});
 
-const LYRICAL_ANALYSIS_BLOB = {
+const LYRICAL_ANALYSIS_BLOB = decodeStoredAnalysis({
 	image: "the long way home, alone this time",
 	lens: "license as eulogy",
 	tension: "Aching Disbelief",
@@ -65,7 +65,7 @@ const LYRICAL_ANALYSIS_BLOB = {
 	],
 	lines: [{ line: "I got my driver's license like I told you I would" }],
 	texture: "A ballad that grows a spine.",
-} as unknown as AnalysisContent;
+});
 
 describe("likedSongToSongDetail — instrumental path", () => {
 	it("yields a non-null instrumentalRead when the stored blob matches SongAnalysisInstrumentalSchema", () => {

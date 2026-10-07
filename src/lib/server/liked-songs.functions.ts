@@ -3,7 +3,7 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { LikedSong, MatchingStatus } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import { decodeStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import {
 	getBootstrapPagesBySlug,
@@ -92,7 +92,7 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 				? {
 						id: row.analysis_id,
 						track_id: row.song_id,
-						analysis: row.analysis_content as AnalysisContent,
+						analysis: decodeStoredAnalysis(row.analysis_content),
 						model_name: row.analysis_model ?? "unknown",
 						version: 1,
 						created_at: row.analysis_created_at,
