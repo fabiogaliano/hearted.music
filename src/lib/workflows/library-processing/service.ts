@@ -80,7 +80,9 @@ export async function applyLibraryProcessingChange(
 
 	// Load → reconcile → compare-and-set write. Both the Cloudflare server fns
 	// and the Bun worker apply changes, so the row can move between our read
-	// and our write; a blind write would put stale active refs back.
+	// and our write; a blind write would put stale active refs back. Only the
+	// state is reloaded per attempt: the job-outcome marker is fixed by the
+	// change itself, and target presence moving within a retry is immaterial.
 	let persisted: LibraryProcessingState | null = null;
 	let effects: LibraryProcessingEffect[] = [];
 	for (

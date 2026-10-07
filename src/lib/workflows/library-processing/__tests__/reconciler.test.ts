@@ -287,6 +287,33 @@ describe("reconcileLibraryProcessing", () => {
 	});
 
 	describe("enrichment_completed", () => {
+		it("settles a job whose ref was never recorded without clearing the recorded one", () => {
+			// persistActiveRefs swaps refs compare-and-set; when a swap misses, the
+			// ensured job runs unrecorded. Its completion must still settle the
+			// workflow and must not clear the ref another job holds.
+			const { state } = reconcile(
+				makeState({
+					enrichment: {
+						requestedAt: "2026-03-27T10:00:00Z",
+						settledAt: null,
+						activeJobId: "job-recorded",
+					},
+				}),
+				{
+					kind: "enrichment_completed",
+					accountId: "acct-1",
+					jobId: "job-unrecorded",
+					requestSatisfied: true,
+					newCandidatesAvailable: false,
+					newCandidateSongIds: [],
+				},
+				{ satisfiedMarker: "2026-03-27T10:00:00Z" },
+			);
+
+			expect(state.enrichment.settledAt).toBe("2026-03-27T10:00:00Z");
+			expect(state.enrichment.activeJobId).toBe("job-recorded");
+		});
+
 		it("requestSatisfied settles at the job marker and clears activeJobId", () => {
 			const { state } = reconcile(
 				makeState({
