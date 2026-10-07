@@ -24,13 +24,13 @@ vi.mock("@/lib/account-events/producer", () => ({
 
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { makeJob, makeWorkerOutcomes } from "@/test/fixtures";
-import { finalizeLibraryProcessingJob } from "../settlement";
+import { finalizeJob } from "../finalize";
 
 // The claim-time progress the job row carried; events must not echo it.
 const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
 const outcomes = makeWorkerOutcomes();
 
-describe("finalizeLibraryProcessingJob: enrichment", () => {
+describe("finalizeJob: enrichment", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
@@ -39,10 +39,7 @@ describe("finalizeLibraryProcessingJob: enrichment", () => {
 
 	it("writes enrichment_completed with the run's counts, not the claim-time progress", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeLibraryProcessingJob(
-			job,
-			outcomes.enrichmentCompleted,
-		);
+		const result = await finalizeJob(job, outcomes.enrichmentCompleted);
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -57,10 +54,7 @@ describe("finalizeLibraryProcessingJob: enrichment", () => {
 
 	it("writes enrichment_stopped(failed) for a failed run", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeLibraryProcessingJob(
-			job,
-			outcomes.enrichmentFailed,
-		);
+		const result = await finalizeJob(job, outcomes.enrichmentFailed);
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -79,10 +73,7 @@ describe("finalizeLibraryProcessingJob: enrichment", () => {
 		txMock.mockRejectedValueOnce(new Error("Update failed"));
 
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeLibraryProcessingJob(
-			job,
-			outcomes.enrichmentCompleted,
-		);
+		const result = await finalizeJob(job, outcomes.enrichmentCompleted);
 
 		expect(result.isErr()).toBe(true);
 		if (!result.isOk()) {
@@ -95,7 +86,7 @@ describe("finalizeLibraryProcessingJob: enrichment", () => {
 	});
 });
 
-describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
+describe("finalizeJob: match snapshot refresh", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
@@ -105,10 +96,7 @@ describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
 	it("writes published events for both orientations with the snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeLibraryProcessingJob(
-			job,
-			outcomes.refreshPublished,
-		);
+		const result = await finalizeJob(job, outcomes.refreshPublished);
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenNthCalledWith(1, txMock, {
@@ -126,7 +114,7 @@ describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
 	it("writes active_jobs_changed when a published refresh no-ops", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeLibraryProcessingJob(job, {
+		const result = await finalizeJob(job, {
 			...outcomes.refreshPublished,
 			snapshotId: null,
 		});
@@ -142,10 +130,7 @@ describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
 	it("writes active_jobs_changed when a refresh is superseded", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeLibraryProcessingJob(
-			job,
-			outcomes.refreshSuperseded,
-		);
+		const result = await finalizeJob(job, outcomes.refreshSuperseded);
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -158,7 +143,7 @@ describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
 	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeLibraryProcessingJob(job, {
+		const result = await finalizeJob(job, {
 			...outcomes.refreshFailed,
 			error: "match snapshot refresh crashed during publish",
 		});

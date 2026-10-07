@@ -2,7 +2,7 @@
  * Library-processing job lifecycle against the real SQL:
  * claim_pending_library_processing_job, sweep_stale_library_processing_jobs and
  * mark_dead_library_processing_jobs (20260625050000 / 20260327200650), plus the
- * worker-side settlements in settlement.ts. The runner suites mock all of
+ * worker-side finalize in src/worker/finalize.ts. The runner suites mock all of
  * these, so the claim/sweep interplay and the settlement fence only exist here.
  *
  * Expected values come from the SQL: the claim flips pending→running,
@@ -33,15 +33,15 @@ import {
 } from "@/lib/platform/jobs/repository";
 import { makeWorkerOutcomes } from "@/test/fixtures";
 import {
+	finalizeJob,
+	requeueLibraryProcessingJobForRetry,
+} from "@/worker/finalize";
+import {
 	findTerminalActiveRefs,
 	getOrCreateLibraryProcessingState,
 	persistLibraryProcessingState,
 	swapActiveJobRef,
 } from "../queries";
-import {
-	finalizeLibraryProcessingJob,
-	requeueLibraryProcessingJobForRetry,
-} from "../settlement";
 
 function outcomesFor(job: Job) {
 	return makeWorkerOutcomes({ jobId: job.id, accountId: job.account_id });
@@ -187,10 +187,7 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		expect(running.heartbeat_is_null).toBe(false);
 
 		expect(
-			await finalizeLibraryProcessingJob(
-				job,
-				outcomesFor(job).enrichmentCompleted,
-			),
+			await finalizeJob(job, outcomesFor(job).enrichmentCompleted),
 		).toHaveOkValue("applied");
 		const done = await readJob(jobId);
 		expect(done.status).toBe("completed");
@@ -261,10 +258,7 @@ describe.skipIf(!IS_LOCAL)("stale sweep and dead-letter", () => {
 		expect(failed.error).toBe("max attempts exhausted after stale detection");
 
 		// Dead-letter recovery owns the reconcile; the late worker must stay silent.
-		const late = await finalizeLibraryProcessingJob(
-			job,
-			outcomesFor(job).enrichmentCompleted,
-		);
+		const late = await finalizeJob(job, outcomesFor(job).enrichmentCompleted);
 		expect((await readJob(jobId)).status).toBe("failed");
 		expect(await eventTypes()).toEqual([]);
 		expect(late).toHaveOkValue("superseded");
@@ -278,7 +272,7 @@ describe.skipIf(!IS_LOCAL)(
 			const jobId = await seedPendingJob("enrichment");
 			const { stale, current } = await sweepAndReclaim(jobId);
 
-			const late = await finalizeLibraryProcessingJob(
+			const late = await finalizeJob(
 				stale,
 				outcomesFor(stale).enrichmentCompleted,
 			);
@@ -290,10 +284,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(late).toHaveOkValue("superseded");
 
 			expect(
-				await finalizeLibraryProcessingJob(
-					current,
-					outcomesFor(current).enrichmentCompleted,
-				),
+				await finalizeJob(current, outcomesFor(current).enrichmentCompleted),
 			).toHaveOkValue("applied");
 			expect((await readJob(jobId)).status).toBe("completed");
 			expect(await eventTypes()).toEqual(["enrichment_completed"]);
@@ -307,7 +298,7 @@ describe.skipIf(!IS_LOCAL)(
       `;
 			const { stale } = await sweepAndReclaim(jobId);
 
-			const late = await finalizeLibraryProcessingJob(stale, {
+			const late = await finalizeJob(stale, {
 				...outcomesFor(stale).refreshPublished,
 				snapshotId: null,
 			});

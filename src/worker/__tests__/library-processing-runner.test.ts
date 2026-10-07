@@ -3,9 +3,9 @@ import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
-	finalizeLibraryProcessingJob,
+	finalizeJob,
 	requeueLibraryProcessingJobForRetry,
-} from "@/lib/workflows/library-processing/settlement";
+} from "@/worker/finalize";
 
 const recordJobExecutionMeasurementMock = vi
 	.fn()
@@ -16,8 +16,8 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 		recordJobExecutionMeasurementMock(...args),
 }));
 
-vi.mock("@/lib/workflows/library-processing/settlement", () => ({
-	finalizeLibraryProcessingJob: vi.fn(),
+vi.mock("@/worker/finalize", () => ({
+	finalizeJob: vi.fn(),
 	requeueLibraryProcessingJobForRetry: vi
 		.fn()
 		.mockResolvedValue({ isError: false }),
@@ -108,9 +108,7 @@ describe("runClaimedJob", () => {
 		vi.clearAllMocks();
 		recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 		applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
-		vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-			Result.ok("applied"),
-		);
+		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 		// Default: no retry budget consumed successfully — existing failure-path
 		// tests keep exercising terminal settlement. Retry tests override to true.
 		vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
@@ -166,7 +164,7 @@ describe("runClaimedJob", () => {
 		if (outcome.status === "failed") {
 			expect(outcome.error).toBe("provider down");
 		}
-		expect(finalizeLibraryProcessingJob).toHaveBeenCalledWith(
+		expect(finalizeJob).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "job-1" }),
 			expect.objectContaining({ status: "failed", error: "provider down" }),
 		);
@@ -219,7 +217,7 @@ describe("runClaimedJob", () => {
 				expect.objectContaining({ id: "job-1" }),
 				"provider down",
 			);
-			expect(finalizeLibraryProcessingJob).not.toHaveBeenCalled();
+			expect(finalizeJob).not.toHaveBeenCalled();
 			// The job is still active (back to pending) — no reconciler change.
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -244,7 +242,7 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("retrying");
-			expect(finalizeLibraryProcessingJob).not.toHaveBeenCalled();
+			expect(finalizeJob).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
 
@@ -261,7 +259,7 @@ describe("runClaimedJob", () => {
 
 			expect(outcome.status).toBe("failed");
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
-			expect(finalizeLibraryProcessingJob).toHaveBeenCalledWith(
+			expect(finalizeJob).toHaveBeenCalledWith(
 				expect.objectContaining({ id: "job-1" }),
 				expect.objectContaining({ status: "failed", error: "provider down" }),
 			);
@@ -282,7 +280,7 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("failed");
-			expect(finalizeLibraryProcessingJob).toHaveBeenCalled();
+			expect(finalizeJob).toHaveBeenCalled();
 		});
 	});
 
@@ -332,9 +330,7 @@ describe("runClaimedJob", () => {
 
 		it.each(cases)("$name", async ({ job, arrange }) => {
 			arrange();
-			vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-				Result.ok("superseded"),
-			);
+			vi.mocked(finalizeJob).mockResolvedValue(Result.ok("superseded"));
 
 			const outcome = await runClaimedJob(job, "@test", LIVE_LEASE);
 
@@ -400,7 +396,7 @@ describe("runClaimedJob", () => {
 			const outcome = await runClaimedJob(job, "@test", lease.signal);
 
 			expect(outcome.status).toBe("lease_lost");
-			expect(finalizeLibraryProcessingJob).not.toHaveBeenCalled();
+			expect(finalizeJob).not.toHaveBeenCalled();
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
@@ -487,7 +483,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
 				Result.ok(true),
 			);
-			vi.mocked(finalizeLibraryProcessingJob)
+			vi.mocked(finalizeJob)
 				.mockResolvedValueOnce(Result.err(settleError))
 				.mockResolvedValueOnce(Result.ok("applied"));
 
@@ -500,7 +496,7 @@ describe("runClaimedJob", () => {
 			const outcome = await promise;
 
 			expect(outcome.status).toBe("completed");
-			expect(finalizeLibraryProcessingJob).toHaveBeenCalledTimes(2);
+			expect(finalizeJob).toHaveBeenCalledTimes(2);
 			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
 		});
 
@@ -509,9 +505,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
 				Result.ok(true),
 			);
-			vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-				Result.err(settleError),
-			);
+			vi.mocked(finalizeJob).mockResolvedValue(Result.err(settleError));
 
 			const promise = runClaimedJob(
 				makeJob({ attempts: 1, max_attempts: 3 }),
@@ -815,9 +809,7 @@ describe("runClaimedJob", () => {
 			vi.clearAllMocks();
 			recordJobExecutionMeasurementMock.mockResolvedValue(Result.ok(undefined));
 			applyLibraryProcessingChangeMock.mockResolvedValue(APPLY_OK_RESULT);
-			vi.mocked(finalizeLibraryProcessingJob).mockResolvedValue(
-				Result.ok("applied"),
-			);
+			vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 		});
 
 		it("captures enrichment_candidate_batch_ready when newCandidatesAvailable", async () => {
