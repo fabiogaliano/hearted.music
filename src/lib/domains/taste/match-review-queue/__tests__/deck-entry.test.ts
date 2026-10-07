@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { activeDeckRpc, deckPlaylistCardRpc } from "@/test/fixtures";
 
@@ -54,6 +54,7 @@ import { resolveMatchDeck } from "../deck-entry";
 // ---------------------------------------------------------------------------
 
 const HASH = "vc_playlist_0.5_rtf";
+const NOW_MS = 1_700_000_000_000;
 
 const MISS_RPC = { status: "miss" as const, reason: "no_ready_proposal" };
 
@@ -64,6 +65,9 @@ function enterMissedDeck() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	// The entry reads Date.now() once; pin it so the hash and build assertions
+	// can name the value instead of reading it back from a mock.
+	vi.useFakeTimers({ now: NOW_MS, toFake: ["Date"] });
 	mockResolveVisibilityConfigHash.mockResolvedValue(
 		Result.ok({ hash: HASH, minScore: 0.5 }),
 	);
@@ -77,6 +81,10 @@ beforeEach(() => {
 	mockFindInFlightBuildProposalsJob.mockResolvedValue(Result.ok(null));
 });
 
+afterEach(() => {
+	vi.useRealTimers();
+});
+
 describe("resolveMatchDeck miss path", () => {
 	it("builds the current preset, re-invokes with the same hash and window, and returns the promoted view", async () => {
 		const result = await enterMissedDeck();
@@ -88,7 +96,7 @@ describe("resolveMatchDeck miss path", () => {
 
 		// One nowMs is threaded into the hash and the build so the re-invoke's
 		// branch-2 search key matches the built proposal's hash.
-		const hashNowMs = mockResolveVisibilityConfigHash.mock.calls[0][2];
+		expect(mockResolveVisibilityConfigHash.mock.calls[0][2]).toBe(NOW_MS);
 		// buildOneProposal(accountId, orientation, snapshotId, preset, minScore, nowMs)
 		expect(mockBuildOneProposal).toHaveBeenCalledWith(
 			"acct-1",
@@ -96,7 +104,7 @@ describe("resolveMatchDeck miss path", () => {
 			"snap-1",
 			"balanced",
 			0.5,
-			hashNowMs,
+			NOW_MS,
 		);
 		// Re-invoke uses the SAME hash + the playlist deck window.
 		expect(mockCallStartOrResumeMatchDeck).toHaveBeenCalledTimes(2);
