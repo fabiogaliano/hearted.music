@@ -11,7 +11,10 @@
  * implements this given a detected-count map.
  */
 
-import type { MatchFilterLanguageOption } from "./types";
+import type {
+	MatchFilterLanguageOption,
+	PlaylistMatchFilterOptions,
+} from "./types";
 
 type CatalogEntry = {
 	code: string;
@@ -131,6 +134,50 @@ export function languageLabel(code: string): string {
 
 export function isLanguageCatalogCode(code: string): boolean {
 	return CATALOG_BY_CODE.has(code);
+}
+
+/**
+ * Filter-picker language options from per-code detected counts: catalogued
+ * detected codes by count descending, then every undetected catalog language
+ * alphabetically by label. Uncatalogued codes are returned apart because the
+ * client can only select catalog codes.
+ */
+export function buildLanguageOptions(
+	detected: ReadonlyArray<{ code: string; count: number }>,
+): {
+	options: PlaylistMatchFilterOptions["languages"];
+	uncatalogedCodes: string[];
+} {
+	const detectedOptions: PlaylistMatchFilterOptions["languages"] = [];
+	const uncatalogedCodes: string[] = [];
+	for (const { code, count } of detected) {
+		const entry = CATALOG_BY_CODE.get(code);
+		if (!entry) {
+			uncatalogedCodes.push(code);
+			continue;
+		}
+		detectedOptions.push({
+			code,
+			label: entry.label,
+			count,
+			source: "detected",
+		});
+	}
+	detectedOptions.sort((a, b) => b.count - a.count);
+
+	const detectedCodes = new Set(detectedOptions.map((option) => option.code));
+	const catalogOnly: PlaylistMatchFilterOptions["languages"] = CATALOG.filter(
+		(entry) => !detectedCodes.has(entry.code),
+	)
+		.map((entry) => ({
+			code: entry.code,
+			label: entry.label,
+			count: 0,
+			source: "catalog" as const,
+		}))
+		.sort((a, b) => a.label.localeCompare(b.label));
+
+	return { options: [...detectedOptions, ...catalogOnly], uncatalogedCodes };
 }
 
 function normalize(s: string): string {

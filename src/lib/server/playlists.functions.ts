@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
-import {
-	getLanguageColumnsForSongs,
-	getLikedAtAggregates,
-	getReleaseYearAggregates,
-} from "@/lib/domains/library/liked-songs/filter-options-queries";
+import { readMatchFilterOptions } from "@/lib/domains/library/liked-songs/filter-options-queries";
 import {
 	getStats,
 	getAccountTopGenres as queryAccountTopGenres,
@@ -32,11 +27,7 @@ import {
 } from "@/lib/domains/library/playlists/queries";
 import { getByIds as getSongsByIds } from "@/lib/domains/library/songs/queries";
 import { utcDateString } from "@/lib/domains/taste/match-filters/dates";
-import {
-	isLanguageCatalogCode,
-	lookupLanguage,
-	SUPPORTED_LANGUAGE_CODES,
-} from "@/lib/domains/taste/match-filters/languages";
+import { buildLanguageOptions } from "@/lib/domains/taste/match-filters/languages";
 import { normalizeMatchFilters } from "@/lib/domains/taste/match-filters/normalizers";
 import { parseSaveMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type {
@@ -750,8 +741,6 @@ export const flushPlaylistManagementSession = createServerFn({
  * and "catalog" (not detected but selectable) entries. The client needs the full
  * catalog for the language picker regardless; returning it here in one payload
  * means CMHF-14 never needs a second round-trip to hydrate catalog-only entries.
- * Detected entries come first sorted by count desc, then catalog-only entries
- * sorted alphabetically — mirroring the picker's ordering contract.
  *
  * Decision — uncataloged detected codes: excluded from the returned payload but
  * logged so the catalog can be expanded. The client can only select catalog codes,
@@ -764,165 +753,43 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 		const { session } = context;
 		const accountId = session.accountId;
 
-		// One RPC call for the matching-eligible song ids, then three compact
-		// aggregation queries in parallel. No full song rows are loaded.
-		const eligibleResult = await readEntitledDataEnrichedSongIds(
+		const aggregatesResult = await readMatchFilterOptions(
 			createAdminSupabaseClient(),
 			accountId,
 		);
-		if (Result.isError(eligibleResult)) {
-			captureServerError(eligibleResult.error, {
+		if (Result.isError(aggregatesResult)) {
+			captureServerError(aggregatesResult.error, {
 				area: "playlists",
 				operation: "get_playlist_match_filter_options",
 				accountId,
-				extra: { stage: "eligibility" },
 			});
 			console.error(
-				"[filter-options] eligibility fetch failed:",
-				eligibleResult.error,
+				"[filter-options] aggregate read failed:",
+				aggregatesResult.error,
 			);
 			throw new Error("Failed to load filter options", {
-				cause: eligibleResult.error,
+				cause: aggregatesResult.error,
 			});
 		}
-		const eligibleSongIds = eligibleResult.value;
+		const aggregates = aggregatesResult.value;
 
-		const [languageResult, releaseYearResult, likedAtResult] =
-			await Promise.all([
-				getLanguageColumnsForSongs(eligibleSongIds),
-				getReleaseYearAggregates(eligibleSongIds),
-				getLikedAtAggregates(accountId, eligibleSongIds),
-			]);
-
-		if (Result.isError(languageResult)) {
-			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
-			captureServerError(languageResult.error, {
-				area: "playlists",
-				operation: "get_playlist_match_filter_options",
-				accountId,
-				extra: { stage: "language" },
-			});
-			console.error(
-				"[filter-options] language aggregation failed:",
-				languageResult.error,
+		const { options, uncatalogedCodes } = buildLanguageOptions(
+			aggregates.languages,
+		);
+		for (const code of uncatalogedCodes) {
+			console.warn(
+				"[filter-options] detected language code not in catalog — excluded from options:",
+				code,
 			);
-			throw new Error("Failed to load filter options", {
-				cause: languageResult.error,
-			});
 		}
-		if (Result.isError(releaseYearResult)) {
-			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
-			captureServerError(releaseYearResult.error, {
-				area: "playlists",
-				operation: "get_playlist_match_filter_options",
-				accountId,
-				extra: { stage: "releaseYear" },
-			});
-			console.error(
-				"[filter-options] release-year aggregation failed:",
-				releaseYearResult.error,
-			);
-			throw new Error("Failed to load filter options", {
-				cause: releaseYearResult.error,
-			});
-		}
-		if (Result.isError(likedAtResult)) {
-			// DB aggregation failed — surfaces in Sentry since console is disabled in prod.
-			captureServerError(likedAtResult.error, {
-				area: "playlists",
-				operation: "get_playlist_match_filter_options",
-				accountId,
-				extra: { stage: "likedAt" },
-			});
-			console.error(
-				"[filter-options] liked-at aggregation failed:",
-				likedAtResult.error,
-			);
-			throw new Error("Failed to load filter options", {
-				cause: likedAtResult.error,
-			});
-		}
-
-		// Build language counts — primary + secondary, once per code per song.
-		const detectedCounts = new Map<string, number>();
-		for (const row of languageResult.value) {
-			const codesForSong = new Set<string>();
-
-			if (row.language) codesForSong.add(row.language);
-			if (row.language_secondary) codesForSong.add(row.language_secondary);
-
-			for (const code of codesForSong) {
-				if (!isLanguageCatalogCode(code)) {
-					// Skip here; logging is de-duped in the second pass (uncatalogedCodes
-					// set) to avoid one warn per song on large libraries.
-					continue;
-				}
-				detectedCounts.set(code, (detectedCounts.get(code) ?? 0) + 1);
-			}
-		}
-
-		// Log uncataloged codes once each so the catalog maintainer can expand it.
-		const uncatalogedCodes = new Set<string>();
-		for (const row of languageResult.value) {
-			for (const code of [row.language, row.language_secondary]) {
-				if (
-					code &&
-					!isLanguageCatalogCode(code) &&
-					!uncatalogedCodes.has(code)
-				) {
-					uncatalogedCodes.add(code);
-					console.warn(
-						"[filter-options] detected language code not in catalog — excluded from options:",
-						code,
-					);
-				}
-			}
-		}
-
-		// Detected entries sorted by count desc, then catalog-only alphabetically.
-		const detected: PlaylistMatchFilterOptions["languages"] = [
-			...detectedCounts,
-		]
-			.sort(([, a], [, b]) => b - a)
-			.map(([code, count]) => {
-				const entry = lookupLanguage(code);
-				return {
-					code,
-					label: entry?.label ?? code,
-					count,
-					source: "detected" as const,
-				};
-			});
-
-		const detectedCodeSet = new Set(detectedCounts.keys());
-		const catalogOnly: PlaylistMatchFilterOptions["languages"] = [
-			...SUPPORTED_LANGUAGE_CODES,
-		]
-			.filter((code) => !detectedCodeSet.has(code))
-			.map((code) => {
-				const entry = lookupLanguage(code);
-				return {
-					code,
-					label: entry?.label ?? code,
-					count: 0,
-					source: "catalog" as const,
-				};
-			})
-			.sort((a, b) => a.label.localeCompare(b.label));
-
-		const today = utcDateString(Date.now());
 
 		return {
-			languages: [...detected, ...catalogOnly],
-			releaseYears: {
-				min: releaseYearResult.value.min,
-				max: releaseYearResult.value.max,
-				counts: releaseYearResult.value.counts,
-			},
+			languages: options,
+			releaseYears: aggregates.releaseYears,
 			likedAt: {
-				oldest: likedAtResult.value.oldest,
-				today,
-				yearCounts: likedAtResult.value.yearCounts,
+				oldest: aggregates.likedAt.oldest,
+				today: utcDateString(Date.now()),
+				yearCounts: aggregates.likedAt.yearCounts,
 			},
 		};
 	});
