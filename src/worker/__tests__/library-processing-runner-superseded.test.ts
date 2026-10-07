@@ -1,11 +1,6 @@
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/platform/jobs/repository", () => ({
-	markJobCompleted: vi.fn(),
-	markJobFailed: vi.fn(),
-}));
-
 const recordJobExecutionMeasurementMock = vi
 	.fn()
 	.mockResolvedValue(Result.ok(undefined));
