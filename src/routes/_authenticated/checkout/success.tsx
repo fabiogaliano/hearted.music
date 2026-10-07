@@ -14,11 +14,10 @@ import { useEffect, useRef, useState } from "react";
 import { isCheckoutFulfilled } from "@/features/billing/checkout-fulfillment";
 import type { CheckoutIntent } from "@/features/billing/checkout-intent";
 import { loadCheckoutIntent } from "@/features/billing/checkout-intent";
+import { billingStateQueryOptions } from "@/features/billing/queries";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
-import { billingKeys } from "@/lib/query-keys";
-import { getBillingState } from "@/lib/server/billing.functions";
 import { fonts } from "@/lib/theme/fonts";
 
 export const Route = createFileRoute("/_authenticated/checkout/success")({
@@ -58,10 +57,9 @@ function CheckoutSuccessPage() {
 	const [hasHydrated, setHasHydrated] = useState(false);
 	const [timedOut, setTimedOut] = useState(false);
 
-	const { data: billingState = contextBilling } = useQuery({
-		queryKey: billingKeys.state,
-		queryFn: () => getBillingState(),
-	});
+	const { data: billingState = contextBilling } = useQuery(
+		billingStateQueryOptions(),
+	);
 
 	useEffect(() => {
 		setIntent(loadCheckoutIntent());
