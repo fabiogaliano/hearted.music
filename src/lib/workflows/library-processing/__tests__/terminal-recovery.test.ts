@@ -452,6 +452,37 @@ describe("recoverTerminalLibraryProcessingRefs", () => {
 		});
 	});
 
+	it("reconstructs enrichment_stopped(blocked) from a legacy blocked measurement (regression: recovery read it as an error stop)", async () => {
+		const job = makeJob({
+			id: "j-blocked",
+			status: "completed",
+			type: "enrichment",
+		});
+		findTerminalActiveRefsMock.mockResolvedValue(
+			Result.ok([{ state: makeState(), workflow: "enrichment", job }]),
+		);
+		getMeasurementMock.mockResolvedValue(
+			Result.ok(
+				makeMeasurement({
+					job_id: "j-blocked",
+					outcome: "blocked",
+					details: { batchSequence: 2, readyCount: 1, doneCount: 0 },
+				}),
+			),
+		);
+		applyMock.mockResolvedValue(Result.ok(makeApplyOutcome()));
+
+		const results = await recoverTerminalLibraryProcessingRefs();
+
+		expect(results[0].recoveryStrategy).toBe("completed_from_measurement");
+		expect(applyMock).toHaveBeenCalledWith({
+			kind: "enrichment_stopped",
+			accountId: "acct-1",
+			jobId: "j-blocked",
+			reason: "blocked",
+		});
+	});
+
 	it("reconstructs match_snapshot_published from valid measurement", async () => {
 		const job = makeJob({
 			id: "j-comp-ms",
