@@ -15,9 +15,9 @@ import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { log } from "@/lib/observability/logger";
 import { claimExtensionSyncJob } from "@/lib/platform/jobs/extension-sync-jobs";
 import type { Job } from "@/lib/platform/jobs/repository";
-import { runExtensionSyncJob } from "@/lib/workflows/extension-sync/runner";
 import { workerConfig } from "./config";
 import { startHeartbeat } from "./execute";
+import { runExtensionSyncJob } from "./extension-sync-runner";
 import { createPollLoop } from "./poll-loop";
 
 function dispatch(job: Job, actor: string, markDone: () => void): void {
