@@ -23,24 +23,26 @@ vi.mock("@/lib/account-events/producer", () => ({
 }));
 
 import { writeAccountEvent } from "@/lib/account-events/producer";
-import { makeJob } from "@/test/fixtures";
-import {
-	finalizeEnrichmentJob,
-	finalizeMatchSnapshotRefreshJob,
-} from "../settlement";
+import { makeJob, makeWorkerOutcomes } from "@/test/fixtures";
+import { finalizeLibraryProcessingJob } from "../settlement";
 
+// The claim-time progress the job row carried; events must not echo it.
 const ENRICHMENT_PROGRESS = { done: 10, total: 20, succeeded: 8, failed: 2 };
+const outcomes = makeWorkerOutcomes();
 
-describe("finalizeEnrichmentJob", () => {
+describe("finalizeLibraryProcessingJob: enrichment", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
 		beginMock.mockImplementation(async (cb) => cb(txMock));
 	});
 
-	it("writes enrichment_completed account event with correct payload", async () => {
+	it("writes enrichment_completed with the run's counts, not the claim-time progress", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeEnrichmentJob(job, "completed", "completed");
+		const result = await finalizeLibraryProcessingJob(
+			job,
+			outcomes.enrichmentCompleted,
+		);
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -48,18 +50,16 @@ describe("finalizeEnrichmentJob", () => {
 			type: "enrichment_completed",
 			payload: {
 				jobId: "job-1",
-				counts: { done: 10, total: 20, succeeded: 8, failed: 2 },
+				counts: { done: 18, total: 20, succeeded: 16, failed: 2 },
 			},
 		});
 	});
 
-	it("writes enrichment_stopped account event with reason", async () => {
+	it("writes enrichment_stopped(failed) for a failed run", async () => {
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeEnrichmentJob(
+		const result = await finalizeLibraryProcessingJob(
 			job,
-			"failed",
-			"user_cancelled",
-			"user aborted",
+			outcomes.enrichmentFailed,
 		);
 
 		expect(result.isOk()).toBe(true);
@@ -68,8 +68,8 @@ describe("finalizeEnrichmentJob", () => {
 			type: "enrichment_stopped",
 			payload: {
 				jobId: "job-1",
-				reason: "user_cancelled",
-				counts: { done: 10, total: 20, succeeded: 8, failed: 2 },
+				reason: "failed",
+				counts: { done: 0, total: 0, succeeded: 0, failed: 0 },
 			},
 		});
 	});
@@ -79,7 +79,10 @@ describe("finalizeEnrichmentJob", () => {
 		txMock.mockRejectedValueOnce(new Error("Update failed"));
 
 		const job = makeJob({ progress: ENRICHMENT_PROGRESS });
-		const result = await finalizeEnrichmentJob(job, "completed", "completed");
+		const result = await finalizeLibraryProcessingJob(
+			job,
+			outcomes.enrichmentCompleted,
+		);
 
 		expect(result.isErr()).toBe(true);
 		if (!result.isOk()) {
@@ -92,7 +95,7 @@ describe("finalizeEnrichmentJob", () => {
 	});
 });
 
-describe("finalizeMatchSnapshotRefreshJob", () => {
+describe("finalizeLibraryProcessingJob: match snapshot refresh", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		txMock.mockResolvedValue(WON_FENCE);
@@ -102,11 +105,9 @@ describe("finalizeMatchSnapshotRefreshJob", () => {
 	it("writes published events for both orientations with the snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeMatchSnapshotRefreshJob(
+		const result = await finalizeLibraryProcessingJob(
 			job,
-			"completed",
-			"published",
-			"snap-1",
+			outcomes.refreshPublished,
 		);
 
 		expect(result.isOk()).toBe(true);
@@ -125,12 +126,10 @@ describe("finalizeMatchSnapshotRefreshJob", () => {
 	it("writes active_jobs_changed when a published refresh no-ops", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeMatchSnapshotRefreshJob(
-			job,
-			"completed",
-			"published",
-			null,
-		);
+		const result = await finalizeLibraryProcessingJob(job, {
+			...outcomes.refreshPublished,
+			snapshotId: null,
+		});
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {
@@ -143,11 +142,9 @@ describe("finalizeMatchSnapshotRefreshJob", () => {
 	it("writes active_jobs_changed when a refresh is superseded", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeMatchSnapshotRefreshJob(
+		const result = await finalizeLibraryProcessingJob(
 			job,
-			"completed",
-			"superseded",
-			null,
+			outcomes.refreshSuperseded,
 		);
 
 		expect(result.isOk()).toBe(true);
@@ -161,13 +158,10 @@ describe("finalizeMatchSnapshotRefreshJob", () => {
 	it("writes a failure event that tolerates null orientation and snapshot id", async () => {
 		const job = makeJob({ type: "match_snapshot_refresh" });
 
-		const result = await finalizeMatchSnapshotRefreshJob(
-			job,
-			"failed",
-			"failed",
-			null,
-			"match snapshot refresh crashed during publish",
-		);
+		const result = await finalizeLibraryProcessingJob(job, {
+			...outcomes.refreshFailed,
+			error: "match snapshot refresh crashed during publish",
+		});
 
 		expect(result.isOk()).toBe(true);
 		expect(writeAccountEvent).toHaveBeenCalledWith(txMock, {

@@ -7,6 +7,7 @@ import type {
 	ReadMatchDeckCardRpcResult,
 } from "@/lib/domains/taste/match-review-queue/deck-read-queries";
 import type { Job } from "@/lib/platform/jobs/repository";
+import type { WorkerOutcome } from "@/lib/workflows/library-processing/worker-outcome";
 import type { SpotifyPlaylistDTO } from "@/lib/workflows/spotify-sync/types";
 
 export const TEST_ACCOUNT = {
@@ -344,4 +345,56 @@ export function activeDeckRpc(
 			next: null,
 		},
 	};
+}
+
+/** One run ending per WorkerOutcome member, for the given job. */
+export function makeWorkerOutcomes(
+	ids: { jobId: string; accountId: string } = {
+		jobId: "job-1",
+		accountId: "acct-1",
+	},
+) {
+	return {
+		enrichmentCompleted: {
+			...ids,
+			workflow: "enrichment",
+			status: "completed",
+			batchSequence: 2,
+			requestSatisfied: false,
+			newCandidatesAvailable: true,
+			counts: { ready: 5, done: 18, total: 20, succeeded: 16, failed: 2 },
+		},
+		enrichmentBlocked: {
+			...ids,
+			workflow: "enrichment",
+			status: "blocked",
+			batchSequence: 3,
+			counts: { ready: 1, done: 0, total: 4, succeeded: 0, failed: 0 },
+		},
+		enrichmentFailed: {
+			...ids,
+			workflow: "enrichment",
+			status: "failed",
+			error: "provider down",
+		},
+		refreshPublished: {
+			...ids,
+			workflow: "match_snapshot_refresh",
+			status: "published",
+			published: true,
+			isEmpty: false,
+			snapshotId: "snap-1",
+		},
+		refreshSuperseded: {
+			...ids,
+			workflow: "match_snapshot_refresh",
+			status: "superseded",
+		},
+		refreshFailed: {
+			...ids,
+			workflow: "match_snapshot_refresh",
+			status: "failed",
+			error: "snapshot exploded",
+		},
+	} satisfies Record<string, WorkerOutcome>;
 }
