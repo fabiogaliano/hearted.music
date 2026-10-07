@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { GOLD_SONG_DETAILS } from "@/features/liked-songs/components/song-detail-panel/song-detail-data";
-import { SongReadSchema } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import {
+	decodeStoredAnalysis,
+	SongReadSchema,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 const baseRead = GOLD_SONG_DETAILS[0].read;
 
@@ -69,5 +72,33 @@ describe("SongReadSchema", () => {
 
 		const { texture: _omitted, ...withoutKey } = baseRead;
 		expect(SongReadSchema.safeParse(withoutKey).success).toBe(false);
+	});
+});
+
+describe("decodeStoredAnalysis", () => {
+	it("keeps the stored audio features beside a lyrical read, outside the read itself", () => {
+		const decoded = decodeStoredAnalysis({
+			...baseRead,
+			audio_features: { tempo: 120, energy: 0.5, valence: null },
+		});
+
+		expect(decoded).toEqual({
+			kind: "lyrical",
+			read: baseRead,
+			audioFeatures: { tempo: 120, energy: 0.5, valence: null },
+		});
+	});
+
+	it("decodes a blob matching neither read to none, without losing its audio features", () => {
+		const decoded = decodeStoredAnalysis({
+			headline: "half an instrumental read",
+			themes: [],
+			audio_features: { tempo: 90, energy: 0.2, valence: 0.7 },
+		});
+
+		expect(decoded).toEqual({
+			kind: "none",
+			audioFeatures: { tempo: 90, energy: 0.2, valence: 0.7 },
+		});
 	});
 });

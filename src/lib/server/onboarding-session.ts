@@ -9,7 +9,7 @@
 import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import { decodeStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type {
 	OnboardingAuthPayload,
 	OnboardingSession,
@@ -191,7 +191,7 @@ export async function loadWalkthroughSong(
 		analysis: analysisRow
 			? {
 					id: analysisRow.id,
-					content: analysisRow.analysis as AnalysisContent,
+					content: decodeStoredAnalysis(analysisRow.analysis),
 					model: analysisRow.model,
 					createdAt: analysisRow.created_at,
 				}

@@ -1,9 +1,9 @@
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import type { StoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { ThemeColor } from "@/lib/theme/types";
 
 export type WalkthroughSongAnalysis = {
 	id: string;
-	content: AnalysisContent;
+	content: StoredAnalysis;
 	model: string;
 	createdAt: string | null;
 };

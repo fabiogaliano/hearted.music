@@ -5,7 +5,7 @@
  */
 
 import type { SongDisplayState } from "@/lib/domains/billing/state";
-import type { AnalysisContent } from "@/lib/domains/enrichment/content-analysis/analysis-content";
+import type { StoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 
 // Re-export the API types for convenience
 export type MatchingStatus =
@@ -45,7 +45,7 @@ export interface LikedSong {
 interface SongAnalysis {
 	id: string;
 	track_id: string;
-	analysis: AnalysisContent;
+	analysis: StoredAnalysis;
 	model_name: string;
 	version: number;
 	created_at: string | null;
