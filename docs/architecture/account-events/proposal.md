@@ -464,7 +464,7 @@ Emit from the worker boundary where the outcome is known.
 
 Primary producers:
 
-- `src/lib/workflows/library-processing/runner.ts` or the helper layer it already uses for `enrichment_completed` / `enrichment_stopped`
+- `src/worker/library-processing-runner.ts` or the helper layer it already uses for `enrichment_completed` / `enrichment_stopped`
 - `src/worker/poll.ts` if the final job-settled boundary is easier there
 
 Needed outputs:

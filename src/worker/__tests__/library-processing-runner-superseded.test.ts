@@ -30,24 +30,23 @@ vi.mock("@/worker/job-failure-reporting", () => ({
 
 const applyLibraryProcessingChangeMock = vi.fn();
 
-vi.mock("../service", () => ({
+vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: (...args: unknown[]) =>
 		applyLibraryProcessingChangeMock(...args),
 }));
 
 import { captureException } from "@sentry/bun";
+import { settleMatchSnapshotRefreshJobTerminal } from "@/lib/workflows/library-processing/settlement";
 import { makeJob } from "@/test/fixtures";
 
-import { settleMatchSnapshotRefreshJobTerminal } from "../settlement";
-
-vi.mock("../settlement", () => ({
+vi.mock("@/lib/workflows/library-processing/settlement", () => ({
 	settleMatchSnapshotRefreshJobTerminal: vi.fn(),
 	settleEnrichmentJobTerminal: vi.fn(),
 }));
 
 import { executeMatchSnapshotRefreshJob } from "@/worker/execute";
 import { captureWorkerJobFailure } from "@/worker/job-failure-reporting";
-import { runClaimedJob } from "../runner";
+import { runClaimedJob } from "../library-processing-runner";
 
 // A lease the heartbeat never reports lost.
 const LIVE_LEASE = new AbortController().signal;

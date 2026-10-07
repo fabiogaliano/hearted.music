@@ -2,8 +2,8 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveAccountLabel } from "@/lib/observability/account-label";
 import { claimLibraryProcessingJob } from "@/lib/platform/jobs/library-processing-queue";
-import { runClaimedJob } from "@/lib/workflows/library-processing/runner";
 import { makeJob } from "@/test/fixtures";
+import { runClaimedJob } from "@/worker/library-processing-runner";
 import { claimAndDispatchLibraryProcessingJobs } from "../poll";
 
 vi.mock("@/lib/platform/jobs/library-processing-queue", () => ({
@@ -19,7 +19,7 @@ vi.mock("@/lib/observability/logger", () => ({
 		error: vi.fn(),
 	},
 }));
-vi.mock("@/lib/workflows/library-processing/runner", () => ({
+vi.mock("@/worker/library-processing-runner", () => ({
 	runClaimedJob: vi.fn(),
 }));
 vi.mock("../config", () => ({
