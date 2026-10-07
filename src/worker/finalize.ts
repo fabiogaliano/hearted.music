@@ -2,14 +2,16 @@ import { Result } from "better-result";
 import postgres from "postgres";
 import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
-import type { Job, JobTransition } from "@/lib/platform/jobs/repository";
+import type { Job } from "@/lib/platform/jobs/repository";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
+import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
 import {
 	accountEventsOf,
 	finalErrorOf,
 	finalStatusOf,
+	measurementOf,
 	type WorkerOutcome,
 } from "@/lib/workflows/library-processing/worker-outcome";
 
@@ -78,15 +80,73 @@ async function fenceTerminal(
 	return rows.length > 0;
 }
 
+export type FinalizeTransition = "applied" | "lease_lost";
+
 /**
- * Ends this claim's job with `outcome`: the fenced terminal status and the
- * outcome's account events commit together, so no event is ever emitted for
- * a run another claim owns.
+ * Ends this claim's job with `outcome` in one transaction: the fenced terminal
+ * status, the execution measurement and the account events commit together,
+ * so a run is either fully recorded or not at all, and nothing is recorded for
+ * a run another claim owns ("lease_lost").
+ *
+ * A completed run's work is already done, so its finalize is retried through
+ * transient errors. A failed run gets one attempt; if it misses, the stale
+ * sweep ends the job instead.
  */
 export async function finalizeJob(
 	job: Job,
 	outcome: WorkerOutcome,
-): Promise<Result<JobTransition, DbError>> {
+): Promise<Result<FinalizeTransition, DbError>> {
+	const status = finalStatusOf(outcome);
+	const error = finalErrorOf(outcome);
+
+	let anAttemptErrored = false;
+	const result = await withRetry(
+		async () => {
+			const attempt = await finalizeOnce(job, outcome);
+			if (Result.isError(attempt)) anAttemptErrored = true;
+			return attempt;
+		},
+		{
+			maxRetries: status === "completed" ? 3 : 0,
+			baseDelayMs: 200,
+			isRetryable: (e) => e instanceof DatabaseError,
+		},
+	);
+	if (
+		!anAttemptErrored ||
+		(Result.isOk(result) && result.value === "applied")
+	) {
+		return result;
+	}
+
+	// An errored attempt can still have committed with only its reply lost;
+	// the next attempt then loses the fence to this claim's own write. The row
+	// tells them apart: only this claim's finalize leaves its attempts with this
+	// status and error text (a dead-letter writes its own error).
+	try {
+		const [row] = await sql<
+			{ status: string; attempts: number; error: string | null }[]
+		>`SELECT status, attempts, error FROM job WHERE id = ${job.id}`;
+		const committed =
+			row !== undefined &&
+			row.status === status &&
+			row.attempts === job.attempts &&
+			row.error === error;
+		return committed ? Result.ok("applied") : result;
+	} catch (readError) {
+		return Result.err(
+			new DatabaseError({
+				code: "finalize_failed",
+				message: errorMessage(readError),
+			}),
+		);
+	}
+}
+
+async function finalizeOnce(
+	job: Job,
+	outcome: WorkerOutcome,
+): Promise<Result<FinalizeTransition, DbError>> {
 	try {
 		const transition = await sql.begin(async (tx) => {
 			if (
@@ -97,7 +157,7 @@ export async function finalizeJob(
 					finalErrorOf(outcome),
 				))
 			) {
-				return "superseded" as const;
+				return "lease_lost" as const;
 			}
 
 			if (outcome.workflow === "match_snapshot_refresh") {
@@ -134,6 +194,19 @@ export async function finalizeJob(
 					`;
 				}
 			}
+
+			const measurement = measurementOf(outcome);
+			await tx`
+				INSERT INTO job_execution_measurement (
+					job_id, account_id, workflow, queue_priority, attempt_number,
+					queued_at, started_at, finished_at, outcome, details
+				) VALUES (
+					${measurement.job_id}, ${measurement.account_id}, ${measurement.workflow},
+					${job.queue_priority}, ${job.attempts}, ${job.created_at},
+					${job.started_at}, now(), ${measurement.outcome},
+					${tx.json(measurement.details)}
+				)
+			`;
 
 			for (const event of accountEventsOf(outcome)) {
 				await writeAccountEvent(tx, event);

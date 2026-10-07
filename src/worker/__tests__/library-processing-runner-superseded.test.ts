@@ -126,19 +126,6 @@ describe("runClaimedJob — superseded match_snapshot_refresh", () => {
 		expect(changeArg?.kind).not.toBe("match_snapshot_published");
 	});
 
-	it("writes measurement with superseded outcome", async () => {
-		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
-			SUPERSEDED_EXEC_RESULT,
-		);
-		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
-
-		await runClaimedJob(supersedableRefreshJob, "@test", LIVE_LEASE);
-
-		expect(recordJobExecutionMeasurementMock).toHaveBeenCalledWith(
-			expect.objectContaining({ outcome: "superseded" }),
-		);
-	});
-
 	it("does not call captureWorkerJobFailure or captureException when superseded", async () => {
 		vi.mocked(executeMatchSnapshotRefreshJob).mockResolvedValue(
 			SUPERSEDED_EXEC_RESULT,

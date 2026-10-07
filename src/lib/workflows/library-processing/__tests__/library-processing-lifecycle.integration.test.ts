@@ -20,7 +20,15 @@
 
 import { Result } from "better-result";
 import postgres from "postgres";
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import {
 	claimLibraryProcessingJob,
 	markDeadLibraryProcessingJobs,
@@ -42,6 +50,30 @@ import {
 	persistLibraryProcessingState,
 	swapActiveJobRef,
 } from "../queries";
+
+// The real client, except that a transaction can be made to commit and then
+// throw, as when the connection drops before the COMMIT reply arrives.
+const replyLoss = vi.hoisted(() => ({ nextBegin: false }));
+vi.mock("postgres", async (importOriginal) => {
+	const real = (await importOriginal<{ default: typeof postgres }>()).default;
+	const connect = (...args: Parameters<typeof real>) => {
+		const client = real(...args);
+		return new Proxy(client, {
+			get(target, prop, receiver) {
+				if (prop !== "begin") return Reflect.get(target, prop, receiver);
+				return async (...beginArgs: Parameters<typeof target.begin>) => {
+					const committed = await target.begin(...beginArgs);
+					if (replyLoss.nextBegin) {
+						replyLoss.nextBegin = false;
+						throw new Error("connection reset after COMMIT");
+					}
+					return committed;
+				};
+			},
+		});
+	};
+	return { default: connect };
+});
 
 function outcomesFor(job: Job) {
 	return makeWorkerOutcomes({ jobId: job.id, accountId: job.account_id });
@@ -143,6 +175,13 @@ async function eventTypes(): Promise<string[]> {
 	return rows.map((r) => r.type);
 }
 
+async function measurementOutcomes(jobId: string): Promise<string[]> {
+	const rows = await db()<{ outcome: string }[]>`
+    SELECT outcome FROM job_execution_measurement WHERE job_id = ${jobId} ORDER BY created_at
+  `;
+	return rows.map((r) => r.outcome);
+}
+
 /** First run claims, stalls past the threshold, is swept, and a second worker reclaims. */
 async function sweepAndReclaim(jobId: string): Promise<{
 	stale: Job;
@@ -193,6 +232,23 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		expect(done.status).toBe("completed");
 		expect(done.completed_is_null).toBe(false);
 		expect(await eventTypes()).toEqual(["enrichment_completed"]);
+		expect(await measurementOutcomes(jobId)).toEqual(["completed"]);
+	});
+
+	it("regression: a committed finalize whose reply was lost must report applied, not lease_lost", async () => {
+		const jobId = await seedPendingJob("enrichment");
+		const job = await claim();
+		replyLoss.nextBegin = true;
+
+		const finalized = await finalizeJob(
+			job,
+			outcomesFor(job).enrichmentCompleted,
+		);
+
+		expect(finalized).toHaveOkValue("applied");
+		expect((await readJob(jobId)).status).toBe("completed");
+		expect(await eventTypes()).toEqual(["enrichment_completed"]);
+		expect(await measurementOutcomes(jobId)).toEqual(["completed"]);
 	});
 
 	it("a job whose available_at is in the future is not claimable", async () => {
@@ -261,7 +317,7 @@ describe.skipIf(!IS_LOCAL)("stale sweep and dead-letter", () => {
 		const late = await finalizeJob(job, outcomesFor(job).enrichmentCompleted);
 		expect((await readJob(jobId)).status).toBe("failed");
 		expect(await eventTypes()).toEqual([]);
-		expect(late).toHaveOkValue("superseded");
+		expect(late).toHaveOkValue("lease_lost");
 	});
 });
 
@@ -281,7 +337,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(afterStale.attempts).toBe(2);
 			expect(afterStale.completed_is_null).toBe(true);
 			expect(await eventTypes()).toEqual([]);
-			expect(late).toHaveOkValue("superseded");
+			expect(late).toHaveOkValue("lease_lost");
 
 			expect(
 				await finalizeJob(current, outcomesFor(current).enrichmentCompleted),
@@ -313,7 +369,7 @@ describe.skipIf(!IS_LOCAL)(
 			expect(state?.active).toBe(jobId);
 			expect(state?.settled_is_null).toBe(true);
 			expect(await eventTypes()).toEqual([]);
-			expect(late).toHaveOkValue("superseded");
+			expect(late).toHaveOkValue("lease_lost");
 		});
 
 		it("a stale worker's heartbeat cannot keep a dead reclaiming worker's lease alive (regression: id-only heartbeat masked the new owner's death from the sweep)", async () => {

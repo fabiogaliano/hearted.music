@@ -21,8 +21,6 @@ import {
 	enrichmentRunOutcome,
 	finalStatusOf,
 	matchSnapshotRefreshRunOutcome,
-	measurementOf,
-	type OutcomeMeasurement,
 	type WorkerOutcome,
 } from "@/lib/workflows/library-processing/worker-outcome";
 import type { MatchSnapshotRefreshExecuteResult } from "@/lib/workflows/match-snapshot-refresh/types";
@@ -78,13 +76,6 @@ interface RunContext {
 	workflow: LibraryProcessingWorkflow;
 }
 
-// The finalize is fenced on status + attempts, so retrying it is safe.
-const FINALIZE_RETRY: RetryOptions<DbError> = {
-	maxRetries: 3,
-	baseDelayMs: 200,
-	isRetryable: (error) => error instanceof DatabaseError,
-};
-
 /**
  * `leaseLost` is the heartbeat's signal that this claim was taken over; the
  * run checks it before finalizing so a stale worker stops without reporting,
@@ -118,11 +109,7 @@ async function runEnrichmentJob(
 	}
 	if (leaseLost.aborted) return leaseLostOutcome(ctx);
 
-	const recorded = await recordWorkerOutcome(
-		ctx,
-		startedAt,
-		enrichmentRunOutcome(result),
-	);
+	const recorded = await recordWorkerOutcome(ctx, enrichmentRunOutcome(result));
 
 	if (recorded.status === "completed" && result.newCandidatesAvailable) {
 		// Event 3: new candidate songs are ready for snapshot matching.
@@ -186,11 +173,7 @@ async function runMatchSnapshotRefreshJob(
 		return leaseLostOutcome(ctx);
 	}
 
-	return recordWorkerOutcome(
-		ctx,
-		startedAt,
-		matchSnapshotRefreshRunOutcome(result),
-	);
+	return recordWorkerOutcome(ctx, matchSnapshotRefreshRunOutcome(result));
 }
 
 // App-thrown errors consume the same retry budget as worker crashes: requeue
@@ -214,17 +197,11 @@ async function recordRunError(
 	});
 
 	if (await tryRequeueForRetry(ctx, message)) {
-		await writeMeasurement(ctx, startedAt, {
-			job_id: job.id,
-			account_id: job.account_id,
-			workflow,
-			outcome: "error",
-			details: { retrying: true },
-		});
+		await writeRetryMeasurement(ctx, startedAt);
 		return { status: "retrying", workflow, error: message };
 	}
 
-	return recordWorkerOutcome(ctx, startedAt, {
+	return recordWorkerOutcome(ctx, {
 		jobId: job.id,
 		accountId: job.account_id,
 		workflow,
@@ -255,41 +232,33 @@ async function tryRequeueForRetry(
 }
 
 /**
- * Finalizes the job with `outcome`, then records it and hands its change to
- * library-processing. A completed run is retried until it finalizes: the
- * work is done and only the bookkeeping is owed. A failed run gets a single
- * attempt; if it misses, the stale sweep ends the job instead.
+ * Finalizes the job with `outcome` (status, measurement and events in one
+ * transaction), then hands its change to library-processing. A completed run
+ * that still cannot finalize is left running for the stale sweep; a failed
+ * run's change is applied even when its finalize missed, so the workflow does
+ * not wait on the sweep to drop its active ref.
  */
 async function recordWorkerOutcome(
 	ctx: RunContext,
-	startedAt: string,
 	outcome: WorkerOutcome,
 ): Promise<RunJobOutcome> {
 	const { job, actor, workflow } = ctx;
-	const finalStatus = finalStatusOf(outcome);
 
-	if (finalStatus === "completed") {
-		const finalized = await withRetry(
-			() => finalizeJob(job, outcome),
-			FINALIZE_RETRY,
-		);
-		if (Result.isError(finalized)) return finalizeFailed(ctx, finalized.error);
-		if (finalized.value === "superseded") return leaseLostOutcome(ctx);
-	} else {
-		const finalized = await finalizeJob(job, outcome);
-		if (Result.isError(finalized)) {
-			log.error("finalize-failed-error", {
-				actor,
-				jobId: job.id,
-				accountId: job.account_id,
-				error: finalized.error.message,
-			});
-		} else if (finalized.value === "superseded") {
-			return leaseLostOutcome(ctx);
+	const finalized = await finalizeJob(job, outcome);
+	if (Result.isError(finalized)) {
+		if (finalStatusOf(outcome) === "completed") {
+			return finalizeFailed(ctx, finalized.error);
 		}
+		log.error("finalize-failed-error", {
+			actor,
+			jobId: job.id,
+			accountId: job.account_id,
+			error: finalized.error.message,
+		});
+	} else if (finalized.value === "lease_lost") {
+		return leaseLostOutcome(ctx);
 	}
 
-	await writeMeasurement(ctx, startedAt, measurementOf(outcome));
 	const settlement = await settleLibraryProcessing(ctx, changeOf(outcome));
 
 	if (outcome.status === "failed") {
@@ -395,24 +364,25 @@ async function settleLibraryProcessing(
 	}
 }
 
-async function writeMeasurement(
+// A requeued attempt is not an ending, so it is measured outside finalizeJob;
+// workerOutcomeFromMeasurement reads this row as no outcome.
+async function writeRetryMeasurement(
 	ctx: RunContext,
 	startedAt: string,
-	measurement: OutcomeMeasurement,
 ): Promise<void> {
 	const { job, actor } = ctx;
 	try {
 		const result = await recordJobExecutionMeasurement({
-			jobId: measurement.job_id,
-			accountId: measurement.account_id,
+			jobId: job.id,
+			accountId: job.account_id,
 			workflow: ctx.workflow,
 			queuePriority: job.queue_priority ?? null,
 			attemptNumber: job.attempts,
 			queuedAt: job.created_at,
 			startedAt,
 			finishedAt: new Date().toISOString(),
-			outcome: measurement.outcome,
-			details: measurement.details,
+			outcome: "error",
+			details: { retrying: true },
 		});
 		if (Result.isError(result)) {
 			log.warn("measurement-write-failed", {

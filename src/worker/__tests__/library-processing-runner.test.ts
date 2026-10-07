@@ -330,7 +330,7 @@ describe("runClaimedJob", () => {
 
 		it.each(cases)("$name", async ({ job, arrange }) => {
 			arrange();
-			vi.mocked(finalizeJob).mockResolvedValue(Result.ok("superseded"));
+			vi.mocked(finalizeJob).mockResolvedValue(Result.ok("lease_lost"));
 
 			const outcome = await runClaimedJob(job, "@test", LIVE_LEASE);
 
@@ -403,12 +403,12 @@ describe("runClaimedJob", () => {
 		});
 	});
 
-	describe("measurement-before-apply ordering", () => {
-		it("writes measurement before applying library-processing change on success", async () => {
+	describe("finalize (job row, measurement, events) before apply ordering", () => {
+		it("finalizes before applying the library-processing change on success", async () => {
 			const callOrder: string[] = [];
-			recordJobExecutionMeasurementMock.mockImplementation(async () => {
-				callOrder.push("measurement");
-				return Result.ok(undefined);
+			vi.mocked(finalizeJob).mockImplementation(async () => {
+				callOrder.push("finalize");
+				return Result.ok("applied");
 			});
 			applyLibraryProcessingChangeMock.mockImplementation(async () => {
 				callOrder.push("apply");
@@ -419,14 +419,14 @@ describe("runClaimedJob", () => {
 
 			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
-			expect(callOrder).toEqual(["measurement", "apply"]);
+			expect(callOrder).toEqual(["finalize", "apply"]);
 		});
 
-		it("writes measurement before applying library-processing change on failure", async () => {
+		it("finalizes before applying the library-processing change on failure", async () => {
 			const callOrder: string[] = [];
-			recordJobExecutionMeasurementMock.mockImplementation(async () => {
-				callOrder.push("measurement");
-				return Result.ok(undefined);
+			vi.mocked(finalizeJob).mockImplementation(async () => {
+				callOrder.push("finalize");
+				return Result.ok("applied");
 			});
 			applyLibraryProcessingChangeMock.mockImplementation(async () => {
 				callOrder.push("apply");
@@ -439,14 +439,14 @@ describe("runClaimedJob", () => {
 
 			await runClaimedJob(makeJob(), "@test", LIVE_LEASE);
 
-			expect(callOrder).toEqual(["measurement", "apply"]);
+			expect(callOrder).toEqual(["finalize", "apply"]);
 		});
 
-		it("writes measurement before applying change for match_snapshot_refresh", async () => {
+		it("finalizes before applying the change for match_snapshot_refresh", async () => {
 			const callOrder: string[] = [];
-			recordJobExecutionMeasurementMock.mockImplementation(async () => {
-				callOrder.push("measurement");
-				return Result.ok(undefined);
+			vi.mocked(finalizeJob).mockImplementation(async () => {
+				callOrder.push("finalize");
+				return Result.ok("applied");
 			});
 			applyLibraryProcessingChangeMock.mockImplementation(async () => {
 				callOrder.push("apply");
@@ -468,7 +468,7 @@ describe("runClaimedJob", () => {
 				LIVE_LEASE,
 			);
 
-			expect(callOrder).toEqual(["measurement", "apply"]);
+			expect(callOrder).toEqual(["finalize", "apply"]);
 		});
 	});
 
@@ -478,29 +478,7 @@ describe("runClaimedJob", () => {
 			message: "connection reset",
 		});
 
-		it("regression: retries the completed settle instead of requeueing an already-executed job", async () => {
-			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-				Result.ok(true),
-			);
-			vi.mocked(finalizeJob)
-				.mockResolvedValueOnce(Result.err(settleError))
-				.mockResolvedValueOnce(Result.ok("applied"));
-
-			const promise = runClaimedJob(
-				makeJob({ attempts: 1, max_attempts: 3 }),
-				"@test",
-				LIVE_LEASE,
-			);
-			await vi.advanceTimersByTimeAsync(60_000);
-			const outcome = await promise;
-
-			expect(outcome.status).toBe("completed");
-			expect(finalizeJob).toHaveBeenCalledTimes(2);
-			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
-		});
-
-		it("leaves the job for the stale sweep when the settle keeps failing", async () => {
+		it("regression: a completed run whose finalize fails is left for the stale sweep, never requeued", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
 			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
 				Result.ok(true),
