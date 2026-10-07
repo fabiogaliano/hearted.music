@@ -202,9 +202,9 @@ async function buildSeedForSubject(
 
 /**
  * Builds one proposal for a single (account, orientation, snapshot, preset).
- * Exported for the Phase 3 request-path miss handler (match-deck-miss-path.ts),
- * which builds ONLY the current preset synchronously so a re-invoked
- * start_or_resume_match_deck hits a ready proposal for the exact same
+ * Exported for the request-path miss handler (buildFirstWindowAndPromote in
+ * deck-entry.ts), which builds ONLY the current preset synchronously so a
+ * re-invoked start_or_resume_match_deck hits a ready proposal for the exact same
  * visibility_config_hash (the hash is derived here from the SAME filters + nowMs
  * the caller passes to the RPC, so byte-identical keys are guaranteed). Behavior
  * is unchanged from the private version.

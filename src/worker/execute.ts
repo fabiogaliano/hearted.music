@@ -181,7 +181,8 @@ export async function executeMatchSnapshotRefreshJob(
 /**
  * Deck read model (plan §6, R2): a fresh published snapshot triggers proposal
  * building for BOTH orientations; each build_proposals handler then chains
- * append_sessions. Enqueued here at the worker boundary so the orchestrator
+ * append_sessions. A no-op refresh enqueues only the latest snapshot's builds
+ * that never produced a ready proposal. Enqueued here at the worker boundary so the orchestrator
  * stays side-effect free. Best-effort: the snapshot is already durable and the
  * read path self-heals on a proposal miss, so an enqueue failure must not fail
  * a completed match job.

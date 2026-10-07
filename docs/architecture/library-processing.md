@@ -210,8 +210,8 @@ One sync request emits one aggregated `library_synced` change. Rules:
 | `completed`, `requestSatisfied=false`, `newCandidatesAvailable=true` | Leave `enrichment` stale; update `activeJobId`; advance `matchSnapshotRefresh.requestedAt` if targets exist |
 | `completed`, `requestSatisfied=true`, `newCandidatesAvailable=false` | Set `enrichment.settledAt` to satisfied marker; clear `activeJobId`; do not invalidate refresh |
 | `completed`, `requestSatisfied=true`, `newCandidatesAvailable=true` | Set `enrichment.settledAt`; clear `activeJobId`; advance `matchSnapshotRefresh.requestedAt` if targets exist |
-| `stopped`, `reason=local_limit` | Do not advance `settledAt`; update `activeJobId`; leave workflow stale |
-| `stopped`, `reason=error` | Do not advance `settledAt`; update `activeJobId`; reconcile retry separately |
+| `stopped`, `reason=local_limit` | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring |
+| `stopped`, `reason=error` | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring (retry policy is not built yet) |
 | `stopped`, `reason=blocked` (chunk attempted nothing while work is owed) | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring, so a chunk that can make no progress does not hot-loop |
 
 ### Match Snapshot Refresh Outcomes
