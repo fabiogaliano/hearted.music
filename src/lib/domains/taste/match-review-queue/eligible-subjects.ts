@@ -10,6 +10,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
@@ -19,7 +20,6 @@ import {
 	type MatchResultRow,
 } from "@/lib/domains/taste/song-matching/queries";
 import type { DbError } from "@/lib/shared/errors/database";
-import { DatabaseError } from "@/lib/shared/errors/database";
 import { fetchSongsFilterMeta } from "./filter-metadata-queries";
 import { fetchOwnedPlaylistIds, fetchTargetPlaylistFilters } from "./queries";
 import { getOrderedUndecidedSubjects } from "./review-subject-selector";
@@ -118,9 +118,10 @@ export async function deriveProposalSubjects(
 		decisionsResult,
 	] = await Promise.all([
 		getNewItemIds(accountId, "song"),
-		createAdminSupabaseClient().rpc(
-			"select_entitled_data_enriched_liked_song_ids",
-			{ p_account_id: accountId },
+		readEntitledDataEnrichedSongIds(
+			createAdminSupabaseClient(),
+			accountId,
+			songIds,
 		),
 		fetchSongsFilterMeta(accountId, songIds),
 		fetchOwnedPlaylistIds(accountId, playlistIds),
@@ -133,22 +134,13 @@ export async function deriveProposalSubjects(
 	if (Result.isError(decisionsResult)) return decisionsResult;
 	// An entitlement RPC failure must NOT be read as "nothing is entitled" — that
 	// would build an empty proposal that then masks every valid match. Surface it.
-	if (entitledResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: entitledResult.error.code,
-				message: entitledResult.error.message,
-			}),
-		);
-	}
+	if (Result.isError(entitledResult)) return entitledResult;
 
 	const decidedPairs = new Set(
 		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
 	);
 	const newSongSet = new Set(newSongIdsResult.value);
-	const entitledSet = new Set<string>(
-		(entitledResult.data ?? []).map((r) => r.song_id),
-	);
+	const entitledSet = new Set<string>(entitledResult.value);
 
 	const { subjects, hiddenReviewItemCount } = deriveEligibleSubjects({
 		matchResults,
