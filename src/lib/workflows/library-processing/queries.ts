@@ -7,7 +7,10 @@ import {
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
 } from "@/lib/shared/utils/result-wrappers/supabase";
-import type { LibraryProcessingState } from "./types";
+import type {
+	LibraryProcessingState,
+	LibraryProcessingWorkflow,
+} from "./types";
 
 type StateRow =
 	import("@/lib/data/database.types").Tables<"library_processing_state">;
@@ -88,7 +91,7 @@ export async function findStatesWithoutEnrichmentActiveJob(): Promise<
 
 export type TerminalActiveRef = {
 	state: LibraryProcessingState;
-	workflow: "enrichment" | "match_snapshot_refresh";
+	workflow: LibraryProcessingWorkflow;
 	job: Job;
 };
 
@@ -176,7 +179,7 @@ export async function persistLibraryProcessingState(
  */
 export async function swapActiveJobRef(
 	accountId: string,
-	workflow: "enrichment" | "match_snapshot_refresh",
+	workflow: LibraryProcessingWorkflow,
 	from: string | null,
 	to: string | null,
 ): Promise<Result<boolean, DbError>> {
