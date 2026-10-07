@@ -1,5 +1,5 @@
 // Single exhaustive dispatcher for the extension's control-message vocabulary
-// (see shared/types.ts `ExtensionWireMessage`). Both front doors — the web
+// (see shared/extension-wire-protocol.ts `ExtensionWireMessage`). Both front doors — the web
 // app's `runtime.onMessageExternal` / app-bridge envelope, and the extension's
 // own `runtime.onMessage` (popup, content scripts) — funnel through
 // `dispatchExtensionMessage` so each message type has exactly one
@@ -11,13 +11,15 @@ import type {
 	ExtensionSyncBackendFailure,
 	ExtensionSyncRequestResult,
 } from "../../../shared/extension-sync-contract";
+import type {
+	ExtensionWireMessage,
+	SpotifyTokenPayload,
+} from "../../../shared/extension-wire-protocol";
 import { parseSpotifyCommand } from "../../../shared/spotify-command-protocol";
 import type { SyncState } from "../shared/storage";
 import type {
 	AccountsResponse,
-	ExtensionWireMessage,
 	HeartedAccountStatus,
-	SpotifyTokenPayload,
 	StatusResponse,
 	UserProfile,
 } from "../shared/types";

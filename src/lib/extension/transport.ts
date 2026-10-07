@@ -12,17 +12,16 @@
  * unaware of which path served them.
  */
 
-// Type-only — the extension's control-message vocabulary, kept in one place
-// (extensions/src/shared/types.ts) so the web-app transport and the
-// background dispatcher agree on the wire shape instead of the app
-// constructing untyped `Record<string, unknown>` literals.
-import type { ExtensionWireMessage } from "../../../extensions/src/shared/types";
 import {
 	type BridgeMessage,
 	isBridgeErrorResponse,
 	isBridgeMessage,
 	PAGE_SOURCE,
 } from "../../../shared/extension-bridge-protocol";
+// Type-only — the extension's control-message vocabulary, shared with the
+// background dispatcher so both agree on the wire shape instead of the app
+// constructing untyped `Record<string, unknown>` literals.
+import type { ExtensionWireMessage } from "../../../shared/extension-wire-protocol";
 
 const EXTENSION_ID =
 	typeof import.meta.env.VITE_CHROME_EXTENSION_ID === "string" &&

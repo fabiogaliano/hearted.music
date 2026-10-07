@@ -1,3 +1,4 @@
+import type { SpotifyTokenPayload } from "../../../shared/extension-wire-protocol";
 import { browser } from "../shared/browser";
 import {
 	addToPlaylist,
@@ -23,7 +24,6 @@ import type {
 	SpotifyCommandMap,
 	SpotifyCommandName,
 	SpotifyErrorCode,
-	SpotifyTokenPayload,
 } from "../shared/types";
 
 export type TokenProvider = {

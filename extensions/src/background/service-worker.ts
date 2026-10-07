@@ -17,6 +17,7 @@ import type {
 	ExtensionSyncDiagnosticPhase,
 	ExtensionSyncDiagnosticSummary,
 } from "../../../shared/extension-sync-diagnostics";
+import type { SpotifyTokenPayload } from "../../../shared/extension-wire-protocol";
 import { mapWithConcurrency } from "../../../src/lib/shared/utils/concurrency";
 import { browser } from "../shared/browser";
 import { DEFAULT_BACKEND_URL } from "../shared/constants";
@@ -40,7 +41,6 @@ import {
 import type {
 	HeartedAccountStatus,
 	HeartedIdentity,
-	SpotifyTokenPayload,
 	UserProfile,
 } from "../shared/types";
 import type { DispatcherDeps } from "./dispatcher";
