@@ -29,7 +29,7 @@ vi.mock("../config", () => ({
 		notifyBackedPollIntervalMs: 5000,
 	},
 }));
-vi.mock("../execute", () => ({
+vi.mock("../job-lease", () => ({
 	startHeartbeat: vi.fn(() => ({
 		stop: vi.fn(),
 		leaseLost: new AbortController().signal,

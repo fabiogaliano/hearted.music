@@ -1,13 +1,11 @@
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { updateHeartbeat } from "@/lib/platform/jobs/repository";
-import { DatabaseError } from "@/lib/shared/errors/database";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
 	MatchSnapshotRefreshOutcome,
 	MatchSnapshotRefreshResult,
 } from "@/lib/workflows/match-snapshot-refresh/types";
 import { makeJob } from "@/test/fixtures";
-import { executeMatchSnapshotRefreshJob, startHeartbeat } from "../execute";
+import { executeMatchSnapshotRefreshJob } from "../execute";
 
 // A lease the heartbeat never reports lost.
 const LIVE_LEASE = new AbortController().signal;
@@ -51,16 +49,8 @@ vi.mock("@/lib/workflows/enrichment-pipeline/orchestrator", () => ({
 	executeWorkerChunk: vi.fn(),
 }));
 
-vi.mock("@/lib/platform/jobs/repository", () => ({
-	updateHeartbeat: vi.fn(),
-}));
-
 vi.mock("@/lib/observability/logger", () => ({
 	log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}));
-
-vi.mock("../config", () => ({
-	workerConfig: { heartbeatIntervalMs: 1000 },
 }));
 
 vi.mock("../posthog-capture", () => ({
@@ -314,42 +304,5 @@ describe("executeMatchSnapshotRefreshJob", () => {
 		await executeMatchSnapshotRefreshJob(refreshJob, "acct-1", LIVE_LEASE);
 
 		expect(mockEnqueueDeckJob).not.toHaveBeenCalled();
-	});
-});
-
-describe("startHeartbeat", () => {
-	afterEach(() => {
-		vi.useRealTimers();
-	});
-
-	it("signals leaseLost once a renewal is superseded, and stops renewing", async () => {
-		vi.useFakeTimers();
-		vi.mocked(updateHeartbeat)
-			.mockResolvedValueOnce(Result.ok("applied"))
-			.mockResolvedValueOnce(Result.ok("superseded"));
-		const heartbeat = startHeartbeat(refreshJob);
-
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(heartbeat.leaseLost.aborted).toBe(false);
-
-		await vi.advanceTimersByTimeAsync(1000);
-		expect(heartbeat.leaseLost.aborted).toBe(true);
-
-		await vi.advanceTimersByTimeAsync(5000);
-		expect(updateHeartbeat).toHaveBeenCalledTimes(2);
-		heartbeat.stop();
-	});
-
-	it("keeps the lease on a failed renewal", async () => {
-		vi.useFakeTimers();
-		vi.mocked(updateHeartbeat).mockResolvedValue(
-			Result.err(new DatabaseError({ code: "ECONNRESET", message: "blip" })),
-		);
-		const heartbeat = startHeartbeat(refreshJob);
-
-		await vi.advanceTimersByTimeAsync(3000);
-
-		expect(heartbeat.leaseLost.aborted).toBe(false);
-		heartbeat.stop();
 	});
 });
