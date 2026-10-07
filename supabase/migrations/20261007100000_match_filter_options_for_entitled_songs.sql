@@ -1,4 +1,5 @@
--- Match-filter options aggregated over the matching-eligible population.
+-- Match-filter options for one account, aggregated over its matching-eligible
+-- population (the get_account_* family of per-account aggregates).
 --
 -- The filter-options server fn used to read the whole entitled song-id set and
 -- feed it back through three chunked PostgREST .in() reads (song languages,
@@ -14,7 +15,7 @@
 -- Additive only: select_entitled_data_enriched_liked_song_ids is unchanged.
 -- Backend-private: callable only through the service-role client.
 
-CREATE OR REPLACE FUNCTION get_match_filter_options(
+CREATE OR REPLACE FUNCTION get_account_match_filter_options(
   p_account_id UUID
 )
 RETURNS JSONB
@@ -87,8 +88,8 @@ AS $$
   );
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.get_match_filter_options(UUID)
+REVOKE EXECUTE ON FUNCTION public.get_account_match_filter_options(UUID)
   FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.get_match_filter_options(UUID)
+GRANT EXECUTE ON FUNCTION public.get_account_match_filter_options(UUID)
   TO service_role;

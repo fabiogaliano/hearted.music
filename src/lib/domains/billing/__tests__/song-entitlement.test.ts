@@ -9,7 +9,7 @@ vi.mock("@/lib/domains/billing/queries", () => ({
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { readBillingState } from "@/lib/domains/billing/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { applyEntitlementToSongs } from "../song-entitlement";
+import { unlockEntitledSongs } from "../song-entitlement";
 
 const mockedReadBillingState = vi.mocked(readBillingState);
 
@@ -45,14 +45,12 @@ beforeEach(() => {
 	vi.clearAllMocks();
 });
 
-describe("applyEntitlementToSongs", () => {
+describe("unlockEntitledSongs", () => {
 	it("leaves songs locked without any billing write when the account has no unlimited access", async () => {
 		billingWith("none");
 		const { client, rpc } = makeSupabase({});
 
-		const result = await applyEntitlementToSongs(client, "account-1", [
-			"song-1",
-		]);
+		const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
 		expect(result).toHaveOkValue({ kind: "left_locked" });
 		expect(rpc).not.toHaveBeenCalled();
@@ -68,11 +66,9 @@ describe("applyEntitlementToSongs", () => {
 				},
 			});
 
-			const result = await applyEntitlementToSongs(client, "account-1", [
-				"song-1",
-			]);
+			const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
-			expect(result).toHaveOkValue({ kind: "activated_unlimited" });
+			expect(result).toHaveOkValue({ kind: "unlocked_unlimited" });
 			expect(rpc).toHaveBeenCalledWith("activate_unlimited_songs", {
 				p_account_id: "account-1",
 				p_granted_stripe_subscription_id: "sub_123",
@@ -89,9 +85,7 @@ describe("applyEntitlementToSongs", () => {
 				},
 			});
 
-			const result = await applyEntitlementToSongs(client, "account-1", [
-				"song-1",
-			]);
+			const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
 			expect(result).toBeErr();
 			expect(Result.isError(result) && result.error.message).toMatch(
@@ -110,9 +104,7 @@ describe("applyEntitlementToSongs", () => {
 				rpcError: { code: "57014", message: "rpc timeout" },
 			});
 
-			const result = await applyEntitlementToSongs(client, "account-1", [
-				"song-1",
-			]);
+			const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
 			expect(result).toBeErr();
 			expect(Result.isError(result) && result.error.message).toMatch(
@@ -126,7 +118,7 @@ describe("applyEntitlementToSongs", () => {
 			billingWith("self_hosted");
 			const { client, rpc } = makeSupabase({});
 
-			const result = await applyEntitlementToSongs(client, "account-1", [
+			const result = await unlockEntitledSongs(client, "account-1", [
 				"song-1",
 				"song-2",
 			]);
@@ -145,9 +137,7 @@ describe("applyEntitlementToSongs", () => {
 				rpcError: { code: "23514", message: "rpc constraint violation" },
 			});
 
-			const result = await applyEntitlementToSongs(client, "account-1", [
-				"song-1",
-			]);
+			const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
 			expect(result).toBeErr();
 			expect(Result.isError(result) && result.error.message).toMatch(
@@ -164,9 +154,7 @@ describe("applyEntitlementToSongs", () => {
 		);
 		const { client, rpc } = makeSupabase({});
 
-		const result = await applyEntitlementToSongs(client, "account-1", [
-			"song-1",
-		]);
+		const result = await unlockEntitledSongs(client, "account-1", ["song-1"]);
 
 		expect(result).toBeErr();
 		expect(Result.isError(result) && result.error.message).toMatch(

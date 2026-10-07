@@ -4,11 +4,11 @@ import { readBillingState } from "@/lib/domains/billing/queries";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 
 /**
- * `activated_unlimited` already wrote `account_item_newness` inside the RPC;
+ * `unlocked_unlimited` already wrote `account_item_newness` inside the RPC;
  * the other two leave newness to the caller.
  */
 export type SongEntitlementOutcome =
-	| { kind: "activated_unlimited" }
+	| { kind: "unlocked_unlimited" }
 	| { kind: "unlocked_self_hosted" }
 	| { kind: "left_locked" };
 
@@ -71,7 +71,7 @@ async function activateUnlimitedSongs(
 		);
 	}
 
-	return Result.ok({ kind: "activated_unlimited" });
+	return Result.ok({ kind: "unlocked_unlimited" });
 }
 
 async function unlockSelfHostedSongs(
@@ -96,8 +96,8 @@ async function unlockSelfHostedSongs(
 	return Result.ok({ kind: "unlocked_self_hosted" });
 }
 
-/** Applies the account's current entitlement to newly enriched songs: unlimited subscription → activate; self-hosted → unlock without charge; otherwise leave locked. Owns the billing RPCs. */
-export async function applyEntitlementToSongs(
+/** Unlocks newly enriched songs under the account's current entitlement: unlimited subscription → the unlimited-activation RPC; self-hosted → unlock without charge; otherwise leave locked. Owns the billing RPCs. */
+export async function unlockEntitledSongs(
 	supabase: AdminSupabaseClient,
 	accountId: string,
 	songIds: string[],

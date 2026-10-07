@@ -2,7 +2,7 @@
  * Match-filter option aggregates over the matching-eligible population (the
  * set select_entitled_data_enriched_liked_song_ids returns), so option counts
  * and bounds stay aligned with what matching sees. The population and all
- * aggregation live in the get_match_filter_options RPC; no song-id set ever
+ * aggregation live in the get_account_match_filter_options RPC; no song-id set ever
  * leaves the database.
  */
 
@@ -43,6 +43,8 @@ export function readMatchFilterOptions(
 ): Promise<Result<MatchFilterOptionAggregates, DbError>> {
 	return fromSupabaseRpc(
 		MatchFilterOptionAggregatesSchema,
-		supabase.rpc("get_match_filter_options", { p_account_id: accountId }),
+		supabase.rpc("get_account_match_filter_options", {
+			p_account_id: accountId,
+		}),
 	);
 }
