@@ -182,9 +182,11 @@ const ENTITLED_PAGE_SIZE = 1_000;
  *
  * songIds scopes the check server-side to one batch; omitted, the full entitled
  * set is read. PostgREST caps every response at max_rows, so a single call
- * would silently truncate a large library: pages are read until one comes back
- * empty, which stays correct whatever the server's cap is, and the order keeps
- * pages disjoint.
+ * would silently truncate a large library: pages are read until a short one,
+ * and the order keeps pages disjoint. The page size must not exceed max_rows
+ * (1000, as chunked-write assumes), or a capped page would read as the last one.
+ * This runs on the active-jobs poll, so the common sub-1000 library costs one
+ * round trip, not a second empty-page probe.
  */
 export async function readEntitledDataEnrichedSongIds(
 	supabase: AdminSupabaseClient,
@@ -206,7 +208,7 @@ export async function readEntitledDataEnrichedSongIds(
 				new DatabaseError({ code: error.code, message: error.message }),
 			);
 		}
-		if (!data || data.length === 0) return Result.ok(entitled);
-		for (const row of data) entitled.push(row.song_id);
+		for (const row of data ?? []) entitled.push(row.song_id);
+		if (!data || data.length < ENTITLED_PAGE_SIZE) return Result.ok(entitled);
 	}
 }
