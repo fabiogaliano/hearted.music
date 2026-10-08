@@ -120,7 +120,7 @@ type LibraryProcessingChange =
       };
     }
   | { kind: "enrichment_completed"; accountId: string; jobId: string; requestSatisfied: boolean; newCandidatesAvailable: boolean }
-  | { kind: "enrichment_stopped"; accountId: string; jobId: string; reason: "local_limit" | "error" }
+  | { kind: "enrichment_stopped"; accountId: string; jobId: string; reason: "error" | "blocked" }
   | { kind: "match_snapshot_published"; accountId: string; jobId: string }
   | { kind: "match_snapshot_failed"; accountId: string; jobId: string };
 ```
@@ -210,7 +210,6 @@ One sync request emits one aggregated `library_synced` change. Rules:
 | `completed`, `requestSatisfied=false`, `newCandidatesAvailable=true` | Leave `enrichment` stale; update `activeJobId`; advance `matchSnapshotRefresh.requestedAt` if targets exist |
 | `completed`, `requestSatisfied=true`, `newCandidatesAvailable=false` | Set `enrichment.settledAt` to satisfied marker; clear `activeJobId`; do not invalidate refresh |
 | `completed`, `requestSatisfied=true`, `newCandidatesAvailable=true` | Set `enrichment.settledAt`; clear `activeJobId`; advance `matchSnapshotRefresh.requestedAt` if targets exist |
-| `stopped`, `reason=local_limit` | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring |
 | `stopped`, `reason=error` | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring (retry policy is not built yet) |
 | `stopped`, `reason=blocked` (chunk attempted nothing while work is owed) | Do not advance `settledAt`; clear `activeJobId`; leave stale without re-ensuring, so a chunk that can make no progress does not hot-loop |
 
@@ -249,7 +248,7 @@ On `enrichment_stopped` with `reason=error` or `match_snapshot_failed`: clear `a
 - whether the workflow is stale and another job should exist
 - whether target existence gates refresh invalidation
 
-The new model must distinguish enrichment success that satisfied the request marker vs. did not, `local_limit` stop, and `error` stop. The current ambiguous "completed" outcome from enrichment chaining must be removed.
+The new model must distinguish enrichment success that satisfied the request marker vs. did not, `error` stop, and `blocked` stop. The current ambiguous "completed" outcome from enrichment chaining must be removed.
 
 ---
 
@@ -403,7 +402,7 @@ Hard cut — no legacy compatibility layer, no dual source of truth, no in-fligh
 - [ ] Switch enrichment batch selection to DB-side selectors
 - [ ] Switch match-snapshot candidate loading to DB-side data-enrichment selector
 - [ ] Remove app-side giant exclusion-list construction from `batch.ts`
-- [ ] Make enrichment outcomes explicit (`requestSatisfied`, `newCandidatesAvailable`, `local_limit`, `error`)
+- [ ] Make enrichment outcomes explicit (`requestSatisfied`, `newCandidatesAvailable`, `error`, `blocked`)
 - [ ] Have worker outcomes call `applyLibraryProcessingChange(...)`
 - [ ] On successful completion, set `settledAt` to the request marker the job satisfied
 
@@ -437,13 +436,12 @@ Hard cut — no legacy compatibility layer, no dual source of truth, no in-fligh
 3. Liked-song additions can invalidate `matchSnapshotRefresh` immediately when targets exist — refresh candidates may already be available from shared cache.
 4. Enrichment should only re-invalidate `matchSnapshotRefresh` when `newCandidatesAvailable` is true.
 5. The scheduler, not source helpers, owns target-existence gates for refresh invalidation.
-6. `local_limit` is a local/testing tool, not product behavior.
-7. Name and description are profile-relevant target-side changes, aggregated into `profileTextChanged`.
-8. Image and song-count-only changes have no direct library-processing effect.
-9. Target-side correctness depends on exact track-membership changes, not summary fields.
-10. The current enrichment chunk progression is an execution strategy, not an architecture contract.
-11. Enrichment candidate selection should move to DB-side selectors that directly find songs still needing work.
-12. The data-enrichment selector must preserve current semantics by omitting the account-scoped `account_item_newness` requirement.
+6. Name and description are profile-relevant target-side changes, aggregated into `profileTextChanged`.
+7. Image and song-count-only changes have no direct library-processing effect.
+8. Target-side correctness depends on exact track-membership changes, not summary fields.
+9. The current enrichment chunk progression is an execution strategy, not an architecture contract.
+10. Enrichment candidate selection should move to DB-side selectors that directly find songs still needing work.
+11. The data-enrichment selector must preserve current semantics by omitting the account-scoped `account_item_newness` requirement.
 
 ---
 
@@ -455,7 +453,7 @@ Hard cut — no legacy compatibility layer, no dual source of truth, no in-fligh
 4. **Priority semantics becoming product-copy-coupled** — keep pricing-plan names out of scheduler state
 5. **Source changes getting broadened** — preserve exact processing-relevant changes; don't drift back to broad metadata buckets
 6. **Over-triggering refresh** — immediate refresh invalidation must stay tied to real cache-hit possibility
-7. **Leaving the batch selector bug alive** — do not ship the control-plane refactor while `batch.ts` still depends on giant app-side exclusion lists
+6. **Leaving the batch selector bug alive** — do not ship the control-plane refactor while `batch.ts` still depends on giant app-side exclusion lists
 
 ---
 

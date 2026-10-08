@@ -29,8 +29,8 @@ The system SHALL execute liked-song enrichment as queued background work claimed
 - **AND** it SHALL NOT directly chain another job or request refresh outside the library-processing control plane
 
 #### Scenario: Worker reports explicit enrichment stop outcomes
-- **WHEN** enrichment stops because of a local cap or an error
-- **THEN** the worker SHALL apply `enrichment_stopped` with `reason = local_limit | error`
+- **WHEN** enrichment stops because of an error or because a chunk can make no progress
+- **THEN** the worker SHALL apply `enrichment_stopped` with `reason = error | blocked`
 - **AND** it SHALL let library-processing decide whether more work is still owed
 
 #### Scenario: Request satisfaction comes from chunk completion state
