@@ -52,7 +52,7 @@ The system SHALL accept a typed `LibraryProcessingChange` union and apply it thr
 
 #### Scenario: Enrichment worker outcomes are explicit
 - **WHEN** an `enrichment` job finishes a pass
-- **THEN** the worker boundary SHALL emit either `enrichment_completed` with `requestSatisfied` and `newCandidatesAvailable` or `enrichment_stopped` with `reason = local_limit | error`
+- **THEN** the worker boundary SHALL emit either `enrichment_completed` with `requestSatisfied` and `newCandidatesAvailable` or `enrichment_stopped` with `reason = error | blocked`
 - **AND** it SHALL NOT collapse those outcomes into an ambiguous generic completion signal
 
 #### Scenario: Match snapshot worker outcomes are explicit
@@ -90,7 +90,7 @@ The system SHALL reconcile requested versus settled freshness and ensure the nee
 - **AND** it SHALL do so even if `enrichment.requestSatisfied = false` and more enrichment remains owed
 
 #### Scenario: Failures remain stale without immediate auto-reensure
-- **WHEN** `enrichment_stopped` with `reason = error` or `local_limit`, or `match_snapshot_failed`, is applied
+- **WHEN** `enrichment_stopped` with `reason = error` or `blocked`, or `match_snapshot_failed`, is applied
 - **THEN** reconciliation SHALL clear the corresponding `activeJobId` without advancing `settledAt`
 - **AND** it SHALL leave the workflow stale without immediately auto-reensuring another job in the same apply cycle
 

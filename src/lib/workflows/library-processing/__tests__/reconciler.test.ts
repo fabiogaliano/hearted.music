@@ -497,7 +497,7 @@ describe("reconcileLibraryProcessing", () => {
 			expect(effects).toHaveLength(0);
 		});
 
-		it("local_limit: clears activeJobId, no re-ensure", () => {
+		it("blocked: clears activeJobId, no re-ensure", () => {
 			const { state, effects } = reconcile(
 				makeState({
 					enrichment: {
@@ -510,7 +510,7 @@ describe("reconcileLibraryProcessing", () => {
 					kind: "enrichment_stopped",
 					accountId: "acct-1",
 					jobId: "job-1",
-					reason: "local_limit",
+					reason: "blocked",
 				},
 			);
 
