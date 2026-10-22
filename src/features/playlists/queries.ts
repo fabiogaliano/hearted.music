@@ -55,7 +55,8 @@ export function playlistTracksInfiniteQueryOptions(playlistId: string | null) {
 			}),
 		enabled: playlistId != null,
 		initialPageParam: undefined as number | undefined,
-		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+		// See likedSongsInfiniteQueryOptions: a bad page must not crash the route.
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
 		staleTime: 30 * 60_000,
 	});
 }
