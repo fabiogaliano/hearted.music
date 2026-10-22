@@ -219,12 +219,18 @@ function AuthenticatedLayout() {
 		</Suspense>
 	) : null;
 
-	const [bannerDismissed, setBannerDismissed] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return (
+	// Storage is read after hydration, not in the initializer: the server
+	// renders "not dismissed", and seeding the first client render from storage
+	// mismatched the SSR tree for every user who had dismissed the banner,
+	// forcing React to re-render the whole authenticated shell client-side.
+	const [bannerDismissed, setBannerDismissed] = useState(false);
+	useEffect(() => {
+		if (
 			window.sessionStorage.getItem(unverifiedBannerKey(identity.email)) === "1"
-		);
-	});
+		) {
+			setBannerDismissed(true);
+		}
+	}, [identity.email]);
 	const showBanner = !identity.emailVerified && !bannerDismissed;
 
 	function dismissBanner() {
@@ -354,10 +360,13 @@ function AuthenticatedShell({
 	// Temporary waitlist greeting. Dismiss is persisted to localStorage (the
 	// feature is short-lived, so we skip a schema migration); the query only
 	// runs for complete users who haven't dismissed it yet.
-	const [welcomeDismissed, setWelcomeDismissed] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return window.localStorage.getItem(waitlistWelcomeKey(accountId)) === "1";
-	});
+	// Read after hydration for the same reason as the unverified-email banner.
+	const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+	useEffect(() => {
+		if (window.localStorage.getItem(waitlistWelcomeKey(accountId)) === "1") {
+			setWelcomeDismissed(true);
+		}
+	}, [accountId]);
 	const { data: waitlistWelcome } = useQuery({
 		queryKey: billingKeys.waitlistWelcome,
 		queryFn: () => getWaitlistWelcome(),
