@@ -30,6 +30,10 @@ import {
 	DEFAULT_DRAFT_CONFIG,
 	playlistDraftPreviewQueryOptions,
 } from "./queries";
+import {
+	deriveStudioPreviewState,
+	type StudioPreviewState,
+} from "./studioPreviewState";
 
 const DEBOUNCE_MS = 600;
 type StudioActionType = "add" | "pin" | "remove" | "dismiss";
@@ -160,11 +164,12 @@ export interface CreatePlaylistDraftState {
 	 */
 	isConfigStale: boolean;
 	/**
-	 * True while the rendered tracklist is placeholder data from a PREVIOUS
-	 * query key — the fetch for the current config/selection is still in
-	 * flight. Narrower than isConfigStale (no debounce window).
+	 * What the preview surface shows right now: loading, failed, empty, or
+	 * ready (with `isRefreshing` while the rows belong to a previous query
+	 * key). One union instead of isLoading/isError/isRefreshing booleans, so a
+	 * failed request can never be mistaken for an empty library.
 	 */
-	isPreviewRefreshing: boolean;
+	previewState: StudioPreviewState;
 	selection: CreatePlaylistDraftSelection;
 	/** Selected artists (chips), in add order, with total liked-song counts. */
 	artistSelections: ArtistSelectionVM[];
@@ -196,8 +201,6 @@ export interface CreatePlaylistDraftState {
 	intentApplied: boolean;
 	/** Pinned ids the engine could not honor — excluded, filtered out, or clamped. */
 	droppedPinnedSongIds: string[];
-	isLoading: boolean;
-	isError: boolean;
 }
 
 export type UseCreatePlaylistDraftResult = CreatePlaylistDraftState &
@@ -361,9 +364,12 @@ export function useCreatePlaylistDraft(
 		suggestionsOffset,
 	};
 
-	const { data, isLoading, isError, isPlaceholderData } = useQuery(
+	const { data, isLoading, isError, isPlaceholderData, refetch } = useQuery(
 		playlistDraftPreviewQueryOptions(queryConfig),
 	);
+	const retryPreview = useCallback(() => {
+		void refetch();
+	}, [refetch]);
 
 	const result = data ?? EMPTY_PREVIEW_RESULT;
 	// keepPreviousData preserves the old cohort during a refetch, but an exclusion
@@ -619,11 +625,19 @@ export function useCreatePlaylistDraft(
 		[artistSelections, resolvedSongIdsByArtist],
 	);
 
+	const previewState = deriveStudioPreviewState({
+		query: { isError, isLoading, isPlaceholderData },
+		tracklistLength: visibleTracklist.length,
+		totalEligible: result.totalEligible,
+		committedMaxSongs: debouncedConfig.maxSongs,
+		retry: retryPreview,
+	});
+
 	return {
 		config,
 		committedConfig: debouncedConfig,
 		isConfigStale,
-		isPreviewRefreshing: isPlaceholderData,
+		previewState,
 		selection,
 		artistSelections: artistSelectionVMs,
 		isResolvingArtists: artistResolution.isFetching,
@@ -634,8 +648,6 @@ export function useCreatePlaylistDraft(
 		totalEligible: result.totalEligible,
 		intentApplied: result.intentApplied,
 		droppedPinnedSongIds: result.droppedPinnedSongIds,
-		isLoading,
-		isError,
 		setIntent,
 		setGenrePills,
 		setMatchFilters,

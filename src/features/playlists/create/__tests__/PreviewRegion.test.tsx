@@ -1,22 +1,30 @@
 /**
  * Screen-level preview-region test.
  *
- * Mounting the full CreatePlaylistScreen would drag in the router, extension
- * gate, and every server-fn-backed config panel (see PlaybackCoordination.test.tsx
- * for the same tradeoff); this harness instead reproduces the exact wiring of
- * the preview region (CreatePlaylistScreen.tsx, the "Preview" section ~350-410
- * plus the tracklistIsEmpty/isWarming/showNotEnoughNote derivations ~228-243)
- * so the real bug — manual pins vanishing behind LibraryEmptyState because the
- * gate was keyed on totalEligible instead of the tracklist — stays covered. If
- * that region's branching changes, update this harness alongside it.
+ * Mounting the full StudioScreen would drag in the router, extension gate,
+ * and every server-fn-backed config panel (see PlaybackCoordination.test.tsx
+ * for the same tradeoff); this harness instead reproduces the preview region's
+ * wiring — deriveStudioPreviewState plus the exhaustive switch in
+ * StudioScreen.renderPreviewSurface — so the real bugs stay covered: manual
+ * pins vanishing behind LibraryEmptyState because the gate was keyed on
+ * totalEligible instead of the tracklist, and a failed request rendering as
+ * "nothing matches". If that region's branching changes, update this harness
+ * alongside it.
  */
 
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { LibraryEmptyState } from "../LibraryEmptyState";
 import { NotEnoughSongsNote } from "../NotEnoughSongsNote";
+import { PreviewFailedState } from "../PreviewFailedState";
 import { PreviewList } from "../preview/PreviewList";
+import { PreviewListSkeleton } from "../preview/PreviewListSkeleton";
+import {
+	deriveStudioPreviewState,
+	type StudioPreviewStateInput,
+} from "../studioPreviewState";
 
 const makeSong = (id: string, name: string): SongVM => ({
 	id,
@@ -30,50 +38,76 @@ const makeSong = (id: string, name: string): SongVM => ({
 	matchScore: 0.8,
 });
 
-/** Mirrors CreatePlaylistScreen's preview region exactly (post-fix). */
+const settled: StudioPreviewStateInput["query"] = {
+	isError: false,
+	isLoading: false,
+	isPlaceholderData: false,
+};
+
+/** Mirrors StudioScreen's preview region. */
 function PreviewRegionHarness({
 	tracklist,
 	totalEligible,
-	isLoading,
+	query = settled,
 	maxSongs,
+	onRetry = vi.fn(),
 }: {
 	tracklist: SongVM[];
 	totalEligible: number;
-	isLoading: boolean;
+	query?: StudioPreviewStateInput["query"];
 	maxSongs: number;
+	onRetry?: () => void;
 }) {
-	const tracklistIsEmpty = tracklist.length === 0;
-	const isWarming = tracklistIsEmpty && isLoading;
-	const showNotEnoughNote =
-		totalEligible > 0 && totalEligible < maxSongs && !isLoading;
+	const previewState = deriveStudioPreviewState({
+		query,
+		tracklistLength: tracklist.length,
+		totalEligible,
+		committedMaxSongs: maxSongs,
+		retry: onRetry,
+	});
+	const eligibleShortfall =
+		previewState.kind === "empty" || previewState.kind === "ready"
+			? previewState.eligibleShortfall
+			: null;
+
+	function renderPreviewSurface() {
+		switch (previewState.kind) {
+			case "loading":
+				return <PreviewListSkeleton />;
+			case "failed":
+				return <PreviewFailedState onRetry={previewState.retry} />;
+			case "empty":
+				return <LibraryEmptyState />;
+			case "ready":
+				return (
+					<PreviewList
+						songs={tracklist}
+						isLoading={previewState.isRefreshing}
+						onRemoveSong={vi.fn()}
+						onRestoreSong={vi.fn()}
+					/>
+				);
+		}
+	}
 
 	return (
 		<div>
-			{(!tracklistIsEmpty || totalEligible > 0) && (
+			{(tracklist.length > 0 || totalEligible > 0) && (
 				<span>
 					{tracklist.length} selected · {totalEligible} match filters
 				</span>
 			)}
 
-			{tracklistIsEmpty ? (
-				<LibraryEmptyState isWarming={isWarming} />
-			) : (
-				<PreviewList
-					songs={tracklist}
-					isLoading={isLoading}
-					onRemoveSong={vi.fn()}
-					onRestoreSong={vi.fn()}
-				/>
-			)}
+			{renderPreviewSurface()}
 
-			{showNotEnoughNote && (
-				<NotEnoughSongsNote totalEligible={totalEligible} maxSongs={15} />
+			{eligibleShortfall !== null && (
+				<NotEnoughSongsNote totalEligible={eligibleShortfall} maxSongs={15} />
 			)}
 		</div>
 	);
 }
 
-describe("CreatePlaylistScreen preview region", () => {
+describe("StudioScreen preview region", () => {
 	it("renders the tracklist and the count span when manual pins survive totalEligible === 0", () => {
 		// Regression: a pin that's filter-exempt (preview.ts's manualExtras) can
 		// populate the tracklist even when totalEligible is 0. The list must not
@@ -83,7 +117,6 @@ describe("CreatePlaylistScreen preview region", () => {
 			<PreviewRegionHarness
 				tracklist={[makeSong("s1", "Pinned Song")]}
 				totalEligible={0}
-				isLoading={false}
 				maxSongs={15}
 			/>,
 		);
@@ -92,51 +125,63 @@ describe("CreatePlaylistScreen preview region", () => {
 		expect(
 			screen.getByText("1 selected · 0 match filters"),
 		).toBeInTheDocument();
-		expect(
-			screen.queryByText(/no songs match the current filters/i),
-		).not.toBeInTheDocument();
+		expect(screen.queryByRole("status")).not.toBeInTheDocument();
 	});
 
 	it("shows the plain empty state when the tracklist is genuinely empty and settled", () => {
 		render(
-			<PreviewRegionHarness
-				tracklist={[]}
-				totalEligible={0}
-				isLoading={false}
-				maxSongs={15}
-			/>,
+			<PreviewRegionHarness tracklist={[]} totalEligible={0} maxSongs={15} />,
 		);
 
-		expect(
-			screen.getByText(/no songs match the current filters/i),
-		).toBeInTheDocument();
-		expect(screen.queryByText(/warming up/i)).not.toBeInTheDocument();
+		expect(screen.getByRole("status")).toBeInTheDocument();
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 		// Nothing meaningful to report yet — the count span stays hidden.
 		expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
 	});
 
-	it("shows the warming variant when the tracklist is empty and still loading", () => {
+	it("shows the skeleton, not the empty state, while an empty tracklist is still loading", () => {
 		render(
 			<PreviewRegionHarness
 				tracklist={[]}
 				totalEligible={0}
-				isLoading={true}
+				query={{ ...settled, isLoading: true }}
 				maxSongs={15}
 			/>,
 		);
 
-		expect(screen.getByText(/warming up/i)).toBeInTheDocument();
+		// The skeleton is the only status region with an accessible name.
 		expect(
-			screen.queryByText(/no songs match the current filters/i),
-		).not.toBeInTheDocument();
+			screen.getByRole("status", { name: /loading/i }),
+		).toBeInTheDocument();
+		expect(screen.getAllByRole("status")).toHaveLength(1);
+		expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 	});
 
-	it("keeps showNotEnoughNote coherent: hidden when pins survive with totalEligible === 0", () => {
+	// Regression: 2026-10-21 a killed preview request rendered "Nothing matches".
+	it("shows a retryable failure, never the empty state, when the preview request failed", async () => {
+		const onRetry = vi.fn();
+		render(
+			<PreviewRegionHarness
+				tracklist={[]}
+				totalEligible={0}
+				query={{ ...settled, isError: true }}
+				maxSongs={15}
+				onRetry={onRetry}
+			/>,
+		);
+
+		expect(screen.queryByRole("status")).not.toBeInTheDocument();
+		const alert = screen.getByRole("alert");
+		await userEvent.click(screen.getByRole("button", { name: /try again/i }));
+		expect(alert).toBeInTheDocument();
+		expect(onRetry).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the shortfall note coherent: hidden when pins survive with totalEligible === 0", () => {
 		render(
 			<PreviewRegionHarness
 				tracklist={[makeSong("s1", "Pinned Song")]}
 				totalEligible={0}
-				isLoading={false}
 				maxSongs={15}
 			/>,
 		);
@@ -144,16 +189,15 @@ describe("CreatePlaylistScreen preview region", () => {
 		expect(screen.queryByRole("note")).not.toBeInTheDocument();
 	});
 
-	it("still shows showNotEnoughNote when eligible songs exist but fall short of maxSongs", () => {
+	it("shows the shortfall note when fewer songs match than asked for", () => {
 		render(
 			<PreviewRegionHarness
-				tracklist={[makeSong("s1", "Song One"), makeSong("s2", "Song Two")]}
+				tracklist={[makeSong("s1", "One"), makeSong("s2", "Two")]}
 				totalEligible={2}
-				isLoading={false}
 				maxSongs={15}
 			/>,
 		);
 
-		expect(screen.getByRole("note")).toHaveTextContent(/only 2 songs match/i);
+		expect(screen.getByRole("note")).toBeInTheDocument();
 	});
 });

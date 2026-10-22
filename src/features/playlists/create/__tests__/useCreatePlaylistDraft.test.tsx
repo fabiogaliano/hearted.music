@@ -78,7 +78,9 @@ describe("useCreatePlaylistDraft — refreshSuggestions paging", () => {
 			wrapper,
 		});
 
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 		expect(previewPlaylistDraftMock).toHaveBeenLastCalledWith({
 			data: expect.objectContaining({ suggestionsOffset: 0 }),
 		});
@@ -139,12 +141,22 @@ describe("useCreatePlaylistDraft — preview transitions", () => {
 		});
 
 		expect(result.current.tracklist.map((song) => song.id)).toEqual(["2"]);
-		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+		await waitFor(() =>
+			expect(result.current.previewState).toMatchObject({
+				kind: "ready",
+				isRefreshing: true,
+			}),
+		);
 
 		act(() => {
 			resolveNext({ ...EMPTY_RESULT, tracklist: [makeSong("2")] });
 		});
-		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState).toMatchObject({
+				kind: "ready",
+				isRefreshing: false,
+			}),
+		);
 	});
 
 	it("hides a just-added suggestion immediately while the next cohort is still loading", async () => {
@@ -177,12 +189,15 @@ describe("useCreatePlaylistDraft — preview transitions", () => {
 		// fire another add — the fix also filters against the current
 		// effective pins, so s1 drops out before the refetch even starts.
 		expect(result.current.suggestions.map((song) => song.id)).toEqual(["s2"]);
-		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+		// An empty tracklist mid-refetch reads as loading, not as a settled empty.
+		await waitFor(() =>
+			expect(result.current.previewState.kind).toBe("loading"),
+		);
 
 		act(() => {
 			resolveNext({ ...EMPTY_RESULT, suggestions: [makeSong("s2")] });
 		});
-		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(false));
+		await waitFor(() => expect(result.current.previewState.kind).toBe("empty"));
 	});
 
 	it("keeps the previous preview marked stale while a changed query key loads", async () => {
@@ -197,13 +212,15 @@ describe("useCreatePlaylistDraft — preview transitions", () => {
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
 		await waitFor(() => expect(result.current.totalEligible).toBe(7));
 		expect(result.current.isConfigStale).toBe(false);
-		expect(result.current.isPreviewRefreshing).toBe(false);
+		expect(result.current.previewState.kind).toBe("empty");
 
 		act(() => {
 			result.current.addSong("song-1");
 		});
 
-		await waitFor(() => expect(result.current.isPreviewRefreshing).toBe(true));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).toBe("loading"),
+		);
 		expect(result.current.totalEligible).toBe(7);
 		expect(result.current.isConfigStale).toBe(true);
 
@@ -212,7 +229,7 @@ describe("useCreatePlaylistDraft — preview transitions", () => {
 		});
 
 		await waitFor(() => expect(result.current.totalEligible).toBe(11));
-		expect(result.current.isPreviewRefreshing).toBe(false);
+		expect(result.current.previewState.kind).toBe("empty");
 		expect(result.current.isConfigStale).toBe(false);
 	});
 });
@@ -233,7 +250,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("Radiohead");
@@ -265,7 +284,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("A");
@@ -287,7 +308,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("A");
@@ -322,7 +345,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addSong("m1");
@@ -346,7 +371,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("A");
@@ -374,7 +401,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("A");
@@ -394,7 +423,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		resolveLikedArtistSongsMock.mockResolvedValue({ artists: [] });
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.togglePin("song-1");
@@ -424,7 +455,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("Radiohead");
@@ -451,7 +484,9 @@ describe("useCreatePlaylistDraft — artist selections", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		// Manual pin first, then anchor the artist: the allocator must skip the
 		// manual pin (it already comes off the top of the budget), so the union
@@ -486,7 +521,9 @@ describe("useCreatePlaylistDraft — artist resolution readiness", () => {
 
 	it("isResolvingArtists and isArtistResolutionError are both false with no artist selections", async () => {
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		expect(result.current.isResolvingArtists).toBe(false);
 		expect(result.current.isArtistResolutionError).toBe(false);
@@ -500,7 +537,9 @@ describe("useCreatePlaylistDraft — artist resolution readiness", () => {
 		resolveLikedArtistSongsMock.mockReturnValue(new Promise(() => {}));
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("Radiohead");
@@ -517,7 +556,9 @@ describe("useCreatePlaylistDraft — artist resolution readiness", () => {
 		});
 
 		const { result } = renderHook(() => useCreatePlaylistDraft(), { wrapper });
-		await waitFor(() => expect(result.current.isLoading).toBe(false));
+		await waitFor(() =>
+			expect(result.current.previewState.kind).not.toBe("loading"),
+		);
 
 		act(() => {
 			result.current.addArtist("Radiohead");

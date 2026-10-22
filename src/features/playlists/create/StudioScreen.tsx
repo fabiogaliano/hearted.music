@@ -32,12 +32,12 @@ import { IntentEditor } from "./config/IntentEditor";
 import { LibraryEmptyState } from "./LibraryEmptyState";
 import { MaxSongsSlider } from "./MaxSongsSlider";
 import { NotEnoughSongsNote } from "./NotEnoughSongsNote";
+import { PreviewFailedState } from "./PreviewFailedState";
 import { PreviewList } from "./preview/PreviewList";
 import { PreviewListSkeleton } from "./preview/PreviewListSkeleton";
 import { CreateBar } from "./publish/CreateBar";
 import { PublishResultRegion } from "./publish/PublishResultRegion";
 import { intentEligibilityQueryOptions } from "./queries";
-import { getStudioPreviewState } from "./studioPreviewState";
 import { type StudioSeed, studioSeedToDraftInit } from "./studioSeed";
 import { buildStudioSubmitInput } from "./studioSubmitInput";
 import { SuggestionsTray } from "./suggestions/SuggestionsTray";
@@ -182,17 +182,11 @@ export function StudioScreen({
 		flow.submit,
 	]);
 
-	// Preview messaging is derived from the same committed max that produced the
-	// tracklist, never the live value while its debounce is still in flight.
-	// Once the debounce commits, placeholder rows still belong to the previous
-	// config, so their totals cannot drive settled-state messaging yet.
-	const { showNotEnoughNote, tracklistIsEmpty, isWarming } =
-		getStudioPreviewState({
-			totalEligible: draft.totalEligible,
-			tracklistLength: draft.tracklist.length,
-			committedMaxSongs: draft.committedConfig.maxSongs,
-			isLoading: draft.isLoading || draft.isPreviewRefreshing,
-		});
+	const { previewState } = draft;
+	const eligibleShortfall =
+		previewState.kind === "empty" || previewState.kind === "ready"
+			? previewState.eligibleShortfall
+			: null;
 
 	const handleClearFilters = useCallback(() => {
 		draft.setGenrePills([]);
@@ -218,6 +212,45 @@ export function StudioScreen({
 					transition: { duration: 0.1, ease: [0.25, 1, 0.5, 1] as const },
 				},
 			};
+
+	// Exhaustive on the union: a new preview state must pick its surface here.
+	function renderPreviewSurface() {
+		switch (previewState.kind) {
+			case "loading":
+				return (
+					<motion.div key="preview-loading" {...previewStateMotion}>
+						<PreviewListSkeleton />
+					</motion.div>
+				);
+			case "failed":
+				return (
+					<motion.div key="preview-failed" {...previewStateMotion}>
+						<PreviewFailedState onRetry={previewState.retry} />
+					</motion.div>
+				);
+			case "empty":
+				return (
+					<motion.div key="preview-empty" {...previewStateMotion}>
+						<LibraryEmptyState onClearFilters={handleClearFilters} />
+					</motion.div>
+				);
+			case "ready":
+				return (
+					<motion.div key="preview-list" {...previewStateMotion}>
+						<PreviewList
+							songs={draft.tracklist}
+							isLoading={previewState.isRefreshing}
+							onRemoveSong={draft.removeSong}
+							onRestoreSong={draft.restoreSong}
+							onTogglePin={draft.togglePin}
+							newSongIds={newSongIds}
+							pinnedSongIds={draft.effectivePinnedSongIds}
+							playback={playback}
+						/>
+					</motion.div>
+				);
+		}
+	}
 
 	return (
 		<div className="mx-auto max-w-[1180px] pb-24">
@@ -269,35 +302,12 @@ export function StudioScreen({
 					>
 						<div className="px-5 py-2.5">
 							<AnimatePresence mode="popLayout" initial={false}>
-								{tracklistIsEmpty ? (
-									isWarming ? (
-										<motion.div key="preview-loading" {...previewStateMotion}>
-											<PreviewListSkeleton />
-										</motion.div>
-									) : (
-										<motion.div key="preview-empty" {...previewStateMotion}>
-											<LibraryEmptyState onClearFilters={handleClearFilters} />
-										</motion.div>
-									)
-								) : (
-									<motion.div key="preview-list" {...previewStateMotion}>
-										<PreviewList
-											songs={draft.tracklist}
-											isLoading={draft.isLoading}
-											onRemoveSong={draft.removeSong}
-											onRestoreSong={draft.restoreSong}
-											onTogglePin={draft.togglePin}
-											newSongIds={newSongIds}
-											pinnedSongIds={draft.effectivePinnedSongIds}
-											playback={playback}
-										/>
-									</motion.div>
-								)}
+								{renderPreviewSurface()}
 							</AnimatePresence>
 
-							{showNotEnoughNote && (
+							{eligibleShortfall !== null && (
 								<NotEnoughSongsNote
-									totalEligible={draft.totalEligible}
+									totalEligible={eligibleShortfall}
 									maxSongs={draft.committedConfig.maxSongs}
 									onClearFilters={handleClearFilters}
 								/>
