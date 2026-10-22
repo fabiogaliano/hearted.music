@@ -22,7 +22,7 @@ Work on `main` unless told otherwise.
 ## Safety boundaries
 
 - Prod deploys/migrations are CI-only (merge to `main`): never `bun run deploy`, `bun run deploy:secrets`, or `supabase db push --linked`. Schema changes: timestamped file in `supabase/migrations/`, per `docs/ops/prod-db-migrations.md` (expand–contract; destructive DDL manual-only).
-- Prod data only via the `supabase-prod` skill: `bun run prod:rest`, or `bun run prod:sql` when REST can't express it. Never point local tooling at prod URLs.
+- Prod data only via `bun run prod:rest`, or `bun run prod:sql` when REST can't express it. Never point local tooling at prod URLs.
 - `scripts/ops/*` mutate real account state — run only on explicit request.
 
 ## Conventions
@@ -74,14 +74,6 @@ Few tests, each load-bearing: a test earns its place only if you can name the pl
 ## Docs & specs
 
 - Architecture: `docs/architecture/` (start with `system-overview.md`). Ops runbooks: `docs/ops/`.
-- Nontrivial feature work goes through `openspec/` (use the `/opsx:*` skills).
-
-## Required Skills
-
-Use these skills proactively when working on this project:
-
-- **`tanstack-start-react`** - Routes, loaders, server functions, SSE
-- **`react-best-practices`** - Component patterns, performance
 
 ## Agent defaults (vendored for cloud/remote sessions)
 
