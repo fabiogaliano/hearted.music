@@ -281,7 +281,6 @@ v1_hearted/
 ├── control-panel/       # Local-only operator app (never deployed)
 ├── shared/              # Code shared between app and extension
 ├── docs/                # Architecture docs, runbooks, analyses
-├── openspec/            # Feature specifications
 ├── scripts/             # Dev/ops utilities + prompt/matching/language labs
 └── supabase/migrations/ # Database migrations
 ```
@@ -470,7 +469,6 @@ and `/api/pulse-s` to survive blockers.
 | `docs/brand/`                              | Brand voice, copy guide, positioning                |
 | `src/routes/README.md`                     | Routes layout and conventions                       |
 | `control-panel/README.md`                  | Operator app                                        |
-| `openspec/specs/`                          | Feature specifications                              |
 | `supabase/migrations/`                     | Database migration history                          |
 
 ---
