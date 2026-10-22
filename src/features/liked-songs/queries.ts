@@ -88,7 +88,10 @@ export function likedSongsInfiniteQueryOptions(
 			});
 		},
 		initialPageParam: undefined as string | undefined,
-		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+		// Optional chaining: a page that failed to decode must not take the whole
+		// route down with it (the transport guard in src/start.ts is the primary
+		// defence; this keeps a bad cache entry from white-screening).
+		getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
 		staleTime: 30 * 60_000,
 	});
 }
