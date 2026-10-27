@@ -147,6 +147,14 @@ export default defineConfig(({ command }) => {
 		);
 	}
 
+	// src/env.public.ts throws at module load without it, so a bundle built
+	// without the value 500s every request.
+	if (isBuild && isRelease && !process.env.VITE_PUBLIC_APP_ORIGIN) {
+		throw new Error(
+			"RELEASE=true build requires VITE_PUBLIC_APP_ORIGIN; src/env.public.ts throws on every request without it.",
+		);
+	}
+
 	const useUipaneStub = isBuild || isTest;
 
 	return {

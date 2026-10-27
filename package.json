@@ -15,6 +15,7 @@
 		"dev:all": "concurrently -n app,worker,gateway,ml -c blue,green,yellow,magenta --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:gateway\" \"bun run dev:embeddings\"",
 		"dev:monetization": "concurrently -n app,worker,ml,brand,stripe -c blue,green,magenta,yellow,cyan --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:embeddings\" \"bun run dev:brand\" \"bun run dev:stripe\"",
 		"build": "vite build",
+		"start": "bun --preload ./src/instrument.ts src/serve.ts",
 		"preview": "vite preview",
 		"test": "VITEST_MAX_WORKERS=2 vitest run",
 		"test:fast": "vitest run",

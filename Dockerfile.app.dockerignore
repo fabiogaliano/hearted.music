@@ -1,0 +1,36 @@
+# BuildKit reads this instead of .dockerignore for Dockerfile.app. The shared
+# file drops vite.config.ts and public/, which the app build needs.
+.git
+.github
+.claude
+.vscode
+.playwright
+.ladle
+.tanstack
+.turbo
+.wrangler
+.env*
+.DS_Store
+node_modules
+dist
+coverage
+
+claudedocs
+control-panel
+docs
+extensions
+img_cd
+old_app
+supabase
+tests
+*.md
+
+src/**/__tests__
+src/**/__snapshots__
+src/**/*.test.ts
+src/**/*.test.tsx
+src/**/*.spec.ts
+
+# The song detail panel bundles one voice-audit exemplar.
+scripts/**
+!scripts/voice-audit/exemplars/**
