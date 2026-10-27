@@ -16,6 +16,7 @@ import {
 	activeJobsKeys,
 	dashboardKeys,
 	invalidateEntitlementQueries,
+	invalidateLibrarySyncQueries,
 	likedSongsKeys,
 	matchDeckKeys,
 } from "@/lib/query-keys";
@@ -271,6 +272,9 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				case "enrichment_completed":
 				case "enrichment_stopped":
 					invalidateEnrichmentCompletionQueries(queryClient, accountId);
+					break;
+				case "extension_sync_completed":
+					void invalidateLibrarySyncQueries(queryClient, accountId);
 					break;
 				case "match_snapshot_published":
 					queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot });
