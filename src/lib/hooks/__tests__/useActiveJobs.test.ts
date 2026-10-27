@@ -221,6 +221,24 @@ describe("useActiveJobs return shape", () => {
 		expect(getActiveJobs).toHaveBeenCalledTimes(1);
 	});
 
+	it("backs off and stops fallback polling after 5 consecutive failures (polled a failing server every 15 s forever)", async () => {
+		vi.useFakeTimers();
+		vi.mocked(getActiveJobs).mockRejectedValue(new Error("503"));
+
+		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(29_000);
+		});
+		// The first retry waits 30 s, not one 15 s poll interval.
+		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+		});
+		expect(getActiveJobs).toHaveBeenCalledTimes(5);
+	});
+
 	it("resumes fallback polling while the stream is disconnected", async () => {
 		vi.useFakeTimers();
 		queryClient.setQueryData(
