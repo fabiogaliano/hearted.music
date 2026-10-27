@@ -28,12 +28,19 @@ export function unwrapOrThrow<T, E>(
 	context: ServerFnFailureContext,
 ): T {
 	if (Result.isOk(result)) return result.value;
+	return reportAndThrow(result.error, context);
+}
 
-	captureServerError(result.error, context);
+/** unwrapOrThrow for failures that arrive as a union branch, not a `Result`. */
+export function reportAndThrow(
+	error: unknown,
+	context: ServerFnFailureContext,
+): never {
+	captureServerError(error, context);
 	throw new ServerFnError({
 		area: context.area,
 		operation: context.operation,
 		message: `${context.operation} failed`,
-		cause: result.error,
+		cause: error,
 	});
 }
