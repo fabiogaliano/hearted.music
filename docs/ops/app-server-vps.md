@@ -37,15 +37,19 @@ Coolify:
       `supabase.`, `events.`, `billing.`.
 - [ ] Healthcheck: the image's own `HEALTHCHECK` (`GET /health`).
 - [ ] Memory limit ~768 MB (decision 1); add a limit on the worker container too.
+- [ ] Worker container env: `ML_PROVIDER` (`deepinfra`) and `DEEPINFRA_API_KEY` are set. The
+      worker no longer infers the provider from which keys exist, and refuses to start without it.
 - [ ] Enable the deploy webhook and store its URL as `COOLIFY_APP_WEBHOOK_URL`.
 - [ ] Runtime env, from the same source as the worker (`.env.cloud`). Every server var read by
       `src/env.ts`, plus the Sentry pair read by `src/instrument.ts`:
 
       Required: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`,
-      `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ACCOUNT_EVENTS_TOKEN_SECRET`.
+      `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `ACCOUNT_EVENTS_TOKEN_SECRET`, `ML_PROVIDER`
+      (`deepinfra` in prod), and `DEEPINFRA_API_KEY` when `ML_PROVIDER=deepinfra`. The container
+      exits at boot if the provider is missing or its embedding model disagrees with the vectors
+      in `song_embedding`.
 
-      Optional but set in prod: `SENTRY_DSN`, `SENTRY_ENVIRONMENT=production`, `ML_PROVIDER`,
-      `DEEPINFRA_API_KEY`, `HF_TOKEN`, `LASTFM_API_KEY`, `GENIUS_CLIENT_TOKEN`, `GEMINI_API_KEY`,
+      Optional but set in prod: `SENTRY_DSN`, `SENTRY_ENVIRONMENT=production`, `HF_TOKEN`, `LASTFM_API_KEY`, `GENIUS_CLIENT_TOKEN`, `GEMINI_API_KEY`,
       `GOOGLE_GENERATIVE_AI_API_KEY`, `GOOGLE_API_KEY`, `GOOGLE_VERTEX_PROJECT`,
       `GOOGLE_VERTEX_LOCATION`, `GOOGLE_APPLICATION_CREDENTIALS_JSON`, `ANTHROPIC_API_KEY`,
       `OPENAI_API_KEY`, `RESEND_API_KEY`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
