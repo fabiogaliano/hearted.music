@@ -34,7 +34,7 @@ import {
 } from "@/lib/domains/billing/bridge-payloads";
 import { verifyBridgeHmac } from "@/lib/domains/billing/hmac";
 import { captureServerError } from "@/lib/observability/capture-server-error";
-import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
+import { captureServerEvent } from "@/lib/observability/posthog-server";
 import {
 	clientIpFrom,
 	withinRateLimit,
@@ -251,9 +251,7 @@ export const Route = createFileRoute("/api/billing-bridge")({
 					`[billing-bridge] Dispatched event_kind=${payload.event_kind}`,
 				);
 
-				// Fire-and-forget on the response itself; waitUntil keeps the
-				// network round-trip alive past the Response return on CF Workers.
-				await captureWithWaitUntil({
+				captureServerEvent({
 					distinctId: payload.account_id,
 					event: "payment_processed",
 					properties: {

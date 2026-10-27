@@ -13,7 +13,7 @@ const {
 	mockApplyLibraryProcessingChange,
 	mockEnqueueDeckJob,
 	mockGetLatestMatchSnapshot,
-	mockCaptureWithWaitUntil,
+	mockCaptureServerEvent,
 	mockCaptureServerError,
 	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
@@ -26,7 +26,7 @@ const {
 	mockApplyLibraryProcessingChange: vi.fn(),
 	mockEnqueueDeckJob: vi.fn(),
 	mockGetLatestMatchSnapshot: vi.fn(),
-	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+	mockCaptureServerEvent: vi.fn().mockResolvedValue(undefined),
 	mockCaptureServerError: vi.fn(),
 	mockResolveVisibilityConfigHash: vi.fn(),
 }));
@@ -77,8 +77,7 @@ vi.mock("@/lib/domains/library/playlists/queries", () => ({
 }));
 
 vi.mock("@/lib/observability/posthog-server", () => ({
-	captureWithWaitUntil: (...args: unknown[]) =>
-		mockCaptureWithWaitUntil(...args),
+	captureServerEvent: (...args: unknown[]) => mockCaptureServerEvent(...args),
 }));
 
 vi.mock("@/lib/observability/capture-server-error", () => ({

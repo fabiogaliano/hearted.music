@@ -34,7 +34,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
+import { captureServerEvent } from "@/lib/observability/posthog-server";
 import { beginExtensionSync } from "@/lib/platform/jobs/extension-sync-jobs";
 import { resolveExtensionAccountId } from "@/lib/server/extension-auth";
 import {
@@ -216,7 +216,7 @@ export const Route = createFileRoute("/api/extension/sync")({
 				}
 
 				// Counts are unknown without parsing the body; emit the byte size only.
-				await captureWithWaitUntil({
+				captureServerEvent({
 					distinctId: accountId,
 					event: "library_sync_queued",
 					properties: {

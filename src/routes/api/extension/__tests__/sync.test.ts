@@ -33,7 +33,7 @@ const {
 	mockUploadSyncPayload,
 	mockDeleteSyncPayload,
 	mockBeginExtensionSync,
-	mockCaptureWithWaitUntil,
+	mockCaptureServerEvent,
 } = vi.hoisted(() => ({
 	mockGetAuthSession: vi.fn(),
 	mockValidateExtensionApiToken: vi.fn(),
@@ -42,7 +42,7 @@ const {
 	mockUploadSyncPayload: vi.fn(),
 	mockDeleteSyncPayload: vi.fn(),
 	mockBeginExtensionSync: vi.fn(),
-	mockCaptureWithWaitUntil: vi.fn(),
+	mockCaptureServerEvent: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -75,8 +75,7 @@ vi.mock("@/lib/platform/jobs/extension-sync-jobs", () => ({
 }));
 
 vi.mock("@/lib/observability/posthog-server", () => ({
-	captureWithWaitUntil: (...args: unknown[]) =>
-		mockCaptureWithWaitUntil(...args),
+	captureServerEvent: (...args: unknown[]) => mockCaptureServerEvent(...args),
 }));
 
 const { Route } = await import("../sync");
@@ -129,7 +128,7 @@ describe("/api/extension/sync", () => {
 				phaseJobIds: PHASE_JOB_IDS,
 			}),
 		);
-		mockCaptureWithWaitUntil.mockResolvedValue(undefined);
+		mockCaptureServerEvent.mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -252,8 +251,8 @@ describe("/api/extension/sync", () => {
 		const [, pathArg, bytesArg] = mockBeginExtensionSync.mock.calls[0];
 		expect(pathArg).toBe(PAYLOAD_PATH);
 		expect(bytesArg).toBeGreaterThan(0);
-		expect(mockCaptureWithWaitUntil).toHaveBeenCalledOnce();
-		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+		expect(mockCaptureServerEvent).toHaveBeenCalledOnce();
+		expect(mockCaptureServerEvent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				properties: expect.objectContaining({ payload_encoding: "json" }),
 			}),
@@ -292,7 +291,7 @@ describe("/api/extension/sync", () => {
 			new Uint8Array(compressed),
 		);
 		expect(uploadedContentTypeArg).toBe("application/gzip");
-		expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+		expect(mockCaptureServerEvent).toHaveBeenCalledWith(
 			expect.objectContaining({
 				properties: expect.objectContaining({ payload_encoding: "gzip" }),
 			}),
@@ -318,7 +317,7 @@ describe("/api/extension/sync", () => {
 			{ id: "admin-client" },
 			PAYLOAD_PATH,
 		);
-		expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
+		expect(mockCaptureServerEvent).not.toHaveBeenCalled();
 	});
 
 	it("returns 429 cooldown with Retry-After and drops the staged payload", async () => {

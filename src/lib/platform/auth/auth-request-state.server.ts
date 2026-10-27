@@ -15,6 +15,7 @@ import {
 import type { AuthContext } from "@/lib/platform/auth/auth-types";
 import { sendPasswordResetEmail } from "@/lib/platform/email/send-password-reset-email";
 import { sendVerificationEmail } from "@/lib/platform/email/send-verification-email";
+import { runAfterResponse } from "@/lib/platform/process/after-response";
 
 export interface AuthRequestState {
 	getAuth(): BetterAuthInstance;
@@ -179,15 +180,8 @@ function createBetterAuth(sql: AuthSqlClient) {
 	});
 }
 
-export async function closeAuthRequestAfterResponse(
+export function closeAuthRequestAfterResponse(
 	authRequest: AuthRequestState,
-): Promise<void> {
-	const closePromise = authRequest.close();
-
-	try {
-		const { waitUntil } = await import("cloudflare:workers");
-		waitUntil(closePromise);
-	} catch {
-		await closePromise;
-	}
+): void {
+	runAfterResponse(authRequest.close());
 }
