@@ -25,6 +25,15 @@ export function captureRouteError(
 	});
 }
 
+export function captureUnhandledRouteError(
+	error: unknown,
+	context: CaptureContext = {},
+): void {
+	void loadSentryClient().then((module: SentryClientModule | undefined) => {
+		module?.captureUnhandledRouteError(error, context);
+	});
+}
+
 export function captureRecoverableError(
 	error: unknown,
 	componentStack: string | null | undefined,

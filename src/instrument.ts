@@ -33,7 +33,10 @@ if (dsn && !LOCAL_ENVIRONMENTS.has(environment)) {
 		release: process.env.APP_RELEASE,
 		tracesSampleRate: 0.05,
 		sendDefaultPii: false,
-		enableLogs: false,
+		// Error-level console output only: server code logs its failures with
+		// console.error, and anything noisier would swamp the log quota.
+		enableLogs: true,
+		integrations: [Sentry.consoleLoggingIntegration({ levels: ["error"] })],
 		beforeSend: applyServerErrorFingerprint,
 		initialScope: { tags: { runtime: "web-server" } },
 	});
