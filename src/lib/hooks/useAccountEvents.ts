@@ -7,6 +7,12 @@ import {
 	CURSOR_RESPONSE_HEADER,
 } from "@/lib/account-events/contract";
 import {
+	connectionStateOf,
+	initialReconnectState,
+	type ReconnectEvent,
+	reconnectPolicy,
+} from "@/lib/account-events/reconnect-policy";
+import {
 	activeJobsKeys,
 	dashboardKeys,
 	invalidateEntitlementQueries,
@@ -21,17 +27,6 @@ export type ConnectionState =
 	| "disconnected"
 	| "error"
 	| "forbidden";
-
-const BACKOFF_BASE_MS = 1_000;
-const BACKOFF_CAP_MS = 30_000;
-const STREAM_CLOSE_RECONNECT_FLOOR_MS = 2_000;
-const RETRY_AFTER_JITTER_CAP_MS = 5_000;
-
-interface ReconnectOptions {
-	forceRemint?: boolean;
-	retryAfterMs?: number;
-	minimumDelayMs?: number;
-}
 
 function parseRetryAfterMs(value: string | null): number | undefined {
 	if (!value) return undefined;
@@ -130,54 +125,96 @@ export function useAccountEvents(accountId: string, enabled = true) {
 			return;
 		}
 
-		let abortController: AbortController | null = null;
-		let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-		let backoffAttempt = 0;
-		let isUnmounted = false;
-
-		const clearTimers = () => {
-			if (reconnectTimer) {
-				clearTimeout(reconnectTimer);
-				reconnectTimer = null;
-			}
-		};
-
-		const disconnect = () => {
-			if (abortController) {
-				abortController.abort();
-				abortController = null;
-			}
-			clearTimers();
-		};
-
-		const scheduleReconnect = (options: ReconnectOptions = {}) => {
-			if (isUnmounted) return;
-			disconnect();
+		const gatewayUrl = import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL;
+		// A production build without the gateway can never connect; minting
+		// tokens for it would only add app-server load.
+		if (!gatewayUrl && import.meta.env.PROD) {
 			setConnectionState("error");
+			return;
+		}
+		const streamUrl = gatewayUrl
+			? `${gatewayUrl}/account-events/stream`
+			: "/account-events/stream";
 
-			if (options.forceRemint) {
-				void connect(true);
-				return;
+		let state = initialReconnectState;
+		// One controller per mint/open attempt; aborting it discards whatever
+		// that attempt would still report.
+		let attempt: AbortController | null = null;
+		let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const stopAttempt = () => {
+			attempt?.abort();
+			attempt = null;
+		};
+		const clearRetryTimer = () => {
+			if (retryTimer) {
+				clearTimeout(retryTimer);
+				retryTimer = null;
 			}
+		};
 
-			const attempt = backoffAttempt++;
-			const baseDelay = Math.min(
-				BACKOFF_CAP_MS,
-				BACKOFF_BASE_MS * 2 ** attempt,
-			);
-			const minimumDelay = options.minimumDelayMs ?? 0;
-			const backoffDelay = Math.max(minimumDelay, Math.random() * baseDelay);
-			const retryAfterMs = options.retryAfterMs;
-			const retryAfterDelay =
-				retryAfterMs === undefined
-					? undefined
-					: retryAfterMs +
-						Math.random() * Math.min(RETRY_AFTER_JITTER_CAP_MS, retryAfterMs);
-			const reconnectDelay = retryAfterDelay ?? backoffDelay;
+		const dispatch = (event: ReconnectEvent) => {
+			const previous = state;
+			state = reconnectPolicy(state, event);
+			if (state.phase === previous.phase) return;
 
-			reconnectTimer = setTimeout(() => {
-				void connect();
-			}, reconnectDelay);
+			setConnectionState(connectionStateOf(state.phase));
+			clearRetryTimer();
+			// connected continues the opening attempt's stream; every other
+			// phase change ends it.
+			if (state.phase.kind !== "connected") stopAttempt();
+
+			const phase = state.phase;
+			switch (phase.kind) {
+				case "minting":
+					attempt = new AbortController();
+					void mint(attempt.signal);
+					break;
+				case "opening":
+					attempt = new AbortController();
+					void openStream(phase.token, attempt.signal);
+					break;
+				case "waiting":
+					retryTimer = setTimeout(
+						() => dispatch({ type: "timer_fired", nowMs: Date.now() }),
+						Math.max(0, phase.untilMs - Date.now()),
+					);
+					break;
+				case "connected":
+				case "paused":
+				case "forbidden":
+					break;
+			}
+		};
+
+		const streamFailed = (retryAfterMs?: number) =>
+			dispatch({
+				type: "stream_failed",
+				nowMs: Date.now(),
+				random: Math.random(),
+				retryAfterMs,
+			});
+
+		const mint = async (signal: AbortSignal) => {
+			try {
+				const { token, expiresInMs } = await getAccountEventsToken({
+					data: undefined,
+				});
+				if (signal.aborted) return;
+				const nowMs = Date.now();
+				dispatch({
+					type: "mint_succeeded",
+					token: { value: token, expiresAtMs: nowMs + expiresInMs },
+					nowMs,
+				});
+			} catch {
+				if (signal.aborted) return;
+				dispatch({
+					type: "mint_failed",
+					nowMs: Date.now(),
+					random: Math.random(),
+				});
+			}
 		};
 
 		const processFrame = (frameStr: string) => {
@@ -254,34 +291,18 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					void invalidateEntitlementQueries(queryClient);
 					break;
 				case "token_expiring":
-					scheduleReconnect({ forceRemint: true });
+					dispatch({ type: "token_expiring", nowMs: Date.now() });
 					break;
 				case "error":
-					scheduleReconnect({
-						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
-					});
+					streamFailed();
 					break;
 				default:
 					break;
 			}
 		};
 
-		const connect = async (_forceRemint = false) => {
-			if (isUnmounted) return;
-			disconnect();
-
-			abortController = new AbortController();
-			const currentSignal = abortController.signal;
-
-			setConnectionState("connecting");
-
+		const openStream = async (token: string, signal: AbortSignal) => {
 			try {
-				const tokenRes = await getAccountEventsToken({ data: undefined });
-				const token = tokenRes.token;
-
-				if (currentSignal.aborted) return;
-
-				// 2. Fetch SSE
 				const headers: Record<string, string> = {
 					Accept: "text/event-stream",
 					Authorization: `Bearer ${token}`,
@@ -290,42 +311,24 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					headers["Last-Event-ID"] = lastSeenPublishIdRef.current.toString();
 				}
 
-				const gatewayUrl = import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL;
-				if (!gatewayUrl && import.meta.env.PROD) {
-					setConnectionState("error");
-					return;
-				}
-				const streamUrl = gatewayUrl
-					? `${gatewayUrl}/account-events/stream`
-					: "/account-events/stream";
+				const response = await fetch(streamUrl, { headers, signal });
 
-				const response = await fetch(streamUrl, {
-					headers,
-					signal: currentSignal,
-				});
+				if (signal.aborted) return;
 
-				if (currentSignal.aborted) return;
-
-				// Handle HTTP statuses
 				if (response.status === 401) {
-					scheduleReconnect({ forceRemint: true });
+					dispatch({
+						type: "token_rejected",
+						nowMs: Date.now(),
+						random: Math.random(),
+					});
 					return;
 				}
 				if (response.status === 403) {
-					setConnectionState("forbidden");
-					return; // Stop and surface re-auth
+					dispatch({ type: "forbidden" });
+					return;
 				}
-				if (
-					response.status === 429 ||
-					response.status === 503 ||
-					!response.ok
-				) {
-					scheduleReconnect({
-						retryAfterMs: parseRetryAfterMs(
-							response.headers.get("Retry-After"),
-						),
-						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
-					});
+				if (!response.ok) {
+					streamFailed(parseRetryAfterMs(response.headers.get("Retry-After")));
 					return;
 				}
 
@@ -344,14 +347,10 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					}
 				}
 
-				setConnectionState("connected");
-				backoffAttempt = 0; // reset on stable connection
+				dispatch({ type: "stream_opened" });
 
-				// 3. Parse stream
 				if (!response.body) {
-					scheduleReconnect({
-						minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
-					});
+					streamFailed();
 					return;
 				}
 
@@ -362,7 +361,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				while (true) {
 					const { done, value } = await reader.read();
 					if (done) break;
-					if (currentSignal.aborted) return;
+					if (signal.aborted) return;
 
 					buffer += decoder.decode(value, { stream: true });
 
@@ -371,31 +370,35 @@ export function useAccountEvents(accountId: string, enabled = true) {
 						const frameStr = buffer.slice(0, splitIndex);
 						buffer = buffer.slice(splitIndex + 2);
 						processFrame(frameStr);
+						// A control frame (token_expiring, error) ends this stream.
+						if (signal.aborted) return;
 						splitIndex = buffer.indexOf("\n\n");
 					}
 				}
 
-				// Stream closed normally
-				scheduleReconnect({
-					minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
-				});
-			} catch (err: unknown) {
-				if (
-					err instanceof Error &&
-					(err.name === "AbortError" || currentSignal.aborted)
-				)
-					return;
-				scheduleReconnect({
-					minimumDelayMs: STREAM_CLOSE_RECONNECT_FLOOR_MS,
-				});
+				if (signal.aborted) return;
+				streamFailed();
+			} catch {
+				if (signal.aborted) return;
+				streamFailed();
 			}
 		};
 
-		void connect();
+		const onVisibilityChange = () =>
+			dispatch({
+				type: "visibility_changed",
+				hidden: document.hidden,
+				nowMs: Date.now(),
+			});
+
+		setConnectionState(connectionStateOf(state.phase));
+		document.addEventListener("visibilitychange", onVisibilityChange);
+		onVisibilityChange();
 
 		return () => {
-			isUnmounted = true;
-			disconnect();
+			document.removeEventListener("visibilitychange", onVisibilityChange);
+			clearRetryTimer();
+			stopAttempt();
 		};
 	}, [accountId, enabled, queryClient, setConnectionState]);
 

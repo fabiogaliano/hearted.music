@@ -120,6 +120,7 @@ describe("useAccountEvents", () => {
 		vi.spyOn(Math, "random").mockReturnValue(0);
 		vi.mocked(getAccountEventsToken).mockResolvedValue({
 			token: "fake-token",
+			expiresInMs: 5 * 60_000,
 		});
 	});
 
