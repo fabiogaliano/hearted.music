@@ -23,6 +23,7 @@ import {
 } from "@/lib/domains/playlists/draft-engine";
 import { isIntentEligible } from "@/lib/domains/playlists/intent-eligibility";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 export interface PreviewPlaylistDraftInput {
 	/** Natural-language intent phrase (premium feature — may be ignored server-side). */
@@ -72,6 +73,82 @@ function parseStoredEmbedding(value: unknown): number[] | null {
 	return parsed;
 }
 
+/**
+ * The intent embedding plus stored song vectors to compare it against. The two
+ * reads degrade independently so a failed intent embedding does not discard
+ * successfully loaded song vectors; either may be absent.
+ */
+async function loadIntentEmbeddings(
+	accountId: string,
+	intent: string,
+	candidateIds: string[],
+): Promise<{
+	intentEmbedding?: number[];
+	songEmbeddingsMap?: Map<string, number[]>;
+}> {
+	// Each failure below degrades the preview silently for the user (no intent
+	// ranking), so Sentry is the only place it can show up.
+	const report = (
+		error: unknown,
+		operation: string,
+		extra?: Record<string, unknown>,
+	) =>
+		captureServerError(error, {
+			operation,
+			area: "playlists",
+			accountId,
+			extra,
+		});
+
+	const embeddingServiceResult = EmbeddingService.create();
+	if (Result.isError(embeddingServiceResult)) {
+		// The model is unknown when the provider is unconfigured, so stored rows
+		// cannot be selected safely either.
+		report(embeddingServiceResult.error, "preview_embedding_service");
+		return {};
+	}
+	const embeddingService = embeddingServiceResult.value;
+
+	const [embeddingResult, songEmbeddingsResult] = await Promise.all([
+		embeddingService.embedText(intent, { role: "query" }),
+		getSongEmbeddingsBatch(candidateIds, embeddingService.getModel(), "full"),
+	]);
+
+	let songEmbeddingsMap: Map<string, number[]> | undefined;
+	if (Result.isError(songEmbeddingsResult)) {
+		report(songEmbeddingsResult.error, "preview_song_embeddings_read", {
+			candidateCount: candidateIds.length,
+		});
+	} else {
+		songEmbeddingsMap = new Map<string, number[]>();
+		const invalidSongIds: string[] = [];
+		for (const [songId, row] of songEmbeddingsResult.value) {
+			const embedding = parseStoredEmbedding(row.embedding);
+			// One corrupt historical row must not make the whole studio unusable.
+			if (embedding === null) invalidSongIds.push(songId);
+			else songEmbeddingsMap.set(songId, embedding);
+		}
+		// One event per preview, not per row: a bad backfill could corrupt
+		// thousands of rows at once.
+		if (invalidSongIds.length > 0) {
+			report(
+				new Error("invalid stored song embeddings skipped"),
+				"preview_song_embeddings_parse",
+				{
+					invalidCount: invalidSongIds.length,
+					sampleSongIds: invalidSongIds.slice(0, 10),
+				},
+			);
+		}
+	}
+
+	if (Result.isError(embeddingResult)) {
+		report(embeddingResult.error, "preview_intent_embedding");
+		return { songEmbeddingsMap };
+	}
+	return { intentEmbedding: embeddingResult.value, songEmbeddingsMap };
+}
+
 export async function runPreviewPlaylistDraft(
 	supabase: AdminSupabaseClient,
 	accountId: string,
@@ -119,62 +196,16 @@ export async function runPreviewPlaylistDraft(
 			? [...eligibleCandidates, ...pinnedExtras]
 			: eligibleCandidates;
 
-	// Stored song embeddings are loaded whenever the configured service can
-	// identify its model. Creating the service and reading stored vectors do not
-	// make an external embedding API request; only a declared eligible intent
-	// triggers embedText. The two independent reads degrade independently so a
-	// failed intent embedding does not discard successfully loaded song vectors.
-	let intentEmbedding: number[] | undefined;
-	let songEmbeddingsMap: Map<string, number[]> | undefined;
-
-	const embeddingServiceResult = EmbeddingService.create();
-	if (Result.isOk(embeddingServiceResult)) {
-		const embeddingService = embeddingServiceResult.value;
-		const candidateIds = rankableCandidates.map((c) => c.song.id);
-		const intentEmbeddingPromise =
-			effectiveIntent === null
-				? Promise.resolve(null)
-				: embeddingService.embedText(effectiveIntent, { role: "query" });
-
-		const [embeddingResult, songEmbeddingsResult] = await Promise.all([
-			intentEmbeddingPromise,
-			getSongEmbeddingsBatch(candidateIds, embeddingService.getModel(), "full"),
-		]);
-
-		if (Result.isOk(songEmbeddingsResult)) {
-			songEmbeddingsMap = new Map<string, number[]>();
-			for (const [songId, row] of songEmbeddingsResult.value) {
-				const embedding = parseStoredEmbedding(row.embedding);
-				if (embedding === null) {
-					// One corrupt historical row must not make the whole studio unusable.
-					console.error(
-						"[playlist-draft] invalid stored song embedding, skipping",
-						{ songId },
-					);
-					continue;
-				}
-				songEmbeddingsMap.set(songId, embedding);
-			}
-		}
-
-		if (embeddingResult !== null) {
-			if (Result.isOk(embeddingResult)) {
-				intentEmbedding = embeddingResult.value;
-			} else {
-				console.error(
-					"[playlist-draft] intent embedding failed, falling back to pills-only",
-					embeddingResult.error,
+	// Without an intent the matcher runs in no-embedding mode and never reads
+	// song vectors, so the up-to-10k-row vector read would be pure waste.
+	const { intentEmbedding, songEmbeddingsMap } =
+		effectiveIntent === null
+			? {}
+			: await loadIntentEmbeddings(
+					accountId,
+					effectiveIntent,
+					rankableCandidates.map((c) => c.song.id),
 				);
-			}
-		}
-	} else {
-		// The model is unknown when the provider is unconfigured, so stored rows
-		// cannot be selected safely either.
-		console.error(
-			"[playlist-draft] EmbeddingService unavailable, continuing without embeddings",
-			embeddingServiceResult.error,
-		);
-	}
 
 	// intentApplied is only true when the intent embedding was successfully
 	// built and is present in the profile.
@@ -185,9 +216,8 @@ export async function runPreviewPlaylistDraft(
 	);
 	const intentApplied = intentEmbedding !== undefined;
 
-	// Rank the eligible candidates plus any out-of-filter pins. The map carries
-	// every stored song vector available for this model; without a query embedding
-	// it does not affect ranking yet. Pinned extras can only surface as pins in
+	// Rank the eligible candidates plus any out-of-filter pins. Pinned extras can
+	// only surface as pins in
 	// composePlaylistPreview — they're in pinnedSongIds by construction, so they
 	// never leak into the ranked fill or suggestions.
 	const ranking = await rankCandidates(

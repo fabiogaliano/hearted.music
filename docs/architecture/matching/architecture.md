@@ -185,7 +185,7 @@ The scorer is a two-pass process over the full (song × playlist) matrix:
    - **Embedding similarity** — `cosineSimilarity` of the song vs playlist vectors (`semantic.ts`).
    - **Audio features** — `computeAudioFeatureScore`, a weighted difference over 9 features
      like energy, valence, danceability, tempo, loudness (`scoring.ts`).
-   - **Genre overlap** — `scoreGenres` / `bandedCredit`: full credit for exact genre matches,
+   - **Genre overlap** — `createGenreScorer` / `bandedCredit`: full credit for exact genre matches,
      partial for adjacent genres (`service.ts`).
 2. **Normalization** (`normalization.ts`) — each signal is normalized across the whole
    candidate set (z-score by default) so the three are comparable.
