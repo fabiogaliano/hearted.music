@@ -27,7 +27,7 @@ import {
 	resolvePostHogHosts,
 } from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
-import { captureRouteError } from "@/lib/observability/sentry";
+import { captureUnhandledRouteError } from "@/lib/observability/sentry";
 import {
 	clearStaleChunkMarker,
 	recoverFromStaleChunk,
@@ -339,7 +339,7 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 		if (recoverFromStaleChunk(error)) return;
 
 		console.error("[RootError]", error);
-		captureRouteError(error, { route: "__root" });
+		captureUnhandledRouteError(error, { route: "__root" });
 	}, [error]);
 
 	return <RouteErrorFallback />;

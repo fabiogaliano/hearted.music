@@ -1,11 +1,11 @@
-import * as Sentry from "@sentry/cloudflare";
+import * as Sentry from "@sentry/core";
 
 /**
  * Server-side error capture for server functions and domain code running in the
- * Cloudflare web server.
+ * Bun web server. `@sentry/core` reports through whichever client the process
+ * initialised (src/instrument.ts here, the worker's own preload there).
  *
- * The web server runs with `enableLogs: false` (see `server.ts`), so `console.*`
- * never reaches Sentry — only an explicit `captureException` or an uncaught
+ * `console.*` never becomes a Sentry issue — only an explicit `captureException` or an uncaught
  * throw does. Server functions routinely translate a typed `Result` error into a
  * friendly thrown string (to hide DB internals from the client) or swallow it
  * into a fallback value; both drop the underlying cause, leaving us blind when

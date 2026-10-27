@@ -46,7 +46,7 @@ import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
 import { useAccountEvents } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobCompletionEffects } from "@/lib/hooks/useActiveJobs";
-import { captureRouteError } from "@/lib/observability/sentry";
+import { captureUnhandledRouteError } from "@/lib/observability/sentry";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { sendVerificationEmail } from "@/lib/platform/auth/auth-client";
 import {
@@ -76,7 +76,7 @@ const DevWorkflowPanel = shouldLoadDevWorkflowPanel
 function AuthenticatedErrorComponent({ error }: ErrorComponentProps) {
 	useEffect(() => {
 		console.error("[AuthenticatedError]", error);
-		captureRouteError(error, { route: "_authenticated" });
+		captureUnhandledRouteError(error, { route: "_authenticated" });
 	}, [error]);
 
 	return <RouteErrorFallback />;
