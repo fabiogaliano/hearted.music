@@ -217,9 +217,8 @@ export async function runPreviewPlaylistDraft(
 	const intentApplied = intentEmbedding !== undefined;
 
 	// Rank the eligible candidates plus any out-of-filter pins. Pinned extras can
-	// only surface as pins in
-	// composePlaylistPreview — they're in pinnedSongIds by construction, so they
-	// never leak into the ranked fill or suggestions.
+	// only surface as pins in composePlaylistPreview — they're in pinnedSongIds by
+	// construction, so they never leak into the ranked fill or suggestions.
 	const ranking = await rankCandidates(
 		rankableCandidates,
 		profile,

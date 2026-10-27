@@ -233,16 +233,18 @@ class MatchingService {
 		// served ranking) and per playlist (the reranker's grouping).
 		const perSong = new Map<string, RawScored[]>();
 		const allScored: RawScored[] = [];
-		const genreScorers = new Map(
-			profiles.map((p) => [p, createGenreScorer(p.genreDistribution)]),
-		);
+		const scorableProfiles = profiles.map((profile) => ({
+			profile,
+			scoreGenres: createGenreScorer(profile.genreDistribution),
+		}));
 
 		for (const song of songs) {
 			const eligibleProfiles = exclusionSet
-				? profiles.filter(
-						(p) => !exclusionSet.has(`${song.id}:${p.playlistId}`),
+				? scorableProfiles.filter(
+						({ profile }) =>
+							!exclusionSet.has(`${song.id}:${profile.playlistId}`),
 					)
-				: profiles;
+				: scorableProfiles;
 
 			if (eligibleProfiles.length === 0) {
 				excluded.push(song.id);
@@ -250,14 +252,8 @@ class MatchingService {
 			}
 
 			const embedding = songEmbeddings?.get(song.id) ?? null;
-			const scored = eligibleProfiles.map((profile) =>
-				this.computeRawScored(
-					song,
-					profile,
-					embedding,
-					genreScorers.get(profile) ??
-						createGenreScorer(profile.genreDistribution),
-				),
+			const scored = eligibleProfiles.map(({ profile, scoreGenres }) =>
+				this.computeRawScored(song, profile, embedding, scoreGenres),
 			);
 			perSong.set(song.id, scored);
 			for (const s of scored) allScored.push(s);
