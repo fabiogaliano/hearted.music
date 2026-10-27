@@ -1,49 +1,51 @@
 /**
- * Cloudflare Workers native rate limiting for raw file-route handlers.
+ * In-process fixed-window rate limiting.
  *
- * TanStack's `createMiddleware` is typed for server functions, not for file
- * route `handlers`, so routes like /api/billing-bridge guard themselves by
- * calling this helper. Counters live in Cloudflare's edge rate-limit binding
- * because Worker isolates share no memory between requests — an in-process
- * counter would reset on every cold isolate and silently never limit.
- *
- * The binding is reached through `cloudflare:workers` (the same module the
- * PostHog helper uses for `waitUntil`), not through `@/env`: bindings are live
- * runtime objects, never string env vars.
+ * Counters live in this process's memory: the app runs as one long-lived Bun
+ * process, so a restart resets every window. That is acceptable for these
+ * limiters, which only blunt floods; none guards money or entitlements.
  */
 
-// Minimal shape of CF's RateLimit binding. Declared locally so we don't depend
-// on `wrangler types` output, which isn't committed in this repo.
-interface RateLimitBinding {
-	limit(options: { key: string }): Promise<{ success: boolean }>;
-}
+// Requests allowed per key per window.
+const LIMITS = {
+	BILLING_LIMITER: 100,
+	SENTRY_TUNNEL_LIMITER: 120,
+	ACCOUNT_EVENTS_TOKEN_LIMITER: 100,
+	WAITLIST_LIMITER: 5,
+} as const;
+
+const WINDOW_MS = 60_000;
+
+type LimiterName = keyof typeof LIMITS;
+
+// One window per limiter, not per key: dropping the whole map when the window
+// rolls over bounds memory to the keys seen in a single window, with no sweep.
+const windows = new Map<
+	LimiterName,
+	{ startedAt: number; counts: Map<string, number> }
+>();
 
 /**
- * Per-request client IP. Cloudflare sets `cf-connecting-ip` on every edge
- * request; the fallback collapses absent headers (local dev) into one shared
- * bucket instead of throwing.
+ * Per-request client IP. Trustworthy only because the origin accepts traffic
+ * from Cloudflare IPs alone, so a client can't set this header itself. The
+ * fallback collapses absent headers (local dev) into one shared bucket.
  */
 export function clientIpFrom(request: Request): string {
 	return request.headers.get("cf-connecting-ip") ?? "unknown";
 }
 
-/**
- * True when the request is within the limit. Fails open — returns true — when
- * the binding is unavailable (local Node dev without the CF runtime), mirroring
- * the PostHog helper's graceful fallback so dev iteration isn't blocked.
- * Returns false only when Cloudflare actively reports the limit exceeded.
- */
+/** True when this request for `key` is within the limiter's budget. */
 export async function withinRateLimit(
-	bindingName: string,
+	name: LimiterName,
 	key: string,
 ): Promise<boolean> {
-	try {
-		const { env } = await import("cloudflare:workers");
-		const limiter = env[bindingName] as RateLimitBinding | undefined;
-		if (!limiter) return true;
-		const { success } = await limiter.limit({ key });
-		return success;
-	} catch {
-		return true;
+	const now = Date.now();
+	let window = windows.get(name);
+	if (!window || now - window.startedAt >= WINDOW_MS) {
+		window = { startedAt: now, counts: new Map() };
+		windows.set(name, window);
 	}
+	const count = (window.counts.get(key) ?? 0) + 1;
+	window.counts.set(key, count);
+	return count <= LIMITS[name];
 }
