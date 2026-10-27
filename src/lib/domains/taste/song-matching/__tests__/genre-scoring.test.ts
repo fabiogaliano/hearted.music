@@ -1,14 +1,17 @@
 /**
  * Tests for the rewritten genre scoring logic (Task 1.3).
  *
- * Uses the exported pure helpers `bandedCredit` and `scoreGenres` directly
+ * Uses the exported pure helpers `bandedCredit` and `createGenreScorer` directly
  * rather than going through MatchingService, which lets us verify the scoring
  * math without constructing the full service or wrestling with private methods.
  */
 
 import { describe, expect, it } from "vitest";
 import { ADJACENT_FLOOR, ADJACENT_MAX } from "../config";
-import { bandedCredit, scoreGenres } from "../service";
+import { bandedCredit, createGenreScorer } from "../service";
+
+const scoreGenres = (songGenres: string[], dist: Record<string, number>) =>
+	createGenreScorer(dist)(songGenres);
 
 // ============================================================================
 // bandedCredit
@@ -241,5 +244,40 @@ describe("missing-tags neutrality (integration)", () => {
 		// Genre signal is missing for the no-genre song so its audio weight gets
 		// boosted. The delta should be small — not a 0.20 penalty from a fused-0.
 		expect(Math.abs(withScore - noScore)).toBeLessThan(0.35);
+	});
+});
+
+describe("per-batch genre credit cache", () => {
+	it("keeps credits per profile — a song genre cached for one playlist never scores another", async () => {
+		const service = createMatchingService(null, null, {
+			minScoreThreshold: 0,
+		});
+		const song = (id: string, genres: string[]): MatchingSong => ({
+			id,
+			spotifyId: `sp-${id}`,
+			name: id,
+			artists: ["A"],
+			genres,
+			audioFeatures: makeAudio(0.8),
+		});
+
+		const result = await service.matchBatch(
+			[song("s1", ["hip-hop"]), song("s2", ["black metal"])],
+			[
+				makeProfile("metal", { "black metal": 1 }),
+				makeProfile("rap", { "hip-hop": 1 }),
+			],
+		);
+		if (Result.isError(result)) throw result.error;
+
+		const genreFactor = (songId: string, playlistId: string) =>
+			result.value.matches.get(songId)?.find((m) => m.playlistId === playlistId)
+				?.factors.genre;
+
+		// hip-hop and black metal are unrelated (credit 0); exact matches are 1.
+		expect(genreFactor("s1", "metal")).toBe(0);
+		expect(genreFactor("s1", "rap")).toBe(1);
+		expect(genreFactor("s2", "metal")).toBe(1);
+		expect(genreFactor("s2", "rap")).toBe(0);
 	});
 });
