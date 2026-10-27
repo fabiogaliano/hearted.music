@@ -57,6 +57,7 @@ import {
 	type SyncPayload,
 	SyncPayloadSchema,
 } from "../../shared/spotify-sync-payload-schema";
+import { announceExtensionSyncCompleted } from "./finalize";
 
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }
@@ -514,6 +515,16 @@ export async function runExtensionSyncJob(
 		}
 		if (completeParent.value === "superseded") {
 			return { status: "superseded" };
+		}
+
+		const announced = await announceExtensionSyncCompleted(job);
+		if (Result.isError(announced)) {
+			log.warn("extension-sync-announce-failed", {
+				actor,
+				jobId: job.id,
+				accountId,
+				error: announced.error.message,
+			});
 		}
 
 		await deletePayloadBestEffort(supabase, payloadPath, job.id, actor);

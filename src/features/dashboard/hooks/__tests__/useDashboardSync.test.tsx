@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
+import { activeJobsKeys, dashboardKeys } from "@/lib/query-keys";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
@@ -152,7 +153,7 @@ describe("useDashboardSync", () => {
 		expect(mockRequestExtensionSync).not.toHaveBeenCalled();
 	});
 
-	it("requests a sync and invalidates dashboard queries exactly once on success", async () => {
+	it("a sync's 202 re-reads active jobs but does not count as done (regression: recent activity refetched before the worker wrote the new songs)", async () => {
 		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 		const { result } = renderHook(() => useDashboardSync(ACCOUNT_ID), {
 			wrapper,
@@ -166,10 +167,15 @@ describe("useDashboardSync", () => {
 		expect(mockRequestExtensionSync).toHaveBeenCalledTimes(1);
 		await waitFor(() => expect(result.current.state.kind).toBe("success"));
 
-		const pageDataInvalidations = invalidateSpy.mock.calls.filter((call) =>
-			JSON.stringify(call[0]?.queryKey).includes("page-data"),
+		const invalidatedKeys = invalidateSpy.mock.calls.map(
+			(call) => call[0]?.queryKey,
 		);
-		expect(pageDataInvalidations).toHaveLength(1);
+		expect(invalidatedKeys).toContainEqual(
+			activeJobsKeys.byAccount(ACCOUNT_ID),
+		);
+		expect(invalidatedKeys).not.toContainEqual(
+			dashboardKeys.recentActivity(ACCOUNT_ID),
+		);
 	});
 
 	it("surfaces a retryable error with the right recovery action when unreachable", async () => {

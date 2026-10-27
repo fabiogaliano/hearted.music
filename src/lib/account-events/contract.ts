@@ -37,6 +37,7 @@ export type AccountEventType =
 	| "active_jobs_changed"
 	| "enrichment_completed"
 	| "enrichment_stopped"
+	| "extension_sync_completed"
 	| "billing_state_changed";
 
 // ── Live / control frame types (§3) ────────────────────────────────────────
@@ -101,6 +102,12 @@ export interface AccountEventPayloadMap {
 		reason: "failed" | "blocked";
 		counts: { done: number; total: number; succeeded: number; failed: number };
 	};
+
+	/**
+	 * The worker finished writing an extension sync. The sync request's 202
+	 * only means it was queued, so this is when synced songs become readable.
+	 */
+	extension_sync_completed: { jobId: string };
 
 	/** Payload-free: client re-reads `getBillingState()`. */
 	billing_state_changed: Record<string, never>;

@@ -80,6 +80,34 @@ async function fenceTerminal(
 	return rows.length > 0;
 }
 
+/**
+ * Tells connected clients an extension sync's writes are readable. Called only
+ * after this claim's completed settle applied, so a superseded run never
+ * announces. Written after, not with, the settle: losing the event to a crash
+ * in between only delays the dashboard refresh to the client's next poll.
+ */
+export async function announceExtensionSyncCompleted(
+	job: Pick<Job, "id" | "account_id">,
+): Promise<Result<void, DbError>> {
+	try {
+		await sql.begin(async (tx) => {
+			await writeAccountEvent(tx, {
+				accountId: job.account_id,
+				type: "extension_sync_completed",
+				payload: { jobId: job.id },
+			});
+		});
+		return Result.ok(undefined);
+	} catch (error) {
+		return Result.err(
+			new DatabaseError({
+				code: "announce_extension_sync_failed",
+				message: errorMessage(error),
+			}),
+		);
+	}
+}
+
 export type FinalizeTransition = "applied" | "lease_lost";
 
 /**
