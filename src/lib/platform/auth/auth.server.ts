@@ -9,7 +9,7 @@
 
 import { redirect } from "@tanstack/react-router";
 import { getRequest } from "@tanstack/react-start/server";
-import { Result } from "better-result";
+import { Result, TaggedError } from "better-result";
 import {
 	getAccountByBetterAuthUserId,
 	touchAccountLastSeen,
@@ -17,14 +17,17 @@ import {
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
-import type { AuthContext } from "@/lib/platform/auth/auth-types";
+import type {
+	AuthContext,
+	AuthSessionState,
+} from "@/lib/platform/auth/auth-types";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
-/**
- * Gets the current auth session, or null if not authenticated.
- * Use in contexts where auth is optional (e.g., landing page).
- */
-export async function getAuthSession(): Promise<AuthContext | null> {
+export class AuthUnavailableError extends TaggedError("AuthUnavailableError")<{
+	message: string;
+}> {}
+
+export function getAuthSessionState(): Promise<AuthSessionState> {
 	const authRequest = getAuthRequestState();
 	const cachedSession = authRequest.getCachedSession();
 
@@ -35,52 +38,75 @@ export async function getAuthSession(): Promise<AuthContext | null> {
 	return authRequest.cacheSession(loadAuthSession());
 }
 
-async function loadAuthSession(): Promise<AuthContext | null> {
+/**
+ * Gets the current auth session, or null if not authenticated.
+ * Use in contexts where auth is optional (e.g., landing page).
+ * Throws AuthUnavailableError when the session can't be resolved: callers fail
+ * instead of treating a signed-in user as anonymous.
+ */
+export async function getAuthSession(): Promise<AuthContext | null> {
+	const state = await getAuthSessionState();
+	switch (state.status) {
+		case "authenticated":
+			return state.auth;
+		case "unauthenticated":
+			return null;
+		case "unavailable":
+			throw new AuthUnavailableError({
+				message: "Auth session is temporarily unavailable",
+			});
+	}
+}
+
+async function loadAuthSession(): Promise<AuthSessionState> {
 	try {
 		const request = getRequest();
 		const betterAuthSession = await getAuth().api.getSession({
 			headers: request.headers,
 		});
 
-		if (!betterAuthSession) return null;
+		if (!betterAuthSession) return { status: "unauthenticated" };
 
 		const accountResult = await getAccountByBetterAuthUserId(
 			betterAuthSession.user.id,
 		);
-		const accountWithActivity = Result.isOk(accountResult)
-			? accountResult.value
-			: null;
+		if (Result.isError(accountResult)) {
+			captureServerError(accountResult.error, {
+				area: "auth",
+				operation: "load_auth_session_account",
+			});
+			return { status: "unavailable" };
+		}
 
-		if (!accountWithActivity) return null;
+		if (!accountResult.value) return { status: "unauthenticated" };
 
-		const { account, lastSeenAt } = accountWithActivity;
+		const { account, lastSeenAt } = accountResult.value;
 
 		recordLastSeen(account.id, lastSeenAt);
 
 		return {
-			session: {
-				accountId: account.id,
-				id: betterAuthSession.session.id,
-				createdAt: betterAuthSession.session.createdAt,
-			},
-			account,
-			identity: {
-				email: betterAuthSession.user.email,
-				emailVerified: betterAuthSession.user.emailVerified,
+			status: "authenticated",
+			auth: {
+				session: {
+					accountId: account.id,
+					id: betterAuthSession.session.id,
+					createdAt: betterAuthSession.session.createdAt,
+				},
+				account,
+				identity: {
+					email: betterAuthSession.user.email,
+					emailVerified: betterAuthSession.user.emailVerified,
+				},
 			},
 		};
 	} catch (error) {
-		const message = errorMessage(error);
-		console.warn("Failed to get auth session:", message);
-		// An auth/DB outage here makes an authed user look anonymous; with the
-		// server's enableLogs:false the console.warn never reaches Sentry, so a
-		// widespread outage would be invisible. Capture, but keep returning null so
-		// the optional-auth contract is unchanged.
+		console.warn("Failed to get auth session:", errorMessage(error));
+		// console.warn never reaches Sentry with enableLogs:false; capture explicitly
 		captureServerError(error, {
 			area: "auth",
 			operation: "load_auth_session",
 		});
-		return null;
+		return { status: "unavailable" };
 	}
 }
 
