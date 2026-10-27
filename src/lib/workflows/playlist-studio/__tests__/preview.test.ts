@@ -42,6 +42,11 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	},
 }));
 
+const captureServerErrorMock = vi.fn();
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: (...args: unknown[]) => captureServerErrorMock(...args),
+}));
+
 const selectEligibleCandidatesMock = vi.fn();
 const buildDraftProfileMock = vi.fn();
 const rankCandidatesMock = vi.fn();
@@ -199,6 +204,10 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "no ML provider configured" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
@@ -223,6 +232,10 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "provider timeout" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
@@ -311,6 +324,8 @@ describe("runPreviewPlaylistDraft", () => {
 			number[]
 		>;
 		expect([...songEmbeddingsMap.entries()]).toEqual([["a", [1, 2, 3]]]);
+		// Reported once for the preview, not once per corrupt row.
+		expect(captureServerErrorMock).toHaveBeenCalledOnce();
 	});
 
 	it("no intent → no embedding service and no stored song-vector read", async () => {
@@ -395,6 +410,10 @@ describe("runPreviewPlaylistDraft", () => {
 
 		expect(buildDraftProfileMock.mock.calls[0][2]).toEqual([0.1, 0.2, 0.3]);
 		expect(result.intentApplied).toBe(true);
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "song_embedding read failed" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2];
 		expect(songEmbeddingsMap).toBeUndefined();
 	});

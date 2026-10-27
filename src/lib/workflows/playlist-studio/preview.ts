@@ -23,6 +23,7 @@ import {
 } from "@/lib/domains/playlists/draft-engine";
 import { isIntentEligible } from "@/lib/domains/playlists/intent-eligibility";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 
 export interface PreviewPlaylistDraftInput {
 	/** Natural-language intent phrase (premium feature — may be ignored server-side). */
@@ -78,20 +79,32 @@ function parseStoredEmbedding(value: unknown): number[] | null {
  * successfully loaded song vectors; either may be absent.
  */
 async function loadIntentEmbeddings(
+	accountId: string,
 	intent: string,
 	candidateIds: string[],
 ): Promise<{
 	intentEmbedding?: number[];
 	songEmbeddingsMap?: Map<string, number[]>;
 }> {
+	// Each failure below degrades the preview silently for the user (no intent
+	// ranking), so Sentry is the only place it can show up.
+	const report = (
+		error: unknown,
+		operation: string,
+		extra?: Record<string, unknown>,
+	) =>
+		captureServerError(error, {
+			operation,
+			area: "playlists",
+			accountId,
+			extra,
+		});
+
 	const embeddingServiceResult = EmbeddingService.create();
 	if (Result.isError(embeddingServiceResult)) {
 		// The model is unknown when the provider is unconfigured, so stored rows
 		// cannot be selected safely either.
-		console.error(
-			"[playlist-draft] EmbeddingService unavailable, continuing without embeddings",
-			embeddingServiceResult.error,
-		);
+		report(embeddingServiceResult.error, "preview_embedding_service");
 		return {};
 	}
 	const embeddingService = embeddingServiceResult.value;
@@ -102,27 +115,35 @@ async function loadIntentEmbeddings(
 	]);
 
 	let songEmbeddingsMap: Map<string, number[]> | undefined;
-	if (Result.isOk(songEmbeddingsResult)) {
+	if (Result.isError(songEmbeddingsResult)) {
+		report(songEmbeddingsResult.error, "preview_song_embeddings_read", {
+			candidateCount: candidateIds.length,
+		});
+	} else {
 		songEmbeddingsMap = new Map<string, number[]>();
+		const invalidSongIds: string[] = [];
 		for (const [songId, row] of songEmbeddingsResult.value) {
 			const embedding = parseStoredEmbedding(row.embedding);
-			if (embedding === null) {
-				// One corrupt historical row must not make the whole studio unusable.
-				console.error(
-					"[playlist-draft] invalid stored song embedding, skipping",
-					{ songId },
-				);
-				continue;
-			}
-			songEmbeddingsMap.set(songId, embedding);
+			// One corrupt historical row must not make the whole studio unusable.
+			if (embedding === null) invalidSongIds.push(songId);
+			else songEmbeddingsMap.set(songId, embedding);
+		}
+		// One event per preview, not per row: a bad backfill could corrupt
+		// thousands of rows at once.
+		if (invalidSongIds.length > 0) {
+			report(
+				new Error("invalid stored song embeddings skipped"),
+				"preview_song_embeddings_parse",
+				{
+					invalidCount: invalidSongIds.length,
+					sampleSongIds: invalidSongIds.slice(0, 10),
+				},
+			);
 		}
 	}
 
 	if (Result.isError(embeddingResult)) {
-		console.error(
-			"[playlist-draft] intent embedding failed, falling back to pills-only",
-			embeddingResult.error,
-		);
+		report(embeddingResult.error, "preview_intent_embedding");
 		return { songEmbeddingsMap };
 	}
 	return { intentEmbedding: embeddingResult.value, songEmbeddingsMap };
@@ -181,6 +202,7 @@ export async function runPreviewPlaylistDraft(
 		effectiveIntent === null
 			? {}
 			: await loadIntentEmbeddings(
+					accountId,
 					effectiveIntent,
 					rankableCandidates.map((c) => c.song.id),
 				);
