@@ -25,6 +25,12 @@ interface UseLikedSongsCollectionOptions {
 	companionSongs?: readonly WalkthroughSong[];
 }
 
+/**
+ * `error` only when nothing was loaded: a failed background refetch keeps the
+ * rows already on screen rather than replacing them with an error.
+ */
+export type LikedSongsLoadState = "loading" | "error" | "ready";
+
 const UNSETTLED_POLL_MS = 5_000;
 
 // The song-walkthrough library shows the hero plus a few curated companions.
@@ -63,6 +69,15 @@ export function likedSongsCollectionRefetchInterval(
 ): number | false {
 	if (connectionState === "connected") return false;
 	return hasUnsettledLoadedSong(data) ? UNSETTLED_POLL_MS : false;
+}
+
+function resolveLoadState(
+	status: "pending" | "error" | "success",
+	hasData: boolean,
+): LikedSongsLoadState {
+	if (status === "pending") return "loading";
+	if (status === "error" && !hasData) return "error";
+	return "ready";
 }
 
 function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
@@ -109,15 +124,23 @@ export function useLikedSongsCollection({
 		initialData: "disconnected",
 		staleTime: Number.POSITIVE_INFINITY,
 	});
-	const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
-		useInfiniteQuery({
-			...likedSongsInfiniteQueryOptions(filter, search),
-			// Stream-first: while connected, enrichment terminal events invalidate the
-			// liked-songs cache directly from the shell. The old unsettled-row poll is
-			// retained only as a disconnected self-heal.
-			refetchInterval: (query) =>
-				likedSongsCollectionRefetchInterval(query.state.data, connectionState),
-		});
+	const {
+		data,
+		status,
+		refetch,
+		fetchNextPage,
+		hasNextPage,
+		isFetchingNextPage,
+	} = useInfiniteQuery({
+		...likedSongsInfiniteQueryOptions(filter, search),
+		// Stream-first: while connected, enrichment terminal events invalidate the
+		// liked-songs cache directly from the shell. The old unsettled-row poll is
+		// retained only as a disconnected self-heal.
+		refetchInterval: (query) =>
+			likedSongsCollectionRefetchInterval(query.state.data, connectionState),
+	});
+
+	const loadState = resolveLoadState(status, data !== undefined);
 
 	const songs = useMemo(
 		() => data?.pages.flatMap((page) => page.songs) ?? [],
@@ -163,7 +186,8 @@ export function useLikedSongsCollection({
 	);
 
 	return {
-		isLoading,
+		loadState,
+		retry: refetch,
 		displayedSongs,
 		displayedSongIndexById,
 		fetchNextPage,

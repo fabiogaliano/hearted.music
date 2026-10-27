@@ -207,6 +207,19 @@ describeLocal(
 			expect(rows.map((r) => r.playlist_id)).toEqual([PLAYLIST_B]);
 			expect(rows.map((r) => r.playlist_id)).not.toContain(PLAYLIST_A);
 		});
+
+		it("carries the suggested playlist's name and Spotify id in the same read", async () => {
+			const rows = await db()`
+      SELECT * FROM public.get_match_pairs_for_song(${SNAPSHOT}, ${SONG_A})
+    `;
+			expect(rows).toEqual([
+				expect.objectContaining({
+					playlist_id: PLAYLIST_B,
+					playlist_name: "Playlist B",
+					playlist_spotify_id: `sp-pl-${PLAYLIST_B}`,
+				}),
+			]);
+		});
 	},
 );
 

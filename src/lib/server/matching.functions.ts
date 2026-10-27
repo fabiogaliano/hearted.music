@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { isSongOwnedByAccount } from "@/lib/domains/library/liked-songs/queries";
-import { computeVisibleSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
+import { computeVisibleSongSuggestionList } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";
 import { upsertMatchDecision } from "@/lib/domains/taste/song-matching/decision-queries";
 import {
 	getLatestMatchSnapshot,
@@ -12,6 +12,7 @@ import {
 } from "@/lib/domains/taste/song-matching/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { reportAndThrow, unwrapOrThrow } from "@/lib/server/unwrap-or-throw";
 
 // ============================================================================
 // Internal helpers
@@ -104,28 +105,24 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 	.inputValidator((data) => GetSongSuggestionsSchema.parse(data))
 	.handler(async ({ data, context }): Promise<SongSuggestionsResult | null> => {
 		const { session } = context;
-		const supabase = createAdminSupabaseClient();
+		const failure = {
+			area: "matching",
+			operation: "get_song_suggestions",
+			accountId: session.accountId,
+		};
 
-		const snapshotResult = await getLatestMatchSnapshot(session.accountId);
-		if (Result.isError(snapshotResult)) {
-			captureServerError(snapshotResult.error, {
-				area: "matching",
-				operation: "get_song_suggestions",
-				accountId: session.accountId,
-				extra: { stage: "latest_snapshot", songId: data.songId },
-			});
-			return null;
-		}
+		const matchSnapshot = unwrapOrThrow(
+			await getLatestMatchSnapshot(session.accountId),
+			failure,
+		);
 		// No snapshot yet — not an error, just nothing to suggest from.
-		if (!snapshotResult.value) return null;
-
-		const matchSnapshot = snapshotResult.value;
+		if (!matchSnapshot) return null;
 
 		// Same visibility path as the deck (entitlement, ownership, decisions,
 		// strictness, playlist match filters), so the panel can never suggest a
 		// playlist the deck would hide for this song.
 		const minScore = await resolveMinMatchScore(session.accountId);
-		const listResult = await computeVisibleSuggestionList(
+		const listResult = await computeVisibleSongSuggestionList(
 			{
 				accountId: session.accountId,
 				subject: { orientation: "song", songId: data.songId },
@@ -139,44 +136,25 @@ export const getSongSuggestions = createServerFn({ method: "GET" })
 				// Song locked or revoked: expected business state, not a failure.
 				return null;
 			case "db-error":
-				captureServerError(listResult.error, {
-					area: "matching",
-					operation: "get_song_suggestions",
-					accountId: session.accountId,
-					extra: { stage: "visible_suggestions", songId: data.songId },
-				});
-				return null;
+				return reportAndThrow(listResult.error, failure);
 			case "ok":
 				break;
 		}
 
-		const visibleSuggestions = listResult.list.suggestions;
-		if (visibleSuggestions.length === 0) {
-			return { snapshotId: matchSnapshot.id, matches: [] };
-		}
-
-		const playlistIds = visibleSuggestions.map((s) => s.playlistId);
-		const { data: playlistRows } = await supabase
-			.from("playlist")
-			.select("id, name, spotify_id")
-			.in("id", playlistIds);
-
-		const playlistMap = new Map((playlistRows ?? []).map((p) => [p.id, p]));
-
 		// Preserve the rank order from deriveVisibleSuggestions (modelRank / visibleRank
 		// already sorted). fitScore is strictnessScore — the match percent shown to the user.
-		const matches: SongSuggestion[] = visibleSuggestions
-			.map((s) => {
-				const playlist = playlistMap.get(s.playlistId);
-				if (!playlist) return null;
-				return {
-					playlistId: s.playlistId,
-					playlistSpotifyId: playlist.spotify_id,
-					playlistName: playlist.name,
-					fitScore: s.fitScore,
-				};
-			})
-			.filter((m): m is SongSuggestion => m !== null);
+		const matches: SongSuggestion[] = [];
+		for (const s of listResult.list.suggestions) {
+			// Every visible pair came from the read that carries the names.
+			const playlist = listResult.playlists.get(s.playlistId);
+			if (!playlist) continue;
+			matches.push({
+				playlistId: s.playlistId,
+				playlistSpotifyId: playlist.spotifyId,
+				playlistName: playlist.name,
+				fitScore: s.fitScore,
+			});
+		}
 
 		return { snapshotId: matchSnapshot.id, matches };
 	});

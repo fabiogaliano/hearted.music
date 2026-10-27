@@ -4192,6 +4192,8 @@ export type Database = {
 				Returns: {
 					fused_score: number;
 					playlist_id: string;
+					playlist_name: string;
+					playlist_spotify_id: string;
 					score: number;
 					song_id: string;
 				}[];
