@@ -24,7 +24,7 @@ const {
 	mockEnqueueDeckJob,
 	mockGetLatestMatchSnapshot,
 	mockHasFirstVisibleReviewSubject,
-	mockCaptureWithWaitUntil,
+	mockCaptureServerEvent,
 	mockResolveVisibilityConfigHash,
 } = vi.hoisted(() => ({
 	mockAuthContext: {
@@ -41,7 +41,7 @@ const {
 	mockEnqueueDeckJob: vi.fn(),
 	mockGetLatestMatchSnapshot: vi.fn(),
 	mockHasFirstVisibleReviewSubject: vi.fn(),
-	mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+	mockCaptureServerEvent: vi.fn().mockResolvedValue(undefined),
 	mockResolveVisibilityConfigHash: vi.fn(),
 }));
 
@@ -111,8 +111,7 @@ vi.mock(
 );
 
 vi.mock("@/lib/observability/posthog-server", () => ({
-	captureWithWaitUntil: (...args: unknown[]) =>
-		mockCaptureWithWaitUntil(...args),
+	captureServerEvent: (...args: unknown[]) => mockCaptureServerEvent(...args),
 }));
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
@@ -609,7 +608,7 @@ describe("setPlaylistTargetMutation", () => {
 				data: { playlistId: "uuid-1", isTarget: true },
 			});
 
-			expect(mockCaptureWithWaitUntil).toHaveBeenCalledWith(
+			expect(mockCaptureServerEvent).toHaveBeenCalledWith(
 				expect.objectContaining({
 					event: "matching_setup_completed",
 					distinctId: "acct-1",
@@ -628,7 +627,7 @@ describe("setPlaylistTargetMutation", () => {
 				data: { playlistId: "uuid-1", isTarget: true },
 			});
 
-			expect(mockCaptureWithWaitUntil).not.toHaveBeenCalled();
+			expect(mockCaptureServerEvent).not.toHaveBeenCalled();
 		});
 	});
 });

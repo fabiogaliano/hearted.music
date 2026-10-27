@@ -18,7 +18,7 @@ export const authRequestMiddleware = createMiddleware().server(
 		try {
 			return await next({ context: { authRequest } });
 		} finally {
-			await closeAuthRequestAfterResponse(authRequest);
+			closeAuthRequestAfterResponse(authRequest);
 		}
 	},
 );
