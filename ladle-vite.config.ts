@@ -31,16 +31,6 @@ export default defineConfig({
 					),
 				),
 			},
-			// Until edge-rate-limit.ts moves off Workers (reliability plan §3d).
-			{
-				find: "cloudflare:workers",
-				replacement: fileURLToPath(
-					new URL(
-						"./src/lib/platform/rate-limit/cloudflare-workers.stub.ts",
-						import.meta.url,
-					),
-				),
-			},
 			// TanStack Start's start-storage-context runs `new AsyncLocalStorage()`
 			// at module load. The app build strips that server module via the Start
 			// Vite plugin, but Ladle doesn't run it — so the module reaches the

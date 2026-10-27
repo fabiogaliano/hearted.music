@@ -302,13 +302,6 @@ export default defineConfig(({ command }) => {
 							),
 						}
 					: {}),
-				// Until edge-rate-limit.ts moves off Workers (reliability plan §3d).
-				"cloudflare:workers": fileURLToPath(
-					new URL(
-						"./src/lib/platform/rate-limit/cloudflare-workers.stub.ts",
-						import.meta.url,
-					),
-				),
 				"@": fileURLToPath(new URL("./src", import.meta.url)),
 			},
 		},
