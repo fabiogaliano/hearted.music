@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockInit } = vi.hoisted(() => ({ mockInit: vi.fn() }));
 
-vi.mock("@sentry/bun", () => ({ init: mockInit }));
+vi.mock("@sentry/bun", () => ({
+	init: mockInit,
+	consoleLoggingIntegration: vi.fn(),
+}));
 
 const DSN = "https://abc123@o1.ingest.sentry.io/2";
 

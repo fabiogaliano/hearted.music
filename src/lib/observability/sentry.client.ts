@@ -111,6 +111,31 @@ export function disableSentryReplay(): void {
 	replayIntegration = null;
 }
 
+/**
+ * For route `errorComponent`s: the fallback renders because nothing else
+ * caught the error, so it is reported as unhandled, which is what crash-free
+ * rates and unhandled-error alerts count.
+ */
+export function captureUnhandledRouteError(
+	error: unknown,
+	context: CaptureContext = {},
+): void {
+	if (!isSentryEnabled() || !sentryInitialized) {
+		return;
+	}
+
+	Sentry.withScope((scope) => {
+		scope.setTags({
+			runtime: RUNTIME_TAG,
+			...(context.route ? { route: context.route } : {}),
+		});
+		scope.setContext("route", context);
+		Sentry.captureException(error, {
+			mechanism: { handled: false, type: "route_error_component" },
+		});
+	});
+}
+
 export function captureRouteError(
 	error: unknown,
 	context: CaptureContext = {},
