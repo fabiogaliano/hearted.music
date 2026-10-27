@@ -77,6 +77,7 @@ type AccountEventType =
   | "match_deck_appended"
   | "enrichment_completed"
   | "enrichment_stopped"
+  | "extension_sync_completed"
   | "billing_state_changed"; // later phase
 
 type MatchOrientation = "playlist" | "artist"; // mirror src/.../match-review-queue/types
@@ -106,6 +107,9 @@ interface AccountEventPayloadMap {
     reason: "failed" | "blocked";
     counts: { done: number; total: number; succeeded: number; failed: number };
   };
+  // Producer: src/worker/extension-sync-runner.ts, after the parent job's
+  // completed settle applies (the 202 from /api/extension/sync only queues it).
+  extension_sync_completed: { jobId: string };
   billing_state_changed: Record<string, never>; // empty; client refetches getBillingState()
 
   // live frames (§3) reuse this map via AllFrameType below
@@ -288,6 +292,7 @@ Owned by the shell; this is the concrete form of `proposal.md` §9.
 | `active_jobs_snapshot` | write `["active-jobs", accountId]` cache directly |
 | `job_progress_changed` | patch `["active-jobs", accountId]` progress |
 | `enrichment_completed` / `enrichment_stopped` | invalidate dashboard (`pageData`/`stats`/`recentActivity`) + liked-songs (`stats`, collection) keys — same set `useActiveJobCompletionEffects` invalidates today |
+| `extension_sync_completed` | `invalidateLibrarySyncQueries` (dashboard `pageData`/`stats`/`recentActivity`/`matchPreviews`) — the same set the polling fallback invalidates on the sync job's running→done edge |
 | `match_snapshot_published` | if `/match` still building, retry the bounded deck read |
 | `match_deck_appended` | invalidate `matchDeckKeys.deck(accountId, orientation)` |
 | `billing_state_changed` | invalidate billing state; let `getBillingState()` refetch |

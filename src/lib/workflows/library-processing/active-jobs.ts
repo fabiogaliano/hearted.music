@@ -1,7 +1,7 @@
 /**
  * Active-jobs read model: the account's in-flight enrichment and snapshot
- * refresh jobs plus first-visible-match readiness, derived from
- * library_processing_state. Served by the getActiveJobs server fn and pushed
+ * refresh jobs (from library_processing_state), its in-flight extension sync,
+ * and first-visible-match readiness. Served by the getActiveJobs server fn and pushed
  * by the worker's account-events gateway.
  */
 
@@ -15,7 +15,7 @@ import {
 	type ParsedJobProgress,
 	parseJobProgress,
 } from "@/lib/platform/jobs/progress/parse";
-import { getJobById } from "@/lib/platform/jobs/repository";
+import { getActiveJob, getJobById } from "@/lib/platform/jobs/repository";
 import { loadLibraryProcessingState } from "./queries";
 
 interface ProgressCounts {
@@ -34,6 +34,9 @@ export interface ActiveJobInfo {
 export interface ActiveJobs {
 	enrichment: ActiveJobInfo | null;
 	matchSnapshotRefresh: ActiveJobInfo | null;
+	// Lets clients without the event stream see a sync finish: the sync
+	// request's 202 only means it was queued.
+	extensionSync: Pick<ActiveJobInfo, "id" | "status"> | null;
 	// Whether the account has a visible review subject (the authoritative check).
 	firstVisibleMatchReady: boolean;
 }
@@ -41,10 +44,12 @@ export interface ActiveJobs {
 export async function buildActiveJobsSnapshot(
 	accountId: string,
 ): Promise<ActiveJobs> {
-	const [stateResult, firstVisibleResult] = await Promise.all([
-		loadLibraryProcessingState(accountId),
-		hasFirstVisibleReviewSubject(accountId),
-	]);
+	const [stateResult, firstVisibleResult, extensionSyncResult] =
+		await Promise.all([
+			loadLibraryProcessingState(accountId),
+			hasFirstVisibleReviewSubject(accountId),
+			getActiveJob(accountId, "extension_sync"),
+		]);
 
 	// Conservative: error → false so a transient DB failure must not
 	// surface as a permanent false-empty state on the UI.
@@ -58,6 +63,22 @@ export async function buildActiveJobsSnapshot(
 			accountId,
 		});
 	}
+
+	if (Result.isError(extensionSyncResult)) {
+		captureServerError(extensionSyncResult.error, {
+			area: "jobs",
+			operation: "resolve_active_extension_sync",
+			accountId,
+		});
+	}
+	const extensionSyncJob = Result.isOk(extensionSyncResult)
+		? extensionSyncResult.value
+		: null;
+	const extensionSync =
+		extensionSyncJob?.status === "pending" ||
+		extensionSyncJob?.status === "running"
+			? { id: extensionSyncJob.id, status: extensionSyncJob.status }
+			: null;
 
 	let enrichment: ActiveJobInfo | null = null;
 	let matchSnapshotRefresh: ActiveJobInfo | null = null;
@@ -80,6 +101,7 @@ export async function buildActiveJobsSnapshot(
 	return {
 		enrichment,
 		matchSnapshotRefresh,
+		extensionSync,
 		firstVisibleMatchReady,
 	};
 }
