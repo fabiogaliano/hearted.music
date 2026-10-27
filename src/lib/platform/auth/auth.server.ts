@@ -15,8 +15,8 @@ import {
 	touchAccountLastSeen,
 } from "@/lib/domains/library/accounts/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
-import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
+import { getAuth } from "@/lib/platform/auth/auth-request-state.server";
 import type { AuthContext } from "@/lib/platform/auth/auth-types";
 import { runAfterResponse } from "@/lib/platform/process/after-response";
 import { errorMessage } from "@/lib/shared/errors/error-message";
