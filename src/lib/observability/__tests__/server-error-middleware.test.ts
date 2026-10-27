@@ -1,13 +1,16 @@
 import { redirect } from "@tanstack/react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { reportAndThrow } from "@/lib/server/unwrap-or-throw";
 import { serverFnErrorMiddleware } from "../server-error-middleware";
 
-const { mockCaptureServerError } = vi.hoisted(() => ({
-	mockCaptureServerError: vi.fn(),
+const { mockCaptureException } = vi.hoisted(() => ({
+	mockCaptureException: vi.fn(),
 }));
 
-vi.mock("@/lib/observability/capture-server-error", () => ({
-	captureServerError: mockCaptureServerError,
+// Mocked at the Sentry edge, not captureServerError, so the real "already
+// captured" bookkeeping between the boundary and the middleware is exercised.
+vi.mock("@sentry/core", () => ({
+	captureException: mockCaptureException,
 }));
 
 type ServerFn = (args: {
@@ -27,15 +30,41 @@ beforeEach(() => {
 });
 
 describe("serverFnErrorMiddleware", () => {
-	it("reports a failing server fn and still rethrows it to the caller", async () => {
+	it("captures an error nobody captured, and still rethrows it to the caller", async () => {
 		const failure = new Error("db down");
 
 		await expect(
 			runServer({ next: () => Promise.reject(failure), serverFnMeta }),
 		).rejects.toBe(failure);
-		expect(mockCaptureServerError).toHaveBeenCalledWith(
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		expect(mockCaptureException).toHaveBeenCalledWith(
 			failure,
-			expect.objectContaining({ operation: "getBillingState" }),
+			expect.objectContaining({
+				tags: expect.objectContaining({ operation: "getBillingState" }),
+			}),
+		);
+	});
+
+	it("does not capture again an error the server fn captured at its boundary", async () => {
+		const dbFailure = new Error("lock timeout");
+
+		await expect(
+			runServer({
+				next: async () =>
+					reportAndThrow(dbFailure, {
+						area: "billing",
+						operation: "get_billing_state",
+						accountId: "account-1",
+					}),
+				serverFnMeta,
+			}),
+		).rejects.toThrow(/get_billing_state failed/);
+		expect(mockCaptureException).toHaveBeenCalledTimes(1);
+		expect(mockCaptureException).toHaveBeenCalledWith(
+			dbFailure,
+			expect.objectContaining({
+				tags: expect.objectContaining({ operation: "get_billing_state" }),
+			}),
 		);
 	});
 
@@ -45,6 +74,6 @@ describe("serverFnErrorMiddleware", () => {
 		await expect(
 			runServer({ next: () => Promise.reject(thrown), serverFnMeta }),
 		).rejects.toBe(thrown);
-		expect(mockCaptureServerError).not.toHaveBeenCalled();
+		expect(mockCaptureException).not.toHaveBeenCalled();
 	});
 });

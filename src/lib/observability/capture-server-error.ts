@@ -36,6 +36,22 @@ function readCause(value: unknown): unknown {
 	return "cause" in value ? value.cause : undefined;
 }
 
+// Server fns capture at their boundary and then throw, usually with the
+// captured error as `cause`; the catch-all middleware in
+// server-error-middleware.ts checks this so one failure is one Sentry event.
+const capturedErrors = new WeakSet<object>();
+
+function isObject(value: unknown): value is object {
+	return typeof value === "object" && value !== null;
+}
+
+/** Whether `error`, or the error it wraps as `cause`, was already captured. */
+export function wasCaptured(error: unknown): boolean {
+	return [error, readCause(error)].some(
+		(value) => isObject(value) && capturedErrors.has(value),
+	);
+}
+
 export function captureServerError(
 	error: unknown,
 	context: {
@@ -64,6 +80,7 @@ export function captureServerError(
 	if (dbError) tags.db_error = dbError;
 	if (dbCode) tags.db_code = dbCode;
 
+	if (isObject(error)) capturedErrors.add(error);
 	Sentry.captureException(error, {
 		tags,
 		...(context.accountId ? { user: { id: context.accountId } } : {}),
