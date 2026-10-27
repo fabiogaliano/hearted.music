@@ -4,6 +4,12 @@ A theory-and-evidence pass on removing the sidebar and making `/dashboard` the
 navigational root, with routes preserved and navigation happening through the
 content itself. Framed as a hypothesis to react to, not a plan of record.
 
+**Status (2026-10-27): not started in the product.** The sidebar is still the live shell
+(`src/routes/_authenticated/route.tsx`, `-components/Sidebar.tsx`). Both sketches exist only as a Ladle
+prototype under `src/features/dashboard/components/explorations/` (`049431eb`), imported by nothing
+else. None of the §9 steps has landed and none of the open questions is decided. Next step is still
+§9's first one: Liked Songs and Playlists shelves on `/dashboard`, with navigation instrumented.
+
 Inputs: codebase audit (routes, sidebar, dashboard link graph), IA literature
 research (NN/g, information foraging, OOUX, Krug), and product case studies
 (Superhuman, Duolingo, Stripe, Spotify, Apple Music, Airbnb, plus

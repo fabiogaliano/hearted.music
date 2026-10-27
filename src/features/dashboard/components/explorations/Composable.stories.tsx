@@ -54,7 +54,7 @@ AppFrame.argTypes = {
 };
 AppFrame.meta = {
 	description:
-		"Sketch A (pure) vs Sketch B (line) from docs/tmp/sidebar-less-navigation-vision.md. Try: shelf → spoke → wordmark home; profile → settings from a spoke shows the labeled back-trail.",
+		"Sketch A (pure) vs Sketch B (line) from docs/plans/sidebar-less-navigation.md. Try: shelf → spoke → wordmark home; profile → settings from a spoke shows the labeled back-trail.",
 };
 
 const compositionArgs = {

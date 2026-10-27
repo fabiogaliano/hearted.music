@@ -8,7 +8,7 @@ const ACCOUNT_NAME = "fabiogaliano";
 const CONTAINER_NAME = "supabase_db_v1_hearted";
 const LOCAL_DATABASE_URL =
 	"postgresql://postgres:postgres@127.0.0.1:54322/postgres";
-const REPORT_PATH = resolve(process.cwd(), "docs/tmp/vibe-probe-report.md");
+const REPORT_PATH = resolve(process.cwd(), "docs/analysis/vibe-probe-report.md");
 const EMBEDDING_DIMENSIONS = 512;
 const MEANINGFUL_SILHOUETTE = 0.09;
 const NEAR_BEST_TOLERANCE = 0.02;
