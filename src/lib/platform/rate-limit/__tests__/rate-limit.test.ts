@@ -3,7 +3,7 @@
 // us drive `withinRateLimit`'s allow/deny branches without the workerd runtime.
 import { env as workerEnv } from "cloudflare:workers";
 import { afterEach, describe, expect, it } from "vitest";
-import { clientIpFrom, withinRateLimit } from "../edge-rate-limit";
+import { clientIpFrom, withinRateLimit } from "../rate-limit";
 
 afterEach(() => {
 	workerEnv.TEST_LIMITER = undefined;

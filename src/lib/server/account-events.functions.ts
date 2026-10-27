@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import type { EventTokenClaims } from "@/lib/account-events/contract";
 import { signEventToken } from "@/lib/account-events/token";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
-import { withinRateLimit } from "@/lib/platform/rate-limit/edge-rate-limit";
+import { withinRateLimit } from "@/lib/platform/rate-limit/rate-limit";
 
 export const getAccountEventsToken = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
