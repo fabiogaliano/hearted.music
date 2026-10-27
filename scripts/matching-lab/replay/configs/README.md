@@ -6,13 +6,13 @@ Each JSON file describes one variant that can be passed to `--a` or `--b`.
 
 | Mode | How to activate | Reranker model |
 |---|---|---|
-| **Prod-faithful** | Set `DEEPINFRA_API_KEY` | DeepInfra `Qwen/Qwen3-Reranker-0.6B` (same as production) |
+| **Prod-faithful** | `ML_PROVIDER=deepinfra` + `DEEPINFRA_API_KEY` | DeepInfra `Qwen/Qwen3-Reranker-0.6B` (same as production) |
 | **Local dev** | `ML_PROVIDER=local` | Local ONNX Qwen3-Reranker-0.6B sidecar |
 | **Matching-only** | Neither of the above | No reranker (HuggingFace fallback has no reranker) |
 
 ```sh
 # Prod-faithful (recommended for results that mirror production):
-DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts \
+ML_PROVIDER=deepinfra DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts \
   --a configs/metadata-doc.json --b configs/analysis-doc.json
 
 # Local dev (keyless, uses Python ONNX sidecar):
