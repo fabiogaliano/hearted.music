@@ -1,14 +1,17 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import type { RefCallback } from "react";
 import { useCallback } from "react";
+import { Button } from "@/components/ui/Button";
 import type { ListItemNavigationProps } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
 import type { SearchFilter } from "../filter";
+import type { LikedSongsLoadState } from "../hooks/useLikedSongsCollection";
 import type { LikedSong } from "../types";
 import { SongCard } from "./SongCard";
 
 interface LikedSongsListData {
-	isLoading: boolean;
+	loadState: LikedSongsLoadState;
+	retry: () => void;
 	filter: SearchFilter;
 	displayedSongs: readonly LikedSong[];
 	visibleSongs: readonly LikedSong[];
@@ -51,11 +54,13 @@ function EditorialNotice({
 	headline,
 	body,
 	isLoading = false,
+	action,
 }: {
 	eyebrow: string;
 	headline: string;
 	body?: string;
 	isLoading?: boolean;
+	action?: { label: string; onClick: () => void };
 }) {
 	return (
 		<div className="flex min-h-80 flex-col items-center justify-center px-6 text-center">
@@ -92,6 +97,16 @@ function EditorialNotice({
 					{body}
 				</p>
 			)}
+			{action && (
+				<Button
+					variant="link"
+					onClick={action.onClick}
+					className="mt-4"
+					style={{ fontFamily: fonts.body }}
+				>
+					{action.label}
+				</Button>
+			)}
 		</div>
 	);
 }
@@ -104,10 +119,23 @@ export function LikedSongsList({
 }: LikedSongsListProps) {
 	const noopItemRef = useCallback(() => {}, []);
 
-	if (data.isLoading) {
+	if (data.loadState === "loading") {
 		return (
 			<div className="px-2 pt-2">
 				<EditorialNotice eyebrow="Loading" headline="One moment." isLoading />
+			</div>
+		);
+	}
+
+	if (data.loadState === "error") {
+		return (
+			<div className="px-2 pt-2" role="alert">
+				<EditorialNotice
+					eyebrow="Couldn't load"
+					headline="Your library didn't come through."
+					body="Your songs are safe. This is on our side."
+					action={{ label: "Try again", onClick: data.retry }}
+				/>
 			</div>
 		);
 	}
