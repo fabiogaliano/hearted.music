@@ -1,0 +1,56 @@
+# syntax=docker/dockerfile:1
+# Web app image. Built in CI and pushed to GHCR; Coolify only pulls it.
+
+FROM oven/bun:1.3.14 AS base
+WORKDIR /app
+
+FROM base AS build-deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --ignore-scripts
+
+FROM base AS prod-deps
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production --ignore-scripts
+
+FROM build-deps AS build
+# VITE_* values are inlined into the bundles at build time, so they are build
+# args here, not runtime env in Coolify.
+ARG VITE_PUBLIC_APP_ORIGIN
+ARG VITE_APP_TITLE
+ARG VITE_CHROME_EXTENSION_ID
+ARG VITE_USERJOT_PROJECT_ID
+ARG VITE_ACCOUNT_EVENTS_GATEWAY_URL
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN
+ARG VITE_PUBLIC_POSTHOG_HOST
+ARG VITE_SENTRY_DSN
+ARG VITE_SENTRY_ENVIRONMENT
+ARG VITE_SENTRY_ORG_SLUG
+ARG VITE_APP_RELEASE
+COPY . .
+# The token uploads sourcemaps; a secret mount keeps it out of the image layers.
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
+    RELEASE=true bun run build
+
+FROM base
+ARG VITE_APP_RELEASE
+ENV NODE_ENV=production
+ENV PORT=3000
+# src/instrument.ts tags Sentry events with the release the sourcemaps were
+# uploaded under.
+ENV APP_RELEASE=$VITE_APP_RELEASE
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json ./
+COPY --from=build /app/dist ./dist
+COPY src/serve.ts src/instrument.ts ./src/
+COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
+
+USER bun
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["bun", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? '3000'}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
+# No `run` subcommand: `bun --preload X run Y` drops Y; run the file directly.
+CMD ["bun", "--preload", "./src/instrument.ts", "src/serve.ts"]

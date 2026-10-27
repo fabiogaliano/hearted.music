@@ -82,7 +82,7 @@ vi.mock("@/lib/platform/rate-limit/rate-limit", () => ({
 	withinRateLimit: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@sentry/cloudflare", () => ({
+vi.mock("@sentry/core", () => ({
 	captureException: vi.fn(),
 }));
 

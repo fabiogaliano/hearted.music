@@ -19,10 +19,10 @@ import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing
 /**
  * Reports an operational failure in the best-effort billing tail (a swallowed DB
  * error that the caller still treats as success). Injected by the caller so this
- * module stays runtime-agnostic: the Cloudflare web/operator paths wire a
+ * module stays runtime-agnostic: the web/operator paths wire a
  * `captureServerError` reporter, while the Bun worker wires an `@sentry/bun` one.
- * Hard-coding `@sentry/cloudflare` here would drag that SDK into the worker,
- * which calls `maybeGrantLikedSongAccessAfterSync` from the extension-sync job.
+ * The worker calls `maybeGrantLikedSongAccessAfterSync` from the extension-sync
+ * job.
  */
 export type BillingOperationalErrorReporter = (
 	error: unknown,

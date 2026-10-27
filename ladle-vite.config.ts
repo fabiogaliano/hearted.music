@@ -31,14 +31,14 @@ export default defineConfig({
 					),
 				),
 			},
-			// `cloudflare:workers` is a workerd-only runtime module that
-			// @cloudflare/vite-plugin provides in the app build. Ladle doesn't run
-			// that plugin, so the dep scanner can't resolve the dynamic import in
-			// auth-request-state.ts. Reuse the test stub (no-op waitUntil, empty env).
+			// Until edge-rate-limit.ts moves off Workers (reliability plan §3d).
 			{
 				find: "cloudflare:workers",
 				replacement: fileURLToPath(
-					new URL("./src/test/cloudflare-workers.stub.ts", import.meta.url),
+					new URL(
+						"./src/lib/platform/rate-limit/cloudflare-workers.stub.ts",
+						import.meta.url,
+					),
 				),
 			},
 			// TanStack Start's start-storage-context runs `new AsyncLocalStorage()`

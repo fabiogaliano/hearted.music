@@ -15,6 +15,7 @@
 		"dev:all": "concurrently -n app,worker,gateway,ml -c blue,green,yellow,magenta --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:gateway\" \"bun run dev:embeddings\"",
 		"dev:monetization": "concurrently -n app,worker,ml,brand,stripe -c blue,green,magenta,yellow,cyan --kill-others-on-fail \"bun run dev\" \"bun run dev:worker\" \"bun run dev:embeddings\" \"bun run dev:brand\" \"bun run dev:stripe\"",
 		"build": "vite build",
+		"start": "bun --preload ./src/instrument.ts src/serve.ts",
 		"preview": "vite preview",
 		"test": "VITEST_MAX_WORKERS=2 vitest run",
 		"test:fast": "vitest run",
@@ -50,9 +51,7 @@
 		"cp:web": "vite --config control-panel/vite.config.ts",
 		"control-panel": "concurrently -n cp-api,cp-web -c magenta,cyan --kill-others-on-fail \"bun run cp:api\" \"bun run cp:web\"",
 		"ladle": "ladle serve",
-		"ladle:build": "ladle build",
-		"deploy": "RELEASE=true bun run build && wrangler deploy",
-		"deploy:secrets": "bun scripts/ops/env-to-secrets.ts .env.cloud --mode released && wrangler secret bulk < prod-secrets.json"
+		"ladle:build": "ladle build"
 	},
 	"dependencies": {
 		"@ai-sdk/anthropic": "^3.0.47",
@@ -70,7 +69,7 @@
 		"@posthog/ai": "^7.19.2",
 		"@posthog/react": "^1.9.1",
 		"@sentry/bun": "^10.53.1",
-		"@sentry/cloudflare": "^10.53.1",
+		"@sentry/core": "^10.53.1",
 		"@sentry/react": "^10.53.1",
 		"@sentry/tanstackstart-react": "^10.53.1",
 		"@supabase/supabase-js": "^2.97.0",
@@ -106,7 +105,6 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.4.15",
-		"@cloudflare/vite-plugin": "^1.37.2",
 		"@ladle/react": "npm:@fabiogaliano/ladle-react@^5.3.0",
 		"@playwright/cli": "^0.1.13",
 		"@tailwindcss/vite": "^4.3.0",
@@ -135,8 +133,7 @@
 		"typescript": "^6.0.3",
 		"tunekit": "^1.4.0",
 		"vite": "^8.0.13",
-		"vitest": "^4.1.6",
-		"wrangler": "^4.93.0"
+		"vitest": "^4.1.6"
 	},
 	"overrides": {
 		"ws": "8.21.0",

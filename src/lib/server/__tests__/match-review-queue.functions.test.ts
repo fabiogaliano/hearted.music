@@ -34,7 +34,7 @@ const {
 	mockCaptureVisiblePairsAtomic,
 	mockReadQueueItemSongSuggestions,
 	mockCaptureException,
-	mockCaptureWithWaitUntil,
+	mockCaptureServerEvent,
 	mockGetPlaylistById,
 	mockGetOwnedQueueItem,
 } = vi.hoisted(() => {
@@ -60,7 +60,7 @@ const {
 		mockCaptureVisiblePairsAtomic: vi.fn(),
 		mockReadQueueItemSongSuggestions: vi.fn(),
 		mockCaptureException: vi.fn(),
-		mockCaptureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+		mockCaptureServerEvent: vi.fn().mockResolvedValue(undefined),
 		mockGetPlaylistById: vi.fn(),
 		mockGetOwnedQueueItem: vi.fn(),
 	};
@@ -93,13 +93,12 @@ vi.mock("@tanstack/react-start", () => {
 	};
 });
 
-vi.mock("@sentry/cloudflare", () => ({
+vi.mock("@sentry/core", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
 
 vi.mock("@/lib/observability/posthog-server", () => ({
-	captureWithWaitUntil: (...args: unknown[]) =>
-		mockCaptureWithWaitUntil(...args),
+	captureServerEvent: (...args: unknown[]) => mockCaptureServerEvent(...args),
 }));
 
 vi.mock("@/lib/data/client", () => ({

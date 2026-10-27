@@ -3,8 +3,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { Result } from "better-result";
 import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
 import { env } from "@/env";
+import { getSql } from "@/lib/data/sql";
 import {
 	oauthAccount,
 	rateLimit,
@@ -12,90 +12,16 @@ import {
 	user,
 	verification,
 } from "@/lib/platform/auth/auth-schema";
-import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 import { sendPasswordResetEmail } from "@/lib/platform/email/send-password-reset-email";
 import { sendVerificationEmail } from "@/lib/platform/email/send-verification-email";
 
-export interface AuthRequestState {
-	getAuth(): BetterAuthInstance;
-	getCachedSession(): Promise<AuthSessionState> | undefined;
-	cacheSession(
-		sessionPromise: Promise<AuthSessionState>,
-	): Promise<AuthSessionState>;
-	close(): Promise<void>;
-}
-
-type AuthSqlClient = ReturnType<typeof postgres>;
-export type BetterAuthInstance = ReturnType<typeof createBetterAuth>;
-
-const CONNECTION_IDLE_TIMEOUT_SECONDS = 20;
-const CONNECTION_CLOSE_TIMEOUT_SECONDS = 5;
-
-export function createAuthRequestState(): AuthRequestState {
-	let sql: AuthSqlClient | undefined;
-	let auth: BetterAuthInstance | undefined;
-	let authSessionPromise: Promise<AuthSessionState> | undefined;
-	let closePromise: Promise<void> | undefined;
-
-	function getSql(): AuthSqlClient {
-		if (sql) return sql;
-
-		sql = postgres(env.DATABASE_URL, {
-			prepare: false,
-			max: 1,
-			idle_timeout: CONNECTION_IDLE_TIMEOUT_SECONDS,
-			fetch_types: false,
-		});
-
-		return sql;
-	}
-
-	return {
-		getAuth() {
-			if (auth) return auth;
-			auth = createBetterAuth(getSql());
-			return auth;
-		},
-		getCachedSession() {
-			return authSessionPromise;
-		},
-		cacheSession(sessionPromise) {
-			authSessionPromise ??= sessionPromise;
-			return authSessionPromise;
-		},
-		close() {
-			if (closePromise) return closePromise;
-			if (!sql) {
-				closePromise = Promise.resolve();
-				return closePromise;
-			}
-
-			closePromise = sql
-				.end({ timeout: CONNECTION_CLOSE_TIMEOUT_SECONDS })
-				.then(() => undefined);
-			return closePromise;
-		},
-	};
-}
-
-function createBetterAuth(sql: AuthSqlClient) {
-	const db = drizzle(sql);
-
+function createBetterAuth() {
 	return betterAuth({
 		baseURL: env.BETTER_AUTH_URL,
 		secret: env.BETTER_AUTH_SECRET,
-		// On Workers a TCP socket can't outlive the request that opened it, so each
-		// session read would otherwise pay a fresh TCP+TLS handshake to Postgres.
-		// The cookie cache serves the session from a signed cookie, so the DB (and
-		// thus the connection) is only touched when the cache expires. Tradeoff:
-		// server-side revocations lag by up to maxAge on already-issued cookies.
-		session: {
-			cookieCache: {
-				enabled: true,
-				maxAge: 5 * 60,
-			},
-		},
-		database: drizzleAdapter(db, {
+		// No session cookie cache: every session read hits the DB so logout and
+		// revocation take effect immediately.
+		database: drizzleAdapter(drizzle(getSql()), {
 			provider: "pg",
 			schema: {
 				user,
@@ -179,15 +105,14 @@ function createBetterAuth(sql: AuthSqlClient) {
 	});
 }
 
-export async function closeAuthRequestAfterResponse(
-	authRequest: AuthRequestState,
-): Promise<void> {
-	const closePromise = authRequest.close();
+export type BetterAuthInstance = ReturnType<typeof createBetterAuth>;
 
-	try {
-		const { waitUntil } = await import("cloudflare:workers");
-		waitUntil(closePromise);
-	} catch {
-		await closePromise;
-	}
+let auth: BetterAuthInstance | undefined;
+
+// Built once per process: constructing it per request was a large share of
+// every authenticated request's CPU on Workers. Lazy for the same reason as
+// getSql().
+export function getAuth(): BetterAuthInstance {
+	auth ??= createBetterAuth();
+	return auth;
 }

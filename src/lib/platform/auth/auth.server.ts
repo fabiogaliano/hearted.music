@@ -15,12 +15,13 @@ import {
 	touchAccountLastSeen,
 } from "@/lib/domains/library/accounts/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
-import { getAuth } from "@/lib/platform/auth/auth";
 import { getAuthRequestState } from "@/lib/platform/auth/auth-request-state";
+import { getAuth } from "@/lib/platform/auth/auth-request-state.server";
 import type {
 	AuthContext,
 	AuthSessionState,
 } from "@/lib/platform/auth/auth-types";
+import { runAfterResponse } from "@/lib/platform/process/after-response";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
 export class AuthUnavailableError extends TaggedError("AuthUnavailableError")<{
@@ -118,8 +119,8 @@ const LAST_SEEN_THROTTLE_MS = 10 * 60 * 1000;
  * Gates in-process on the last_seen_at we already read with the account, so the
  * common fresh path makes no extra round-trip; touch_account_last_seen applies
  * the authoritative 10-minute throttle in SQL, which also makes concurrent
- * requests correct regardless of this check or Worker clock skew. Runs after
- * the response via waitUntil so it never adds latency, and its failure is
+ * requests correct regardless of this check or clock skew. Runs after the
+ * response so it never adds latency, and its failure is
  * intentionally swallowed — a missed heartbeat must not break auth.
  */
 function recordLastSeen(accountId: string, lastSeenAt: string | null): void {
@@ -141,16 +142,7 @@ function recordLastSeen(accountId: string, lastSeenAt: string | null): void {
 		});
 	});
 
-	void runAfterResponse(heartbeat);
-}
-
-async function runAfterResponse(promise: Promise<unknown>): Promise<void> {
-	try {
-		const { waitUntil } = await import("cloudflare:workers");
-		waitUntil(promise);
-	} catch {
-		await promise;
-	}
+	runAfterResponse(heartbeat);
 }
 
 /**

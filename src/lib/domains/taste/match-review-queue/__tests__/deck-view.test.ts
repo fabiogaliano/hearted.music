@@ -9,7 +9,7 @@ import {
 const mockAddBreadcrumb = vi.fn();
 const mockCaptureException = vi.fn();
 
-vi.mock("@sentry/cloudflare", () => ({
+vi.mock("@sentry/core", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
 	addBreadcrumb: (...args: unknown[]) => mockAddBreadcrumb(...args),
 }));

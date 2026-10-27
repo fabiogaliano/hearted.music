@@ -69,6 +69,8 @@
 		{
 			"includes": [
 				"**/src/env.ts",
+				"**/src/instrument.ts",
+				"**/src/serve.ts",
 				"**/src/worker/**",
 				"**/src/lib/observability/logger.ts",
 				"**/vite.config.ts"
