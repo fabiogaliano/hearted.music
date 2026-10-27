@@ -149,7 +149,7 @@ export function LikedSongsPage({
 
 	const {
 		state: {
-			isLoading,
+			loadState,
 			displayedSongs,
 			visibleSongs,
 			hasMore,
@@ -169,6 +169,7 @@ export function LikedSongsPage({
 			handleClose,
 		},
 		actions: {
+			retry,
 			sentinelRef,
 			getItemProps,
 			handleCardClick,
@@ -394,7 +395,8 @@ export function LikedSongsPage({
 
 					<LikedSongsList
 						data={{
-							isLoading,
+							loadState,
+							retry,
 							filter,
 							displayedSongs,
 							visibleSongs,
@@ -451,15 +453,17 @@ export function LikedSongsPage({
 				/>
 			)}
 
-			{isWalkthrough && !isLoading && !walkthroughIntroDismissed && (
-				<TourCoachMark
-					body={[
-						"Inside an unlocked song is what meets your playlist's intent. Here's a look.",
-					]}
-					actionLabel="Got it"
-					onAction={() => setWalkthroughIntroDismissed(true)}
-				/>
-			)}
+			{isWalkthrough &&
+				loadState !== "loading" &&
+				!walkthroughIntroDismissed && (
+					<TourCoachMark
+						body={[
+							"Inside an unlocked song is what meets your playlist's intent. Here's a look.",
+						]}
+						actionLabel="Got it"
+						onAction={() => setWalkthroughIntroDismissed(true)}
+					/>
+				)}
 		</div>
 	);
 }
