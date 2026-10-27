@@ -164,7 +164,7 @@ CPU-per-request limit of Workers Free, which every authenticated request was alr
 2. Cloudflare stays in front (proxied record); the origin accepts only Cloudflare IPs, so
    `cf-connecting-ip` can't be spoofed.
 3. Image built in GitHub Actions, pushed to GHCR; Coolify pulls it. No builds on the VPS.
-4. Rate limiting: in-process limiter in the app for all three endpoints, plus Cloudflare's one free
+4. Rate limiting: in-process limiter in the app for the rate-limited endpoints, plus Cloudflare's one free
    rate-limiting rule on `/api/pulse-s`.
 5. Drop the 5-minute session cookie cache: logout and revocation take effect immediately.
 6. TLS: same Let's Encrypt (HTTP-01) setup Traefik already uses for `supabase.`, `events.`, `billing.`.
@@ -207,6 +207,8 @@ CPU-per-request limit of Workers Free, which every authenticated request was alr
 - `withinRateLimit` (`src/lib/platform/rate-limit/edge-rate-limit.ts`) returns `true` when the Workers
   binding is missing (`:43,47`), so on Bun all three callers would be unlimited: token mint
   (`account-events.functions.ts:12`), `routes/api/billing-bridge.ts:73`, `routes/api/pulse-s.ts:306`.
+- Waitlist signup (`src/lib/server/waitlist.functions.ts:18-54`) inserts and sends email with no limiter
+  at all; add it as a fourth caller.
 - Replace with an in-process fixed-window limiter keeping the `withinRateLimit(name, key)` signature.
   Billing bridge must answer 503, not 429, when it limits.
 - Client IP: keep `cf-connecting-ip`, valid only because the origin is locked to Cloudflare IPs.
@@ -226,6 +228,8 @@ CPU-per-request limit of Workers Free, which every authenticated request was alr
   which would re-attach the Worker custom domain. Replace it in the same change: build, push to GHCR,
   POST a Coolify deploy hook like the worker's (`:404-405`), poll `/health` until `release == github.sha`.
 - Coolify env for the app from the same source as the worker (fixes the missing-secrets class of bug).
+- Path filters for the new app job: see `docs/plans/hardening-backlog.md` §4.2 (the current filter
+  misses `src/server.ts`, `start.ts`, `router.tsx`, `styles.css`, `env.public.ts`).
 - Cutover: remove the Worker custom domain, add the proxied A record → VPS, cache rule on
   `hearted.music/assets/*` (bypass `/_serverFn/*` and HTML), WAF rule for `/wp-*`, `/.env*`,
   `/xmlrpc.php`, `/.aws/*`, origin firewall to Cloudflare IPs.

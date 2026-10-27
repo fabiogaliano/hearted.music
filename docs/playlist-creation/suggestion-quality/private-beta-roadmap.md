@@ -84,7 +84,7 @@ The missing-signal neutral-weight policy from the diagnosis, plus the always-loa
 
 ### 2. Probe whether the library actually forms vibes — done, bet lost
 
-Script: `scripts/analysis/vibe-probe.ts` · Report: `docs/tmp/vibe-probe-report.md` (reference account, 764 active liked songs).
+Script: `scripts/analysis/vibe-probe.ts` · Report: `docs/analysis/vibe-probe-report.md` (reference account, 764 active liked songs).
 
 Result against the pass bar (≥3 clusters in ≥1 modality, ~70% recognizable):
 
