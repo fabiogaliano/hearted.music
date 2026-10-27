@@ -1,4 +1,8 @@
 import { createCsrfMiddleware, createStart } from "@tanstack/react-start";
+import {
+	requestErrorMiddleware,
+	serverFnErrorMiddleware,
+} from "@/lib/observability/server-error-middleware";
 import { authRequestMiddleware } from "@/lib/platform/auth/auth-request-state";
 import { guardServerFnFetch } from "@/lib/platform/server-fn/guarded-fetch";
 
@@ -14,7 +18,13 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-	requestMiddleware: [csrfMiddleware, authRequestMiddleware],
+	// First so it also sees failures from the middleware after it.
+	requestMiddleware: [
+		requestErrorMiddleware,
+		csrfMiddleware,
+		authRequestMiddleware,
+	],
+	functionMiddleware: [serverFnErrorMiddleware],
 	// Client-only (SSR calls server fns in-process). Rejects transport-level
 	// error pages that Start's RPC client would otherwise resolve to undefined.
 	serverFns: {

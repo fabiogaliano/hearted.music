@@ -68,7 +68,7 @@
 		"@posthog/ai": "^7.19.2",
 		"@posthog/react": "^1.9.1",
 		"@sentry/bun": "^10.53.1",
-		"@sentry/cloudflare": "^10.53.1",
+		"@sentry/core": "^10.53.1",
 		"@sentry/react": "^10.53.1",
 		"@sentry/tanstackstart-react": "^10.53.1",
 		"@supabase/supabase-js": "^2.97.0",
