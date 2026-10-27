@@ -238,6 +238,15 @@ export type MatchPairRow = Pick<
 >;
 
 /**
+ * A song's suggestion pair with the suggested playlist's display fields, joined
+ * in the same read so the panel never needs a second lookup by DB-derived ids.
+ */
+export type SongMatchPairRow = MatchPairRow & {
+	playlist_name: string;
+	playlist_spotify_id: string;
+};
+
+/**
  * Fetches all (song, playlist) pairs for a song subject in a snapshot, EXCLUDING
  * playlists that already contain the song. Ordered by score desc with
  * playlist_id tiebreaker for determinism. This is the read path for
@@ -252,9 +261,9 @@ export type MatchPairRow = Pick<
 export function getMatchPairsForSong(
 	snapshotId: string,
 	songId: string,
-): Promise<Result<MatchPairRow[], DbError>> {
+): Promise<Result<SongMatchPairRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany<MatchPairRow>(
+	return fromSupabaseMany<SongMatchPairRow>(
 		supabase.rpc("get_match_pairs_for_song", {
 			p_snapshot_id: snapshotId,
 			p_song_id: songId,

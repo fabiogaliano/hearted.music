@@ -107,6 +107,11 @@ and the loops are most of the app's baseline request volume.
     the login page.
   - Studio ranking: report the failure (moot once ranking moves to Postgres, 4.4).
   - Embedding branches: report through `captureServerError`.
+- **Done** except the embedding branches (`preview.ts`, still open). Helper:
+  `src/lib/server/unwrap-or-throw.ts` (`unwrapOrThrow`, `reportAndThrow`, `ServerFnError`). Login:
+  `getAuthSessionState()`; `getAuthSession()` throws `AuthUnavailableError` on `unavailable`, so
+  `authMiddleware` and the `_authenticated` guard fail with a retry screen instead of redirecting to
+  sign-in.
 
 ### 2.2 Match results cut off at 1,000 rows — S
 
@@ -131,6 +136,11 @@ and the loops are most of the app's baseline request volume.
   suggestions.
 - **Change.** Check the error and surface it; join the names in the query that produces the
   suggestions instead of a second `.in()` read.
+- **Done.** `get_match_pairs_for_song` returns `playlist_name` / `playlist_spotify_id`
+  (migration `20261027100000`); the song path of the visible-suggestion list hands them back, and
+  `getSongSuggestions` throws (reported) on any read failure instead of returning `null`. The panel
+  still has no distinct error state: a failed query just omits the section, but it is no longer
+  cached as "no suggestions".
 
 ### 2.4 Recent Activity doesn't update after "Sync new songs" — S–M
 

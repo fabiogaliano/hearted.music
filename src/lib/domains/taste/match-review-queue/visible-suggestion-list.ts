@@ -331,6 +331,20 @@ async function fetchEntitledSongIds(
 	return Result.ok(new Set(result.value));
 }
 
+export interface SuggestedPlaylist {
+	name: string;
+	spotifyId: string;
+}
+
+/** Song-orientation result: `playlists` carries display fields by playlist id. */
+export type VisibleSongSuggestionListResult =
+	| {
+			kind: "ok";
+			list: VisibleSuggestionList;
+			playlists: ReadonlyMap<string, SuggestedPlaylist>;
+	  }
+	| Exclude<VisibleSuggestionListResult, { kind: "ok" }>;
+
 /**
  * The song-orientation half of computeVisibleSuggestionList, callable directly
  * by readers that only ever have a song subject.
@@ -343,7 +357,7 @@ export async function computeVisibleSongSuggestionList(
 	},
 	strictnessMinScore: number,
 	nowMs?: number,
-): Promise<VisibleSuggestionListResult> {
+): Promise<VisibleSongSuggestionListResult> {
 	const { subject, accountId, sourceSnapshotId } = item;
 
 	const entitled = await checkSongEntitled(accountId, subject.songId);
@@ -420,9 +434,17 @@ export async function computeVisibleSongSuggestionList(
 		resolvedNowMs,
 	);
 
+	const playlists = new Map<string, SuggestedPlaylist>(
+		pairsResult.value.map((r) => [
+			r.playlist_id,
+			{ name: r.playlist_name, spotifyId: r.playlist_spotify_id },
+		]),
+	);
+
 	return {
 		kind: "ok",
 		list: { orientation: "song", subject, suggestions },
+		playlists,
 	};
 }
 
