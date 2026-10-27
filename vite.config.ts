@@ -1,7 +1,6 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import os from "node:os";
 import { fileURLToPath, URL } from "node:url";
-import { cloudflare } from "@cloudflare/vite-plugin";
 import { sentryTanstackStart } from "@sentry/tanstackstart-react/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
@@ -236,16 +235,10 @@ export default defineConfig(({ command }) => {
 				},
 			],
 		},
-		// Pre-bundle deps Vite would otherwise discover mid-request. The first SSR
-		// request to reference one (e.g. @sentry/cloudflare) triggers an optimizer
-		// re-run, which restarts the @cloudflare/vite-plugin workerd runner and
-		// drops any in-flight request with "Network connection lost". Declaring
-		// them bundles at startup so the runner never restarts under load. `ssr`
-		// covers the workerd SSR environment (the deps_ssr optimizer); the
-		// top-level block covers the client. Add any package named in a
-		// `[optimizer] bundling` dev log.
+		// Pre-bundle client deps Vite would otherwise discover mid-session. Add any
+		// package named in an `[optimizer] bundling` dev log.
 		//
-		// The client list must cover every dep reachable from route chunks, not
+		// The list must cover every dep reachable from route chunks, not
 		// just the root entry: TanStack Start code-splits routes, so the initial
 		// crawl never sees deps imported only by lazy route modules. Each one
 		// discovered on first navigation forces a client re-optimize + full page
@@ -253,7 +246,6 @@ export default defineConfig(({ command }) => {
 		// blinking/flashing while browsing in dev.
 		optimizeDeps: {
 			include: [
-				"@sentry/cloudflare",
 				"@sentry/tanstackstart-react",
 				"@sentry/react",
 				"react",
@@ -281,11 +273,6 @@ export default defineConfig(({ command }) => {
 				"better-auth/tanstack-start",
 			],
 		},
-		ssr: {
-			optimizeDeps: {
-				include: ["@sentry/cloudflare", "@sentry/tanstackstart-react"],
-			},
-		},
 		server: {
 			host: "127.0.0.1",
 			port: 5173,
@@ -298,20 +285,6 @@ export default defineConfig(({ command }) => {
 		resolve: {
 			tsconfigPaths: true,
 			alias: {
-				// `cloudflare:workers` is a workerd-only runtime module Vite can't
-				// resolve under Vitest; point it at a stub so server code that imports
-				// it stays transformable. Test-only — production resolves the real
-				// module via @cloudflare/vite-plugin.
-				...(isTest
-					? {
-							"cloudflare:workers": fileURLToPath(
-								new URL(
-									"./src/test/cloudflare-workers.stub.ts",
-									import.meta.url,
-								),
-							),
-						}
-					: {}),
 				// Build/test use the internal stub so dev-only pane wiring never ships
 				// or blocks verify.
 				...(useUipaneStub
@@ -321,6 +294,13 @@ export default defineConfig(({ command }) => {
 							),
 						}
 					: {}),
+				// Until edge-rate-limit.ts moves off Workers (reliability plan §3d).
+				"cloudflare:workers": fileURLToPath(
+					new URL(
+						"./src/lib/platform/rate-limit/cloudflare-workers.stub.ts",
+						import.meta.url,
+					),
+				),
 				"@": fileURLToPath(new URL("./src", import.meta.url)),
 			},
 		},
@@ -328,13 +308,8 @@ export default defineConfig(({ command }) => {
 			embeddingSidecarPlugin(),
 			!isBuild && devtools(),
 			tailwindcss(),
-			// Cloudflare must come BEFORE tanstackStart per Cloudflare docs:
-			// https://developers.cloudflare.com/changelog/2025-10-24-tanstack-start/
-			!isTest && cloudflare({ viteEnvironment: { name: "ssr" } }),
 			!isTest &&
 				tanstackStart({
-					// @ts-expect-error - preset exists at runtime but missing from types
-					preset: "node-ws",
 					router: {
 						routeFileIgnorePattern: isBuild
 							? "^dev-|\\.test\\.(ts|tsx)$"
