@@ -2,6 +2,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import {
 	activeJobsKeys,
+	invalidateLibrarySyncQueries,
 	invalidateMatchSnapshotQueries,
 } from "@/lib/query-keys";
 import { getActiveJobs } from "@/lib/server/jobs.functions";
@@ -13,9 +14,17 @@ import {
 
 const ACTIVE_POLL_MS = 5_000;
 const IDLE_POLL_MS = 15_000;
+// A failing poll is most likely an overloaded app server, so it backs off and
+// then stops instead of adding load forever; the next invalidation (a stream
+// snapshot, a sync request) or remount starts it again.
+const MAX_CONSECUTIVE_POLL_FAILURES = 5;
 
 function hasActiveJob(data: ActiveJobs | undefined): boolean {
-	return !!(data?.enrichment || data?.matchSnapshotRefresh);
+	return !!(
+		data?.enrichment ||
+		data?.matchSnapshotRefresh ||
+		data?.extensionSync
+	);
 }
 
 function activeJobsQueryOptions(
@@ -27,8 +36,12 @@ function activeJobsQueryOptions(
 		queryKey: activeJobsKeys.byAccount(accountId),
 		queryFn: () => getActiveJobs(),
 		enabled,
+		retry: MAX_CONSECUTIVE_POLL_FAILURES - 1,
+		retryDelay: (failureCount) => IDLE_POLL_MS * 2 ** (failureCount + 1),
 		refetchInterval: (query) => {
 			if (connectionState === "connected") return false;
+			// Error status means every retry above failed too.
+			if (query.state.status === "error") return false;
 			return hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS;
 		},
 	});
@@ -58,11 +71,13 @@ export function useActiveJobs(accountId: string, enabled = true) {
 interface RunningJobs {
 	enrichment: boolean;
 	matchSnapshotRefresh: boolean;
+	extensionSync: boolean;
 }
 
 const selectRunningJobs = (data: ActiveJobs | undefined): RunningJobs => ({
 	enrichment: !!data?.enrichment,
 	matchSnapshotRefresh: !!data?.matchSnapshotRefresh,
+	extensionSync: !!data?.extensionSync,
 });
 
 export function useActiveJobCompletionEffects(
@@ -90,6 +105,9 @@ export function useActiveJobCompletionEffects(
 
 		if (prev.matchSnapshotRefresh && !data.matchSnapshotRefresh) {
 			void invalidateMatchSnapshotQueries(queryClient, accountId);
+		}
+		if (prev.extensionSync && !data.extensionSync) {
+			void invalidateLibrarySyncQueries(queryClient, accountId);
 		}
 	}, [data, accountId, queryClient]);
 }

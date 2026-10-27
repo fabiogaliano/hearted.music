@@ -126,6 +126,13 @@ vi.mock("@/lib/shared/utils/concurrency", () => ({
 	mapWithConcurrency: (...a: unknown[]) => mockMapWithConcurrency(...a),
 }));
 
+vi.mock("../finalize", async () => {
+	const { Result } = await import("better-result");
+	return {
+		announceExtensionSyncCompleted: async () => Result.ok(undefined),
+	};
+});
+
 const { runExtensionSyncJob } = await import("../extension-sync-runner");
 
 // A lease the heartbeat never reports lost.
