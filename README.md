@@ -393,8 +393,6 @@ bun run control-panel     # operator app (API + web)
 | `bun run typecheck`         | `tsgo --noEmit`                                |
 | `bun run check`             | Biome lint + format                            |
 | `bun run build`             | Production Vite build                          |
-| `bun run deploy`            | Build + `wrangler deploy`                      |
-| `bun run deploy:secrets`    | Push env vars as Wrangler secrets              |
 | `bun run gen:types`         | Regenerate DB types from local schema          |
 | `bun run ladle`             | Component workshop                             |
 | `bun run fixtures`          | Rebuild Ladle fixtures from DB snapshots       |
