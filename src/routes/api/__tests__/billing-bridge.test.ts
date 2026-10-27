@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
 import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
+import { withinRateLimit } from "@/lib/platform/rate-limit/rate-limit";
 import { Route } from "../billing-bridge";
 
 const SECRET = "bridge-test-secret";
@@ -102,6 +103,22 @@ describe("POST /api/billing-bridge", () => {
 		vi.clearAllMocks();
 		vi.spyOn(console, "log").mockImplementation(() => {});
 		vi.spyOn(console, "error").mockImplementation(() => {});
+	});
+
+	// The billing-service retries 5xx and drops 4xx, so a 429 here would lose a
+	// legitimate burst of payment events instead of deferring them.
+	it("answers 503 with retry-after, not 429, when rate limited", async () => {
+		claimReturns("claimed");
+		vi.mocked(withinRateLimit).mockResolvedValueOnce(false);
+
+		const response = await post(
+			await signedRequest(packFulfilledBody("evt_limited")),
+		);
+
+		expect(response.status).toBe(503);
+		expect(response.headers.get("retry-after")).not.toBeNull();
+		expect(rpc).not.toHaveBeenCalled();
+		expect(handlePackFulfilled).not.toHaveBeenCalled();
 	});
 
 	it("rejects a body signed with the wrong secret before claiming or dispatching", async () => {

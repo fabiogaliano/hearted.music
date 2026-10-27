@@ -1,13 +1,5 @@
-// Under Vitest, `cloudflare:workers` is aliased to a stub (see vite.config.ts)
-// whose `env` starts empty. Mutating that env injects a fake binding, letting
-// us drive `withinRateLimit`'s allow/deny branches without the workerd runtime.
-import { env as workerEnv } from "cloudflare:workers";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clientIpFrom, withinRateLimit } from "../rate-limit";
-
-afterEach(() => {
-	workerEnv.TEST_LIMITER = undefined;
-});
 
 describe("clientIpFrom", () => {
 	it("returns the Cloudflare edge IP header", () => {
@@ -23,32 +15,60 @@ describe("clientIpFrom", () => {
 	});
 });
 
+// WAITLIST_LIMITER allows 5 requests per key per 60 s window.
+const WAITLIST_LIMIT = 5;
+
+async function spend(key: string, times: number): Promise<boolean[]> {
+	const results: boolean[] = [];
+	for (let i = 0; i < times; i++) {
+		results.push(await withinRateLimit("WAITLIST_LIMITER", key));
+	}
+	return results;
+}
+
 describe("withinRateLimit", () => {
-	it("returns true when the binding reports the request is within limit", async () => {
-		workerEnv.TEST_LIMITER = { limit: async () => ({ success: true }) };
-		await expect(withinRateLimit("TEST_LIMITER", "203.0.113.7")).resolves.toBe(
-			true,
-		);
+	// Limiter state is module-level, so each test starts in a fresh window far
+	// from the previous test's and uses its own keys.
+	let clock = 0;
+	beforeEach(() => {
+		vi.useFakeTimers();
+		clock += 10 * 60_000;
+		vi.setSystemTime(clock);
+	});
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
-	it("returns false and keys by the caller IP when the limit is exceeded", async () => {
-		let receivedKey: string | undefined;
-		workerEnv.TEST_LIMITER = {
-			limit: async ({ key }: { key: string }) => {
-				receivedKey = key;
-				return { success: false };
-			},
-		};
-		await expect(withinRateLimit("TEST_LIMITER", "203.0.113.7")).resolves.toBe(
+	it("allows the limit, then denies the next request in the same window", async () => {
+		expect(await spend("ip-a", WAITLIST_LIMIT)).toEqual(
+			Array(WAITLIST_LIMIT).fill(true),
+		);
+		await expect(withinRateLimit("WAITLIST_LIMITER", "ip-a")).resolves.toBe(
 			false,
 		);
-		expect(receivedKey).toBe("203.0.113.7");
 	});
 
-	// Fail-open: a missing/misconfigured binding must never block traffic — the
-	// opposite would break local dev and could lock users out in prod.
-	it("fails open when the named binding is absent", async () => {
-		await expect(withinRateLimit("UNSET_LIMITER", "203.0.113.7")).resolves.toBe(
+	it("keeps denying until the window ends, then restores the full budget", async () => {
+		await spend("ip-b", WAITLIST_LIMIT);
+
+		vi.advanceTimersByTime(59_999);
+		await expect(withinRateLimit("WAITLIST_LIMITER", "ip-b")).resolves.toBe(
+			false,
+		);
+
+		vi.advanceTimersByTime(1);
+		expect(await spend("ip-b", WAITLIST_LIMIT)).toEqual(
+			Array(WAITLIST_LIMIT).fill(true),
+		);
+	});
+
+	it("counts each key and each limiter separately", async () => {
+		await spend("ip-c", WAITLIST_LIMIT + 1);
+
+		await expect(withinRateLimit("WAITLIST_LIMITER", "ip-d")).resolves.toBe(
+			true,
+		);
+		await expect(withinRateLimit("BILLING_LIMITER", "ip-c")).resolves.toBe(
 			true,
 		);
 	});
