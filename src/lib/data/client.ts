@@ -41,13 +41,7 @@ const adminFetch = (
 	shouldGuardAdminRequestUrlLength ? guardAdminRequestUrlLength : fetch
 ) as typeof fetch;
 
-/**
- * Server-side Supabase client with service role key.
- * Bypasses RLS - use for auth operations where we can't use auth.uid().
- *
- * IMPORTANT: Never expose this client to the browser.
- */
-export function createAdminSupabaseClient() {
+function buildAdminSupabaseClient() {
 	return createClient<Database>(
 		env.SUPABASE_URL,
 		env.SUPABASE_SERVICE_ROLE_KEY,
@@ -63,4 +57,19 @@ export function createAdminSupabaseClient() {
 	);
 }
 
-export type AdminSupabaseClient = ReturnType<typeof createAdminSupabaseClient>;
+export type AdminSupabaseClient = ReturnType<typeof buildAdminSupabaseClient>;
+
+// Stateless (no session, no token refresh), so one instance serves the whole
+// process instead of being rebuilt on every query.
+let adminClient: AdminSupabaseClient | undefined;
+
+/**
+ * Server-side Supabase client with service role key.
+ * Bypasses RLS - use for auth operations where we can't use auth.uid().
+ *
+ * IMPORTANT: Never expose this client to the browser.
+ */
+export function createAdminSupabaseClient(): AdminSupabaseClient {
+	adminClient ??= buildAdminSupabaseClient();
+	return adminClient;
+}
