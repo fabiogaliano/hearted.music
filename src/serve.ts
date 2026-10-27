@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import path from "node:path";
 import * as Sentry from "@sentry/bun";
+import type { checkEmbeddingProvider } from "./lib/platform/boot-checks";
 
 // Production HTTP server: `bun --preload ./src/instrument.ts src/serve.ts`
 // after `vite build`. Start's server bundle only renders and runs server fns,
@@ -18,11 +19,22 @@ const SECURITY_HEADERS = {
 interface ServerBundle {
 	default: { fetch(request: Request): Response | Promise<Response> };
 	drainServerWork(): Promise<void>;
+	checkEmbeddingProvider: typeof checkEmbeddingProvider;
 }
 
 const bundle: ServerBundle = await import(
 	path.join(distDir, "server/server.js")
 );
+
+// Before taking traffic: server fns that embed with the wrong provider would
+// score against stored vectors as noise. Same gate as src/worker/index.ts.
+const embeddingCheck = await bundle.checkEmbeddingProvider();
+if (embeddingCheck.isErr()) {
+	console.error("[serve] boot check failed:", embeddingCheck.error.message);
+	Sentry.captureException(embeddingCheck.error, { tags: { phase: "boot" } });
+	await Sentry.flush(2000);
+	process.exit(1);
+}
 
 async function serveClientFile(pathname: string): Promise<Response | null> {
 	const filePath = path.join(clientDir, decodeURIComponent(pathname));
