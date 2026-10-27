@@ -38,7 +38,7 @@ import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
 import {
 	clientIpFrom,
 	withinRateLimit,
-} from "@/lib/platform/rate-limit/edge-rate-limit";
+} from "@/lib/platform/rate-limit/rate-limit";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 
 // Long enough to outlast any realistic handler run, short enough that a

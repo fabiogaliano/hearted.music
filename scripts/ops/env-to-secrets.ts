@@ -19,7 +19,6 @@ import { resolve } from "node:path";
 
 // VITE_ vars are baked in at build time, not needed as runtime secrets
 const SKIP_PREFIXES = ["VITE_"];
-const SKIP_KEYS = new Set(["ML_PROVIDER"]);
 
 const WAITLIST_KEYS = new Set([
 	"SUPABASE_URL",
@@ -29,6 +28,8 @@ const WAITLIST_KEYS = new Set([
 	"BETTER_AUTH_URL",
 	"DATABASE_URL",
 	"RESEND_API_KEY",
+	// Required by src/env.ts even in waitlist mode, or the app won't start.
+	"ML_PROVIDER",
 ]);
 
 const { values, positionals } = parseArgs({
@@ -76,11 +77,6 @@ for (const line of content.split("\n")) {
 	}
 
 	if (SKIP_PREFIXES.some((p) => key.startsWith(p))) {
-		skipped.push(key);
-		continue;
-	}
-
-	if (SKIP_KEYS.has(key)) {
 		skipped.push(key);
 		continue;
 	}
