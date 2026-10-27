@@ -22,6 +22,7 @@ import type {
 	MatchingPlaylistProfile,
 	MatchResult,
 } from "@/lib/domains/taste/song-matching/types";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import type { Phase1Candidate } from "./candidate-loader";
 import { SUGGESTIONS_COUNT } from "./constants";
 import type { SongVM } from "./types";
@@ -229,11 +230,13 @@ export async function rankCandidates(
 
 	if (Result.isError(result)) {
 		// Non-fatal: fall back to unscored order (no matches is a safe
-		// degradation), but say so — the "ranking" is insertion order from here.
-		console.error(
-			"[draft-engine] matchBatch failed, ranking degraded to unscored order",
-			result.error,
-		);
+		// degradation), but the preview is now insertion order with every score 0,
+		// so report it — console.error never reaches Sentry (enableLogs:false).
+		captureServerError(result.error, {
+			area: "playlist_studio",
+			operation: "rank_candidates",
+			extra: { candidateCount: candidates.length },
+		});
 		return candidates.map((c) => ({ candidate: c, score: 0 }));
 	}
 
