@@ -12,16 +12,16 @@ import {
 	user,
 	verification,
 } from "@/lib/platform/auth/auth-schema";
-import type { AuthContext } from "@/lib/platform/auth/auth-types";
+import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 import { sendPasswordResetEmail } from "@/lib/platform/email/send-password-reset-email";
 import { sendVerificationEmail } from "@/lib/platform/email/send-verification-email";
 
 export interface AuthRequestState {
 	getAuth(): BetterAuthInstance;
-	getCachedSession(): Promise<AuthContext | null> | undefined;
+	getCachedSession(): Promise<AuthSessionState> | undefined;
 	cacheSession(
-		sessionPromise: Promise<AuthContext | null>,
-	): Promise<AuthContext | null>;
+		sessionPromise: Promise<AuthSessionState>,
+	): Promise<AuthSessionState>;
 	close(): Promise<void>;
 }
 
@@ -34,7 +34,7 @@ const CONNECTION_CLOSE_TIMEOUT_SECONDS = 5;
 export function createAuthRequestState(): AuthRequestState {
 	let sql: AuthSqlClient | undefined;
 	let auth: BetterAuthInstance | undefined;
-	let authSessionPromise: Promise<AuthContext | null> | undefined;
+	let authSessionPromise: Promise<AuthSessionState> | undefined;
 	let closePromise: Promise<void> | undefined;
 
 	function getSql(): AuthSqlClient {

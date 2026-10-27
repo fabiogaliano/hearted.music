@@ -792,12 +792,16 @@ describe("computeVisibleSuggestionList — async driver", () => {
 					playlist_id: "pl-a",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-a",
+					playlist_spotify_id: "sp-pl-a",
 				},
 				{
 					song_id: "song-d1",
 					playlist_id: "pl-b",
 					score: 0.7,
 					fused_score: null,
+					playlist_name: "pl-b",
+					playlist_spotify_id: "sp-pl-b",
 				},
 			]),
 		);
@@ -979,12 +983,16 @@ describe("computeVisibleSuggestionList — async driver", () => {
 					playlist_id: "pl-a",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-a",
+					playlist_spotify_id: "sp-pl-a",
 				},
 				{
 					song_id: "song-d1",
 					playlist_id: "pl-b",
 					score: 0.7,
 					fused_score: null,
+					playlist_name: "pl-b",
+					playlist_spotify_id: "sp-pl-b",
 				},
 			]),
 		);
@@ -1085,6 +1093,8 @@ describe("computeVisibleSuggestionList — async driver", () => {
 					playlist_id: "pl-a",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-a",
+					playlist_spotify_id: "sp-pl-a",
 				},
 			]),
 		);
@@ -1527,6 +1537,8 @@ describe("computeVisibleSuggestionList — filter-metadata retryable errors (MSR
 					playlist_id: "pl-a",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-a",
+					playlist_spotify_id: "sp-pl-a",
 				},
 			]),
 		);
@@ -1569,6 +1581,8 @@ describe("computeVisibleSuggestionList — filter-metadata retryable errors (MSR
 					playlist_id: "pl-a",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-a",
+					playlist_spotify_id: "sp-pl-a",
 				},
 			]),
 		);
@@ -1738,6 +1752,8 @@ describe("computeVisibleSuggestionList — explicit nowMs threading (M12)", () =
 					playlist_id: "pl-1",
 					score: 0.9,
 					fused_score: null,
+					playlist_name: "pl-1",
+					playlist_spotify_id: "sp-pl-1",
 				},
 			]),
 		);

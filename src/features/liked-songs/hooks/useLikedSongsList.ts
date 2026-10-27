@@ -100,7 +100,8 @@ export function useLikedSongsList({
 	clearSelectionMode,
 }: UseLikedSongsListOptions) {
 	const {
-		isLoading,
+		loadState,
+		retry,
 		displayedSongs,
 		displayedSongIndexById,
 		fetchNextPage,
@@ -582,7 +583,7 @@ export function useLikedSongsList({
 
 	return {
 		state: {
-			isLoading,
+			loadState,
 			displayedSongs,
 			displayedSongIndexById,
 			visibleSongs,
@@ -604,6 +605,7 @@ export function useLikedSongsList({
 			handleClose,
 		},
 		actions: {
+			retry,
 			handleLoadMore,
 			sentinelRef,
 			prefetchAdjacentSuggestions,

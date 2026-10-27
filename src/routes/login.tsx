@@ -9,6 +9,7 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { RouteErrorFallback } from "@/components/RouteErrorFallback";
 import { CheckInboxPanel } from "@/features/auth/CheckInboxPanel";
 import {
 	LoginForm,
@@ -18,7 +19,7 @@ import {
 import { SetupOnComputerNoticeGate } from "@/features/onboarding/components/SetupOnComputerNotice";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { signIn, signUp } from "@/lib/platform/auth/auth-client";
-import { getAuthSession } from "@/lib/server/auth.functions";
+import { getAuthStatus } from "@/lib/server/auth.functions";
 
 const searchSchema = z.object({
 	mode: z.enum(["signin", "signup"]).optional(),
@@ -27,15 +28,24 @@ const searchSchema = z.object({
 export const Route = createFileRoute("/login")({
 	validateSearch: searchSchema,
 	beforeLoad: async () => {
-		const session = await getAuthSession();
-		if (session) {
+		const authStatus = await getAuthStatus();
+		if (authStatus === "authenticated") {
 			throw redirect({ to: "/dashboard" });
 		}
+		return { authStatus };
 	},
-	component: LoginPage,
+	component: LoginRoute,
 });
 
 type LoadingState = "google" | "credentials" | null;
+
+function LoginRoute() {
+	const { authStatus } = Route.useRouteContext();
+	// A signed-in user whose session can't be read right now must not be shown
+	// the sign-in form as if they were logged out.
+	if (authStatus === "unavailable") return <RouteErrorFallback />;
+	return <LoginPage />;
+}
 
 function LoginPage() {
 	const { mode: initialMode } = Route.useSearch();
