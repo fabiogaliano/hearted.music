@@ -6,10 +6,15 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { sendWaitlistConfirmation } from "@/lib/platform/email/send-waitlist-confirmation";
+import {
+	clientIpFrom,
+	withinRateLimit,
+} from "@/lib/platform/rate-limit/rate-limit";
 
 const waitlistSchema = z.object({
 	email: z.email(),
@@ -18,6 +23,17 @@ const waitlistSchema = z.object({
 export const joinWaitlist = createServerFn({ method: "POST" })
 	.inputValidator((data) => waitlistSchema.parse(data))
 	.handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+		// Every signup inserts a row and sends an email, so an unthrottled caller
+		// can fill the table and spend the sender reputation.
+		if (
+			!(await withinRateLimit("WAITLIST_LIMITER", clientIpFrom(getRequest())))
+		) {
+			return {
+				success: false,
+				error: "Too many attempts. Try again in a minute.",
+			};
+		}
+
 		const supabase = createAdminSupabaseClient();
 
 		// Store normalized so waitlist eligibility (which matches account.email

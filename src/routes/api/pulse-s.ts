@@ -3,7 +3,7 @@ import { env } from "@/env";
 import {
 	clientIpFrom,
 	withinRateLimit,
-} from "@/lib/platform/rate-limit/edge-rate-limit";
+} from "@/lib/platform/rate-limit/rate-limit";
 
 // Sentry tunnel: same-origin proxy that forwards browser-sent envelopes to
 // one configured Sentry project. Ad-blockers block requests to

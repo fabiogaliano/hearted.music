@@ -28,7 +28,7 @@ vi.mock("@tanstack/react-start", () => {
 	};
 });
 
-vi.mock("@/lib/platform/rate-limit/edge-rate-limit", () => ({
+vi.mock("@/lib/platform/rate-limit/rate-limit", () => ({
 	withinRateLimit: (...args: unknown[]) => mockWithinRateLimit(...args),
 }));
 

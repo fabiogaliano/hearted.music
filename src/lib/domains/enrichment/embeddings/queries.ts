@@ -6,9 +6,12 @@
  */
 
 import { Result } from "better-result";
+import postgres from "postgres";
+import { env } from "@/env";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Json, Tables, TablesInsert } from "@/lib/data/database.types";
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
@@ -137,6 +140,39 @@ export async function getSongEmbeddingsBatch(
 	}
 
 	return Result.ok(embeddingMap);
+}
+
+/**
+ * Every distinct (model, dims) among stored song vectors. Only kind "full" is
+ * read: it is the only kind the embedding service writes and matching reads,
+ * so other kinds can't put a foreign vector in front of a query.
+ *
+ * Raw SQL because PostgREST can't express DISTINCT; one short-lived connection
+ * since this runs once per process start.
+ */
+export async function getStoredSongEmbeddingSpaces(): Promise<
+	Result<{ model: string; dims: number }[], DbError>
+> {
+	const sql = postgres(env.DATABASE_URL, {
+		max: 1,
+		prepare: false,
+		fetch_types: false,
+	});
+	try {
+		const rows = await sql<{ model: string; dims: number }[]>`
+			SELECT DISTINCT model, dims FROM song_embedding WHERE kind = 'full'
+		`;
+		return Result.ok(rows.map(({ model, dims }) => ({ model, dims })));
+	} catch (error) {
+		return Result.err(
+			new DatabaseError({
+				code: "embedding_spaces_read_failed",
+				message: errorMessage(error),
+			}),
+		);
+	} finally {
+		await sql.end();
+	}
 }
 
 /**
