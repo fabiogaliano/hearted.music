@@ -1,12 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
-	getAuthSession as getAuthSessionImpl,
+	getAuthSessionState,
 	requireAuthSession as requireAuthSessionImpl,
 } from "@/lib/platform/auth/auth.server";
+import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 
-export const getAuthSession = createServerFn({ method: "GET" }).handler(
-	async () => {
-		return getAuthSessionImpl();
+export const getAuthStatus = createServerFn({ method: "GET" }).handler(
+	async (): Promise<AuthSessionState["status"]> => {
+		const state = await getAuthSessionState();
+		return state.status;
 	},
 );
 
