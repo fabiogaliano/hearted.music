@@ -3,6 +3,10 @@ import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
 import { shutdownServerPostHog } from "@/lib/observability/posthog-server";
 import { drainAfterResponseWork } from "@/lib/platform/process/after-response";
 
+// Exported for src/serve.ts, which runs outside the bundle and so can't reach
+// the bundle's env and DB clients itself.
+export { checkEmbeddingProvider } from "@/lib/platform/boot-checks";
+
 export default createServerEntry({
 	async fetch(request: Request) {
 		try {
