@@ -330,14 +330,19 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 ```
 
+Required — `bun run dev` sets it to `local`; production runs `deepinfra`:
+
+```env
+ML_PROVIDER=deepinfra        # deepinfra | huggingface | local
+DEEPINFRA_API_KEY=           # required when ML_PROVIDER=deepinfra
+```
+
 Optional — the pipeline degrades gracefully without these:
 
 ```env
 LASTFM_API_KEY=              # genre tagging
 GENIUS_CLIENT_TOKEN=         # lyrics
 
-ML_PROVIDER=local            # local ONNX (default for dev)
-DEEPINFRA_API_KEY=           # DeepInfra (prod)
 HF_TOKEN=                    # HuggingFace Inference
 
 GOOGLE_VERTEX_PROJECT=       # LLM analysis (default provider)
