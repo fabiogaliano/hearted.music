@@ -93,7 +93,7 @@ vi.mock("@tanstack/react-start", () => {
 	};
 });
 
-vi.mock("@sentry/cloudflare", () => ({
+vi.mock("@sentry/core", () => ({
 	captureException: (...args: unknown[]) => mockCaptureException(...args),
 }));
 

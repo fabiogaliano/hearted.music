@@ -11,7 +11,7 @@ const STATEMENT_TIMEOUT_PG_CODE = "57014";
 const STATEMENT_TIMEOUT_FINGERPRINT = ["db-statement-timeout"];
 
 /**
- * `beforeSend` hook for the two server-side Sentry runtimes (Cloudflare web
+ * `beforeSend` hook for the two server-side Sentry runtimes (Bun web
  * server + Bun worker). The browser never sees DB errors, so it does not use
  * this.
  *

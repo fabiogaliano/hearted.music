@@ -360,7 +360,7 @@ export const Route = createFileRoute("/api/pulse-s")({
 				} catch (error) {
 					console.error("[sentry-tunnel] Failed to forward envelope", error);
 					try {
-						const { captureException } = await import("@sentry/cloudflare");
+						const { captureException } = await import("@sentry/core");
 						captureException(error, { tags: { source: "sentry-tunnel" } });
 					} catch {}
 					return new Response("Failed to reach Sentry ingest", { status: 502 });

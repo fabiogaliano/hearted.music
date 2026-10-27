@@ -439,12 +439,12 @@ Errors flow into one Sentry project, tagged by `runtime` (`web` / `web-server` /
 | Var                  | Surface        | Where to set                                    |
 | -------------------- | -------------- | ----------------------------------------------- |
 | `VITE_SENTRY_DSN`    | Client bundle  | `.env` (read at build time)                     |
-| `SENTRY_DSN`         | Worker runtime | `.env.cloud` → `bun run deploy:secrets`         |
+| `SENTRY_DSN`         | Server runtime | Coolify env (app and worker)                    |
 | `SENTRY_ENVIRONMENT` | Both           | `.env.cloud` (server), `.env` (client)          |
 | `SENTRY_AUTH_TOKEN`  | Build only     | CI env — source maps + tunnel. Never commit.    |
 
-Local `bun run dev` exercises the client init only (the Cloudflare adapter isn't in the
-dev path). Leave `VITE_SENTRY_DSN` unset locally and Sentry stays silent.
+Local `bun run dev` exercises the client init only: the server initialises Sentry in the
+`src/instrument.ts` preload, which only `bun run start` and the container load. Leave `VITE_SENTRY_DSN` unset locally and Sentry stays silent.
 
 PostHog covers product analytics and LLM cost tracking, proxied through `/api/pulse-h`
 and `/api/pulse-s` to survive blockers.
