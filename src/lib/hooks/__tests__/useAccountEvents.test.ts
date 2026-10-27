@@ -134,6 +134,7 @@ describe("useAccountEvents", () => {
 		const snapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: true,
 		};
 
@@ -336,6 +337,7 @@ describe("useAccountEvents", () => {
 		const settledSnapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: true,
 		};
 
@@ -373,6 +375,7 @@ describe("useAccountEvents", () => {
 		const snapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: false,
 		};
 
