@@ -27,7 +27,7 @@ vi.mock("@/lib/domains/billing/bridge-handlers", () => ({
 	handleUnlimitedPeriodReversed: vi.fn(),
 }));
 
-vi.mock("@/lib/platform/rate-limit/edge-rate-limit", () => ({
+vi.mock("@/lib/platform/rate-limit/rate-limit", () => ({
 	clientIpFrom: () => "203.0.113.7",
 	withinRateLimit: vi.fn().mockResolvedValue(true),
 }));
