@@ -112,11 +112,16 @@ and the loops are most of the app's baseline request volume.
 
 - **Problem.** `getMatchResults` reads a whole snapshot in one request with no paging
   (`src/lib/domains/taste/song-matching/queries.ts:112`). PostgREST caps responses at `max_rows`
-  (1,000 locally, `supabase/config.toml:18`; prod value not checked). A larger snapshot is silently
-  truncated and suggestions go missing. Callers: `match-review-queue/service.ts:154,246`,
+  (1,000 locally, `supabase/config.toml:18`). A larger snapshot is silently truncated and
+  suggestions go missing. Callers: `match-review-queue/service.ts:154,246`,
   `eligible-subjects.ts:99`.
-- **Change.** Page with `.range()` until exhausted, or replace with an RPC. First confirm the prod
-  `max_rows` and the largest snapshot's row count.
+- **Confirmed live in prod (2026-10-27).** Prod REST returns exactly 1,000 rows per request
+  (`max_rows` = 1,000), and the largest `match_result` snapshot has ~9,600 rows, so ~89 % of that
+  snapshot was being dropped.
+- **Change.** Page with `.range()` until exhausted, or replace with an RPC.
+- **Done.** `getMatchResults` pages with `.range()` (page size = `max_rows`) until a short page;
+  all three callers read through it unchanged. Pinned by
+  `song-matching/__tests__/get-match-results.paging.test.ts` against a fake capped at 1,000 rows.
 
 ### 2.3 Suggestions disappear when the playlist-name read fails — S
 
