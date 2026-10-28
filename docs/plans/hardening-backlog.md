@@ -58,7 +58,7 @@ requeues the same way on a transient DB or apply error, keeping its payload
 - PostgREST truncates every response at `max_rows` = 1,000 with no error (`supabase/config.toml:18`,
   same in prod). The overflowing sync, membership and exclusion reads are paged (PRs #66–#69). These
   remain single-request:
-  - `getBootstrapPagesBySlug` (`liked-songs/queries.ts`). Libraries reach 5,044 songs. A deep link to a
+  - `getBootstrapPagesBySlug` (`library/liked-songs/queries.ts`). Libraries reach 5,044 songs. A deep link to a
     song past row ~1,000 loses its anchor, silently falls back to the first page, and the panel stays
     closed.
   - Review queue: `session-appender.ts:236` (`match_review_proposal_subject`) and `fetchQueuedSongIds` /
