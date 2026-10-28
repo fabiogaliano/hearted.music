@@ -18,7 +18,6 @@ import type { Song } from "@/lib/domains/library/songs/queries";
 import { getByIds, upsertCatalog } from "@/lib/domains/library/songs/queries";
 import {
 	completeJob,
-	settleClaimedJob,
 	startJob,
 	takeOverJob,
 } from "@/lib/platform/jobs/lifecycle";
@@ -270,7 +269,8 @@ export interface PhaseRun {
  * persisted on the job as it completes, so a retry of the same sync (after a
  * crash further down the parent run) reuses it instead of re-diffing an
  * already-applied library to zero changes. `resultSchema` parses that
- * persisted result back.
+ * persisted result back. A failed phase is returned as an error and left
+ * running for the parent to retry or fail.
  */
 export async function runPhase<T extends Json>(
 	phase: Pick<Job, "id" | "attempts">,
@@ -294,20 +294,11 @@ async function runHeldPhase<T extends Json>(
 ): Promise<Result<PhaseOutcome<T>, SyncOperationError>> {
 	const result = await syncFn(run);
 
-	if (Result.isError(result)) {
-		const failResult = await settleClaimedJob(
-			phase,
-			"failed",
-			result.error.message,
-		);
-		if (Result.isError(failResult)) {
-			return Result.err(failResult.error);
-		}
-		if (failResult.value === "superseded") {
-			return Result.ok({ status: "superseded" });
-		}
-		return result;
-	}
+	// A failed phase stays running: only the parent knows whether its next
+	// attempt takes the phase over (a transient error) or fails it with the
+	// rest of the sync. Failing it here would make the retry read it as
+	// terminal.
+	if (Result.isError(result)) return result;
 
 	const completeResult = await completeJob(phase, { result: result.value });
 	if (Result.isError(completeResult)) {

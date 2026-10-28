@@ -49,6 +49,7 @@ const {
 	mockLibrarySynced,
 	mockMaybeGrant,
 	mockMapWithConcurrency,
+	mockRequeueClaimedJobForRetry,
 } = vi.hoisted(() => ({
 	mockDownloadSyncPayload: vi.fn(),
 	mockDeleteSyncPayload: vi.fn(),
@@ -67,6 +68,7 @@ const {
 	mockLibrarySynced: vi.fn(),
 	mockMaybeGrant: vi.fn(),
 	mockMapWithConcurrency: vi.fn(),
+	mockRequeueClaimedJobForRetry: vi.fn(),
 }));
 
 vi.mock("@/lib/observability/logger", () => ({
@@ -130,6 +132,8 @@ vi.mock("../finalize", async () => {
 	const { Result } = await import("better-result");
 	return {
 		announceExtensionSyncCompleted: async () => Result.ok(undefined),
+		requeueClaimedJobForRetry: (...a: unknown[]) =>
+			mockRequeueClaimedJobForRetry(...a),
 	};
 });
 
@@ -251,6 +255,7 @@ describe("runExtensionSyncJob", () => {
 		mockLibrarySynced.mockReturnValue({ kind: "library_synced" });
 		mockMaybeGrant.mockResolvedValue(undefined);
 		mockMapWithConcurrency.mockResolvedValue([]);
+		mockRequeueClaimedJobForRetry.mockResolvedValue(Result.ok(true));
 		mockRunPhase.mockImplementation(
 			async (
 				_jobId: string,
@@ -325,18 +330,19 @@ describe("runExtensionSyncJob", () => {
 		expect(mockDownloadSyncPayload).not.toHaveBeenCalled();
 	});
 
-	it("fails phases + parent and deletes the object when download fails", async () => {
+	it("fails phases + parent and deletes the object when download fails on the last attempt", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "storage", message: "missing" })),
 		);
 
 		const outcome = await runExtensionSyncJob(
-			parentJob(validProgress()),
+			{ ...parentJob(validProgress()), attempts: 3 },
 			"actor",
 			LIVE_LEASE,
 		);
 
 		expect(outcome.status).toBe("failed");
+		expect(mockRequeueClaimedJobForRetry).not.toHaveBeenCalled();
 		expect(mockFailJob).toHaveBeenCalledWith(
 			PHASE_JOB_IDS.liked_songs,
 			expect.any(String),
@@ -350,7 +356,7 @@ describe("runExtensionSyncJob", () => {
 			expect.any(String),
 		);
 		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			PARENT_LEASE,
+			expect.objectContaining({ id: PARENT_ID, attempts: 3 }),
 			"failed",
 			expect.any(String),
 		);
@@ -385,7 +391,21 @@ describe("runExtensionSyncJob", () => {
 		expect(mockRunPhase).not.toHaveBeenCalled();
 	});
 
-	it("fails unsettled phases + parent when a phase errors", async () => {
+	it.each([
+		{
+			label: "a non-retryable error",
+			attempts: 1,
+			error: new Error("liked blew up"),
+		},
+		{
+			label: "a DB error on the last attempt",
+			attempts: 3,
+			error: new DatabaseError({ code: "57014", message: "liked blew up" }),
+		},
+	])("fails every unsettled phase + the parent and deletes the payload when a phase returns $label", async ({
+		attempts,
+		error,
+	}) => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.ok(
 				jsonBytes({
@@ -406,10 +426,10 @@ describe("runExtensionSyncJob", () => {
 				}),
 			),
 		);
-		mockRunPhase.mockResolvedValueOnce(Result.err(new Error("liked blew up")));
+		mockRunPhase.mockResolvedValueOnce(Result.err(error));
 
 		const outcome = await runExtensionSyncJob(
-			parentJob(validProgress()),
+			{ ...parentJob(validProgress()), attempts },
 			"actor",
 			LIVE_LEASE,
 		);
@@ -418,18 +438,14 @@ describe("runExtensionSyncJob", () => {
 			status: "failed",
 			error: "Liked songs sync failed: liked blew up",
 		});
-		// liked_songs phase was driven by runPhase (settles itself); the unsettled
-		// siblings + parent are failed.
-		expect(mockFailJob).toHaveBeenCalledWith(
-			PHASE_JOB_IDS.playlists,
-			expect.any(String),
-		);
-		expect(mockFailJob).toHaveBeenCalledWith(
-			PHASE_JOB_IDS.playlist_tracks,
-			expect.any(String),
-		);
+		expect(mockRequeueClaimedJobForRetry).not.toHaveBeenCalled();
+		// runPhase leaves a failed phase running, so the parent fails the
+		// errored phase along with the siblings that never started.
+		for (const phaseJobId of Object.values(PHASE_JOB_IDS)) {
+			expect(mockFailJob).toHaveBeenCalledWith(phaseJobId, expect.any(String));
+		}
 		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			PARENT_LEASE,
+			expect.objectContaining({ id: PARENT_ID, attempts }),
 			"failed",
 			expect.any(String),
 		);
@@ -439,7 +455,60 @@ describe("runExtensionSyncJob", () => {
 		);
 	});
 
-	it("fails the sync when the account profile DB update errors", async () => {
+	it("regression: a failed playlist-track write fails the attempt and keeps the payload for a retry instead of completing without that playlist", async () => {
+		mockDownloadSyncPayload.mockResolvedValue(
+			Result.ok(
+				jsonBytes({
+					likedSongs: [],
+					playlists: [],
+					playlistTracks: [
+						{ playlistSpotifyId: "sp-ok", tracks: [] },
+						{ playlistSpotifyId: "sp-broken", tracks: [] },
+					],
+				}),
+			),
+		);
+		mockGetPlaylists.mockResolvedValue(
+			Result.ok([
+				{ id: "pl-ok", spotify_id: "sp-ok" },
+				{ id: "pl-broken", spotify_id: "sp-broken" },
+			]),
+		);
+		mockMapWithConcurrency.mockImplementation(
+			(items: unknown[], _limit: number, fn: (item: unknown) => unknown) =>
+				Promise.all(items.map(fn)),
+		);
+		mockSyncPlaylistTracksFromData.mockImplementation(
+			async (playlist: { id: string }) =>
+				playlist.id === "pl-broken"
+					? Result.err(
+							new DatabaseError({ code: "57014", message: "write timed out" }),
+						)
+					: Result.ok({ playlistId: playlist.id, added: 1, removed: 0 }),
+		);
+
+		const outcome = await runExtensionSyncJob(
+			parentJob(validProgress()),
+			"actor",
+			LIVE_LEASE,
+		);
+
+		expect(outcome).toEqual({
+			status: "retrying",
+			error: expect.stringContaining("write timed out"),
+		});
+		expect(mockRequeueClaimedJobForRetry).toHaveBeenCalledWith(
+			PARENT_LEASE,
+			expect.stringContaining("write timed out"),
+		);
+		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+		// The phases stay as they are for the retry to resume or take over.
+		expect(mockFailJob).not.toHaveBeenCalled();
+		expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+	});
+
+	it("fails the sync when the account profile DB update errors on the last attempt", async () => {
 		const supabaseMock = makeSupabaseMock({
 			currentAccount: { spotify_id: null, better_auth_user_id: null },
 			updateError: { message: "db update failed" },
@@ -457,7 +526,7 @@ describe("runExtensionSyncJob", () => {
 		mockDownloadSyncPayload.mockResolvedValue(Result.ok(payloadWithProfile));
 
 		const outcome = await runExtensionSyncJob(
-			parentJob(validProgress()),
+			{ ...parentJob(validProgress()), attempts: 3 },
 			"actor",
 			LIVE_LEASE,
 		);
@@ -468,14 +537,14 @@ describe("runExtensionSyncJob", () => {
 			error: expect.stringContaining("Failed to update account profile"),
 		});
 		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			PARENT_LEASE,
+			expect.objectContaining({ id: PARENT_ID, attempts: 3 }),
 			"failed",
 			expect.any(String),
 		);
 		expect(mockDeleteSyncPayload).toHaveBeenCalled();
 	});
 
-	it("regression: a failed account read fails the sync instead of skipping the spotify_id guard", async () => {
+	it("regression: a failed account read stops the sync instead of skipping the spotify_id guard", async () => {
 		// The linked spotify_id would mismatch the payload, but the read errors —
 		// it used to be treated as "no account row" and the guard was skipped.
 		const supabaseMock = makeSupabaseMock({
@@ -499,12 +568,12 @@ describe("runExtensionSyncJob", () => {
 			LIVE_LEASE,
 		);
 
-		expect(outcome.status).toBe("failed");
+		expect(outcome.status).toBe("retrying");
 		expect(supabaseMock.updateFn).not.toHaveBeenCalled();
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 	});
 
-	it("regression: a failed target-playlist read fails the sync instead of reporting no target changes", async () => {
+	it("regression: a failed target-playlist read stops the sync instead of reporting no target changes", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.ok(jsonBytes({ likedSongs: [], playlists: [] })),
 		);
@@ -518,7 +587,7 @@ describe("runExtensionSyncJob", () => {
 			LIVE_LEASE,
 		);
 
-		expect(outcome.status).toBe("failed");
+		expect(outcome.status).toBe("retrying");
 		expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
 	});
 
@@ -728,14 +797,20 @@ describe("runExtensionSyncJob", () => {
 		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
 	});
 
-	it("a lease reclaimed before a failure neither fails the new run's phases nor deletes its payload", async () => {
+	it.each([
+		{ path: "requeue", attempts: 1 },
+		{ path: "terminal failure", attempts: 3 },
+	])("a lease reclaimed before a failure's $path neither fails the new run's phases nor deletes its payload", async ({
+		attempts,
+	}) => {
 		mockDownloadSyncPayload.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "storage", message: "blip" })),
 		);
+		mockRequeueClaimedJobForRetry.mockResolvedValue(Result.ok(false));
 		mockSettleClaimedJob.mockResolvedValue(Result.ok("superseded"));
 
 		const outcome = await runExtensionSyncJob(
-			parentJob(validProgress()),
+			{ ...parentJob(validProgress()), attempts },
 			"actor",
 			LIVE_LEASE,
 		);

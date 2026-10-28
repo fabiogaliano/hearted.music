@@ -41,6 +41,14 @@ function dispatch(job: Job, actor: string, markDone: () => void): void {
 						accountId,
 					});
 					break;
+				case "retrying":
+					log.warn("extension-sync-job-retrying", {
+						actor,
+						jobId,
+						accountId,
+						error: outcome.error,
+					});
+					break;
 				case "failed":
 					log.warn("extension-sync-job-failed", {
 						actor,
