@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Playlist } from "@/lib/domains/library/playlists/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
+import { ServerFnError } from "@/lib/server/unwrap-or-throw";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { PlaylistManagementChanges } from "@/lib/workflows/library-processing/changes";
 import type { LibraryProcessingApplyOutcome } from "@/lib/workflows/library-processing/types";
@@ -215,6 +216,19 @@ describe("getPlaylistManagementData", () => {
 
 		await expect(getPlaylistManagementData()).rejects.toThrow(
 			"Failed to load playlists",
+		);
+	});
+
+	it("regression: a failed target read throws instead of reporting no targets", async () => {
+		mockGetPlaylists.mockResolvedValue(
+			Result.ok([makePlaylist({ id: "uuid-1", is_target: true })]),
+		);
+		mockGetTargetPlaylists.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "42000", message: "db error" })),
+		);
+
+		await expect(getPlaylistManagementData()).rejects.toBeInstanceOf(
+			ServerFnError,
 		);
 	});
 });
