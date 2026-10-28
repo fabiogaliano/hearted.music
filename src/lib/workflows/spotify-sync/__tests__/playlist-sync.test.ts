@@ -1,19 +1,44 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Playlist } from "@/lib/domains/library/playlists/queries";
-import type { SpotifyPlaylistDTO } from "../types";
+import type {
+	Playlist,
+	PlaylistSong,
+} from "@/lib/domains/library/playlists/queries";
+import type { Song } from "@/lib/domains/library/songs/queries";
+import type { SpotifyPlaylistDTO, SpotifyTrackDTO } from "../types";
 
 const mockGetPlaylists = vi.fn();
 const mockUpsertPlaylists = vi.fn();
 const mockDeletePlaylists = vi.fn();
+const mockGetPlaylistSongs = vi.fn();
+const mockUpsertPlaylistSongs = vi.fn();
+const mockRemovePlaylistSongs = vi.fn();
+const mockUpdatePlaylistSongCount = vi.fn();
 
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
 	getPlaylists: (...args: unknown[]) => mockGetPlaylists(...args),
 	upsertPlaylists: (...args: unknown[]) => mockUpsertPlaylists(...args),
 	deletePlaylists: (...args: unknown[]) => mockDeletePlaylists(...args),
+	getPlaylistSongs: (...args: unknown[]) => mockGetPlaylistSongs(...args),
+	upsertPlaylistSongs: (...args: unknown[]) => mockUpsertPlaylistSongs(...args),
+	removePlaylistSongs: (...args: unknown[]) => mockRemovePlaylistSongs(...args),
+	updatePlaylistSongCount: (...args: unknown[]) =>
+		mockUpdatePlaylistSongCount(...args),
 }));
 
-const { syncPlaylists } = await import("../playlist-sync");
+const mockImportSpotifyTracks = vi.fn();
+
+vi.mock("../sync-helpers", () => ({
+	importSpotifyTracks: (...args: unknown[]) => mockImportSpotifyTracks(...args),
+}));
+
+vi.mock("../dedupe", () => ({
+	dedupeTracksBySpotifyId: (tracks: unknown[]) => tracks,
+}));
+
+const { syncPlaylists, syncPlaylistTracksFromData } = await import(
+	"../playlist-sync"
+);
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {
@@ -194,5 +219,108 @@ describe("syncPlaylists", () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe("syncPlaylistTracksFromData", () => {
+	const PLAYLIST: Playlist = {
+		id: "playlist-1",
+		account_id: "acct-1",
+		spotify_id: "sp-playlist-1",
+		name: "Test Playlist",
+		description: null,
+		match_intent: null,
+		match_filters: { version: 1 },
+		is_public: true,
+		is_target: false,
+		song_count: 0,
+		snapshot_id: null,
+		image_url: null,
+		genre_pills: [],
+		created_at: "2026-01-01T00:00:00Z",
+		updated_at: "2026-01-01T00:00:00Z",
+	};
+
+	function makePS(songId: string, position = 0): PlaylistSong {
+		return {
+			id: `ps-${songId}`,
+			playlist_id: "playlist-1",
+			song_id: songId,
+			position,
+			added_at: "2026-01-01T00:00:00Z",
+			created_at: "2026-01-01T00:00:00Z",
+			updated_at: "2026-01-01T00:00:00Z",
+		} as PlaylistSong;
+	}
+
+	function makeSongEntry(id: string, spotifyId: string): Song {
+		return { id, spotify_id: spotifyId } as Song;
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockUpsertPlaylistSongs.mockResolvedValue(Result.ok([]));
+		mockRemovePlaylistSongs.mockResolvedValue(Result.ok([]));
+		mockUpdatePlaylistSongCount.mockResolvedValue(Result.ok(null));
+	});
+
+	it("removes an existing song whose id is absent from the current upserted batch", async () => {
+		mockGetPlaylistSongs.mockResolvedValue(Result.ok([makePS("song-old")]));
+		mockImportSpotifyTracks.mockResolvedValue(
+			Result.ok(
+				new Map([["spotify-new", makeSongEntry("song-new", "spotify-new")]]),
+			),
+		);
+
+		const result = await syncPlaylistTracksFromData(PLAYLIST, []);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.removed).toBe(1);
+			expect(result.value.removedTracks).toEqual([{ id: "song-old" }]);
+		}
+		expect(mockRemovePlaylistSongs).toHaveBeenCalledWith("playlist-1", [
+			"song-old",
+		]);
+	});
+
+	it("removes an existing song whose spotify_id is no longer in the current tracklist", async () => {
+		// song-a IS found in songById but its spotify_id is not in spotifyTrackIds
+		mockGetPlaylistSongs.mockResolvedValue(Result.ok([makePS("song-a")]));
+		mockImportSpotifyTracks.mockResolvedValue(
+			Result.ok(
+				new Map([["current-key", makeSongEntry("song-a", "old-spotify")]]),
+			),
+		);
+		// rawTracks is empty → spotifyTrackIds is empty → "old-spotify" is not in it
+
+		const result = await syncPlaylistTracksFromData(PLAYLIST, []);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.removed).toBe(1);
+		}
+	});
+
+	it("does not remove a song still present in the Spotify tracklist", async () => {
+		mockGetPlaylistSongs.mockResolvedValue(Result.ok([makePS("song-a", 0)]));
+		mockImportSpotifyTracks.mockResolvedValue(
+			Result.ok(
+				new Map([["spotify-a", makeSongEntry("song-a", "spotify-a")]]),
+			),
+		);
+		// rawTracks with track.id = "spotify-a" so spotifyTrackIds contains it
+		const rawTracks = [
+			{ added_at: "2026-01-01T00:00:00Z", track: { id: "spotify-a" } },
+		] as SpotifyTrackDTO[];
+
+		const result = await syncPlaylistTracksFromData(PLAYLIST, rawTracks);
+
+		expect(result).toBeOk();
+		if (Result.isOk(result)) {
+			expect(result.value.removed).toBe(0);
+			expect(result.value.removedTracks).toEqual([]);
+		}
+		expect(mockRemovePlaylistSongs).not.toHaveBeenCalled();
 	});
 });
