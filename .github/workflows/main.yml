@@ -436,6 +436,13 @@ jobs:
           context: .
           file: Dockerfile.app
           push: true
+          # Reuses unchanged layers across runs, so an unchanged bun.lock yields
+          # the same node_modules layer digest and the VPS skips pulling it
+          # (each fresh 1 GB layer helped fill its disk on 2026-10-28). mode=min
+          # caches only the final image's layers, which keeps this off the 10 GB
+          # repo cache budget the Supabase image tarball also lives in.
+          cache-from: type=gha,scope=app-image
+          cache-to: type=gha,mode=min,scope=app-image
           # Coolify deploys :latest; the SHA tag is what a rollback pins.
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
