@@ -1,7 +1,7 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
+import type { LikedSongRef } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { makeJob } from "@/test/fixtures";
@@ -24,14 +24,12 @@ vi.mock("@/lib/platform/jobs/repository", () => ({
 	getJobById: (...args: unknown[]) => mockGetJobById(...args),
 }));
 
-const mockGetByIds = vi.fn();
 const mockUpsertCatalog = vi.fn();
 const mockUpsertArtists = vi.fn();
 const mockUpsertLikedSongs = vi.fn();
 const mockSoftDeleteBatch = vi.fn();
 
 vi.mock("@/lib/domains/library/songs/queries", () => ({
-	getByIds: (...args: unknown[]) => mockGetByIds(...args),
 	upsertCatalog: (...args: unknown[]) => mockUpsertCatalog(...args),
 }));
 
@@ -77,13 +75,8 @@ function makeSong(): Song {
 	return { id: SONG_ID, spotify_id: SPOTIFY_ID } as Song;
 }
 
-function makeLikedSong(unlikedAt: string | null): LikedSong {
-	return {
-		account_id: ACCOUNT_ID,
-		song_id: SONG_ID,
-		liked_at: "2026-01-01T00:00:00.000Z",
-		unliked_at: unlikedAt,
-	} as LikedSong;
+function makeLikedSong(unlikedAt: string | null): LikedSongRef {
+	return { song_id: SONG_ID, spotify_id: SPOTIFY_ID, unliked_at: unlikedAt };
 }
 
 describe("runPhase", () => {
@@ -308,7 +301,6 @@ describe("importSpotifyTracks", () => {
 describe("incrementalSync", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockGetByIds.mockResolvedValue(Result.ok([makeSong()]));
 		mockUpsertCatalog.mockResolvedValue(Result.ok([makeSong()]));
 		mockUpsertArtists.mockResolvedValue(Result.ok([]));
 		mockUpsertLikedSongs.mockResolvedValue(Result.ok([]));
