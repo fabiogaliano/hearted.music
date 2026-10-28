@@ -138,6 +138,7 @@ function setupHappyPath({
 	mockLoadTargetPlaylistProfiles.mockResolvedValue({
 		playlists: [makePlaylist("pl-1")],
 		profiles: [makeProfile("pl-1")],
+		carriedForwardCount: 0,
 	});
 	mockLoadCandidateSongIds.mockResolvedValue(["song-1"]);
 	mockLoadCandidateDetails.mockResolvedValue({
@@ -193,6 +194,7 @@ describe("executeMatchSnapshotRefresh — sequencing", () => {
 		mockLoadTargetPlaylistProfiles.mockResolvedValue({
 			playlists: [],
 			profiles: [],
+			carriedForwardCount: 0,
 		});
 		mockWriteEmptySnapshot.mockResolvedValue(
 			snapshotResult({ isEmpty: true, candidateCount: 0, playlistCount: 0 }),
@@ -210,6 +212,7 @@ describe("executeMatchSnapshotRefresh — sequencing", () => {
 		mockLoadTargetPlaylistProfiles.mockResolvedValue({
 			playlists: [makePlaylist("pl-1")],
 			profiles: [makeProfile("pl-1")],
+			carriedForwardCount: 0,
 		});
 		mockLoadCandidateSongIds.mockResolvedValue([]);
 		mockWriteMatchSnapshot.mockResolvedValue(snapshotResult());
@@ -253,6 +256,7 @@ describe("executeMatchSnapshotRefresh — sequencing", () => {
 		mockLoadTargetPlaylistProfiles.mockResolvedValue({
 			playlists: [makePlaylist("pl-1")],
 			profiles: [makeProfile("pl-1")],
+			carriedForwardCount: 0,
 		});
 		mockLoadLibraryProcessingState.mockResolvedValue(
 			Result.ok({

@@ -8,6 +8,7 @@ import {
 	createAudioFeaturesService,
 	type TrackInfo,
 } from "@/lib/domains/enrichment/audio-features/service";
+import { getModelBundleHash } from "@/lib/domains/enrichment/embeddings/versioning";
 import {
 	createGenreEnrichmentService,
 	type GenreEnrichmentInput,
@@ -23,8 +24,14 @@ import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-prof
 import type { ComputedPlaylistProfile } from "@/lib/domains/taste/playlist-profiling/types";
 import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
+import { captureServerError } from "@/lib/observability/capture-server-error";
 import { log } from "@/lib/observability/logger";
+import { errorMessage } from "@/lib/shared/errors/error-message";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
+
+type ProfilingOutcome =
+	| { status: "computed"; playlist: Playlist; profile: MatchingPlaylistProfile }
+	| { status: "failed"; playlist: Playlist; error: unknown };
 
 function toMatchingProfile(
 	playlist: Playlist,
@@ -45,8 +52,62 @@ function toMatchingProfile(
 }
 
 /**
+ * Publishing without a target playlist would hide its suggestions until the
+ * next library change, so a playlist that fails to profile is matched on its
+ * last persisted profile instead. Without a usable one the run throws, the job
+ * retries, and the previous complete snapshot stays published meanwhile.
+ */
+async function carryForwardPriorProfile(
+	accountId: string,
+	playlist: Playlist,
+	error: unknown,
+	profilingService: PlaylistProfilingService,
+): Promise<MatchingPlaylistProfile> {
+	const failure = `[target-refresh] Failed to profile playlist ${playlist.id} (${errorMessage(error)})`;
+	const [priorResult, bundleResult] = await Promise.all([
+		profilingService.getProfile(playlist.id),
+		getModelBundleHash(),
+	]);
+	if (Result.isError(priorResult)) {
+		throw new Error(
+			`${failure} and its prior profile could not be read: ${priorResult.error.message}`,
+			{ cause: error },
+		);
+	}
+	if (Result.isError(bundleResult)) {
+		throw new Error(
+			`${failure} and the model bundle could not be resolved: ${bundleResult.error.message}`,
+			{ cause: error },
+		);
+	}
+	const prior = priorResult.value;
+	if (!prior) {
+		throw new Error(`${failure} and it has no prior profile`, {
+			cause: error,
+		});
+	}
+	// Another bundle's embedding lives in a different vector space from the
+	// candidates' embeddings, so scoring against it would be meaningless.
+	if (prior.modelBundleHash !== bundleResult.value) {
+		throw new Error(
+			`${failure} and its prior profile predates the current model bundle`,
+			{ cause: error },
+		);
+	}
+
+	captureServerError(error, {
+		area: "matching",
+		operation: "profile_target_playlist",
+		accountId,
+		extra: { playlistId: playlist.id, carriedForward: true },
+	});
+	return toMatchingProfile(playlist, prior);
+}
+
+/**
  * Loads current target playlists and computes/caches their profiles.
- * Returns the playlist rows and their matching-ready profile data.
+ * Returns every target playlist with a matching-ready profile, and how many of
+ * those profiles were carried forward from a failed computation.
  */
 export async function loadTargetPlaylistProfiles(
 	accountId: string,
@@ -54,6 +115,7 @@ export async function loadTargetPlaylistProfiles(
 ): Promise<{
 	playlists: Playlist[];
 	profiles: MatchingPlaylistProfile[];
+	carriedForwardCount: number;
 }> {
 	const playlistsResult = await getTargetPlaylists(accountId);
 	if (Result.isError(playlistsResult)) {
@@ -62,7 +124,7 @@ export async function loadTargetPlaylistProfiles(
 		);
 	}
 	if (playlistsResult.value.length === 0) {
-		return { playlists: [], profiles: [] };
+		return { playlists: [], profiles: [], carriedForwardCount: 0 };
 	}
 
 	const playlists = playlistsResult.value;
@@ -75,12 +137,7 @@ export async function loadTargetPlaylistProfiles(
 	const profileResults = await mapWithConcurrency(
 		playlists,
 		PROFILE_CONCURRENCY,
-		async (
-			playlist,
-		): Promise<{
-			playlist: Playlist;
-			profile: MatchingPlaylistProfile;
-		} | null> => {
+		async (playlist): Promise<ProfilingOutcome> => {
 			try {
 				const playlistSongsResult = await getPlaylistSongs(playlist.id);
 				if (Result.isError(playlistSongsResult)) {
@@ -133,43 +190,58 @@ export async function loadTargetPlaylistProfiles(
 					},
 				);
 
-				if (Result.isError(profileResult) || !profileResult.value) {
+				if (Result.isError(profileResult)) {
 					throw new Error(
-						`[target-refresh] Failed to compute profile for playlist ${playlist.id}`,
+						`[target-refresh] Failed to compute profile for playlist ${playlist.id}: ${profileResult.error.message}`,
+						{ cause: profileResult.error },
 					);
 				}
 
 				return {
+					status: "computed",
 					playlist,
 					profile: toMatchingProfile(playlist, profileResult.value),
 				};
 			} catch (error) {
-				// One playlist's failure must not abort the whole snapshot — drop it
-				// and let the refresh proceed with the rest.
 				log.warn("match:playlist-profile-failed", {
 					playlistId: playlist.id,
-					error: error instanceof Error ? error.message : String(error),
+					error: errorMessage(error),
 				});
-				return null;
+				return { status: "failed", playlist, error };
 			}
 		},
 	);
 
-	const computed = profileResults.filter(
-		(r): r is { playlist: Playlist; profile: MatchingPlaylistProfile } =>
-			r !== null,
-	);
+	const failures = profileResults.filter((r) => r.status === "failed");
 
 	// All failing signals a systemic problem, not a per-playlist quirk — abort and
-	// retry rather than publish an empty snapshot that wipes existing suggestions.
-	if (computed.length === 0) {
+	// retry for fresh profiles rather than publish on stale ones.
+	if (failures.length === playlists.length) {
 		throw new Error(
 			`[target-refresh] All ${playlists.length} target playlist profiles failed to compute`,
+			{ cause: failures[0]?.error },
+		);
+	}
+
+	const profiles: MatchingPlaylistProfile[] = [];
+	for (const outcome of profileResults) {
+		if (outcome.status === "computed") {
+			profiles.push(outcome.profile);
+			continue;
+		}
+		profiles.push(
+			await carryForwardPriorProfile(
+				accountId,
+				outcome.playlist,
+				outcome.error,
+				profilingService,
+			),
 		);
 	}
 
 	return {
-		playlists: computed.map((r) => r.playlist),
-		profiles: computed.map((r) => r.profile),
+		playlists: profileResults.map((r) => r.playlist),
+		profiles,
+		carriedForwardCount: failures.length,
 	};
 }
