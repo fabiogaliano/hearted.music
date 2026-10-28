@@ -2,7 +2,7 @@
  * Test fixtures with real data from Spotify account kapran0s (fabiogaliano)
  */
 
-import type { TablesInsert } from "@/lib/data/database.types";
+import type { Tables, TablesInsert } from "@/lib/data/database.types";
 import type {
 	ActiveMatchDeckRpcResult,
 	ReadMatchDeckCardRpcResult,
@@ -308,6 +308,30 @@ export function makeJob(overrides: Partial<Job> = {}): Job {
 		satisfies_requested_at: null,
 		created_at: "2026-07-08T00:00:00Z",
 		updated_at: "2026-07-08T00:00:00Z",
+		...overrides,
+	};
+}
+
+/** A published `match_snapshot` row; override the fields the case depends on. */
+export function makeMatchSnapshot(
+	overrides: Partial<Tables<"match_snapshot">> = {},
+): Tables<"match_snapshot"> {
+	return {
+		id: "snap-1",
+		account_id: "acct-1",
+		algorithm_version: "v1",
+		analysis_model: null,
+		analysis_version: null,
+		candidate_set_hash: "cand",
+		config_hash: "cfg",
+		created_at: "2026-07-07T00:00:00Z",
+		embedding_model: null,
+		embedding_version: null,
+		playlist_count: 1,
+		playlist_set_hash: "pls",
+		snapshot_hash: "snap",
+		song_count: 1,
+		weights: {},
 		...overrides,
 	};
 }

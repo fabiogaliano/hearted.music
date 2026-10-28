@@ -14,8 +14,10 @@ import {
 } from "@/lib/domains/taste/match-review-queue/deck-jobs";
 import { buildProposalsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/proposal-builder";
 import { appendSessionsForAccountOrientation } from "@/lib/domains/taste/match-review-queue/session-appender";
+import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { log } from "@/lib/observability/logger";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import { makeMatchSnapshot } from "@/test/fixtures";
 import { workerConfig } from "../config";
 import { runClaimedDeckJob } from "../poll-match-deck-jobs";
 
@@ -119,6 +121,35 @@ describe("runClaimedDeckJob", () => {
 			expect.objectContaining({ kind: "append_sessions" }),
 		);
 		expect(Sentry.captureException).not.toHaveBeenCalled();
+	});
+
+	it("build_proposals with no snapshotId defers without falling back to the latest snapshot", async () => {
+		await runClaimedDeckJob(
+			job({ id: "job-no-snap", kind: "build_proposals", payload: {} }),
+		);
+
+		expectDeferred("job-no-snap");
+		expect(getLatestMatchSnapshot).not.toHaveBeenCalled();
+		expect(buildProposalsForAccountOrientation).not.toHaveBeenCalled();
+	});
+
+	it("repair with a blank snapshotId rebuilds against the latest snapshot", async () => {
+		vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
+			Result.ok(makeMatchSnapshot({ id: "snap-latest" })),
+		);
+		vi.mocked(buildProposalsForAccountOrientation).mockResolvedValue(
+			Result.ok(undefined),
+		);
+		vi.mocked(enqueueDeckJob).mockResolvedValue(Result.ok(null));
+
+		await runClaimedDeckJob(
+			job({ id: "job-repair", kind: "repair", payload: { snapshotId: "" } }),
+		);
+
+		expectCompleted("job-repair");
+		expect(buildProposalsForAccountOrientation).toHaveBeenCalledWith(
+			expect.objectContaining({ snapshotId: "snap-latest" }),
+		);
 	});
 
 	it("append_sessions: a handler error defers and is captured (P1.2 symmetry)", async () => {
