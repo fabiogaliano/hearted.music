@@ -141,7 +141,7 @@ describe("runClaimedDeckJob", () => {
 				tags: expect.objectContaining({
 					area: "match_deck",
 					operation: "append_sessions",
-					runtime: "worker",
+					service: "worker",
 				}),
 			}),
 		);
@@ -271,7 +271,7 @@ describe("runClaimedDeckJob", () => {
 				tags: expect.objectContaining({
 					area: "match_deck",
 					operation: "capture_ahead",
-					runtime: "worker",
+					service: "worker",
 				}),
 			}),
 		);

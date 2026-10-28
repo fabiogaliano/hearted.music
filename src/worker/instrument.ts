@@ -37,7 +37,9 @@ if (dsn && !isLocalEnvironment) {
 		sendDefaultPii: false,
 		enableLogs: false,
 		beforeSend: applyServerErrorFingerprint,
-		initialScope: { tags: { runtime: "worker" } },
+		// Not `runtime`: Sentry ingestion overwrites that tag from the event's
+		// runtime context ("bun 1.x"), so alert filters on it never match.
+		initialScope: { tags: { service: "worker" } },
 	});
 }
 

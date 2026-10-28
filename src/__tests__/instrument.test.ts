@@ -40,6 +40,14 @@ describe("web-server Sentry instrumentation", () => {
 		});
 	});
 
+	// Regression: the "server error volume" alert filters on this tag.
+	it("tags events with service=web-server, since a runtime tag is overwritten by Sentry's runtime context", async () => {
+		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: "production" });
+
+		const tags = mockInit.mock.calls[0]?.[0]?.initialScope?.tags;
+		expect(tags).toEqual({ service: "web-server" });
+	});
+
 	// Regression: 2026-08-01 local errors reached the production project
 	// because the local .env carried the production DSN.
 	it.each([

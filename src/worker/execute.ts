@@ -156,7 +156,7 @@ export async function executeMatchSnapshotRefreshJob(
 			tags: {
 				area: "analytics",
 				operation: "capture_match_snapshot_published",
-				runtime: "worker",
+				service: "worker",
 			},
 			extra: {
 				accountId,
@@ -198,7 +198,7 @@ async function enqueueDeckProposalBuilds(
 		extra: { orientation?: string; snapshotId?: string },
 	) =>
 		Sentry.captureException(error, {
-			tags: { area: "match_deck", operation, runtime: "worker" },
+			tags: { area: "match_deck", operation, service: "worker" },
 			extra: { accountId, jobId: job.id, ...extra },
 		});
 

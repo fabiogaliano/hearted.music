@@ -96,7 +96,7 @@ function emitDeckJobLag(
  * P1.2: symmetric with the build_proposals/repair capture below — append_sessions
  * and capture_ahead failures previously only surfaced via the generic
  * dead-letter `captureMessage` once attempts were exhausted, invisible until
- * then. Same tag shape (`area=match_deck, operation=<kind>, runtime=worker`).
+ * then. Same tag shape (`area=match_deck, operation=<kind>, service=worker`).
  */
 function captureDeckJobDispatchError(
 	operation: "append_sessions" | "capture_ahead",
@@ -109,7 +109,7 @@ function captureDeckJobDispatchError(
 		tags: {
 			area: "match_deck",
 			operation,
-			runtime: "worker",
+			service: "worker",
 			kind: job.kind,
 		},
 		extra: {
@@ -184,7 +184,7 @@ async function dispatchDeckJob(
 					tags: {
 						area: "match_deck",
 						operation: "build_proposals",
-						runtime: "worker",
+						service: "worker",
 						kind: job.kind,
 					},
 					extra: {

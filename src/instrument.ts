@@ -38,6 +38,8 @@ if (dsn && !LOCAL_ENVIRONMENTS.has(environment)) {
 		enableLogs: true,
 		integrations: [Sentry.consoleLoggingIntegration({ levels: ["error"] })],
 		beforeSend: applyServerErrorFingerprint,
-		initialScope: { tags: { runtime: "web-server" } },
+		// Not `runtime`: Sentry ingestion overwrites that tag from the event's
+		// runtime context ("bun 1.x"), so alert filters on it never match.
+		initialScope: { tags: { service: "web-server" } },
 	});
 }

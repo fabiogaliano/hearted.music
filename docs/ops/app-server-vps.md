@@ -79,7 +79,7 @@ Monitoring:
   `hearted-events`, `hearted-billing`, `hearted-db` (Supabase auth health). No alert channel yet
   (ntfy needs auth; see the hardening backlog).
 - Sentry workflows on the `hearted-music` error monitor, email to the owner:
-  "hearted.music: server error volume" (`runtime=web-server`, >10 events/h in an issue) and
+  "hearted.music: server error volume" (`service=web-server`, >10 events/h in an issue) and
   "hearted.music: route error volume" (`route` tag set, >10 events/h).
 
 Smoke after a deploy: `GET /health` reports the SHA, dashboard and studio load, the dashboard opens
