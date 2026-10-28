@@ -9,8 +9,8 @@ import { Result } from "better-result";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
+import { toSpotifyApiSavedTrack } from "@/test/fixtures";
 import { incrementalSync } from "../sync-helpers";
-import type { SpotifyTrackDTO } from "../types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -39,14 +39,20 @@ const SONG_TAG = `liked-row-cap-${ACCOUNT_ID}`;
 const INSERT_CHUNK = 250;
 
 // Index 0 is the newest like, so the last two are past row 1000.
-const SONGS = Array.from({ length: SONG_COUNT }, (_, i) => {
+const SONGS = Array.from({ length: SONG_COUNT }, () => {
 	const id = crypto.randomUUID();
 	return {
 		id,
-		spotifyId: `${SONG_TAG}-${id}`,
-		likedAt: new Date(Date.UTC(2026, 0, 1) - i * 60_000).toISOString(),
+		spotify_id: `${SONG_TAG}-${id}`,
+		name: "Row Cap Song",
+		artists: ["Artist"],
+		album_name: "Album",
+		duration_ms: 1000,
+		image_url: "https://img/row-cap.jpg",
 	};
 });
+const likedAt = (i: number) =>
+	new Date(Date.UTC(2026, 0, 1) - i * 60_000).toISOString();
 
 async function inChunks<T>(
 	rows: T[],
@@ -57,41 +63,20 @@ async function inChunks<T>(
 	}
 }
 
-function spotifyTrack(song: (typeof SONGS)[number]): SpotifyTrackDTO {
-	return {
-		added_at: song.likedAt,
-		track: {
-			id: song.spotifyId,
-			name: "Row Cap Song",
-			artists: [{ id: `${SONG_TAG}-artist`, name: "Artist" }],
-			album: { id: `${SONG_TAG}-album`, name: "Album", images: [] },
-			duration_ms: 1000,
-			uri: `spotify:track:${song.spotifyId}`,
-		},
-	};
-}
-
 beforeAll(async () => {
 	if (!IS_LOCAL) return;
 	await db()
 		.from("account")
 		.insert({ id: ACCOUNT_ID, spotify_id: `test-${ACCOUNT_ID}` })
 		.throwOnError();
-	await inChunks(
-		SONGS.map((s) => ({
-			id: s.id,
-			spotify_id: s.spotifyId,
-			name: "Row Cap Song",
-			artists: ["Artist"],
-			artist_ids: [`${SONG_TAG}-artist`],
-		})),
-		(chunk) => db().from("song").insert(chunk).throwOnError(),
+	await inChunks(SONGS, (chunk) =>
+		db().from("song").insert(chunk).throwOnError(),
 	);
 	await inChunks(
-		SONGS.map((s) => ({
+		SONGS.map((s, i) => ({
 			account_id: ACCOUNT_ID,
 			song_id: s.id,
-			liked_at: s.likedAt,
+			liked_at: likedAt(i),
 		})),
 		(chunk) => db().from("liked_song").insert(chunk).throwOnError(),
 	);
@@ -101,7 +86,8 @@ afterAll(async () => {
 	if (!IS_LOCAL) return;
 	await db().from("account").delete().eq("id", ACCOUNT_ID);
 	await db().from("song").delete().like("spotify_id", `${SONG_TAG}-%`);
-	await db().from("artist").delete().like("spotify_id", `${SONG_TAG}-%`);
+	// Artists are only written when the diff wrongly re-imports a song.
+	await db().from("artist").delete().like("spotify_id", `artist-${SONG_TAG}-%`);
 });
 
 describeLocal("liked-songs sync diff past the PostgREST row cap", () => {
@@ -113,9 +99,11 @@ describeLocal("liked-songs sync diff past the PostgREST row cap", () => {
 		if (Result.isError(existing)) throw existing.error;
 
 		const synced = await incrementalSync(ACCOUNT_ID, {
-			likedSongs: stillLiked.map(spotifyTrack),
+			likedSongs: stillLiked.map((s, i) =>
+				toSpotifyApiSavedTrack(s, likedAt(i)),
+			),
 			existingLikedSongs: existing.value,
-			likedSongsIds: new Set(stillLiked.map((s) => s.spotifyId)),
+			likedSongsIds: new Set(stillLiked.map((s) => s.spotify_id)),
 		});
 		if (Result.isError(synced)) throw synced.error;
 
