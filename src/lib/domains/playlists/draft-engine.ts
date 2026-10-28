@@ -20,6 +20,7 @@ import type { GenreDistribution } from "@/lib/domains/taste/playlist-profiling/t
 import { createMatchingService } from "@/lib/domains/taste/song-matching/service";
 import type {
 	MatchingPlaylistProfile,
+	MatchingSong,
 	MatchResult,
 } from "@/lib/domains/taste/song-matching/types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
@@ -165,6 +166,22 @@ export interface RankedCandidate {
 }
 
 /**
+ * The part of a ranked candidate composePlaylistPreview renders. Narrower than
+ * RankedCandidate so a ranking produced outside this module (the SQL preview
+ * ranking) can be composed without inventing filter or audio fields.
+ */
+export interface RankedSong {
+	candidate: {
+		song: Pick<
+			MatchingSong,
+			"id" | "spotifyId" | "name" | "artists" | "genres"
+		>;
+		display: Phase1Candidate["display"];
+	};
+	score: number;
+}
+
+/**
  * Rank all eligible candidates against the draft profile: scores every
  * candidate via the matching service, returns them sorted by score descending.
  * The ordering is the contract — composePlaylistPreview slices top-N from it.
@@ -257,7 +274,7 @@ export async function rankCandidates(
 /**
  * Map a Phase1Candidate to the SongVM view-model.
  */
-function toSongVM(candidate: Phase1Candidate, score?: number): SongVM {
+function toSongVM(candidate: RankedSong["candidate"], score?: number): SongVM {
 	const { song, display } = candidate;
 	return {
 		id: song.id,
@@ -292,7 +309,7 @@ export interface PlaylistDraftPreview {
 
 export interface ComposePlaylistPreviewInput {
 	/** Output of rankCandidates — order is load-bearing. */
-	ranking: RankedCandidate[];
+	ranking: RankedSong[];
 	/** Song IDs the user explicitly added — appear first, in this order. */
 	pinnedSongIds: string[];
 	/** Song IDs the user explicitly removed — never appear in results. */
@@ -343,7 +360,7 @@ export function composePlaylistPreview(
 	// Walk pinnedSongIds directly: user order is preserved by construction,
 	// and every id that can't be honored is collected instead of vanishing.
 	const droppedPinnedSongIds: string[] = [];
-	const pinnedEntries: RankedCandidate[] = [];
+	const pinnedEntries: RankedSong[] = [];
 	for (const id of pinnedSongIds) {
 		const entry = byId.get(id);
 		if (!entry || excluded.has(id)) {
