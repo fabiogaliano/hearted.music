@@ -305,9 +305,7 @@ describe("syncPlaylistTracksFromData", () => {
 	it("does not remove a song still present in the Spotify tracklist", async () => {
 		mockGetPlaylistSongs.mockResolvedValue(Result.ok([makePS("song-a", 0)]));
 		mockImportSpotifyTracks.mockResolvedValue(
-			Result.ok(
-				new Map([["spotify-a", makeSongEntry("song-a", "spotify-a")]]),
-			),
+			Result.ok(new Map([["spotify-a", makeSongEntry("song-a", "spotify-a")]])),
 		);
 		// rawTracks with track.id = "spotify-a" so spotifyTrackIds contains it
 		const rawTracks = [
