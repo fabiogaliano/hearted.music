@@ -43,6 +43,8 @@ Coolify (project `hearted.music`, environment `production`):
   before Traefik would route to the new one and every deploy answered a burst of 503s. The image's
   own `HEALTHCHECK` probes every second during its start period, because Traefik ignores
   containers that are not yet healthy.
+  Turn the Coolify check on only once an image with `curl` is live: against an older image every
+  deploy rolls back as "unhealthy".
 - Custom labels are set (Coolify API `custom_labels`): the generated Traefik labels plus
   `cloudflare-only@file` appended to the HTTPS router's middlewares. Regenerating labels from the
   Coolify UI drops that middleware; re-append it.
