@@ -22,12 +22,13 @@
 
 import * as Sentry from "@sentry/bun";
 import { Result } from "better-result";
-import type { Json } from "@/lib/data/database.types";
+import { z } from "zod";
 import {
 	CAPTURE_AHEAD_WINDOW,
 	captureAheadForSession,
 	readSessionResumePosition,
 } from "@/lib/domains/taste/match-review-queue/card-materializer";
+import { DeckJobSpec } from "@/lib/domains/taste/match-review-queue/deck-job-spec";
 import {
 	type ClaimedDeckJob,
 	claimDeckJob,
@@ -56,14 +57,6 @@ const DEFER_BACKOFF_SECONDS = 30;
 
 function toOrientation(value: string): MatchOrientation | null {
 	return value === "song" || value === "playlist" ? value : null;
-}
-
-function payloadSnapshotId(payload: Json): string | null {
-	if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-		const value = (payload as Record<string, Json | undefined>).snapshotId;
-		if (typeof value === "string") return value;
-	}
-	return null;
 }
 
 /**
@@ -149,23 +142,29 @@ async function dispatchDeckJob(
 		);
 	}
 
-	switch (job.kind) {
+	const decoded = DeckJobSpec.safeParse({
+		kind: job.kind,
+		payload: job.payload,
+	});
+	if (!decoded.success) {
+		return Result.err(
+			new DatabaseError({
+				code: "invalid_deck_job_spec",
+				message: `deck job ${job.id} (${job.kind}) has an invalid spec: ${z.prettifyError(decoded.error)}`,
+			}),
+		);
+	}
+	const spec = decoded.data;
+
+	switch (spec.kind) {
 		case "build_proposals":
 		case "repair": {
-			let snapshotId = payloadSnapshotId(job.payload);
-			if (!snapshotId && job.kind === "repair") {
+			let snapshotId = spec.payload.snapshotId;
+			if (snapshotId === undefined) {
 				const latest = await getLatestMatchSnapshot(job.account_id);
 				if (Result.isError(latest)) return latest;
 				if (!latest.value) return Result.ok(undefined);
 				snapshotId = latest.value.id;
-			}
-			if (!snapshotId) {
-				return Result.err(
-					new DatabaseError({
-						code: "missing_snapshot",
-						message: `${job.kind} job ${job.id} has no snapshotId in payload`,
-					}),
-				);
 			}
 
 			if (claim.aborted) return claimLost(job);
@@ -208,22 +207,14 @@ async function dispatchDeckJob(
 				orientation,
 				kind: "append_sessions",
 				idempotencyKey: `append:${job.account_id}:${orientation}:${snapshotId}`,
-				payload: { snapshotId } as Json,
+				payload: { snapshotId },
 			});
 			if (Result.isError(chained)) return chained;
 			return Result.ok(undefined);
 		}
 
 		case "append_sessions": {
-			const snapshotId = payloadSnapshotId(job.payload);
-			if (!snapshotId) {
-				return Result.err(
-					new DatabaseError({
-						code: "missing_snapshot",
-						message: `append_sessions job ${job.id} has no snapshotId in payload`,
-					}),
-				);
-			}
+			const { snapshotId } = spec.payload;
 			if (claim.aborted) return claimLost(job);
 			const outcome = await appendSessionsForAccountOrientation({
 				accountId: job.account_id,
@@ -349,14 +340,6 @@ async function dispatchDeckJob(
 			emitDeckJobLag("match_deck_capture_lag", job, { orientation });
 			return Result.ok(undefined);
 		}
-
-		default:
-			return Result.err(
-				new DatabaseError({
-					code: "unknown_kind",
-					message: `deck job ${job.id} has unknown kind ${job.kind}`,
-				}),
-			);
 	}
 }
 

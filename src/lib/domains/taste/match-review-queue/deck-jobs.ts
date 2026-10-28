@@ -14,9 +14,10 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import type { Json, Tables } from "@/lib/data/database.types";
+import type { Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
+import type { DeckJobSpec } from "./deck-job-spec";
 
 /** The deck-job row shape, exported for the DB layer + worker dispatch. */
 export type DeckJob = Tables<"match_review_deck_job">;
@@ -231,14 +232,12 @@ export async function findInFlightBuildProposalsJob(
 	return Result.ok(data);
 }
 
-export interface EnqueueDeckJobInput {
+export type EnqueueDeckJobInput = DeckJobSpec & {
 	accountId: string;
 	orientation: string;
-	kind: "build_proposals" | "append_sessions" | "capture_ahead" | "repair";
 	idempotencyKey: string;
 	sessionId?: string | null;
-	payload?: Json;
-}
+};
 
 /**
  * Enqueues a deck job via the RPC (the only way to express the partial-index
@@ -256,7 +255,7 @@ export async function enqueueDeckJob(
 			p_kind: input.kind,
 			p_idempotency_key: input.idempotencyKey,
 			p_session_id: input.sessionId ?? undefined,
-			p_payload: input.payload ?? undefined,
+			p_payload: "payload" in input ? input.payload : undefined,
 		},
 	);
 	if (error) return Result.err(dbErr(error));
