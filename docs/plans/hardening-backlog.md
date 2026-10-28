@@ -41,26 +41,12 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 
 Evaluated 2026-10-28. 2.4 (scheduling reads turning errors into false facts) is fixed: a failed read
 now returns `{ kind: "load_facts"; cause: DbError }` from `applyLibraryProcessingChange`, which the
-worker's settlement retries; 2.1 consumes it. 2.3 (partial target-playlist set) is fixed too. Only 2.1
-remains.
+worker's settlement retries. 2.3 (partial target-playlist set) and 2.1 (extension sync dropping failed
+playlist-track writes and failing on its first transient error) are fixed too.
 Retry machinery today: enrichment and match-refresh jobs requeue on a throw while `attempts < 3`, with
-30 s × attempt backoff (`library-processing-runner.ts:179-232`, `finalize.ts:37-58`). Extension sync has
-no retry beyond the stale-job sweep: any returned error fails it on attempt 1 and deletes the payload.
-
-### 2.1 Extension sync drops failed playlist-track writes and burns retries (T4 + A1) — M
-
-- A failed playlist read becomes an empty map, so every playlist's tracks are skipped and the phase
-  reports success (`src/worker/extension-sync-runner.ts:392-395`); a missing mapping or failed write
-  becomes `null` (`:401-410`). Those playlists keep stale tracks and trigger no match refresh until the
-  user syncs again by hand. Separately, a transient DB error fails the job and deletes the payload
-  (`:180-188`), so the user has to re-scrape Spotify.
-- **Change.** Phase 3 returns `Err` on any read or write failure; a missing mapping is deterministic, so
-  it gets a Sentry warning instead. On a `DatabaseError` (`lifecycle.ts:26-28`), requeue the parent job
-  compare-and-set (like `requeueLibraryProcessingJobForRetry`), keep the payload, and leave the phase
-  `running` so resume takes it over (`sync-helpers.ts:297-372`). Migration: the extension-sync claim
-  honours `available_at`. Re-running is safe (idempotent diff writes).
-- **Test.** A failed playlist-track write fails the sync and keeps the payload instead of completing
-  without that playlist (`extension-sync-runner.test.ts`; the case at `:388` changes behaviour).
+30 s × attempt backoff (`library-processing-runner.ts:184-233`, `finalize.ts:38-59`). Extension sync
+requeues the same way on a transient DB or apply error, keeping its payload
+(`extension-sync-runner.ts:201`); its claim honours `available_at`.
 
 ### 2.5 Unverified: crash between state write and job creation (T3 note) — S
 
