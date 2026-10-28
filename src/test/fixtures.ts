@@ -281,8 +281,12 @@ export function toSpotifyApiSavedTrack(
 	};
 }
 
+// Structural so integration tests can pass generated playlists, not only PLAYLISTS.
 export function toSpotifyPlaylistDTO(
-	playlist: PlaylistFixture,
+	playlist: Pick<
+		Tables<"playlist">,
+		"spotify_id" | "name" | "description" | "song_count" | "image_url"
+	>,
 	ownerId: string,
 ): SpotifyPlaylistDTO {
 	return {

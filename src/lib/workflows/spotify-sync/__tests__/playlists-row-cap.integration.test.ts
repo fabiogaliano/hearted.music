@@ -9,8 +9,8 @@ import { Result } from "better-result";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 import { getPlaylists } from "@/lib/domains/library/playlists/queries";
+import { toSpotifyPlaylistDTO } from "@/test/fixtures";
 import { syncPlaylists } from "../playlist-sync";
-import type { SpotifyPlaylistDTO } from "../types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -40,22 +40,15 @@ const INSERT_CHUNK = 250;
 // boundary falls inside a duplicate. The last one is a target past the cut.
 const PLAYLISTS = Array.from({ length: PLAYLIST_COUNT }, (_, i) => ({
 	id: crypto.randomUUID(),
-	spotifyId: `row-cap-${ACCOUNT_ID}-${i}`,
+	account_id: ACCOUNT_ID,
+	spotify_id: `row-cap-${ACCOUNT_ID}-${i}`,
 	name: `Playlist ${String(i === 1000 ? 999 : i).padStart(4, "0")}`,
-	isTarget: i === PLAYLIST_COUNT - 1,
+	description: null,
+	song_count: 0,
+	image_url: null,
+	is_target: i === PLAYLIST_COUNT - 1,
 }));
 const TARGET = PLAYLISTS[PLAYLIST_COUNT - 1];
-
-function spotifyPlaylist(p: (typeof PLAYLISTS)[number]): SpotifyPlaylistDTO {
-	return {
-		id: p.spotifyId,
-		name: p.name,
-		description: null,
-		owner: { id: "owner" },
-		track_count: null,
-		image_url: null,
-	};
-}
 
 beforeAll(async () => {
 	if (!IS_LOCAL) return;
@@ -66,15 +59,7 @@ beforeAll(async () => {
 	for (let i = 0; i < PLAYLISTS.length; i += INSERT_CHUNK) {
 		await db()
 			.from("playlist")
-			.insert(
-				PLAYLISTS.slice(i, i + INSERT_CHUNK).map((p) => ({
-					id: p.id,
-					account_id: ACCOUNT_ID,
-					spotify_id: p.spotifyId,
-					name: p.name,
-					is_target: p.isTarget,
-				})),
-			)
+			.insert(PLAYLISTS.slice(i, i + INSERT_CHUNK))
 			.throwOnError();
 	}
 }, 120_000);
@@ -97,7 +82,7 @@ describeLocal("playlist sync diff past the PostgREST row cap", () => {
 	it("regression: a target playlist past row 1000 keeps is_target through a sync (it read as new and the upsert cleared the flag)", async () => {
 		const synced = await syncPlaylists(
 			ACCOUNT_ID,
-			PLAYLISTS.map(spotifyPlaylist),
+			PLAYLISTS.map((p) => toSpotifyPlaylistDTO(p, "owner")),
 		);
 		if (Result.isError(synced)) throw synced.error;
 
