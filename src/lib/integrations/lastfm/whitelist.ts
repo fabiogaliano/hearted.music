@@ -593,7 +593,7 @@ const CANONICAL_GROUPS: Record<string, string[]> = {
 	"country pop": ["country-pop"],
 };
 
-const CANON_MAP: ReadonlyMap<string, string> = new Map(
+export const CANON_MAP: ReadonlyMap<string, string> = new Map(
 	Object.entries(CANONICAL_GROUPS).flatMap(([canonical, variants]) =>
 		variants.map((v) => [v, canonical] as const),
 	),
