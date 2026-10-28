@@ -3,7 +3,7 @@
  *
  * getOrderedUndecidedSubjects derives ordered queue subjects under one
  * VisibilityPolicy (strictness + playlist filters). These tests drive it
- * directly with no DB — the same MatchResultRow shape getMatchResults returns
+ * directly with no DB — the same MatchResultRow pairs loadVisibilityInputs returns
  * plus the song metadata the filter step needs.
  */
 

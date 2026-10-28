@@ -7,7 +7,6 @@ let selectResponse: { data: unknown; error: unknown };
 
 let lastUpsertArgs: { data: unknown; options: unknown } | null = null;
 let isUpsertPath = false;
-let lastChain: Record<string, ReturnType<typeof vi.fn>> | null = null;
 
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(() => ({
@@ -65,17 +64,12 @@ vi.mock("@/lib/data/client", () => ({
 				return chain;
 			});
 
-			lastChain = chain;
 			return chain;
 		}),
 	})),
 }));
 
-import {
-	getMatchDecisionsForSongs,
-	upsertMatchDecision,
-	upsertMatchDecisions,
-} from "../decision-queries";
+import { upsertMatchDecision, upsertMatchDecisions } from "../decision-queries";
 
 const ACCOUNT_ID = "acct-test-123";
 const SONG_ID = "song-001";
@@ -105,7 +99,6 @@ describe("upsertMatchDecision", () => {
 		upsertResponse = { data: null, error: null };
 		selectResponse = { data: null, error: null };
 		lastUpsertArgs = null;
-		lastChain = null;
 	});
 
 	it("returns the upserted decision on success", async () => {
@@ -221,7 +214,6 @@ describe("upsertMatchDecisions", () => {
 		upsertResponse = { data: null, error: null };
 		selectResponse = { data: null, error: null };
 		lastUpsertArgs = null;
-		lastChain = null;
 	});
 
 	it("returns empty array for empty input without calling supabase", async () => {
@@ -355,63 +347,6 @@ describe("upsertMatchDecisions", () => {
 		expect(result).toBeErr();
 		if (Result.isError(result)) {
 			expect(result.error._tag).toBe("DatabaseError");
-		}
-	});
-});
-
-describe("getMatchDecisionsForSongs", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		upsertResponse = { data: null, error: null };
-		selectResponse = { data: null, error: null };
-		lastChain = null;
-	});
-
-	it("returns empty array for empty songIds without calling supabase", async () => {
-		const result = await getMatchDecisionsForSongs(ACCOUNT_ID, []);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toEqual([]);
-		}
-	});
-
-	it("returns decisions filtered by account and song IDs", async () => {
-		const decisions = [
-			fakeDecision({ id: "dec-001", song_id: "song-001" }),
-			fakeDecision({ id: "dec-002", song_id: "song-002" }),
-		];
-		selectResponse = { data: decisions, error: null };
-
-		const result = await getMatchDecisionsForSongs(ACCOUNT_ID, [
-			"song-001",
-			"song-002",
-		]);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value).toHaveLength(2);
-		}
-
-		assert(lastChain !== null);
-		expect(lastChain.eq).toHaveBeenCalledWith("account_id", ACCOUNT_ID);
-		expect(lastChain.in).toHaveBeenCalledWith("song_id", [
-			"song-001",
-			"song-002",
-		]);
-	});
-
-	it("returns error on database failure", async () => {
-		selectResponse = {
-			data: null,
-			error: { code: "42501", message: "permission denied" },
-		};
-
-		const result = await getMatchDecisionsForSongs(ACCOUNT_ID, ["song-001"]);
-
-		expect(result).toBeErr();
-		if (Result.isError(result)) {
-			expect(result.error._tag).toBe("RLSError");
 		}
 	});
 });

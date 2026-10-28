@@ -13,7 +13,6 @@ import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schem
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { ConstraintError, DatabaseError } from "@/lib/shared/errors/database";
-import { chunkedRead } from "@/lib/shared/utils/chunked-read";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
@@ -452,34 +451,6 @@ export async function fetchQueuedPlaylistIds(
 				.filter((id): id is string => id !== null),
 		),
 	);
-}
-
-/**
- * Returns the subset of the given playlist IDs that still belong to the account,
- * in one query. Used by the playlist-mode append path to drop subjects whose
- * review playlist was deleted or transferred before enqueuing them (Finding 1).
- */
-export async function fetchOwnedPlaylistIds(
-	accountId: string,
-	playlistIds: readonly string[],
-): Promise<Result<Set<string>, DbError>> {
-	if (playlistIds.length === 0) return Result.ok(new Set());
-	const supabase = createAdminSupabaseClient();
-	// Chunk the `.in()` ids so the query string stays under the URI-length limit;
-	// merge the surviving ids into one Set (duplicates collapse naturally).
-	const rowsResult = await chunkedRead(playlistIds, (batch) =>
-		fromSupabaseMany(
-			supabase
-				.from("playlist")
-				.select("id")
-				.eq("account_id", accountId)
-				.in("id", batch),
-		),
-	);
-	if (Result.isError(rowsResult)) return rowsResult;
-	const owned = new Set<string>();
-	for (const row of rowsResult.value) owned.add(row.id);
-	return Result.ok(owned);
 }
 
 /**

@@ -259,27 +259,6 @@ describe("getOrderedUndecidedSongIds", () => {
 
 		expect(result).toBeErr();
 	});
-
-	it("freezes the strictness bar to minScoreOverride instead of the live preference", async () => {
-		// Live preference is 0.5 (beforeEach). The song scores 0.7 — visible under
-		// live strictness — but a frozen 0.8 bar (an active session created stricter)
-		// hides it, mirroring the queue/card policy rather than the loosened live bar.
-		mockInputs(inputs([mr("song-1", "pl-A", 0.7)]));
-
-		const result = await getOrderedUndecidedSongIds(
-			SNAPSHOT_ID,
-			ACCOUNT_ID,
-			0.8,
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value.songIds).toEqual([]);
-			expect(result.value.hiddenReviewItemCount).toBe(1);
-		}
-		// The override short-circuits the live resolve entirely.
-		expect(resolveMinMatchScore).not.toHaveBeenCalled();
-	});
 });
 
 describe("getOrderedUndecidedPlaylistIds", () => {
@@ -336,27 +315,6 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 		);
 
 		expect(result).toBeErr();
-	});
-
-	it("freezes the strictness bar to minScoreOverride instead of the live preference", async () => {
-		mockInputs(inputs(twoPlaylists));
-		vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
-
-		// Live 0.5 would keep pl-visible (0.9) shown and pl-hidden (0.3) hidden. A
-		// frozen 0.95 bar — the active session's stored strictness — hides both, so
-		// the active caught-up count must reflect two hidden playlists, not one.
-		const result = await getOrderedUndecidedPlaylistIds(
-			SNAPSHOT_ID,
-			ACCOUNT_ID,
-			0.95,
-		);
-
-		expect(result).toBeOk();
-		if (Result.isOk(result)) {
-			expect(result.value.playlistIds).toEqual([]);
-			expect(result.value.hiddenReviewItemCount).toBe(2);
-		}
-		expect(resolveMinMatchScore).not.toHaveBeenCalled();
 	});
 
 	it("does not let a non-entitled pair's score reorder playlists", async () => {

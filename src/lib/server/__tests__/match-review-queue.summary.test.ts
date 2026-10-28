@@ -111,7 +111,6 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
-	getMatchDecisionsForSongs: vi.fn(),
 	upsertMatchDecision: vi.fn(),
 	upsertMatchDecisions: vi.fn(),
 }));

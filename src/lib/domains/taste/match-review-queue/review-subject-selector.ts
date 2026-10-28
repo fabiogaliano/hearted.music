@@ -8,7 +8,7 @@
  * is queue-eligible exactly when at least one of its pairs would be visible on
  * the card.
  *
- * Pure: no DB calls. Accepts the MatchResultRow shape getMatchResults returns
+ * Pure: no DB calls. Accepts the MatchResultRow pairs loadVisibilityInputs returns
  * plus the song metadata the policy's filter step needs, so callers share one
  * query result.
  */
