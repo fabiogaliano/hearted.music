@@ -116,11 +116,7 @@ export async function getQueueSummary(
  * below the strictness bar or fail the filters — the count the song-mode empty
  * state shows behind the "loosen strictness" nudge.
  *
- * minScoreOverride freezes the strictness bar to a caller-supplied value instead
- * of resolving the live preference. The active caught-up path passes the
- * session's stored strictnessMinScore so the hidden count is computed against the
- * exact bar the queue and cards use; the no-active dashboard fallback omits it to
- * preview against the user's current (live) strictness.
+ * Previews against the user's current (live) strictness preference.
  *
  * Returns Result so a transient DB failure surfaces as an error rather than a
  * falsely-empty preview.
@@ -128,17 +124,14 @@ export async function getQueueSummary(
 export async function getOrderedUndecidedSongIds(
 	snapshotId: string,
 	accountId: string,
-	minScoreOverride?: number,
 ): Promise<
 	Result<{ songIds: string[]; hiddenReviewItemCount: number }, DbError>
 > {
-	// `??` (not `||`) so a 0 override holds.
-	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
 	const derivationResult = await deriveProposalSubjects(
 		accountId,
 		"song",
 		snapshotId,
-		minScore,
+		await resolveMinMatchScore(accountId),
 		Date.now(),
 	);
 	if (Result.isError(derivationResult)) return derivationResult;
@@ -169,11 +162,7 @@ export async function getOrderedUndecidedSongIds(
  * pairs) so the playlist-mode empty state can offer the "loosen strictness"
  * nudge with a count that means owned playlists, not songs (A7, H9).
  *
- * minScoreOverride freezes the strictness bar to a caller-supplied value instead
- * of resolving the live preference — the active caught-up path passes the
- * session's stored strictnessMinScore so the hidden count matches the queue/card
- * policy, while the no-active dashboard fallback omits it to preview against live
- * strictness (see getOrderedUndecidedSongIds).
+ * Previews against the user's current (live) strictness preference.
  *
  * Returns Result so a transient DB failure surfaces as an error rather than a
  * falsely-empty preview.
@@ -181,17 +170,14 @@ export async function getOrderedUndecidedSongIds(
 export async function getOrderedUndecidedPlaylistIds(
 	snapshotId: string,
 	accountId: string,
-	minScoreOverride?: number,
 ): Promise<
 	Result<{ playlistIds: string[]; hiddenReviewItemCount: number }, DbError>
 > {
-	// `??` (not `||`) so a 0 override holds.
-	const minScore = minScoreOverride ?? (await resolveMinMatchScore(accountId));
 	const derivationResult = await deriveProposalSubjects(
 		accountId,
 		"playlist",
 		snapshotId,
-		minScore,
+		await resolveMinMatchScore(accountId),
 		Date.now(),
 	);
 	if (Result.isError(derivationResult)) return derivationResult;

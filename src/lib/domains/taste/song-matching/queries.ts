@@ -91,7 +91,7 @@ export async function isSnapshotOwnedByAccount(
 // ============================================================================
 
 /**
- * The columns the undecided-derivation reads — never the factors JSONB blobs.
+ * The match_result columns visibility reads — never the factors JSONB blobs.
  * fused_score is included so callers can use strictnessScore(row) (MSR-02)
  * instead of reading the legacy ordering score directly.
  */
@@ -99,45 +99,6 @@ export type MatchResultRow = Pick<
 	MatchResult,
 	"song_id" | "playlist_id" | "score" | "fused_score"
 >;
-
-const MATCH_RESULT_PAGE_SIZE = 1000;
-
-/**
- * Gets all match results for a snapshot.
- * Ordered by score descending, with (song_id, playlist_id) tiebreakers so the
- * order is fully deterministic even when scores tie.
- *
- * Selects only the columns the undecided derivation consumes. `select("*")` drags
- * the per-row `factors` / `normalized_factors` JSONB along for no reader — at
- * thousands of rows per snapshot that JSONB is the bulk of the transfer.
- *
- * PostgREST caps every response at max_rows (1,000 locally and in prod), and
- * snapshots run to ~10k rows, so one request silently drops every row past the
- * first thousand. Pages are read until a short one; the full ordering keeps
- * pages disjoint. The page size must not exceed max_rows, or a capped page would
- * read as the last one.
- */
-export async function getMatchResults(
-	snapshotId: string,
-): Promise<Result<MatchResultRow[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const rows: MatchResultRow[] = [];
-	for (;;) {
-		const page = await fromSupabaseMany(
-			supabase
-				.from("match_result")
-				.select("song_id, playlist_id, score, fused_score")
-				.eq("snapshot_id", snapshotId)
-				.order("score", { ascending: false })
-				.order("song_id", { ascending: true })
-				.order("playlist_id", { ascending: true })
-				.range(rows.length, rows.length + MATCH_RESULT_PAGE_SIZE - 1),
-		);
-		if (Result.isError(page)) return page;
-		rows.push(...page.value);
-		if (page.value.length < MATCH_RESULT_PAGE_SIZE) return Result.ok(rows);
-	}
-}
 
 /**
  * Gets match results for a specific song in a snapshot.
@@ -227,68 +188,6 @@ export async function getServedRanksForSong(
 // ============================================================================
 // Visible Suggestion List Queries
 // ============================================================================
-
-/**
- * Match pairs for a single song — score + fused_score so callers can use
- * strictnessScore() (MSR-22). Does NOT include the factors JSONB.
- */
-export type MatchPairRow = Pick<
-	MatchResult,
-	"song_id" | "playlist_id" | "score" | "fused_score"
->;
-
-/**
- * A song's suggestion pair with the suggested playlist's display fields, joined
- * in the same read so the panel never needs a second lookup by DB-derived ids.
- */
-export type SongMatchPairRow = MatchPairRow & {
-	playlist_name: string;
-	playlist_spotify_id: string;
-};
-
-/**
- * Fetches all (song, playlist) pairs for a song subject in a snapshot, EXCLUDING
- * playlists that already contain the song. Ordered by score desc with
- * playlist_id tiebreaker for determinism. This is the read path for
- * song-orientation suggestion derivation.
- *
- * The membership exclusion is a playlist_song anti-join inside the RPC, so
- * Postgres probes only the actual candidate pairs (via UNIQUE(playlist_id,
- * song_id)) instead of the app fetching a whole membership set to filter. The
- * invariant "never return a pair whose song is already in the playlist" holds
- * for every caller, not just the deck-card read path.
- */
-export function getMatchPairsForSong(
-	snapshotId: string,
-	songId: string,
-): Promise<Result<SongMatchPairRow[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany<SongMatchPairRow>(
-		supabase.rpc("get_match_pairs_for_song", {
-			p_snapshot_id: snapshotId,
-			p_song_id: songId,
-		}),
-	);
-}
-
-/**
- * Fetches all (song, playlist) pairs for a playlist subject in a snapshot,
- * EXCLUDING songs already in the playlist. Ordered by score desc with song_id
- * tiebreaker for determinism. This is the read path for playlist-orientation
- * suggestion derivation. See getMatchPairsForSong for the anti-join rationale.
- */
-export function getMatchPairsForPlaylist(
-	snapshotId: string,
-	playlistId: string,
-): Promise<Result<MatchPairRow[], DbError>> {
-	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany<MatchPairRow>(
-		supabase.rpc("get_match_pairs_for_playlist", {
-			p_snapshot_id: snapshotId,
-			p_playlist_id: playlistId,
-		}),
-	);
-}
 
 /**
  * Fetches song-orientation ranking rows for a specific song in a snapshot.

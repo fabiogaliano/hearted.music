@@ -15,7 +15,7 @@
  * the current session today; this abstraction exists so strictness can become
  * live between cards later without rewriting queue/card visibility logic.
  *
- * Pure: no DB access. Query helpers live in filter-metadata-queries.ts.
+ * Pure: no DB access. Its inputs come from visibility-inputs.ts.
  */
 
 import { stableStringify } from "@/lib/domains/enrichment/embeddings/hashing";

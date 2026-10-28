@@ -19,7 +19,6 @@ const {
 	mockAuthContext,
 	mockRpc,
 	mockGetMatchResultDetailsForSong,
-	mockGetMatchDecisionsForSongs,
 	mockGetServedRanksForSong,
 	mockUpsertMatchDecision,
 	mockUpsertMatchDecisions,
@@ -45,7 +44,6 @@ const {
 		},
 		mockRpc: vi.fn(),
 		mockGetMatchResultDetailsForSong: vi.fn(),
-		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
 		mockUpsertMatchDecision: vi.fn(),
 		mockUpsertMatchDecisions: vi.fn(),
@@ -126,8 +124,6 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
-	getMatchDecisionsForSongs: (...args: unknown[]) =>
-		mockGetMatchDecisionsForSongs(...args),
 	upsertMatchDecision: (...args: unknown[]) => mockUpsertMatchDecision(...args),
 	upsertMatchDecisions: (...args: unknown[]) =>
 		mockUpsertMatchDecisions(...args),

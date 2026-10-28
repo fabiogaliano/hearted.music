@@ -316,9 +316,9 @@ flowchart TD
     B --> C[computeVisibilityPolicyHash<br/>vc_orientation_minScore_rtfHash]
     C --> D{already applied?<br/>match_review_session_snapshot}
     D -->|yes| E[appendedCount: 0,<br/>alreadyApplied: true]
-    D -->|no| F[getMatchResults snapshotId]
-    F --> G[getMatchDecisionsForSongs<br/>build decidedPairs set]
-    G --> H[entitlement + already-queued +<br/>fetchSongsFilterMeta fetches]
+    D -->|no| F[loadVisibilityInputs<br/>select_match_visibility_inputs RPC]
+    F --> G[pairs + entitlement + ownership +<br/>decisions + song meta + pair-playlist filters]
+    G --> H[already-queued fetch]
     H --> I[getOrderedUndecidedSubjects<br/>policy gate strictness+filters + sort]
     I --> J[insert_queue_song_items<br/>OR insert_queue_playlist_items]
     J --> K[recordSnapshotApplied]
@@ -337,14 +337,15 @@ Walking through what each step protects against:
    newly-visible subjects **without duplicating** the ones already queued.
 3. **Visibility policy.** `getOrderedUndecidedSubjects` keeps only subjects that have at least
    one *undecided* suggestion that is **visible under the current `VisibilityPolicy`** — i.e. it
-   clears `strictnessMinScore` *and* passes the target playlist's read-time filters
+   clears `strictnessMinScore` *and* passes the pair playlist's read-time filters
    (`passesAllMatchFilters`) against the suggestion song's metadata. The same shared pair
    predicate (`passesVisibilityPolicyForPair`) is used here and at card presentation, so a
    subject is queue-eligible exactly when at least one of its pairs would be visible on the card.
    It also computes `hiddenReviewItemCount` — undecided subjects with no pair visible under the
    current visibility settings (the "loosen strictness / filters to see more" count).
 4. **Entitlement / ownership.** Songs are filtered through
-   `select_entitled_data_enriched_liked_song_ids`; playlists through `fetchOwnedPlaylistIds`.
+   `select_entitled_data_enriched_liked_song_ids` and playlists by ownership, both inside the
+   `select_match_visibility_inputs` RPC that `loadVisibilityInputs` (`visibility-inputs.ts`) pages.
 5. **Insert.** `insert_queue_song_items` (song mode) or `insert_queue_playlist_items`
    (playlist mode) — both `SECURITY DEFINER`, both `ON CONFLICT DO NOTHING` against the
    per-orientation unique index, so a concurrent append can't create duplicate cards.
@@ -582,7 +583,7 @@ handles unranked pairs with synthetic ranks, so nothing downstream breaks.
 - `src/lib/domains/taste/match-review-queue/service.ts` — `createOrResumeQueue`, `appendSnapshotDelta`
 - `src/lib/domains/taste/match-review-queue/visibility-policy.ts` — `VisibilityPolicy`, `passesVisibilityPolicyForPair`, `passesPlaylistFilters`, `computeVisibilityPolicyHash`, `computeReadTimeFiltersHash`, `NULL_SONG_FILTER_METADATA`
 - `src/lib/domains/taste/match-review-queue/review-subject-selector.ts` — `getOrderedUndecidedSubjects` (pure, policy-driven)
-- `src/lib/domains/taste/match-review-queue/filter-metadata-queries.ts` — `fetchSongFilterMeta`, `fetchSongsFilterMeta`, `fetchPlaylistsMatchFilters`
+- `src/lib/domains/taste/match-review-queue/visibility-inputs.ts` — `loadVisibilityInputs` (pairs, entitlement, ownership, decisions, song meta, pair-playlist filters in one paged RPC)
 - `src/lib/domains/taste/match-review-queue/visible-suggestion-list.ts` — `computeVisibleSuggestionList`, `deriveVisibleSuggestions`
 - `src/lib/domains/taste/match-review-queue/capture-visible-pairs.ts` — `captureVisiblePairsAtomic`
 - `src/lib/domains/taste/match-review-queue/queries.ts` — DB access + decision RPC callers

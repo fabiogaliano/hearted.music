@@ -7,7 +7,6 @@ import { addSongToPlaylist, getSongSuggestions } from "../matching.functions";
 const {
 	mockAuthContext,
 	mockGetLatestMatchSnapshot,
-	mockGetMatchResults,
 	mockGetMatchResultsForSong,
 	mockGetMatchRankingsForSong,
 	mockGetServedRanksForSong,
@@ -25,7 +24,6 @@ const {
 			account: null,
 		},
 		mockGetLatestMatchSnapshot: vi.fn(),
-		mockGetMatchResults: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
 		mockGetMatchRankingsForSong: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
@@ -77,7 +75,6 @@ vi.mock("@/lib/platform/auth/auth.middleware", () => ({
 vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getLatestMatchSnapshot: (...args: unknown[]) =>
 		mockGetLatestMatchSnapshot(...args),
-	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
 	getMatchResultsForSong: (...args: unknown[]) =>
 		mockGetMatchResultsForSong(...args),
 	getMatchRankingsForSong: (...args: unknown[]) =>
