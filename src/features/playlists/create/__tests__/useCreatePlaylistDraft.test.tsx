@@ -10,6 +10,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { SongVM } from "@/lib/domains/playlists/types";
@@ -32,6 +34,10 @@ vi.mock("@/lib/server/playlists.functions", () => ({
 	searchLikedArtists: vi.fn(),
 }));
 
+import {
+	DEFAULT_DRAFT_CONFIG,
+	playlistDraftPreviewQueryOptions,
+} from "../queries";
 import { useCreatePlaylistDraft } from "../useCreatePlaylistDraft";
 
 const EMPTY_RESULT: PlaylistDraftPreview = {
@@ -577,5 +583,42 @@ describe("useCreatePlaylistDraft — artist resolution readiness", () => {
 			expect(result.current.isArtistResolutionError).toBe(false),
 		);
 		expect(resolveLikedArtistSongsMock).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("useCreatePlaylistDraft — SSR hydration", () => {
+	// HEARTED-MUSIC-1S: the studio loader streams the preview un-awaited, so
+	// the server rendered the skeleton while the client cache already held the
+	// result at hydration, and React threw away the server HTML.
+	it("hydrates without a mismatch when the streamed preview resolved before hydration", async () => {
+		previewPlaylistDraftMock.mockReset();
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+
+		function Probe() {
+			return <p>{useCreatePlaylistDraft().previewState.kind}</p>;
+		}
+		const tree = (
+			<QueryClientProvider client={queryClient}>
+				<Probe />
+			</QueryClientProvider>
+		);
+
+		const container = document.createElement("div");
+		container.innerHTML = renderToString(tree);
+		expect(container.textContent).toBe("loading");
+
+		queryClient.setQueryData(
+			playlistDraftPreviewQueryOptions(DEFAULT_DRAFT_CONFIG).queryKey,
+			{ ...EMPTY_RESULT, tracklist: [makeSong("1")], totalEligible: 1 },
+		);
+		const onRecoverableError = vi.fn();
+		act(() => {
+			hydrateRoot(container, tree, { onRecoverableError });
+		});
+
+		await waitFor(() => expect(container.textContent).toBe("ready"));
+		expect(onRecoverableError).not.toHaveBeenCalled();
 	});
 });
