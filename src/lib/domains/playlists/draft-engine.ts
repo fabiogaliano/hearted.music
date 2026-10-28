@@ -3,13 +3,16 @@
  *
  * All functions here are stateless and side-effect-free (no DB writes, no
  * persisted profiles, no snapshot rows). They take in-memory data and return
- * ranked SongVM lists. Server orchestration (DB reads, auth context) lives in
- * workflows/playlist-studio/preview.ts (and its thin server-fn adapter,
- * server/playlist-draft.functions.ts); this module is the testable core.
+ * ranked SongVM lists.
  *
  * The pipeline reads as a sentence:
  *   selectEligibleCandidates → buildDraftProfile → rankCandidates →
  *   composePlaylistPreview
+ *
+ * On the request path, workflows/playlist-studio/preview.ts runs only
+ * composePlaylistPreview; the first three steps run in Postgres as
+ * rank_playlist_draft_preview, which preview-rank.integration.test.ts holds to
+ * this module. A scoring change here must be made in the function too.
  */
 
 import { Result } from "better-result";
@@ -308,7 +311,7 @@ export interface PlaylistDraftPreview {
 }
 
 export interface ComposePlaylistPreviewInput {
-	/** Output of rankCandidates — order is load-bearing. */
+	/** Ranked candidates, best first — order is load-bearing. */
 	ranking: RankedSong[];
 	/** Song IDs the user explicitly added — appear first, in this order. */
 	pinnedSongIds: string[];

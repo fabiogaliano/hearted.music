@@ -1,6 +1,12 @@
 /**
  * Phase-1 enriched candidate loader for the playlist creation preview engine.
  *
+ * The studio preview no longer calls this: rank_playlist_draft_preview
+ * (migration 20261028130200) loads and ranks the same population in Postgres.
+ * This loader plus draft-engine.ts stay as the readable reference that
+ * preview-rank.integration.test.ts holds the SQL to, so a change to candidacy
+ * here must be made in the function too.
+ *
  * A "candidate" is an actively-liked song that has Phase-1 enrichment — i.e.
  * at least genres OR audio features are present. Entitlement is NOT required:
  * Phase-1 (audio features, genres) enriches all users; only analysis + embeddings
