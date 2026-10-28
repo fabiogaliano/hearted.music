@@ -10,6 +10,7 @@ const blocked = (sql: string) =>
 describe("scanMigrationSql", () => {
 	it.each([
 		["DROP TABLE", "DROP TABLE IF EXISTS public.old_thing;"],
+		["DROP TABLE ... CASCADE", "DROP TABLE public.old_thing CASCADE;"],
 		["DROP COLUMN", "ALTER TABLE song ADD COLUMN a int, DROP COLUMN isrc;"],
 		["DROP COLUMN without the COLUMN keyword", "ALTER TABLE song DROP isrc;"],
 		["DROP SCHEMA", "DROP SCHEMA legacy;"],
