@@ -28,7 +28,7 @@ import {
 	type ConnectionState,
 } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
-import { captureRouteError } from "@/lib/observability/sentry";
+import { captureUnhandledRouteError } from "@/lib/observability/sentry";
 import {
 	dashboardKeys,
 	matchDeckKeys,
@@ -127,7 +127,7 @@ function MatchErrorComponent({ error, reset }: ErrorComponentProps) {
 	const queryClient = useQueryClient();
 
 	useEffect(() => {
-		captureRouteError(error, { route: "_authenticated/match" });
+		captureUnhandledRouteError(error, { route: "_authenticated/match" });
 	}, [error]);
 
 	const handleRetry = () => {

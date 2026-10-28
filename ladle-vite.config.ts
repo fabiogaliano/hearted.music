@@ -31,16 +31,6 @@ export default defineConfig({
 					),
 				),
 			},
-			// `cloudflare:workers` is a workerd-only runtime module that
-			// @cloudflare/vite-plugin provides in the app build. Ladle doesn't run
-			// that plugin, so the dep scanner can't resolve the dynamic import in
-			// auth-request-state.ts. Reuse the test stub (no-op waitUntil, empty env).
-			{
-				find: "cloudflare:workers",
-				replacement: fileURLToPath(
-					new URL("./src/test/cloudflare-workers.stub.ts", import.meta.url),
-				),
-			},
 			// TanStack Start's start-storage-context runs `new AsyncLocalStorage()`
 			// at module load. The app build strips that server module via the Start
 			// Vite plugin, but Ladle doesn't run it — so the module reaches the

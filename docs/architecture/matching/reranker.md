@@ -26,7 +26,7 @@ Song→playlist matching is two stages: **retrieval** (fast embedding/cosine sim
 - **Local reranker** loads `zhiqing/Qwen3-Reranker-0.6B-ONNX` as a causal LM, applies Qwen's chat template + forced empty `<think>` block, and softmaxes the last-token logits for the yes/no tokens (ids 9693/`yes`, 2152/`no`) → P(yes). fp32, ~1.2GB, ~1s/doc CPU. Metadata model id kept canonical (`Qwen/Qwen3-Reranker-0.6B`) so hashes match prod.
 - **Document mode is data-driven**: `rerankMatches` takes an optional `Map<songId, analysisText>`. Empty/omitted ⇒ metadata mode; populated ⇒ analysis mode. Analysis tail truncated to ~1600 chars at a word boundary; falls back to the metadata one-liner when a song has no analysis.
 - **Snapshot hash includes `instruction` + `documentMode`** so changing either invalidates stale snapshots. The hash records the document mode *actually used*: if the analysis fetch fails, the orchestrator logs an error, degrades to metadata docs, and the snapshot hash says `metadata` — it never claims a richer document than was sent.
-- **Replay engine** loads liked ∪ decided songs (so every decided pair is scoreable), **omits the production exclusion set**, and uses stored playlist profiles (no re-profiling). A decided pair's rank = the song's position in its playlist's score-sorted list; `null` = "fell out" (below threshold/top-K). The engine is **provider-agnostic** — DeepInfra when `DEEPINFRA_API_KEY` is set, local ONNX when `ML_PROVIDER=local`.
+- **Replay engine** loads liked ∪ decided songs (so every decided pair is scoreable), **omits the production exclusion set**, and uses stored playlist profiles (no re-profiling). A decided pair's rank = the song's position in its playlist's score-sorted list; `null` = "fell out" (below threshold/top-K). The engine is **provider-agnostic** — DeepInfra when `ML_PROVIDER=deepinfra`, local ONNX when `ML_PROVIDER=local`.
 
 ## How to run the evaluation
 
@@ -35,8 +35,8 @@ Song→playlist matching is two stages: **retrieval** (fast embedding/cosine sim
 ML_PROVIDER=local bun run scripts/matching-lab/replay/index.ts \
   --a configs/<A>.json --b configs/<B>.json [--account <id>] [--no-rerank-a]
 
-# Prod-faithful (set DEEPINFRA_API_KEY instead of ML_PROVIDER):
-DEEPINFRA_API_KEY=… bun run scripts/matching-lab/replay/index.ts --a … --b …
+# Prod-faithful:
+ML_PROVIDER=deepinfra DEEPINFRA_API_KEY=… bun run scripts/matching-lab/replay/index.ts --a … --b …
 ```
 
 Variant configs live in `scripts/matching-lab/replay/configs/` (`prod` = current production behavior, `legacy-prod` = the pre-fix metadata-doc baseline, `metadata-doc`, `analysis-doc`, `full-rerank`, `blend-0.7`). Each run prints a rank-diff table + metric summary (with a directional-only warning baked into the console output below 200 trials) and writes a JSON to `claudedocs/replay-results/` (scratch). Metrics: pairwise win rate (+ binomial p), nDCG@10, MRR, mean/median rank-of-added, added-fell-out %.

@@ -160,6 +160,31 @@ export async function invalidateEntitlementQueries(
 }
 
 /**
+ * Dashboard caches a finished extension sync makes stale. Called when the
+ * worker finishes the sync (the extension_sync_completed event, or the sync
+ * job's running-to-idle edge in useActiveJobCompletionEffects), never on the
+ * sync request's 202: that only queues the work, so a refetch then returns
+ * the pre-sync library.
+ */
+export async function invalidateLibrarySyncQueries(
+	queryClient: QueryClient,
+	accountId: string,
+): Promise<void> {
+	await Promise.all([
+		queryClient.invalidateQueries({
+			queryKey: dashboardKeys.pageData(accountId),
+		}),
+		queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(accountId) }),
+		queryClient.invalidateQueries({
+			queryKey: dashboardKeys.recentActivity(accountId),
+		}),
+		queryClient.invalidateQueries({
+			queryKey: dashboardKeys.matchPreviews(accountId),
+		}),
+	]);
+}
+
+/**
  * Caches a finished match-snapshot refresh makes stale. Called on the
  * running-to-idle edge of the refresh job (useActiveJobCompletionEffects).
  */

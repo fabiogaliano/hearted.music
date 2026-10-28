@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
-import { captureWithWaitUntil } from "@/lib/observability/posthog-server";
+import { captureServerEvent } from "@/lib/observability/posthog-server";
+import { withinRateLimit } from "@/lib/platform/rate-limit/rate-limit";
 import { Route } from "../billing-bridge";
 
 const SECRET = "bridge-test-secret";
@@ -27,7 +28,7 @@ vi.mock("@/lib/domains/billing/bridge-handlers", () => ({
 	handleUnlimitedPeriodReversed: vi.fn(),
 }));
 
-vi.mock("@/lib/platform/rate-limit/edge-rate-limit", () => ({
+vi.mock("@/lib/platform/rate-limit/rate-limit", () => ({
 	clientIpFrom: () => "203.0.113.7",
 	withinRateLimit: vi.fn().mockResolvedValue(true),
 }));
@@ -37,7 +38,7 @@ vi.mock("@/lib/observability/capture-server-error", () => ({
 }));
 
 vi.mock("@/lib/observability/posthog-server", () => ({
-	captureWithWaitUntil: vi.fn().mockResolvedValue(undefined),
+	captureServerEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 type ClaimOutcome = "claimed" | "duplicate_processed" | "in_progress";
@@ -104,6 +105,22 @@ describe("POST /api/billing-bridge", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {});
 	});
 
+	// The billing-service retries 5xx and drops 4xx, so a 429 here would lose a
+	// legitimate burst of payment events instead of deferring them.
+	it("answers 503 with retry-after, not 429, when rate limited", async () => {
+		claimReturns("claimed");
+		vi.mocked(withinRateLimit).mockResolvedValueOnce(false);
+
+		const response = await post(
+			await signedRequest(packFulfilledBody("evt_limited")),
+		);
+
+		expect(response.status).toBe(503);
+		expect(response.headers.get("retry-after")).not.toBeNull();
+		expect(rpc).not.toHaveBeenCalled();
+		expect(handlePackFulfilled).not.toHaveBeenCalled();
+	});
+
 	it("rejects a body signed with the wrong secret before claiming or dispatching", async () => {
 		claimReturns("claimed");
 
@@ -133,7 +150,7 @@ describe("POST /api/billing-bridge", () => {
 			p_claim_token: claimArgs?.p_claim_token,
 		});
 		expect(rpcCallsTo("mark_billing_bridge_event_failed")).toEqual([]);
-		expect(captureWithWaitUntil).toHaveBeenCalledTimes(1);
+		expect(captureServerEvent).toHaveBeenCalledTimes(1);
 	});
 
 	it("regression: a run that lost its claim before finalizing answers 409 and emits no payment analytics", async () => {
@@ -144,7 +161,7 @@ describe("POST /api/billing-bridge", () => {
 		);
 
 		expect(response.status).toBe(409);
-		expect(captureWithWaitUntil).not.toHaveBeenCalled();
+		expect(captureServerEvent).not.toHaveBeenCalled();
 	});
 
 	it("acknowledges an already-processed event without re-running the handler", async () => {

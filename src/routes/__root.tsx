@@ -27,7 +27,7 @@ import {
 	resolvePostHogHosts,
 } from "@/lib/observability/posthog-hosts";
 import { linkPostHogToSentry } from "@/lib/observability/posthog-sentry-link";
-import { captureRouteError } from "@/lib/observability/sentry";
+import { captureUnhandledRouteError } from "@/lib/observability/sentry";
 import {
 	clearStaleChunkMarker,
 	recoverFromStaleChunk,
@@ -213,6 +213,16 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 		getPostHogConfig();
 
+		// The account-events stream is served from its own origin; without it in
+		// connect-src the browser blocks every SSE connect and each open tab falls
+		// back to re-minting tokens and polling getActiveJobs.
+		const gatewayUrl = import.meta.env.VITE_ACCOUNT_EVENTS_GATEWAY_URL;
+		const connectSources = [
+			"'self'",
+			"https://*.userjot.com",
+			...(gatewayUrl ? [new URL(gatewayUrl).origin] : []),
+		];
+
 		if (import.meta.env.DEV) {
 			return {
 				...baseHeaders,
@@ -231,8 +241,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 					].join(" "),
 					[
 						"connect-src",
-						"'self'",
-						"https://*.userjot.com",
+						...connectSources,
 						"ws://localhost:*",
 						"ws://127.0.0.1:*",
 						"http://localhost:*",
@@ -260,7 +269,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 						"https://*.spotifycdn.com",
 						"https://cdn.userjot.com",
 					].join(" "),
-					["connect-src", "'self'", "https://*.userjot.com"].join(" "),
+					["connect-src", ...connectSources].join(" "),
 				].join("; "),
 			};
 		}
@@ -292,7 +301,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 					"https://*.spotifycdn.com",
 					"https://cdn.userjot.com",
 				].join(" "),
-				["connect-src", "'self'", "https://*.userjot.com"].join(" "),
+				["connect-src", ...connectSources].join(" "),
 			].join("; "),
 		};
 	},
@@ -330,7 +339,7 @@ function RootErrorComponent({ error }: ErrorComponentProps) {
 		if (recoverFromStaleChunk(error)) return;
 
 		console.error("[RootError]", error);
-		captureRouteError(error, { route: "__root" });
+		captureUnhandledRouteError(error, { route: "__root" });
 	}, [error]);
 
 	return <RouteErrorFallback />;

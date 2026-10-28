@@ -173,6 +173,7 @@ export const ReadyWhileEnrichmentRunning: Story = () => {
 				},
 			},
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: false,
 		};
 		queryClient.setQueryData(["active-jobs", props.accountId], activeJobs);

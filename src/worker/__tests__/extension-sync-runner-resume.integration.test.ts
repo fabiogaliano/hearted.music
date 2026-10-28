@@ -262,6 +262,12 @@ describe.skipIf(!IS_LOCAL)(
         SELECT status FROM job WHERE id = ${parentId}
       `;
 			expect(parent?.status).toBe("completed");
+			// Clients refresh synced songs on this, not on the request's 202.
+			const events = await db()<{ payload: unknown }[]>`
+        SELECT payload FROM account_event
+        WHERE account_id = ${account()} AND type = 'extension_sync_completed'
+      `;
+			expect(events).toEqual([{ payload: { jobId: parentId } }]);
 		});
 	},
 );

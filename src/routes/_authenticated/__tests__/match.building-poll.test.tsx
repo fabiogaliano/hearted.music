@@ -25,7 +25,10 @@ vi.mock("@/lib/server/settings.functions", () => ({
 	setMatchViewModePreference: vi.fn(),
 }));
 
-vi.mock("@/lib/observability/sentry", () => ({ captureRouteError: vi.fn() }));
+vi.mock("@/lib/observability/sentry", () => ({
+	captureRouteError: vi.fn(),
+	captureUnhandledRouteError: vi.fn(),
+}));
 
 // Mirrors BUILDING_POLL_INTERVAL_MS / MAX_BUILDING_POLLS in match.tsx — the
 // literal contract the poll must keep; a deliberate constant change should

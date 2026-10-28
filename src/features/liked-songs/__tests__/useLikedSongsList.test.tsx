@@ -91,7 +91,8 @@ function createSong(
 
 function collectionResult(songs: readonly LikedSong[]) {
 	return {
-		isLoading: false,
+		loadState: "ready" as const,
+		retry: vi.fn(),
 		displayedSongs: songs,
 		displayedSongIndexById: new Map(
 			songs.map((song, index) => [song.track.id, index]),
