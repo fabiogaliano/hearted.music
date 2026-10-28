@@ -53,6 +53,27 @@ requeues the same way on a transient DB or apply error, keeping its payload
 - `idle-recovery.ts` recovers enrichment when the process dies after the state write but before the job
   exists. Check whether a match refresh can be stranded the same way; add a recovery path if so.
 
+### 2.6 Remaining reads silently capped at 1,000 rows — M
+
+- PostgREST truncates every response at `max_rows` = 1,000 with no error (`supabase/config.toml:18`,
+  same in prod). The overflowing sync, membership and exclusion reads are paged (PRs #66–#69). These
+  remain single-request:
+  - `getBootstrapPagesBySlug` (`liked-songs/queries.ts`). Libraries reach 5,044 songs. A deep link to a
+    song past row ~1,000 loses its anchor, silently falls back to the first page, and the panel stays
+    closed.
+  - Review queue: `session-appender.ts:236` (`match_review_proposal_subject`) and `fetchQueuedSongIds` /
+    `fetchQueuedPlaylistIds` (`match-review-queue/queries.ts`). Not measured. Subjects past the cut are
+    never appended, and songs already queued get queued again.
+  - `getMatchRankingsForPlaylist` (`song-matching/queries.ts:218`). Prod sits at exactly 1,000; the next
+    refresh of account `8ce63d2d…` puts about 2,500 rankings on one playlist. Mild: the read is ordered
+    by `rank`, so pairs past the cut become "unranked" and are sorted by fit score.
+  - `getNewItemIds` (`liked-songs/status-queries.ts:32`). Reaches 3,659. Mild: the newness ordering of
+    review subjects is incomplete.
+- **Not yet checked.** Write responses that `.select()` many rows (e.g. the `setPlaylistTargets` clear
+  step in `playlists/queries.ts`); hidden `LIMIT`s inside other RPCs' SQL.
+- **Change.** Page each read with a unique order (offset paging only for read-before-write; keyset when
+  rows can drop out between pages, as `visibility-inputs.ts` does), or push the predicate into SQL.
+
 ---
 
 ## 3. Server-fn correctness
