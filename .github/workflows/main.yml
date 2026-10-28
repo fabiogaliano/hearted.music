@@ -226,19 +226,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # The login alone isn't enough: GHCR still throttled ghcr.io/supabase/postgres
+      # on three runs in a row on 2026-10-28, and ECR Public's anonymous quota is
+      # shared by every runner ("Data limit exceeded"). Once one run has pulled the
+      # images they come from the Actions cache, which has no such limit. The CLI
+      # version and config.toml decide which images `supabase start` needs.
+      - name: Restore Supabase images
+        id: supabase-images
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: ${{ runner.os }}-supabase-images-2.101.0-${{ hashFiles('supabase/config.toml') }}
+
+      - name: Load Supabase images
+        if: steps.supabase-images.outputs.cache-hit == 'true'
+        run: docker load -i "$RUNNER_TEMP/supabase-images.tar"
+
       - name: Start local Supabase and run DB integration tests
+        id: db-tests
         run: |
           # Integration tests need only Postgres and the REST gateway; skipping the
           # rest cuts the parallel GHCR pulls that get throttled (2026-10-27).
-          # GHCR throttled the postgres image three runs in a row on 2026-10-28 even
-          # with the login above, so retries pull the same tags from ECR Public.
           for attempt in 1 2 3; do
-            if [ "$attempt" -gt 1 ]; then export SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws; fi
             supabase start -x studio,imgproxy,storage-api,postgres-meta,edge-runtime,logflare,vector,mailpit && break
             [ "$attempt" -eq 3 ] && exit 1
             supabase stop --no-backup || true
             sleep 60
           done
+          # Only a full start caches images; a partial set would hit the key forever.
+          echo "started=true" >> "$GITHUB_OUTPUT"
           # Redirect, not `. <(...)`: process substitution hides a status failure from set -e.
           supabase status -o env \
             --override-name db.url=DATABASE_URL \
@@ -270,6 +286,23 @@ jobs:
             echo "::error::$skipped integration tests skipped; check the exported env"
             exit 1
           fi
+
+      - name: Export Supabase images
+        id: export-images
+        if: ${{ !cancelled() && steps.supabase-images.outputs.cache-hit != 'true' && steps.db-tests.outputs.started == 'true' }}
+        run: |
+          images=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep '/supabase/' || true)
+          [ -n "$images" ] || exit 0
+          # shellcheck disable=SC2086 # one argument per image
+          docker save $images -o "$RUNNER_TEMP/supabase-images.tar"
+          echo "saved=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save Supabase images
+        if: ${{ !cancelled() && steps.export-images.outputs.saved == 'true' }}
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ${{ runner.temp }}/supabase-images.tar
+          key: ${{ steps.supabase-images.outputs.cache-primary-key }}
 
   migrate-prod:
     needs: [detect, verify, db-security]
