@@ -77,23 +77,37 @@ export async function getOrCreatePreferences(
 	accountId: string,
 ): Promise<Result<UserPreferences, DbError>> {
 	const existing = await getPreferences(accountId);
+	if (Result.isError(existing)) return Result.err(existing.error);
+	if (existing.value !== null) return Result.ok(existing.value);
 
-	if (Result.isOk(existing) && existing.value !== null) {
-		return Result.ok(existing.value);
-	}
-
-	// If not found, create new preferences
 	// This will fail with ConstraintError if account doesn't exist (foreign key violation)
 	const supabase = createAdminSupabaseClient();
+	// DO NOTHING on conflict: a concurrent request may have created the row
+	// between the read and here, and may already have saved choices into it
+	// that re-applying these defaults would wipe.
+	const created = await fromSupabaseMaybe(
+		supabase
+			.from("user_preferences")
+			.upsert(
+				{
+					account_id: accountId,
+					// theme is intentionally omitted - starts as null
+					onboarding_step: DEFAULT_ONBOARDING_STEP,
+				},
+				{ onConflict: "account_id", ignoreDuplicates: true },
+			)
+			.select()
+			.maybeSingle(),
+	);
+	if (Result.isError(created)) return Result.err(created.error);
+	if (created.value !== null) return Result.ok(created.value);
+
+	// The conflict returned no row; the concurrent creator's row is the one to use.
 	return fromSupabaseSingle(
 		supabase
 			.from("user_preferences")
-			.insert({
-				account_id: accountId,
-				// theme is intentionally omitted - starts as null
-				onboarding_step: DEFAULT_ONBOARDING_STEP,
-			})
-			.select()
+			.select("*")
+			.eq("account_id", accountId)
 			.single(),
 	);
 }

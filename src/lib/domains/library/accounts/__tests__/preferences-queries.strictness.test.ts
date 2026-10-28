@@ -19,8 +19,8 @@ const { state, mockClient } = vi.hoisted(() => {
 			select: () => ({
 				eq: () => ({ single: () => Promise.resolve(state.select) }),
 			}),
-			insert: () => ({
-				select: () => ({ single: () => Promise.resolve(state.insert) }),
+			upsert: () => ({
+				select: () => ({ maybeSingle: () => Promise.resolve(state.insert) }),
 			}),
 		}),
 	};
@@ -56,7 +56,7 @@ describe("resolveMinMatchScore", () => {
 
 	it("falls back to the default (balanced/0.5) when no row exists and creation fails", async () => {
 		// PGRST116 = not found → getPreferences returns ok(null) → getOrCreate
-		// tries to insert → insert errors → resolve falls back to the default.
+		// tries to create → the create errors → resolve falls back to the default.
 		state.select = { data: null, error: { code: "PGRST116" } };
 		expect(await resolveMinMatchScore("acct-1")).toBe(0.5);
 	});
