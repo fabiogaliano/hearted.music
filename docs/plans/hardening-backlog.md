@@ -41,7 +41,8 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 
 Evaluated 2026-10-28. 2.4 (scheduling reads turning errors into false facts) is fixed: a failed read
 now returns `{ kind: "load_facts"; cause: DbError }` from `applyLibraryProcessingChange`, which the
-worker's settlement retries; 2.1 consumes it. Order for the rest: 2.3, 2.1.
+worker's settlement retries; 2.1 consumes it. 2.3 (partial target-playlist set) is fixed too. Only 2.1
+remains.
 Retry machinery today: enrichment and match-refresh jobs requeue on a throw while `attempts < 3`, with
 30 s × attempt backoff (`library-processing-runner.ts:179-232`, `finalize.ts:37-58`). Extension sync has
 no retry beyond the stale-job sweep: any returned error fails it on attempt 1 and deletes the payload.
@@ -60,21 +61,6 @@ no retry beyond the stale-job sweep: any returned error fails it on attempt 1 an
   honours `available_at`. Re-running is safe (idempotent diff writes).
 - **Test.** A failed playlist-track write fails the sync and keeps the payload instead of completing
   without that playlist (`extension-sync-runner.test.ts`; the case at `:388` changes behaviour).
-
-### 2.3 Partial target-playlist set published as a complete snapshot (T6) — S/M
-
-- `stages/playlist-profiling.ts:139-147` turns per-playlist failures into `null`; only an all-failed run
-  aborts (`:158`). The new snapshot hashes differently, publishes, and that playlist's suggestions
-  disappear until the next library change. Likely: each playlist calls ReccoBeats, genre tagging and
-  the LLM/embeddings.
-- **Change.** On failure, carry the playlist's prior cached profile forward
-  (`profilingService.getProfile`, `playlist-profiling/service.ts:56`); with no prior profile, throw so
-  the existing job retry runs, and after 3 attempts the previous complete snapshot stays. No new
-  machinery.
-- **Test.** A playlist whose profile fails keeps its prior profile instead of being dropped from the
-  snapshot (new `stages/__tests__/playlist-profiling.test.ts`).
-- Related: profiling progress always reports 0 failures (`orchestrator.ts:304`) and the count-mismatch
-  guard at `:330` can never fire, because the list is already filtered.
 
 ### 2.5 Unverified: crash between state write and job creation (T3 note) — S
 
@@ -142,6 +128,7 @@ no retry beyond the stale-job sweep: any returned error fails it on attempt 1 an
 | N5 | Parallelise sequential loads | `src/lib/server/dashboard.functions.ts:163-172`; `src/routes/_authenticated/liked-songs.tsx:78,120,125` | S |
 | N6 | Defer PostHog and Sentry out of the root route's eager imports | `src/routes/__root.tsx:2,29`; `posthog-sentry-link.ts:1` | M |
 | N7 | Matching code owned by taste, not enrichment-pipeline | `match-snapshot-refresh/stages/ranking.ts:19`, `candidate-loading.ts:25`, `domains/taste/song-matching/cache.ts:26` | M |
+| N8 | Delete the profile-count mismatch guard; the profiling stage returns one profile per playlist, so it cannot fire | `match-snapshot-refresh/orchestrator.ts:333-337` | S |
 
 Already planned elsewhere: other `.in()` sites (`reliability.md` §2.3, §5.1), liked-songs and matching
 empty-on-error (§2.1, §2.3), waitlist rate limiting (§3d).
