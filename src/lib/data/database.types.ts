@@ -4657,6 +4657,31 @@ export type Database = {
 					song_id: string;
 				}[];
 			};
+			select_match_visibility_inputs: {
+				Args: {
+					p_account_id: string;
+					p_playlist_id?: string;
+					p_snapshot_id: string;
+					p_song_id?: string;
+				};
+				Returns: {
+					decided: boolean;
+					fused_score: number;
+					language: string;
+					language_secondary: string;
+					liked_at: string;
+					match_filters: Json;
+					playlist_id: string;
+					playlist_name: string;
+					playlist_owned: boolean;
+					playlist_spotify_id: string;
+					release_year: number;
+					score: number;
+					song_entitled: boolean;
+					song_id: string;
+					vocal_gender: string;
+				}[];
+			};
 			select_phase1_song_ids_needing_enrichment_work: {
 				Args: { p_account_id: string; p_limit: number };
 				Returns: {

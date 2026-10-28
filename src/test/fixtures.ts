@@ -425,3 +425,87 @@ export function makeWorkerOutcomes(
 		},
 	} satisfies Record<string, WorkerOutcome>;
 }
+
+/**
+ * One account's match snapshot covering every match-visibility input: an
+ * entitled and a locked song, owned target/untargeted playlists, a pair whose
+ * song is already in its playlist, a playlist owned by another account, and a
+ * decided pair. Fresh ids per call so DB tests never collide.
+ */
+export function makeVisibilityScenario() {
+	const id = () => crypto.randomUUID();
+	const accountId = id();
+	const otherAccountId = id();
+	const songs = {
+		entitled: {
+			id: id(),
+			language: "en",
+			release_year: 2010,
+			vocal_gender: "female",
+			liked_at: "2024-06-02T00:30:00.000Z",
+			unlocked: true,
+		},
+		locked: {
+			id: id(),
+			language: "fr",
+			release_year: null,
+			vocal_gender: null,
+			liked_at: "2024-01-01T00:00:00.000Z",
+			unlocked: false,
+		},
+	};
+	const playlists = {
+		target: {
+			id: id(),
+			account_id: accountId,
+			name: "Target",
+			is_target: true,
+			match_filters: { version: 1 },
+		},
+		untargeted: {
+			id: id(),
+			account_id: accountId,
+			name: "Untargeted",
+			is_target: false,
+			match_filters: { version: 1, languages: { codes: ["fr"] } },
+		},
+		containsEntitled: {
+			id: id(),
+			account_id: accountId,
+			name: "Already has it",
+			is_target: true,
+			match_filters: { version: 1 },
+		},
+		foreign: {
+			id: id(),
+			account_id: otherAccountId,
+			name: "Someone else's",
+			is_target: true,
+			match_filters: { version: 1 },
+		},
+	};
+	return {
+		accountId,
+		otherAccountId,
+		snapshotId: id(),
+		otherSnapshotId: id(),
+		songs,
+		playlists,
+		pairs: [
+			{ song: songs.entitled, playlist: playlists.target, score: 0.9 },
+			{ song: songs.entitled, playlist: playlists.untargeted, score: 0.8 },
+			{
+				song: songs.entitled,
+				playlist: playlists.containsEntitled,
+				score: 0.7,
+			},
+			{ song: songs.entitled, playlist: playlists.foreign, score: 0.6 },
+			{ song: songs.locked, playlist: playlists.target, score: 0.85 },
+			{ song: songs.locked, playlist: playlists.untargeted, score: 0.75 },
+		],
+		playlistSongs: [
+			{ song: songs.entitled, playlist: playlists.containsEntitled },
+		],
+		decisions: [{ song: songs.entitled, playlist: playlists.target }],
+	};
+}
