@@ -60,7 +60,7 @@ EXPOSE 3000
 # start period makes a new container routable right after it starts listening
 # instead of after the first 30 s interval.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --start-interval=1s --retries=3 \
-  CMD ["bun", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? '3000'}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+  CMD curl -sf "http://127.0.0.1:${PORT:-3000}/health" > /dev/null || exit 1
 
 # No `run` subcommand: `bun --preload X run Y` drops Y; run the file directly.
 CMD ["bun", "--preload", "./src/instrument.ts", "src/serve.ts"]
