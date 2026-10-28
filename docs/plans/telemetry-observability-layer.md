@@ -1,9 +1,13 @@
 ---
-status: proposed
-updated: 2026-08-16
+status: implemented
+updated: 2026-10-28
 ---
 
 # Telemetry Observability Layer
+
+**Status (2026-10-28): implemented** (`027944f3`, `d8799bfc`), §3–§12 in `control-panel/server/telemetry-*`
+and `control-panel/src/sections/TelemetrySection.tsx`. Still open: the §13 Change 6 rollout (checking
+the reports against production, archiving the old PostHog dashboard, naming the authoritative reports).
 
 ## 1. Framing
 

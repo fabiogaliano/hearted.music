@@ -1,5 +1,10 @@
 # Extension Connection Service
 
+**Status (2026-10-28): implemented**, tasks 01–06 (`src/lib/extension/connection/`). Every
+surface in the table below now reads `useExtensionConnection` or is deleted. `spotify-reconnect-required`
+survives on purpose (task 03: accounts with no linked Spotify), so the 06 sweep `rg` is expected to
+match it. The manual check against the real extension is not recorded.
+
 Make the extension connection a first-class app service: one shared state, one
 repair gesture, one UI vocabulary — replacing the six parallel detection
 implementations that each see only a slice of the truth.

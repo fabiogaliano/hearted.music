@@ -14,7 +14,7 @@ flowchart LR
     Ext <--> Spotify
   end
 
-  subgraph CF[Cloudflare Worker - app]
+  subgraph CF[Bun web app - VPS]
     Api[HTTP routes + server functions]
   end
 
@@ -48,7 +48,7 @@ flowchart LR
 
 Two runtimes, deliberately split:
 
-- **Cloudflare Worker** runs the TanStack Start app — all HTTP routes and server functions. The sync route streams the payload into Supabase Storage and enqueues jobs via the `begin_extension_sync` RPC; it never parses the library or executes jobs (it stays under the Worker CPU/subrequest ceiling).
+- **Web app** (Bun container on the Coolify VPS, behind Cloudflare; `docs/ops/app-server-vps.md`) runs the TanStack Start app — all HTTP routes and server functions. The sync route streams the payload into Supabase Storage and enqueues jobs via the `begin_extension_sync` RPC; it never parses the library or executes jobs, so request latency never depends on library size.
 - **Bun worker** is a separate long-running process that claims and executes every job. It runs poll loops (woken early by Postgres `LISTEN/NOTIFY` on `job_created`) for `extension_sync`, `enrichment`/`match_snapshot_refresh`, and audio-feature backfill.
 - **library-processing reconciler** is the control plane. It runs wherever a change is applied — in the worker when a job completes, in the app for onboarding/billing changes — and decides which job to enqueue next. See [`library-processing.md`](./library-processing.md).
 

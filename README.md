@@ -50,7 +50,7 @@ Matching itself is deterministic — a weighted score over embedding similarity,
               │  or Bearer token)            │  SPOTIFY_COMMAND write-back
               ▼                              ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│              Cloudflare Workers (SSR, Smart Placement)            │
+│       Web app (Bun container on Coolify, behind Cloudflare)       │
 │                                                                   │
 │  TanStack Start server functions + HTTP handlers                  │
 │  Better Auth  ·  Supabase admin client  ·  Stripe billing bridge  │
@@ -191,7 +191,7 @@ live in `scripts/prompt-lab` and `scripts/matching-lab`.
 | Database           | Postgres + pgvector (self-hosted Supabase)          |
 | Validation         | Zod v4                                              |
 | Error handling     | `better-result` (typed Result values)               |
-| Deployment         | Cloudflare Workers (Wrangler, Smart Placement)      |
+| Deployment         | Bun container on Coolify (VPS), Cloudflare in front |
 | Worker runtime     | Bun (separate process, Docker on Coolify)           |
 | Typecheck          | `tsgo` (TypeScript native preview), `tsc` as legacy |
 | Testing            | Vitest + Testing Library · Playwright for e2e       |
@@ -469,7 +469,8 @@ and `/api/pulse-s` to survive blockers.
 | `docs/ops/youtube-audio-match-analysis.md` | Backfill match-quality analysis                     |
 | `docs/ops/prod-db-migrations.md`           | Prod migration workflow, secrets, rollback policy   |
 | `docs/ops/prod-db-backups.md`              | Backup strategy, worker backup env, restore runbook |
-| `docs/plans/hyperdrive-private-database.md` | Future private Worker-to-Postgres connectivity      |
+| `docs/ops/app-server-vps.md`               | Web app container on the VPS, deploys, rollback     |
+| `docs/plans/hardening-backlog.md`          | Open correctness, security and CI work              |
 | `docs/brand/`                              | Brand voice, copy guide, positioning                |
 | `src/routes/README.md`                     | Routes layout and conventions                       |
 | `control-panel/README.md`                  | Operator app                                        |
