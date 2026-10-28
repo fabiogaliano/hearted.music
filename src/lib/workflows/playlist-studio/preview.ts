@@ -1,27 +1,25 @@
 /**
  * Workflow: stateless playlist-draft preview.
  *
- * Coordinates billing (intent eligibility), library (Phase-1 candidate
- * loading), enrichment (intent + song embeddings), and taste (ranking) to
- * compose a tracklist + suggestions preview. No writes — this is the read-only
- * half of the create screen's studio session; see publish.ts for the write
- * half (persisting the config + recording match decisions).
+ * Coordinates billing (intent eligibility), enrichment (the intent embedding)
+ * and the ranking RPC to compose a tracklist + suggestions preview. No writes —
+ * this is the read-only half of the create screen's studio session; see
+ * publish.ts for the write half (persisting the config + recording match
+ * decisions).
  */
 
 import { Result } from "better-result";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import { readBillingStateOrFreeTier } from "@/lib/domains/billing/queries";
-import { getSongEmbeddingsBatch } from "@/lib/domains/enrichment/embeddings/queries";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { loadPhase1Candidates } from "@/lib/domains/playlists/candidate-loader";
+import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { PlaylistDraftPreview } from "@/lib/domains/playlists/draft-engine";
-import {
-	buildDraftProfile,
-	composePlaylistPreview,
-	rankCandidates,
-	selectEligibleCandidates,
-} from "@/lib/domains/playlists/draft-engine";
+import { composePlaylistPreview } from "@/lib/domains/playlists/draft-engine";
 import { isIntentEligible } from "@/lib/domains/playlists/intent-eligibility";
+import {
+	type PreviewRankInput,
+	rankPreviewCandidates,
+} from "@/lib/domains/playlists/preview-rank-queries";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 
@@ -55,98 +53,50 @@ export interface PreviewPlaylistDraftInput {
 // server-fn adapter (and through it the client) share the single definition.
 export type { PlaylistDraftPreview } from "@/lib/domains/playlists/draft-engine";
 
-function parseStoredEmbedding(value: unknown): number[] | null {
-	let parsed: unknown;
-	try {
-		parsed = typeof value === "string" ? JSON.parse(value) : value;
-	} catch {
-		return null;
-	}
-
-	if (
-		!Array.isArray(parsed) ||
-		!parsed.every((item) => typeof item === "number" && Number.isFinite(item))
-	) {
-		return null;
-	}
-
-	return parsed;
-}
-
 /**
- * The intent embedding plus stored song vectors to compare it against. The two
- * reads degrade independently so a failed intent embedding does not discard
- * successfully loaded song vectors; either may be absent.
+ * The intent embedding plus the model whose stored song vectors it is compared
+ * with, or null when the intent is absent, ineligible, or cannot be embedded.
  */
-async function loadIntentEmbeddings(
+async function resolveIntent(
+	supabase: AdminSupabaseClient,
 	accountId: string,
-	intent: string,
-	candidateIds: string[],
-): Promise<{
-	intentEmbedding?: number[];
-	songEmbeddingsMap?: Map<string, number[]>;
-}> {
+	intent: string | undefined,
+): Promise<PreviewRankInput["intent"]> {
+	const phrase = intent?.trim() ?? "";
+	if (phrase.length === 0) return null;
+
+	// Intent eligibility is always computed server-side; client input is ignored
+	// when the account is not eligible (defense in depth).
+	const billingState = await readBillingStateOrFreeTier(
+		supabase,
+		accountId,
+		"preview_playlist_draft",
+	);
+	if (!isIntentEligible(billingState)) return null;
+
 	// Each failure below degrades the preview silently for the user (no intent
 	// ranking), so Sentry is the only place it can show up.
-	const report = (
-		error: unknown,
-		operation: string,
-		extra?: Record<string, unknown>,
-	) =>
-		captureServerError(error, {
-			operation,
-			area: "playlists",
-			accountId,
-			extra,
-		});
+	const report = (error: unknown, operation: string) =>
+		captureServerError(error, { operation, area: "playlists", accountId });
 
 	const embeddingServiceResult = EmbeddingService.create();
 	if (Result.isError(embeddingServiceResult)) {
-		// The model is unknown when the provider is unconfigured, so stored rows
-		// cannot be selected safely either.
 		report(embeddingServiceResult.error, "preview_embedding_service");
-		return {};
+		return null;
 	}
 	const embeddingService = embeddingServiceResult.value;
 
-	const [embeddingResult, songEmbeddingsResult] = await Promise.all([
-		embeddingService.embedText(intent, { role: "query" }),
-		getSongEmbeddingsBatch(candidateIds, embeddingService.getModel(), "full"),
-	]);
-
-	let songEmbeddingsMap: Map<string, number[]> | undefined;
-	if (Result.isError(songEmbeddingsResult)) {
-		report(songEmbeddingsResult.error, "preview_song_embeddings_read", {
-			candidateCount: candidateIds.length,
-		});
-	} else {
-		songEmbeddingsMap = new Map<string, number[]>();
-		const invalidSongIds: string[] = [];
-		for (const [songId, row] of songEmbeddingsResult.value) {
-			const embedding = parseStoredEmbedding(row.embedding);
-			// One corrupt historical row must not make the whole studio unusable.
-			if (embedding === null) invalidSongIds.push(songId);
-			else songEmbeddingsMap.set(songId, embedding);
-		}
-		// One event per preview, not per row: a bad backfill could corrupt
-		// thousands of rows at once.
-		if (invalidSongIds.length > 0) {
-			report(
-				new Error("invalid stored song embeddings skipped"),
-				"preview_song_embeddings_parse",
-				{
-					invalidCount: invalidSongIds.length,
-					sampleSongIds: invalidSongIds.slice(0, 10),
-				},
-			);
-		}
-	}
-
+	const embeddingResult = await embeddingService.embedText(phrase, {
+		role: "query",
+	});
 	if (Result.isError(embeddingResult)) {
 		report(embeddingResult.error, "preview_intent_embedding");
-		return { songEmbeddingsMap };
+		return null;
 	}
-	return { intentEmbedding: embeddingResult.value, songEmbeddingsMap };
+	return {
+		embedding: embeddingResult.value,
+		model: embeddingService.getModel(),
+	};
 }
 
 export async function runPreviewPlaylistDraft(
@@ -154,84 +104,41 @@ export async function runPreviewPlaylistDraft(
 	accountId: string,
 	data: PreviewPlaylistDraftInput,
 ): Promise<PlaylistDraftPreview> {
-	// Resolve billing state in parallel with candidate loading
-	const [billingState, candidates] = await Promise.all([
-		readBillingStateOrFreeTier(supabase, accountId, "preview_playlist_draft"),
-		loadPhase1Candidates(accountId),
-	]);
+	const intent = await resolveIntent(supabase, accountId, data.intent);
 
-	// Intent eligibility is always computed server-side; client input is ignored
-	// when the account is not eligible (defense in depth).
-	const eligible = isIntentEligible(billingState);
-	const effectiveIntent =
-		eligible && data.intent && data.intent.trim().length > 0
-			? data.intent.trim()
-			: null;
+	const rankingResult = await rankPreviewCandidates(supabase, accountId, {
+		matchFilters: data.matchFilters,
+		genrePills: data.genrePills,
+		intent,
+		pinnedSongIds: data.pinnedSongIds,
+		excludedSongIds: data.excludedSongIds,
+		// composePlaylistPreview reads at most maxSongs ranked rows for the
+		// tracklist plus one offset suggestions window after them, so this prefix
+		// composes exactly like the full ranking.
+		rankedLimit: data.maxSongs + data.suggestionsOffset + SUGGESTIONS_COUNT,
+		now: new Date(),
+	});
+	if (Result.isError(rankingResult)) {
+		captureServerError(rankingResult.error, {
+			operation: "preview_rank_candidates",
+			area: "playlists",
+			accountId,
+		});
+		throw new Error("Failed to rank the playlist preview", {
+			cause: rankingResult.error,
+		});
+	}
+	const { ranked, pinned, totalEligible } = rankingResult.value;
 
-	// Apply hard filters to select the eligible candidate set
-	const nowMs = Date.now();
-	const eligibleCandidates = selectEligibleCandidates(
-		candidates,
-		data.matchFilters,
-		nowMs,
-	);
-
-	// Pins are filter-exempt commitments. Any still-liked Phase-1 candidate the
-	// user pinned (a manual add OR an anchor-artist song) joins the set sent to
-	// ranking even when the match filters would drop it — but the profile and
-	// totalEligible below are built from eligibleCandidates only, so a pinned
-	// exception is scored against the filtered profile without reshaping it.
-	// Pinned ids that are no longer liked simply stay absent from the ranking
-	// and surface via droppedPinnedSongIds in composePlaylistPreview.
-	const pinnedSet = new Set(data.pinnedSongIds);
-	const eligibleIds = new Set(eligibleCandidates.map((c) => c.song.id));
-	const pinnedExtras =
-		pinnedSet.size > 0
-			? candidates.filter(
-					(c) => pinnedSet.has(c.song.id) && !eligibleIds.has(c.song.id),
-				)
-			: [];
-	const rankableCandidates =
-		pinnedExtras.length > 0
-			? [...eligibleCandidates, ...pinnedExtras]
-			: eligibleCandidates;
-
-	// Without an intent the matcher runs in no-embedding mode and never reads
-	// song vectors, so the up-to-10k-row vector read would be pure waste.
-	const { intentEmbedding, songEmbeddingsMap } =
-		effectiveIntent === null
-			? {}
-			: await loadIntentEmbeddings(
-					accountId,
-					effectiveIntent,
-					rankableCandidates.map((c) => c.song.id),
-				);
-
-	// intentApplied is only true when the intent embedding was successfully
-	// built and is present in the profile.
-	const profile = buildDraftProfile(
-		eligibleCandidates,
-		data.genrePills,
-		intentEmbedding,
-	);
-	const intentApplied = intentEmbedding !== undefined;
-
-	// Rank the eligible candidates plus any out-of-filter pins. Pinned extras can
-	// only surface as pins in composePlaylistPreview — they're in pinnedSongIds by
-	// construction, so they never leak into the ranked fill or suggestions.
-	const ranking = await rankCandidates(
-		rankableCandidates,
-		profile,
-		songEmbeddingsMap,
-	);
-
+	// Pinned ids absent from `pinned` (no longer liked, not Phase-1) surface via
+	// droppedPinnedSongIds in composePlaylistPreview.
 	return composePlaylistPreview({
-		ranking,
+		ranking: [...ranked, ...pinned],
 		pinnedSongIds: data.pinnedSongIds,
 		excludedSongIds: data.excludedSongIds,
 		maxSongs: data.maxSongs,
-		intentApplied,
-		totalEligible: eligibleCandidates.length,
+		intentApplied: intent !== null,
+		totalEligible,
 		suggestionsOffset: data.suggestionsOffset,
 	});
 }
