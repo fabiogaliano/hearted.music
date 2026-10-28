@@ -32,20 +32,10 @@ RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN \
     RELEASE=true bun run build
 
 FROM base
-ARG VITE_APP_RELEASE
 ENV NODE_ENV=production
 ENV PORT=3000
 # Names this process in its JSON log lines (src/lib/observability/logger.ts).
 ENV HEARTED_SERVICE=web-server
-# src/instrument.ts tags Sentry events with the release the sourcemaps were
-# uploaded under.
-ENV APP_RELEASE=$VITE_APP_RELEASE
-
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY package.json tsconfig.json ./
-COPY --from=build /app/dist ./dist
-COPY src/serve.ts src/instrument.ts ./src/
-COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
 
 # Coolify's healthcheck runs curl inside the container. Without curl every
 # deploy rolled back as unhealthy; with the check off, Coolify stopped the old
@@ -53,6 +43,20 @@ COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl \
   && rm -rf /var/lib/apt/lists/*
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY package.json tsconfig.json ./
+COPY --from=build /app/dist ./dist
+COPY src/serve.ts src/instrument.ts ./src/
+COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
+
+# src/instrument.ts tags Sentry events with the release the sourcemaps were
+# uploaded under. Declared last: the value changes every commit and is in the
+# environment of every later RUN, so declared first it rebuilt the curl layer
+# on every deploy. Above it, the curl and node_modules layers stay cached until
+# the base image or bun.lock changes, and the VPS pulls only the changed layers.
+ARG VITE_APP_RELEASE
+ENV APP_RELEASE=$VITE_APP_RELEASE
 
 USER bun
 
