@@ -275,6 +275,11 @@ function alterTableReasons(actions: string): string[] {
 				"renaming a table or column breaks readers on the running deploy",
 			];
 		}
+		// Checked before the constraint exemption: dropping a key with CASCADE
+		// also drops the foreign keys on every table that references it.
+		if (/^DROP\b.* CASCADE$/i.test(action)) {
+			return ["DROP ... CASCADE also drops every dependent object"];
+		}
 		if (/^DROP (?!CONSTRAINT\b)/i.test(action))
 			return ["DROP COLUMN deletes data"];
 		if (ALTER_COLUMN_TYPE.test(action)) {
@@ -318,12 +323,46 @@ function dropReasons(
 	];
 }
 
+/**
+ * True when some `DELETE FROM` in the statement has no WHERE of its own.
+ * Not anchored to the statement start: a data-modifying CTE
+ * (`WITH x AS (DELETE FROM song RETURNING *) SELECT …`) runs at migration
+ * time too. The WHERE has to sit at the DELETE's own paren depth, before the
+ * paren that closes it — one in a subquery or in the outer SELECT scopes
+ * nothing.
+ */
+function hasUnscopedDelete(sql: string): boolean {
+	for (const match of sql.matchAll(/\bDELETE FROM\b/gi)) {
+		let depth = 0;
+		let scoped = false;
+		for (let i = match.index + match[0].length; i < sql.length; i++) {
+			const c = sql[i];
+			if (c === "(") depth++;
+			else if (c === ")") {
+				if (depth === 0) break;
+				depth--;
+			} else if (
+				depth === 0 &&
+				/^WHERE\b/i.test(sql.slice(i, i + 6)) &&
+				!isIdentChar(sql[i - 1])
+			) {
+				scoped = true;
+				break;
+			}
+		}
+		if (!scoped) return true;
+	}
+	return false;
+}
+
 function destructiveReasons(
 	sql: string,
 	laterCreates: ReadonlySet<string>,
 ): string[] {
+	// TRUNCATE stays anchored: it cannot appear in a CTE, and unanchored it
+	// would match `GRANT TRUNCATE ON …`.
 	if (/^TRUNCATE\b/i.test(sql)) return ["TRUNCATE deletes every row"];
-	if (/^DELETE FROM\b/i.test(sql) && !/\bWHERE\b/i.test(sql)) {
+	if (hasUnscopedDelete(sql)) {
 		return ["DELETE without WHERE deletes every row"];
 	}
 	if (/^CREATE (?:UNIQUE )?INDEX CONCURRENTLY\b/i.test(sql)) {
