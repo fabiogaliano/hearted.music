@@ -1,7 +1,7 @@
 /**
- * Job lifecycle service - orchestrates job state transitions with retry and cleanup.
+ * Job lifecycle service - orchestrates job state transitions with retry.
  *
- * - startJob: Transitions pending → running with cleanup on failure
+ * - startJob: Transitions pending → running
  *
  * The pending state is important for SQS queue integration - jobs wait in
  * pending status until a worker picks them up and calls startJob().
@@ -9,7 +9,6 @@
 
 import { Result } from "better-result";
 import type { Json } from "@/lib/data/database.types";
-import { log } from "@/lib/observability/logger";
 import {
 	getJobById,
 	type Job,
@@ -56,46 +55,22 @@ async function retryTransition(
 
 /**
  * Starts a phase job by transitioning pending → running under `phase.attempts`
- * (the parent attempt, see markJobRunning). If markJobRunning fails, attempts
- * cleanup by marking as failed.
+ * (the parent attempt, see markJobRunning). "superseded" means the job had
+ * already left pending.
  *
- * This prevents orphaned jobs stuck in 'pending' status forever.
- *
- * @returns "superseded" when the job had already left pending, or error if both
- * start and cleanup failed
+ * A start that still errors after its retries leaves the phase pending: the
+ * parent either requeues and starts it on its next attempt, or fails it with
+ * the rest of the sync. Failing it here would make that next attempt read it
+ * as terminal.
  */
 export async function startJob(
 	phase: Pick<Job, "id" | "attempts">,
 ): Promise<Result<JobTransition, DbError>> {
-	const runningResult = await retryTransition(
+	return retryTransition(
 		phase.id,
 		() => markJobRunning(phase),
 		(job) => job.status === "running" && job.attempts === phase.attempts,
 	);
-
-	if (Result.isOk(runningResult)) {
-		return runningResult;
-	}
-
-	// Running failed - attempt cleanup to prevent orphaned pending job
-	log.error("job-start-failed", {
-		jobId: phase.id,
-		error: runningResult.error.message,
-	});
-
-	const cleanupResult = await failJob(
-		phase.id,
-		`Failed to start: ${runningResult.error.message}`,
-	);
-
-	if (Result.isError(cleanupResult)) {
-		log.error("job-start-cleanup-failed", {
-			jobId: phase.id,
-			error: cleanupResult.error.message,
-		});
-	}
-
-	return runningResult;
 }
 
 /**
