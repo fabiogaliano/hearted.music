@@ -104,20 +104,16 @@ export async function loadCandidateDetails(
 	// loosening a filter reveals pairs from the already-stored snapshot without a
 	// recompute. Applying them at write time would drop those pairs before storage
 	// and make loosening impossible, so the snapshot keeps the broad candidate set.
-	let baseExclusionSet: Set<string> = new Set();
-	const baseResult = await loadExclusionSet(accountId).catch(
-		(err: unknown) => err,
+	// An empty set here would publish songs the user already decided on or
+	// already added, so a failed read aborts the refresh for the job to retry.
+	const baseExclusionSet = await loadExclusionSet(accountId).catch(
+		(error: unknown) => {
+			throw new Error(
+				`[target-refresh] Failed to load exclusion set: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		},
 	);
-
-	if (baseResult instanceof Error || !(baseResult instanceof Set)) {
-		log.warn("match:exclusion-set-failed", {
-			actor: who,
-			error:
-				baseResult instanceof Error ? baseResult.message : String(baseResult),
-		});
-	} else {
-		baseExclusionSet = baseResult;
-	}
 
 	return { matchingSongs, baseExclusionSet };
 }
