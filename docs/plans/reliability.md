@@ -292,6 +292,37 @@ After section 3 a slow preview is latency and VPS load, not an outage. Today eve
 
 - Profile one request of each kind (SSR page, cheap server fn, studio preview) and record the numbers
   here, so 4.3 and 4.4 are judged against measurements, not code reading.
+- **Done (2026-10-28, release `1de04576`, after 4.2 and 4.3).** Two measurements on the VPS app
+  container, both read-only against prod:
+  - *HTTP replay.* 20 sequential requests per kind from the VPS host straight to the container
+    (bypassing Cloudflare/Traefik) with a logged-in session, 803-song library. CPU is the bun process's
+    `/proc` utime+stime delta per request minus the idle background rate (~15–25 ms/s); wall is
+    curl `time_total`, p50.
+
+    | Request | CPU / req | Wall p50 |
+    | --- | --- | --- |
+    | `getActiveJobs` (cheap server fn) | 37 ms | 55 ms |
+    | SSR `/dashboard` | 83 ms | 115 ms |
+    | SSR `/playlists/new/studio` (streams the preview) | 133 ms | 151 ms |
+    | `previewPlaylistDraft`, no intent | 68 ms | 91 ms |
+    | `previewPlaylistDraft`, intent | 185 ms | 300 ms |
+
+  - *In-process.* `runPreviewPlaylistDraft` timed with `process.cpuUsage()` inside the container
+    (2 warm-up + 10 runs, medians), for the profiled account and the three largest libraries. Two of
+    those are not intent-eligible, so their "intent" run equals no-intent.
+
+    | Eligible candidates | No intent: CPU / wall | Intent: CPU / wall |
+    | --- | --- | --- |
+    | 791 | 43 / 66 ms | 97 / 259 ms |
+    | 1,240 | 87 / 379 ms | not eligible |
+    | 3,000 | 101 / 361 ms | not eligible |
+    | 4,477 | 160 / 699 ms | 510 / 1,160 ms |
+
+- **Reading.** On Bun the preview is a latency problem, not a CPU one: for the largest library the
+  no-intent wall time is ~4× its CPU time, i.e. dominated by the paged PostgREST candidate reads.
+  The intent path adds the 512-float vector read and parse per candidate (+350 ms CPU at 4.5 k).
+  Both are what 4.4 removes. The ~37 ms CPU of a trivial authenticated server fn is the fixed
+  per-request floor (auth, Start, Sentry) and is not addressed by section 4.
 
 ### 4.2 No prompt → no embedding read — S
 
