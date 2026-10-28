@@ -107,8 +107,9 @@ and the loops are most of the app's baseline request volume.
     the login page.
   - Studio ranking: report the failure (moot once ranking moves to Postgres, 4.4).
   - Embedding branches: report through `captureServerError`.
-- **Done** except the embedding branches (`preview.ts`, still open). Helper:
-  `src/lib/server/unwrap-or-throw.ts` (`unwrapOrThrow`, `reportAndThrow`, `ServerFnError`). Login:
+- **Done.** The embedding branches in `preview.ts` report through `captureServerError`
+  (`preview_embedding_service`, `preview_intent_embedding`); since 4.4 a failed ranking read fails the
+  preview instead of ranking without intent. Helper: `src/lib/server/unwrap-or-throw.ts` (`unwrapOrThrow`, `reportAndThrow`, `ServerFnError`). Login:
   `getAuthSessionState()`; `getAuthSession()` throws `AuthUnavailableError` on `unavailable`, so
   `authMiddleware` and the `_authenticated` guard fail with a retry screen instead of redirecting to
   sign-in.
@@ -280,6 +281,14 @@ CPU-per-request limit of Workers Free, which every authenticated request was alr
 **Done when.** `hearted.music` serves from the VPS; zero Worker invocations; a day without 5xx; a
 deliberately thrown server error reaches Sentry; the uptime check is green.
 
+**Status (2026-10-28).** Serving from the VPS since 2026-10-28 00:56 UTC; uptime checks green. Sentry
+drill: 12 handled errors thrown from the app container (HEARTED-MUSIC-1W, tagged
+`service=web-server`) made "hearted.music: server error volume" fire within a minute; issue resolved.
+Coolify's healthcheck is on and a redeploy answered 711/711 `/health` polls (200 ms apart) with 200.
+Open until 2026-10-29 00:56 UTC: zero Worker invocations over 24 h, then retire the Worker and its
+secrets (`docs/ops/app-server-vps.md`); a day without 5xx, not counting scanner 520s on malformed
+escapes (`/%E0%A4%A`), which Traefik rejects before the app.
+
 ---
 
 ## 4. Studio preview performance
@@ -372,6 +381,22 @@ After section 3 a slow preview is latency and VPS load, not an outage. Today eve
   each filter kind, an out-of-filter pin, excludes, offset past the end. Assert identical order and
   `total_eligible`, scores within 1e-9, plus one hand-calculated 3-song case. Extend
   `src/test/fixtures.ts` with genres and audio features.
+- **Done (2026-10-28, PR #56, release `20234a58`).** `rank_playlist_draft_preview`
+  (`supabase/migrations/20261028130200_…`) over `genre_similarity` / `genre_alias`
+  (`20261028130000`, seeded by `20261028130100` from `scripts/db/genre-seed.ts`; a drift test keeps
+  the seed equal to `table.json` + `CANON_MAP`). `runPreviewPlaylistDraft` makes one RPC call via
+  `preview-rank-queries.ts`; `p_ranked_limit` replaces `max_songs` / `offset`. The parity test (25
+  cases) runs in CI's `db-security` job. Local, 10 k liked songs, end to end:
+
+  | | TS path | RPC |
+  | --- | --- | --- |
+  | No intent | 889 ms | 248 ms |
+  | Intent | 1,334 ms | 316 ms |
+
+  Behaviour changes: a failed DB read fails the preview (it used to rank without intent); billing is
+  read only with an intent phrase; intent scores differ from TS by ~1e-7 (pgvector sums the cosine in
+  float32), order unchanged. The function sets `work_mem = 24MB` so the genre aggregation stays in
+  memory.
 
 ---
 
@@ -416,6 +441,11 @@ except 5.1's `matching.functions.ts`, which 2.3 also touches; do 2.3 first).
   redundant. Pure policy tests stay.
 - Supersedes 2.2's paging for these callers if it lands first: `getMatchResults`' callers in
   `service.ts` and `eligible-subjects.ts` move onto the loader.
+- **Done (2026-10-28, PR #55).** `loadVisibilityInputs` over `select_match_visibility_inputs`
+  (`20261028120000`). Filter source: every playlist in the pairs. In prod the latest snapshots only
+  pair target playlists, so this changes nothing today. The already-added-song exclusion now also
+  applies to subject derivation. `fetchTargetPlaylistFilters` stays for the visibility config hash,
+  which is target-only.
 
 ### 5.2 Typed deck-job payload (audit E4) — S
 
@@ -426,6 +456,8 @@ except 5.1's `matching.functions.ts`, which 2.3 also touches; do 2.3 first).
 - **Change.** One `DeckJobSpec` Zod schema keyed by job kind, owned next to `deck-jobs.ts`; the
   enqueue input takes it typed, the worker decodes with it, and `payloadSnapshotId` goes away. Was
   blocked on the worker-outcome refactor, which merged in #33.
+- **Done (2026-10-28, PR #51).** Malformed payloads behave as before; decode failures now carry
+  `invalid_deck_job_spec`.
 
 ### 5.3 Release-year counts copy the entitlement predicate — S
 
@@ -438,6 +470,7 @@ except 5.1's `matching.functions.ts`, which 2.3 also touches; do 2.3 first).
 - **Change.** New migration (expand-only, `CREATE OR REPLACE`) that selects from
   `select_entitled_data_enriched_liked_song_ids`, as `get_account_match_filter_options` already does.
   Integration test: counts equal for subscription, self-hosted and locked accounts.
+- **Done (2026-10-28, PR #49, migration `20261028100000`).**
 
 ---
 
@@ -450,7 +483,4 @@ One push, built in this order so each step can be tested on its own:
 3. 4.1 profile on the VPS, then 4.4 ranking in Postgres.
 4. Section 5 alongside, in any order (2.3 before 5.1).
 
-Also, outside the code: report the RPC-client bug behind the landed #5 fix upstream to TanStack Start
-(`serverFnFetcher.getResponse` treats any `application/json` body lacking `x-tss-serialized` as a success
-envelope, so a 503 JSON body resolves the server fn to `undefined` while 503 HTML/text throws; still
-present in 1.170.38), so the local `guarded-fetch.ts` guard can go away when it's fixed.
+All of it has landed (2026-10-28); only section 3's 24-hour checks are open.

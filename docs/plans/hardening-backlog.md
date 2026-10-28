@@ -96,11 +96,9 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
   `docs/ops/prod-db-migrations.md`. **Change.** Scan new migrations for destructive DDL; route those
   through a manual lane.
 
-### 4.2 Deploy path filters and rollout verification (T8 remainder) — S + M
+### 4.2 Rollout verification (T8 remainder) — M
 
-- The app path filter (`main.yml:66-77`) misses `src/server.ts`, `src/start.ts`, `src/router.tsx`,
-  `src/styles.css`, `src/env.public.ts`; `src/env.ts` is imported by the worker but only triggers the
-  app. **Change (S).** Fix the filters (the new app job in `reliability.md` §3f needs them too).
+- The path filters were fixed with the app move (`reliability.md` §3f).
 - Worker and gateway hooks only check that a `deployment_uuid` came back (`main.yml:425`).
   **Change (M).** Poll until the rollout finishes and the running SHA matches.
 
@@ -118,17 +116,17 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
   issues. Either upload sourcemaps with `posthog-cli` in the release job, or turn off
   `capture_exceptions` and triage in Sentry only.
 - **Resolve Sentry issues once deployed (S).** HEARTED-MUSIC-1N/1P/1Q (`getNextPageParam` on
-  `undefined`, 2026-10-17) are fixed by `c2b41a30`; HEARTED-MUSIC-1G (hydration) by `5275f7df`. Both are
-  on `main` but not deployed (prod is still release `b7d7e7d6`). After deploy, confirm they stay silent,
-  resolve them, and re-check PostHog for React #418.
+  `undefined`, 2026-10-17) are fixed by `c2b41a30`; HEARTED-MUSIC-1G (hydration) by `5275f7df`. Both
+  are live since the VPS cutover (2026-10-28). Confirm they stay silent, resolve them, and re-check
+  PostHog for React #418.
 - **CI build containers report to Sentry (S).** HEARTED-MUSIC-1R ("Invalid environment variables",
   fatal, 15 events on 2026-10-28) came from CI/build containers (`server_name` is a transient
   container id, two batches at 00:32 and 00:37 UTC), not from production. The import-graph smoke
   in `verify` and the image builds run with a DSN present. Unset the DSN for those steps (or filter
   the fatal by `server_name`), then resolve the issue.
 - **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
-  After a day with zero Worker invocations and no 5xx on the VPS, delete it and the old
-  `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
+  After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
+  delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
 - **Kener alerts (S).** `ntfy.fabiogaliano.com` rejects anonymous publishes (403); create a token and
   wire a Kener trigger to the hearted.music monitors.
 - **Logger tag (XS).** `src/lib/observability/logger.ts` stamps every JSON line with `worker: true`,

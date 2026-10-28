@@ -94,7 +94,9 @@ container), `/wp-login.php` is 403 at the edge.
 ## Rollback
 
 - Bad release, VPS otherwise fine: in Coolify set the image tag to the previous
-  `ghcr.io/fabiogaliano/hearted.music-app:<sha>` and redeploy.
+  `ghcr.io/fabiogaliano/hearted.music-app:<sha>` and redeploy. Images older than `218b8e02` have no
+  `curl`, so Coolify's healthcheck marks them unhealthy and rolls the deploy back; to go back that far,
+  disable the healthcheck first.
 - Back to Workers: delete the `hearted.music` A record and re-add the Worker custom domain. Keep
   the Worker deployed but unrouted until the VPS meets "done when" in the plan (zero Worker
   invocations, a day without 5xx, a deliberately thrown server error reaches Sentry, uptime check
