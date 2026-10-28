@@ -133,6 +133,15 @@ describe("runClaimedDeckJob", () => {
 		expect(buildProposalsForAccountOrientation).not.toHaveBeenCalled();
 	});
 
+	it("append_sessions with no snapshotId defers without appending", async () => {
+		await runClaimedDeckJob(
+			job({ id: "job-append-no-snap", kind: "append_sessions", payload: {} }),
+		);
+
+		expectDeferred("job-append-no-snap");
+		expect(appendSessionsForAccountOrientation).not.toHaveBeenCalled();
+	});
+
 	it("repair with a blank snapshotId rebuilds against the latest snapshot", async () => {
 		vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
 			Result.ok(makeMatchSnapshot({ id: "snap-latest" })),

@@ -255,7 +255,7 @@ export async function enqueueDeckJob(
 			p_kind: input.kind,
 			p_idempotency_key: input.idempotencyKey,
 			p_session_id: input.sessionId ?? undefined,
-			p_payload: "payload" in input ? input.payload : undefined,
+			p_payload: input.kind === "capture_ahead" ? undefined : input.payload,
 		},
 	);
 	if (error) return Result.err(dbErr(error));
