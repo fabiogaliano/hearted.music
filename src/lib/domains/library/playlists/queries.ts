@@ -371,21 +371,40 @@ export function updatePlaylistSongCount(
 // Playlist-Song Junction Operations
 // ============================================================================
 
+const GET_PLAYLIST_SONGS_PAGE_SIZE = 1_000;
+
 /**
  * Gets all songs in a playlist with their positions.
  * Returns empty array if none found.
+ *
+ * PostgREST caps every response at max_rows (1000), and playlists run past it:
+ * a single read would hide every song past position 1000 from the track diff,
+ * profiling and enrichment. Pages are read until a short one; `position` is not
+ * unique (see getPlaylistSongsPage), so `id` breaks ties to keep pages
+ * disjoint. The page size must not exceed max_rows, or a capped page would read
+ * as the last one.
  */
-export function getPlaylistSongs(
+export async function getPlaylistSongs(
 	playlistId: string,
 ): Promise<Result<PlaylistSong[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("playlist_song")
-			.select("*")
-			.eq("playlist_id", playlistId)
-			.order("position", { ascending: true }),
-	);
+	const rows: PlaylistSong[] = [];
+	for (;;) {
+		const page = await fromSupabaseMany(
+			supabase
+				.from("playlist_song")
+				.select("*")
+				.eq("playlist_id", playlistId)
+				.order("position", { ascending: true })
+				.order("id")
+				.range(rows.length, rows.length + GET_PLAYLIST_SONGS_PAGE_SIZE - 1),
+		);
+		if (Result.isError(page)) return page;
+		rows.push(...page.value);
+		if (page.value.length < GET_PLAYLIST_SONGS_PAGE_SIZE) {
+			return Result.ok(rows);
+		}
+	}
 }
 
 /**
