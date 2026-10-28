@@ -139,10 +139,10 @@ describe("parsePendingMigrations", () => {
 			" • 20991231000001_probe_two.sql",
 			"Finished supabase db push.",
 		].join("\n");
-		expect(parsePendingMigrations(transcript)).toEqual([
-			"20991231000000_probe_one.sql",
-			"20991231000001_probe_two.sql",
-		]);
+		expect(parsePendingMigrations(transcript)).toEqual({
+			kind: "pending",
+			files: ["20991231000000_probe_one.sql", "20991231000001_probe_two.sql"],
+		});
 	});
 
 	it("keeps reading past a stdout line interleaved into the list, so later pending files are not skipped", () => {
@@ -152,26 +152,29 @@ describe("parsePendingMigrations", () => {
 			"Finished supabase db push.",
 			" • 20991231000001_probe_drop.sql",
 		].join("\n");
-		expect(parsePendingMigrations(transcript)).toEqual([
-			"20991231000000_probe_one.sql",
-			"20991231000001_probe_drop.sql",
-		]);
+		expect(parsePendingMigrations(transcript)).toEqual({
+			kind: "pending",
+			files: ["20991231000000_probe_one.sql", "20991231000001_probe_drop.sql"],
+		});
 	});
 
 	it("reads an up-to-date remote as nothing pending", () => {
 		const transcript =
 			"DRY RUN: migrations will *not* be pushed to the database.\nConnecting to remote database...\nRemote database is up to date.\n";
-		expect(parsePendingMigrations(transcript)).toEqual([]);
+		expect(parsePendingMigrations(transcript)).toEqual({
+			kind: "pending",
+			files: [],
+		});
 	});
 
 	it("refuses an unrecognized transcript instead of reading it as nothing pending (fail closed)", () => {
 		expect(
 			parsePendingMigrations("Connecting to remote database...\n"),
-		).toBeNull();
+		).toMatchObject({ kind: "unrecognized" });
 		expect(
 			parsePendingMigrations(
 				"Would push these migrations:\n - 20991231000000_x.sql\n",
 			),
-		).toBeNull();
+		).toMatchObject({ kind: "unrecognized" });
 	});
 });

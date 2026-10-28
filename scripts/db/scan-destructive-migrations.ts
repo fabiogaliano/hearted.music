@@ -305,16 +305,29 @@ function dropReasons(
 		return [
 			`DROP ${keyword} CONCURRENTLY cannot run inside a transaction block`,
 		];
-	if (drop[4]?.trim().toUpperCase() === "CASCADE") {
-		return [`DROP ${keyword} ... CASCADE also drops every dependent object`];
+	const cascade = drop[4]?.trim().toUpperCase() === "CASCADE";
+	const cascadeReason = `DROP ${keyword} ... CASCADE also drops every dependent object`;
+	// Lead with the data loss: it is why tables and schemas are manual-only,
+	// and the cascade is collateral on top of it.
+	if (keyword === "TABLE") {
+		return cascade
+			? [`DROP TABLE deletes data; ${cascadeReason}`]
+			: ["DROP TABLE deletes data"];
 	}
-	if (keyword === "TABLE") return ["DROP TABLE deletes data"];
-	if (keyword === "SCHEMA") return ["DROP SCHEMA deletes everything in it"];
+	if (keyword === "SCHEMA") {
+		return cascade
+			? [`DROP SCHEMA deletes everything in it; ${cascadeReason}`]
+			: ["DROP SCHEMA deletes everything in it"];
+	}
+	if (cascade) return [cascadeReason];
 	const kind = RECREATABLE[keyword];
 	// Without CASCADE a type still in use refuses to drop and rolls the
 	// migration back, and an index drop loses no data and locks only briefly.
 	if (!kind) return [];
 	const missing = splitTopLevel(drop[3], ",")
+		// Name only, ignoring the argument list: dropping the old overload and
+		// creating the new signature is the routine RPC change here, so a
+		// re-create under any signature counts as the replacement.
 		.map((target) => normalizeName(target.split("(")[0]))
 		.filter((name) => !laterCreates.has(`${kind}:${name}`));
 	if (missing.length === 0) return [];
@@ -441,21 +454,29 @@ export function scanMigrationSql(sql: string): Finding[] {
 	return findings;
 }
 
+export type DryRunPlan =
+	| { kind: "pending"; files: string[] }
+	| { kind: "unrecognized"; detail: string };
+
+const PLAN_HEADER = "Would push these migrations:";
+
 /**
- * Returns the migration filenames a `supabase db push --dry-run` transcript
- * (stdout + stderr) says it would apply, `[]` when it reports nothing to
- * push, and `null` for anything else — an unrecognized transcript must stop
- * the apply, never read as "nothing pending".
+ * Reads the migration filenames a `supabase db push --dry-run` transcript
+ * (stdout + stderr) says it would apply; "up to date" is an empty list.
+ * Anything else is `unrecognized` — it must stop the apply, never read as
+ * "nothing pending" — and `detail` says which part stopped matching, so a
+ * CLI upgrade that changes the wording points at the line to fix.
  */
-export function parsePendingMigrations(transcript: string): string[] | null {
+export function parsePendingMigrations(transcript: string): DryRunPlan {
 	const lines = transcript.replace(/\x1b\[[0-9;]*m/g, "").split(/\r?\n/);
-	const header = lines.findIndex(
-		(line) => line.trim() === "Would push these migrations:",
-	);
+	const header = lines.findIndex((line) => line.trim() === PLAN_HEADER);
 	if (header === -1) {
 		return lines.some((line) => /\bdatabase is up to date\.$/.test(line.trim()))
-			? []
-			: null;
+			? { kind: "pending", files: [] }
+			: {
+					kind: "unrecognized",
+					detail: `neither "${PLAN_HEADER}" nor "… database is up to date." found`,
+				};
 	}
 	// Every bullet after the header, not just the first run of them: stdout and
 	// stderr share the transcript, and a line interleaved into the list must
@@ -465,7 +486,13 @@ export function parsePendingMigrations(transcript: string): string[] | null {
 		.map((line) => /^\s*•\s+(\S+\.sql)$/.exec(line.trimEnd())?.[1])
 		.filter((file) => file !== undefined)
 		.map((file) => basename(file));
-	return files.length > 0 ? files : null;
+	if (files.length === 0) {
+		return {
+			kind: "unrecognized",
+			detail: `found "${PLAN_HEADER}" but no " • <file>.sql" lines after it; the bullet format changed`,
+		};
+	}
+	return { kind: "pending", files };
 }
 
 function escapeData(text: string): string {
@@ -513,22 +540,20 @@ function main(argv: string[]): number {
 			);
 			return 2;
 		}
-		const pending = parsePendingMigrations(
-			readFileSync(transcriptPath, "utf8"),
-		);
-		if (pending === null) {
+		const plan = parsePendingMigrations(readFileSync(transcriptPath, "utf8"));
+		if (plan.kind === "unrecognized") {
 			annotate(
 				"error",
 				"Migration gate",
-				"Could not read the pending migrations from `supabase db push --dry-run`; refusing to apply. Check the CLI output format above.",
+				`Could not read the pending migrations from \`supabase db push --dry-run\` (${plan.detail}); refusing to apply. Update parsePendingMigrations in scripts/db/scan-destructive-migrations.ts to the CLI output above.`,
 			);
 			return 2;
 		}
-		if (pending.length === 0) {
+		if (plan.files.length === 0) {
 			console.log("No pending migrations.");
 			return 0;
 		}
-		files = pending.map((name) => join("supabase", "migrations", name));
+		files = plan.files.map((name) => join("supabase", "migrations", name));
 		console.log(
 			`Pending migrations:\n${files.map((f) => `  ${f}`).join("\n")}`,
 		);
