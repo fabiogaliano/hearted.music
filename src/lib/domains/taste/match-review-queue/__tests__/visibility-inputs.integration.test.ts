@@ -17,6 +17,7 @@ import postgres from "postgres";
 import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { makeVisibilityScenario } from "@/test/fixtures";
+import { deriveProposalSubjects } from "../eligible-subjects";
 import {
 	loadVisibilityInputs,
 	type VisibilityInputs,
@@ -283,6 +284,27 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		expect(result).toBeOk();
 		if (Result.isError(result)) return;
 		expect(result.value.pairs).toEqual([]);
+	});
+});
+
+describe.skipIf(!IS_LOCAL)("subject derivation over the loaded inputs", () => {
+	// Eligible (entitled + owned) pairs: entitled→target is decided,
+	// entitled→untargeted fails that playlist's French-only filter, and
+	// entitled→containsEntitled is dropped because the song is already in it.
+	// So no playlist subject is visible, and only the untargeted playlist counts
+	// as hidden (it has an undecided eligible pair; the already-in pair is gone).
+	it("regression: an untargeted playlist's filters hide its pair, and a pair already in its playlist never makes a subject", async () => {
+		const result = await deriveProposalSubjects(
+			s().accountId,
+			"playlist",
+			s().snapshotId,
+			0.5,
+			Date.UTC(2026, 9, 28),
+		);
+
+		expect(result).toBeOk();
+		if (Result.isError(result)) return;
+		expect(result.value).toEqual({ subjects: [], hiddenReviewItemCount: 1 });
 	});
 });
 

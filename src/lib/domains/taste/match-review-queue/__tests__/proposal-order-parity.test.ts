@@ -12,7 +12,7 @@
  * Two levels of coverage below: a hand-computed prefilter test that pins the
  * entitlement/ownership guard `deriveEligibleSubjects` applies before ordering
  * (ties, exclusions), and a fixture test that drives `deriveProposalSubjects`
- * end-to-end (its DB-facing queries mocked) and pins the exact
+ * end-to-end (its visibility-inputs read stubbed) and pins the exact
  * `match_review_proposal_subject` rows the builder would insert — order and
  * fields.
  */
@@ -20,78 +20,26 @@
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
-
-// readEntitledDataEnrichedSongIds pages with .rpc().order().range(); this
-// file's fixtures resolve rpc() directly, so read the rows through that mock.
-vi.mock("@/lib/domains/billing/queries", async (importOriginal) => {
-	const actual =
-		await importOriginal<typeof import("@/lib/domains/billing/queries")>();
-	const { Result } = await import("better-result");
-	const { DatabaseError } = await import("@/lib/shared/errors/database");
-	return {
-		...actual,
-		readEntitledDataEnrichedSongIds: async (
-			supabase: {
-				rpc: (
-					name: string,
-					args: unknown,
-				) => Promise<{
-					data: Array<{ song_id: string }> | null;
-					error: { code: string; message: string } | null;
-				}>;
-			},
-			accountId: string,
-			songIds?: string[],
-		) => {
-			const { data, error } = await supabase.rpc(
-				"select_entitled_data_enriched_liked_song_ids",
-				songIds
-					? { p_account_id: accountId, p_song_ids: songIds }
-					: { p_account_id: accountId },
-			);
-			if (error) {
-				return Result.err(
-					new DatabaseError({ code: error.code, message: error.message }),
-				);
-			}
-			return Result.ok((data ?? []).map((row) => row.song_id));
-		},
-	};
-});
-
 vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	getNewItemIds: vi.fn(),
 }));
-vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
-	getMatchDecisionsForSongs: vi.fn(),
-}));
-vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
-	getMatchResults: vi.fn(),
-}));
-vi.mock("../filter-metadata-queries", () => ({
-	fetchSongsFilterMeta: vi.fn(),
-}));
-vi.mock("../queries", () => ({
-	fetchOwnedPlaylistIds: vi.fn(),
-	fetchTargetPlaylistFilters: vi.fn(),
+vi.mock("../visibility-inputs", () => ({
+	loadVisibilityInputs: vi.fn(),
 }));
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
-import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import {
-	getMatchResults,
-	type MatchResultRow,
-} from "@/lib/domains/taste/song-matching/queries";
+import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";
 import {
 	deriveEligibleSubjects,
 	deriveProposalSubjects,
 } from "../eligible-subjects";
-import { fetchSongsFilterMeta } from "../filter-metadata-queries";
 import { orderedSubjectsToProposalSubjectRows } from "../proposal-builder";
-import { fetchOwnedPlaylistIds, fetchTargetPlaylistFilters } from "../queries";
+import {
+	loadVisibilityInputs,
+	type VisibilityInputs,
+} from "../visibility-inputs";
 import type { VisibilityPolicy } from "../visibility-policy";
 
 const NOW_MS = new Date("2024-06-01T00:00:00Z").getTime();
@@ -152,42 +100,47 @@ describe("deriveEligibleSubjects — entitlement/ownership prefilter (hand-compu
 	});
 });
 
-describe("deriveProposalSubjects — fixture, end-to-end (mocked queries)", () => {
+function inputs(
+	pairs: MatchResultRow[],
+	eligible: { songs: string[]; playlists: string[] },
+): VisibilityInputs {
+	return {
+		pairs,
+		entitledSongIds: new Set(eligible.songs),
+		ownedPlaylistIds: new Set(eligible.playlists),
+		decidedPairs: new Set(),
+		songMetaBySongId: new Map(),
+		filtersByPlaylistId: new Map(),
+		playlistsById: new Map(),
+	};
+}
+
+describe("deriveProposalSubjects — fixture, end-to-end (stubbed inputs)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
 	});
 
-	it("derives ordered subjects from mocked queries and pins the exact proposal_subject rows", async () => {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				mr("song-b", "pl-1", 0.9),
-				mr("song-a", "pl-1", 0.9),
-				mr("song-c", "pl-2", 0.7),
-				// non-entitled song → must not appear as a subject
-				mr("song-x", "pl-1", 0.99),
-				// song-a's only high pair is on a non-owned playlist → must not reorder it
-				mr("song-a", "pl-unowned", 0.99),
-			]),
+	it("derives ordered subjects from the loaded inputs and pins the exact proposal_subject rows", async () => {
+		vi.mocked(loadVisibilityInputs).mockResolvedValue(
+			Result.ok(
+				inputs(
+					[
+						mr("song-b", "pl-1", 0.9),
+						mr("song-a", "pl-1", 0.9),
+						mr("song-c", "pl-2", 0.7),
+						// non-entitled song → must not appear as a subject
+						mr("song-x", "pl-1", 0.99),
+						// song-a's only high pair is on a non-owned playlist → must not reorder it
+						mr("song-a", "pl-unowned", 0.99),
+					],
+					{
+						songs: ["song-a", "song-b", "song-c"],
+						playlists: ["pl-1", "pl-2"],
+					},
+				),
+			),
 		);
-		vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
-		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
-		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
-		vi.mocked(fetchOwnedPlaylistIds).mockResolvedValue(
-			Result.ok(new Set(["pl-1", "pl-2"])),
-		);
-		vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
-			Result.ok(new Map()),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			rpc: vi.fn().mockResolvedValue({
-				data: [
-					{ song_id: "song-a" },
-					{ song_id: "song-b" },
-					{ song_id: "song-c" },
-				],
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		const result = await deriveProposalSubjects(
 			"acct-1",
@@ -237,32 +190,21 @@ describe("deriveProposalSubjects — fixture, end-to-end (mocked queries)", () =
 	});
 
 	it("emits playlist-mode subjects with playlist_id set, song_id null, in score order", async () => {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				mr("song-1", "pl-high", 0.95),
-				mr("song-2", "pl-mid", 0.8),
-				mr("song-3", "pl-low", 0.6),
-			]),
+		vi.mocked(loadVisibilityInputs).mockResolvedValue(
+			Result.ok(
+				inputs(
+					[
+						mr("song-1", "pl-high", 0.95),
+						mr("song-2", "pl-mid", 0.8),
+						mr("song-3", "pl-low", 0.6),
+					],
+					{
+						songs: ["song-1", "song-2", "song-3"],
+						playlists: ["pl-high", "pl-mid", "pl-low"],
+					},
+				),
+			),
 		);
-		vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
-		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
-		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
-		vi.mocked(fetchOwnedPlaylistIds).mockResolvedValue(
-			Result.ok(new Set(["pl-high", "pl-mid", "pl-low"])),
-		);
-		vi.mocked(fetchTargetPlaylistFilters).mockResolvedValue(
-			Result.ok(new Map()),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			rpc: vi.fn().mockResolvedValue({
-				data: [
-					{ song_id: "song-1" },
-					{ song_id: "song-2" },
-					{ song_id: "song-3" },
-				],
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		const result = await deriveProposalSubjects(
 			"acct-1",
