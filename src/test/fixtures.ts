@@ -2,6 +2,7 @@
  * Test fixtures with real data from Spotify account kapran0s (fabiogaliano)
  */
 
+import type { TablesInsert } from "@/lib/data/database.types";
 import type {
 	ActiveMatchDeckRpcResult,
 	ReadMatchDeckCardRpcResult,
@@ -15,6 +16,32 @@ export const TEST_ACCOUNT = {
 	spotify_id: "olivertsubasa",
 	display_name: "oliver",
 } as const;
+
+/**
+ * account_billing rows for each way an account can be entitled to its songs:
+ * unlimited via an active subscription, unlimited via self-hosting, or locked
+ * (free plan, entitled only per unlocked song).
+ */
+export const ACCOUNT_BILLING = {
+	subscription: {
+		plan: "yearly",
+		unlimited_access_source: "subscription",
+		subscription_status: "active",
+	},
+	selfHosted: {
+		plan: "free",
+		unlimited_access_source: "self_hosted",
+		subscription_status: "none",
+	},
+	locked: {
+		plan: "free",
+		unlimited_access_source: null,
+		subscription_status: "none",
+	},
+} as const satisfies Record<
+	string,
+	Omit<TablesInsert<"account_billing">, "account_id">
+>;
 
 export const PLAYLISTS = {
 	lofiCityPop: {
