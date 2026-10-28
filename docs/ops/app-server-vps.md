@@ -81,8 +81,11 @@ Cloudflare (zone `hearted.music`, SSL mode Full):
 Monitoring:
 
 - Kener (`status.fabiogaliano.com`, category "hearted.music"): `hearted-app` (`/health`),
-  `hearted-events`, `hearted-billing`, `hearted-db` (Supabase auth health). No alert channel yet
-  (ntfy needs auth; see the hardening backlog).
+  `hearted-events`, `hearted-billing`, `hearted-db` (Supabase auth health). Trigger "ntfy ops-alerts
+  (hearted)" posts to ntfy topic `ops-alerts` (user `kener`, write-only token) after 2 consecutive
+  DOWN checks (checks every 3 min) and again on recovery. Kener 3.2 has no native ntfy trigger, so
+  it is a webhook in ntfy's JSON publish format. Kener's database has no volume yet (hardening
+  backlog).
 - Sentry workflows on the `hearted-music` error monitor, email to the owner:
   "hearted.music: server error volume" (`service=web-server`, >10 events/h in an issue) and
   "hearted.music: route error volume" (`route` tag set, >10 events/h).

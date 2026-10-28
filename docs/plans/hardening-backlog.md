@@ -39,25 +39,53 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 
 ## 2. Data integrity in the worker
 
+Evaluated 2026-10-28; all three still on `main`. Order: 2.4 (defines the error 2.1 consumes), 2.3, 2.1.
+Retry machinery today: enrichment and match-refresh jobs requeue on a throw while `attempts < 3`, with
+30 s × attempt backoff (`library-processing-runner.ts:179-232`, `finalize.ts:37-58`). Extension sync has
+no retry beyond the stale-job sweep: any returned error fails it on attempt 1 and deletes the payload.
+
 ### 2.1 Extension sync drops failed playlist-track writes and burns retries (T4 + A1) — M
 
-- A read error becomes an empty map; a missing mapping or failed write becomes `null`
-  (`src/worker/extension-sync-runner.ts:392-409`). A transient error fails the job after one attempt and
-  deletes its payload (`:179-186`, `:205-214`).
-- **Change.** Per-playlist results; fail the sync when persistence is incomplete; keep the payload and
-  retry on transient errors.
+- A failed playlist read becomes an empty map, so every playlist's tracks are skipped and the phase
+  reports success (`src/worker/extension-sync-runner.ts:392-395`); a missing mapping or failed write
+  becomes `null` (`:401-410`). Those playlists keep stale tracks and trigger no match refresh until the
+  user syncs again by hand. Separately, a transient DB error fails the job and deletes the payload
+  (`:180-188`), so the user has to re-scrape Spotify.
+- **Change.** Phase 3 returns `Err` on any read or write failure; a missing mapping is deterministic, so
+  it gets a Sentry warning instead. On a `DatabaseError` (`lifecycle.ts:26-28`), requeue the parent job
+  compare-and-set (like `requeueLibraryProcessingJobForRetry`), keep the payload, and leave the phase
+  `running` so resume takes it over (`sync-helpers.ts:297-372`). Migration: the extension-sync claim
+  honours `available_at`. Re-running is safe (idempotent diff writes).
+- **Test.** A failed playlist-track write fails the sync and keeps the payload instead of completing
+  without that playlist (`extension-sync-runner.test.ts`; the case at `:388` changes behaviour).
 
-### 2.3 Partial target-playlist set published as a complete snapshot (T6) — M
+### 2.3 Partial target-playlist set published as a complete snapshot (T6) — S/M
 
-- `stages/playlist-profiling.ts:139-146` turns per-playlist failures into `null`; only an all-failed run
-  aborts (`:158`).
-- **Change.** Retry failed playlists or carry their prior results forward; never publish a partial set.
+- `stages/playlist-profiling.ts:139-147` turns per-playlist failures into `null`; only an all-failed run
+  aborts (`:158`). The new snapshot hashes differently, publishes, and that playlist's suggestions
+  disappear until the next library change. Likely: each playlist calls ReccoBeats, genre tagging and
+  the LLM/embeddings.
+- **Change.** On failure, carry the playlist's prior cached profile forward
+  (`profilingService.getProfile`, `playlist-profiling/service.ts:56`); with no prior profile, throw so
+  the existing job retry runs, and after 3 attempts the previous complete snapshot stays. No new
+  machinery.
+- **Test.** A playlist whose profile fails keeps its prior profile instead of being dropped from the
+  snapshot (new `stages/__tests__/playlist-profiling.test.ts`).
+- Related: profiling progress always reports 0 failures (`orchestrator.ts:304`) and the count-mismatch
+  guard at `:330` can never fire, because the list is already filtered.
 
-### 2.4 Scheduling reads turn errors into false facts (A5) — M
+### 2.4 Scheduling reads turn errors into false facts (A5) — S
 
-- `src/lib/workflows/library-processing/service.ts:177-180` (error → `false`), `scheduler.ts:103-104`
-  and `:209` (error → `null` / `0`).
-- **Change.** Typed errors from those reads; the reconciler retries instead of deciding on a wrong fact.
+- `src/lib/workflows/library-processing/service.ts:177-180`: a failed read means "no target playlists",
+  so target confirmation or first match setup never requests enrichment (`reconciler.ts:73,87`) and a
+  new user's first match never appears. `scheduler.ts:102-105`: a failed read gives a `null` marker and
+  the reconciler settles with the current `requestedAt` (`reconciler.ts:134-158`), marking a request the
+  job never saw as done. `scheduler.ts:208-209` (count → 0) only affects progress display.
+- **Change.** Both reads return `Result<_, DbError>` (a missing job row stays a legitimate `null`); add
+  `{ kind: "load_facts"; cause }` to `LibraryProcessingApplyError` (`types.ts:118-128`), returned before
+  any write, and to `SETTLEMENT_RETRY_OPTIONS`. Extension sync's apply failure gets its retry from 2.1.
+- **Test.** A failed target-playlist read errors instead of skipping enrichment on target confirmation
+  (`service-persist.test.ts`).
 
 ### 2.5 Unverified: crash between state write and job creation (T3 note) — S
 
@@ -105,8 +133,10 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 - **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
   After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
   delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
-- **Kener alerts (S).** `ntfy.fabiogaliano.com` rejects anonymous publishes (403); create a token and
-  wire a Kener trigger to the hearted.music monitors.
+- **Kener database is not persisted (S).** Kener (Coolify resource `r8cw0co0wogk0kw4g44kk0sc`) keeps
+  its SQLite at `/app/database` with no volume, so a redeploy or container recreate wipes every monitor
+  and the ntfy trigger. Add a persistent volume (needs one redeploy). Backup from 2026-10-28:
+  `tourflow-vps:/home/ubuntu/kener-backup-20261028.sqlite.db` (taken before the trigger was added).
 - **Optional (S).** A Sentry inbound filter on `environment:development` as a backstop to the code gate
   (`src/server.ts:50`, `sentry.client.ts:18`); today only the `localhost` filter is on.
 - **Sentry CLI notes.** The binary is `sentry` (not the legacy `sentry-cli`). `issue list` returns null
