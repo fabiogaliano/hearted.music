@@ -31,6 +31,8 @@ import {
 } from "@/lib/domains/playlists/intent-eligibility";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { unwrapOrThrow } from "@/lib/server/unwrap-or-throw";
+import { fromSupabaseSingle } from "@/lib/shared/utils/result-wrappers/supabase";
 
 const NoInputSchema = z.undefined();
 
@@ -66,19 +68,22 @@ export const getSubscriptionUpgradeQuote = createServerFn({ method: "GET" })
 	.inputValidator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<SubscriptionUpgradeQuote> => {
 		const supabase = createAdminSupabaseClient();
-		const { data, error } = await supabase
-			.rpc("quote_subscription_upgrade_conversion", {
-				p_account_id: context.session.accountId,
-			})
-			.single();
-
-		if (error) {
-			throw new Error("Failed to load subscription upgrade quote");
-		}
+		const result = await fromSupabaseSingle(
+			supabase
+				.rpc("quote_subscription_upgrade_conversion", {
+					p_account_id: context.session.accountId,
+				})
+				.single(),
+		);
+		const quote = unwrapOrThrow(result, {
+			area: "billing",
+			operation: "get_subscription_upgrade_quote",
+			accountId: context.session.accountId,
+		});
 
 		return {
-			convertedCredits: data.converted_credits,
-			discountCents: data.discount_cents,
+			convertedCredits: quote.converted_credits,
+			discountCents: quote.discount_cents,
 		};
 	});
 
@@ -133,6 +138,13 @@ export const requestSongUnlock = createServerFn({ method: "POST" })
 				case "unlimited_access_active":
 					return { success: false, error: "unlimited_access_active" };
 				case "db_error":
+					// The client only sees internal_error, so the cause has to be
+					// recorded here or a failing unlock leaves no trace.
+					captureServerError(err.cause, {
+						area: "billing",
+						operation: "request_song_unlock",
+						accountId: context.session.accountId,
+					});
 					return { success: false, error: "internal_error" };
 			}
 		}
