@@ -105,12 +105,6 @@ no retry beyond the stale-job sweep: any returned error fails it on attempt 1 an
 
 ## 4. CI and deploys
 
-### 4.1 Destructive migrations are not gated (T9) — M
-
-- `.github/workflows/main.yml:290` runs `supabase db push --yes` with no scan, against the rule in
-  `docs/ops/prod-db-migrations.md`. **Change.** Scan new migrations for destructive DDL; route those
-  through a manual lane.
-
 ### 4.2 Rollout verification (T8 remainder) — M
 
 - The path filters were fixed with the app move (`reliability.md` §3f).
