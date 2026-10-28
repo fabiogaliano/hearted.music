@@ -233,8 +233,6 @@ export const ONBOARDING_PLAYLISTS = {
 
 export const ALL_ONBOARDING_PLAYLISTS = Object.values(ONBOARDING_PLAYLISTS);
 
-type SongFixture = (typeof SONGS)[keyof typeof SONGS];
-
 interface SpotifyApiSavedTrack {
 	added_at: string;
 	track: {
@@ -251,8 +249,16 @@ interface SpotifyApiSavedTrack {
 	};
 }
 
+// Structural so integration tests can pass generated songs, not only SONGS.
 export function toSpotifyApiSavedTrack(
-	song: SongFixture,
+	song: {
+		spotify_id: string;
+		name: string;
+		artists: readonly string[];
+		album_name: string;
+		duration_ms: number;
+		image_url: string;
+	},
 	addedAt: string,
 ): SpotifyApiSavedTrack {
 	return {
