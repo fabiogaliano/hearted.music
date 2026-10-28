@@ -23,8 +23,8 @@ function extractSentryProjectId(dsn: string): string | null {
  * callback so both SDKs are guaranteed live before the link is established.
  *
  * Effect: every Sentry event gets tagged with `posthog_session_url` +
- * `posthog_distinct_id`, and PostHog $exception events get a Sentry issue URL
- * attached when the org slug is configured.
+ * `posthog_distinct_id`. Exceptions stay in Sentry only (see `capture_exceptions`
+ * in `__root.tsx`).
  *
  * Safely no-ops when Sentry isn't configured (no DSN), the integration isn't
  * available on the PostHog instance, or required env is missing.
@@ -66,6 +66,7 @@ export function linkPostHogToSentry(posthog: PostHogInterface): void {
 			// segment is always digits, so a safe parse keeps the direct-link URLs
 			// correct.
 			projectId: Number(projectId),
+			sendExceptionsToPostHog: false,
 		}),
 	);
 }
