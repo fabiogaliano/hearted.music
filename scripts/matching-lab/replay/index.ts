@@ -3,7 +3,7 @@
  *
  * Usage:
  *   # Prod-faithful (uses DeepInfra Qwen3-Reranker-0.6B — requires API key):
- *   DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts \
+ *   ML_PROVIDER=deepinfra DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts \
  *     --a configs/metadata-doc.json \
  *     --b configs/analysis-doc.json \
  *     [--account <uuid>] [--since <iso-date>] [--require-snapshot] [--no-rerank-a] [--label <run-name>]
@@ -12,12 +12,7 @@
  *   ML_PROVIDER=local bun run scripts/matching-lab/replay/index.ts ...
  *
  *   # Matching-only (no reranker available — HuggingFace has no reranker):
- *   bun run scripts/matching-lab/replay/index.ts ...
- *
- * Provider selection (mirrors getMlProvider() in factory.ts):
- *   1. ML_PROVIDER=local  → local ONNX sidecar (dev-only)
- *   2. DEEPINFRA_API_KEY set → DeepInfra Qwen3-Reranker-0.6B (prod-faithful)
- *   3. Neither             → HuggingFace fallback; reranker unavailable; matching-only
+ *   ML_PROVIDER=huggingface bun run scripts/matching-lab/replay/index.ts ...
  *
  * The two variants share one model load (single process) to keep the ~1.2GB
  * Qwen3 model in memory across both runs.
@@ -26,7 +21,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { RerankerService } from "@/lib/integrations/reranker/service";
-import { selectProvider } from "@/lib/integrations/providers/factory";
+import { env } from "@/env";
 import type { DecidedPairRanks } from "./metrics";
 import { computeDiff, formatDiffTable, buildResultJson } from "./metrics";
 import { loadDecisions } from "./load-decisions";
@@ -101,22 +96,14 @@ function loadVariantConfig(configPath: string): VariantConfig {
 const DEEPINFRA_RERANKER_MODEL = "Qwen/Qwen3-Reranker-0.6B";
 const LOCAL_RERANKER_MODEL = "Qwen3-Reranker-0.6B (local ONNX)";
 
-/**
- * Resolve which reranker provider/model the run will use, matching the logic
- * of getMlProvider() / selectProvider() in factory.ts.
- *
- * Priority (mirrors factory.ts selectProvider):
- *   1. ML_PROVIDER=local  → local ONNX sidecar (dev-only)
- *   2. DEEPINFRA_API_KEY  → DeepInfra Qwen3-Reranker-0.6B (prod-faithful)
- *   3. neither            → HuggingFace; reranker unavailable; matching-only
- */
+/** Resolve which reranker provider/model the run will use from ML_PROVIDER. */
 function resolveRerankerProvider(): {
   providerName: string;
   model: string | null;
   rerankerAvailable: boolean;
   warning: string | null;
 } {
-  const selected = selectProvider();
+  const selected = env.ML_PROVIDER;
 
   if (selected === "local") {
     return {
@@ -136,14 +123,14 @@ function resolveRerankerProvider(): {
     };
   }
 
-  // huggingface or unknown — no reranker
+  // huggingface — no reranker
   const warning =
     `\n${"!".repeat(72)}\n` +
     `  WARNING: selected provider = "${selected}" — no reranker available.\n` +
     `  This run will complete MATCHING-ONLY — reranker scores will be absent.\n` +
     `\n` +
     `  To run with reranking:\n` +
-    `    DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts ...  (prod-faithful)\n` +
+    `    ML_PROVIDER=deepinfra DEEPINFRA_API_KEY=<key> bun run scripts/matching-lab/replay/index.ts ...  (prod-faithful)\n` +
     `    ML_PROVIDER=local       bun run scripts/matching-lab/replay/index.ts ...  (local dev)\n` +
     `${"!".repeat(72)}\n`;
 

@@ -35,7 +35,10 @@ vi.mock("@/lib/extension/detect", async (importOriginal) => ({
 	getSpotifyAccountStatus: vi.fn(),
 }));
 
-vi.mock("@/lib/observability/sentry", () => ({ captureRouteError: vi.fn() }));
+vi.mock("@/lib/observability/sentry", () => ({
+	captureRouteError: vi.fn(),
+	captureUnhandledRouteError: vi.fn(),
+}));
 
 const BUILDING = { status: "building" };
 

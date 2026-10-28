@@ -1,5 +1,7 @@
 import * as Sentry from "@sentry/bun";
+import { Result } from "better-result";
 import { log } from "@/lib/observability/logger";
+import { checkEmbeddingProvider } from "@/lib/platform/boot-checks";
 import {
 	setAccountEventsGatewayDraining,
 	stopAccountEventsGateway,
@@ -57,6 +59,11 @@ let draining = false;
 
 async function main() {
 	log.info("worker-starting", { config: workerConfig });
+
+	// Before any job is claimed: embedding with the wrong provider would write
+	// vectors that can never match the stored ones.
+	const embeddingCheck = await checkEmbeddingProvider();
+	if (Result.isError(embeddingCheck)) throw embeddingCheck.error;
 
 	const healthServer = startHealthServer();
 	log.info("health-server-started", { port: healthServer.port });

@@ -107,16 +107,26 @@ and the loops are most of the app's baseline request volume.
     the login page.
   - Studio ranking: report the failure (moot once ranking moves to Postgres, 4.4).
   - Embedding branches: report through `captureServerError`.
+- **Done** except the embedding branches (`preview.ts`, still open). Helper:
+  `src/lib/server/unwrap-or-throw.ts` (`unwrapOrThrow`, `reportAndThrow`, `ServerFnError`). Login:
+  `getAuthSessionState()`; `getAuthSession()` throws `AuthUnavailableError` on `unavailable`, so
+  `authMiddleware` and the `_authenticated` guard fail with a retry screen instead of redirecting to
+  sign-in.
 
 ### 2.2 Match results cut off at 1,000 rows — S
 
 - **Problem.** `getMatchResults` reads a whole snapshot in one request with no paging
   (`src/lib/domains/taste/song-matching/queries.ts:112`). PostgREST caps responses at `max_rows`
-  (1,000 locally, `supabase/config.toml:18`; prod value not checked). A larger snapshot is silently
-  truncated and suggestions go missing. Callers: `match-review-queue/service.ts:154,246`,
+  (1,000 locally, `supabase/config.toml:18`). A larger snapshot is silently truncated and
+  suggestions go missing. Callers: `match-review-queue/service.ts:154,246`,
   `eligible-subjects.ts:99`.
-- **Change.** Page with `.range()` until exhausted, or replace with an RPC. First confirm the prod
-  `max_rows` and the largest snapshot's row count.
+- **Confirmed live in prod (2026-10-27).** Prod REST returns exactly 1,000 rows per request
+  (`max_rows` = 1,000), and the largest `match_result` snapshot has ~9,600 rows, so ~89 % of that
+  snapshot was being dropped.
+- **Change.** Page with `.range()` until exhausted, or replace with an RPC.
+- **Done.** `getMatchResults` pages with `.range()` (page size = `max_rows`) until a short page;
+  all three callers read through it unchanged. Pinned by
+  `song-matching/__tests__/get-match-results.paging.test.ts` against a fake capped at 1,000 rows.
 
 ### 2.3 Suggestions disappear when the playlist-name read fails — S
 
@@ -126,6 +136,11 @@ and the loops are most of the app's baseline request volume.
   suggestions.
 - **Change.** Check the error and surface it; join the names in the query that produces the
   suggestions instead of a second `.in()` read.
+- **Done.** `get_match_pairs_for_song` returns `playlist_name` / `playlist_spotify_id`
+  (migration `20261027100000`); the song path of the visible-suggestion list hands them back, and
+  `getSongSuggestions` throws (reported) on any read failure instead of returning `null`. The panel
+  still has no distinct error state: a failed query just omits the section, but it is no longer
+  cached as "no suggestions".
 
 ### 2.4 Recent Activity doesn't update after "Sync new songs" — S–M
 

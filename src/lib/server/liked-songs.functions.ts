@@ -14,6 +14,7 @@ import {
 } from "@/lib/domains/library/liked-songs/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { unwrapOrThrow } from "@/lib/server/unwrap-or-throw";
 
 const MatchingStatusSchema = z.enum([
 	"pending",
@@ -129,11 +130,11 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 			minScore,
 		});
 
-		if (Result.isError(result)) {
-			return { songs: [], nextCursor: null };
-		}
-
-		const { items, nextCursor } = result.value;
+		const { items, nextCursor } = unwrapOrThrow(result, {
+			area: "liked_songs",
+			operation: "get_liked_songs_page",
+			accountId: session.accountId,
+		});
 
 		return { songs: items.map(mapLikedSongPageRow), nextCursor };
 	});

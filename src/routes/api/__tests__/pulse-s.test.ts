@@ -76,13 +76,13 @@ vi.mock("@tanstack/react-router", () => ({
 	createFileRoute: () => (routeConfig: unknown) => routeConfig,
 }));
 
-vi.mock("@/lib/platform/rate-limit/edge-rate-limit", () => ({
+vi.mock("@/lib/platform/rate-limit/rate-limit", () => ({
 	clientIpFrom: (request: Request) =>
 		request.headers.get("cf-connecting-ip") ?? "unknown",
 	withinRateLimit: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@sentry/cloudflare", () => ({
+vi.mock("@sentry/core", () => ({
 	captureException: vi.fn(),
 }));
 
@@ -296,7 +296,7 @@ describe("/api/pulse-s", () => {
 
 	it("returns 429 when rate limited", async () => {
 		const { withinRateLimit } = await import(
-			"@/lib/platform/rate-limit/edge-rate-limit"
+			"@/lib/platform/rate-limit/rate-limit"
 		);
 		vi.mocked(withinRateLimit).mockResolvedValueOnce(false);
 

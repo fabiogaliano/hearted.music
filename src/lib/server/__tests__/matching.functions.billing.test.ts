@@ -1,5 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DatabaseError } from "@/lib/shared/errors/database";
 import { addSongToPlaylist, getSongSuggestions } from "../matching.functions";
 
 const {
@@ -124,14 +125,25 @@ vi.mock(
 );
 
 /**
- * Serves both playlist reads on the suggestions path: the ownership check
- * (select.eq.in) and the name lookup (select.in). Every row is owned.
+ * Serves the ownership check (select.eq.in) on the suggestions path; every
+ * listed playlist is owned. Names come from the pair read, not from here.
  */
-function mockPlaylistRows(
-	rows: Array<{ id: string; name: string; spotify_id: string }>,
-) {
-	const inFn = vi.fn().mockResolvedValue({ data: rows, error: null });
-	mockSelect.mockReturnValue({ in: inFn, eq: () => ({ in: inFn }) });
+function mockOwnedPlaylists(ids: string[]) {
+	const inFn = vi
+		.fn()
+		.mockResolvedValue({ data: ids.map((id) => ({ id })), error: null });
+	mockSelect.mockReturnValue({ eq: () => ({ in: inFn }) });
+}
+
+function pair(playlistId: string, score: number, fusedScore: number) {
+	return {
+		song_id: "song-1",
+		playlist_id: playlistId,
+		score,
+		fused_score: fusedScore,
+		playlist_name: `Name of ${playlistId}`,
+		playlist_spotify_id: `sp-${playlistId}`,
+	};
 }
 
 describe("getSongSuggestions (billing-aware)", () => {
@@ -155,20 +167,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 
 		// pl-1 has the higher raw score but lower model rank — the ranking wins.
 		mockGetMatchPairsForSong.mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-1",
-					score: 0.85,
-					fused_score: 0.8,
-				},
-				{
-					song_id: "song-1",
-					playlist_id: "pl-2",
-					score: 0.75,
-					fused_score: 0.9,
-				},
-			]),
+			Result.ok([pair("pl-1", 0.85, 0.8), pair("pl-2", 0.75, 0.9)]),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(
 			Result.ok([
@@ -188,20 +187,18 @@ describe("getSongSuggestions (billing-aware)", () => {
 		);
 		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
-		mockPlaylistRows([
-			{ id: "pl-1", name: "Playlist 1", spotify_id: "sp-pl-1" },
-			{ id: "pl-2", name: "Playlist 2", spotify_id: "sp-pl-2" },
-		]);
+		mockOwnedPlaylists(["pl-1", "pl-2"]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
 		expect(result).not.toBeNull();
 		expect(result?.matches).toHaveLength(2);
 		// pl-2 is rank 1 despite lower raw score — model rank wins.
-		expect(result?.matches[0].playlistName).toBe("Playlist 2");
+		expect(result?.matches[0].playlistName).toBe("Name of pl-2");
+		expect(result?.matches[0].playlistSpotifyId).toBe("sp-pl-2");
 		// fitScore (strictnessScore = fused_score) is used, never legacy raw score.
 		expect(result?.matches[0].fitScore).toBeCloseTo(0.9);
-		expect(result?.matches[1].playlistName).toBe("Playlist 1");
+		expect(result?.matches[1].playlistName).toBe("Name of pl-1");
 		expect(result?.matches[1].fitScore).toBeCloseTo(0.8);
 		expect(mockRpc).toHaveBeenCalledWith("is_account_song_entitled", {
 			p_account_id: "acct-1",
@@ -222,7 +219,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 		expect(result).toBeNull();
 	});
 
-	it("returns null when entitlement RPC errors", async () => {
+	it("regression: throws when the entitlement RPC errors instead of hiding every suggestion", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 
 		mockRpc.mockResolvedValue({
@@ -230,11 +227,23 @@ describe("getSongSuggestions (billing-aware)", () => {
 			error: { code: "500", message: "rpc error" },
 		});
 
-		const result = await getSongSuggestions({
-			data: { songId: "song-1" },
-		});
+		await expect(
+			getSongSuggestions({ data: { songId: "song-1" } }),
+		).rejects.toThrow();
+	});
 
-		expect(result).toBeNull();
+	it("regression: throws when the suggestion pair read fails instead of returning no suggestions", async () => {
+		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
+		mockRpc.mockResolvedValue({ data: true, error: null });
+		mockGetMatchPairsForSong.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "57014", message: "timeout" })),
+		);
+		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
+		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
+
+		await expect(
+			getSongSuggestions({ data: { songId: "song-1" } }),
+		).rejects.toThrow();
 	});
 
 	it("excludes pairs below minScore and filters decided pairs", async () => {
@@ -244,24 +253,9 @@ describe("getSongSuggestions (billing-aware)", () => {
 		// pl-4 is already decided — must be excluded.
 		mockGetMatchPairsForSong.mockResolvedValue(
 			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-3",
-					score: 0.3,
-					fused_score: 0.3,
-				},
-				{
-					song_id: "song-1",
-					playlist_id: "pl-4",
-					score: 0.9,
-					fused_score: 0.9,
-				},
-				{
-					song_id: "song-1",
-					playlist_id: "pl-5",
-					score: 0.8,
-					fused_score: 0.7,
-				},
+				pair("pl-3", 0.3, 0.3),
+				pair("pl-4", 0.9, 0.9),
+				pair("pl-5", 0.8, 0.7),
 			]),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
@@ -270,16 +264,12 @@ describe("getSongSuggestions (billing-aware)", () => {
 		);
 		mockResolveMinMatchScore.mockResolvedValue(0.5);
 
-		mockPlaylistRows([
-			{ id: "pl-3", name: "Playlist 3", spotify_id: "sp-pl-3" },
-			{ id: "pl-4", name: "Playlist 4", spotify_id: "sp-pl-4" },
-			{ id: "pl-5", name: "Playlist 5", spotify_id: "sp-pl-5" },
-		]);
+		mockOwnedPlaylists(["pl-3", "pl-4", "pl-5"]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
 		expect(result?.matches).toHaveLength(1);
-		expect(result?.matches[0].playlistName).toBe("Playlist 5");
+		expect(result?.matches[0].playlistId).toBe("pl-5");
 		// fitScore = fused_score = 0.7, not the raw score 0.8.
 		expect(result?.matches[0].fitScore).toBeCloseTo(0.7);
 	});
@@ -288,20 +278,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockRpc.mockResolvedValue({ data: true, error: null });
 		mockGetMatchPairsForSong.mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-pt",
-					score: 0.9,
-					fused_score: 0.9,
-				},
-				{
-					song_id: "song-1",
-					playlist_id: "pl-any",
-					score: 0.8,
-					fused_score: 0.8,
-				},
-			]),
+			Result.ok([pair("pl-pt", 0.9, 0.9), pair("pl-any", 0.8, 0.8)]),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
 		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
@@ -314,10 +291,7 @@ describe("getSongSuggestions (billing-aware)", () => {
 				]),
 			),
 		);
-		mockPlaylistRows([
-			{ id: "pl-pt", name: "Portuguese", spotify_id: "sp-pl-pt" },
-			{ id: "pl-any", name: "Anything", spotify_id: "sp-pl-any" },
-		]);
+		mockOwnedPlaylists(["pl-pt", "pl-any"]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 

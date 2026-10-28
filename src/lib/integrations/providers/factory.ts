@@ -1,16 +1,5 @@
 /**
- * ML Provider Factory - Selects and creates ML providers based on environment configuration.
- *
- * Selection Logic (Priority Order):
- * 1. If ML_PROVIDER is explicitly set, use that provider (explicit override)
- * 2. Otherwise, if DEEPINFRA_API_KEY exists, use DeepInfra (default production)
- * 3. Otherwise, use HuggingFace (default development/fallback)
- *
- * This enables:
- * - Explicit provider selection via ML_PROVIDER env var
- * - Automatic DeepInfra selection when API key is configured
- * - Graceful fallback to HuggingFace free tier
- * - Local development with ML_PROVIDER=local
+ * ML Provider Factory - creates the provider named by ML_PROVIDER.
  */
 
 import { Result } from "better-result";
@@ -23,32 +12,6 @@ import { createDeepInfraProvider } from "./adapters/deepinfra";
 import { createHuggingFaceProvider } from "./adapters/huggingface";
 import { createLocalProvider } from "./adapters/local";
 import type { MLProvider } from "./ports";
-import type { ProviderName } from "./types";
-
-/**
- * Determines which ML provider to use based on environment configuration.
- *
- * Priority order:
- * 1. ML_PROVIDER env var (explicit override)
- * 2. DeepInfra if DEEPINFRA_API_KEY exists
- * 3. HuggingFace (fallback)
- *
- * @returns Provider name to use
- */
-export function selectProvider(): ProviderName {
-	// Explicit override via ML_PROVIDER
-	if (env.ML_PROVIDER) {
-		return env.ML_PROVIDER;
-	}
-
-	// Default to DeepInfra if API key is configured
-	if (env.DEEPINFRA_API_KEY) {
-		return "deepinfra";
-	}
-
-	// Fallback to HuggingFace (free tier)
-	return "huggingface";
-}
 
 /**
  * Creates an ML provider instance based on environment configuration.
@@ -59,7 +22,7 @@ export function createProvider(): Result<
 	MLProvider,
 	MLConfigError | MLProviderUnavailableError
 > {
-	const providerName = selectProvider();
+	const providerName = env.ML_PROVIDER;
 
 	switch (providerName) {
 		case "deepinfra": {

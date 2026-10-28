@@ -120,6 +120,7 @@ describe("useAccountEvents", () => {
 		vi.spyOn(Math, "random").mockReturnValue(0);
 		vi.mocked(getAccountEventsToken).mockResolvedValue({
 			token: "fake-token",
+			expiresInMs: 5 * 60_000,
 		});
 	});
 
@@ -133,6 +134,7 @@ describe("useAccountEvents", () => {
 		const snapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: true,
 		};
 
@@ -335,6 +337,7 @@ describe("useAccountEvents", () => {
 		const settledSnapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: true,
 		};
 
@@ -372,6 +375,7 @@ describe("useAccountEvents", () => {
 		const snapshot = {
 			enrichment: null,
 			matchSnapshotRefresh: null,
+			extensionSync: null,
 			firstVisibleMatchReady: false,
 		};
 

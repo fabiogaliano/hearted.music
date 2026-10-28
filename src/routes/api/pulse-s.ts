@@ -3,7 +3,7 @@ import { env } from "@/env";
 import {
 	clientIpFrom,
 	withinRateLimit,
-} from "@/lib/platform/rate-limit/edge-rate-limit";
+} from "@/lib/platform/rate-limit/rate-limit";
 
 // Sentry tunnel: same-origin proxy that forwards browser-sent envelopes to
 // one configured Sentry project. Ad-blockers block requests to
@@ -360,7 +360,7 @@ export const Route = createFileRoute("/api/pulse-s")({
 				} catch (error) {
 					console.error("[sentry-tunnel] Failed to forward envelope", error);
 					try {
-						const { captureException } = await import("@sentry/cloudflare");
+						const { captureException } = await import("@sentry/core");
 						captureException(error, { tags: { source: "sentry-tunnel" } });
 					} catch {}
 					return new Response("Failed to reach Sentry ingest", { status: 502 });

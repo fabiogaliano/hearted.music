@@ -4,7 +4,7 @@
  * deck server fns, and the client that renders the cards.
  */
 
-import * as Sentry from "@sentry/cloudflare";
+import * as Sentry from "@sentry/core";
 import type { Json } from "@/lib/data/database.types";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import {

@@ -80,40 +80,55 @@ export function bandedCredit(r: number): number {
 }
 
 /**
- * Pure genre overlap score in [0, 1].
+ * Pure genre overlap scorer for one playlist distribution; each call returns a
+ * song's score in [0, 1].
  *
  * For each playlist genre weighted by its distribution mass, the credit is the
  * best similarity any song genre achieves after banding. Score is the
  * mass-weighted average credit across all playlist genres. Scale-invariant, so
  * it is transparent to whether playlistDistribution holds raw counts or
- * fractions (Task 1.4 will switch to fractions).
+ * fractions.
  *
- * Exported for unit tests — the private method on MatchingService delegates
- * here so the pure logic is directly testable.
+ * A song genre's credits depend only on that genre and this distribution, so
+ * they are computed once per distinct song genre and reused across songs: a
+ * preview scores up to 10k songs sharing at most a few hundred genres, and
+ * canonicalizing every song-genre × playlist-genre pair per song was the bulk
+ * of its scoring CPU.
  */
-export function scoreGenres(
-	songGenres: string[],
+export function createGenreScorer(
 	playlistDistribution: Record<string, number>,
-): number {
-	const playlistGenres = Object.keys(playlistDistribution);
-	if (playlistGenres.length === 0) return 0;
-
-	let weightedCredit = 0;
+): (songGenres: string[]) => number {
+	const entries = Object.entries(playlistDistribution);
 	let totalWeight = 0;
+	for (const [, w] of entries) totalWeight += w;
 
-	for (const [g, w] of Object.entries(playlistDistribution)) {
-		totalWeight += w;
-		// Best credit this playlist genre gets from any song genre.
-		let best = 0;
-		for (const s of songGenres) {
-			const credit = bandedCredit(genreSimilarity(g, s));
-			if (credit > best) best = credit;
+	const creditsByGenre = new Map<string, number[]>();
+	const creditsFor = (songGenre: string): number[] => {
+		let credits = creditsByGenre.get(songGenre);
+		if (!credits) {
+			credits = entries.map(([g]) =>
+				bandedCredit(genreSimilarity(g, songGenre)),
+			);
+			creditsByGenre.set(songGenre, credits);
 		}
-		weightedCredit += w * best;
-	}
+		return credits;
+	};
 
-	if (totalWeight === 0) return 0;
-	return weightedCredit / totalWeight;
+	return (songGenres) => {
+		if (entries.length === 0 || totalWeight === 0) return 0;
+		const songCredits = songGenres.map(creditsFor);
+
+		let weightedCredit = 0;
+		for (let i = 0; i < entries.length; i++) {
+			// Best credit this playlist genre gets from any song genre.
+			let best = 0;
+			for (const credits of songCredits) {
+				if (credits[i] > best) best = credits[i];
+			}
+			weightedCredit += entries[i][1] * best;
+		}
+		return weightedCredit / totalWeight;
+	};
 }
 
 class MatchingService {
@@ -154,7 +169,12 @@ class MatchingService {
 		}
 
 		const scored = profiles.map((profile) =>
-			this.computeRawScored(song, profile, songEmbedding ?? null),
+			this.computeRawScored(
+				song,
+				profile,
+				songEmbedding ?? null,
+				createGenreScorer(profile.genreDistribution),
+			),
 		);
 		const stats = this.computeFactorStats(scored);
 		const results = scored.map((s) => this.fuse(s, stats));
@@ -213,13 +233,18 @@ class MatchingService {
 		// served ranking) and per playlist (the reranker's grouping).
 		const perSong = new Map<string, RawScored[]>();
 		const allScored: RawScored[] = [];
+		const scorableProfiles = profiles.map((profile) => ({
+			profile,
+			scoreGenres: createGenreScorer(profile.genreDistribution),
+		}));
 
 		for (const song of songs) {
 			const eligibleProfiles = exclusionSet
-				? profiles.filter(
-						(p) => !exclusionSet.has(`${song.id}:${p.playlistId}`),
+				? scorableProfiles.filter(
+						({ profile }) =>
+							!exclusionSet.has(`${song.id}:${profile.playlistId}`),
 					)
-				: profiles;
+				: scorableProfiles;
 
 			if (eligibleProfiles.length === 0) {
 				excluded.push(song.id);
@@ -227,8 +252,8 @@ class MatchingService {
 			}
 
 			const embedding = songEmbeddings?.get(song.id) ?? null;
-			const scored = eligibleProfiles.map((profile) =>
-				this.computeRawScored(song, profile, embedding),
+			const scored = eligibleProfiles.map(({ profile, scoreGenres }) =>
+				this.computeRawScored(song, profile, embedding, scoreGenres),
 			);
 			perSong.set(song.id, scored);
 			for (const s of scored) allScored.push(s);
@@ -285,6 +310,7 @@ class MatchingService {
 		song: MatchingSong,
 		profile: MatchingPlaylistProfile,
 		songEmbedding: number[] | null,
+		scoreSongGenres: (songGenres: string[]) => number,
 	): RawScored {
 		const availability: DataAvailability = {
 			hasEmbedding: !!songEmbedding && !!profile.embedding,
@@ -303,7 +329,7 @@ class MatchingService {
 							this.config.audioWeights,
 						)
 					: 0,
-			genre: this.computeGenreScore(song.genres, profile.genreDistribution),
+			genre: this.computeGenreScore(song.genres, scoreSongGenres),
 		};
 
 		return { song, profile, factors, availability };
@@ -451,7 +477,6 @@ class MatchingService {
 
 	/**
 	 * Compute genre overlap score via similarity-table banding.
-	 * Delegates to the exported pure helper `scoreGenres` so it's unit-testable.
 	 *
 	 * The early return 0 for empty/null song genres is a harmless no-op:
 	 * `computeRawScored` sets `availability.hasGenres = false` when genres is
@@ -461,10 +486,10 @@ class MatchingService {
 	 */
 	private computeGenreScore(
 		songGenres: string[] | null,
-		playlistDistribution: Record<string, number>,
+		scoreSongGenres: (songGenres: string[]) => number,
 	): number {
 		if (!songGenres || songGenres.length === 0) return 0;
-		return scoreGenres(songGenres, playlistDistribution);
+		return scoreSongGenres(songGenres);
 	}
 }
 

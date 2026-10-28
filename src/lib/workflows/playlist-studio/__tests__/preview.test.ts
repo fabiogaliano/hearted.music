@@ -42,6 +42,11 @@ vi.mock("@/lib/domains/enrichment/embeddings/service", () => ({
 	},
 }));
 
+const captureServerErrorMock = vi.fn();
+vi.mock("@/lib/observability/capture-server-error", () => ({
+	captureServerError: (...args: unknown[]) => captureServerErrorMock(...args),
+}));
+
 const selectEligibleCandidatesMock = vi.fn();
 const buildDraftProfileMock = vi.fn();
 const rankCandidatesMock = vi.fn();
@@ -134,15 +139,15 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
-		expect(embeddingServiceCreateMock).toHaveBeenCalledOnce();
+		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
 		expect(embedTextMock).not.toHaveBeenCalled();
-		expect(getSongEmbeddingsBatchMock).toHaveBeenCalled();
+		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
 
-	it("ineligible account ignores client intent but still loads stored song embeddings", async () => {
+	it("ineligible account ignores client intent and skips the stored song-embedding read", async () => {
 		readBillingStateOrFreeTierMock.mockResolvedValue(
 			makeBillingState({ unlimitedAccess: { kind: "none" } }),
 		);
@@ -160,16 +165,8 @@ describe("runPreviewPlaylistDraft", () => {
 		);
 
 		expect(embedTextMock).not.toHaveBeenCalled();
-		expect(getSongEmbeddingsBatchMock).toHaveBeenCalledWith(
-			["a", "b"],
-			"test-model",
-			"full",
-		);
-		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2] as Map<
-			string,
-			number[]
-		>;
-		expect(songEmbeddingsMap.get("a")).toEqual([1, 2, 3]);
+		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
+		expect(rankCandidatesMock.mock.calls[0][2]).toBeUndefined();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
 	});
@@ -185,9 +182,9 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "   " }),
 		);
 
-		expect(embeddingServiceCreateMock).toHaveBeenCalledOnce();
+		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
 		expect(embedTextMock).not.toHaveBeenCalled();
-		expect(getSongEmbeddingsBatchMock).toHaveBeenCalled();
+		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
@@ -207,6 +204,10 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "no ML provider configured" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
@@ -231,6 +232,10 @@ describe("runPreviewPlaylistDraft", () => {
 			baseInput({ intent: "moody synths" }),
 		);
 
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "provider timeout" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		expect(buildDraftProfileMock).toHaveBeenCalled();
 		expect(buildDraftProfileMock.mock.calls[0][2]).toBeUndefined();
 		expect(result.intentApplied).toBe(false);
@@ -293,8 +298,11 @@ describe("runPreviewPlaylistDraft", () => {
 		expect(songEmbeddingsMap.get("b")).toEqual([4, 5, 6]);
 	});
 
-	it("no-intent preview skips malformed stored embeddings without discarding valid rows", async () => {
-		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
+	it("skips malformed stored embeddings without discarding valid rows", async () => {
+		readBillingStateOrFreeTierMock.mockResolvedValue(
+			makeBillingState({ unlimitedAccess: { kind: "subscription" } }),
+		);
+		embedTextMock.mockResolvedValue(Result.ok([0.1, 0.2, 0.3]));
 		getSongEmbeddingsBatchMock.mockResolvedValue(
 			Result.ok(
 				new Map([
@@ -305,25 +313,30 @@ describe("runPreviewPlaylistDraft", () => {
 			),
 		);
 
-		await runPreviewPlaylistDraft(fakeSupabase, "acct-1", baseInput());
+		await runPreviewPlaylistDraft(
+			fakeSupabase,
+			"acct-1",
+			baseInput({ intent: "moody synths" }),
+		);
 
-		expect(embedTextMock).not.toHaveBeenCalled();
 		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2] as Map<
 			string,
 			number[]
 		>;
 		expect([...songEmbeddingsMap.entries()]).toEqual([["a", [1, 2, 3]]]);
+		// Reported once for the preview, not once per corrupt row.
+		expect(captureServerErrorMock).toHaveBeenCalledOnce();
 	});
 
-	it("no-intent stored-embedding read failure degrades to an absent map without calling embedText", async () => {
-		readBillingStateOrFreeTierMock.mockResolvedValue(FREE_BILLING_STATE);
-		getSongEmbeddingsBatchMock.mockResolvedValue(
-			Result.err(new Error("song_embedding read failed")),
+	it("no intent → no embedding service and no stored song-vector read", async () => {
+		readBillingStateOrFreeTierMock.mockResolvedValue(
+			makeBillingState({ unlimitedAccess: { kind: "subscription" } }),
 		);
 
 		await runPreviewPlaylistDraft(fakeSupabase, "acct-1", baseInput());
 
-		expect(embedTextMock).not.toHaveBeenCalled();
+		expect(embeddingServiceCreateMock).not.toHaveBeenCalled();
+		expect(getSongEmbeddingsBatchMock).not.toHaveBeenCalled();
 		expect(rankCandidatesMock.mock.calls[0][2]).toBeUndefined();
 	});
 
@@ -397,6 +410,10 @@ describe("runPreviewPlaylistDraft", () => {
 
 		expect(buildDraftProfileMock.mock.calls[0][2]).toEqual([0.1, 0.2, 0.3]);
 		expect(result.intentApplied).toBe(true);
+		expect(captureServerErrorMock).toHaveBeenCalledWith(
+			expect.objectContaining({ message: "song_embedding read failed" }),
+			expect.objectContaining({ accountId: "acct-1" }),
+		);
 		const songEmbeddingsMap = rankCandidatesMock.mock.calls[0][2];
 		expect(songEmbeddingsMap).toBeUndefined();
 	});

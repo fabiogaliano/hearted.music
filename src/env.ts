@@ -31,8 +31,10 @@ export const env = createEnv({
 		DEEPINFRA_API_KEY: z.string().min(1).optional(),
 		HF_TOKEN: z.string().min(1).optional(),
 		GENIUS_CLIENT_TOKEN: z.string().min(1).optional(),
-		// ML provider selection (optional - defaults to deepinfra if key exists, else huggingface)
-		ML_PROVIDER: z.enum(["deepinfra", "huggingface", "local"]).optional(),
+		// Required: picking the provider by whichever key exists let a missing
+		// DEEPINFRA_API_KEY silently switch to a model whose vectors don't match
+		// the stored embeddings.
+		ML_PROVIDER: z.enum(["deepinfra", "huggingface", "local"]),
 		// LLM providers for content analysis (optional - analysis degrades gracefully
 		// when absent; see src/lib/integrations/llm/config.ts). Google reads a fallback
 		// chain matching Vercel AI SDK conventions.

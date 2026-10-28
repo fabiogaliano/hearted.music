@@ -21,7 +21,7 @@ import {
 	requestExtensionSync,
 } from "@/lib/extension/detect";
 import { useExtensionSyncStatus } from "@/lib/extension/useExtensionSyncStatus";
-import { dashboardKeys } from "@/lib/query-keys";
+import { activeJobsKeys } from "@/lib/query-keys";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,
 	EXTENSION_SYNC_COOLDOWN,
@@ -127,18 +127,14 @@ export function useDashboardSync(
 		);
 	}, [phase, sync?.status]);
 
-	const invalidateDashboard = useCallback(() => {
-		// Refresh the surfaces a sync can change. Fires once per completed sync
-		// (from the awaited result), so there's no invalidation loop.
+	// The extension's success is the backend's 202, which only queues the sync;
+	// refreshing the dashboard now would refetch the pre-sync library. Instead
+	// re-read active jobs so the polling fallback sees the queued sync job and
+	// refreshes the dashboard on its running-to-done edge (with the event
+	// stream, extension_sync_completed does that).
+	const watchQueuedSync = useCallback(() => {
 		queryClient.invalidateQueries({
-			queryKey: dashboardKeys.pageData(accountId),
-		});
-		queryClient.invalidateQueries({ queryKey: dashboardKeys.stats(accountId) });
-		queryClient.invalidateQueries({
-			queryKey: dashboardKeys.recentActivity(accountId),
-		});
-		queryClient.invalidateQueries({
-			queryKey: dashboardKeys.matchPreviews(accountId),
+			queryKey: activeJobsKeys.byAccount(accountId),
 		});
 	}, [queryClient, accountId]);
 
@@ -217,14 +213,14 @@ export function useDashboardSync(
 
 		setSyncedAt(Date.now());
 		setPhase("success");
-		invalidateDashboard();
+		watchQueuedSync();
 		// A completed sync is itself a Spotify command that succeeded (it read
 		// liked songs/playlists through the extension's live token), so it's
 		// exactly the "next Spotify command that succeeds" bound the README's
 		// Risks section promises for any sticky auth failure pushed elsewhere
 		// (e.g. a future playlist/matching call site).
 		reportSpotifyAuthSuccess(queryClient);
-	}, [fail, invalidateDashboard, queryClient]);
+	}, [fail, watchQueuedSync, queryClient]);
 
 	// Success lingers briefly, then settles back to the derived readiness state.
 	useEffect(() => {

@@ -1,17 +1,10 @@
 import { Result } from "better-result";
-import postgres from "postgres";
-import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
+import { getSql } from "@/lib/data/sql";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import type { MatchOrientation, MatchReviewSession } from "./types";
-
-const sql = postgres(env.DATABASE_URL, {
-	max: 1,
-	prepare: false,
-	fetch_types: false,
-});
 
 export interface FinalizeAppliedAppendInput {
 	accountId: string;
@@ -49,7 +42,7 @@ export async function finalizeAppliedAppend(
 	} = input;
 
 	try {
-		await sql.begin(async (tx) => {
+		await getSql().begin(async (tx) => {
 			const inserted = await tx<{ session_id: string }[]>`
 				INSERT INTO match_review_session_snapshot (
 					session_id,

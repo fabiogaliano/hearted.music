@@ -4,11 +4,10 @@ import { resolvePostHogHosts } from "@/lib/observability/posthog-hosts";
 /**
  * Product-event capture for the standalone Bun worker.
  *
- * The CF web server has `captureWithWaitUntil` (per-request, tied to the
- * isolate's `waitUntil`), but that path reads `import.meta.env` and is built by
- * Vite — neither applies in the worker. The worker is instead a long-lived
- * process, so a singleton client is the right shape (mirrors the OTel SDK
- * singleton in `posthog-otel.ts`). `flushAt: 1` sends each event promptly so a
+ * The web server has its own client in `posthog-server.ts`, but that path reads
+ * `import.meta.env` and is built by Vite — neither applies in the worker. The
+ * worker is a long-lived process, so a singleton client is the right shape
+ * (mirrors the OTel SDK singleton in `posthog-otel.ts`). `flushAt: 1` sends each event promptly so a
  * SIGKILL between events loses at most the one in flight; `shutdownWorkerPostHog`
  * drains the rest on graceful shutdown.
  *

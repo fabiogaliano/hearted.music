@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	activeJobsKeys,
 	dashboardKeys,
 	invalidateMatchSnapshotQueries,
 	matchDeckKeys,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/query-keys";
 import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 import { accountEventsConnectionKey } from "../useAccountEvents";
-import { useActiveJobs } from "../useActiveJobs";
+import { useActiveJobCompletionEffects, useActiveJobs } from "../useActiveJobs";
 
 vi.mock("@/lib/server/jobs.functions", () => ({
 	getActiveJobs: vi.fn(),
@@ -110,6 +111,7 @@ function makeActiveJobs(overrides: Partial<ActiveJobs> = {}): ActiveJobs {
 	return {
 		enrichment: null,
 		matchSnapshotRefresh: null,
+		extensionSync: null,
 		firstVisibleMatchReady: false,
 		...overrides,
 	};
@@ -221,6 +223,24 @@ describe("useActiveJobs return shape", () => {
 		expect(getActiveJobs).toHaveBeenCalledTimes(1);
 	});
 
+	it("backs off and stops fallback polling after 5 consecutive failures (polled a failing server every 15 s forever)", async () => {
+		vi.useFakeTimers();
+		vi.mocked(getActiveJobs).mockRejectedValue(new Error("503"));
+
+		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(29_000);
+		});
+		// The first retry waits 30 s, not one 15 s poll interval.
+		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+		});
+		expect(getActiveJobs).toHaveBeenCalledTimes(5);
+	});
+
 	it("resumes fallback polling while the stream is disconnected", async () => {
 		vi.useFakeTimers();
 		queryClient.setQueryData(
@@ -242,5 +262,63 @@ describe("useActiveJobs return shape", () => {
 		});
 
 		expect(getActiveJobs).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe("useActiveJobCompletionEffects", () => {
+	let queryClient: QueryClient;
+
+	function wrapper({ children }: { children: ReactNode }) {
+		return createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			children,
+		);
+	}
+
+	beforeEach(() => {
+		queryClient = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		});
+	});
+
+	function recentActivityInvalidations(spy: {
+		mock: { calls: Parameters<QueryClient["invalidateQueries"]>[] };
+	}) {
+		return spy.mock.calls.filter(
+			([options]) =>
+				JSON.stringify(options?.queryKey) ===
+				JSON.stringify(dashboardKeys.recentActivity(ACCOUNT_ID)),
+		);
+	}
+
+	it("refreshes recent activity when the extension sync job finishes, not while it is queued (regression: new songs only showed after a page reload)", async () => {
+		const syncJob = { id: "sync-1", status: "running" as const };
+		vi.mocked(getActiveJobs).mockResolvedValue(
+			makeActiveJobs({ extensionSync: syncJob }),
+		);
+		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+		renderHook(() => useActiveJobCompletionEffects(ACCOUNT_ID), { wrapper });
+		await waitFor(() => expect(getActiveJobs).toHaveBeenCalledTimes(1));
+
+		// Still running on the next read: nothing to refresh yet.
+		await act(async () => {
+			await queryClient.refetchQueries({
+				queryKey: activeJobsKeys.byAccount(ACCOUNT_ID),
+			});
+		});
+		expect(recentActivityInvalidations(invalidateSpy)).toHaveLength(0);
+
+		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
+		await act(async () => {
+			await queryClient.refetchQueries({
+				queryKey: activeJobsKeys.byAccount(ACCOUNT_ID),
+			});
+		});
+
+		await waitFor(() =>
+			expect(recentActivityInvalidations(invalidateSpy)).toHaveLength(1),
+		);
 	});
 });

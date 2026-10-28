@@ -1,11 +1,11 @@
-import * as Sentry from "@sentry/cloudflare";
+import * as Sentry from "@sentry/core";
 
 /**
  * Server-side error capture for server functions and domain code running in the
- * Cloudflare web server.
+ * Bun web server. `@sentry/core` reports through whichever client the process
+ * initialised (src/instrument.ts here, the worker's own preload there).
  *
- * The web server runs with `enableLogs: false` (see `server.ts`), so `console.*`
- * never reaches Sentry — only an explicit `captureException` or an uncaught
+ * `console.*` never becomes a Sentry issue — only an explicit `captureException` or an uncaught
  * throw does. Server functions routinely translate a typed `Result` error into a
  * friendly thrown string (to hide DB internals from the client) or swallow it
  * into a fallback value; both drop the underlying cause, leaving us blind when
@@ -36,6 +36,22 @@ function readCause(value: unknown): unknown {
 	return "cause" in value ? value.cause : undefined;
 }
 
+// Server fns capture at their boundary and then throw, usually with the
+// captured error as `cause`; the catch-all middleware in
+// server-error-middleware.ts checks this so one failure is one Sentry event.
+const capturedErrors = new WeakSet<object>();
+
+function isObject(value: unknown): value is object {
+	return typeof value === "object" && value !== null;
+}
+
+/** Whether `error`, or the error it wraps as `cause`, was already captured. */
+export function wasCaptured(error: unknown): boolean {
+	return [error, readCause(error)].some(
+		(value) => isObject(value) && capturedErrors.has(value),
+	);
+}
+
 export function captureServerError(
 	error: unknown,
 	context: {
@@ -64,6 +80,7 @@ export function captureServerError(
 	if (dbError) tags.db_error = dbError;
 	if (dbCode) tags.db_code = dbCode;
 
+	if (isObject(error)) capturedErrors.add(error);
 	Sentry.captureException(error, {
 		tags,
 		...(context.accountId ? { user: { id: context.accountId } } : {}),

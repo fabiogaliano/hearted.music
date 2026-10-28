@@ -54,6 +54,7 @@ vi.mock("@/lib/platform/jobs/repository", async () => {
 	return {
 		...actual,
 		getJobById: (...args: unknown[]) => mockGetJobById(...args),
+		getActiveJob: async () => Result.ok(null),
 	};
 });
 

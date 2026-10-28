@@ -1,15 +1,16 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Account } from "@/lib/domains/library/accounts/queries";
-import type { AuthContext } from "@/lib/platform/auth/auth-types";
-import { getAuthSession } from "../auth.server";
+import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
+import { DatabaseError } from "@/lib/shared/errors/database";
+import { getAuthSession, getAuthSessionState } from "../auth.server";
 
 function createMockAuthRequestState() {
-	let cachedSession: Promise<AuthContext | null> | undefined;
+	let cachedSession: Promise<AuthSessionState> | undefined;
 
 	return {
 		getCachedSession: () => cachedSession,
-		cacheSession: (sessionPromise: Promise<AuthContext | null>) => {
+		cacheSession: (sessionPromise: Promise<AuthSessionState>) => {
 			cachedSession ??= sessionPromise;
 			return cachedSession;
 		},
@@ -34,7 +35,7 @@ vi.mock("@tanstack/react-start/server", () => ({
 	getRequest: () => mockGetRequest(),
 }));
 
-vi.mock("@/lib/platform/auth/auth", () => ({
+vi.mock("@/lib/platform/auth/auth-request-state.server", () => ({
 	getAuth: () => ({
 		api: {
 			getSession: (...args: unknown[]) => mockGetSession(...args),
@@ -121,5 +122,33 @@ describe("getAuthSession", () => {
 		expect(mockGetAccountByBetterAuthUserId).not.toHaveBeenCalled();
 		expect(first).toBeNull();
 		expect(second).toBeNull();
+	});
+
+	it("regression: an account-lookup DB error is unavailable, not logged out", async () => {
+		mockGetSession.mockResolvedValue({
+			session: { id: "session-1" },
+			user: {
+				id: "user-1",
+				email: "hello@hearted.music",
+				emailVerified: true,
+			},
+		});
+		mockGetAccountByBetterAuthUserId.mockResolvedValue(
+			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
+		);
+
+		await expect(getAuthSessionState()).resolves.toEqual({
+			status: "unavailable",
+		});
+		// Callers that need an identity must fail, not redirect to sign-in.
+		await expect(getAuthSession()).rejects.toThrow();
+	});
+
+	it("regression: Better Auth throwing (DB down) is unavailable, not logged out", async () => {
+		mockGetSession.mockRejectedValue(new Error("connect ECONNREFUSED"));
+
+		await expect(getAuthSessionState()).resolves.toEqual({
+			status: "unavailable",
+		});
 	});
 });

@@ -31,7 +31,6 @@ import {
 } from "@/lib/domains/enrichment/audio-features/service";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
-import { selectProvider } from "@/lib/integrations/providers/factory";
 
 const PROD_REF = "oqrkjtidoodyzifurpmz";
 const LANDING_SONGS_DIR = resolve(import.meta.dirname, "../../public/landing-songs");
@@ -45,7 +44,7 @@ function readManifest(): { spotifyTrackId: string }[] {
 
 async function main() {
 	const url = env.SUPABASE_URL;
-	const provider = selectProvider();
+	const provider = env.ML_PROVIDER;
 	console.log(`\nTarget SUPABASE_URL : ${url}`);
 	console.log(`ML provider         : ${provider}`);
 

@@ -52,10 +52,11 @@ jobs:
               - 'components.json'
               - 'Dockerfile.worker'
               - '.dockerignore'
+              - 'Dockerfile.app'
+              - 'Dockerfile.app.dockerignore'
               - 'ladle-vite.config.ts'
               - 'lefthook.yml'
               - 'vite.config.ts'
-              - 'wrangler.jsonc'
             shared:
               - 'src/lib/**'
               - 'shared/**'
@@ -71,12 +72,22 @@ jobs:
               - 'src/integrations/**'
               - 'src/types/**'
               - 'src/env.ts'
+              - 'src/env.public.ts'
               - 'src/routeTree.gen.ts'
+              - 'src/server.ts'
+              - 'src/serve.ts'
+              - 'src/instrument.ts'
+              - 'src/start.ts'
+              - 'src/router.tsx'
+              - 'src/client.tsx'
+              - 'src/styles.css'
               - 'public/**'
               - 'vite.config.ts'
-              - 'wrangler.jsonc'
+              - 'Dockerfile.app'
+              - 'Dockerfile.app.dockerignore'
             worker:
               - 'src/worker/**'
+              - 'src/env.ts'
               - 'Dockerfile.worker'
               - '.dockerignore'
             db_security:
@@ -308,7 +319,10 @@ jobs:
       && (needs.detect.outputs.app == 'true' || needs.detect.outputs.shared == 'true')
     runs-on: ubuntu-latest
     environment: production-app
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     concurrency:
       group: deploy-app-production
       cancel-in-progress: false
@@ -316,64 +330,88 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Image name
+        # GHCR rejects upper-case repository names.
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}-app" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
-          node-version: '22'
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build and push app image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          no-cache: true
+          context: .
+          file: Dockerfile.app
+          push: true
+          # Coolify deploys :latest; the SHA tag is what a rollback pins.
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          secrets: |
+            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+          build-args: |
+            VITE_PUBLIC_APP_ORIGIN=${{ vars.VITE_PUBLIC_APP_ORIGIN }}
+            VITE_ACCOUNT_EVENTS_GATEWAY_URL=${{ vars.VITE_ACCOUNT_EVENTS_GATEWAY_URL }}
+            VITE_SENTRY_DSN=${{ vars.VITE_SENTRY_DSN }}
+            VITE_SENTRY_ENVIRONMENT=${{ vars.VITE_SENTRY_ENVIRONMENT }}
+            VITE_SENTRY_ORG_SLUG=${{ vars.VITE_SENTRY_ORG_SLUG }}
+            VITE_CHROME_EXTENSION_ID=${{ vars.VITE_CHROME_EXTENSION_ID }}
+            VITE_APP_TITLE=${{ vars.VITE_APP_TITLE }}
+            VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=${{ vars.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+            VITE_PUBLIC_POSTHOG_HOST=${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
+            VITE_USERJOT_PROJECT_ID=${{ vars.VITE_USERJOT_PROJECT_ID }}
+            VITE_APP_RELEASE=${{ github.sha }}
 
-      - name: Restore Bun install cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-install-cache-${{ hashFiles('package.json', 'bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-install-cache-
-
-      - run: bun install --frozen-lockfile
-
-      - name: Sync account-events token secret
+      # Same Cloudflare Access and deployment_uuid checks as the worker hooks
+      # below: a 302 to the Access login or a null deployment_uuid is a refusal.
+      - name: Trigger Coolify deploy (App)
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          ACCOUNT_EVENTS_TOKEN_SECRET: ${{ secrets.ACCOUNT_EVENTS_TOKEN_SECRET }}
-        run: printf '%s' "$ACCOUNT_EVENTS_TOKEN_SECRET" | bunx wrangler secret put ACCOUNT_EVENTS_TOKEN_SECRET
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          APP_HOOK: ${{ secrets.COOLIFY_APP_WEBHOOK_URL }}
+        run: |
+          status=$(curl \
+            --request POST \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-delay 2 \
+            --retry-all-errors \
+            --max-time 30 \
+            --output response.json \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+            -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+            "$APP_HOOK")
+          echo "App: HTTP $status"
+          cat response.json; echo
+          if [ "$status" != "200" ] || ! grep -q '"deployment_uuid":"' response.json; then
+            echo "::error::Coolify did not queue the app deploy"
+            exit 1
+          fi
 
-      - run: bun run deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          # Required by src/env.public.ts at client module load — a missing value
-          # builds green but crashes every page at runtime.
-          VITE_PUBLIC_APP_ORIGIN: ${{ vars.VITE_PUBLIC_APP_ORIGIN }}
-          VITE_ACCOUNT_EVENTS_GATEWAY_URL: ${{ vars.VITE_ACCOUNT_EVENTS_GATEWAY_URL }}
-          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
-          VITE_SENTRY_ENVIRONMENT: ${{ vars.VITE_SENTRY_ENVIRONMENT }}
-          VITE_CHROME_EXTENSION_ID: ${{ vars.VITE_CHROME_EXTENSION_ID }}
-          VITE_APP_TITLE: ${{ vars.VITE_APP_TITLE }}
-          VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN }}
-          VITE_PUBLIC_POSTHOG_HOST: ${{ vars.VITE_PUBLIC_POSTHOG_HOST }}
-          # Build-time, client-public: Vite inlines this into the bundle. Without
-          # it the feedback widget compiles out entirely (UserJotWidget renders null).
-          VITE_USERJOT_PROJECT_ID: ${{ vars.VITE_USERJOT_PROJECT_ID }}
-          # Canonical release: Sentry tag + sourcemap name + PostHog app_release.
-          VITE_APP_RELEASE: ${{ github.sha }}
-
-      - name: Smoke test production app
-        run: >-
-          curl
-          --fail
-          --show-error
-          --silent
-          --retry 10
-          --retry-delay 5
-          --retry-all-errors
-          --max-time 20
-          https://hearted.music/
-          --output /dev/null
+      # A queued deploy can still fail to pull or boot; only the new release
+      # answering on the public domain counts as deployed.
+      - name: Wait for the new release on hearted.music
+        run: |
+          for attempt in $(seq 1 60); do
+            release=$(curl --silent --max-time 10 "https://hearted.music/health?ci=$attempt" | jq -r '.release // empty' 2>/dev/null || true)
+            if [ "$release" = "$GITHUB_SHA" ]; then
+              echo "hearted.music serves $GITHUB_SHA"
+              exit 0
+            fi
+            echo "attempt $attempt: release=${release:-none}"
+            sleep 10
+          done
+          echo "::error::hearted.music did not report release $GITHUB_SHA within 10 minutes"
+          exit 1
 
   deploy-worker:
     needs: [detect, verify, db-security, migrate-prod]
