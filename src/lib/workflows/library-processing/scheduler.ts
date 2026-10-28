@@ -18,6 +18,7 @@ import {
 	type EnrichmentSelectionMode,
 } from "@/lib/platform/jobs/progress/enrichment";
 import { getJobById } from "@/lib/platform/jobs/repository";
+import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	batchSizeForSequence,
@@ -89,38 +90,47 @@ function toEffectEnsureFailedError(
 	};
 }
 
+/**
+ * A failed read is an error, not a null marker: the reconciler reads a null
+ * marker as "settle at the current requestedAt", which would mark requests
+ * this job never saw as done. Only a missing job row is a legitimate null.
+ */
 export async function loadJobOutcomeMetadata(
 	change: LibraryProcessingChange,
-): Promise<JobOutcomeMetadata> {
+): Promise<Result<JobOutcomeMetadata, DbError>> {
 	if (
 		change.kind !== "enrichment_completed" &&
 		change.kind !== "match_snapshot_published"
 	) {
-		return { satisfiedMarker: null, batchSequence: null };
+		return Result.ok({ satisfiedMarker: null, batchSequence: null });
 	}
 
 	const jobResult = await getJobById(change.jobId);
-	if (Result.isError(jobResult) || jobResult.value === null) {
-		return { satisfiedMarker: null, batchSequence: null };
+	if (Result.isError(jobResult)) {
+		return Result.err(jobResult.error);
+	}
+	const job = jobResult.value;
+	if (job === null) {
+		return Result.ok({ satisfiedMarker: null, batchSequence: null });
 	}
 
 	if (change.kind === "match_snapshot_published") {
-		return {
-			satisfiedMarker: jobResult.value.satisfies_requested_at,
+		return Result.ok({
+			satisfiedMarker: job.satisfies_requested_at,
 			batchSequence: null,
-		};
+		});
 	}
 
 	const progressResult = EnrichmentChunkProgressSchema.partial().safeParse(
-		jobResult.value.progress ?? {},
+		job.progress ?? {},
 	);
 
-	return {
-		satisfiedMarker: jobResult.value.satisfies_requested_at,
+	return Result.ok({
+		satisfiedMarker: job.satisfies_requested_at,
 		batchSequence: progressResult.success
 			? (progressResult.data.batchSequence ?? null)
 			: null,
-	};
+	});
 }
 
 function changeMayNeedTargetSongEnrichment(

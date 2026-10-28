@@ -598,7 +598,10 @@ describe("scheduler", () => {
 					},
 				},
 			});
-			expect(result).toEqual({ satisfiedMarker: null, batchSequence: null });
+			expect(result).toHaveOkValue({
+				satisfiedMarker: null,
+				batchSequence: null,
+			});
 			expect(getJobByIdMock).not.toHaveBeenCalled();
 		});
 
@@ -617,8 +620,10 @@ describe("scheduler", () => {
 				jobId: "job-99",
 			});
 
-			expect(result.satisfiedMarker).toBe("2026-04-01T00:00:00Z");
-			expect(result.batchSequence).toBeNull();
+			expect(result).toHaveOkValue({
+				satisfiedMarker: "2026-04-01T00:00:00Z",
+				batchSequence: null,
+			});
 		});
 
 		it("reads batchSequence from enrichment_completed job progress", async () => {
@@ -645,14 +650,14 @@ describe("scheduler", () => {
 				newCandidatesAvailable: false,
 			});
 
-			expect(result.satisfiedMarker).toBe("2026-03-15T00:00:00Z");
-			expect(result.batchSequence).toBe(3);
+			expect(result).toHaveOkValue({
+				satisfiedMarker: "2026-03-15T00:00:00Z",
+				batchSequence: 3,
+			});
 		});
 
-		it("returns null metadata when job lookup fails", async () => {
-			getJobByIdMock.mockResolvedValue(
-				Result.err(new DatabaseError({ code: "PGRST", message: "not found" })),
-			);
+		it("returns null metadata when the job row is gone", async () => {
+			getJobByIdMock.mockResolvedValue(Result.ok(null));
 
 			const result = await loadJobOutcomeMetadata({
 				kind: "enrichment_completed",
@@ -662,7 +667,25 @@ describe("scheduler", () => {
 				newCandidatesAvailable: false,
 			});
 
-			expect(result).toEqual({ satisfiedMarker: null, batchSequence: null });
+			expect(result).toHaveOkValue({
+				satisfiedMarker: null,
+				batchSequence: null,
+			});
+		});
+
+		it("regression: a failed job lookup errors instead of a null marker that settles unseen requests", async () => {
+			const dbError = new DatabaseError({ code: "08006", message: "db down" });
+			getJobByIdMock.mockResolvedValue(Result.err(dbError));
+
+			const result = await loadJobOutcomeMetadata({
+				kind: "enrichment_completed",
+				accountId: "acct-1",
+				jobId: "job-50",
+				requestSatisfied: true,
+				newCandidatesAvailable: false,
+			});
+
+			expect(result).toHaveErrValue(dbError);
 		});
 	});
 
