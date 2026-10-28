@@ -20,10 +20,29 @@ import {
 import { getByIds } from "@/lib/domains/library/songs/queries";
 import { toAudioCentroidRecord } from "@/lib/domains/taste/playlist-profiling/calculations";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
+import type { ComputedPlaylistProfile } from "@/lib/domains/taste/playlist-profiling/types";
 import type { MatchingPlaylistProfile } from "@/lib/domains/taste/song-matching/types";
 import { createReccoBeatsService } from "@/lib/integrations/reccobeats/service";
 import { log } from "@/lib/observability/logger";
 import { mapWithConcurrency } from "@/lib/shared/utils/concurrency";
+
+function toMatchingProfile(
+	playlist: Playlist,
+	p: ComputedPlaylistProfile,
+): MatchingPlaylistProfile {
+	return {
+		playlistId: p.playlistId,
+		embedding: p.embedding,
+		audioCentroid: toAudioCentroidRecord(p.audioCentroid),
+		genreDistribution: p.genreDistribution,
+		// getTargetPlaylists uses select("*"), so genre_pills is always
+		// present on the row. The boolean is all the matcher needs to
+		// select the right base weights — the actual pill list is already
+		// baked into genreDistribution and the intent embedding by
+		// computeProfile (Task 1.4).
+		hasGenrePills: (playlist.genre_pills?.length ?? 0) > 0,
+	};
+}
 
 /**
  * Loads current target playlists and computes/caches their profiles.
@@ -120,21 +139,9 @@ export async function loadTargetPlaylistProfiles(
 					);
 				}
 
-				const p = profileResult.value;
 				return {
 					playlist,
-					profile: {
-						playlistId: p.playlistId,
-						embedding: p.embedding,
-						audioCentroid: toAudioCentroidRecord(p.audioCentroid),
-						genreDistribution: p.genreDistribution,
-						// getTargetPlaylists uses select("*"), so genre_pills is always
-						// present on the row. The boolean is all the matcher needs to
-						// select the right base weights — the actual pill list is already
-						// baked into genreDistribution and the intent embedding by
-						// computeProfile (Task 1.4).
-						hasGenrePills: (playlist.genre_pills?.length ?? 0) > 0,
-					},
+					profile: toMatchingProfile(playlist, profileResult.value),
 				};
 			} catch (error) {
 				// One playlist's failure must not abort the whole snapshot — drop it
