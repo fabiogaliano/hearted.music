@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { ComputedPlaylistProfile } from "@/lib/domains/taste/playlist-profiling/types";
 import { DatabaseError } from "@/lib/shared/errors/database";
@@ -71,21 +71,31 @@ function storedProfile(
 	};
 }
 
+/** `failingPlaylist` fails to compute; the stored profile comes from `getProfile`. */
+function serviceWithStoredProfile(
+	getProfile: (playlistId: string) => Promise<unknown>,
+): PlaylistProfilingService {
+	return {
+		computeProfile: async (playlistId: string) =>
+			playlistId === failingPlaylist.id
+				? Result.err(
+						new DatabaseError({
+							code: "57014",
+							message: "statement timeout",
+						}),
+					)
+				: Result.ok(storedProfile(playlistId, [0.1, 0.2])),
+		getProfile,
+	} as unknown as PlaylistProfilingService;
+}
+
 describe("loadTargetPlaylistProfiles", () => {
+	beforeEach(() => mockCaptureServerError.mockClear());
+
 	it("a playlist whose profile fails keeps its prior profile instead of being dropped from the snapshot", async () => {
-		const profilingService = {
-			computeProfile: async (playlistId: string) =>
-				playlistId === failingPlaylist.id
-					? Result.err(
-							new DatabaseError({
-								code: "57014",
-								message: "statement timeout",
-							}),
-						)
-					: Result.ok(storedProfile(playlistId, [0.1, 0.2])),
-			getProfile: async (playlistId: string) =>
-				Result.ok(storedProfile(playlistId, [0.9, 0.8])),
-		} as unknown as PlaylistProfilingService;
+		const profilingService = serviceWithStoredProfile(async (playlistId) =>
+			Result.ok(storedProfile(playlistId, [0.9, 0.8])),
+		);
 
 		const { playlists, profiles, carriedForwardCount } =
 			await loadTargetPlaylistProfiles("acc-1", profilingService);
@@ -109,5 +119,34 @@ describe("loadTargetPlaylistProfiles", () => {
 		]);
 		expect(carriedForwardCount).toBe(1);
 		expect(mockCaptureServerError).toHaveBeenCalledOnce();
+	});
+
+	// Each throw is what makes the job retry; returning instead would publish a
+	// snapshot without the playlist (or scored against an unusable profile).
+	it.each([
+		{
+			name: "no stored prior profile → stage throws (job retries instead of dropping the playlist)",
+			getProfile: async () => Result.ok(null),
+		},
+		{
+			name: "prior profile from a different model bundle → stage throws (never score against a foreign vector space)",
+			getProfile: async (playlistId: string) =>
+				Result.ok({
+					...storedProfile(playlistId, [0.9, 0.8]),
+					modelBundleHash: "bundle-previous",
+				}),
+		},
+		{
+			name: "stored prior profile cannot be read → stage throws (job retries instead of dropping the playlist)",
+			getProfile: async () =>
+				Result.err(
+					new DatabaseError({ code: "08006", message: "connection failure" }),
+				),
+		},
+	])("$name", async ({ getProfile }) => {
+		await expect(
+			loadTargetPlaylistProfiles("acc-1", serviceWithStoredProfile(getProfile)),
+		).rejects.toThrow();
+		expect(mockCaptureServerError).not.toHaveBeenCalled();
 	});
 });
