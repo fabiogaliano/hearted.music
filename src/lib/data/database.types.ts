@@ -946,6 +946,39 @@ export type Database = {
 					},
 				];
 			};
+			genre_alias: {
+				Row: {
+					alias: string;
+					canonical: string;
+				};
+				Insert: {
+					alias: string;
+					canonical: string;
+				};
+				Update: {
+					alias?: string;
+					canonical?: string;
+				};
+				Relationships: [];
+			};
+			genre_similarity: {
+				Row: {
+					from_genre: string;
+					similarity: number;
+					to_genre: string;
+				};
+				Insert: {
+					from_genre: string;
+					similarity: number;
+					to_genre: string;
+				};
+				Update: {
+					from_genre?: string;
+					similarity?: number;
+					to_genre?: string;
+				};
+				Relationships: [];
+			};
 			job: {
 				Row: {
 					account_id: string;
