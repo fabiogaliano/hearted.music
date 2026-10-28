@@ -126,18 +126,15 @@ describe("loadCandidateDetails", () => {
 		).rejects.toThrow("[target-refresh] Failed to load songs");
 	});
 
-	it("degrades to an empty exclusion set when loadExclusionSet rejects", async () => {
+	it("regression: a failed exclusion read aborts instead of resurfacing decided songs", async () => {
 		mockGetByIds.mockResolvedValue(Result.ok([makeSongRow("s1")]));
 		mockGetBatch.mockResolvedValue(Result.ok(new Map()));
-		mockLoadExclusionSet.mockRejectedValue(new Error("DB timeout"));
+		const dbError = new Error("DB timeout");
+		mockLoadExclusionSet.mockRejectedValue(dbError);
 
-		const { baseExclusionSet } = await loadCandidateDetails(
-			"acc-1",
-			["s1"],
-			"test-user",
-		);
-
-		expect(baseExclusionSet.size).toBe(0);
+		await expect(
+			loadCandidateDetails("acc-1", ["s1"], "test-user"),
+		).rejects.toMatchObject({ cause: dbError });
 	});
 });
 
