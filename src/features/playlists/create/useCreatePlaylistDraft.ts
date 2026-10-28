@@ -14,6 +14,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useHydrated } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { allocateArtistPins } from "@/lib/domains/playlists/artist-allocation";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
@@ -364,9 +365,16 @@ export function useCreatePlaylistDraft(
 		suggestionsOffset,
 	};
 
-	const { data, isLoading, isError, isPlaceholderData, refetch } = useQuery(
-		playlistDraftPreviewQueryOptions(queryConfig),
-	);
+	const previewQuery = useQuery(playlistDraftPreviewQueryOptions(queryConfig));
+	// The route loader streams this query un-awaited, so the server renders it
+	// pending while the result can land in the client cache before hydration.
+	// Reading it as pending until hydrated keeps the first client render equal
+	// to the SSR tree; otherwise React discards the server HTML for the studio.
+	const hydrated = useHydrated();
+	const data = hydrated ? previewQuery.data : undefined;
+	const isLoading = !hydrated || previewQuery.isLoading;
+	const isError = hydrated && previewQuery.isError;
+	const { isPlaceholderData, refetch } = previewQuery;
 	const retryPreview = useCallback(() => {
 		void refetch();
 	}, [refetch]);
