@@ -35,6 +35,8 @@ FROM base
 ARG VITE_APP_RELEASE
 ENV NODE_ENV=production
 ENV PORT=3000
+# Names this process in its JSON log lines (src/lib/observability/logger.ts).
+ENV HEARTED_SERVICE=web-server
 # src/instrument.ts tags Sentry events with the release the sourcemaps were
 # uploaded under.
 ENV APP_RELEASE=$VITE_APP_RELEASE

@@ -57,6 +57,11 @@ function formatPretty(
 	return parts.join(" ");
 }
 
+// The web server and the worker both log through this module, so each image
+// bakes in its own name (Dockerfile.app, Dockerfile.worker), matching the
+// process's Sentry `service` tag.
+const service = process.env.HEARTED_SERVICE;
+
 function formatJson(
 	level: LogLevel,
 	event: string,
@@ -65,7 +70,7 @@ function formatJson(
 	return JSON.stringify({
 		ts: new Date().toISOString(),
 		level,
-		worker: true,
+		service,
 		event,
 		...data,
 	});
