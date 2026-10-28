@@ -4521,6 +4521,20 @@ export type Database = {
 					discount_cents: number;
 				}[];
 			};
+			rank_playlist_draft_preview: {
+				Args: {
+					p_account_id: string;
+					p_embedding_model?: string;
+					p_excluded_song_ids: string[];
+					p_genre_pills: string[];
+					p_intent_embedding?: string;
+					p_match_filters: Json;
+					p_now: string;
+					p_pinned_song_ids: string[];
+					p_ranked_limit: number;
+				};
+				Returns: Json;
+			};
 			read_match_deck_card: {
 				Args: {
 					p_account_id: string;
