@@ -135,26 +135,18 @@ export const getPlaylistManagementData = createServerFn({
 			getTargetPlaylists(session.accountId),
 		]);
 
-		if (Result.isError(allResult)) {
-			// DB read failed — surfaces in Sentry since console is disabled in prod.
-			captureServerError(allResult.error, {
-				area: "playlists",
-				operation: "get_playlist_management_data",
-				accountId: session.accountId,
-			});
-			throw new Error("Failed to load playlists", { cause: allResult.error });
-		}
-
-		// An empty fallback would render every target playlist as untargeted.
-		const targets = unwrapOrThrow(targetResult, {
+		const failure = {
 			area: "playlists",
 			operation: "get_playlist_management_data",
 			accountId: session.accountId,
-		});
+		};
+		const playlists = unwrapOrThrow(allResult, failure);
+		// An empty fallback would render every target playlist as untargeted.
+		const targets = unwrapOrThrow(targetResult, failure);
 		const targetIds = new Set(targets.map((p) => p.id));
 
 		return {
-			playlists: allResult.value,
+			playlists,
 			targetPlaylistIds: [...targetIds],
 		};
 	});

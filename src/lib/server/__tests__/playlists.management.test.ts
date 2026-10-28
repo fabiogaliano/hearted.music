@@ -214,8 +214,8 @@ describe("getPlaylistManagementData", () => {
 		);
 		mockGetTargetPlaylists.mockResolvedValue(Result.ok([]));
 
-		await expect(getPlaylistManagementData()).rejects.toThrow(
-			"Failed to load playlists",
+		await expect(getPlaylistManagementData()).rejects.toBeInstanceOf(
+			ServerFnError,
 		);
 	});
 
