@@ -22,7 +22,6 @@ import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import {
 	getPlaylists,
 	getTargetPlaylists,
-	type Playlist,
 } from "@/lib/domains/library/playlists/queries";
 import { log } from "@/lib/observability/logger";
 import { parseExtensionSyncJobProgress } from "@/lib/platform/jobs/extension-sync-jobs";
@@ -43,6 +42,7 @@ import {
 } from "@/lib/workflows/extension-sync/payload-storage";
 import { SyncChanges } from "@/lib/workflows/library-processing/changes";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
+import { isTransientApplyError } from "@/lib/workflows/library-processing/types";
 import {
 	syncPlaylists,
 	syncPlaylistTracksFromData,
@@ -57,11 +57,17 @@ import {
 	type SyncPayload,
 	SyncPayloadSchema,
 } from "../../shared/spotify-sync-payload-schema";
-import { announceExtensionSyncCompleted } from "./finalize";
+import {
+	announceExtensionSyncCompleted,
+	requeueClaimedJobForRetry,
+} from "./finalize";
 
 export type ExtensionSyncRunOutcome =
 	| { status: "completed" }
 	| { status: "failed"; error: string }
+	// Requeued after a transient error; the payload and the unfinished phases
+	// wait for the next claim.
+	| { status: "retrying"; error: string }
 	// The sweep reclaimed (or dead-lettered) this worker's lease mid-run; the
 	// current owner settles the job and its payload.
 	| { status: "superseded" };
@@ -134,10 +140,12 @@ function captureExtensionSyncFailure(
 }
 
 /**
- * Runs a claimed extension_sync parent job to terminal state. Always returns an
- * outcome (never throws); the caller logs + heartbeats. The Storage object is
- * deleted on both success and failure — the payload is reproducible by
- * re-syncing, so keeping failed payloads would only erode the 1 GB quota.
+ * Runs a claimed extension_sync parent job to terminal state, or requeues it
+ * after a transient DB error while attempts remain. Always returns an outcome
+ * (never throws); the caller logs + heartbeats. The Storage object is deleted
+ * on success and on terminal failure: re-syncing reproduces it, so keeping
+ * failed payloads would only erode the 1 GB quota. A requeued job keeps it,
+ * so a passing DB blip doesn't send the user back to re-scrape Spotify.
  */
 export async function runExtensionSyncJob(
 	job: Job,
@@ -187,6 +195,28 @@ export async function runExtensionSyncJob(
 		return { status: "failed", error: reason };
 	};
 
+	// Re-running is safe: phase writes are idempotent diffs, completed phases
+	// replay their stored results, and the retry takes over the phase this run
+	// left running, reporting its changes as possibly already applied.
+	const failOrRetry = async (
+		reason: string,
+		transient: boolean,
+	): Promise<ExtensionSyncRunOutcome> => {
+		if (!transient || job.attempts >= job.max_attempts) return fail(reason);
+		const requeued = await requeueClaimedJobForRetry(job, reason);
+		if (Result.isError(requeued)) {
+			log.error("extension-sync-requeue-failed", {
+				actor,
+				jobId: job.id,
+				accountId,
+				error: requeued.error.message,
+			});
+			return fail(reason);
+		}
+		if (!requeued.value) return { status: "superseded" };
+		return { status: "retrying", error: reason };
+	};
+
 	// The heartbeat saw the lease taken over. A phase already in flight still
 	// settles its own phase job unless the reclaiming run took that phase over
 	// first; either way the reclaiming run resumes from it. Nothing new starts.
@@ -210,8 +240,9 @@ export async function runExtensionSyncJob(
 			jobId: job.id,
 			accountId,
 		});
-		return fail(
+		return failOrRetry(
 			`Failed to download sync payload: ${downloadResult.error.message}`,
+			downloadResult.error instanceof DatabaseError,
 		);
 	}
 
@@ -266,7 +297,10 @@ export async function runExtensionSyncJob(
 				jobId: job.id,
 				accountId,
 			});
-			return fail(`User profile sync failed: ${profileError.message}`);
+			return failOrRetry(
+				`User profile sync failed: ${profileError.message}`,
+				profileError instanceof DatabaseError,
+			);
 		}
 
 		type PhaseStep<T> =
@@ -296,8 +330,9 @@ export async function runExtensionSyncJob(
 				});
 				return {
 					status: "stopped",
-					outcome: await fail(
+					outcome: await failOrRetry(
 						`${label} sync failed: ${phaseResult.error.message}`,
+						phaseResult.error instanceof DatabaseError,
 					),
 				};
 			}
@@ -378,7 +413,9 @@ export async function runExtensionSyncJob(
 		);
 		if (playlistsStep.status === "stopped") return playlistsStep.outcome;
 
-		// Phase 3: playlist tracks. Per-playlist failures are skipped, not fatal.
+		// Phase 3: playlist tracks. Any failed read or write fails the phase: a
+		// skipped playlist would keep stale tracks and request no match refresh
+		// until the user synced again by hand.
 		const incomingPlaylistTracks = payload.playlistTracks ?? [];
 		const tracksStep = await runSyncPhase(
 			"playlist_tracks",
@@ -390,37 +427,48 @@ export async function runExtensionSyncJob(
 					return Result.ok({ changedPlaylistIds: [], tookOver });
 				}
 				const dbPlaylistsResult = await getPlaylists(accountId);
-				const dbPlaylistMap = Result.isOk(dbPlaylistsResult)
-					? new Map(dbPlaylistsResult.value.map((p) => [p.spotify_id, p]))
-					: new Map<string, Playlist>();
-
-				const trackSyncResults = await mapWithConcurrency(
-					incomingPlaylistTracks,
-					4,
-					async (entry) => {
-						const dbPlaylist = dbPlaylistMap.get(entry.playlistSpotifyId);
-						if (!dbPlaylist) return { changedPlaylistId: null };
-
-						const trackResult = await syncPlaylistTracksFromData(
-							dbPlaylist,
-							entry.tracks,
-						);
-						if (Result.isError(trackResult)) {
-							return { changedPlaylistId: null };
-						}
-
-						const changed =
-							trackResult.value.added > 0 || trackResult.value.removed > 0;
-						return { changedPlaylistId: changed ? dbPlaylist.id : null };
-					},
+				if (Result.isError(dbPlaylistsResult)) return dbPlaylistsResult;
+				const dbPlaylistMap = new Map(
+					dbPlaylistsResult.value.map((p) => [p.spotify_id, p]),
 				);
 
-				return Result.ok({
-					changedPlaylistIds: trackSyncResults.flatMap((r) =>
-						r.changedPlaylistId ? [r.changedPlaylistId] : [],
-					),
-					tookOver,
-				});
+				// The extension sends tracks only for playlists it also listed, and
+				// phase 2 just wrote those, so an unmatched entry is a payload or
+				// read defect a retry would hit again: report it, sync the rest.
+				const unmatchedCount = incomingPlaylistTracks.filter(
+					(entry) => !dbPlaylistMap.has(entry.playlistSpotifyId),
+				).length;
+				if (unmatchedCount > 0) {
+					captureExtensionSyncFailure(
+						new Error(
+							`${unmatchedCount} playlist-track entries match no synced playlist`,
+						),
+						{
+							phase: "playlist_tracks_unmatched",
+							jobId: job.id,
+							accountId,
+							level: "warning",
+						},
+					);
+				}
+
+				const trackSyncResults = await mapWithConcurrency(
+					incomingPlaylistTracks.flatMap((entry) => {
+						const playlist = dbPlaylistMap.get(entry.playlistSpotifyId);
+						return playlist ? [{ playlist, tracks: entry.tracks }] : [];
+					}),
+					4,
+					({ playlist, tracks }) =>
+						syncPlaylistTracksFromData(playlist, tracks),
+				);
+
+				const changedPlaylistIds: string[] = [];
+				for (const trackResult of trackSyncResults) {
+					if (Result.isError(trackResult)) return trackResult;
+					const { playlistId, added, removed } = trackResult.value;
+					if (added > 0 || removed > 0) changedPlaylistIds.push(playlistId);
+				}
+				return Result.ok({ changedPlaylistIds, tookOver });
 			},
 		);
 		if (tracksStep.status === "stopped") return tracksStep.outcome;
@@ -440,7 +488,10 @@ export async function runExtensionSyncJob(
 				jobId: job.id,
 				accountId,
 			});
-			return fail("target_playlists_read_failed");
+			return failOrRetry(
+				"target_playlists_read_failed",
+				targetIdsResult.error instanceof DatabaseError,
+			);
 		}
 
 		// Classify and emit one aggregated library-processing change.
@@ -456,7 +507,10 @@ export async function runExtensionSyncJob(
 				jobId: job.id,
 				accountId,
 			});
-			return fail("library_processing_apply_failed");
+			return failOrRetry(
+				"library_processing_apply_failed",
+				isTransientApplyError(applyResult.error),
+			);
 		}
 
 		if (leaseLost.aborted) return stopForLostLease();

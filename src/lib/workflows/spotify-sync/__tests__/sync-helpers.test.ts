@@ -4,7 +4,6 @@ import { z } from "zod";
 import type { LikedSong } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { SyncFailedError } from "@/lib/shared/errors/domain/sync";
 import { makeJob } from "@/test/fixtures";
 import type { SpotifyTrackDTO } from "../types";
 
@@ -252,38 +251,19 @@ describe("runPhase", () => {
 		expect(result).toHaveOkValue({ status: "superseded" });
 	});
 
-	it("is superseded when its failing write loses the fence", async () => {
-		mockSettleClaimedJob.mockResolvedValueOnce(Result.ok("superseded"));
-
-		const result = await runPhase(PHASE, TotalSchema, async () =>
-			Result.err(new SyncFailedError("liked_songs", "acct-1", "boom")),
-		);
-
-		expect(result).toHaveOkValue({ status: "superseded" });
-	});
-
-	it("returns a lifecycle error when the failing write errors", async () => {
-		const syncError = new SyncFailedError(
-			"liked_songs",
-			"acct-1",
-			"spotify exploded",
-		);
-		const cleanupError = new DatabaseError({
-			code: "db_error",
-			message: "fail cleanup failed",
+	it("a failing phase returns its error and stays running for the parent to retry or fail (regression: the phase failed itself, so the retry found it terminal and could not take it over)", async () => {
+		const syncError = new DatabaseError({
+			code: "57014",
+			message: "statement timeout",
 		});
-		mockSettleClaimedJob.mockResolvedValueOnce(Result.err(cleanupError));
 
 		const result = await runPhase(PHASE, TotalSchema, async () =>
 			Result.err(syncError),
 		);
 
-		expect(result).toHaveErrValue(cleanupError);
-		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			PHASE,
-			"failed",
-			syncError.message,
-		);
+		expect(result).toHaveErrValue(syncError);
+		expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+		expect(mockCompleteJob).not.toHaveBeenCalled();
 	});
 });
 

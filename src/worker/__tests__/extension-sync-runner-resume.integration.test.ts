@@ -8,7 +8,7 @@
  * the emitted change can be asserted, and hung once to model the crash).
  * The liked-songs read, or the return from a liked-songs or playlist-songs
  * write, can be hung once too, to model a crash mid-phase before or after
- * its writes landed.
+ * its writes landed, and a playlist-songs write can fail once with a DB error.
  * Auto-skipped unless DATABASE_URL and SUPABASE_URL point at the local stack.
  */
 
@@ -29,26 +29,31 @@ import {
 	sweepStaleExtensionSyncJobs,
 } from "@/lib/platform/jobs/extension-sync-jobs";
 import type { Job } from "@/lib/platform/jobs/repository";
+import { DatabaseError } from "@/lib/shared/errors/database";
 
 const {
 	mockDownloadSyncPayload,
+	mockDeleteSyncPayload,
 	mockApplyLibraryProcessingChange,
 	hangNextLikedSongsRead,
 	hangAfterNextLikedSongsWrite,
 	hangAfterNextPlaylistSongsWrite,
+	failNextPlaylistSongsWrite,
 } = vi.hoisted(() => ({
 	mockDownloadSyncPayload: vi.fn(),
+	mockDeleteSyncPayload: vi.fn(),
 	mockApplyLibraryProcessingChange: vi.fn(),
 	hangNextLikedSongsRead: { current: false },
 	hangAfterNextLikedSongsWrite: { current: false },
 	hangAfterNextPlaylistSongsWrite: { current: false },
+	failNextPlaylistSongsWrite: { current: false },
 }));
 
 vi.mock("@sentry/bun", () => ({ captureException: vi.fn() }));
 
 vi.mock("@/lib/workflows/extension-sync/payload-storage", () => ({
 	downloadSyncPayload: (...a: unknown[]) => mockDownloadSyncPayload(...a),
-	deleteSyncPayload: async () => Result.ok(undefined),
+	deleteSyncPayload: (...a: unknown[]) => mockDeleteSyncPayload(...a),
 }));
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
@@ -91,6 +96,12 @@ vi.mock("@/lib/domains/library/playlists/queries", async (importOriginal) => {
 		upsertPlaylistSongs: async (
 			...args: Parameters<typeof actual.upsertPlaylistSongs>
 		) => {
+			if (failNextPlaylistSongsWrite.current) {
+				failNextPlaylistSongsWrite.current = false;
+				return Result.err(
+					new DatabaseError({ code: "57014", message: "statement timeout" }),
+				);
+			}
 			const written = await actual.upsertPlaylistSongs(...args);
 			if (hangAfterNextPlaylistSongsWrite.current) {
 				hangAfterNextPlaylistSongsWrite.current = false;
@@ -177,6 +188,7 @@ beforeEach(async () => {
 	accountId = crypto.randomUUID();
 	trackIds = [crypto.randomUUID(), crypto.randomUUID()].map((u) => `test-${u}`);
 	await db()`INSERT INTO account(id, spotify_id) VALUES (${accountId}, ${`test-${accountId}`})`;
+	mockDeleteSyncPayload.mockResolvedValue(Result.ok(undefined));
 	mockDownloadSyncPayload.mockResolvedValue(
 		Result.ok(
 			new TextEncoder().encode(
@@ -194,6 +206,7 @@ afterEach(async () => {
 	hangNextLikedSongsRead.current = false;
 	hangAfterNextLikedSongsWrite.current = false;
 	hangAfterNextPlaylistSongsWrite.current = false;
+	failNextPlaylistSongsWrite.current = false;
 	if (!IS_LOCAL || !accountId) return;
 	await db()`DELETE FROM account WHERE id = ${accountId}`;
 	await db()`DELETE FROM song WHERE spotify_id IN ${db()(trackIds)}`;
@@ -268,6 +281,126 @@ describe.skipIf(!IS_LOCAL)(
         WHERE account_id = ${account()} AND type = 'extension_sync_completed'
       `;
 			expect(events).toEqual([{ payload: { jobId: parentId } }]);
+		});
+	},
+);
+
+// A target playlist already in the library, and a payload that lists it with
+// the liked songs as its tracks.
+async function stageTargetPlaylistSync(): Promise<string> {
+	const playlistSpotifyId = `test-pl-${account()}`;
+	const [playlist] = await db()<{ id: string }[]>`
+    INSERT INTO playlist(account_id, spotify_id, name, description, is_target)
+    VALUES (${account()}, ${playlistSpotifyId}, 'Target', null, true)
+    RETURNING id
+  `;
+	if (!playlist) throw new Error("playlist not seeded");
+	mockDownloadSyncPayload.mockResolvedValue(
+		Result.ok(
+			new TextEncoder().encode(
+				JSON.stringify({
+					likedSongs: trackIds.map(likedTrack),
+					playlists: [
+						{
+							id: playlistSpotifyId,
+							name: "Target",
+							description: null,
+							owner: { id: "owner" },
+							track_count: trackIds.length,
+							image_url: null,
+						},
+					],
+					playlistTracks: [
+						{ playlistSpotifyId, tracks: trackIds.map(likedTrack) },
+					],
+				}),
+			),
+		),
+	);
+	return playlist.id;
+}
+
+describe.skipIf(!IS_LOCAL)(
+	"a playlist-track write that fails with a DB error (regression: the playlist was skipped and the sync completed without it; a DB error elsewhere failed the sync on its first attempt and deleted the payload)",
+	() => {
+		it("requeues the sync behind a backoff with the payload kept, and the retry takes over the phase and writes the playlist", async () => {
+			const playlistId = await stageTargetPlaylistSync();
+			const phaseJobIds = {
+				liked_songs: await seedJob("sync_liked_songs"),
+				playlists: await seedJob("sync_playlists"),
+				playlist_tracks: await seedJob("sync_playlist_tracks"),
+			};
+			const parentId = await seedJob("extension_sync", {
+				payload_path: `${account()}/p.json`,
+				phase_job_ids: phaseJobIds,
+			});
+
+			const first = await claim();
+			expect(first.id).toBe(parentId);
+			failNextPlaylistSongsWrite.current = true;
+
+			expect(await runExtensionSyncJob(first, "actor", LIVE_LEASE)).toEqual({
+				status: "retrying",
+				error: expect.stringContaining("statement timeout"),
+			});
+			expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+			expect(mockApplyLibraryProcessingChange).not.toHaveBeenCalled();
+			const [requeued] = await db()<
+				{
+					status: string;
+					attempts: number;
+					deferred: boolean;
+					has_payload_path: boolean;
+				}[]
+			>`
+        SELECT status, attempts, available_at > now() AS deferred,
+               progress ? 'payload_path' AS has_payload_path
+        FROM job WHERE id = ${parentId}
+      `;
+			expect(requeued).toEqual({
+				status: "pending",
+				attempts: 1,
+				deferred: true,
+				has_payload_path: true,
+			});
+			expect(await readPhase(phaseJobIds.playlist_tracks)).toMatchObject({
+				status: "running",
+				attempts: 1,
+			});
+
+			const early = await claimExtensionSyncJob();
+			if (Result.isError(early)) throw early.error;
+			expect(early.value?.id).not.toBe(parentId);
+			expect((await readPhase(parentId)).status).toBe("pending");
+
+			await db()`UPDATE job SET available_at = now() WHERE id = ${parentId}`;
+			const retry = await claim();
+			expect(retry.id).toBe(parentId);
+			expect(retry.attempts).toBe(2);
+			mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
+
+			const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
+
+			expect(outcome).toEqual({ status: "completed" });
+			const written = await db()<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM playlist_song WHERE playlist_id = ${playlistId}
+      `;
+			expect(written[0]?.count).toBe(trackIds.length);
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
+			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith(
+				expect.objectContaining({
+					changes: expect.objectContaining({
+						targetPlaylists: expect.objectContaining({
+							trackMembershipChanged: true,
+						}),
+					}),
+				}),
+			);
+			expect(await readPhase(phaseJobIds.playlist_tracks)).toMatchObject({
+				status: "completed",
+				attempts: 2,
+			});
+			expect(mockDeleteSyncPayload).toHaveBeenCalledOnce();
 		});
 	},
 );
@@ -368,36 +501,7 @@ describe.skipIf(!IS_LOCAL)(
 	"crash inside the playlist-tracks phase after a target playlist's songs were written (regression: the retry's diff found the membership unchanged, so target songs were not enriched or matched until the next sync)",
 	() => {
 		it("the retry reports the target playlist membership as changed", async () => {
-			const playlistSpotifyId = `test-pl-${account()}`;
-			await db()`
-        INSERT INTO playlist(account_id, spotify_id, name, description, is_target)
-        VALUES (${account()}, ${playlistSpotifyId}, 'Target', null, true)
-      `;
-			mockDownloadSyncPayload.mockResolvedValue(
-				Result.ok(
-					new TextEncoder().encode(
-						JSON.stringify({
-							likedSongs: trackIds.map(likedTrack),
-							playlists: [
-								{
-									id: playlistSpotifyId,
-									name: "Target",
-									description: null,
-									owner: { id: "owner" },
-									track_count: trackIds.length,
-									image_url: null,
-								},
-							],
-							playlistTracks: [
-								{
-									playlistSpotifyId,
-									tracks: trackIds.map(likedTrack),
-								},
-							],
-						}),
-					),
-				),
-			);
+			await stageTargetPlaylistSync();
 			const phaseJobIds = {
 				liked_songs: await seedJob("sync_liked_songs"),
 				playlists: await seedJob("sync_playlists"),
