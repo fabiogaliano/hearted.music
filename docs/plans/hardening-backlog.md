@@ -84,6 +84,12 @@ requeues the same way on a transient DB or apply error, keeping its payload
 - **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
   After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
   delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
+- **VPS disk fills with Coolify build images (S).** Coolify builds a 1.9 GB image per commit for the
+  worker (`gbaerr9a5f86sdqvhbpng1tc`) and the gateway (`m13enxtkhj6mu08loswpdh0t`) and never removes
+  them. On 2026-10-28 the 72 GB disk, which also holds prod Postgres, reached 99%, and two app deploys
+  failed with `no space left on device`. A manual prune of unused images (keeping the 2 newest of
+  each) brought it to 58%. **Change.** Schedule a prune on the VPS (Coolify's own cleanup settings or a
+  cron `docker image prune` with a retention filter), and alert on disk usage (Kener or ntfy).
 - **Kener database is not persisted (S).** Kener (Coolify resource `r8cw0co0wogk0kw4g44kk0sc`) keeps
   its SQLite at `/app/database` with no volume, so a redeploy or container recreate wipes every monitor
   and the ntfy trigger. Add a persistent volume (needs one redeploy). Backup from 2026-10-28:
