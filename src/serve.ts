@@ -37,7 +37,15 @@ if (embeddingCheck.isErr()) {
 }
 
 async function serveClientFile(pathname: string): Promise<Response | null> {
-	const filePath = path.join(clientDir, decodeURIComponent(pathname));
+	// Scanners send malformed escapes (`/%E0%A4%A`); those name no file, they
+	// are not a server error.
+	let decoded: string;
+	try {
+		decoded = decodeURIComponent(pathname);
+	} catch {
+		return null;
+	}
+	const filePath = path.join(clientDir, decoded);
 	if (!filePath.startsWith(`${clientDir}/`)) return null;
 
 	const file = Bun.file(filePath);
