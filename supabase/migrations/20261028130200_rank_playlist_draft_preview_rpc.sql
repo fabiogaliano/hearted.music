@@ -218,30 +218,35 @@ AS $$
     LEFT JOIN genre_alias ga ON ga.alias = lower(d.g)
   ),
   -- Banded credit (bandedCredit) for every song-genre x profile-genre pair
-  -- that earns any: 1 for the same canonical genre, otherwise the directed
-  -- profile->song similarity with the reverse edge as fallback, capped at 0.6
-  -- and zeroed below 0.3. Pairs without an edge earn 0 and are omitted.
+  -- that earns any, already weighted by the profile genre: 1 for the same
+  -- canonical genre, otherwise the directed profile->song similarity with the
+  -- reverse edge as fallback, capped at 0.6 and zeroed below 0.3. Pairs
+  -- without an edge earn 0 and are omitted. The weight rides along rather than
+  -- being joined back on pid: the planner estimates profile_genre at one row,
+  -- and that join became a nested loop re-running this whole CTE per profile
+  -- genre (~2 s on a 10k library).
   edge_pair AS (
-    SELECT sg.sid, sg.canon AS song_canon, pg.pid, pg.canon AS profile_canon
+    SELECT sg.sid, sg.canon AS song_canon, pg.pid, pg.canon AS profile_canon, pg.weight
     FROM song_genre sg
     JOIN genre_similarity e ON e.to_genre = sg.canon
     JOIN profile_genre pg ON pg.canon = e.from_genre
     UNION
-    SELECT sg.sid, sg.canon, pg.pid, pg.canon
+    SELECT sg.sid, sg.canon, pg.pid, pg.canon, pg.weight
     FROM song_genre sg
     JOIN genre_similarity e ON e.from_genre = sg.canon
     JOIN profile_genre pg ON pg.canon = e.to_genre
   ),
-  genre_credit AS (
-    SELECT sg.sid, pg.pid, 1::float8 AS credit
+  weighted_credit AS (
+    SELECT sg.sid, pg.pid, pg.weight AS weighted
     FROM song_genre sg
     JOIN profile_genre pg ON pg.canon = sg.canon
     UNION ALL
-    SELECT sid, pid, credit
+    SELECT sid, pid, weight * credit
     FROM (
       SELECT
         ep.sid,
         ep.pid,
+        ep.weight,
         CASE
           WHEN r >= 1 THEN 1::float8
           WHEN r < 0.3::float8 THEN 0::float8
@@ -254,11 +259,6 @@ AS $$
       WHERE ep.profile_canon <> ep.song_canon
     ) banded
     WHERE credit > 0
-  ),
-  weighted_credit AS (
-    SELECT gc.sid, gc.pid, pg.weight * gc.credit AS weighted
-    FROM genre_credit gc
-    JOIN profile_genre pg ON pg.pid = gc.pid
   ),
   -- Scored once per distinct genre array (libraries repeat arrays across many
   -- songs), on integer keys. Weighting each credit by its profile genre
