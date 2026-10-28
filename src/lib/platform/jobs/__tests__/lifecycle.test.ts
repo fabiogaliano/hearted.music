@@ -161,3 +161,21 @@ describe("a CAS write retried after its response was lost (regression: the retry
 		expect(await run(failJob("job-1", "boom"))).toHaveOkValue("applied");
 	});
 });
+
+it("startJob leaves the phase pending when every start attempt errors (regression: it failed the phase, so the parent's retry found it terminal and could never run it)", async () => {
+	row.current = makeJob({ id: "job-1", status: "pending", attempts: 0 });
+	mockMarkJobRunning.mockImplementation(async () => lostResponse());
+	mockMarkJobFailed.mockImplementation(
+		casWrite(
+			(j) => j.status === "pending" || j.status === "running",
+			(j) => ({ ...j, status: "failed" }),
+			{ commitThenLoseResponse: false },
+		),
+	);
+
+	const started = startJob({ id: "job-1", attempts: 1 });
+	await vi.runAllTimersAsync();
+
+	expect(await started).toBeErr();
+	expect(row.current?.status).toBe("pending");
+});
