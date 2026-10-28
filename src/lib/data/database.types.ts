@@ -4660,6 +4660,8 @@ export type Database = {
 			select_match_visibility_inputs: {
 				Args: {
 					p_account_id: string;
+					p_after_playlist_id?: string;
+					p_after_song_id?: string;
 					p_playlist_id?: string;
 					p_snapshot_id: string;
 					p_song_id?: string;

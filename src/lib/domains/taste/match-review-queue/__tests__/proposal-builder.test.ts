@@ -5,7 +5,9 @@ import type { Tables } from "@/lib/data/database.types";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import { deriveProposalSubjects } from "../eligible-subjects";
 import { buildOneProposal } from "../proposal-builder";
+import { fetchTargetPlaylistFilters } from "../queries";
 import type { OrderedSubject } from "../types";
+import { computeVisibilityPolicyHash } from "../visibility-policy";
 import { computeVisibleSuggestionList } from "../visible-suggestion-list";
 
 vi.mock("@/lib/data/client", () => ({
@@ -202,6 +204,43 @@ describe("buildOneProposal", () => {
 			expect.objectContaining({ subject: subject.subject }),
 			0.5,
 			sharedNowMs,
+		);
+	});
+
+	it("regression: a filter edit landing mid-derivation re-derives, so the proposal is keyed by the filters its subjects were derived under", async () => {
+		const { upsert } = mockProposalWrites();
+		vi.mocked(getLatestMatchSnapshot).mockResolvedValue(
+			Result.ok(SNAPSHOT_ROW),
+		);
+		const strict = new Map([
+			["pl-A", { version: 1 as const, languages: { codes: ["en"] } }],
+		]);
+		const loosened = new Map([["pl-A", null]]);
+		vi.mocked(fetchTargetPlaylistFilters)
+			.mockResolvedValueOnce(Result.ok(strict))
+			.mockResolvedValueOnce(Result.ok(loosened))
+			.mockResolvedValueOnce(Result.ok(loosened));
+		const nowMs = Date.parse("2026-07-07T12:00:00Z");
+
+		const result = await buildOneProposal(
+			"acct-1",
+			"song",
+			"snap-1",
+			"balanced",
+			0.5,
+			nowMs,
+		);
+
+		expect(result).toBeOk();
+		expect(deriveProposalSubjects).toHaveBeenCalledTimes(2);
+		expect(upsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				visibility_config_hash: computeVisibilityPolicyHash(
+					{ orientation: "song", minScore: 0.5, filtersByPlaylistId: loosened },
+					nowMs,
+				),
+			}),
+			expect.anything(),
 		);
 	});
 });
