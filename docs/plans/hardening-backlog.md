@@ -121,6 +121,18 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
   `undefined`, 2026-10-17) are fixed by `c2b41a30`; HEARTED-MUSIC-1G (hydration) by `5275f7df`. Both are
   on `main` but not deployed (prod is still release `b7d7e7d6`). After deploy, confirm they stay silent,
   resolve them, and re-check PostHog for React #418.
+- **CI build containers report to Sentry (S).** HEARTED-MUSIC-1R ("Invalid environment variables",
+  fatal, 15 events on 2026-10-28) came from CI/build containers (`server_name` is a transient
+  container id, two batches at 00:32 and 00:37 UTC), not from production. The import-graph smoke
+  in `verify` and the image builds run with a DSN present. Unset the DSN for those steps (or filter
+  the fatal by `server_name`), then resolve the issue.
+- **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
+  After a day with zero Worker invocations and no 5xx on the VPS, delete it and the old
+  `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
+- **Kener alerts (S).** `ntfy.fabiogaliano.com` rejects anonymous publishes (403); create a token and
+  wire a Kener trigger to the hearted.music monitors.
+- **Logger tag (XS).** `src/lib/observability/logger.ts` stamps every JSON line with `worker: true`,
+  including lines the web app server emits (library-processing on request). Tag by process instead.
 - **Optional (S).** A Sentry inbound filter on `environment:development` as a backstop to the code gate
   (`src/server.ts:50`, `sentry.client.ts:18`); today only the `localhost` filter is on.
 - **Sentry CLI notes.** The binary is `sentry` (not the legacy `sentry-cli`). `issue list` returns null
