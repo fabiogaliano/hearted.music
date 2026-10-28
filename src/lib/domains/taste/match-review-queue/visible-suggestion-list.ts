@@ -19,7 +19,6 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type {
@@ -28,29 +27,14 @@ import type {
 	MatchReviewSubject,
 } from "@/lib/domains/taste/match-review-queue/types";
 import {
-	getMatchDecisionsForPlaylist,
-	getMatchDecisionsForSongs,
-} from "@/lib/domains/taste/song-matching/decision-queries";
-import {
-	getMatchPairsForPlaylist,
-	getMatchPairsForSong,
 	getMatchRankingsForPlaylist,
 	getMatchRankingsForSong,
 } from "@/lib/domains/taste/song-matching/queries";
 import { strictnessScore } from "@/lib/domains/taste/song-matching/strictness";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { chunkedRead } from "@/lib/shared/utils/chunked-read";
-import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
-import {
-	fetchPlaylistsMatchFilters,
-	fetchSongFilterMeta,
-	fetchSongsFilterMeta,
-} from "./filter-metadata-queries";
-import {
-	NULL_SONG_FILTER_METADATA,
-	passesPlaylistFilters,
-} from "./visibility-policy";
+import { loadVisibilityInputs } from "./visibility-inputs";
+import { passesPlaylistFilters } from "./visibility-policy";
 
 /**
  * A single (song, playlist) pair as shown to the user (B4, B5, A5, C12).
@@ -257,80 +241,6 @@ async function checkSongEntitled(
 	return Result.ok(data === true);
 }
 
-/**
- * Checks that the playlist subject is still owned by the account by looking
- * up the playlist row's account_id. Returns false when the playlist is
- * deleted or now owned by a different account.
- */
-async function checkPlaylistOwned(
-	accountId: string,
-	playlistId: string,
-): Promise<Result<boolean, DbError>> {
-	const supabase = createAdminSupabaseClient();
-	const { data, error } = await supabase
-		.from("playlist")
-		.select("id")
-		.eq("id", playlistId)
-		.eq("account_id", accountId)
-		.maybeSingle();
-	if (error) {
-		return Result.err(
-			new DatabaseError({ code: error.code, message: error.message }),
-		);
-	}
-	return Result.ok(data !== null);
-}
-
-/**
- * Returns the subset of the given playlist IDs that still belong to the account,
- * in a single query. Used by the song-orientation path to drop suggestion
- * playlists that were deleted or transferred before visible ranks are assigned,
- * so a foreign/stale playlist is never shown and then rejected at add time.
- */
-async function fetchOwnedPlaylistIds(
-	accountId: string,
-	playlistIds: readonly string[],
-): Promise<Result<Set<string>, DbError>> {
-	if (playlistIds.length === 0) return Result.ok(new Set());
-	const supabase = createAdminSupabaseClient();
-	// Chunk the `.in()` ids so the query string stays under the URI-length limit;
-	// merge the surviving ids into one Set (duplicates collapse naturally).
-	const rowsResult = await chunkedRead(playlistIds, (batch) =>
-		fromSupabaseMany(
-			supabase
-				.from("playlist")
-				.select("id")
-				.eq("account_id", accountId)
-				.in("id", batch),
-		),
-	);
-	if (Result.isError(rowsResult)) return rowsResult;
-	const owned = new Set<string>();
-	for (const row of rowsResult.value) owned.add(row.id);
-	return Result.ok(owned);
-}
-
-/**
- * Returns the subset of the given song IDs that are still entitled to the
- * account. Used by the playlist-orientation path to drop suggestion songs whose
- * entitlement was revoked before visible ranks are assigned. Uses the same bulk
- * entitlement RPC the queue-append path uses, so the two agree by sharing one
- * source rather than by convention, and avoids an N+1 of per-song checks.
- */
-async function fetchEntitledSongIds(
-	accountId: string,
-	songIds: readonly string[],
-): Promise<Result<Set<string>, DbError>> {
-	if (songIds.length === 0) return Result.ok(new Set());
-	const result = await readEntitledDataEnrichedSongIds(
-		createAdminSupabaseClient(),
-		accountId,
-		[...songIds],
-	);
-	if (Result.isError(result)) return result;
-	return Result.ok(new Set(result.value));
-}
-
 export interface SuggestedPlaylist {
 	name: string;
 	spotifyId: string;
@@ -367,55 +277,35 @@ export async function computeVisibleSongSuggestionList(
 		return { kind: "not-entitled", reason: "song-not-entitled" };
 
 	const resolvedNowMs = nowMs ?? Date.now();
-	const [pairsResult, rankingsResult, decisionsResult, songMetaResult] =
-		await Promise.all([
-			getMatchPairsForSong(sourceSnapshotId, subject.songId),
-			getMatchRankingsForSong(sourceSnapshotId, subject.songId),
-			getMatchDecisionsForSongs(accountId, [subject.songId]),
-			fetchSongFilterMeta(accountId, subject.songId),
-		]);
-
-	if (Result.isError(pairsResult))
-		return { kind: "db-error", error: pairsResult.error };
+	const [inputsResult, rankingsResult] = await Promise.all([
+		loadVisibilityInputs(createAdminSupabaseClient(), {
+			kind: "song",
+			songId: subject.songId,
+			accountId,
+			snapshotId: sourceSnapshotId,
+		}),
+		getMatchRankingsForSong(sourceSnapshotId, subject.songId),
+	]);
+	if (Result.isError(inputsResult))
+		return { kind: "db-error", error: inputsResult.error };
 	if (Result.isError(rankingsResult))
 		return { kind: "db-error", error: rankingsResult.error };
-	if (Result.isError(decisionsResult))
-		return { kind: "db-error", error: decisionsResult.error };
-	if (Result.isError(songMetaResult))
-		return { kind: "db-error", error: songMetaResult.error };
+	const inputs = inputsResult.value;
 
-	const playlistIds = [...new Set(pairsResult.value.map((r) => r.playlist_id))];
-	// Fetch suggestion-playlist filters and account ownership together. Foreign/
-	// deleted suggestion playlists are excluded here, before visible ranks are
-	// assigned, so they are never shown only to be rejected at add time.
-	// (Playlists that already contain the song are excluded upstream by
-	// getMatchPairsForSong's playlist_song anti-join.)
-	const [playlistFiltersResult, ownedPlaylistsResult] = await Promise.all([
-		fetchPlaylistsMatchFilters(playlistIds),
-		fetchOwnedPlaylistIds(accountId, playlistIds),
-	]);
-	if (Result.isError(playlistFiltersResult))
-		return { kind: "db-error", error: playlistFiltersResult.error };
-	if (Result.isError(ownedPlaylistsResult))
-		return { kind: "db-error", error: ownedPlaylistsResult.error };
-
-	const ownedPlaylists = ownedPlaylistsResult.value;
-
-	const decidedPairKeys = new Set(
-		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-	);
-
-	const songMeta = songMetaResult.value;
-
-	const pairs: MatchPairInput[] = pairsResult.value
-		.filter((r) => ownedPlaylists.has(r.playlist_id))
+	// Foreign/deleted suggestion playlists are excluded before visible ranks are
+	// assigned, so they are never shown only to be rejected at add time. Pair
+	// entitlement is not applied here: the subject's gate is the
+	// is_account_song_entitled check above, which does not require the song to
+	// still be liked and enriched.
+	const pairs: MatchPairInput[] = inputs.pairs
+		.filter((r) => inputs.ownedPlaylistIds.has(r.playlist_id))
 		.map((r) => ({
 			songId: r.song_id,
 			playlistId: r.playlist_id,
 			score: r.score,
 			fusedScore: r.fused_score,
-			songMeta,
-			playlistFilters: playlistFiltersResult.value.get(r.playlist_id) ?? null,
+			songMeta: inputs.songMetaBySongId.get(r.song_id),
+			playlistFilters: inputs.filtersByPlaylistId.get(r.playlist_id),
 		}));
 
 	const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
@@ -429,22 +319,15 @@ export async function computeVisibleSongSuggestionList(
 		subject,
 		pairs,
 		rankings,
-		decidedPairKeys,
+		inputs.decidedPairs,
 		strictnessMinScore,
 		resolvedNowMs,
-	);
-
-	const playlists = new Map<string, SuggestedPlaylist>(
-		pairsResult.value.map((r) => [
-			r.playlist_id,
-			{ name: r.playlist_name, spotifyId: r.playlist_spotify_id },
-		]),
 	);
 
 	return {
 		kind: "ok",
 		list: { orientation: "song", subject, suggestions },
-		playlists,
+		playlists: inputs.playlistsById,
 	};
 }
 
@@ -495,62 +378,41 @@ export async function computeVisibleSuggestionList(
 
 	// Playlist orientation: subject is a playlist, suggestions are songs.
 	const resolvedNowMs = nowMs ?? Date.now();
-	const owned = await checkPlaylistOwned(accountId, subject.playlistId);
-	if (Result.isError(owned)) return { kind: "db-error", error: owned.error };
-	if (!owned.value)
-		return { kind: "not-entitled", reason: "playlist-not-owned" };
-
-	const [pairsResult, rankingsResult, decisionsResult, playlistFiltersResult] =
-		await Promise.all([
-			getMatchPairsForPlaylist(sourceSnapshotId, subject.playlistId),
-			getMatchRankingsForPlaylist(sourceSnapshotId, subject.playlistId),
-			getMatchDecisionsForPlaylist(accountId, subject.playlistId),
-			fetchPlaylistsMatchFilters([subject.playlistId]),
-		]);
-
-	if (Result.isError(pairsResult))
-		return { kind: "db-error", error: pairsResult.error };
+	const [inputsResult, rankingsResult] = await Promise.all([
+		loadVisibilityInputs(createAdminSupabaseClient(), {
+			kind: "playlist",
+			playlistId: subject.playlistId,
+			accountId,
+			snapshotId: sourceSnapshotId,
+		}),
+		getMatchRankingsForPlaylist(sourceSnapshotId, subject.playlistId),
+	]);
+	if (Result.isError(inputsResult))
+		return { kind: "db-error", error: inputsResult.error };
 	if (Result.isError(rankingsResult))
 		return { kind: "db-error", error: rankingsResult.error };
-	if (Result.isError(decisionsResult))
-		return { kind: "db-error", error: decisionsResult.error };
-	if (Result.isError(playlistFiltersResult))
-		return { kind: "db-error", error: playlistFiltersResult.error };
+	const inputs = inputsResult.value;
 
-	const songIds = [...new Set(pairsResult.value.map((r) => r.song_id))];
-	// Fetch suggestion-song filter metadata and account entitlement together.
-	// Non-entitled suggestion songs are excluded here, before visible ranks are
+	// Ownership is read off the pairs, so a playlist with no pairs reads as an
+	// empty list rather than not-entitled; every caller captures zero pairs
+	// either way.
+	if (
+		inputs.pairs.length > 0 &&
+		!inputs.ownedPlaylistIds.has(subject.playlistId)
+	)
+		return { kind: "not-entitled", reason: "playlist-not-owned" };
+
+	// Non-entitled suggestion songs are excluded before visible ranks are
 	// assigned, so a revoked song is never shown only to be rejected at add time.
-	// (Songs already in this playlist are excluded upstream by
-	// getMatchPairsForPlaylist's playlist_song anti-join.)
-	const [songsMetaResult, entitledSongsResult] = await Promise.all([
-		fetchSongsFilterMeta(accountId, songIds),
-		fetchEntitledSongIds(accountId, songIds),
-	]);
-	if (Result.isError(songsMetaResult))
-		return { kind: "db-error", error: songsMetaResult.error };
-	if (Result.isError(entitledSongsResult))
-		return { kind: "db-error", error: entitledSongsResult.error };
-
-	const entitledSongs = entitledSongsResult.value;
-
-	const reviewPlaylistFilters =
-		playlistFiltersResult.value.get(subject.playlistId) ?? null;
-
-	const decidedPairKeys = new Set(
-		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
-	);
-
-	const pairs: MatchPairInput[] = pairsResult.value
-		.filter((r) => entitledSongs.has(r.song_id))
+	const pairs: MatchPairInput[] = inputs.pairs
+		.filter((r) => inputs.entitledSongIds.has(r.song_id))
 		.map((r) => ({
 			songId: r.song_id,
 			playlistId: r.playlist_id,
 			score: r.score,
 			fusedScore: r.fused_score,
-			songMeta:
-				songsMetaResult.value.get(r.song_id) ?? NULL_SONG_FILTER_METADATA,
-			playlistFilters: reviewPlaylistFilters,
+			songMeta: inputs.songMetaBySongId.get(r.song_id),
+			playlistFilters: inputs.filtersByPlaylistId.get(subject.playlistId),
 		}));
 
 	const rankings: RankingInput[] = rankingsResult.value.map((r) => ({
@@ -564,7 +426,7 @@ export async function computeVisibleSuggestionList(
 		subject,
 		pairs,
 		rankings,
-		decidedPairKeys,
+		inputs.decidedPairs,
 		strictnessMinScore,
 		resolvedNowMs,
 	);
