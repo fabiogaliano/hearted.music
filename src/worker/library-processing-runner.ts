@@ -3,7 +3,7 @@ import { Result } from "better-result";
 import { log } from "@/lib/observability/logger";
 import { recordJobExecutionMeasurement } from "@/lib/platform/jobs/execution-measurements";
 import type { Job } from "@/lib/platform/jobs/repository";
-import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
+import type { DbError } from "@/lib/shared/errors/database";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
 	type RetryOptions,
@@ -11,10 +11,11 @@ import {
 } from "@/lib/shared/utils/result-wrappers/generic";
 import type { EnrichmentExecuteResult } from "@/lib/workflows/enrichment-pipeline/types";
 import { applyLibraryProcessingChange } from "@/lib/workflows/library-processing/service";
-import type {
-	LibraryProcessingApplyError,
-	LibraryProcessingChange,
-	LibraryProcessingWorkflow,
+import {
+	isTransientApplyError,
+	type LibraryProcessingApplyError,
+	type LibraryProcessingChange,
+	type LibraryProcessingWorkflow,
 } from "@/lib/workflows/library-processing/types";
 import {
 	changeOf,
@@ -28,7 +29,7 @@ import {
 	executeEnrichmentJob,
 	executeMatchSnapshotRefreshJob,
 } from "./execute";
-import { finalizeJob, requeueLibraryProcessingJobForRetry } from "./finalize";
+import { finalizeJob, requeueClaimedJobForRetry } from "./finalize";
 import { captureWorkerJobFailure } from "./job-failure-reporting";
 import { captureWorkerEvent } from "./posthog-capture";
 
@@ -217,7 +218,7 @@ async function tryRequeueForRetry(
 	const { job, actor, workflow } = ctx;
 	if (job.attempts >= job.max_attempts) return false;
 
-	const requeued = await requeueLibraryProcessingJobForRetry(job, message);
+	const requeued = await requeueClaimedJobForRetry(job, message);
 	if (Result.isError(requeued)) {
 		log.error("requeue-for-retry-failed", {
 			actor,
@@ -297,19 +298,7 @@ function leaseLostOutcome(ctx: RunContext): RunJobOutcome {
 
 const SETTLEMENT_RETRY_OPTIONS: RetryOptions<LibraryProcessingApplyError> = {
 	maxRetries: 3,
-	isRetryable: (error) => {
-		switch (error.kind) {
-			case "load_state":
-			case "load_facts":
-			case "persist_state":
-			case "persist_active_refs":
-				return error.cause instanceof DatabaseError;
-			case "effect_ensure_failed":
-				return error.cause instanceof DatabaseError;
-			case "persist_conflict":
-				return true;
-		}
-	},
+	isRetryable: isTransientApplyError,
 };
 
 async function settleLibraryProcessing(

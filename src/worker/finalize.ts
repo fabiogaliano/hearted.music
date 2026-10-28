@@ -27,14 +27,15 @@ const sql = postgres(env.DATABASE_URL, {
 const RETRY_BACKOFF_BASE_SECONDS = 30;
 
 /**
- * Requeue a running job whose execution threw, consuming one attempt (the
- * claim RPC already incremented `attempts`). Mirrors the stale-job sweep's
- * reset (status back to pending, started_at/heartbeat_at cleared) so app-level
- * errors get the same retry budget as worker crashes. Returns false when this
+ * Requeue a claimed job whose run failed transiently, consuming one attempt
+ * (the claim RPC already incremented `attempts`). Mirrors the stale-job
+ * sweep's reset (status back to pending, started_at/heartbeat_at cleared) so
+ * app-level errors get the same retry budget as worker crashes. Only claims
+ * that honour `available_at` wait out the backoff. Returns false when this
  * claim no longer owns the job (swept, reclaimed, or dead-lettered); the
  * caller's terminal settle is then superseded too.
  */
-export async function requeueLibraryProcessingJobForRetry(
+export async function requeueClaimedJobForRetry(
 	job: Job,
 	errorMsg: string,
 ): Promise<Result<boolean, DbError>> {

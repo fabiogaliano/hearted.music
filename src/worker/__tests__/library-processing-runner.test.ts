@@ -2,10 +2,7 @@ import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import {
-	finalizeJob,
-	requeueLibraryProcessingJobForRetry,
-} from "@/worker/finalize";
+import { finalizeJob, requeueClaimedJobForRetry } from "@/worker/finalize";
 
 const recordJobExecutionMeasurementMock = vi
 	.fn()
@@ -18,9 +15,7 @@ vi.mock("@/lib/platform/jobs/execution-measurements", () => ({
 
 vi.mock("@/worker/finalize", () => ({
 	finalizeJob: vi.fn(),
-	requeueLibraryProcessingJobForRetry: vi
-		.fn()
-		.mockResolvedValue({ isError: false }),
+	requeueClaimedJobForRetry: vi.fn().mockResolvedValue({ isError: false }),
 }));
 
 vi.mock("@/worker/execute", () => ({
@@ -111,9 +106,7 @@ describe("runClaimedJob", () => {
 		vi.mocked(finalizeJob).mockResolvedValue(Result.ok("applied"));
 		// Default: no retry budget consumed successfully — existing failure-path
 		// tests keep exercising terminal settlement. Retry tests override to true.
-		vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-			Result.ok(false),
-		);
+		vi.mocked(requeueClaimedJobForRetry).mockResolvedValue(Result.ok(false));
 	});
 
 	afterEach(() => {
@@ -202,9 +195,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockRejectedValue(
 				new Error("provider down"),
 			);
-			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-				Result.ok(true),
-			);
+			vi.mocked(requeueClaimedJobForRetry).mockResolvedValue(Result.ok(true));
 
 			const outcome = await runClaimedJob(
 				makeJob({ attempts: 1, max_attempts: 3 }),
@@ -213,7 +204,7 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("retrying");
-			expect(requeueLibraryProcessingJobForRetry).toHaveBeenCalledWith(
+			expect(requeueClaimedJobForRetry).toHaveBeenCalledWith(
 				expect.objectContaining({ id: "job-1" }),
 				"provider down",
 			);
@@ -226,9 +217,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeMatchSnapshotRefreshJob).mockRejectedValue(
 				new Error("snapshot exploded"),
 			);
-			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-				Result.ok(true),
-			);
+			vi.mocked(requeueClaimedJobForRetry).mockResolvedValue(Result.ok(true));
 
 			const outcome = await runClaimedJob(
 				makeJob({
@@ -258,7 +247,7 @@ describe("runClaimedJob", () => {
 			);
 
 			expect(outcome.status).toBe("failed");
-			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+			expect(requeueClaimedJobForRetry).not.toHaveBeenCalled();
 			expect(finalizeJob).toHaveBeenCalledWith(
 				expect.objectContaining({ id: "job-1" }),
 				expect.objectContaining({ status: "failed", error: "provider down" }),
@@ -269,9 +258,7 @@ describe("runClaimedJob", () => {
 			vi.mocked(executeEnrichmentJob).mockRejectedValue(
 				new Error("provider down"),
 			);
-			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-				Result.ok(false),
-			);
+			vi.mocked(requeueClaimedJobForRetry).mockResolvedValue(Result.ok(false));
 
 			const outcome = await runClaimedJob(
 				makeJob({ attempts: 1, max_attempts: 3 }),
@@ -397,7 +384,7 @@ describe("runClaimedJob", () => {
 
 			expect(outcome.status).toBe("lease_lost");
 			expect(finalizeJob).not.toHaveBeenCalled();
-			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+			expect(requeueClaimedJobForRetry).not.toHaveBeenCalled();
 			expect(recordJobExecutionMeasurementMock).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
@@ -480,9 +467,7 @@ describe("runClaimedJob", () => {
 
 		it("regression: a completed run whose finalize fails is left for the stale sweep, never requeued", async () => {
 			vi.mocked(executeEnrichmentJob).mockResolvedValue(ENRICHMENT_EXEC_RESULT);
-			vi.mocked(requeueLibraryProcessingJobForRetry).mockResolvedValue(
-				Result.ok(true),
-			);
+			vi.mocked(requeueClaimedJobForRetry).mockResolvedValue(Result.ok(true));
 			vi.mocked(finalizeJob).mockResolvedValue(Result.err(settleError));
 
 			const promise = runClaimedJob(
@@ -494,7 +479,7 @@ describe("runClaimedJob", () => {
 			const outcome = await promise;
 
 			expect(outcome.status).toBe("finalize_failed");
-			expect(requeueLibraryProcessingJobForRetry).not.toHaveBeenCalled();
+			expect(requeueClaimedJobForRetry).not.toHaveBeenCalled();
 			expect(applyLibraryProcessingChangeMock).not.toHaveBeenCalled();
 		});
 	});

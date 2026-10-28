@@ -1,4 +1,4 @@
-import type { DbError } from "@/lib/shared/errors/database";
+import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 
 /** The job types library-processing state tracks; each is one `job.type`. */
 export type LibraryProcessingWorkflow = "enrichment" | "match_snapshot_refresh";
@@ -129,3 +129,23 @@ export type LibraryProcessingApplyError =
 			cause: LibraryProcessingApplyCause;
 	  }
 	| { kind: "persist_active_refs"; cause: DbError };
+
+/**
+ * Whether applying the same change again can succeed. Every apply write is a
+ * compare-and-set from a fresh load, so a re-apply after a DB failure or a
+ * lost race is safe; an unexpected cause would only fail the same way.
+ */
+export function isTransientApplyError(
+	error: LibraryProcessingApplyError,
+): boolean {
+	switch (error.kind) {
+		case "load_state":
+		case "load_facts":
+		case "persist_state":
+		case "persist_active_refs":
+		case "effect_ensure_failed":
+			return error.cause instanceof DatabaseError;
+		case "persist_conflict":
+			return true;
+	}
+}
