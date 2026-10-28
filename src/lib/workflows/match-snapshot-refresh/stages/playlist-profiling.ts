@@ -47,6 +47,11 @@ function toMatchingProfile(
 		// select the right base weights — the actual pill list is already
 		// baked into genreDistribution and the intent embedding by
 		// computeProfile (Task 1.4).
+		// For a carried-forward profile this reads today's pills while the
+		// distribution and embedding hold the pills it was computed with: the
+		// stored profile records that pill state only inside content_hash, which
+		// can't be reversed. A pill edit since then mismatches the weight set
+		// until the next successful profile.
 		hasGenrePills: (playlist.genre_pills?.length ?? 0) > 0,
 	};
 }
