@@ -91,7 +91,10 @@ function buildPostHogOptions(
 		api_host: config.apiHost,
 		ui_host: config.uiHost,
 		defaults: "2025-05-24",
-		capture_exceptions: true,
+		// Sentry is the one error tracker: it gets the sourcemaps and the alerts.
+		// PostHog has no sourcemaps, so its copies were unreadable and forked new
+		// issues on every deploy.
+		capture_exceptions: false,
 		// Dead-click autocapture lazy-fetches /static/dead-clicks-autocapture.js,
 		// which blockers match by filename. Unlike the recorder, its loader always
 		// fetches even when the script is bundled (only the global
