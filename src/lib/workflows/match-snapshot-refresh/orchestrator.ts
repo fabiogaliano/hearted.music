@@ -297,12 +297,15 @@ export async function executeMatchSnapshotRefresh(
 	startStage(progress, "playlist_profiling");
 	await persistRefreshProgress(job, progress);
 
-	const { playlists, profiles } = await loadTargetPlaylistProfiles(
-		accountId,
-		profilingService,
-	);
+	const { playlists, profiles, carriedForwardCount } =
+		await loadTargetPlaylistProfiles(accountId, profilingService);
 
-	finishStage(progress, "playlist_profiling", playlists.length, 0);
+	finishStage(
+		progress,
+		"playlist_profiling",
+		playlists.length - carriedForwardCount,
+		carriedForwardCount,
+	);
 	progress.playlistCount = playlists.length;
 	await persistRefreshProgress(job, progress);
 
