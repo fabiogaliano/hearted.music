@@ -15,13 +15,14 @@ vi.mock("../queries", () => ({
 }));
 
 const executeEffectMock = vi.fn();
+const loadJobOutcomeMetadataMock = vi.fn();
 
 vi.mock("../scheduler", () => ({
 	createReadinessAccessor: () => async () => true,
 	describeTrigger: () => "test",
 	executeEffect: (...args: unknown[]) => executeEffectMock(...args),
-	loadJobOutcomeMetadata: async () =>
-		Result.ok({ satisfiedMarker: null, batchSequence: null }),
+	loadJobOutcomeMetadata: (...args: unknown[]) =>
+		loadJobOutcomeMetadataMock(...args),
 }));
 
 const getTargetPlaylistsMock = vi.fn();
@@ -35,7 +36,11 @@ vi.mock("@/lib/observability/account-label", () => ({
 }));
 
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { FirstMatchSetupChanges, MaintenanceChanges } from "../changes";
+import {
+	EnrichmentChanges,
+	FirstMatchSetupChanges,
+	MaintenanceChanges,
+} from "../changes";
 import { applyLibraryProcessingChange } from "../service";
 
 function makeState(
@@ -64,6 +69,9 @@ describe("applyLibraryProcessingChange persistence", () => {
 		vi.clearAllMocks();
 		swapActiveJobRefMock.mockResolvedValue(Result.ok(true));
 		getTargetPlaylistsMock.mockResolvedValue(Result.ok([{ id: "playlist-1" }]));
+		loadJobOutcomeMetadataMock.mockResolvedValue(
+			Result.ok({ satisfiedMarker: null, batchSequence: null }),
+		);
 		executeEffectMock.mockImplementation(
 			async (_effect: unknown, state: LibraryProcessingState) =>
 				Result.ok({
@@ -135,12 +143,27 @@ describe("applyLibraryProcessingChange persistence", () => {
 	it("regression: a failed target-playlist read errors instead of skipping enrichment on target confirmation", async () => {
 		const dbError = new DatabaseError({ code: "08006", message: "db down" });
 		getTargetPlaylistsMock.mockResolvedValue(Result.err(dbError));
-		getOrCreateStateMock.mockResolvedValue(
-			Result.ok(makeState("2026-10-06T10:00:00.000001+00:00")),
-		);
 
 		const result = await applyLibraryProcessingChange(
 			FirstMatchSetupChanges.setupCompleted("acct-1"),
+		);
+
+		expect(result).toHaveErrValue({ kind: "load_facts", cause: dbError });
+		expect(persistStateMock).not.toHaveBeenCalled();
+		expect(executeEffectMock).not.toHaveBeenCalled();
+	});
+
+	it("regression: a failed job-outcome read errors instead of settling requests the job never saw", async () => {
+		const dbError = new DatabaseError({ code: "08006", message: "db down" });
+		loadJobOutcomeMetadataMock.mockResolvedValue(Result.err(dbError));
+
+		const result = await applyLibraryProcessingChange(
+			EnrichmentChanges.completed({
+				accountId: "acct-1",
+				jobId: "job-done",
+				requestSatisfied: true,
+				newCandidatesAvailable: false,
+			}),
 		);
 
 		expect(result).toHaveErrValue({ kind: "load_facts", cause: dbError });
