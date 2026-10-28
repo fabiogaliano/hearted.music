@@ -173,6 +173,9 @@ jobs:
     # follows the code filter as well as the schema/data paths.
     if: needs.detect.outputs.db_security == 'true' || needs.detect.outputs.code == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     timeout-minutes: 20
     concurrency:
       group: db-security-${{ github.workflow }}-${{ github.ref }}
@@ -200,6 +203,15 @@ jobs:
         with:
           version: 2.101.0
           github-token: ${{ github.token }}
+
+      # Anonymous ghcr.io/supabase/* pulls get throttled (toomanyrequests) and
+      # failed this job twice on 2026-10-28; authenticated pulls get the
+      # per-token limit instead.
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start local Supabase and run DB integration tests
         run: |

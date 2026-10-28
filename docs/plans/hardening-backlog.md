@@ -85,16 +85,6 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 - `tsconfig.json:3` excludes `control-panel`; `typecheck:control-panel` (`package.json:25`) never runs in
   CI; nothing builds or typechecks the extension. **Change.** Add both to the `verify` job.
 
-### 4.4 `db-security` fails on throttled GHCR pulls — S
-
-- `supabase start` (`main.yml:204-213`) pulls `ghcr.io/supabase/*` anonymously on every run. GHCR
-  throttles them (`toomanyrequests`); the 3 attempts 60 s apart are not enough, so `db-security` failed
-  twice on 2026-10-28 without running a test (PR #57 and its merge to `main`). Every prod job needs
-  `db-security`, so the merge deployed only after a manual rerun. Skipping unused services
-  (2026-10-27) already cut the pull count.
-- **Change.** Log in to `ghcr.io` with `github.token` before `supabase start` (the `docker/login-action`
-  pin at `main.yml:337` already exists); if that is not enough, cache the images between runs.
-
 ---
 
 ## 5. Observability housekeeping
