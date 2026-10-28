@@ -1,5 +1,6 @@
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { VisibilityInputs } from "@/lib/domains/taste/match-review-queue/visibility-inputs";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { addSongToPlaylist, getSongSuggestions } from "../matching.functions";
 
@@ -8,23 +9,16 @@ const {
 	mockGetLatestMatchSnapshot,
 	mockGetMatchResults,
 	mockGetMatchResultsForSong,
-	mockGetMatchPairsForSong,
 	mockGetMatchRankingsForSong,
 	mockGetServedRanksForSong,
-	mockGetMatchDecisionsForSongs,
 	mockGetNewItemIds,
 	mockUpsertMatchDecision,
 	mockResolveMinMatchScore,
-	mockFetchSongFilterMeta,
-	mockFetchPlaylistsMatchFilters,
+	mockLoadVisibilityInputs,
 	mockRpc,
-	mockSelect,
 	mockFrom,
 } = vi.hoisted(() => {
-	const mockSelect = vi.fn();
-	const mockFrom: ReturnType<typeof vi.fn> = vi.fn(() => ({
-		select: mockSelect,
-	}));
+	const mockFrom: ReturnType<typeof vi.fn> = vi.fn();
 	return {
 		mockAuthContext: {
 			session: { accountId: "acct-1" },
@@ -33,19 +27,15 @@ const {
 		mockGetLatestMatchSnapshot: vi.fn(),
 		mockGetMatchResults: vi.fn(),
 		mockGetMatchResultsForSong: vi.fn(),
-		mockGetMatchPairsForSong: vi.fn(),
 		mockGetMatchRankingsForSong: vi.fn(),
 		mockGetServedRanksForSong: vi.fn(),
-		mockGetMatchDecisionsForSongs: vi.fn(),
 		mockGetNewItemIds: vi.fn(),
 		mockUpsertMatchDecision: vi.fn(),
 		// Default 0 = no read-time bar, so existing entitlement/ordering
 		// expectations are unaffected. clearAllMocks keeps this implementation.
 		mockResolveMinMatchScore: vi.fn().mockResolvedValue(0),
-		mockFetchSongFilterMeta: vi.fn(),
-		mockFetchPlaylistsMatchFilters: vi.fn(),
+		mockLoadVisibilityInputs: vi.fn(),
 		mockRpc: vi.fn(),
-		mockSelect,
 		mockFrom,
 	};
 });
@@ -90,8 +80,6 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 	getMatchResults: (...args: unknown[]) => mockGetMatchResults(...args),
 	getMatchResultsForSong: (...args: unknown[]) =>
 		mockGetMatchResultsForSong(...args),
-	getMatchPairsForSong: (...args: unknown[]) =>
-		mockGetMatchPairsForSong(...args),
 	getMatchRankingsForSong: (...args: unknown[]) =>
 		mockGetMatchRankingsForSong(...args),
 	getServedRanksForSong: (...args: unknown[]) =>
@@ -99,8 +87,6 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 }));
 
 vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
-	getMatchDecisionsForSongs: (...args: unknown[]) =>
-		mockGetMatchDecisionsForSongs(...args),
 	upsertMatchDecision: (...args: unknown[]) => mockUpsertMatchDecision(...args),
 }));
 
@@ -113,52 +99,56 @@ vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 		mockResolveMinMatchScore(...args),
 }));
 
-vi.mock(
-	"@/lib/domains/taste/match-review-queue/filter-metadata-queries",
-	() => ({
-		fetchSongFilterMeta: (...args: unknown[]) =>
-			mockFetchSongFilterMeta(...args),
-		fetchSongsFilterMeta: vi.fn(),
-		fetchPlaylistsMatchFilters: (...args: unknown[]) =>
-			mockFetchPlaylistsMatchFilters(...args),
-	}),
-);
+vi.mock("@/lib/domains/taste/match-review-queue/visibility-inputs", () => ({
+	loadVisibilityInputs: (...args: unknown[]) =>
+		mockLoadVisibilityInputs(...args),
+}));
+
+const SONG_META = {
+	language: "en",
+	languageSecondary: null,
+	releaseYear: 2020,
+	vocalGender: null,
+	likedAt: Date.parse("2026-01-01T00:00:00Z"),
+};
 
 /**
- * Serves the ownership check (select.eq.in) on the suggestions path; every
- * listed playlist is owned. Names come from the pair read, not from here.
+ * Visibility inputs for song-1 in snap-1: every listed pair's playlist is
+ * owned, the song carries SONG_META, and each playlist is named after its id.
  */
-function mockOwnedPlaylists(ids: string[]) {
-	const inFn = vi
-		.fn()
-		.mockResolvedValue({ data: ids.map((id) => ({ id })), error: null });
-	mockSelect.mockReturnValue({ eq: () => ({ in: inFn }) });
+function songInputs(
+	pairs: Array<{ playlistId: string; score: number; fusedScore: number }>,
+	overrides: Partial<VisibilityInputs> = {},
+): VisibilityInputs {
+	return {
+		pairs: pairs.map((p) => ({
+			song_id: "song-1",
+			playlist_id: p.playlistId,
+			score: p.score,
+			fused_score: p.fusedScore,
+		})),
+		entitledSongIds: new Set(["song-1"]),
+		ownedPlaylistIds: new Set(pairs.map((p) => p.playlistId)),
+		decidedPairs: new Set(),
+		songMetaBySongId: new Map([["song-1", SONG_META]]),
+		filtersByPlaylistId: new Map(),
+		playlistsById: new Map(
+			pairs.map((p) => [
+				p.playlistId,
+				{ name: `Name of ${p.playlistId}`, spotifyId: `sp-${p.playlistId}` },
+			]),
+		),
+		...overrides,
+	};
 }
 
 function pair(playlistId: string, score: number, fusedScore: number) {
-	return {
-		song_id: "song-1",
-		playlist_id: playlistId,
-		score,
-		fused_score: fusedScore,
-		playlist_name: `Name of ${playlistId}`,
-		playlist_spotify_id: `sp-${playlistId}`,
-	};
+	return { playlistId, score, fusedScore };
 }
 
 describe("getSongSuggestions (billing-aware)", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFetchSongFilterMeta.mockResolvedValue(
-			Result.ok({
-				language: "en",
-				languageSecondary: null,
-				releaseYear: 2020,
-				vocalGender: null,
-				likedAt: Date.parse("2026-01-01T00:00:00Z"),
-			}),
-		);
-		mockFetchPlaylistsMatchFilters.mockResolvedValue(Result.ok(new Map()));
 	});
 
 	it("returns matches ordered by song-orientation model rank, not raw score", async () => {
@@ -166,8 +156,8 @@ describe("getSongSuggestions (billing-aware)", () => {
 		mockRpc.mockResolvedValue({ data: true, error: null });
 
 		// pl-1 has the higher raw score but lower model rank — the ranking wins.
-		mockGetMatchPairsForSong.mockResolvedValue(
-			Result.ok([pair("pl-1", 0.85, 0.8), pair("pl-2", 0.75, 0.9)]),
+		mockLoadVisibilityInputs.mockResolvedValue(
+			Result.ok(songInputs([pair("pl-1", 0.85, 0.8), pair("pl-2", 0.75, 0.9)])),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(
 			Result.ok([
@@ -185,9 +175,6 @@ describe("getSongSuggestions (billing-aware)", () => {
 				},
 			]),
 		);
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
-
-		mockOwnedPlaylists(["pl-1", "pl-2"]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
@@ -235,11 +222,10 @@ describe("getSongSuggestions (billing-aware)", () => {
 	it("regression: throws when the suggestion pair read fails instead of returning no suggestions", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockRpc.mockResolvedValue({ data: true, error: null });
-		mockGetMatchPairsForSong.mockResolvedValue(
+		mockLoadVisibilityInputs.mockResolvedValue(
 			Result.err(new DatabaseError({ code: "57014", message: "timeout" })),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 
 		await expect(
 			getSongSuggestions({ data: { songId: "song-1" } }),
@@ -251,20 +237,20 @@ describe("getSongSuggestions (billing-aware)", () => {
 		mockRpc.mockResolvedValue({ data: true, error: null });
 		// pl-3 has fitScore below the 0.5 minScore bar — must be filtered out.
 		// pl-4 is already decided — must be excluded.
-		mockGetMatchPairsForSong.mockResolvedValue(
-			Result.ok([
-				pair("pl-3", 0.3, 0.3),
-				pair("pl-4", 0.9, 0.9),
-				pair("pl-5", 0.8, 0.7),
-			]),
+		mockLoadVisibilityInputs.mockResolvedValue(
+			Result.ok(
+				songInputs(
+					[
+						pair("pl-3", 0.3, 0.3),
+						pair("pl-4", 0.9, 0.9),
+						pair("pl-5", 0.8, 0.7),
+					],
+					{ decidedPairs: new Set(["song-1:pl-4"]) },
+				),
+			),
 		);
 		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
-		mockGetMatchDecisionsForSongs.mockResolvedValue(
-			Result.ok([{ song_id: "song-1", playlist_id: "pl-4" }]),
-		);
 		mockResolveMinMatchScore.mockResolvedValue(0.5);
-
-		mockOwnedPlaylists(["pl-3", "pl-4", "pl-5"]);
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
@@ -277,21 +263,18 @@ describe("getSongSuggestions (billing-aware)", () => {
 	it("regression: drops playlists whose match filters hide the song, as the deck does", async () => {
 		mockGetLatestMatchSnapshot.mockResolvedValue(Result.ok({ id: "snap-1" }));
 		mockRpc.mockResolvedValue({ data: true, error: null });
-		mockGetMatchPairsForSong.mockResolvedValue(
-			Result.ok([pair("pl-pt", 0.9, 0.9), pair("pl-any", 0.8, 0.8)]),
-		);
-		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
-		mockGetMatchDecisionsForSongs.mockResolvedValue(Result.ok([]));
 		// The song is English; pl-pt only accepts Portuguese songs.
-		mockFetchPlaylistsMatchFilters.mockResolvedValue(
+		mockLoadVisibilityInputs.mockResolvedValue(
 			Result.ok(
-				new Map([
-					["pl-pt", { version: 1, languages: { codes: ["pt"] } }],
-					["pl-any", null],
-				]),
+				songInputs([pair("pl-pt", 0.9, 0.9), pair("pl-any", 0.8, 0.8)], {
+					filtersByPlaylistId: new Map([
+						["pl-pt", { version: 1, languages: { codes: ["pt"] } }],
+						["pl-any", { version: 1 }],
+					]),
+				}),
 			),
 		);
-		mockOwnedPlaylists(["pl-pt", "pl-any"]);
+		mockGetMatchRankingsForSong.mockResolvedValue(Result.ok([]));
 
 		const result = await getSongSuggestions({ data: { songId: "song-1" } });
 
