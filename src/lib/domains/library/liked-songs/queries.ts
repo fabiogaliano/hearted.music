@@ -66,8 +66,10 @@ export type LikedSongFilter =
 	| "no_suggestions"
 	| "analyzed";
 
-/** The liked-song fields the diff/analysis sweeps read — never the full row. */
-export type LikedSongRef = Pick<LikedSong, "song_id" | "unliked_at">;
+/** The liked-song fields the sync diff reads — never the full row. */
+export type LikedSongRef = Pick<LikedSong, "song_id" | "unliked_at"> & {
+	spotify_id: string;
+};
 
 const GET_ALL_PAGE_SIZE = 1_000;
 
@@ -75,9 +77,11 @@ const GET_ALL_PAGE_SIZE = 1_000;
  * Gets all liked-song refs for an account, newest first.
  * Returns empty array if none found.
  *
- * Projects to `song_id` + `unliked_at` only: this feeds whole-library sweeps (sync
- * diff, analysis backfill), where `select("*")` would haul every column for
- * thousands of rows when callers only key off the id and soft-delete flag.
+ * Projects to `song_id`, `unliked_at` and the song's `spotify_id`: this feeds the
+ * whole-library sync diff, where `select("*")` would haul every column for
+ * thousands of rows. The `spotify_id` is joined here because the diff keys on
+ * it, and fetching it afterwards would re-enter thousands of DB-derived ids as
+ * `.in()` filters.
  * Soft-deleted rows are intentionally kept — the sync diff needs them to detect
  * re-likes (see incrementalSync).
  *
@@ -96,14 +100,16 @@ export async function getAll(
 		const page = await fromSupabaseMany(
 			supabase
 				.from("liked_song")
-				.select("song_id, unliked_at")
+				.select("song_id, unliked_at, song!inner(spotify_id)")
 				.eq("account_id", accountId)
 				.order("liked_at", { ascending: false })
 				.order("song_id")
 				.range(rows.length, rows.length + GET_ALL_PAGE_SIZE - 1),
 		);
 		if (Result.isError(page)) return page;
-		rows.push(...page.value);
+		for (const { song, ...ref } of page.value) {
+			rows.push({ ...ref, spotify_id: song.spotify_id });
+		}
 		if (page.value.length < GET_ALL_PAGE_SIZE) return Result.ok(rows);
 	}
 }

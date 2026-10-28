@@ -15,7 +15,7 @@ import {
 	upsert as upsertLikedSongs,
 } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
-import { getByIds, upsertCatalog } from "@/lib/domains/library/songs/queries";
+import { upsertCatalog } from "@/lib/domains/library/songs/queries";
 import {
 	completeJob,
 	startJob,
@@ -184,16 +184,6 @@ export async function incrementalSync(
 	},
 ): Promise<Result<LikedSongsSyncResult, SyncOperationError>> {
 	const { likedSongs, existingLikedSongs, likedSongsIds } = data;
-	const existingSongIds = existingLikedSongs.map(
-		(ls: LikedSongRef) => ls.song_id,
-	);
-	const songsResult = await getByIds(
-		existingSongIds.filter((id: string) => id.length > 0),
-	);
-	if (Result.isError(songsResult)) {
-		return Result.err(songsResult.error);
-	}
-	const existingSongs = songsResult.value;
 
 	// Diff against songs the account *currently* likes — a row with unliked_at set
 	// does not count as present. This is what lets a re-like resurface: its row
@@ -201,15 +191,10 @@ export async function incrementalSync(
 	// landing it in toAdd where the self-healing upsert clears unliked_at. Diffing
 	// against every row, soft-deleted or not, would drop a re-like into neither
 	// bucket and lose the song from the library permanently.
-	const songIdToSpotifyId = new Map(
-		existingSongs.map((s: Song) => [s.id, s.spotify_id]),
+	const activeLikedSongs = existingLikedSongs.filter(
+		(ls) => ls.unliked_at === null,
 	);
-	const activeSpotifyIds = new Set(
-		existingLikedSongs
-			.filter((ls: LikedSongRef) => ls.unliked_at === null)
-			.map((ls: LikedSongRef) => songIdToSpotifyId.get(ls.song_id))
-			.filter((id): id is string => id !== undefined),
-	);
+	const activeSpotifyIds = new Set(activeLikedSongs.map((ls) => ls.spotify_id));
 
 	const toAdd = likedSongs.filter(
 		(st: SpotifyTrackDTO) => !activeSpotifyIds.has(st.track.id),
@@ -217,9 +202,8 @@ export async function incrementalSync(
 	// Only soft-delete songs the account still actively likes; re-stamping an
 	// already-unliked row would inflate `removed` and re-fire downstream
 	// library-processing on every sync.
-	const toRemove = existingSongs.filter(
-		(s: Song) =>
-			activeSpotifyIds.has(s.spotify_id) && !likedSongsIds.has(s.spotify_id),
+	const toRemove = activeLikedSongs.filter(
+		(ls) => !likedSongsIds.has(ls.spotify_id),
 	);
 
 	let newSongs: Song[] = [];
@@ -234,7 +218,7 @@ export async function incrementalSync(
 	if (toRemove.length > 0) {
 		const deleteResult = await softDeleteLikedSongs(
 			accountId,
-			toRemove.map((track) => track.id),
+			toRemove.map((ls) => ls.song_id),
 		);
 		if (Result.isError(deleteResult)) {
 			return Result.err(deleteResult.error);
