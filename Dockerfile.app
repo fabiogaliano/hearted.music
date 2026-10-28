@@ -45,11 +45,21 @@ COPY --from=build /app/dist ./dist
 COPY src/serve.ts src/instrument.ts ./src/
 COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
 
+# Coolify's healthcheck runs curl inside the container. Without curl every
+# deploy rolled back as unhealthy; with the check off, Coolify stopped the old
+# container before the new one was routable and each deploy answered 503s.
+RUN apt-get update \
+  && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
 USER bun
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+# Traefik routes only to healthy containers; probing every second during the
+# start period makes a new container routable right after it starts listening
+# instead of after the first 30 s interval.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --start-interval=1s --retries=3 \
   CMD ["bun", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? '3000'}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
 
 # No `run` subcommand: `bun --preload X run Y` drops Y; run the file directly.

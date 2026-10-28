@@ -37,9 +37,12 @@ Coolify (project `hearted.music`, environment `production`):
 - Application `hearted-app`, uuid `nwxaqfqz9mrlncyythxaraca`, type Docker Image
   `ghcr.io/fabiogaliano/hearted.music-app:latest`, port 3000, domain `https://hearted.music`,
   memory limit 768 MB. The VPS Docker daemon is logged in to GHCR with a `read:packages` PAT.
-- Coolify's own healthcheck is **off**: it needs `curl`/`wget`, which the image does not ship, so
-  with it on every deploy rolls back as "unhealthy". Docker uses the image's `HEALTHCHECK`
-  (`GET /health` through `bun -e`), and Coolify reads that status.
+- Coolify's own healthcheck is **on** (`GET /health`, port 3000), so a deploy keeps the old
+  container serving until the new one is healthy. It runs `curl` inside the container, which
+  `Dockerfile.app` installs for that reason; with the check off, Coolify stopped the old container
+  before Traefik would route to the new one and every deploy answered a burst of 503s. The image's
+  own `HEALTHCHECK` probes every second during its start period, because Traefik ignores
+  containers that are not yet healthy.
 - Custom labels are set (Coolify API `custom_labels`): the generated Traefik labels plus
   `cloudflare-only@file` appended to the HTTPS router's middlewares. Regenerating labels from the
   Coolify UI drops that middleware; re-append it.
