@@ -299,8 +299,19 @@ describe("useActiveJobCompletionEffects", () => {
 		);
 		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
 
-		renderHook(() => useActiveJobCompletionEffects(ACCOUNT_ID), { wrapper });
-		await waitFor(() => expect(getActiveJobs).toHaveBeenCalledTimes(1));
+		// The effect only fires on a running → finished transition it has
+		// rendered with, and React Query batches observer notifications, so each
+		// step waits for the render that saw the state, not just for the fetch.
+		const { result } = renderHook(
+			() => {
+				useActiveJobCompletionEffects(ACCOUNT_ID);
+				return queryClient.getQueryData<ActiveJobs>(
+					activeJobsKeys.byAccount(ACCOUNT_ID),
+				)?.extensionSync;
+			},
+			{ wrapper },
+		);
+		await waitFor(() => expect(result.current).toEqual(syncJob));
 
 		// Still running on the next read: nothing to refresh yet.
 		await act(async () => {
@@ -316,6 +327,7 @@ describe("useActiveJobCompletionEffects", () => {
 				queryKey: activeJobsKeys.byAccount(ACCOUNT_ID),
 			});
 		});
+		await waitFor(() => expect(result.current).toBeNull());
 
 		await waitFor(() =>
 			expect(recentActivityInvalidations(invalidateSpy)).toHaveLength(1),
