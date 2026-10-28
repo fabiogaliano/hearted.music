@@ -8,6 +8,8 @@ RUN bun install --frozen-lockfile --production --ignore-scripts
 FROM base
 ENV NODE_ENV=production
 ENV WORKER_HEALTH_PORT=3002
+# Names this process in its JSON log lines (src/lib/observability/logger.ts).
+ENV HEARTED_SERVICE=worker
 
 # yt-dlp + ffmpeg/ffprobe live in the image so Coolify/VPS host setup is
 # irrelevant: rebuilding the worker image is enough to ship the audio backfill
