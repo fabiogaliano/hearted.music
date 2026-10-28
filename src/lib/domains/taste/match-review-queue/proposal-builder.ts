@@ -23,6 +23,7 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";
 import {
 	MATCH_STRICTNESS_VALUES,
@@ -34,7 +35,10 @@ import {
 	PLAYLIST_CARD_SUGGESTION_CAP,
 	SONG_CARD_SUGGESTION_CAP,
 } from "./card-suggestion-caps";
-import { deriveProposalSubjects } from "./eligible-subjects";
+import {
+	deriveProposalSubjects,
+	type ProposalSubjectsDerivation,
+} from "./eligible-subjects";
 import { fetchTargetPlaylistFilters } from "./queries";
 import type {
 	MatchOrientation,
@@ -201,6 +205,64 @@ async function buildSeedForSubject(
 	);
 }
 
+const MAX_FILTER_SETTLE_ATTEMPTS = 3;
+
+/**
+ * Derivation reads filters inside the visibility RPC while the proposal key
+ * hashes target filters read separately, so a filter edit landing between the
+ * two reads would publish subjects derived under one config keyed as another.
+ * Reading the target filters on both sides of the derivation and requiring
+ * them unchanged keeps the key honest; an edit mid-derivation re-derives.
+ */
+async function deriveUnderSettledTargetFilters(
+	accountId: string,
+	orientation: MatchOrientation,
+	snapshotId: string,
+	minScore: number,
+	nowMs: number,
+): Promise<
+	Result<
+		ProposalSubjectsDerivation & {
+			filtersByPlaylistId: Map<string, PlaylistMatchFiltersV1 | null>;
+		},
+		DbError
+	>
+> {
+	const beforeResult = await fetchTargetPlaylistFilters(accountId);
+	if (Result.isError(beforeResult)) return beforeResult;
+	let before = beforeResult.value;
+
+	for (let attempt = 0; attempt < MAX_FILTER_SETTLE_ATTEMPTS; attempt++) {
+		const derivationResult = await deriveProposalSubjects(
+			accountId,
+			orientation,
+			snapshotId,
+			minScore,
+			nowMs,
+		);
+		if (Result.isError(derivationResult)) return derivationResult;
+		const afterResult = await fetchTargetPlaylistFilters(accountId);
+		if (Result.isError(afterResult)) return afterResult;
+		const after = afterResult.value;
+		if (
+			computeReadTimeFiltersHash(before, nowMs) ===
+			computeReadTimeFiltersHash(after, nowMs)
+		) {
+			return Result.ok({
+				...derivationResult.value,
+				filtersByPlaylistId: after,
+			});
+		}
+		before = after;
+	}
+	return Result.err(
+		new DatabaseError({
+			code: "visibility_filters_unsettled",
+			message: `target playlist filters kept changing across ${MAX_FILTER_SETTLE_ATTEMPTS} derivations`,
+		}),
+	);
+}
+
 /**
  * Builds one proposal for a single (account, orientation, snapshot, preset).
  * Exported for the request-path miss handler (buildFirstWindowAndPromote in
@@ -218,14 +280,16 @@ export async function buildOneProposal(
 	minScore: number,
 	nowMs: number,
 ): Promise<Result<void, DbError>> {
-	const [derivationResult, targetFiltersResult] = await Promise.all([
-		deriveProposalSubjects(accountId, orientation, snapshotId, minScore, nowMs),
-		fetchTargetPlaylistFilters(accountId),
-	]);
-	if (Result.isError(derivationResult)) return derivationResult;
-	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
-	const { subjects, hiddenReviewItemCount } = derivationResult.value;
-	const filtersByPlaylistId = targetFiltersResult.value;
+	const derivedResult = await deriveUnderSettledTargetFilters(
+		accountId,
+		orientation,
+		snapshotId,
+		minScore,
+		nowMs,
+	);
+	if (Result.isError(derivedResult)) return derivedResult;
+	const { subjects, hiddenReviewItemCount, filtersByPlaylistId } =
+		derivedResult.value;
 
 	// The key hashes the account's target-playlist filters + the shared nowMs —
 	// the same inputs resolveVisibilityConfigHash and the session appender hash —

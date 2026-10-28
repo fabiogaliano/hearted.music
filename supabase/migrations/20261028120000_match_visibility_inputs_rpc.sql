@@ -21,15 +21,19 @@
 -- change to who is entitled stays in one function.
 --
 -- Additive only: no existing function changes. Backend-private: callable only
--- through the service-role client. Callers page with .order(song_id,
--- playlist_id).range(); (snapshot_id, song_id, playlist_id) is unique, so pages
--- are disjoint.
+-- through the service-role client. Callers page by keyset: .order(song_id,
+-- playlist_id).limit() with p_after_song_id/p_after_playlist_id set to the last
+-- row read. (snapshot_id, song_id, playlist_id) is unique, so pages are
+-- disjoint. Offset paging would skip rows: adding a song to a playlist between
+-- pages drops that pair from the result and shifts every later row back.
 
 CREATE OR REPLACE FUNCTION public.select_match_visibility_inputs(
-  p_account_id  UUID,
-  p_snapshot_id UUID,
-  p_song_id     UUID DEFAULT NULL,
-  p_playlist_id UUID DEFAULT NULL
+  p_account_id          UUID,
+  p_snapshot_id         UUID,
+  p_song_id             UUID DEFAULT NULL,
+  p_playlist_id         UUID DEFAULT NULL,
+  p_after_song_id       UUID DEFAULT NULL,
+  p_after_playlist_id   UUID DEFAULT NULL
 ) RETURNS TABLE (
   song_id             UUID,
   playlist_id         UUID,
@@ -60,6 +64,10 @@ AS $$
       AND ms.account_id = p_account_id
       AND (p_song_id IS NULL OR mr.song_id = p_song_id)
       AND (p_playlist_id IS NULL OR mr.playlist_id = p_playlist_id)
+      AND (
+        p_after_song_id IS NULL
+        OR (mr.song_id, mr.playlist_id) > (p_after_song_id, p_after_playlist_id)
+      )
       AND NOT EXISTS (
         SELECT 1
         FROM public.playlist_song ps
@@ -108,10 +116,10 @@ AS $$
    AND ls.unliked_at IS NULL
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.select_match_visibility_inputs(UUID, UUID, UUID, UUID)
+REVOKE EXECUTE ON FUNCTION public.select_match_visibility_inputs(UUID, UUID, UUID, UUID, UUID, UUID)
   FROM PUBLIC, anon, authenticated;
 
-GRANT EXECUTE ON FUNCTION public.select_match_visibility_inputs(UUID, UUID, UUID, UUID)
+GRANT EXECUTE ON FUNCTION public.select_match_visibility_inputs(UUID, UUID, UUID, UUID, UUID, UUID)
   TO service_role;
 
 NOTIFY pgrst, 'reload schema';

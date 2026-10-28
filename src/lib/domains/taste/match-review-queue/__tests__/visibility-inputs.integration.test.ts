@@ -358,4 +358,50 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs paging", () => {
 		expect(keys).toHaveLength(SONG_COUNT * PLAYLIST_COUNT);
 		expect(new Set(keys).size).toBe(SONG_COUNT * PLAYLIST_COUNT);
 	});
+
+	it("regression: a song added to a playlist between pages does not shift a later pair out of the read", async () => {
+		const playlists = await db()`
+      SELECT id FROM playlist WHERE account_id = ${accountId} ORDER BY id LIMIT 1
+    `;
+		const firstSongId = [...songIds].sort()[0];
+		const firstPlaylistId = playlists[0].id as string;
+
+		// Lands after page 1 is read: the pair it removes from the result set is
+		// one already read, which under offset paging shifts an unread pair back
+		// behind the next page's start.
+		const client = createAdminSupabaseClient();
+		let rpcCalls = 0;
+		const racing = new Proxy(client, {
+			get(target, prop, receiver) {
+				if (prop !== "rpc") return Reflect.get(target, prop, receiver);
+				return (...args: Parameters<typeof client.rpc>) => {
+					const builder = target.rpc(...args);
+					rpcCalls++;
+					if (rpcCalls !== 2) return builder;
+					const send = builder.then.bind(builder);
+					Object.assign(builder, {
+						// biome-ignore lint/suspicious/noThenProperty: the builder is a thenable; delaying its send is the point
+						then: (...handlers: Parameters<typeof builder.then>) =>
+							db()`
+                INSERT INTO playlist_song(playlist_id, song_id, position)
+                VALUES (${firstPlaylistId}, ${firstSongId}, 0)
+              `.then(() => send(...handlers)),
+					});
+					return builder;
+				};
+			},
+		});
+
+		const result = await loadVisibilityInputs(racing, {
+			kind: "account",
+			accountId,
+			snapshotId,
+		});
+
+		expect(result).toBeOk();
+		if (Result.isError(result)) return;
+		const keys = pairKeys(result.value);
+		expect(rpcCalls).toBeGreaterThan(1);
+		expect(new Set(keys).size).toBe(SONG_COUNT * PLAYLIST_COUNT);
+	});
 });

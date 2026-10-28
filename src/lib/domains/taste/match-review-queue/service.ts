@@ -17,7 +17,10 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import type { DbError } from "@/lib/shared/errors/database";
 import { DatabaseError } from "@/lib/shared/errors/database";
-import { deriveProposalSubjects } from "./eligible-subjects";
+import {
+	deriveEligibleSubjects,
+	deriveProposalSubjects,
+} from "./eligible-subjects";
 import {
 	countUnresolvedItems,
 	fetchActiveSession,
@@ -25,6 +28,7 @@ import {
 	fetchPendingSongIds,
 } from "./queries";
 import type { MatchOrientation, MatchReviewSummary } from "./types";
+import { loadVisibilityInputs } from "./visibility-inputs";
 
 async function fetchLatestSnapshotId(
 	accountId: string,
@@ -205,9 +209,9 @@ export async function getOrderedUndecidedPlaylistIds(
  * 1. Active queue summaries for both orientations in parallel — a pending
  *    item means a visible subject already exists; short-circuit immediately.
  * 2. Latest snapshot via fetchLatestSnapshotId — no snapshot ⇒ false.
- * 3. Snapshot-derived subjects for both orientations (reusing
- *    getOrderedUndecidedSongIds / getOrderedUndecidedPlaylistIds, which apply
- *    the full entitlement + ownership + strictness + filter + decision logic).
+ * 3. Snapshot-derived subjects for both orientations from one visibility
+ *    inputs read (deriveEligibleSubjects applies the full entitlement +
+ *    ownership + strictness + filter + decision logic).
  *
  * DB errors propagate as Result.err — they must not be read as "not ready."
  */
@@ -242,18 +246,37 @@ export async function hasFirstVisibleReviewSubject(
 	}
 
 	// Step 3: neither orientation has a pending active queue, so check whether
-	// the snapshot would produce visible subjects. Both helpers are independent;
-	// run them in parallel to avoid serial latency.
-	const [songSubjectsResult, playlistSubjectsResult] = await Promise.all([
-		getOrderedUndecidedSongIds(snapshotId, accountId),
-		getOrderedUndecidedPlaylistIds(snapshotId, accountId),
+	// the snapshot would produce visible subjects. Both orientations derive from
+	// one inputs read; newness only orders subjects, so it can't change existence.
+	const [inputsResult, minScore] = await Promise.all([
+		loadVisibilityInputs(createAdminSupabaseClient(), {
+			kind: "account",
+			accountId,
+			snapshotId,
+		}),
+		resolveMinMatchScore(accountId),
 	]);
-
-	if (Result.isError(songSubjectsResult)) return songSubjectsResult;
-	if (Result.isError(playlistSubjectsResult)) return playlistSubjectsResult;
+	if (Result.isError(inputsResult)) return inputsResult;
+	const inputs = inputsResult.value;
+	const nowMs = Date.now();
 
 	return Result.ok(
-		songSubjectsResult.value.songIds.length > 0 ||
-			playlistSubjectsResult.value.playlistIds.length > 0,
+		(["song", "playlist"] as const).some(
+			(orientation) =>
+				deriveEligibleSubjects({
+					matchResults: inputs.pairs,
+					decidedPairs: inputs.decidedPairs,
+					policy: {
+						orientation,
+						minScore,
+						filtersByPlaylistId: inputs.filtersByPlaylistId,
+					},
+					entitledSongIds: inputs.entitledSongIds,
+					ownedPlaylistIds: inputs.ownedPlaylistIds,
+					newSongIds: new Set(),
+					songMetaBySongId: inputs.songMetaBySongId,
+					nowMs,
+				}).subjects.length > 0,
+		),
 	);
 }

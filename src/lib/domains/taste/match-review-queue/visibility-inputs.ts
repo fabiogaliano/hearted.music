@@ -66,18 +66,28 @@ export async function loadVisibilityInputs(
 	};
 
 	const rows: VisibilityInputRow[] = [];
+	// Keyset, not offset: the RPC drops pairs whose song joined the playlist, so
+	// an add between pages would shift every later row back and an offset would
+	// skip one.
+	let after: { songId: string; playlistId: string } | undefined;
 	for (;;) {
 		const page = await fromSupabaseRpc(
 			VisibilityInputRowsSchema,
 			supabase
-				.rpc("select_match_visibility_inputs", args)
+				.rpc("select_match_visibility_inputs", {
+					...args,
+					p_after_song_id: after?.songId,
+					p_after_playlist_id: after?.playlistId,
+				})
 				.order("song_id")
 				.order("playlist_id")
-				.range(rows.length, rows.length + PAGE_SIZE - 1),
+				.limit(PAGE_SIZE),
 		);
 		if (Result.isError(page)) return page;
 		rows.push(...page.value);
 		if (page.value.length < PAGE_SIZE) break;
+		const last = page.value[page.value.length - 1];
+		after = { songId: last.song_id, playlistId: last.playlist_id };
 	}
 
 	return Result.ok(toVisibilityInputs(rows));
@@ -112,10 +122,19 @@ function toVisibilityInputs(rows: VisibilityInputRow[]): VisibilityInputs {
 			});
 		}
 		if (!filtersByPlaylistId.has(row.playlist_id)) {
-			filtersByPlaylistId.set(
-				row.playlist_id,
-				parseStoredMatchFilters(row.match_filters).value,
-			);
+			const parsed = parseStoredMatchFilters(row.match_filters);
+			if (parsed.wasNormalized) {
+				// Normalizing drops the playlist's filters, so pairs it should hide
+				// become visible; log so corrupt stored data is traceable.
+				console.warn(
+					"[visibility-inputs] invalid stored match_filters normalized",
+					{
+						playlistId: row.playlist_id,
+						raw: row.match_filters,
+					},
+				);
+			}
+			filtersByPlaylistId.set(row.playlist_id, parsed.value);
 			playlistsById.set(row.playlist_id, {
 				name: row.playlist_name,
 				spotifyId: row.playlist_spotify_id,
