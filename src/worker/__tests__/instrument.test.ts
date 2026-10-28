@@ -47,6 +47,13 @@ describe("worker Sentry instrumentation", () => {
 		});
 	});
 
+	it("tags events with service=worker, since a runtime tag is overwritten by Sentry's runtime context", async () => {
+		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: "production" });
+
+		const tags = mockInit.mock.calls[0]?.[0]?.initialScope?.tags;
+		expect(tags).toEqual({ service: "worker" });
+	});
+
 	it.each([
 		"development",
 		"test",

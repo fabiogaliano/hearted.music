@@ -471,7 +471,7 @@ export async function runExtensionSyncJob(
 						tags: {
 							area: "billing",
 							operation: "maybe_grant_liked_song_access_after_sync",
-							runtime: "worker",
+							service: "worker",
 						},
 						extra: {
 							accountId,
@@ -498,7 +498,7 @@ export async function runExtensionSyncJob(
 				tags: {
 					area: "billing",
 					operation: "maybe_grant_liked_song_access_after_sync",
-					runtime: "worker",
+					service: "worker",
 				},
 				extra: { accountId, jobId: job.id, stage: "grant_threw" },
 			});

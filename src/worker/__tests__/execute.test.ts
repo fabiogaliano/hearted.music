@@ -161,7 +161,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 			tags: {
 				area: "analytics",
 				operation: "capture_match_snapshot_published",
-				runtime: "worker",
+				service: "worker",
 			},
 			extra: { accountId: "acct-1", jobId: "job-1" },
 		});
@@ -299,7 +299,7 @@ describe("executeMatchSnapshotRefreshJob", () => {
 				tags: {
 					area: "match_deck",
 					operation: "resolve_visibility_config_hash",
-					runtime: "worker",
+					service: "worker",
 				},
 			}),
 		);
