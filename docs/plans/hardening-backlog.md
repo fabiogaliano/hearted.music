@@ -38,13 +38,6 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 - **Change.** Per-playlist results; fail the sync when persistence is incomplete; keep the payload and
   retry on transient errors.
 
-### 2.2 Match refresh continues when exclusions fail to load (T5) — S
-
-- `src/lib/workflows/match-snapshot-refresh/stages/candidate-loading.ts:107-116` warns and continues
-  with an empty exclusion set, so excluded songs can resurface.
-- **Change.** Return the failure and abort the refresh. The test pinning the current behaviour changes
-  on purpose.
-
 ### 2.3 Partial target-playlist set published as a complete snapshot (T6) — M
 
 - `stages/playlist-profiling.ts:139-146` turns per-playlist failures into `null`; only an all-failed run
@@ -65,21 +58,6 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 ---
 
 ## 3. Server-fn correctness
-
-### 3.1 Preferences create is not conflict-safe (A3) — S
-
-- `src/lib/domains/library/accounts/preferences-queries.ts:76-99`: a read error falls through to a plain
-  `insert`. **Change.** Upsert on conflict; pass read errors through.
-
-### 3.2 Playlist target-read error becomes an empty set (A4 remainder) — S
-
-- `src/lib/server/playlists.functions.ts:147-149`. **Change.** Fail through the 2.1 boundary helper in
-  `reliability.md`.
-
-### 3.3 Billing DB errors are never reported (A10) — S
-
-- `src/lib/server/billing.functions.ts:75-77` (quote) and `:132-133` (`db_error` → `internal_error`)
-  skip `captureServerError`. **Change.** Report at the server-fn boundary.
 
 ### 3.4 Match-refresh refs mutated during render (A9) — M
 
@@ -115,22 +93,23 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
   still captures exceptions (`src/routes/__root.tsx:94`), so every deploy forks new unreadable PostHog
   issues. Either upload sourcemaps with `posthog-cli` in the release job, or turn off
   `capture_exceptions` and triage in Sentry only.
-- **Resolve Sentry issues once deployed (S).** HEARTED-MUSIC-1N/1P/1Q (`getNextPageParam` on
-  `undefined`, 2026-10-17) are fixed by `c2b41a30`; HEARTED-MUSIC-1G (hydration) by `5275f7df`. Both
-  are live since the VPS cutover (2026-10-28). Confirm they stay silent, resolve them, and re-check
-  PostHog for React #418.
-- **CI build containers report to Sentry (S).** HEARTED-MUSIC-1R ("Invalid environment variables",
-  fatal, 15 events on 2026-10-28) came from CI/build containers (`server_name` is a transient
-  container id, two batches at 00:32 and 00:37 UTC), not from production. The import-graph smoke
-  in `verify` and the image builds run with a DSN present. Unset the DSN for those steps (or filter
-  the fatal by `server_name`), then resolve the issue.
+- **Worker-image containers crash-looping on deploy (S).** HEARTED-MUSIC-1R ("Invalid environment
+  variables", fatal, 33 events on 2026-10-28 between 00:32 and 01:39 UTC) did not come from CI: no
+  CI step sets `SENTRY_DSN`, and the import-graph smoke runs its container with no env. Every event
+  came from the VPS (Frankfurt, host booted 2026-10-06, `/app/src/env.ts`, so the worker image).
+  There were five batches of 6–9 restarts, each a fresh container on a new release. Two batches
+  followed a CI `deploy-worker` hook within 35 s (00:37, 01:39). Three did not (00:32, 01:19:04,
+  01:19:26). Release `f7bd5f9a` (docs only) crashed at 01:19:04, before its CI run (cancelled, deploys
+  skipped) left `verify`, and `01b51246`'s run skipped `deploy-worker`. So a Coolify resource on the
+  worker image also deploys on every push by itself, and that night it had an incomplete env. It
+  has been silent since 01:39 through every later push and the 14:08 `deploy-worker`, so the env
+  looks complete now. **Change.** Find the resource that auto-deploys on push in Coolify (docs-only
+  pushes included) and decide whether it should.
 - **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
   After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
   delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
 - **Kener alerts (S).** `ntfy.fabiogaliano.com` rejects anonymous publishes (403); create a token and
   wire a Kener trigger to the hearted.music monitors.
-- **Logger tag (XS).** `src/lib/observability/logger.ts` stamps every JSON line with `worker: true`,
-  including lines the web app server emits (library-processing on request). Tag by process instead.
 - **Optional (S).** A Sentry inbound filter on `environment:development` as a backstop to the code gate
   (`src/server.ts:50`, `sentry.client.ts:18`); today only the `localhost` filter is on.
 - **Sentry CLI notes.** The binary is `sentry` (not the legacy `sentry-cli`). `issue list` returns null
