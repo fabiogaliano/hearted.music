@@ -1,95 +1,29 @@
 /**
  * Match review queue service tests.
  *
- * Pure derivation tests need no mocks — they drive deriveUndecidedSongsForQueue
- * directly. Orchestration tests mock the queries module so each test can drive
- * deterministic per-function responses without a live DB or a chainable Supabase
- * fake — this makes concurrent-race and ConstraintError paths straightforward to test.
+ * The session queries and the visibility-inputs read are stubbed so each test
+ * drives deterministic inputs without a live DB; what the loader returns for
+ * real rows is pinned by visibility-inputs.integration.test.ts.
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
-// ============================================================================
-// Orchestration tests — mock the queries layer directly
-//
-// vi.mock hoists to top of file; all query functions become vi.fn() and each
-// test configures exactly the responses it needs. This is more precise than
-// mocking the Supabase client chain, and makes concurrent-race / ConstraintError
-// paths trivial to exercise.
-// ============================================================================
-
 vi.mock("../queries", () => ({
 	fetchActiveSession: vi.fn(),
-	fetchAppliedSnapshotIds: vi.fn(),
-	fetchQueuedSongIds: vi.fn(),
-	fetchQueuedPlaylistIds: vi.fn(),
-	fetchOwnedPlaylistIds: vi.fn(),
-	fetchMaxPosition: vi.fn(),
-	insertQueueItems: vi.fn(),
-	insertQueuePlaylistItems: vi.fn(),
 	countUnresolvedItems: vi.fn(),
 	fetchPendingSongIds: vi.fn(),
 	fetchPendingPlaylistIds: vi.fn(),
-	fetchTargetPlaylistFilters: vi.fn(),
-	mapItemToDto: vi.fn(),
 }));
 
-vi.mock("../filter-metadata-queries", () => ({
-	fetchSongsFilterMeta: vi.fn(),
+vi.mock("../visibility-inputs", () => ({
+	loadVisibilityInputs: vi.fn(),
 }));
 
 vi.mock("@/lib/data/client", () => ({
-	createAdminSupabaseClient: vi.fn(() => ({
-		from: vi.fn(() => ({
-			select: vi.fn().mockReturnThis(),
-			eq: vi.fn().mockReturnThis(),
-			order: vi.fn().mockReturnThis(),
-			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-		})),
-		rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-	})),
+	createAdminSupabaseClient: vi.fn(),
 }));
-
-// readEntitledDataEnrichedSongIds pages with .rpc().order().range(); this
-// file's fixtures resolve rpc() directly, so read the rows through that mock.
-vi.mock("@/lib/domains/billing/queries", async (importOriginal) => {
-	const actual =
-		await importOriginal<typeof import("@/lib/domains/billing/queries")>();
-	const { Result } = await import("better-result");
-	const { DatabaseError } = await import("@/lib/shared/errors/database");
-	return {
-		...actual,
-		readEntitledDataEnrichedSongIds: async (
-			supabase: {
-				rpc: (
-					name: string,
-					args: unknown,
-				) => Promise<{
-					data: Array<{ song_id: string }> | null;
-					error: { code: string; message: string } | null;
-				}>;
-			},
-			accountId: string,
-			songIds?: string[],
-		) => {
-			const { data, error } = await supabase.rpc(
-				"select_entitled_data_enriched_liked_song_ids",
-				songIds
-					? { p_account_id: accountId, p_song_ids: songIds }
-					: { p_account_id: accountId },
-			);
-			if (error) {
-				return Result.err(
-					new DatabaseError({ code: error.code, message: error.message }),
-				);
-			}
-			return Result.ok((data ?? []).map((row) => row.song_id));
-		},
-	};
-});
 
 vi.mock("@/lib/domains/library/accounts/preferences-queries", () => ({
 	resolveMinMatchScore: vi.fn(async () => 0.5),
@@ -99,34 +33,22 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	getNewItemIds: vi.fn(async () => Result.ok<string[], never>([])),
 }));
 
-vi.mock("@/lib/domains/taste/song-matching/decision-queries", () => ({
-	getMatchDecisionsForSongs: vi.fn(async () => Result.ok<never[], never>([])),
-}));
-
-vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
-	getMatchResults: vi.fn(async () => Result.ok<never[], never>([])),
-}));
-
-vi.mock("@/lib/observability/capture-product-event", () => ({
-	captureProductEventBestEffort: vi.fn(),
-}));
-
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import { getMatchResults } from "@/lib/domains/taste/song-matching/queries";
-import { fetchSongsFilterMeta } from "../filter-metadata-queries";
+import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";
 import * as queries from "../queries";
-// Import after mocks are set up
 import {
 	getOrderedUndecidedPlaylistIds,
 	getOrderedUndecidedSongIds,
 	getQueueSummary,
 	hasFirstVisibleReviewSubject,
 } from "../service";
+import {
+	loadVisibilityInputs,
+	type VisibilityInputs,
+} from "../visibility-inputs";
 
 const ACCOUNT_ID = "account-test-001";
 const SESSION_ID = "session-test-001";
@@ -145,57 +67,69 @@ function fakeSession() {
 	};
 }
 
-beforeEach(() => {
-	vi.clearAllMocks();
+const mr = (
+	song_id: string,
+	playlist_id: string,
+	score: number,
+	fused_score: number | null = null,
+): MatchResultRow => ({ song_id, playlist_id, score, fused_score });
 
-	// Default mock returns that tests can override
-	vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
-	vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
-	vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(Result.ok([]));
-	vi.mocked(getMatchResults).mockResolvedValue(Result.ok([]));
+/**
+ * Visibility inputs where every pair's song is entitled and playlist owned,
+ * unless the test narrows those sets.
+ */
+function inputs(
+	pairs: MatchResultRow[],
+	overrides: Partial<VisibilityInputs> = {},
+): VisibilityInputs {
+	return {
+		pairs,
+		entitledSongIds: new Set(pairs.map((p) => p.song_id)),
+		ownedPlaylistIds: new Set(pairs.map((p) => p.playlist_id)),
+		decidedPairs: new Set(),
+		songMetaBySongId: new Map(),
+		filtersByPlaylistId: new Map(),
+		playlistsById: new Map(),
+		...overrides,
+	};
+}
 
-	// Default query mocks — safe no-op defaults
-	vi.mocked(queries.fetchActiveSession).mockResolvedValue(Result.ok(null));
-	vi.mocked(queries.fetchAppliedSnapshotIds).mockResolvedValue(
-		Result.ok(new Set<string>()),
-	);
-	vi.mocked(queries.fetchQueuedSongIds).mockResolvedValue(
-		Result.ok(new Set<string>()),
-	);
-	vi.mocked(queries.fetchQueuedPlaylistIds).mockResolvedValue(
-		Result.ok(new Set<string>()),
-	);
-	// Default: every requested playlist is owned. The append/summary paths now
-	// apply playlist-ownership eligibility in both orientations, so tests that
-	// don't exercise ownership staleness get "all owned" and behave as before;
-	// ownership-specific tests override this with an explicit subset.
-	vi.mocked(queries.fetchOwnedPlaylistIds).mockImplementation(
-		async (_acct, ids) => Result.ok(new Set(ids)),
-	);
-	vi.mocked(queries.fetchMaxPosition).mockResolvedValue(Result.ok(-1));
-	vi.mocked(queries.insertQueueItems).mockResolvedValue(Result.ok(undefined));
-	vi.mocked(queries.insertQueuePlaylistItems).mockResolvedValue(
-		Result.ok(undefined),
-	);
-	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
-	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
-	vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(Result.ok([]));
-	vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
-		Result.ok(new Map()),
-	);
-	vi.mocked(fetchSongsFilterMeta).mockResolvedValue(Result.ok(new Map()));
+function mockInputs(value: VisibilityInputs) {
+	vi.mocked(loadVisibilityInputs).mockResolvedValue(Result.ok(value));
+}
 
-	// Default Supabase client: no active session, no snapshot
-	vi.mocked(createAdminSupabaseClient).mockReturnValue({
+/** Supabase client whose latest-snapshot lookup answers `snapshot`. */
+function snapshotClient(
+	snapshot: { data: { id: string } | null; error: unknown } = {
+		data: null,
+		error: null,
+	},
+) {
+	return {
 		from: vi.fn(() => ({
 			select: vi.fn().mockReturnThis(),
 			eq: vi.fn().mockReturnThis(),
 			order: vi.fn().mockReturnThis(),
 			limit: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+			maybeSingle: vi.fn().mockResolvedValue(snapshot),
 		})),
-		rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-	} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+	} as unknown as ReturnType<typeof createAdminSupabaseClient>;
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+
+	vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
+	vi.mocked(getNewItemIds).mockResolvedValue(Result.ok([]));
+	mockInputs(inputs([]));
+
+	vi.mocked(queries.fetchActiveSession).mockResolvedValue(Result.ok(null));
+	vi.mocked(queries.countUnresolvedItems).mockResolvedValue(Result.ok(0));
+	vi.mocked(queries.fetchPendingSongIds).mockResolvedValue(Result.ok([]));
+	vi.mocked(queries.fetchPendingPlaylistIds).mockResolvedValue(Result.ok([]));
+
+	// Default: no snapshot.
+	vi.mocked(createAdminSupabaseClient).mockReturnValue(snapshotClient());
 });
 
 // ============================================================================
@@ -268,36 +202,8 @@ describe("getOrderedUndecidedSongIds", () => {
 		likedAt: null,
 	});
 
-	function entitledClient(songIds: string[]) {
-		return {
-			from: vi.fn().mockReturnThis(),
-			rpc: vi.fn().mockResolvedValue({
-				data: songIds.map((song_id) => ({ song_id })),
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
-	}
-
 	it("orders entitled, visible song subjects and returns them", async () => {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-b",
-					playlist_id: "pl-A",
-					score: 0.7,
-					fused_score: null,
-				},
-				{
-					song_id: "song-a",
-					playlist_id: "pl-A",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			entitledClient(["song-a", "song-b"]),
-		);
+		mockInputs(inputs([mr("song-b", "pl-A", 0.7), mr("song-a", "pl-A", 0.9)]));
 
 		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
 
@@ -310,28 +216,13 @@ describe("getOrderedUndecidedSongIds", () => {
 	});
 
 	it("excludes a filter-hidden song and counts it as hidden (Finding 1)", async () => {
-		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
-			Result.ok(
-				new Map<string, PlaylistMatchFiltersV1 | null>([
+		mockInputs(
+			inputs([mr("song-fr", "pl-A", 0.9)], {
+				filtersByPlaylistId: new Map([
 					["pl-A", { version: 1, languages: { codes: ["en"] } }],
 				]),
-			),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-fr",
-					playlist_id: "pl-A",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
-			Result.ok(new Map([["song-fr", songMeta("fr")]])),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			entitledClient(["song-fr"]),
+				songMetaBySongId: new Map([["song-fr", songMeta("fr")]]),
+			}),
 		);
 
 		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
@@ -346,21 +237,8 @@ describe("getOrderedUndecidedSongIds", () => {
 	});
 
 	it("excludes a song whose only pair points to a non-owned playlist", async () => {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-gone",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			entitledClient(["song-1"]),
-		);
-		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
-			Result.ok(new Set<string>()),
+		mockInputs(
+			inputs([mr("song-1", "pl-gone", 0.9)], { ownedPlaylistIds: new Set() }),
 		);
 
 		const result = await getOrderedUndecidedSongIds(SNAPSHOT_ID, ACCOUNT_ID);
@@ -372,21 +250,8 @@ describe("getOrderedUndecidedSongIds", () => {
 		}
 	});
 
-	it("surfaces a DB error from the ownership check rather than a falsely-empty preview", async () => {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			entitledClient(["song-1"]),
-		);
-		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+	it("surfaces a visibility-inputs DB error rather than a falsely-empty preview", async () => {
+		vi.mocked(loadVisibilityInputs).mockResolvedValue(
 			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
 		);
 
@@ -399,20 +264,7 @@ describe("getOrderedUndecidedSongIds", () => {
 		// Live preference is 0.5 (beforeEach). The song scores 0.7 — visible under
 		// live strictness — but a frozen 0.8 bar (an active session created stricter)
 		// hides it, mirroring the queue/card policy rather than the loosened live bar.
-		vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.7,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			entitledClient(["song-1"]),
-		);
+		mockInputs(inputs([mr("song-1", "pl-A", 0.7)]));
 
 		const result = await getOrderedUndecidedSongIds(
 			SNAPSHOT_ID,
@@ -434,38 +286,13 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 	// Two entitled, undecided playlists: pl-visible clears the 0.5 bar, pl-hidden
 	// sits below it. pl-hidden therefore drives the hidden count, pl-visible the
 	// returned playlistIds.
-	function seedTwoPlaylists() {
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-visible",
-					playlist_id: "pl-visible",
-					score: 0.9,
-					fused_score: null,
-				},
-				{
-					song_id: "song-hidden",
-					playlist_id: "pl-hidden",
-					score: 0.3,
-					fused_score: null,
-				},
-			]),
-		);
-		// Both songs entitled, so both playlists are actionable candidates.
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			from: vi.fn().mockReturnThis(),
-			rpc: vi.fn().mockResolvedValue({
-				data: [{ song_id: "song-visible" }, { song_id: "song-hidden" }],
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
-	}
+	const twoPlaylists = [
+		mr("song-visible", "pl-visible", 0.9),
+		mr("song-hidden", "pl-hidden", 0.3),
+	];
 
 	it("counts a hidden playlist that is still owned", async () => {
-		seedTwoPlaylists();
-		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
-			Result.ok(new Set(["pl-visible", "pl-hidden"])),
-		);
+		mockInputs(inputs(twoPlaylists));
 
 		const result = await getOrderedUndecidedPlaylistIds(
 			SNAPSHOT_ID,
@@ -480,11 +307,10 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 	});
 
 	it("excludes a no-longer-owned playlist from the hidden count", async () => {
-		seedTwoPlaylists();
 		// pl-hidden was deleted/transferred — a stale snapshot still references it,
 		// but it must not inflate the hidden count.
-		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
-			Result.ok(new Set(["pl-visible"])),
+		mockInputs(
+			inputs(twoPlaylists, { ownedPlaylistIds: new Set(["pl-visible"]) }),
 		);
 
 		const result = await getOrderedUndecidedPlaylistIds(
@@ -497,19 +323,10 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 			expect(result.value.playlistIds).toEqual(["pl-visible"]);
 			expect(result.value.hiddenReviewItemCount).toBe(0);
 		}
-		// Visible and hidden IDs are ownership-checked together in a single query.
-		expect(queries.fetchOwnedPlaylistIds).toHaveBeenCalledTimes(1);
-		const checkedIds = vi.mocked(queries.fetchOwnedPlaylistIds).mock
-			.calls[0]?.[1];
-		expect([...(checkedIds ?? [])].toSorted()).toEqual([
-			"pl-hidden",
-			"pl-visible",
-		]);
 	});
 
-	it("surfaces a DB error from the ownership check rather than a falsely-empty preview", async () => {
-		seedTwoPlaylists();
-		vi.mocked(queries.fetchOwnedPlaylistIds).mockResolvedValue(
+	it("surfaces a visibility-inputs DB error rather than a falsely-empty preview", async () => {
+		vi.mocked(loadVisibilityInputs).mockResolvedValue(
 			Result.err(new DatabaseError({ code: "08006", message: "conn lost" })),
 		);
 
@@ -522,7 +339,7 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 	});
 
 	it("freezes the strictness bar to minScoreOverride instead of the live preference", async () => {
-		seedTwoPlaylists();
+		mockInputs(inputs(twoPlaylists));
 		vi.mocked(resolveMinMatchScore).mockResolvedValue(0.5);
 
 		// Live 0.5 would keep pl-visible (0.9) shown and pl-hidden (0.3) hidden. A
@@ -547,36 +364,16 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 		// entitled pair scores 0.60. pl-B has an entitled pair at 0.90. The queue,
 		// which orders off eligible pairs, ranks pl-B before pl-A — the preview must
 		// match, never letting pl-A's locked 0.99 pull it to the front.
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "locked",
-					playlist_id: "pl-A",
-					score: 0.99,
-					fused_score: null,
-				},
-				{
-					song_id: "entitled-a",
-					playlist_id: "pl-A",
-					score: 0.6,
-					fused_score: null,
-				},
-				{
-					song_id: "entitled-b",
-					playlist_id: "pl-B",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
+		mockInputs(
+			inputs(
+				[
+					mr("locked", "pl-A", 0.99),
+					mr("entitled-a", "pl-A", 0.6),
+					mr("entitled-b", "pl-B", 0.9),
+				],
+				{ entitledSongIds: new Set(["entitled-a", "entitled-b"]) },
+			),
 		);
-		// "locked" is intentionally absent from the entitled set.
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			from: vi.fn().mockReturnThis(),
-			rpc: vi.fn().mockResolvedValue({
-				data: [{ song_id: "entitled-a" }, { song_id: "entitled-b" }],
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
 
 		const result = await getOrderedUndecidedPlaylistIds(
 			SNAPSHOT_ID,
@@ -595,44 +392,14 @@ describe("getOrderedUndecidedPlaylistIds", () => {
 // ============================================================================
 
 describe("hasFirstVisibleReviewSubject", () => {
-	// Returns a Supabase mock that answers the snapshot lookup with the given id
-	// and the entitlement RPC with the given song ids. Suitable for snapshot-path
-	// tests where active queues are empty (default mocks).
-	function snapshotAndEntitlementClient(
-		snapshotId: string,
-		entitledSongIds: string[],
-	) {
-		return {
-			from: vi.fn(() => ({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				order: vi.fn().mockReturnThis(),
-				limit: vi.fn().mockReturnThis(),
-				maybeSingle: vi
-					.fn()
-					.mockResolvedValue({ data: { id: snapshotId }, error: null }),
-			})),
-			rpc: vi.fn().mockResolvedValue({
-				data: entitledSongIds.map((song_id) => ({ song_id })),
-				error: null,
-			}),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>;
-	}
+	beforeEach(() => {
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotClient({ data: { id: SNAPSHOT_ID }, error: null }),
+		);
+	});
 
 	it("returns false when the snapshot's only pair is below the balanced strictness threshold (fused_score 0.49)", async () => {
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.49,
-					fused_score: 0.49,
-				},
-			]),
-		);
+		mockInputs(inputs([mr("song-1", "pl-A", 0.49, 0.49)]));
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
 
@@ -641,19 +408,7 @@ describe("hasFirstVisibleReviewSubject", () => {
 	});
 
 	it("returns true when the snapshot has a visible undecided pair at fused_score 0.50", async () => {
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.5,
-					fused_score: 0.5,
-				},
-			]),
-		);
+		mockInputs(inputs([mr("song-1", "pl-A", 0.5, 0.5)]));
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
 
@@ -662,36 +417,10 @@ describe("hasFirstVisibleReviewSubject", () => {
 	});
 
 	it("returns false when the only above-threshold pair has already been decided", async () => {
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-1"]),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.8,
-					fused_score: null,
-				},
-			]),
-		);
-		vi.mocked(getMatchDecisionsForSongs).mockResolvedValue(
-			Result.ok([
-				{
-					id: "dec-1",
-					account_id: ACCOUNT_ID,
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					decision: "dismissed" as const,
-					decided_at: "2026-06-15T00:00:00Z",
-					created_at: "2026-06-15T00:00:00Z",
-					snapshot_id: null,
-					model_rank: null,
-					visible_rank: null,
-					served_orientation: null,
-					queue_item_id: null,
-				},
-			]),
+		mockInputs(
+			inputs([mr("song-1", "pl-A", 0.8)], {
+				decidedPairs: new Set(["song-1:pl-A"]),
+			}),
 		);
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
@@ -701,30 +430,13 @@ describe("hasFirstVisibleReviewSubject", () => {
 	});
 
 	it("returns false when the only pair is hidden by playlist filters", async () => {
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, ["song-fr"]),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-fr",
-					playlist_id: "pl-A",
-					score: 0.9,
-					fused_score: null,
-				},
-			]),
-		);
 		// pl-A filters to English only; this French song fails it.
-		vi.mocked(queries.fetchTargetPlaylistFilters).mockResolvedValue(
-			Result.ok(
-				new Map<string, PlaylistMatchFiltersV1 | null>([
+		mockInputs(
+			inputs([mr("song-fr", "pl-A", 0.9)], {
+				filtersByPlaylistId: new Map([
 					["pl-A", { version: 1, languages: { codes: ["en"] } }],
 				]),
-			),
-		);
-		vi.mocked(fetchSongsFilterMeta).mockResolvedValue(
-			Result.ok(
-				new Map([
+				songMetaBySongId: new Map([
 					[
 						"song-fr",
 						{
@@ -736,7 +448,7 @@ describe("hasFirstVisibleReviewSubject", () => {
 						},
 					],
 				]),
-			),
+			}),
 		);
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
@@ -746,19 +458,8 @@ describe("hasFirstVisibleReviewSubject", () => {
 	});
 
 	it("returns false when the only song in the snapshot is not entitled", async () => {
-		// Entitlement RPC returns empty — the song is not entitled.
-		vi.mocked(createAdminSupabaseClient).mockReturnValue(
-			snapshotAndEntitlementClient(SNAPSHOT_ID, []),
-		);
-		vi.mocked(getMatchResults).mockResolvedValue(
-			Result.ok([
-				{
-					song_id: "song-1",
-					playlist_id: "pl-A",
-					score: 0.8,
-					fused_score: null,
-				},
-			]),
+		mockInputs(
+			inputs([mr("song-1", "pl-A", 0.8)], { entitledSongIds: new Set() }),
 		);
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
@@ -781,12 +482,12 @@ describe("hasFirstVisibleReviewSubject", () => {
 
 		expect(result).toBeOk();
 		if (Result.isOk(result)) expect(result.value).toBe(true);
-		// getMatchResults must not be called — the queue summary short-circuited.
-		expect(getMatchResults).not.toHaveBeenCalled();
+		// The snapshot's inputs are never read — the queue summary short-circuited.
+		expect(loadVisibilityInputs).not.toHaveBeenCalled();
 	});
 
 	it("returns false when there is no snapshot and no active queue", async () => {
-		// Default beforeEach: fetchActiveSession → null, maybeSingle → null.
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(snapshotClient());
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
 
@@ -795,19 +496,12 @@ describe("hasFirstVisibleReviewSubject", () => {
 	});
 
 	it("propagates a DB error from the snapshot lookup rather than collapsing it to false", async () => {
-		vi.mocked(createAdminSupabaseClient).mockReturnValue({
-			from: vi.fn(() => ({
-				select: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				order: vi.fn().mockReturnThis(),
-				limit: vi.fn().mockReturnThis(),
-				maybeSingle: vi.fn().mockResolvedValue({
-					data: null,
-					error: { code: "08006", message: "conn lost" },
-				}),
-			})),
-			rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
-		} as unknown as ReturnType<typeof createAdminSupabaseClient>);
+		vi.mocked(createAdminSupabaseClient).mockReturnValue(
+			snapshotClient({
+				data: null,
+				error: { code: "08006", message: "conn lost" },
+			}),
+		);
 
 		const result = await hasFirstVisibleReviewSubject(ACCOUNT_ID);
 

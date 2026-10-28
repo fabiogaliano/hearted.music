@@ -10,20 +10,13 @@
 
 import { Result } from "better-result";
 import { createAdminSupabaseClient } from "@/lib/data/client";
-import { readEntitledDataEnrichedSongIds } from "@/lib/domains/billing/queries";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
-import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
-import { getMatchDecisionsForSongs } from "@/lib/domains/taste/song-matching/decision-queries";
-import {
-	getMatchResults,
-	type MatchResultRow,
-} from "@/lib/domains/taste/song-matching/queries";
+import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";
 import type { DbError } from "@/lib/shared/errors/database";
-import { fetchSongsFilterMeta } from "./filter-metadata-queries";
-import { fetchOwnedPlaylistIds, fetchTargetPlaylistFilters } from "./queries";
 import { getOrderedUndecidedSubjects } from "./review-subject-selector";
 import type { MatchOrientation, OrderedSubject } from "./types";
+import { loadVisibilityInputs } from "./visibility-inputs";
 import type { VisibilityPolicy } from "./visibility-policy";
 
 /**
@@ -61,20 +54,18 @@ export function deriveEligibleSubjects(input: {
 export interface ProposalSubjectsDerivation {
 	subjects: OrderedSubject[];
 	hiddenReviewItemCount: number;
-	/** The target-playlist filters this derivation read — returned so the caller
-	 *  hashes the same map (with the same nowMs) it derived against, keeping the
-	 *  proposal's visibility_config_hash stable. */
-	filtersByPlaylistId: ReadonlyMap<string, PlaylistMatchFiltersV1 | null>;
 }
 
 /**
- * Loads the inputs (match results, decisions, newness, the entitlement RPC, song
- * filter metadata, owned playlists, target filters) and derives ordered eligible
- * subjects under a policy frozen to `minScore`. Sessionless — the already-queued
- * exclusion is the appender's job.
+ * Loads the snapshot's visibility inputs (and, in song orientation, newness)
+ * and derives ordered eligible subjects under a policy frozen to `minScore`.
+ * Sessionless — the already-queued exclusion is the appender's job.
  *
  * The entitlement/ownership prefilters are REQUIRED: getOrderedUndecidedSubjects
  * alone does not apply them, so omitting them here would diverge subject order.
+ *
+ * Filters come from every playlist in the pairs, target or not — the source the
+ * card reads — so a subject is never queued on a pair its card would hide.
  *
  * One `nowMs` is threaded in by the caller so the caller's hash and this
  * derivation's filter evaluation fold the same UTC date (liked-at "today").
@@ -86,72 +77,37 @@ export async function deriveProposalSubjects(
 	minScore: number,
 	nowMs: number,
 ): Promise<Result<ProposalSubjectsDerivation, DbError>> {
-	const targetFiltersResult = await fetchTargetPlaylistFilters(accountId);
-	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
-	const filtersByPlaylistId = targetFiltersResult.value;
-
-	const policy: VisibilityPolicy = {
-		orientation,
-		minScore,
-		filtersByPlaylistId,
-	};
-
-	const matchResultsResult = await getMatchResults(snapshotId);
-	if (Result.isError(matchResultsResult)) return matchResultsResult;
-	const matchResults = matchResultsResult.value;
-	if (matchResults.length === 0) {
-		return Result.ok({
-			subjects: [],
-			hiddenReviewItemCount: 0,
-			filtersByPlaylistId,
-		});
-	}
-
-	const songIds = [...new Set(matchResults.map((mr) => mr.song_id))];
-	const playlistIds = [...new Set(matchResults.map((mr) => mr.playlist_id))];
-
-	const [
-		newSongIdsResult,
-		entitledResult,
-		songMetaResult,
-		ownedPlaylistsResult,
-		decisionsResult,
-	] = await Promise.all([
-		getNewItemIds(accountId, "song"),
-		readEntitledDataEnrichedSongIds(
-			createAdminSupabaseClient(),
+	const [inputsResult, newSongIdsResult] = await Promise.all([
+		loadVisibilityInputs(createAdminSupabaseClient(), {
+			kind: "account",
 			accountId,
-			songIds,
-		),
-		fetchSongsFilterMeta(accountId, songIds),
-		fetchOwnedPlaylistIds(accountId, playlistIds),
-		getMatchDecisionsForSongs(accountId, songIds),
+			snapshotId,
+		}),
+		// Newness only orders song subjects.
+		orientation === "song"
+			? getNewItemIds(accountId, "song")
+			: Result.ok<string[], DbError>([]),
 	]);
-
+	// A failed read must NOT be read as "nothing is entitled" — that would build
+	// an empty proposal that then masks every valid match. Surface it.
+	if (Result.isError(inputsResult)) return inputsResult;
 	if (Result.isError(newSongIdsResult)) return newSongIdsResult;
-	if (Result.isError(songMetaResult)) return songMetaResult;
-	if (Result.isError(ownedPlaylistsResult)) return ownedPlaylistsResult;
-	if (Result.isError(decisionsResult)) return decisionsResult;
-	// An entitlement RPC failure must NOT be read as "nothing is entitled" — that
-	// would build an empty proposal that then masks every valid match. Surface it.
-	if (Result.isError(entitledResult)) return entitledResult;
+	const inputs = inputsResult.value;
 
-	const decidedPairs = new Set(
-		decisionsResult.value.map((d) => `${d.song_id}:${d.playlist_id}`),
+	return Result.ok(
+		deriveEligibleSubjects({
+			matchResults: inputs.pairs,
+			decidedPairs: inputs.decidedPairs,
+			policy: {
+				orientation,
+				minScore,
+				filtersByPlaylistId: inputs.filtersByPlaylistId,
+			},
+			entitledSongIds: inputs.entitledSongIds,
+			ownedPlaylistIds: inputs.ownedPlaylistIds,
+			newSongIds: new Set(newSongIdsResult.value),
+			songMetaBySongId: inputs.songMetaBySongId,
+			nowMs,
+		}),
 	);
-	const newSongSet = new Set(newSongIdsResult.value);
-	const entitledSet = new Set<string>(entitledResult.value);
-
-	const { subjects, hiddenReviewItemCount } = deriveEligibleSubjects({
-		matchResults,
-		decidedPairs,
-		policy,
-		entitledSongIds: entitledSet,
-		ownedPlaylistIds: ownedPlaylistsResult.value,
-		newSongIds: newSongSet,
-		songMetaBySongId: songMetaResult.value,
-		nowMs,
-	});
-
-	return Result.ok({ subjects, hiddenReviewItemCount, filtersByPlaylistId });
 }

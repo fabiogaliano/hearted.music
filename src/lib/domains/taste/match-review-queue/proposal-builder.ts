@@ -35,6 +35,7 @@ import {
 	SONG_CARD_SUGGESTION_CAP,
 } from "./card-suggestion-caps";
 import { deriveProposalSubjects } from "./eligible-subjects";
+import { fetchTargetPlaylistFilters } from "./queries";
 import type {
 	MatchOrientation,
 	MatchReviewQueueItemDto,
@@ -217,19 +218,18 @@ export async function buildOneProposal(
 	minScore: number,
 	nowMs: number,
 ): Promise<Result<void, DbError>> {
-	const derivationResult = await deriveProposalSubjects(
-		accountId,
-		orientation,
-		snapshotId,
-		minScore,
-		nowMs,
-	);
+	const [derivationResult, targetFiltersResult] = await Promise.all([
+		deriveProposalSubjects(accountId, orientation, snapshotId, minScore, nowMs),
+		fetchTargetPlaylistFilters(accountId),
+	]);
 	if (Result.isError(derivationResult)) return derivationResult;
-	const { subjects, hiddenReviewItemCount, filtersByPlaylistId } =
-		derivationResult.value;
+	if (Result.isError(targetFiltersResult)) return targetFiltersResult;
+	const { subjects, hiddenReviewItemCount } = derivationResult.value;
+	const filtersByPlaylistId = targetFiltersResult.value;
 
-	// Hash from the exact filters the derivation read + the shared nowMs, so the
-	// proposal key matches the request-path deck resolver's under the same policy.
+	// The key hashes the account's target-playlist filters + the shared nowMs —
+	// the same inputs resolveVisibilityConfigHash and the session appender hash —
+	// so the request-path deck resolver finds this proposal under the same policy.
 	const policy: VisibilityPolicy = {
 		orientation,
 		minScore,

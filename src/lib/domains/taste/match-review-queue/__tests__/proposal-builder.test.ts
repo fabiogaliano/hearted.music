@@ -17,6 +17,9 @@ vi.mock("@/lib/domains/taste/song-matching/queries", () => ({
 vi.mock("../eligible-subjects", () => ({
 	deriveProposalSubjects: vi.fn(),
 }));
+vi.mock("../queries", () => ({
+	fetchTargetPlaylistFilters: vi.fn(async () => Result.ok(new Map())),
+}));
 // Spied rather than left real: buildSeedForSubject (private, unexported) calls
 // this directly, so asserting its call args is how the seed branch's nowMs
 // threading (M12) is observed from outside the module.
@@ -49,7 +52,6 @@ describe("buildOneProposal", () => {
 			Result.ok({
 				subjects: [],
 				hiddenReviewItemCount: 2,
-				filtersByPlaylistId: new Map(),
 			}),
 		);
 	});
@@ -173,7 +175,6 @@ describe("buildOneProposal", () => {
 			Result.ok({
 				subjects: [subject],
 				hiddenReviewItemCount: 0,
-				filtersByPlaylistId: new Map(),
 			}),
 		);
 		// not-entitled short-circuits buildSeedForSubject to `[]` before it ever
