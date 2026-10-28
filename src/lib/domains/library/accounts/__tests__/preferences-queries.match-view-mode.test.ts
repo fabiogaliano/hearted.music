@@ -42,11 +42,13 @@ vi.mock("@/lib/data/client", () => ({
 			select: () => ({
 				eq: () => ({ single: () => Promise.resolve(state.select) }),
 			}),
-			insert: () => ({
-				select: () => ({ single: () => Promise.resolve(state.insert) }),
-			}),
+			// getOrCreatePreferences creates via upsert(...).maybeSingle();
+			// setPreferredMatchViewMode writes via upsert(...).single().
 			upsert: () => ({
-				select: () => ({ single: mockUpsert }),
+				select: () => ({
+					single: mockUpsert,
+					maybeSingle: () => Promise.resolve(state.insert),
+				}),
 			}),
 		}),
 	}),
