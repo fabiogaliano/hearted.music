@@ -41,6 +41,8 @@ describe("scanMigrationSql", () => {
 			"CREATE INDEX CONCURRENTLY",
 			"CREATE INDEX CONCURRENTLY idx ON song (name);",
 		],
+		["DROP INDEX CONCURRENTLY", "DROP INDEX CONCURRENTLY idx;"],
+		["SET SCHEMA in ALTER TABLE", "ALTER TABLE song SET SCHEMA archive;"],
 	])("flags %s", (_category, sql) => {
 		expect(blocked(sql)).toHaveLength(1);
 	});
