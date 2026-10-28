@@ -41,10 +41,7 @@ import {
 	updateJobProgress,
 } from "@/lib/platform/jobs/repository";
 import { makeWorkerOutcomes } from "@/test/fixtures";
-import {
-	finalizeJob,
-	requeueLibraryProcessingJobForRetry,
-} from "@/worker/finalize";
+import { finalizeJob, requeueClaimedJobForRetry } from "@/worker/finalize";
 import {
 	findTerminalActiveRefs,
 	getOrCreateLibraryProcessingState,
@@ -315,9 +312,7 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		const jobId = await seedPendingJob("enrichment");
 		const job = await claim();
 
-		expect(
-			await requeueLibraryProcessingJobForRetry(job, "boom"),
-		).toHaveOkValue(true);
+		expect(await requeueClaimedJobForRetry(job, "boom")).toHaveOkValue(true);
 		const row = await readJob(jobId);
 		expect(row.status).toBe("pending");
 		expect(row.error).toBe("boom");
@@ -457,10 +452,7 @@ describe.skipIf(!IS_LOCAL)(
 			const jobId = await seedPendingJob("enrichment");
 			const { stale } = await sweepAndReclaim(jobId);
 
-			const late = await requeueLibraryProcessingJobForRetry(
-				stale,
-				"stale boom",
-			);
+			const late = await requeueClaimedJobForRetry(stale, "stale boom");
 			const row = await readJob(jobId);
 			expect(row.status).toBe("running");
 			expect(row.error).toBeNull();
