@@ -39,7 +39,9 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 
 ## 2. Data integrity in the worker
 
-Evaluated 2026-10-28; all three still on `main`. Order: 2.4 (defines the error 2.1 consumes), 2.3, 2.1.
+Evaluated 2026-10-28. 2.4 (scheduling reads turning errors into false facts) is fixed: a failed read
+now returns `{ kind: "load_facts"; cause: DbError }` from `applyLibraryProcessingChange`, which the
+worker's settlement retries; 2.1 consumes it. Order for the rest: 2.3, 2.1.
 Retry machinery today: enrichment and match-refresh jobs requeue on a throw while `attempts < 3`, with
 30 s × attempt backoff (`library-processing-runner.ts:179-232`, `finalize.ts:37-58`). Extension sync has
 no retry beyond the stale-job sweep: any returned error fails it on attempt 1 and deletes the payload.
@@ -73,19 +75,6 @@ no retry beyond the stale-job sweep: any returned error fails it on attempt 1 an
   snapshot (new `stages/__tests__/playlist-profiling.test.ts`).
 - Related: profiling progress always reports 0 failures (`orchestrator.ts:304`) and the count-mismatch
   guard at `:330` can never fire, because the list is already filtered.
-
-### 2.4 Scheduling reads turn errors into false facts (A5) — S
-
-- `src/lib/workflows/library-processing/service.ts:177-180`: a failed read means "no target playlists",
-  so target confirmation or first match setup never requests enrichment (`reconciler.ts:73,87`) and a
-  new user's first match never appears. `scheduler.ts:102-105`: a failed read gives a `null` marker and
-  the reconciler settles with the current `requestedAt` (`reconciler.ts:134-158`), marking a request the
-  job never saw as done. `scheduler.ts:208-209` (count → 0) only affects progress display.
-- **Change.** Both reads return `Result<_, DbError>` (a missing job row stays a legitimate `null`); add
-  `{ kind: "load_facts"; cause }` to `LibraryProcessingApplyError` (`types.ts:118-128`), returned before
-  any write, and to `SETTLEMENT_RETRY_OPTIONS`. Extension sync's apply failure gets its retry from 2.1.
-- **Test.** A failed target-playlist read errors instead of skipping enrichment on target confirmation
-  (`service-persist.test.ts`).
 
 ### 2.5 Unverified: crash between state write and job creation (T3 note) — S
 
