@@ -98,10 +98,6 @@ Effort: **S** < ½ day · **M** 1–2 days · **L** 3–5 days.
 
 ## 5. Observability housekeeping
 
-- **PostHog error grouping (S).** Sourcemaps go to Sentry only (`vite.config.ts:373`) while PostHog
-  still captures exceptions (`src/routes/__root.tsx:94`), so every deploy forks new unreadable PostHog
-  issues. Either upload sourcemaps with `posthog-cli` in the release job, or turn off
-  `capture_exceptions` and triage in Sentry only.
 - **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
   After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
   delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
