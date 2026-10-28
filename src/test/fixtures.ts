@@ -533,3 +533,287 @@ export function makeVisibilityScenario() {
 		decisions: [{ song: songs.entitled, playlist: playlists.target }],
 	};
 }
+
+const AUDIO_FEATURE_COLUMNS = [
+	"energy",
+	"valence",
+	"danceability",
+	"acousticness",
+	"instrumentalness",
+	"speechiness",
+	"liveness",
+	"tempo",
+	"loudness",
+] as const;
+
+type AudioFeatureColumn = (typeof AUDIO_FEATURE_COLUMNS)[number];
+type AudioFeatureRow = Record<AudioFeatureColumn, number | null>;
+
+/** One liked song as the studio preview ranking sees it. */
+export interface PreviewRankSong {
+	id: string;
+	genres: string[];
+	/** null = no song_audio_feature row; a row may hold any mix of nulls. */
+	audio: AudioFeatureRow | null;
+	language: string | null;
+	languageSecondary: string | null;
+	releaseYear: number | null;
+	vocalGender: "female" | "male" | "mixed" | null;
+	likedAt: string;
+	unlikedAt: string | null;
+	embeddings: {
+		model: string;
+		kind: string;
+		createdAt: string;
+		vector: number[];
+	}[];
+}
+
+export const PREVIEW_RANK_EMBEDDING_MODEL = "test-preview-rank-model";
+const PREVIEW_RANK_DIMS = 512;
+
+const NULL_AUDIO = Object.fromEntries(
+	AUDIO_FEATURE_COLUMNS.map((c) => [c, null]),
+) as AudioFeatureRow;
+
+// mulberry32: a seeded generator so the library is the same on every run.
+function seededRandom(seed: number): () => number {
+	let a = seed;
+	return () => {
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+/**
+ * A 53-song library for checking the SQL preview ranking against the
+ * TypeScript reference: real genres from the similarity table plus alias
+ * spellings ("Hip Hop", "r&b") and an unknown genre; full, partial, all-null
+ * and missing audio; null language/year/vocal gender; secondary languages;
+ * liked_at ties; genre arrays that earn identical credits; and stored vectors
+ * (stale rows, a zero vector, another model, another kind). Songs that are not Phase-1 or no longer liked are included so
+ * pins on them can be dropped.
+ *
+ * Vector components and the intent are small integers: pgvector accumulates
+ * cosine in float32, which is exact for these and so comparable to the
+ * double-precision TypeScript cosine to 1e-9. Audio values have three
+ * decimals, like provider data, so the real -> double conversion is exercised.
+ */
+export function makePreviewRankLibrary() {
+	const rand = seededRandom(20_261_028);
+	const pick = <T>(items: readonly T[]): T =>
+		items[Math.floor(rand() * items.length)];
+	const decimals = (min: number, max: number) =>
+		Math.round((min + rand() * (max - min)) * 1000) / 1000;
+	const intComponent = () => Math.floor(rand() * 5) - 2;
+	const intVector = () =>
+		Array.from({ length: PREVIEW_RANK_DIMS }, intComponent);
+	const intent = intVector();
+	// Random vectors are near-orthogonal to the intent; these sit at cosine
+	// ~0.7 so the under-sampled baseline stretch has values above 0.5 to map.
+	const nearIntent = () =>
+		intent.map((v) => (rand() < 0.3 ? intComponent() : v));
+	const fullAudio = (): AudioFeatureRow => ({
+		energy: decimals(0, 1),
+		valence: decimals(0, 1),
+		danceability: decimals(0, 1),
+		acousticness: decimals(0, 1),
+		instrumentalness: decimals(0, 1),
+		speechiness: decimals(0, 0.5),
+		liveness: decimals(0, 1),
+		tempo: decimals(60, 180),
+		loudness: decimals(-30, -2),
+	});
+
+	const genrePool = [
+		"rock",
+		"hard rock",
+		"indie rock",
+		"alternative rock",
+		"pop",
+		"dance-pop",
+		"synthpop",
+		"hip-hop",
+		"rnb",
+		"soul",
+		"neo-soul",
+		"jazz",
+		"electronic",
+		"house",
+		"ambient",
+		"folk",
+		"k-pop",
+		"lo-fi",
+	] as const;
+	const day = (offset: number) =>
+		new Date(Date.UTC(2024, 0, 1) + offset * 86_400_000).toISOString();
+
+	const song = (overrides: Partial<PreviewRankSong>): PreviewRankSong => ({
+		id: crypto.randomUUID(),
+		genres: [],
+		audio: null,
+		language: "en",
+		languageSecondary: null,
+		releaseYear: 2015,
+		vocalGender: null,
+		likedAt: day(0),
+		unlikedAt: null,
+		embeddings: [],
+		...overrides,
+	});
+	const embedding = (vector: number[], createdAt = day(400)) => ({
+		model: PREVIEW_RANK_EMBEDDING_MODEL,
+		kind: "full",
+		createdAt,
+		vector,
+	});
+
+	const generated = Array.from({ length: 36 }, (_, i) => {
+		const audioMode = pick(["full", "full", "full", "partial", "none"]);
+		const audio = audioMode === "none" ? null : fullAudio();
+		if (audio && audioMode === "partial") {
+			for (const c of AUDIO_FEATURE_COLUMNS) if (rand() < 0.4) audio[c] = null;
+		}
+		const genreCount = audio
+			? Math.floor(rand() * 4)
+			: 1 + Math.floor(rand() * 3);
+		return song({
+			genres: [
+				...new Set(Array.from({ length: genreCount }, () => pick(genrePool))),
+			],
+			audio,
+			language: pick(["en", "en", "pt", "ko", "ja", null]),
+			languageSecondary: pick([null, null, null, "en", "es"]),
+			releaseYear: rand() < 0.15 ? null : 1965 + Math.floor(rand() * 60),
+			vocalGender: pick(["female", "male", "mixed", null] as const),
+			// Every fifth song shares the previous one's day, so ties on score
+			// fall through to liked_at and then song id.
+			likedAt: day(i % 5 === 0 ? i - 1 : i),
+			embeddings:
+				rand() < 0.45
+					? [embedding(rand() < 0.5 ? nearIntent() : intVector())]
+					: [],
+		});
+	});
+
+	const twinAudio = fullAudio();
+	const special = {
+		aliasSpellings: song({
+			genres: ["Hip Hop", "r&b"],
+			audio: fullAudio(),
+			likedAt: day(40),
+			embeddings: [embedding(intVector())],
+		}),
+		canonicalSpellings: song({
+			genres: ["hip-hop", "rnb"],
+			audio: fullAudio(),
+			likedAt: day(41),
+		}),
+		unknownGenre: song({ genres: ["zydeco-core"], likedAt: day(42) }),
+		genreOnly: song({ genres: ["jazz", "soul"], likedAt: day(43) }),
+		audioOnly: song({ audio: fullAudio(), likedAt: day(44) }),
+		allNullAudioWithGenres: song({
+			genres: ["pop"],
+			audio: NULL_AUDIO,
+			likedAt: day(45),
+		}),
+		allNullAudioNoGenres: song({ audio: NULL_AUDIO, likedAt: day(46) }),
+		noMetadata: song({
+			genres: ["rock"],
+			audio: fullAudio(),
+			language: null,
+			releaseYear: null,
+			vocalGender: null,
+			likedAt: day(47),
+		}),
+		zeroVector: song({
+			genres: ["pop"],
+			audio: fullAudio(),
+			likedAt: day(48),
+			embeddings: [embedding(Array(PREVIEW_RANK_DIMS).fill(0))],
+		}),
+		staleVector: song({
+			genres: ["electronic"],
+			audio: fullAudio(),
+			likedAt: day(49),
+			embeddings: [
+				embedding(intVector(), day(300)),
+				embedding(intVector(), day(500)),
+			],
+		}),
+		otherModelVector: song({
+			genres: ["house"],
+			audio: fullAudio(),
+			likedAt: day(50),
+			embeddings: [
+				{ ...embedding(intVector()), model: "some-other-model" },
+				{ ...embedding(intVector()), kind: "song_semantic" },
+			],
+		}),
+		twinA: song({ genres: ["folk"], audio: twinAudio, likedAt: day(51) }),
+		twinB: song({ genres: ["folk"], audio: twinAudio, likedAt: day(51) }),
+		// "Rock" canonicalizes to rock, so the two arrays earn identical credits
+		// and tie exactly; song id has to break it.
+		sameCreditsA: song({ genres: ["rock"], likedAt: day(54) }),
+		sameCreditsB: song({ genres: ["Rock"], likedAt: day(54) }),
+		notPhase1: song({ likedAt: day(52) }),
+		unliked: song({
+			genres: ["rock"],
+			audio: fullAudio(),
+			likedAt: day(53),
+			unlikedAt: day(60),
+		}),
+	};
+
+	return {
+		accountId: crypto.randomUUID(),
+		songs: [...generated, ...Object.values(special)],
+		special,
+		intent,
+	};
+}
+
+/**
+ * Three songs small enough to score by hand: every signal has fewer than 8
+ * samples, so scores are raw values fused with redistributed weights.
+ * rock -> hard rock is 0.6 and hard rock -> rock 0.45 in the similarity table;
+ * jazz has no edge to either.
+ */
+export function makePreviewRankTrio() {
+	const base = {
+		language: "en",
+		languageSecondary: null,
+		releaseYear: 2015,
+		vocalGender: null,
+		unlikedAt: null,
+		embeddings: [],
+	};
+	return {
+		accountId: crypto.randomUUID(),
+		songs: {
+			rock: {
+				...base,
+				id: crypto.randomUUID(),
+				genres: ["rock"],
+				audio: { ...NULL_AUDIO, energy: 0.8, valence: 0.6 },
+				likedAt: "2024-03-03T00:00:00.000Z",
+			},
+			hardRock: {
+				...base,
+				id: crypto.randomUUID(),
+				genres: ["hard rock"],
+				audio: { ...NULL_AUDIO, energy: 0.3, valence: 0.1 },
+				likedAt: "2024-03-02T00:00:00.000Z",
+			},
+			jazz: {
+				...base,
+				id: crypto.randomUUID(),
+				genres: ["jazz"],
+				audio: null,
+				likedAt: "2024-03-01T00:00:00.000Z",
+			},
+		} satisfies Record<string, PreviewRankSong>,
+	};
+}
