@@ -96,21 +96,37 @@ export function getPlaylistBySpotifyId(
 	);
 }
 
+const GET_PLAYLISTS_PAGE_SIZE = 1_000;
+
 /**
  * Gets all playlists for an account.
  * Returns empty array if none found.
+ *
+ * PostgREST caps every response at max_rows (1000). A playlist past the cut
+ * would read as new to the sync diff, whose upsert then clears its is_target,
+ * so pages are read until a short one. Names repeat within an account, so `id`
+ * breaks ties to keep pages disjoint. The page size must not exceed max_rows,
+ * or a capped page would read as the last one.
  */
-export function getPlaylists(
+export async function getPlaylists(
 	accountId: string,
 ): Promise<Result<Playlist[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("playlist")
-			.select("*")
-			.eq("account_id", accountId)
-			.order("name", { ascending: true }),
-	);
+	const rows: Playlist[] = [];
+	for (;;) {
+		const page = await fromSupabaseMany(
+			supabase
+				.from("playlist")
+				.select("*")
+				.eq("account_id", accountId)
+				.order("name", { ascending: true })
+				.order("id")
+				.range(rows.length, rows.length + GET_PLAYLISTS_PAGE_SIZE - 1),
+		);
+		if (Result.isError(page)) return page;
+		rows.push(...page.value);
+		if (page.value.length < GET_PLAYLISTS_PAGE_SIZE) return Result.ok(rows);
+	}
 }
 
 /**
