@@ -59,7 +59,8 @@ function formatPretty(
 
 // The web server and the worker both log through this module, so each image
 // bakes in its own name (Dockerfile.app, Dockerfile.worker), matching the
-// process's Sentry `service` tag.
+// process's Sentry `service` tag. It goes after the caller's data so a payload
+// field of the same name can't relabel the line.
 const service = process.env.HEARTED_SERVICE;
 
 function formatJson(
@@ -70,9 +71,9 @@ function formatJson(
 	return JSON.stringify({
 		ts: new Date().toISOString(),
 		level,
-		service,
 		event,
 		...data,
+		service,
 	});
 }
 
