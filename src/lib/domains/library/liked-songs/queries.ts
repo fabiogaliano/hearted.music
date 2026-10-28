@@ -69,6 +69,8 @@ export type LikedSongFilter =
 /** The liked-song fields the diff/analysis sweeps read — never the full row. */
 export type LikedSongRef = Pick<LikedSong, "song_id" | "unliked_at">;
 
+const GET_ALL_PAGE_SIZE = 1_000;
+
 /**
  * Gets all liked-song refs for an account, newest first.
  * Returns empty array if none found.
@@ -78,18 +80,32 @@ export type LikedSongRef = Pick<LikedSong, "song_id" | "unliked_at">;
  * thousands of rows when callers only key off the id and soft-delete flag.
  * Soft-deleted rows are intentionally kept — the sync diff needs them to detect
  * re-likes (see incrementalSync).
+ *
+ * PostgREST caps every response at max_rows (1000), and libraries run past it:
+ * a single read would drop the oldest songs, which the diff then re-imports as
+ * new and never sees unliked. Pages are read until a short one; `song_id` is
+ * unique within an account, so the order keeps pages disjoint. The page size
+ * must not exceed max_rows, or a capped page would read as the last one.
  */
-export function getAll(
+export async function getAll(
 	accountId: string,
 ): Promise<Result<LikedSongRef[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("liked_song")
-			.select("song_id, unliked_at")
-			.eq("account_id", accountId)
-			.order("liked_at", { ascending: false }),
-	);
+	const rows: LikedSongRef[] = [];
+	for (;;) {
+		const page = await fromSupabaseMany(
+			supabase
+				.from("liked_song")
+				.select("song_id, unliked_at")
+				.eq("account_id", accountId)
+				.order("liked_at", { ascending: false })
+				.order("song_id")
+				.range(rows.length, rows.length + GET_ALL_PAGE_SIZE - 1),
+		);
+		if (Result.isError(page)) return page;
+		rows.push(...page.value);
+		if (page.value.length < GET_ALL_PAGE_SIZE) return Result.ok(rows);
+	}
 }
 
 /**
