@@ -48,6 +48,7 @@ import {
 import { captureProductEventBestEffort } from "@/lib/observability/capture-product-event";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
+import { unwrapOrThrow } from "@/lib/server/unwrap-or-throw";
 import {
 	FirstMatchSetupChanges,
 	PlaylistManagementChanges,
@@ -144,9 +145,13 @@ export const getPlaylistManagementData = createServerFn({
 			throw new Error("Failed to load playlists", { cause: allResult.error });
 		}
 
-		const targetIds = new Set(
-			Result.isOk(targetResult) ? targetResult.value.map((p) => p.id) : [],
-		);
+		// An empty fallback would render every target playlist as untargeted.
+		const targets = unwrapOrThrow(targetResult, {
+			area: "playlists",
+			operation: "get_playlist_management_data",
+			accountId: session.accountId,
+		});
+		const targetIds = new Set(targets.map((p) => p.id));
 
 		return {
 			playlists: allResult.value,
