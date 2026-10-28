@@ -190,6 +190,10 @@ jobs:
       contents: read
       packages: read
     timeout-minutes: 20
+    env:
+      # One value for the CLI pin and the image-cache key: the CLI version decides
+      # which images `supabase start` pulls.
+      SUPABASE_CLI_VERSION: 2.101.0
     concurrency:
       group: db-security-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -214,7 +218,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:
-          version: 2.101.0
+          version: ${{ env.SUPABASE_CLI_VERSION }}
           github-token: ${{ github.token }}
 
       # Anonymous ghcr.io/supabase/* pulls get throttled (toomanyrequests) and
@@ -236,7 +240,7 @@ jobs:
         uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ runner.temp }}/supabase-images.tar
-          key: ${{ runner.os }}-supabase-images-2.101.0-${{ hashFiles('supabase/config.toml') }}
+          key: ${{ runner.os }}-supabase-images-${{ env.SUPABASE_CLI_VERSION }}-${{ hashFiles('supabase/config.toml') }}
 
       - name: Load Supabase images
         if: steps.supabase-images.outputs.cache-hit == 'true'
