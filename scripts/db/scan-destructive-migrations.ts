@@ -275,13 +275,16 @@ function alterTableReasons(actions: string): string[] {
 				"renaming a table or column breaks readers on the running deploy",
 			];
 		}
-		// Checked before the constraint exemption: dropping a key with CASCADE
-		// also drops the foreign keys on every table that references it.
-		if (/^DROP\b.* CASCADE$/i.test(action)) {
-			return ["DROP ... CASCADE also drops every dependent object"];
+		const cascade = /^DROP\b.* CASCADE$/i.test(action);
+		const cascadeReason = "DROP ... CASCADE also drops every dependent object";
+		if (/^DROP (?!CONSTRAINT\b)/i.test(action)) {
+			return cascade
+				? [`DROP COLUMN deletes data; ${cascadeReason}`]
+				: ["DROP COLUMN deletes data"];
 		}
-		if (/^DROP (?!CONSTRAINT\b)/i.test(action))
-			return ["DROP COLUMN deletes data"];
+		// Not covered by the constraint exemption: dropping a key with CASCADE
+		// also drops the foreign keys on every table that references it.
+		if (cascade) return [cascadeReason];
 		if (ALTER_COLUMN_TYPE.test(action)) {
 			return [
 				"ALTER COLUMN ... TYPE can rewrite the table under an ACCESS EXCLUSIVE lock",

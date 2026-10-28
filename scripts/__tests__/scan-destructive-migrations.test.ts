@@ -13,7 +13,9 @@ describe("scanMigrationSql", () => {
 		["DROP TABLE ... CASCADE", "DROP TABLE public.old_thing CASCADE;"],
 		["DROP COLUMN", "ALTER TABLE song ADD COLUMN a int, DROP COLUMN isrc;"],
 		["DROP COLUMN without the COLUMN keyword", "ALTER TABLE song DROP isrc;"],
+		["DROP COLUMN ... CASCADE", "ALTER TABLE song DROP COLUMN isrc CASCADE;"],
 		["DROP SCHEMA", "DROP SCHEMA legacy;"],
+		["DROP SCHEMA ... CASCADE", "DROP SCHEMA legacy CASCADE;"],
 		["DROP VIEW nothing re-creates", "DROP VIEW public.liked_song_decorated;"],
 		[
 			"DROP FUNCTION nothing re-creates",
