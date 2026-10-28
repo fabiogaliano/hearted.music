@@ -73,6 +73,28 @@ describe("scanMigrationSql", () => {
 		expect(blocked(recreated.replace(");", ") CASCADE;"))).toHaveLength(1);
 	});
 
+	it("flags ALTER TABLE ... DROP CONSTRAINT ... CASCADE, which also drops the foreign keys referencing it", () => {
+		expect(
+			blocked("ALTER TABLE account DROP CONSTRAINT account_pkey CASCADE;"),
+		).toHaveLength(1);
+		expect(
+			blocked("ALTER TABLE account DROP CONSTRAINT account_handle_check;"),
+		).toEqual([]);
+	});
+
+	it("flags an unscoped DELETE inside a data-modifying CTE, even when the outer query has a WHERE", () => {
+		expect(
+			blocked(
+				"WITH removed AS (DELETE FROM song RETURNING *) SELECT count(*) FROM removed WHERE true;",
+			),
+		).toHaveLength(1);
+		expect(
+			blocked(
+				"WITH removed AS (DELETE FROM song WHERE id IN (SELECT 1) RETURNING *) SELECT 1;",
+			),
+		).toEqual([]);
+	});
+
 	it("blocks a file whose quote never closes, since a lexer misread there would hide every statement after it", () => {
 		const sql = "SELECT $body$ never closed;\nDROP TABLE song;";
 		expect(blocked(sql)).toMatchObject([{ line: 1 }]);
