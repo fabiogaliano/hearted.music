@@ -300,6 +300,7 @@ const SETTLEMENT_RETRY_OPTIONS: RetryOptions<LibraryProcessingApplyError> = {
 	isRetryable: (error) => {
 		switch (error.kind) {
 			case "load_state":
+			case "load_facts":
 			case "persist_state":
 			case "persist_active_refs":
 				return error.cause instanceof DatabaseError;

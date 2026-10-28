@@ -117,6 +117,9 @@ export type LibraryProcessingApplyCause =
 
 export type LibraryProcessingApplyError =
 	| { kind: "load_state"; cause: DbError }
+	// A read the reconciler decides from (target playlists, the finished job's
+	// marker) failed; nothing has been written yet.
+	| { kind: "load_facts"; cause: DbError }
 	| { kind: "persist_state"; cause: DbError }
 	// Every compare-and-set attempt lost to a concurrent writer.
 	| { kind: "persist_conflict" }

@@ -20,21 +20,22 @@ vi.mock("../scheduler", () => ({
 	createReadinessAccessor: () => async () => true,
 	describeTrigger: () => "test",
 	executeEffect: (...args: unknown[]) => executeEffectMock(...args),
-	loadJobOutcomeMetadata: async () => ({
-		satisfiedMarker: null,
-		batchSequence: null,
-	}),
+	loadJobOutcomeMetadata: async () =>
+		Result.ok({ satisfiedMarker: null, batchSequence: null }),
 }));
 
+const getTargetPlaylistsMock = vi.fn();
+
 vi.mock("@/lib/domains/library/playlists/queries", () => ({
-	getTargetPlaylists: async () => Result.ok([{ id: "playlist-1" }]),
+	getTargetPlaylists: (...args: unknown[]) => getTargetPlaylistsMock(...args),
 }));
 
 vi.mock("@/lib/observability/account-label", () => ({
 	resolveAccountLabel: async () => "acct",
 }));
 
-import { MaintenanceChanges } from "../changes";
+import { DatabaseError } from "@/lib/shared/errors/database";
+import { FirstMatchSetupChanges, MaintenanceChanges } from "../changes";
 import { applyLibraryProcessingChange } from "../service";
 
 function makeState(
@@ -62,6 +63,7 @@ describe("applyLibraryProcessingChange persistence", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		swapActiveJobRefMock.mockResolvedValue(Result.ok(true));
+		getTargetPlaylistsMock.mockResolvedValue(Result.ok([{ id: "playlist-1" }]));
 		executeEffectMock.mockImplementation(
 			async (_effect: unknown, state: LibraryProcessingState) =>
 				Result.ok({
@@ -128,5 +130,21 @@ describe("applyLibraryProcessingChange persistence", () => {
 			null,
 			"job-new",
 		);
+	});
+
+	it("regression: a failed target-playlist read errors instead of skipping enrichment on target confirmation", async () => {
+		const dbError = new DatabaseError({ code: "08006", message: "db down" });
+		getTargetPlaylistsMock.mockResolvedValue(Result.err(dbError));
+		getOrCreateStateMock.mockResolvedValue(
+			Result.ok(makeState("2026-10-06T10:00:00.000001+00:00")),
+		);
+
+		const result = await applyLibraryProcessingChange(
+			FirstMatchSetupChanges.setupCompleted("acct-1"),
+		);
+
+		expect(result).toHaveErrValue({ kind: "load_facts", cause: dbError });
+		expect(persistStateMock).not.toHaveBeenCalled();
+		expect(executeEffectMock).not.toHaveBeenCalled();
 	});
 });

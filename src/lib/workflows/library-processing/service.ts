@@ -73,10 +73,26 @@ export async function applyLibraryProcessingChange(
 ): Promise<Result<LibraryProcessingApplyOutcome, LibraryProcessingApplyError>> {
 	const requestMarker = new Date().toISOString();
 
-	const [jobOutcomeMetadata, hasTargets] = await Promise.all([
+	const [jobOutcomeMetadataResult, targetPlaylistsResult] = await Promise.all([
 		loadJobOutcomeMetadata(change),
-		resolveHasTargetPlaylists(change.accountId),
+		getTargetPlaylists(change.accountId),
 	]);
+	// Reading a failure as "no targets" or "no marker" would reconcile on a
+	// false fact: enrichment never requested, or unseen requests settled.
+	if (Result.isError(jobOutcomeMetadataResult)) {
+		return Result.err({
+			kind: "load_facts",
+			cause: jobOutcomeMetadataResult.error,
+		});
+	}
+	if (Result.isError(targetPlaylistsResult)) {
+		return Result.err({
+			kind: "load_facts",
+			cause: targetPlaylistsResult.error,
+		});
+	}
+	const jobOutcomeMetadata = jobOutcomeMetadataResult.value;
+	const hasTargets = targetPlaylistsResult.value.length > 0;
 
 	// Load → reconcile → compare-and-set write. Both the Cloudflare server fns
 	// and the Bun worker apply changes, so the row can move between our read
@@ -172,9 +188,4 @@ export async function applyLibraryProcessingChange(
 		effects,
 		effectResults,
 	});
-}
-
-async function resolveHasTargetPlaylists(accountId: string): Promise<boolean> {
-	const result = await getTargetPlaylists(accountId);
-	return Result.isOk(result) && result.value.length > 0;
 }
