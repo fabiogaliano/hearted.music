@@ -57,9 +57,10 @@ Origin lock (instead of a host firewall): `/data/coolify/proxy/dynamic/cloudflar
 defines a Traefik `ipAllowList` middleware with the Cloudflare edge ranges
 (https://www.cloudflare.com/ips/). Only the `hearted.music` router uses it; `supabase.`, `chili.`
 and `ntfy.` are reached directly and a ufw rule would cut them off. Direct requests to the origin
-with `Host: hearted.music` get 403. Refresh the ranges by re-running the generator
-(`scripts/ops/traefik-cloudflare-only.sh`, run on the VPS; the file header records the fetch date) when
-Cloudflare publishes changes.
+with `Host: hearted.music` get 403. When Cloudflare publishes new ranges, regenerate the file on
+the VPS from `https://www.cloudflare.com/ips-v4` and `ips-v6` (one `- "<cidr>"` line per range under
+`http.middlewares.cloudflare-only.ipAllowList.sourceRange`); Traefik watches the directory and
+reloads on write. The file header records the fetch date.
 
 Cloudflare (zone `hearted.music`, SSL mode Full):
 
