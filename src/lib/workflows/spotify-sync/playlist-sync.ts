@@ -255,7 +255,9 @@ export async function syncPlaylistTracksFromData(
 	);
 
 	const songBySpotifyId = songMapResult.value;
-	const upsertedSongs = [...songBySpotifyId.values()];
+	const songById = new Map(
+		[...songBySpotifyId.values()].map((s: Song) => [s.id, s]),
+	);
 
 	const spotifyTrackIds = new Set(
 		spotifyTracks.map((t: SpotifyTrackDTO) => t.track.id),
@@ -292,7 +294,7 @@ export async function syncPlaylistTracksFromData(
 	});
 
 	for (const existing of existingSongs) {
-		const song = upsertedSongs.find((s: Song) => s.id === existing.song_id);
+		const song = songById.get(existing.song_id);
 		if (!song || !spotifyTrackIds.has(song.spotify_id)) {
 			toRemove.push(existing);
 		}
