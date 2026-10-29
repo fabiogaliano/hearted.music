@@ -193,6 +193,25 @@ export const SONGS = {
 export const ALL_PLAYLISTS = Object.values(PLAYLISTS);
 export const ALL_SONGS = Object.values(SONGS);
 
+/**
+ * A playlist's track rows (TrackList's PlaylistTrackVM), cycling the real
+ * songs; position is 1-based. Typed structurally because the worker project
+ * typechecks this file and can't load the playlist UI module's CSS imports.
+ */
+export function makePlaylistTracks(count: number) {
+	return Array.from({ length: count }, (_, i) => {
+		const song = ALL_SONGS[i % ALL_SONGS.length];
+		return {
+			position: i + 1,
+			name: song.name,
+			artists: [...song.artists],
+			albumName: song.album_name,
+			imageUrl: song.image_url,
+			spotifyId: song.spotify_id,
+		};
+	});
+}
+
 export interface OnboardingPlaylist {
 	id: string;
 	spotifyId: string;

@@ -38,6 +38,11 @@ interface TrackListProps {
 	playback?: SingleActivePlayback;
 }
 
+// About one panel's height of rows. The stagger is index-based and the fill
+// mode holds a row hidden until its delay ends, so rows past the first screen
+// (and every infinite-scroll page) skip the enter instead of waiting i × 26ms.
+const STAGGERED_ROWS = 14;
+
 /** Presentational track list with a staggered enter. Tracks come in as props so
  *  the panel stays storybook-able; real wiring loads them via a server fn and
  *  passes hasMore/onLoadMore so the list paginates on scroll. */
@@ -88,6 +93,7 @@ export function TrackList({
 			</div>
 			{tracks.map((track, i) => {
 				const rowId = `${track.position}-${track.name}`;
+				const staggered = animateIn && i < STAGGERED_ROWS;
 				return (
 					<div
 						key={rowId}
@@ -102,8 +108,8 @@ export function TrackList({
 							enableTrackPlayback
 								? "surface-raised-hover transition-[background-color] duration-150 ease-out"
 								: ""
-						} ${animateIn ? "xpl-track-enter" : ""}`}
-						style={animateIn ? { animationDelay: `${i * 26}ms` } : undefined}
+						} ${staggered ? "xpl-track-enter" : ""}`}
+						style={staggered ? { animationDelay: `${i * 26}ms` } : undefined}
 					>
 						<span
 							className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"
