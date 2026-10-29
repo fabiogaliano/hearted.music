@@ -20,7 +20,10 @@ import {
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { DatabaseError, type DbError } from "@/lib/shared/errors/database";
 import type { BillingBand } from "@/lib/shared/queue/band";
-import { fromSupabaseMaybe } from "@/lib/shared/utils/result-wrappers/supabase";
+import {
+	fromSupabaseMaybe,
+	readAllRows,
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 const VALID_PLANS = new Set<string>(["free", "quarterly", "yearly"]);
 
@@ -173,20 +176,15 @@ export async function readBillingStateOrFreeTier(
 	return FREE_BILLING_STATE;
 }
 
-const ENTITLED_PAGE_SIZE = 1_000;
-
 /**
  * Liked song IDs the account is entitled to see matched and that are ready for
  * matching candidacy (genres, song_analysis and song_embedding present; audio
  * features optional). Revoked and locked songs are excluded.
  *
  * songIds scopes the check server-side to one batch; omitted, the full entitled
- * set is read. PostgREST caps every response at max_rows, so a single call
- * would silently truncate a large library: pages are read until a short one,
- * and the order keeps pages disjoint. The page size must not exceed max_rows
- * (1000, as chunked-write assumes), or a capped page would read as the last one.
- * This runs on the active-jobs poll, so the common sub-1000 library costs one
- * round trip, not a second empty-page probe.
+ * set is read, which runs past PostgREST's max_rows on a large library. This
+ * runs on the active-jobs poll, so the common sub-1000 library costs one round
+ * trip, not a second empty-page probe.
  */
 export async function readEntitledDataEnrichedSongIds(
 	supabase: AdminSupabaseClient,
@@ -197,18 +195,19 @@ export async function readEntitledDataEnrichedSongIds(
 		? { p_account_id: accountId, p_song_ids: songIds }
 		: { p_account_id: accountId };
 
-	const entitled: string[] = [];
-	for (;;) {
-		const { data, error } = await supabase
-			.rpc("select_entitled_data_enriched_liked_song_ids", args)
-			.order("song_id")
-			.range(entitled.length, entitled.length + ENTITLED_PAGE_SIZE - 1);
-		if (error) {
-			return Result.err(
-				new DatabaseError({ code: error.code, message: error.message }),
-			);
-		}
-		for (const row of data ?? []) entitled.push(row.song_id);
-		if (!data || data.length < ENTITLED_PAGE_SIZE) return Result.ok(entitled);
-	}
+	const rows = await readAllRows(
+		async (from, to): Promise<Result<{ song_id: string }[], DbError>> => {
+			const { data, error } = await supabase
+				.rpc("select_entitled_data_enriched_liked_song_ids", args)
+				.order("song_id")
+				.range(from, to);
+			if (error) {
+				return Result.err(
+					new DatabaseError({ code: error.code, message: error.message }),
+				);
+			}
+			return Result.ok(data ?? []);
+		},
+	);
+	return rows.map((page) => page.map((row) => row.song_id));
 }

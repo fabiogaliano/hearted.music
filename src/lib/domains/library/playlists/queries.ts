@@ -18,6 +18,7 @@ import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseSingle,
+	readAllRows,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
@@ -96,37 +97,29 @@ export function getPlaylistBySpotifyId(
 	);
 }
 
-const GET_PLAYLISTS_PAGE_SIZE = 1_000;
-
 /**
  * Gets all playlists for an account.
  * Returns empty array if none found.
  *
- * PostgREST caps every response at max_rows (1000). A playlist past the cut
- * would read as new to the sync diff, whose upsert then clears its is_target,
- * so pages are read until a short one. Names repeat within an account, so `id`
- * breaks ties to keep pages disjoint. The page size must not exceed max_rows,
- * or a capped page would read as the last one.
+ * A playlist past PostgREST's max_rows would read as new to the sync diff,
+ * whose upsert then clears its is_target. Names repeat within an account, so
+ * `id` breaks ties.
  */
 export async function getPlaylists(
 	accountId: string,
 ): Promise<Result<Playlist[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const rows: Playlist[] = [];
-	for (;;) {
-		const page = await fromSupabaseMany(
+	return readAllRows((from, to) =>
+		fromSupabaseMany(
 			supabase
 				.from("playlist")
 				.select("*")
 				.eq("account_id", accountId)
 				.order("name", { ascending: true })
 				.order("id")
-				.range(rows.length, rows.length + GET_PLAYLISTS_PAGE_SIZE - 1),
-		);
-		if (Result.isError(page)) return page;
-		rows.push(...page.value);
-		if (page.value.length < GET_PLAYLISTS_PAGE_SIZE) return Result.ok(rows);
-	}
+				.range(from, to),
+		),
+	);
 }
 
 /**
@@ -387,40 +380,29 @@ export function updatePlaylistSongCount(
 // Playlist-Song Junction Operations
 // ============================================================================
 
-const GET_PLAYLIST_SONGS_PAGE_SIZE = 1_000;
-
 /**
  * Gets all songs in a playlist with their positions.
  * Returns empty array if none found.
  *
- * PostgREST caps every response at max_rows (1000), and playlists run past it:
- * a single read would hide every song past position 1000 from the track diff,
- * profiling and enrichment. Pages are read until a short one; `position` is not
- * unique (see getPlaylistSongsPage), so `id` breaks ties to keep pages
- * disjoint. The page size must not exceed max_rows, or a capped page would read
- * as the last one.
+ * Playlists run past PostgREST's max_rows: a single read would hide every song
+ * past position 1000 from the track diff, profiling and enrichment. `position`
+ * is not unique (see getPlaylistSongsPage), so `id` breaks ties.
  */
 export async function getPlaylistSongs(
 	playlistId: string,
 ): Promise<Result<PlaylistSong[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const rows: PlaylistSong[] = [];
-	for (;;) {
-		const page = await fromSupabaseMany(
+	return readAllRows((from, to) =>
+		fromSupabaseMany(
 			supabase
 				.from("playlist_song")
 				.select("*")
 				.eq("playlist_id", playlistId)
 				.order("position", { ascending: true })
 				.order("id")
-				.range(rows.length, rows.length + GET_PLAYLIST_SONGS_PAGE_SIZE - 1),
-		);
-		if (Result.isError(page)) return page;
-		rows.push(...page.value);
-		if (page.value.length < GET_PLAYLIST_SONGS_PAGE_SIZE) {
-			return Result.ok(rows);
-		}
-	}
+				.range(from, to),
+		),
+	);
 }
 
 /**

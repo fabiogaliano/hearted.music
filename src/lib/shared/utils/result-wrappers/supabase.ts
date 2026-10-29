@@ -124,6 +124,37 @@ export async function fromSupabaseRpc<S extends z.ZodType>(
 	return Result.ok(parsed.data);
 }
 
+const READ_ALL_PAGE_SIZE = 1_000;
+
+/**
+ * Reads every row of a query PostgREST would otherwise cut at max_rows (1000)
+ * with no error. `readPage` applies `.range(from, to)` to its query and decodes
+ * the response; pages are read until a short one, and any failed page fails
+ * the whole read rather than returning a partial set.
+ *
+ * The page size must not exceed max_rows, or a capped page would read as the
+ * last one.
+ *
+ * The caller's query must have a unique order (add a tie-breaker column), or
+ * rows shift between pages and get skipped or duplicated. Offsets are only safe
+ * when nothing writes the rows during the read; a read racing concurrent writes
+ * needs keyset paging (see visibility-inputs.ts).
+ */
+export async function readAllRows<T>(
+	readPage: (from: number, to: number) => PromiseLike<Result<T[], DbError>>,
+): Promise<Result<T[], DbError>> {
+	const rows: T[] = [];
+	for (;;) {
+		const page = await readPage(
+			rows.length,
+			rows.length + READ_ALL_PAGE_SIZE - 1,
+		);
+		if (Result.isError(page)) return page;
+		rows.push(...page.value);
+		if (page.value.length < READ_ALL_PAGE_SIZE) return Result.ok(rows);
+	}
+}
+
 function mapPostgrestError(error: {
 	code: string;
 	message: string;
