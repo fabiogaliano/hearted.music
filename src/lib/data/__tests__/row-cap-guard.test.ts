@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { guardRowCap, POSTGREST_MAX_ROWS } from "@/lib/data/row-cap-guard";
+import { guardRowCap } from "@/lib/data/row-cap-guard";
+import { POSTGREST_MAX_ROWS } from "@/lib/shared/utils/result-wrappers/supabase";
 
 const captureServerError = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/observability/capture-server-error", () => ({
