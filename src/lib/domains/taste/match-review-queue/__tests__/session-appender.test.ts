@@ -8,6 +8,7 @@ import {
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
 	fetchMaxPosition,
+	fetchProposalSubjects,
 	fetchQueuedPlaylistIds,
 	fetchQueuedSongIds,
 	fetchTargetPlaylistFilters,
@@ -43,6 +44,7 @@ vi.mock("../queries", () => ({
 	fetchActiveSession: vi.fn(),
 	fetchAppliedSnapshotIds: vi.fn(),
 	fetchMaxPosition: vi.fn(),
+	fetchProposalSubjects: vi.fn(),
 	fetchQueuedPlaylistIds: vi.fn(),
 	fetchQueuedSongIds: vi.fn(),
 	fetchTargetPlaylistFilters: vi.fn(),
@@ -213,8 +215,8 @@ describe("appendSessionsForAccountOrientation", () => {
 				id: "prop-1",
 				status: "ready",
 			});
-			const subjectsOrder = vi.fn().mockResolvedValue({
-				data: [
+			vi.mocked(fetchProposalSubjects).mockResolvedValue(
+				Result.ok([
 					{
 						proposal_id: "prop-1",
 						position: 0,
@@ -224,17 +226,12 @@ describe("appendSessionsForAccountOrientation", () => {
 						source_fit_score: 0.8,
 						was_new_at_enqueue: false,
 					},
-				],
-				error: null,
-			});
-			const subjectsEq = vi.fn().mockReturnValue({ order: subjectsOrder });
-			const subjectsSelect = vi.fn().mockReturnValue({ eq: subjectsEq });
+				]),
+			);
 			const from = vi.fn((table: string) => {
 				switch (table) {
 					case "match_review_proposal":
 						return proposalTable;
-					case "match_review_proposal_subject":
-						return { select: subjectsSelect };
 					default:
 						throw new Error(`Unexpected table ${table}`);
 				}
@@ -272,8 +269,8 @@ describe("appendSessionsForAccountOrientation", () => {
 				id: "prop-1",
 				status: "ready",
 			});
-			const subjectsOrder = vi.fn().mockResolvedValue({
-				data: [
+			vi.mocked(fetchProposalSubjects).mockResolvedValue(
+				Result.ok([
 					{
 						proposal_id: "prop-1",
 						position: 0,
@@ -283,17 +280,12 @@ describe("appendSessionsForAccountOrientation", () => {
 						source_fit_score: 0.8,
 						was_new_at_enqueue: false,
 					},
-				],
-				error: null,
-			});
-			const subjectsEq = vi.fn().mockReturnValue({ order: subjectsOrder });
-			const subjectsSelect = vi.fn().mockReturnValue({ eq: subjectsEq });
+				]),
+			);
 			const from = vi.fn((table: string) => {
 				switch (table) {
 					case "match_review_proposal":
 						return proposalTable;
-					case "match_review_proposal_subject":
-						return { select: subjectsSelect };
 					default:
 						throw new Error(`Unexpected table ${table}`);
 				}

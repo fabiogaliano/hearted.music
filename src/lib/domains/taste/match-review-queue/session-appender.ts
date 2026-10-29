@@ -30,6 +30,7 @@ import {
 	fetchActiveSession,
 	fetchAppliedSnapshotIds,
 	fetchMaxPosition,
+	fetchProposalSubjects,
 	fetchQueuedPlaylistIds,
 	fetchQueuedSongIds,
 	fetchTargetPlaylistFilters,
@@ -233,20 +234,9 @@ export async function appendSessionsForAccountOrientation(input: {
 	}
 	const proposalId = proposalResult.value.id;
 
-	const subjectsResult = await createAdminSupabaseClient()
-		.from("match_review_proposal_subject")
-		.select("*")
-		.eq("proposal_id", proposalId)
-		.order("position", { ascending: true });
-	if (subjectsResult.error) {
-		return Result.err(
-			new DatabaseError({
-				code: subjectsResult.error.code,
-				message: subjectsResult.error.message,
-			}),
-		);
-	}
-	const proposalSubjects = (subjectsResult.data ?? []) as ProposalSubject[];
+	const subjectsResult = await fetchProposalSubjects(proposalId);
+	if (Result.isError(subjectsResult)) return subjectsResult;
+	const proposalSubjects: ProposalSubject[] = subjectsResult.value;
 
 	const queuedResult =
 		orientation === "song"
