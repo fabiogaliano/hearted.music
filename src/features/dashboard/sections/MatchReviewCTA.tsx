@@ -1,7 +1,8 @@
 /** Only rendered when reviewCount > 0. */
-import { ArrowRightIcon } from "@phosphor-icons/react";
+import { ArrowRightIcon, MonitorIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
 import type { MatchViewMode } from "@/features/matching/types";
+import type { ExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import { fonts } from "@/lib/theme/fonts";
 import { FanSpreadAlbumArt } from "../components/FanSpreadAlbumArt";
 import type { MatchPreview } from "../types";
@@ -11,14 +12,20 @@ interface MatchReviewCTAProps {
 	matchPreviews: MatchPreview[];
 	/** Orientation the count reflects — the CTA links and reads in this mode (A2). */
 	orientation: MatchViewMode;
+	/** "needs-computer" swaps Start for a note: this browser can browse /match but
+	 *  never add. "needs-extension" keeps Start; /match itself links the store. */
+	writeGate?: ExtensionWriteGate;
 }
 
 export function MatchReviewCTA({
 	reviewCount,
 	matchPreviews,
 	orientation,
+	writeGate = "ready",
 }: MatchReviewCTAProps) {
 	if (reviewCount === 0) return null;
+
+	const needsComputer = writeGate === "needs-computer";
 
 	const isPlaylist = orientation === "playlist";
 	// Playlist mode is the canonical bare /match URL; song mode uses ?mode=song.
@@ -60,15 +67,26 @@ export function MatchReviewCTA({
 				</h3>
 				<div className="flex w-full items-center justify-between gap-8 sm:w-auto sm:justify-start">
 					<FanSpreadAlbumArt images={matchPreviews} />
-					<span
-						className="theme-text-muted inline-flex items-center gap-1.5 text-sm transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
-						style={{ fontFamily: fonts.body }}
-					>
-						Start
-						<ArrowRightIcon size={14} weight="regular" />
-					</span>
+					{!needsComputer && (
+						<span
+							className="theme-text-muted inline-flex items-center gap-1.5 text-sm transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
+							style={{ fontFamily: fonts.body }}
+						>
+							Start
+							<ArrowRightIcon size={14} weight="regular" />
+						</span>
+					)}
 				</div>
 			</div>
+			{needsComputer && (
+				<p
+					className="theme-text-muted mt-6 flex items-center gap-2 text-sm"
+					style={{ fontFamily: fonts.body }}
+				>
+					<MonitorIcon size={16} aria-hidden />
+					Match on a computer
+				</p>
+			)}
 		</Link>
 	);
 }

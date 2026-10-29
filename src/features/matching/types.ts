@@ -1,4 +1,5 @@
 import type { SingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
+import type { ExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 
 /**
@@ -131,6 +132,8 @@ export interface SongSuggestionsSectionProps {
 	/** Swaps each row's Add for a Spotify reconnect link, mirroring
 	 *  MatchesSection's song-mode treatment of the same shared verdict. */
 	reconnectNeeded?: boolean;
+	/** Anything but "ready" makes the column browse-only (see WriteGateNote). */
+	writeGate?: ExtensionWriteGate;
 }
 
 type MatchingSessionCommonProps = {
@@ -138,6 +141,7 @@ type MatchingSessionCommonProps = {
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
+	writeGate?: ExtensionWriteGate;
 	/** See SongSuggestionsSectionProps — same invariant-2 gate, threaded to
 	 *  both orientations. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
@@ -215,6 +219,7 @@ export interface MatchingProps {
 	completionStats: CompletionStats;
 	recentItems: ReviewedItem[];
 	reconnectNeeded?: boolean;
+	writeGate?: ExtensionWriteGate;
 	/** See SongSuggestionsSectionProps — same invariant-2 gate. */
 	mismatchProfile?: ExtensionSpotifyProfile | null;
 	navigationDisabled?: boolean;

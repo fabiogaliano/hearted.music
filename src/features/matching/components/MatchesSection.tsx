@@ -3,6 +3,7 @@ import { memo } from "react";
 import { PlaylistMatchRow } from "@/components/ui/PlaylistMatchRow";
 import { Cover } from "@/features/playlists/components/Cover";
 import { AccountMismatchPrompt } from "@/features/playlists/create/publish/AccountMismatchPrompt";
+import type { ExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { fonts } from "@/lib/theme/fonts";
 import type { Playlist } from "../types";
@@ -13,6 +14,7 @@ import {
 	ReviewColumnFrame,
 	ReviewControls,
 	ReviewEmptyState,
+	WriteGateNote,
 } from "./ReviewColumn";
 import { ReviewListScroll } from "./ReviewListScroll";
 import { usePlaylistTrackPreview } from "./usePlaylistTrackPreview";
@@ -24,6 +26,9 @@ interface MatchesSectionProps {
 	isDemo?: boolean;
 	realAvailable?: boolean;
 	reconnectNeeded?: boolean;
+	/** Anything but "ready" makes the column browse-only: no Add or dismiss,
+	 *  and WriteGateNote says where adding works. */
+	writeGate?: ExtensionWriteGate;
 	/** Non-null while the extension's live Spotify session belongs to a
 	 *  DIFFERENT account than this deck's linked one (README invariant 2).
 	 *  Replaces the suggestion rows with AccountMismatchPrompt — no row
@@ -53,6 +58,7 @@ export const MatchesSection = memo(function MatchesSection({
 	isDemo,
 	realAvailable,
 	reconnectNeeded,
+	writeGate = "ready",
 	mismatchProfile,
 	navigationDisabled,
 	isLastItem,
@@ -93,6 +99,7 @@ export const MatchesSection = memo(function MatchesSection({
 								Demo
 							</span>
 						)}
+						<WriteGateNote gate={writeGate} />
 					</div>
 
 					{reconnectNeeded && <ReconnectBanner />}
@@ -129,6 +136,7 @@ export const MatchesSection = memo(function MatchesSection({
 									navigationDisabled={
 										(navigationDisabled ?? false) || (reconnectNeeded ?? false)
 									}
+									browseOnly={writeGate !== "ready"}
 									onAdd={onAdd}
 									onDismiss={onDismissSuggestion}
 								/>
@@ -155,6 +163,7 @@ interface MatchRowProps {
 	added: boolean;
 	isDemo: boolean;
 	navigationDisabled: boolean;
+	browseOnly: boolean;
 	onAdd: (playlistId: string) => void;
 	onDismiss?: (playlistId: string) => void | Promise<void>;
 }
@@ -168,6 +177,7 @@ function MatchRow({
 	added,
 	isDemo,
 	navigationDisabled,
+	browseOnly,
 	onAdd,
 	onDismiss,
 }: MatchRowProps) {
@@ -207,16 +217,33 @@ function MatchRow({
 				}
 				reason={playlist.reason || undefined}
 				size="lg"
-				onDismiss={onDismiss}
+				onDismiss={browseOnly ? undefined : onDismiss}
 				dismissDisabled={navigationDisabled}
 				dismissLabel={`Dismiss playlist suggestion: ${playlist.name}`}
-				action={
-					added
-						? { type: "added" }
-						: { type: "add", disabled: navigationDisabled, onAdd }
-				}
+				action={matchRowAction({
+					added,
+					browseOnly,
+					navigationDisabled,
+					onAdd,
+				})}
 			/>
 			{preview}
 		</>
 	);
+}
+
+function matchRowAction({
+	added,
+	browseOnly,
+	navigationDisabled,
+	onAdd,
+}: {
+	added: boolean;
+	browseOnly: boolean;
+	navigationDisabled: boolean;
+	onAdd: (playlistId: string) => void;
+}) {
+	if (added) return { type: "added" } as const;
+	if (browseOnly) return { type: "none" } as const;
+	return { type: "add", disabled: navigationDisabled, onAdd } as const;
 }

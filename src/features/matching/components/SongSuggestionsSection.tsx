@@ -14,6 +14,7 @@ import {
 	ReviewColumnFrame,
 	ReviewControls,
 	ReviewEmptyState,
+	WriteGateNote,
 } from "./ReviewColumn";
 import { ReviewListScroll } from "./ReviewListScroll";
 
@@ -33,6 +34,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 	addedTo,
 	mismatchProfile,
 	reconnectNeeded,
+	writeGate = "ready",
 	navigationDisabled,
 	isLastItem,
 	suppressTransition,
@@ -117,12 +119,15 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 					"Song Suggestions" — one slot, two grammars, a quality claim beside a
 					content type — so switching orientation made the column look like it
 					had changed job when only its contents had. */}
-					<p
-						className="theme-text-muted text-xs tracking-widest uppercase"
-						style={{ fontFamily: fonts.body }}
-					>
-						Best matches
-					</p>
+					<div className="flex items-center gap-2">
+						<p
+							className="theme-text-muted text-xs tracking-widest uppercase"
+							style={{ fontFamily: fonts.body }}
+						>
+							Best matches
+						</p>
+						<WriteGateNote gate={writeGate} />
+					</div>
 
 					{reconnectNeeded && <ReconnectBanner />}
 
@@ -150,6 +155,7 @@ export const SongSuggestionsSection = memo(function SongSuggestionsSection({
 									navigationDisabled={
 										(navigationDisabled ?? false) || (reconnectNeeded ?? false)
 									}
+									browseOnly={writeGate !== "ready"}
 									onAdd={onAdd}
 									onDismiss={onDismissSuggestion}
 									isActive={activePlaybackId === row.song.id}
@@ -181,6 +187,7 @@ interface SongSuggestionRowItemProps {
 	row: SongSuggestionRow;
 	added: boolean;
 	navigationDisabled: boolean;
+	browseOnly: boolean;
 	onAdd: (suggestionId: string) => void;
 	onDismiss?: (suggestionId: string) => void | Promise<void>;
 	/** True when this row's preview is the one playing (see activeSongId). */
@@ -197,6 +204,7 @@ function SongSuggestionRowItem({
 	row,
 	added,
 	navigationDisabled,
+	browseOnly,
 	onAdd,
 	onDismiss,
 	isActive,
@@ -251,7 +259,7 @@ function SongSuggestionRowItem({
 				"yes". 16px matches the row's own internal gap, and leaves 12px between
 				hit areas once .tap-40 has grown the X. */}
 				<div className="flex shrink-0 items-center gap-4">
-					{onDismiss && !added && (
+					{onDismiss && !added && !browseOnly && (
 						<button
 							type="button"
 							disabled={navigationDisabled}
@@ -262,28 +270,51 @@ function SongSuggestionRowItem({
 							<XIcon size={14} weight="bold" />
 						</button>
 					)}
-					{added ? (
-						<span
-							className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
-							style={{ fontFamily: fonts.body }}
-						>
-							Found its home
-						</span>
-					) : (
-						// Accent fill, matching song mode's Add — see PlaylistMatchRow for
-						// why a raised chip converges with its own row's hover.
-						<Button
-							variant="primary"
-							size="sm"
-							className="squircle rounded-full"
-							disabled={navigationDisabled}
-							onClick={() => onAdd(song.id)}
-						>
-							Add
-						</Button>
-					)}
+					<SuggestionAction
+						added={added}
+						browseOnly={browseOnly}
+						disabled={navigationDisabled}
+						onAdd={() => onAdd(song.id)}
+					/>
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function SuggestionAction({
+	added,
+	browseOnly,
+	disabled,
+	onAdd,
+}: {
+	added: boolean;
+	browseOnly: boolean;
+	disabled: boolean;
+	onAdd: () => void;
+}) {
+	if (added) {
+		return (
+			<span
+				className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
+				style={{ fontFamily: fonts.body }}
+			>
+				Found its home
+			</span>
+		);
+	}
+	if (browseOnly) return null;
+	return (
+		// Accent fill, matching song mode's Add — see PlaylistMatchRow for why a
+		// raised chip converges with its own row's hover.
+		<Button
+			variant="primary"
+			size="sm"
+			className="squircle rounded-full"
+			disabled={disabled}
+			onClick={onAdd}
+		>
+			Add
+		</Button>
 	);
 }
