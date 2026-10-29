@@ -10,7 +10,10 @@ import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Enums, Tables } from "@/lib/data/database.types";
 import type { DbError } from "@/lib/shared/errors/database";
 import { chunkedWrite } from "@/lib/shared/utils/chunked-write";
-import { fromSupabaseMany } from "@/lib/shared/utils/result-wrappers/supabase";
+import {
+	fromSupabaseMany,
+	POSTGREST_MAX_ROWS,
+} from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
 // Type Exports
@@ -35,20 +38,27 @@ export async function getNewItemIds(
 ): Promise<Result<string[], DbError>> {
 	const supabase = createAdminSupabaseClient();
 
-	const result = await fromSupabaseMany(
-		supabase
+	const itemIds: string[] = [];
+	// Keyset, not offset: viewing an item clears is_new, so a view between
+	// pages would shift every later row back and an offset would skip one.
+	// item_id is unique per (account_id, item_type).
+	for (;;) {
+		let query = supabase
 			.from("account_item_newness")
 			.select("item_id")
 			.eq("account_id", accountId)
 			.eq("item_type", itemType)
-			.eq("is_new", true),
-	);
+			.eq("is_new", true)
+			.order("item_id")
+			.limit(POSTGREST_MAX_ROWS);
+		const after = itemIds.at(-1);
+		if (after !== undefined) query = query.gt("item_id", after);
 
-	if (Result.isError(result)) {
-		return Result.err(result.error);
+		const page = await fromSupabaseMany(query);
+		if (Result.isError(page)) return Result.err(page.error);
+		for (const row of page.value) itemIds.push(row.item_id);
+		if (page.value.length < POSTGREST_MAX_ROWS) return Result.ok(itemIds);
 	}
-
-	return Result.ok(result.value.map((r) => r.item_id));
 }
 
 // ============================================================================
