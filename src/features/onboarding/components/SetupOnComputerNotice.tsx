@@ -11,7 +11,7 @@
  */
 
 import { MonitorIcon } from "@phosphor-icons/react";
-import { useOnboardingCapability } from "../hooks/useOnboardingCapability";
+import { useExtensionCapability } from "@/lib/extension/useExtensionCapability";
 
 const MESSAGE =
 	"heads up — first-time setup needs a computer with a supported browser. you can sign up here and finish on your laptop.";
@@ -28,7 +28,7 @@ export function SetupOnComputerNoticeGate({
 }: {
 	className?: string;
 }) {
-	const { engineSupported } = useOnboardingCapability();
+	const { engineSupported } = useExtensionCapability();
 	if (engineSupported) return null;
 	// Wrapper applied only when shown, so a capable visitor renders nothing at all
 	// (no stray spacing where the notice would have been).
