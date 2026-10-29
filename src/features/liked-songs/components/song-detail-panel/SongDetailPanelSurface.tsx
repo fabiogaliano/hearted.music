@@ -31,7 +31,7 @@ import type {
 	SongInstrumentalRead,
 	SongRead,
 } from "./song-detail-types";
-import { unreadStatus } from "./unread-status";
+import { type UnreadStatus, unreadStatus } from "./unread-status";
 
 type Palette = ReturnType<typeof getThemedDarkColors>;
 
@@ -561,9 +561,13 @@ function UnreadState({
 		);
 	}
 
-	const isAnalyzing =
-		unreadStatus({ displayState, contentFetchStatus, isEnrichmentRunning }) ===
-		"analyzing";
+	const status = unreadStatus({
+		displayState,
+		contentFetchStatus,
+		isEnrichmentRunning,
+	});
+	const isAnalyzing = status === "analyzing";
+	const copy = UNREAD_COPY[status];
 
 	return (
 		<section
@@ -586,7 +590,7 @@ function UnreadState({
 				}}
 			>
 				{isAnalyzing && <PulseDot color={colors.accent} />}
-				{isAnalyzing ? "Listening" : "No words yet"}
+				{copy.label}
 			</div>
 			<p
 				style={{
@@ -599,13 +603,23 @@ function UnreadState({
 					margin: 0,
 				}}
 			>
-				{isAnalyzing
-					? "Getting a feel for this one…"
-					: "We don’t have the words for this one yet."}
+				{copy.body}
 			</p>
 		</section>
 	);
 }
+
+const UNREAD_COPY: Record<UnreadStatus, { label: string; body: string }> = {
+	analyzing: { label: "Listening", body: "Getting a feel for this one…" },
+	unavailable: {
+		label: "No words yet",
+		body: "We don’t have the words for this one yet.",
+	},
+	failed: {
+		label: "Couldn’t listen",
+		body: "We couldn’t get a read on this one. We’ll try again once our systems are back working.",
+	},
+};
 
 // Renders a confirmed-instrumental analysis: sound-first, brand-voiced. Follows
 // the ReadLayer section idiom (border-top divider, SECTION_GAP padding) so it
