@@ -1,125 +1,151 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { isRedirect } from "@tanstack/react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildPlaylistRouteRef } from "@/features/playlists/playlistRouteRef";
+import { playlistKeys } from "@/lib/query-keys";
+import {
+	getPlaylistManagementData,
+	getPlaylistTracksPage,
+	PLAYLIST_NOT_FOUND_MESSAGE,
+} from "@/lib/server/playlists.functions";
+import { PLAYLISTS } from "@/test/fixtures";
+import { Route } from "../playlists.$playlistRef";
 
-const redirectMock = vi.fn((options: { to: string; replace?: boolean }) => ({
-	kind: "redirect" as const,
-	...options,
+/**
+ * The loader resolves `/playlists/$playlistRef` against the playlist management
+ * data before prefetching tracks. Real QueryClient; only the server fns are
+ * mocked.
+ */
+
+vi.mock("@/lib/server/playlists.functions", async (importOriginal) => ({
+	PLAYLIST_NOT_FOUND_MESSAGE: (
+		await importOriginal<typeof import("@/lib/server/playlists.functions")>()
+	).PLAYLIST_NOT_FOUND_MESSAGE,
+	getPlaylistManagementData: vi.fn(),
+	getPlaylistTracksPage: vi.fn(),
 }));
-const resolvePlaylistIdFromRouteRefMock = vi.fn();
-const playlistManagementQueryOptionsMock = vi.fn();
-const playlistTracksInfiniteQueryOptionsMock = vi.fn();
 
-type LoaderContext = {
-	session: { accountId: string };
-	queryClient: {
-		fetchQuery: (
-			options: unknown,
-		) => Promise<{ playlists: readonly unknown[] }>;
-		fetchInfiniteQuery: (options: unknown) => Promise<unknown>;
-	};
-};
+const ACCOUNT_ID = "acct-1";
+const KEPT = PLAYLISTS.lofiCityPop;
+const DELETED = PLAYLISTS.likedForAnna;
+const ADDED = PLAYLISTS.oldRock;
 
-type PlaylistRoute = {
-	loader: (args: {
-		context: LoaderContext;
-		params: { playlistRef: string };
-	}) => Promise<void>;
-};
+const refOf = (playlist: { id: string; name: string }) =>
+	buildPlaylistRouteRef(playlist as never);
+const management = (...playlists: { id: string; name: string }[]) =>
+	({ playlists }) as never;
 
-function isPlaylistRoute(value: unknown): value is PlaylistRoute {
-	if (typeof value !== "object" || value === null) {
-		return false;
-	}
+let queryClient: QueryClient;
 
-	return typeof Reflect.get(value, "loader") === "function";
-}
+afterEach(() => {
+	vi.restoreAllMocks();
+});
 
-async function loadRoute(): Promise<PlaylistRoute> {
-	vi.resetModules();
-	vi.doMock("@tanstack/react-router", () => ({
-		createFileRoute: () => (routeConfig: unknown) => routeConfig,
-		redirect: redirectMock,
-	}));
-	vi.doMock("@/features/playlists/playlistRouteRef", () => ({
-		resolvePlaylistIdFromRouteRef: resolvePlaylistIdFromRouteRefMock,
-	}));
-	vi.doMock("@/features/playlists/queries", () => ({
-		playlistManagementQueryOptions: playlistManagementQueryOptionsMock,
-		playlistTracksInfiniteQueryOptions: playlistTracksInfiniteQueryOptionsMock,
-	}));
-
-	const module = await import("../playlists.$playlistRef");
-	if (!isPlaylistRoute(module.Route)) {
-		throw new Error("Expected Route to expose a loader");
-	}
-
-	return module.Route;
-}
-
-describe("/_authenticated/playlists/$playlistRef route", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
+beforeEach(() => {
+	vi.clearAllMocks();
+	queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
 	});
+	vi.mocked(getPlaylistTracksPage).mockResolvedValue({
+		tracks: [],
+		nextCursor: null,
+	} as never);
+});
 
-	it("fetches fresh playlist management data before resolving the route ref", async () => {
-		const route = await loadRoute();
-		const managementQueryFn = vi.fn();
-		playlistManagementQueryOptionsMock.mockReturnValue({
-			queryKey: ["playlists", "management", "acct-1"],
-			queryFn: managementQueryFn,
-			staleTime: 30 * 60_000,
-		});
-		playlistTracksInfiniteQueryOptionsMock.mockReturnValue({
-			queryKey: ["playlists", "tracks", "playlist-1"],
-		});
-		resolvePlaylistIdFromRouteRefMock.mockReturnValue("playlist-1");
+function runLoader(playlistRef: string) {
+	// The route defines its loader as a plain function.
+	const loader = Route.options.loader as (args: unknown) => Promise<void>;
+	return loader({
+		context: { queryClient, session: { accountId: ACCOUNT_ID } },
+		params: { playlistRef },
+	});
+}
 
-		const fetchQuery = vi.fn().mockResolvedValue({ playlists: [] });
-		const fetchInfiniteQuery = vi.fn().mockResolvedValue({ pages: [] });
+function seedManagement(...playlists: { id: string; name: string }[]) {
+	queryClient.setQueryData(
+		playlistKeys.management(ACCOUNT_ID),
+		management(...playlists),
+	);
+}
 
-		await route.loader({
-			context: {
-				session: { accountId: "acct-1" },
-				queryClient: { fetchQuery, fetchInfiniteQuery },
-			},
-			params: { playlistRef: "ambient-morning--cc5695a52241" },
-		});
+async function redirectOf(promise: unknown) {
+	try {
+		await promise;
+	} catch (error) {
+		if (isRedirect(error)) return error.options;
+		throw error;
+	}
+	return null;
+}
 
-		expect(fetchQuery).toHaveBeenCalledWith({
-			queryKey: ["playlists", "management", "acct-1"],
-			queryFn: managementQueryFn,
-			staleTime: 0,
+describe("/playlists/$playlistRef loader", () => {
+	it("resolves a cached ref and prefetches tracks without re-reading management data", async () => {
+		seedManagement(KEPT);
+
+		await runLoader(refOf(KEPT));
+
+		expect(getPlaylistManagementData).not.toHaveBeenCalled();
+		expect(getPlaylistTracksPage).toHaveBeenCalledWith({
+			data: expect.objectContaining({ playlistId: KEPT.id }),
 		});
 	});
 
-	it("replaces the invalid URL when the route ref cannot be resolved", async () => {
-		const route = await loadRoute();
-		playlistManagementQueryOptionsMock.mockReturnValue({
-			queryKey: ["playlists", "management", "acct-1"],
-			queryFn: vi.fn(),
-			staleTime: 30 * 60_000,
+	it("re-reads management data once for a ref the cache misses (playlist added since load)", async () => {
+		seedManagement(KEPT);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(
+			management(KEPT, ADDED),
+		);
+
+		await runLoader(refOf(ADDED));
+
+		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+		expect(getPlaylistTracksPage).toHaveBeenCalledWith({
+			data: expect.objectContaining({ playlistId: ADDED.id }),
 		});
-		resolvePlaylistIdFromRouteRefMock.mockReturnValue(null);
+	});
 
-		const fetchQuery = vi.fn().mockResolvedValue({ playlists: [] });
-		const fetchInfiniteQuery = vi.fn().mockResolvedValue({ pages: [] });
+	it("redirects to /playlists when a still-cached playlist was deleted on the server", async () => {
+		seedManagement(KEPT, DELETED);
+		vi.mocked(getPlaylistTracksPage).mockRejectedValue(
+			new Error(PLAYLIST_NOT_FOUND_MESSAGE),
+		);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(management(KEPT));
 
-		await expect(
-			route.loader({
-				context: {
-					session: { accountId: "acct-1" },
-					queryClient: { fetchQuery, fetchInfiniteQuery },
-				},
-				params: { playlistRef: "not-a-valid-ref" },
-			}),
-		).rejects.toEqual({
-			kind: "redirect",
+		expect(await redirectOf(runLoader(refOf(DELETED)))).toMatchObject({
 			to: "/playlists",
 			replace: true,
 		});
-		expect(redirectMock).toHaveBeenCalledWith({
+		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+	});
+
+	it("redirects an unresolvable ref without reading tracks", async () => {
+		seedManagement(KEPT);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(management(KEPT));
+
+		expect(await redirectOf(runLoader("not-a-valid-ref"))).toMatchObject({
 			to: "/playlists",
 			replace: true,
 		});
-		expect(fetchInfiniteQuery).not.toHaveBeenCalled();
+		expect(getPlaylistTracksPage).not.toHaveBeenCalled();
+	});
+
+	it("reads management data once on a cold cache before redirecting an unknown ref", async () => {
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(management(KEPT));
+
+		expect(await redirectOf(runLoader(refOf(ADDED)))).toMatchObject({
+			to: "/playlists",
+		});
+		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+	});
+
+	it("keeps the panel open when a cached playlist's tracks read fails for another reason", async () => {
+		seedManagement(KEPT);
+		vi.mocked(getPlaylistTracksPage).mockRejectedValue(
+			new Error("Failed to load playlist"),
+		);
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		expect(await redirectOf(runLoader(refOf(KEPT)))).toBeNull();
+		expect(getPlaylistManagementData).not.toHaveBeenCalled();
 	});
 });

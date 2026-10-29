@@ -176,6 +176,10 @@ const PlaylistTracksPageSchema = z.object({
 	limit: z.number().int().min(1).max(PLAYLIST_TRACKS_MAX_LIMIT).optional(),
 });
 
+// The playlist route matches on this to tell a deleted (or foreign) playlist
+// apart from a failed read, so both throws below must use it.
+export const PLAYLIST_NOT_FOUND_MESSAGE = "Playlist not found";
+
 export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
 	.inputValidator((data) => PlaylistTracksPageSchema.parse(data))
@@ -204,7 +208,7 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 			});
 		}
 		if (playlistResult.value === null) {
-			throw new Error("Playlist not found");
+			throw new Error(PLAYLIST_NOT_FOUND_MESSAGE);
 		}
 		// Only authorization gate for this read: service-role bypasses RLS, so
 		// without this check any session could fetch any account's tracks.
@@ -214,7 +218,7 @@ export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 				ownerAccountId: playlistResult.value.account_id,
 				sessionAccountId: session.accountId,
 			});
-			throw new Error("Playlist not found");
+			throw new Error(PLAYLIST_NOT_FOUND_MESSAGE);
 		}
 
 		let cursor = data.cursor;
