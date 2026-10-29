@@ -422,13 +422,22 @@ export async function getBootstrapPagesBySlug(
 	minScore = 0,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const rowsResult = await fromSupabaseMany<LikedSongPageRow>(
-		supabase.rpc("get_liked_songs_bootstrap_by_slug", {
-			p_account_id: accountId,
-			p_slug: slug,
-			p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
-			p_min_score: minScore,
-		}),
+	// The prefix runs from the newest like down to the anchor, so a deep link
+	// into a large library returns more than max_rows. (liked_at, id) is the
+	// RPC's own unique order.
+	const rowsResult = await readAllRows((from, to) =>
+		fromSupabaseMany<LikedSongPageRow>(
+			supabase
+				.rpc("get_liked_songs_bootstrap_by_slug", {
+					p_account_id: accountId,
+					p_slug: slug,
+					p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+					p_min_score: minScore,
+				})
+				.order("liked_at", { ascending: false })
+				.order("id", { ascending: false })
+				.range(from, to),
+		),
 	);
 
 	if (Result.isError(rowsResult)) {

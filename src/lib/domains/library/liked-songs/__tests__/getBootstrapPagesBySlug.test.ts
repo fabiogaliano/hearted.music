@@ -61,6 +61,24 @@ function sortNewestFirst(rows: Row[]): Row[] {
 	});
 }
 
+// The bootstrap read pages its RPC with .order().range(); rows here are
+// already newest-first, so a page is a slice.
+function pagedRpc(result: {
+	data: Row[] | null;
+	error: { code: string; message: string } | null;
+}) {
+	const builder = {
+		order: () => builder,
+		range: (from: number, to: number) =>
+			Promise.resolve(
+				result.data === null
+					? result
+					: { data: result.data.slice(from, to + 1), error: null },
+			),
+	};
+	return builder;
+}
+
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
 		rpc: (
@@ -74,8 +92,15 @@ vi.mock("@/lib/data/client", () => ({
 			},
 		) => {
 			state.rpcCalls += 1;
+			const respond = (result: {
+				data: Row[] | null;
+				error: { code: string; message: string } | null;
+			}) =>
+				fn === "get_liked_songs_bootstrap_by_slug"
+					? pagedRpc(result)
+					: Promise.resolve(result);
 			if (state.error) {
-				return Promise.resolve({ data: null, error: state.error });
+				return respond({ data: null, error: state.error });
 			}
 
 			const sorted = sortNewestFirst(state.rows);
@@ -85,7 +110,7 @@ vi.mock("@/lib/data/client", () => ({
 					(row) => slugOf(row) === params.p_slug,
 				);
 				if (anchorIndex === -1) {
-					return Promise.resolve({ data: [], error: null });
+					return respond({ data: [], error: null });
 				}
 				const prefix = sorted.slice(0, anchorIndex + 1);
 				// The +1 sentinel: one extra trailing row beyond the requested buffer.
@@ -93,7 +118,7 @@ vi.mock("@/lib/data/client", () => ({
 					anchorIndex + 1,
 					anchorIndex + 1 + (params.p_trailing_limit ?? 0) + 1,
 				);
-				return Promise.resolve({ data: [...prefix, ...trailing], error: null });
+				return respond({ data: [...prefix, ...trailing], error: null });
 			}
 
 			// get_liked_songs_page — canonical first-page fallback.
