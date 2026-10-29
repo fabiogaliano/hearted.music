@@ -53,31 +53,20 @@ requeues the same way on a transient DB or apply error, keeping its payload
 - `idle-recovery.ts` recovers enrichment when the process dies after the state write but before the job
   exists. Check whether a match refresh can be stranded the same way; add a recovery path if so.
 
-### 2.6 Remaining reads silently capped at 1,000 rows — M
+### 2.6 Reads silently capped at 1,000 rows: guard follow-ups — S
 
-- PostgREST truncates every response at `max_rows` = 1,000 with no error (`supabase/config.toml:18`,
-  same in prod). The overflowing sync, membership and exclusion reads are paged (PRs #66–#69). These
-  remain single-request:
-  - `getBootstrapPagesBySlug` (`library/liked-songs/queries.ts`). Libraries reach 5,044 songs. A deep link to a
-    song past row ~1,000 loses its anchor, silently falls back to the first page, and the panel stays
-    closed.
-  - Review queue: `session-appender.ts:236` (`match_review_proposal_subject`) and `fetchQueuedSongIds` /
-    `fetchQueuedPlaylistIds` (`match-review-queue/queries.ts`). Not measured. Subjects past the cut are
-    never appended, and songs already queued get queued again.
-  - `getMatchRankingsForPlaylist` (`song-matching/queries.ts:218`). Prod sits at exactly 1,000; the next
-    refresh of account `8ce63d2d…` puts about 2,500 rankings on one playlist. Mild: the read is ordered
-    by `rank`, so pairs past the cut become "unranked" and are sorted by fit score.
-  - `getNewItemIds` (`liked-songs/status-queries.ts:32`). Reaches 3,659. Mild: the newness ordering of
-    review subjects is incomplete.
+- PostgREST truncates every response at `max_rows` = 1,000 with no error (`supabase/config.toml`,
+  same in prod). Every read known to overflow is now paged through `readAllRows` (offset, unique
+  order) or a keyset loop where rows drop out between pages (`getNewItemIds`, `visibility-inputs.ts`).
 - **Guard.** The admin client's fetch (`src/lib/data/row-cap-guard.ts`) flags a read with no `limit`
   that returns max_rows rows, and a `limit` above max_rows. Dev and test fail the read; prod reports
-  `postgrest_row_cap` to Sentry and passes it through. Switch prod to failing once these are fixed.
-  Write representations are not capped (probed: a 1,001-row PATCH/POST/DELETE returns all 1,001).
+  `postgrest_row_cap` to Sentry and passes it through. Write representations are not capped (probed: a
+  1,001-row PATCH/POST/DELETE returns all 1,001).
+- **Change (S).** Once Sentry has shown no `postgrest_row_cap` events for a while, switch prod reads to
+  failing.
 - **Not covered by the guard.** One-to-many embeds are cut to max_rows too, but the top-level
   `Content-Range` doesn't show it; the only one today, `getServedRanksForSong`, is one row per playlist.
   Hidden `LIMIT`s inside RPCs' SQL. The control panel's own client (`control-panel/server/supabase.ts`).
-- **Change.** Page each read with a unique order (offset paging only for read-before-write; keyset when
-  rows can drop out between pages, as `visibility-inputs.ts` does), or push the predicate into SQL.
 
 ---
 
