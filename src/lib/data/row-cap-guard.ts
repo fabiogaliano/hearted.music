@@ -108,7 +108,9 @@ export function guardRowCap(
 		if (capViolation === null) return response;
 		const blocked = onViolation(capViolation);
 		if (!blocked) return response;
-		await response.body?.cancel();
+		// Best-effort: a throw here would replace the row_cap error with a fetch
+		// error that postgrest-js retries.
+		response.body?.cancel().catch(() => {});
 		return blocked;
 	};
 	// Cast only because the wrapper lacks fetch's ambient `preconnect` static.
