@@ -417,23 +417,16 @@ export async function fetchProposalSubjects(
 	const supabase = createAdminSupabaseClient();
 	// A ready proposal's subjects are written once, keyed by (proposal_id,
 	// position), so offset pages can't shift.
-	return readAllRows(async (from, to) => {
-		const result = await supabase
-			.from("match_review_proposal_subject")
-			.select("*")
-			.eq("proposal_id", proposalId)
-			.order("position", { ascending: true })
-			.range(from, to);
-		if (result.error) {
-			return Result.err(
-				new DatabaseError({
-					code: result.error.code,
-					message: result.error.message,
-				}),
-			);
-		}
-		return Result.ok(result.data ?? []);
-	});
+	return readAllRows((from, to) =>
+		fromSupabaseMany(
+			supabase
+				.from("match_review_proposal_subject")
+				.select("*")
+				.eq("proposal_id", proposalId)
+				.order("position", { ascending: true })
+				.range(from, to),
+		),
+	);
 }
 
 /**
