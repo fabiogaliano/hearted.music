@@ -9,6 +9,7 @@
 import { Result } from "better-result";
 import { z } from "zod";
 import { createAdminSupabaseClient } from "@/lib/data/client";
+import type { Tables } from "@/lib/data/database.types";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { DbError } from "@/lib/shared/errors/database";
@@ -403,6 +404,26 @@ export async function fetchQueueItems(
 	);
 	if (Result.isError(result)) return result;
 	return Result.ok(result.value.map(mapItemToDto));
+}
+
+/** A proposal's subjects in the order they were ranked for review. */
+export async function fetchProposalSubjects(
+	proposalId: string,
+): Promise<Result<Tables<"match_review_proposal_subject">[], DbError>> {
+	const result = await createAdminSupabaseClient()
+		.from("match_review_proposal_subject")
+		.select("*")
+		.eq("proposal_id", proposalId)
+		.order("position", { ascending: true });
+	if (result.error) {
+		return Result.err(
+			new DatabaseError({
+				code: result.error.code,
+				message: result.error.message,
+			}),
+		);
+	}
+	return Result.ok(result.data ?? []);
 }
 
 /**
