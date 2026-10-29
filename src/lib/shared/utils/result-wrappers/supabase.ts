@@ -5,7 +5,6 @@
 import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 import { Result } from "better-result";
 import type { z } from "zod";
-import { POSTGREST_MAX_ROWS } from "@/lib/data/row-cap-guard";
 import {
 	ConstraintError,
 	DatabaseError,
@@ -124,6 +123,12 @@ export async function fromSupabaseRpc<S extends z.ZodType>(
 
 	return Result.ok(parsed.data);
 }
+
+/**
+ * PostgREST's max_rows (supabase/config.toml; prod matches). A read past it
+ * comes back cut to this many rows, with a 200 and no error.
+ */
+export const POSTGREST_MAX_ROWS = 1_000;
 
 /**
  * Reads every row of a query PostgREST would otherwise cut at max_rows (1000)

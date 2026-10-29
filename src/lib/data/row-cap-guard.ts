@@ -1,11 +1,6 @@
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { log } from "@/lib/observability/logger";
-
-/**
- * PostgREST's max_rows (supabase/config.toml; prod matches). A read past it
- * comes back cut to this many rows, with a 200 and no error.
- */
-export const POSTGREST_MAX_ROWS = 1_000;
+import { POSTGREST_MAX_ROWS } from "@/lib/shared/utils/result-wrappers/supabase";
 
 export const ROW_CAP_ERROR_CODE = "row_cap";
 
@@ -102,7 +97,9 @@ export function guardRowCap(
 
 		const limitViolation = overCapLimit(url);
 		if (limitViolation !== null) {
-			return onViolation(limitViolation) ?? baseFetch(input, init);
+			const blocked = onViolation(limitViolation);
+			if (blocked) return blocked;
+			return baseFetch(input, init);
 		}
 
 		const response = await baseFetch(input, init);
