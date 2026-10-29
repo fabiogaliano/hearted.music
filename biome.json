@@ -72,7 +72,8 @@
 						"useArrowFunction": "off"
 					},
 					"style": {
-						"noProcessEnv": "off"
+						"noProcessEnv": "off",
+						"noRestrictedImports": "off"
 					}
 				}
 			}
@@ -154,7 +155,7 @@
 			}
 		},
 		{
-			"includes": ["**/src/lib/data/client.ts", "**/__tests__/**"],
+			"includes": ["**/src/lib/data/client.ts"],
 			"linter": {
 				"rules": {
 					"style": {
