@@ -99,6 +99,21 @@ function makeMismatchProfile(
 }
 
 describe("SongSuggestionsSection", () => {
+	it("regression: on a browser that can't add, song rows stay browsable with no Add or dismiss, and say where adding works", () => {
+		render(
+			<SongSuggestionsSection
+				{...DEFAULT_PROPS}
+				onDismissSuggestion={vi.fn()}
+				writeGate="needs-computer"
+			/>,
+		);
+
+		expect(screen.getByText("Echoes")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /^add$/i })).toBeNull();
+		expect(screen.queryByRole("button", { name: /dismiss/i })).toBeNull();
+		expect(screen.getByText(/add on a computer/i)).toBeInTheDocument();
+	});
+
 	it("renders song name and artist for each suggestion", () => {
 		render(<SongSuggestionsSection {...DEFAULT_PROPS} />);
 		expect(screen.getByText("Echoes")).toBeDefined();
