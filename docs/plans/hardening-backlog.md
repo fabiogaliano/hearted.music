@@ -102,9 +102,6 @@ requeues the same way on a transient DB or apply error, keeping its payload
 
 ## 5. Observability housekeeping
 
-- **Worker retirement (S).** The `hearted-music` Worker is deployed but unrouted since 2026-10-28.
-  After a day with zero Worker invocations and no 5xx on the VPS (earliest 2026-10-29 00:56 UTC),
-  delete it and the old `production-app` Cloudflare secrets (see `docs/ops/app-server-vps.md`).
 - **VPS disk alert (S).** On 2026-10-28 the 72 GB disk, which also holds prod Postgres, reached 99%:
   Coolify kept a 1.9 GB build image per commit for the worker and gateway, and two app deploys failed
   with `no space left on device`. Since then, Coolify's Docker cleanup runs hourly, keeping 2 images per

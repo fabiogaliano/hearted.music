@@ -28,9 +28,7 @@ GitHub:
   (the build fails without either), `VITE_PUBLIC_POSTHOG_HOST`, `VITE_ACCOUNT_EVENTS_GATEWAY_URL`,
   `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_ORG_SLUG`, `VITE_CHROME_EXTENSION_ID`,
   `VITE_APP_TITLE`, `VITE_USERJOT_PROJECT_ID`. `VITE_APP_RELEASE` comes from the commit SHA.
-- The older `production-worker` copies of the three shared secrets and the `production-app`
-  `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` / `ACCOUNT_EVENTS_TOKEN_SECRET` are unused and
-  can be deleted once the Worker is retired.
+- The older `production-worker` copies of the three shared secrets are unused.
 
 Coolify (project `hearted.music`, environment `production`):
 
@@ -70,7 +68,7 @@ reloads on write. The file header records the fetch date.
 Cloudflare (zone `hearted.music`, SSL mode Full):
 
 - DNS: `A hearted.music → 57.129.63.224`, proxied. The Worker custom domain and its `AAAA 100::`
-  placeholder were removed; the `hearted-music` Worker stays deployed but unrouted.
+  placeholder were removed. The `hearted-music` Worker was deleted on 2026-10-29.
 - WAF custom rule "Block scanner paths" (`/wp-*`, `/.env*`, `/xmlrpc.php`, `/.aws/*`).
 - Cache rules: bypass `/_serverFn/*` and `/api/*`; cache `/assets/*` honouring origin TTLs.
 - Rate limit: `/api/pulse-s` (Sentry tunnel) 30 req / 10 s per IP.
@@ -100,8 +98,6 @@ container), `/wp-login.php` is 403 at the edge.
   `ghcr.io/fabiogaliano/hearted.music-app:<sha>` and redeploy. Images older than `218b8e02` have no
   `curl`, so Coolify's healthcheck marks them unhealthy and rolls the deploy back; to go back that far,
   disable the healthcheck first.
-- Back to Workers: delete the `hearted.music` A record and re-add the Worker custom domain. Keep
-  the Worker deployed but unrouted until the VPS meets "done when" in the plan (zero Worker
-  invocations, a day without 5xx, a deliberately thrown server error reaches Sentry, uptime check
-  green); `bun run deploy` no longer exists on `main`, so re-deploying the Worker means checking
-  out a pre-migration commit.
+- Back to Workers: the Worker is deleted and `bun run deploy` no longer exists on `main`, so
+  this means checking out a pre-migration commit, deploying it, then swapping the `hearted.music`
+  A record for the Worker custom domain.
