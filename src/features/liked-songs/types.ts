@@ -59,6 +59,9 @@ export function isNewSong(likedAt: string): boolean {
 	return likedDate > sevenDaysAgo;
 }
 
+// numeric "always" keeps "1 month ago" rather than "auto"'s "last month".
+const relativeTime = new Intl.RelativeTimeFormat("en", { numeric: "always" });
+
 // Helper to format relative time
 export function formatRelativeTime(dateString: string): string {
 	const date = new Date(dateString);
@@ -68,8 +71,10 @@ export function formatRelativeTime(dateString: string): string {
 
 	if (diffDays === 0) return "Today";
 	if (diffDays === 1) return "Yesterday";
-	if (diffDays < 7) return `${diffDays} days ago`;
-	if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-	if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-	return `${Math.floor(diffDays / 365)} years ago`;
+	if (diffDays < 7) return relativeTime.format(-diffDays, "day");
+	if (diffDays < 30)
+		return relativeTime.format(-Math.floor(diffDays / 7), "week");
+	if (diffDays < 365)
+		return relativeTime.format(-Math.floor(diffDays / 30), "month");
+	return relativeTime.format(-Math.floor(diffDays / 365), "year");
 }
