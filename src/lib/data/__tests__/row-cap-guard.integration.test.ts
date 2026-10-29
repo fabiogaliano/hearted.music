@@ -91,8 +91,12 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	if (!IS_LOCAL) return;
-	await seed().from("account").delete().eq("id", ACCOUNT_ID);
-	await seed().from("song").delete().like("spotify_id", `${SONG_TAG}-%`);
+	await seed().from("account").delete().eq("id", ACCOUNT_ID).throwOnError();
+	await seed()
+		.from("song")
+		.delete()
+		.like("spotify_id", `${SONG_TAG}-%`)
+		.throwOnError();
 });
 
 function members() {
