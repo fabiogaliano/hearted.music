@@ -305,8 +305,7 @@ export async function setPlaylistTargets(
 			.from("playlist")
 			.update({ is_target: false })
 			.eq("account_id", accountId)
-			.eq("is_target", true)
-			.select(),
+			.eq("is_target", true),
 	);
 	if (Result.isError(clearResult)) {
 		return Result.err(clearResult.error);
@@ -318,8 +317,7 @@ export async function setPlaylistTargets(
 				.from("playlist")
 				.update({ is_target: true })
 				.eq("account_id", accountId)
-				.in("id", targetIds)
-				.select(),
+				.in("id", targetIds),
 		);
 		if (Result.isError(setResult)) {
 			return Result.err(setResult.error);
