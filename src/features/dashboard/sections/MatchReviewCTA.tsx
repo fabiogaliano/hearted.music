@@ -48,14 +48,16 @@ export function MatchReviewCTA({
 			>
 				Ready to match
 			</p>
-			<div className="flex items-center justify-between gap-6">
+			{/* Stacked below sm: the fan-spread art is a fixed ~240px, which beside the
+			heading squeezed it to a word per line and pushed Start off-screen. */}
+			<div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
 				<h3
 					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
 					{reviewCount} {noun} to match
 				</h3>
-				<div className="flex items-center gap-8">
+				<div className="flex w-full items-center justify-between gap-8 sm:w-auto sm:justify-start">
 					<FanSpreadAlbumArt images={matchPreviews} />
 					<span
 						className="theme-text-muted inline-flex items-center gap-1.5 text-sm transition-transform duration-200 ease-out motion-safe:group-hover:translate-x-1"
