@@ -9,7 +9,11 @@ describe("TrackList", () => {
 
 		render(<TrackList tracks={tracks} songCount={tracks.length} />);
 
-		const lastRow = screen.getByText("1120").parentElement;
-		expect(lastRow?.style.animationDelay ?? "").toBe("");
+		// The early row proves the lookup reaches the styled row, so the deep
+		// row's empty delay can't pass just because the markup moved.
+		const earlyRow = screen.getByText("2").parentElement;
+		const deepRow = screen.getByText("1120").parentElement;
+		expect(earlyRow?.style.animationDelay).not.toBe("");
+		expect(deepRow?.style.animationDelay).toBe("");
 	});
 });
