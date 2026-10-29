@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/env";
 import type { Database } from "./database.types";
+import { guardRowCap } from "./row-cap-guard";
 
 /**
  * nginx/Kong sit in front of PostgREST and cap the request line at roughly
@@ -10,9 +11,9 @@ import type { Database } from "./database.types";
  */
 const MAX_ADMIN_REQUEST_URL_LENGTH = 8_000;
 
-// Dev/test-only so the failure mode surfaces locally instead of as a prod 414.
-const shouldGuardAdminRequestUrlLength =
-	import.meta.env.DEV || import.meta.env.MODE === "test";
+// The URL guard is dev/test-only so the failure mode surfaces locally instead
+// of as a prod 414; the row-cap guard fails there and only reports in prod.
+const isDevOrTest = import.meta.env.DEV || import.meta.env.MODE === "test";
 
 function guardAdminRequestUrlLength(
 	input: RequestInfo | URL,
@@ -34,12 +35,11 @@ function guardAdminRequestUrlLength(
 
 // A stable-shaped `global.fetch` option (rather than conditionally spreading
 // the option in) keeps createClient's options-object type — and therefore
-// AdminSupabaseClient's inferred generics — identical in prod, where this
-// must be a pure passthrough. Cast needed only because our guard lacks the
-// ambient `fetch.preconnect` static that `typeof fetch` otherwise requires.
-const adminFetch = (
-	shouldGuardAdminRequestUrlLength ? guardAdminRequestUrlLength : fetch
-) as typeof fetch;
+// AdminSupabaseClient's inferred generics — identical in prod.
+const adminFetch = guardRowCap(
+	isDevOrTest ? guardAdminRequestUrlLength : fetch,
+	isDevOrTest ? "fail" : "report",
+);
 
 function buildAdminSupabaseClient() {
 	return createClient<Database>(
