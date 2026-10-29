@@ -12,7 +12,7 @@ import { guardRowCap } from "./row-cap-guard";
 const MAX_ADMIN_REQUEST_URL_LENGTH = 8_000;
 
 // The URL guard is dev/test-only so the failure mode surfaces locally instead
-// of as a prod 414; the row-cap guard fails there and only reports in prod.
+// of as a prod 414.
 const isDevOrTest = import.meta.env.DEV || import.meta.env.MODE === "test";
 
 function guardAdminRequestUrlLength(
@@ -38,7 +38,7 @@ function guardAdminRequestUrlLength(
 // AdminSupabaseClient's inferred generics — identical in prod.
 const adminFetch = guardRowCap(
 	isDevOrTest ? guardAdminRequestUrlLength : fetch,
-	isDevOrTest ? "fail" : "report",
+	"fail",
 );
 
 function buildAdminSupabaseClient() {
