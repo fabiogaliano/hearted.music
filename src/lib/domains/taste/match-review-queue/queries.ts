@@ -18,6 +18,7 @@ import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
 	fromSupabaseRpc,
+	readAllRows,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import type {
 	MatchOrientation,
@@ -389,18 +390,21 @@ export async function fetchQueueItems(
 	sessionId: string,
 ): Promise<Result<MatchReviewQueueItemDto[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("match_review_queue_item")
-			// Explicit column list rather than `*`: this read runs on every /match
-			// entry AND every queue refetch (P1). The list is exactly the set
-			// mapItemToDto consumes — narrowing further would need a separate
-			// lightweight mapper, and under-selecting would silently null a DTO field.
-			.select(
-				"id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, resolution, source_fit_score, was_new_at_enqueue, presented_at, resolved_at, visible_pairs_captured_at, created_at, updated_at",
-			)
-			.eq("session_id", sessionId)
-			.order("position", { ascending: true }),
+	const result = await readAllRows((from, to) =>
+		fromSupabaseMany(
+			supabase
+				.from("match_review_queue_item")
+				// Explicit column list rather than `*`: this read runs on every /match
+				// entry AND every queue refetch (P1). The list is exactly the set
+				// mapItemToDto consumes — narrowing further would need a separate
+				// lightweight mapper, and under-selecting would silently null a DTO field.
+				.select(
+					"id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, resolution, source_fit_score, was_new_at_enqueue, presented_at, resolved_at, visible_pairs_captured_at, created_at, updated_at",
+				)
+				.eq("session_id", sessionId)
+				.order("position", { ascending: true })
+				.range(from, to),
+		),
 	);
 	if (Result.isError(result)) return result;
 	return Result.ok(result.value.map(mapItemToDto));
@@ -410,20 +414,26 @@ export async function fetchQueueItems(
 export async function fetchProposalSubjects(
 	proposalId: string,
 ): Promise<Result<Tables<"match_review_proposal_subject">[], DbError>> {
-	const result = await createAdminSupabaseClient()
-		.from("match_review_proposal_subject")
-		.select("*")
-		.eq("proposal_id", proposalId)
-		.order("position", { ascending: true });
-	if (result.error) {
-		return Result.err(
-			new DatabaseError({
-				code: result.error.code,
-				message: result.error.message,
-			}),
-		);
-	}
-	return Result.ok(result.data ?? []);
+	const supabase = createAdminSupabaseClient();
+	// A ready proposal's subjects are written once, keyed by (proposal_id,
+	// position), so offset pages can't shift.
+	return readAllRows(async (from, to) => {
+		const result = await supabase
+			.from("match_review_proposal_subject")
+			.select("*")
+			.eq("proposal_id", proposalId)
+			.order("position", { ascending: true })
+			.range(from, to);
+		if (result.error) {
+			return Result.err(
+				new DatabaseError({
+					code: result.error.code,
+					message: result.error.message,
+				}),
+			);
+		}
+		return Result.ok(result.data ?? []);
+	});
 }
 
 /**
@@ -434,11 +444,17 @@ export async function fetchQueuedSongIds(
 	sessionId: string,
 ): Promise<Result<Set<string>, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("match_review_queue_item")
-			.select("song_id")
-			.eq("session_id", sessionId),
+	// (session_id, position) is unique and appends take the next positions, so
+	// a concurrent append lands after the offset instead of shifting it.
+	const result = await readAllRows((from, to) =>
+		fromSupabaseMany(
+			supabase
+				.from("match_review_queue_item")
+				.select("song_id")
+				.eq("session_id", sessionId)
+				.order("position", { ascending: true })
+				.range(from, to),
+		),
 	);
 	if (Result.isError(result)) return result;
 	return Result.ok(
@@ -458,11 +474,16 @@ export async function fetchQueuedPlaylistIds(
 	sessionId: string,
 ): Promise<Result<Set<string>, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	const result = await fromSupabaseMany(
-		supabase
-			.from("match_review_queue_item")
-			.select("playlist_id")
-			.eq("session_id", sessionId),
+	// Ordered by position for the same reason as fetchQueuedSongIds.
+	const result = await readAllRows((from, to) =>
+		fromSupabaseMany(
+			supabase
+				.from("match_review_queue_item")
+				.select("playlist_id")
+				.eq("session_id", sessionId)
+				.order("position", { ascending: true })
+				.range(from, to),
+		),
 	);
 	if (Result.isError(result)) return result;
 	return Result.ok(
