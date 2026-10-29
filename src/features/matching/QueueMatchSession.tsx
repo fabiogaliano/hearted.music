@@ -69,13 +69,11 @@ export function QueueMatchContent({
 
 	const isComplete = resolvedCurrentItemId === null;
 
-	// Refresh sidebar badge + deck read on session exit, whether the user
-	// completes all cards or navigates away mid-session. Scoped to the current
-	// orientation so playlist-mode invalidation doesn't evict song-mode cache.
-	const invalidateSessionBoundary = useCallback(() => {
-		queryClient.invalidateQueries({
-			queryKey: matchDeckKeys.deck(accountId, mode),
-		});
+	// Refresh the sidebar badge and dashboard whenever the session ends, whether
+	// the user completes all cards or navigates away mid-session. Scoped to the
+	// current orientation so playlist-mode invalidation doesn't evict song-mode
+	// cache.
+	const invalidateSessionSummaries = useCallback(() => {
 		queryClient.invalidateQueries({
 			queryKey: matchReviewSummaryKeys.summary(accountId, mode),
 		});
@@ -87,15 +85,35 @@ export function QueueMatchContent({
 		if (!isComplete || completionCapturedRef.current) return;
 		completionCapturedRef.current = true;
 		analytics.capture("matching_session_completed", { total_songs: total });
-		invalidateSessionBoundary();
-	}, [isComplete, total, analytics, invalidateSessionBoundary]);
+		queryClient.invalidateQueries({
+			queryKey: matchDeckKeys.deck(accountId, mode),
+		});
+		invalidateSessionSummaries();
+	}, [
+		isComplete,
+		total,
+		analytics,
+		queryClient,
+		accountId,
+		mode,
+		invalidateSessionSummaries,
+	]);
 
-	// Cleanup effect: covers departure via sidebar nav or browser back.
+	// Cleanup effect: covers departure via sidebar nav, browser back, or a mode
+	// switch. The deck is only marked stale so the next entry reads it fresh:
+	// React runs this cleanup before QueueMatchPage's deck observer re-keys, so
+	// the deck being left still counts as active and a refetching invalidation
+	// would POST startOrResumeMatchDeck for it (logging a phantom deck-entry
+	// event) with nobody rendering the result.
 	useEffect(
 		() => () => {
-			invalidateSessionBoundary();
+			queryClient.invalidateQueries({
+				queryKey: matchDeckKeys.deck(accountId, mode),
+				refetchType: "none",
+			});
+			invalidateSessionSummaries();
 		},
-		[invalidateSessionBoundary],
+		[queryClient, accountId, mode, invalidateSessionSummaries],
 	);
 
 	// skippedCount is tracked explicitly (incremented when a card is finished with

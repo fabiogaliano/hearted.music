@@ -7,8 +7,8 @@ import {
 	readMatchDeckCard,
 	startOrResumeMatchDeck,
 } from "@/lib/server/match-deck.functions";
-import { screen } from "@/test/utils/render";
-import { renderMatchRoute } from "./match-route-harness";
+import { act, screen } from "@/test/utils/render";
+import { advance, renderMatchRoute } from "./match-route-harness";
 
 /**
  * /match's URL canonicalisation and cold-entry loader (RB, N1): mounts the
@@ -190,5 +190,43 @@ describe("/match loader — cold-entry deck read (RB)", () => {
 		expect(
 			screen.getByRole("status", { name: /unavailable/i }),
 		).toBeInTheDocument();
+	});
+});
+
+describe("/match mode switch", () => {
+	const deckReads = () =>
+		vi
+			.mocked(startOrResumeMatchDeck)
+			.mock.calls.map(
+				([arg]) => (arg as { data: { orientation: string } }).data.orientation,
+			);
+
+	async function switchTo(
+		router: Awaited<ReturnType<typeof renderMatchRoute>>["router"],
+		mode: "song" | "playlist",
+	) {
+		await act(() =>
+			router.navigate({
+				to: "/match",
+				search: mode === "song" ? { mode: "song" } : {},
+			} as never),
+		);
+		await advance(0);
+		await advance(0);
+	}
+
+	it("reads only the entered orientation's deck, never re-POSTing the one being left (phantom match_deck_hit)", async () => {
+		vi.mocked(startOrResumeMatchDeck).mockResolvedValue(
+			deckView(unavailable("item-1"), unavailable("item-2")) as never,
+		);
+		const { router } = await renderMatchRoute({ queryClient });
+		expect(deckReads()).toEqual(["playlist"]);
+
+		await switchTo(router, "song");
+		expect(deckReads()).toEqual(["playlist", "song"]);
+
+		// Leaving marked the playlist deck stale, so coming back reads it fresh.
+		await switchTo(router, "playlist");
+		expect(deckReads()).toEqual(["playlist", "song", "playlist"]);
 	});
 });
