@@ -53,17 +53,15 @@ requeues the same way on a transient DB or apply error, keeping its payload
 - `idle-recovery.ts` recovers enrichment when the process dies after the state write but before the job
   exists. Check whether a match refresh can be stranded the same way; add a recovery path if so.
 
-### 2.6 Reads silently capped at 1,000 rows: guard follow-ups — S
+### 2.6 Reads silently capped at 1,000 rows: guard blind spots — S
 
 - PostgREST truncates every response at `max_rows` = 1,000 with no error (`supabase/config.toml`,
   same in prod). Every read known to overflow is now paged through `readAllRows` (offset, unique
   order) or a keyset loop where rows drop out between pages (`getNewItemIds`, `visibility-inputs.ts`).
 - **Guard.** The admin client's fetch (`src/lib/data/row-cap-guard.ts`) flags a read with no `limit`
-  that returns max_rows rows, and a `limit` above max_rows. Dev and test fail the read; prod reports
-  `postgrest_row_cap` to Sentry and passes it through. Write representations are not capped (probed: a
-  1,001-row PATCH/POST/DELETE returns all 1,001).
-- **Change (S).** Once Sentry has shown no `postgrest_row_cap` events for a while, switch prod reads to
-  failing.
+  that returns max_rows rows, and a `limit` above max_rows, and fails the read in every environment.
+  Prod reported for its first hours with no events, then switched to failing. Write representations are
+  not capped (probed: a 1,001-row PATCH/POST/DELETE returns all 1,001).
 - **Not covered by the guard.** One-to-many embeds are cut to max_rows too, but the top-level
   `Content-Range` doesn't show it; the only one today, `getServedRanksForSong`, is one row per playlist.
   Hidden `LIMIT`s inside RPCs' SQL. The control panel's own client (`control-panel/server/supabase.ts`).
