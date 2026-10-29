@@ -160,10 +160,11 @@ export async function invalidateEntitlementQueries(
 }
 
 /**
- * Dashboard caches a finished extension sync makes stale. Called when the
- * worker finishes the sync (the extension_sync_completed event, or the sync
- * job's running-to-idle edge in useActiveJobCompletionEffects), never on the
- * sync request's 202: that only queues the work, so a refetch then returns
+ * Library caches a finished extension sync makes stale: the dashboard, and the
+ * playlist management data the playlist routes resolve refs against. Called
+ * when the worker finishes the sync (the extension_sync_completed event, or the
+ * sync job's running-to-idle edge in useActiveJobCompletionEffects), never on
+ * the sync request's 202: that only queues the work, so a refetch then returns
  * the pre-sync library.
  */
 export async function invalidateLibrarySyncQueries(
@@ -180,6 +181,9 @@ export async function invalidateLibrarySyncQueries(
 		}),
 		queryClient.invalidateQueries({
 			queryKey: dashboardKeys.matchPreviews(accountId),
+		}),
+		queryClient.invalidateQueries({
+			queryKey: playlistKeys.management(accountId),
 		}),
 	]);
 }
