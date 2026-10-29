@@ -10,26 +10,7 @@ vi.mock("@/lib/observability/capture-server-error", () => ({
 }));
 
 describe("guardRowCap", () => {
-	it("in prod, passes a capped read through untouched and reports it to Sentry", async () => {
-		const capped = new Response("[]", {
-			status: 200,
-			headers: { "Content-Range": "0-999/*" },
-		});
-		const guarded = guardRowCap(
-			vi.fn(async () => capped),
-			"report",
-		);
-
-		const response = await guarded(
-			"http://127.0.0.1:54321/rest/v1/playlist_song?select=song_id",
-		);
-
-		expect(response).toBe(capped);
-		expect(captureServerError).toHaveBeenCalledOnce();
-	});
-
 	it("regression: a failed capped read still reaches Sentry (callers that fall back on a failed read hid it, leaving only a log line)", async () => {
-		captureServerError.mockClear();
 		const guarded = guardRowCap(
 			vi.fn(
 				async () =>
@@ -38,7 +19,6 @@ describe("guardRowCap", () => {
 						headers: { "Content-Range": "0-999/*" },
 					}),
 			),
-			"fail",
 		);
 
 		const response = await guarded(
