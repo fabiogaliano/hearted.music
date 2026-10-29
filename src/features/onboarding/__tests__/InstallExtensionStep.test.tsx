@@ -12,13 +12,13 @@ const mockGetSpotifyAccountStatus = vi.fn();
 const mockTriggerExtensionSync = vi.fn();
 const mockResetSyncJobs = vi.fn();
 const mockArmLoginReturn = vi.fn();
-const mockUseOnboardingCapability = vi.fn();
+const mockUseExtensionCapability = vi.fn();
 
 const CAPABLE = {
 	engine: "chromium" as const,
 	engineSupported: true,
-	wizardFits: true,
-	canOnboardHere: true,
+	fitsScreen: true,
+	canRunExtensionHere: true,
 };
 
 function notConnectedStatus(
@@ -34,8 +34,8 @@ vi.mock("../hooks/useOnboardingNavigation", () =>
 // The install flow assumes a capable device; jsdom's UA reads as unsupported, so
 // without this the gate would render the handoff. Tests that care about the gate
 // override the return value.
-vi.mock("../hooks/useOnboardingCapability", () => ({
-	useOnboardingCapability: () => mockUseOnboardingCapability(),
+vi.mock("@/lib/extension/useExtensionCapability", () => ({
+	useExtensionCapability: () => mockUseExtensionCapability(),
 }));
 vi.mock("@/lib/server/onboarding.functions", () => ({
 	resetSyncJobs: () => mockResetSyncJobs(),
@@ -71,15 +71,15 @@ describe("InstallExtensionStep", () => {
 		mockIsExtensionInstalled.mockResolvedValue(true);
 		mockGetSpotifyAccountStatus.mockResolvedValue(notConnectedStatus());
 		mockArmLoginReturn.mockResolvedValue(true);
-		mockUseOnboardingCapability.mockReturnValue(CAPABLE);
+		mockUseExtensionCapability.mockReturnValue(CAPABLE);
 	});
 
 	it("renders the finish-on-a-computer handoff when the device can't onboard here", async () => {
-		mockUseOnboardingCapability.mockReturnValue({
+		mockUseExtensionCapability.mockReturnValue({
 			engine: "unsupported",
 			engineSupported: false,
-			wizardFits: false,
-			canOnboardHere: false,
+			fitsScreen: false,
+			canRunExtensionHere: false,
 		});
 
 		render(withQueryClient(<InstallExtensionStep />));
@@ -99,11 +99,11 @@ describe("InstallExtensionStep", () => {
 
 	it("never polls the extension on a device that can't onboard here, even across multiple poll intervals", async () => {
 		vi.useFakeTimers();
-		mockUseOnboardingCapability.mockReturnValue({
+		mockUseExtensionCapability.mockReturnValue({
 			engine: "unsupported",
 			engineSupported: false,
-			wizardFits: false,
-			canOnboardHere: false,
+			fitsScreen: false,
+			canRunExtensionHere: false,
 		});
 
 		render(withQueryClient(<InstallExtensionStep />));

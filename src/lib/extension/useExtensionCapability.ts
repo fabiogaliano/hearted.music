@@ -1,7 +1,9 @@
 /**
- * The two onboarding gate signals that aren't the extension PING: can this
- * browser run our extension at all, and is this a device the wizard can run on.
- * (Extension presence is polled separately in InstallExtensionStep.)
+ * The two capability signals that aren't the extension PING: can this browser
+ * run our extension at all, and is this a device it's usable on. Onboarding
+ * gates its wizard on them; screens that write through the extension use them
+ * to tell "install it" from "use a computer". (Extension presence is polled
+ * separately.)
  *
  * Both signals go through useSyncExternalStore: the server snapshots are
  * optimistic (capable, fits) so SSR and the hydration render agree, and React
@@ -38,7 +40,7 @@ function subscribeToFormFactor(onStoreChange: () => void): () => void {
 	return () => mql.removeEventListener("change", onStoreChange);
 }
 
-function getWizardFits(): boolean {
+function getFitsScreen(): boolean {
 	return !getHandheldMql().matches;
 }
 
@@ -46,27 +48,27 @@ function getWizardFits(): boolean {
 const subscribeToNothing = () => () => {};
 
 const serverEngine = (): EngineSupport => "chromium";
-const serverWizardFits = () => true;
+const serverFitsScreen = () => true;
 
-export type OnboardingCapability = {
+export type ExtensionCapability = {
 	engine: EngineSupport;
 	engineSupported: boolean;
-	/** Not a too-small touch handheld — the wizard form factor can run here. */
-	wizardFits: boolean;
-	/** Both hard gates pass: a supported engine on a device that fits the wizard. */
-	canOnboardHere: boolean;
+	/** Not a too-small touch handheld. */
+	fitsScreen: boolean;
+	/** Both hard gates pass: a supported engine on a device that isn't a handheld. */
+	canRunExtensionHere: boolean;
 };
 
-export function useOnboardingCapability(): OnboardingCapability {
+export function useExtensionCapability(): ExtensionCapability {
 	const engine = useSyncExternalStore(
 		subscribeToNothing,
 		getEngineSupport,
 		serverEngine,
 	);
-	const wizardFits = useSyncExternalStore(
+	const fitsScreen = useSyncExternalStore(
 		subscribeToFormFactor,
-		getWizardFits,
-		serverWizardFits,
+		getFitsScreen,
+		serverFitsScreen,
 	);
 
 	const engineSupported = engine !== "unsupported";
@@ -74,7 +76,7 @@ export function useOnboardingCapability(): OnboardingCapability {
 	return {
 		engine,
 		engineSupported,
-		wizardFits,
-		canOnboardHere: engineSupported && wizardFits,
+		fitsScreen,
+		canRunExtensionHere: engineSupported && fitsScreen,
 	};
 }

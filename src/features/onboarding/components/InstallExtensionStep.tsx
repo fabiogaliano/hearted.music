@@ -27,10 +27,10 @@ import { pairExtension } from "@/lib/extension/connect";
 import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
 import { triggerExtensionSync } from "@/lib/extension/detect";
 import { armReconnectOnActivation } from "@/lib/extension/reconnect-link";
+import { useExtensionCapability } from "@/lib/extension/useExtensionCapability";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { resetSyncJobs } from "@/lib/server/onboarding.functions";
 import { fonts } from "@/lib/theme/fonts";
-import { useOnboardingCapability } from "../hooks/useOnboardingCapability";
 import { useOnboardingNavigation } from "../hooks/useOnboardingNavigation";
 import { ExtensionSetupTrail } from "./ExtensionSetupTrail";
 import { OnboardingHandoff } from "./OnboardingHandoff";
@@ -177,7 +177,7 @@ function ActionContent({
 
 // The capability gate is checked here, before InstallExtensionStepBody (and
 // its useExtensionConnection subscription) ever mounts — not as an early
-// return inside the body. A handheld's canOnboardHere is permanently false
+// return inside the body. A handheld's canRunExtensionHere is permanently false
 // (it's a media-query capability, not a transient "not answered yet" state),
 // so a verdict computed from inside the body would sit at extension-missing
 // forever, and connection-state.ts's refetchInterval treats that as
@@ -187,13 +187,13 @@ function ActionContent({
 // instead means the body — and its hook — simply never mounts on such a
 // device, so no subscription is ever created to poll from.
 export function InstallExtensionStep() {
-	const capability = useOnboardingCapability();
+	const capability = useExtensionCapability();
 
 	// SSR and hydration render optimistically capable; useSyncExternalStore
 	// re-syncs the real capability before paint, so neither branch flashes. An
 	// unsupported engine or a too-small screen gets the "finish on a computer"
 	// handoff instead of the perpetual "Add to <browser>" dead-end.
-	if (!capability.canOnboardHere) {
+	if (!capability.canRunExtensionHere) {
 		return <OnboardingHandoff />;
 	}
 
