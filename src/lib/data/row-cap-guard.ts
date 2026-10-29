@@ -4,13 +4,6 @@ import { POSTGREST_MAX_ROWS } from "@/lib/shared/utils/result-wrappers/supabase"
 
 export const ROW_CAP_ERROR_CODE = "row_cap";
 
-/**
- * "fail" answers a capped read with a PostgREST-shaped error, so the caller's
- * Result fails; "report" sends it to Sentry and passes the response through,
- * for prod, where failing would turn today's silently short reads into outages.
- */
-export type RowCapGuardMode = "fail" | "report";
-
 // Probed against PostgREST: write representations (PATCH/POST/DELETE with
 // return=representation) come back whole, so only reads and RPC results can
 // be cut. HEAD carries a Content-Range for count queries but no rows. Auth and
@@ -60,15 +53,15 @@ function rowCapErrorResponse(message: string): Response {
 }
 
 /**
- * Wraps the admin client's fetch so a PostgREST read cut at max_rows is loud
- * instead of a silently short result set.
+ * Wraps the admin client's fetch so a PostgREST read cut at max_rows fails
+ * with a PostgREST-shaped error instead of returning a silently short result
+ * set.
  */
 export function guardRowCap(
 	baseFetch: (
 		input: RequestInfo | URL,
 		init?: RequestInit,
 	) => Promise<Response>,
-	mode: RowCapGuardMode,
 ): typeof fetch {
 	const guarded = async (input: RequestInfo | URL, init?: RequestInit) => {
 		const url = new URL(input instanceof Request ? input.url : String(input));
@@ -79,14 +72,13 @@ export function guardRowCap(
 
 		// The path names the table or RPC; filter values stay out of Sentry.
 		const where = `${method} ${url.pathname}`;
-		const onViolation = (violation: string): Response | null => {
+		const fail = (violation: string): Response => {
 			const message = `[row-cap] ${where} ${violation}`;
 			captureServerError(new Error(message), {
 				operation: "postgrest_row_cap",
 				area: "db",
 				extra: { method, path: url.pathname },
 			});
-			if (mode === "report") return null;
 			// Many callers degrade a failed read to a fallback, which would hide
 			// the error response, so the log line and the Sentry event above are
 			// what make it visible.
@@ -95,22 +87,16 @@ export function guardRowCap(
 		};
 
 		const limitViolation = overCapLimit(url);
-		if (limitViolation !== null) {
-			const blocked = onViolation(limitViolation);
-			if (blocked) return blocked;
-			return baseFetch(input, init);
-		}
+		if (limitViolation !== null) return fail(limitViolation);
 
 		const response = await baseFetch(input, init);
 		if (!response.ok) return response;
 		const capViolation = unboundedReadAtCap(url, response);
 		if (capViolation === null) return response;
-		const blocked = onViolation(capViolation);
-		if (!blocked) return response;
 		// Best-effort: a throw here would replace the row_cap error with a fetch
 		// error that postgrest-js retries.
 		response.body?.cancel().catch(() => {});
-		return blocked;
+		return fail(capViolation);
 	};
 	// Cast only because the wrapper lacks fetch's ambient `preconnect` static.
 	return guarded as typeof fetch;

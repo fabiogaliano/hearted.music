@@ -38,7 +38,6 @@ function guardAdminRequestUrlLength(
 // AdminSupabaseClient's inferred generics — identical in prod.
 const adminFetch = guardRowCap(
 	isDevOrTest ? guardAdminRequestUrlLength : fetch,
-	"fail",
 );
 
 function buildAdminSupabaseClient() {
