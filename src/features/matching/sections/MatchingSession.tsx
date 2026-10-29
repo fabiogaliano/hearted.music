@@ -167,14 +167,16 @@ export function MatchingSession(props: MatchingSessionProps) {
 				them read as one card belongs on the same node — the fill tilts to
 				grayscale and leaves with the content instead of staying behind as an
 				empty box. Padding is paid for out of both columns' dvh caps; see
-				REVIEW_COLUMN_MIN_HEIGHT. */}
+				REVIEW_COLUMN_MIN_HEIGHT. The grids' explicit single column on mobile
+				matters: an implicit track is auto-sized, so a row's min-content
+				widened it past the card and clipped the Add buttons off-screen. */}
 				<motion.div
 					className="surface-raised squircle rounded-[20px] p-5"
 					initial={CARD_AT_REST}
 					animate={cardControls}
 				>
 					{props.mode === "song" ? (
-						<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+						<div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 							<SongSection
 								songKey={songId}
 								song={song}
@@ -202,7 +204,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 							/>
 						</div>
 					) : (
-						<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+						<div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 							<PlaylistReviewItemSection
 								itemKey={props.reviewItem.id}
 								reviewItem={props.reviewItem}
