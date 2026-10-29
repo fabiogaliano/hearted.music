@@ -55,7 +55,7 @@ export function MatchReviewCTA({
 					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
 				>
-					{reviewCount} {noun} to match
+					{reviewCount} {noun}
 				</h3>
 				<div className="flex w-full items-center justify-between gap-8 sm:w-auto sm:justify-start">
 					<FanSpreadAlbumArt images={matchPreviews} />
