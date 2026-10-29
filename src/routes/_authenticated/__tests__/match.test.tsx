@@ -212,7 +212,6 @@ describe("/match mode switch", () => {
 			} as never),
 		);
 		await advance(0);
-		await advance(0);
 	}
 
 	it("reads only the entered orientation's deck, never re-POSTing the one being left (phantom match_deck_hit)", async () => {
