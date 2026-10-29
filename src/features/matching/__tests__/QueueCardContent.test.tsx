@@ -20,7 +20,10 @@ import {
 	reportSpotifyAuthFailure,
 	reportSpotifyAuthSuccess,
 } from "@/lib/extension/connection/report-failure";
-import { resetUnreachableAtForTests } from "@/lib/extension/connection/unreachable-store";
+import {
+	resetUnreachableAtForTests,
+	setUnreachableAt,
+} from "@/lib/extension/connection/unreachable-store";
 import {
 	getSpotifyAccountStatus,
 	isExtensionInstalled,
@@ -476,6 +479,12 @@ describe("QueueCardContent whole-card action handlers", () => {
 		it("keeps Add when the extension is there", () => {
 			const { matchingProps } = renderCard({ connection: "ok" });
 			expect(matchingProps().writeGate).toBe("ready");
+		});
+
+		it("regression: a stale unreachable flag from another screen left a working extension browse-only", async () => {
+			setUnreachableAt(Date.now());
+			const { matchingProps } = renderCard({ connection: "ok" });
+			await waitFor(() => expect(matchingProps().writeGate).toBe("ready"));
 		});
 
 		it("pushes reportSpotifyAuthFailure on a reconnect-required Spotify outcome, and bails before the deck write", async () => {

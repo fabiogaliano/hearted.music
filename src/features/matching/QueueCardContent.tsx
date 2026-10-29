@@ -31,6 +31,7 @@ import {
 	reportSpotifyAuthFailure,
 	reportSpotifyAuthSuccess,
 } from "@/lib/extension/connection/report-failure";
+import { getUnreachableAt } from "@/lib/extension/connection/unreachable-store";
 import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
 import { deriveExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
@@ -373,12 +374,21 @@ export function QueueCardContent({
 	// Mirrors the shared connection verdict rather than a per-song local flag
 	// (see 05-liked-songs-matching.md): a dead token is global truth, so the
 	// prompt shows on whichever card is open, not just the one that failed.
-	const { verdict } = useExtensionConnection(linkedSpotifyId);
+	const { verdict, refetch: recheckConnection } =
+		useExtensionConnection(linkedSpotifyId);
 	const reconnectNeeded = verdict.kind === "spotify-disconnected";
 	// Without the extension Add can only fail, so the columns go browse-only and
 	// say where adding works (a computer, or the store on a capable browser).
 	const { canRunExtensionHere } = useExtensionCapability();
 	const writeGate = deriveExtensionWriteGate(verdict, canRunExtensionHere);
+	// A sticky "unreachable" from another screen's failed PING reads as
+	// extension-missing here, and only a deliberate recheck clears it — which
+	// this screen doesn't offer. Rechecking on entry keeps a transient failure
+	// from leaving a working extension browse-only until a reload.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: entry-only — recheckConnection is a fresh closure each render, and the flag can't be set while this screen is open.
+	useEffect(() => {
+		if (getUnreachableAt() !== null) void recheckConnection();
+	}, []);
 	// Invariant 2: mismatch outranks unpaired and is never silently
 	// repairable — see AccountMismatchPrompt/useSpotifyGate's studio gate for
 	// the same distinction. Threaded down to Matching so the suggestion
