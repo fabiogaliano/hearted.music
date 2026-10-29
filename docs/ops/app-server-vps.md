@@ -28,7 +28,9 @@ GitHub:
   (the build fails without either), `VITE_PUBLIC_POSTHOG_HOST`, `VITE_ACCOUNT_EVENTS_GATEWAY_URL`,
   `VITE_SENTRY_DSN`, `VITE_SENTRY_ENVIRONMENT`, `VITE_SENTRY_ORG_SLUG`, `VITE_CHROME_EXTENSION_ID`,
   `VITE_APP_TITLE`, `VITE_USERJOT_PROJECT_ID`. `VITE_APP_RELEASE` comes from the commit SHA.
-- The older `production-worker` copies of the three shared secrets are unused.
+- `production-worker` environment: secret `COOLIFY_WORKER_DEPLOY_HOOK` only. Don't re-add copies of
+  the shared secrets there: an environment secret shadows the repository secret of the same name, so
+  `deploy-worker` would silently keep the stale copy after a rotation.
 
 Coolify (project `hearted.music`, environment `production`):
 
