@@ -49,8 +49,9 @@ export function MatchReviewCTA({
 				Ready to match
 			</p>
 			{/* Stacked below sm: the fan-spread art is a fixed ~240px, which beside the
-			heading squeezed it to a word per line and pushed Start off-screen. */}
-			<div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:justify-between">
+			heading squeezed it to a word per line and pushed Start off-screen. The
+			stacked gap is 48px because the art's -my-12 bleeds that far above its row. */}
+			<div className="flex flex-col items-start gap-12 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 				<h3
 					className="theme-text text-3xl font-extralight text-balance"
 					style={{ fontFamily: fonts.display }}
