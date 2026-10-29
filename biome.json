@@ -35,7 +35,18 @@
 				"noDeprecatedImports": "error"
 			},
 			"style": {
-				"noProcessEnv": "error"
+				"noProcessEnv": "error",
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"paths": {
+							"@supabase/supabase-js": {
+								"importNames": ["createClient"],
+								"message": "Use createAdminSupabaseClient (src/lib/data/client.ts): its fetch carries the row-cap and URL-length guards, which a client built here would skip."
+							}
+						}
+					}
+				}
 			}
 		}
 	},
@@ -119,7 +130,13 @@
 										],
 										"message": "Song analysis returns outcomes only; the pipeline orchestrator owns job lifecycle, failure recording, replacement credits, and DB writes."
 									}
-								]
+								],
+								"paths": {
+									"@supabase/supabase-js": {
+										"importNames": ["createClient"],
+										"message": "Use createAdminSupabaseClient (src/lib/data/client.ts): its fetch carries the row-cap and URL-length guards, which a client built here would skip."
+									}
+								}
 							}
 						}
 					}
@@ -134,6 +151,16 @@
 			],
 			"linter": {
 				"enabled": false
+			}
+		},
+		{
+			"includes": ["**/src/lib/data/client.ts", "**/__tests__/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": "off"
+					}
+				}
 			}
 		}
 	]
