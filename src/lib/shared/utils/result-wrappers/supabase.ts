@@ -5,6 +5,7 @@
 import type { PostgrestSingleResponse } from "@supabase/supabase-js";
 import { Result } from "better-result";
 import type { z } from "zod";
+import { POSTGREST_MAX_ROWS } from "@/lib/data/row-cap-guard";
 import {
 	ConstraintError,
 	DatabaseError,
@@ -124,16 +125,14 @@ export async function fromSupabaseRpc<S extends z.ZodType>(
 	return Result.ok(parsed.data);
 }
 
-const READ_ALL_PAGE_SIZE = 1_000;
-
 /**
  * Reads every row of a query PostgREST would otherwise cut at max_rows (1000)
  * with no error. `readPage` applies `.range(from, to)` to its query and decodes
  * the response; pages are read until a short one, and any failed page fails
  * the whole read rather than returning a partial set.
  *
- * The page size must not exceed max_rows, or a capped page would read as the
- * last one.
+ * Pages are exactly max_rows long: a server cap below POSTGREST_MAX_ROWS would
+ * make a capped page read as the last one.
  *
  * The caller's query must have a unique order (add a tie-breaker column), or
  * rows shift between pages and get skipped or duplicated. Offsets are only safe
@@ -147,11 +146,11 @@ export async function readAllRows<T>(
 	for (;;) {
 		const page = await readPage(
 			rows.length,
-			rows.length + READ_ALL_PAGE_SIZE - 1,
+			rows.length + POSTGREST_MAX_ROWS - 1,
 		);
 		if (Result.isError(page)) return page;
 		rows.push(...page.value);
-		if (page.value.length < READ_ALL_PAGE_SIZE) return Result.ok(rows);
+		if (page.value.length < POSTGREST_MAX_ROWS) return Result.ok(rows);
 	}
 }
 
