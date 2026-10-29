@@ -12,6 +12,7 @@ import type { DbError } from "@/lib/shared/errors/database";
 import {
 	fromSupabaseMany,
 	fromSupabaseMaybe,
+	readAllRows,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 
 // ============================================================================
@@ -220,13 +221,18 @@ export function getMatchRankingsForPlaylist(
 	playlistId: string,
 ): Promise<Result<MatchRankingRow[], DbError>> {
 	const supabase = createAdminSupabaseClient();
-	return fromSupabaseMany(
-		supabase
-			.from("match_result_ranking")
-			.select("song_id, playlist_id, rank, ordering_score")
-			.eq("snapshot_id", snapshotId)
-			.eq("playlist_id", playlistId)
-			.eq("orientation", "playlist")
-			.order("rank", { ascending: true }),
+	// rank is unique per playlist slate (idx_match_result_ranking_playlist_slate_rank_unique)
+	// and a snapshot's rankings are written once, so offset pages can't shift.
+	return readAllRows((from, to) =>
+		fromSupabaseMany(
+			supabase
+				.from("match_result_ranking")
+				.select("song_id, playlist_id, rank, ordering_score")
+				.eq("snapshot_id", snapshotId)
+				.eq("playlist_id", playlistId)
+				.eq("orientation", "playlist")
+				.order("rank", { ascending: true })
+				.range(from, to),
+		),
 	);
 }
