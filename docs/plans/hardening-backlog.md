@@ -69,8 +69,13 @@ requeues the same way on a transient DB or apply error, keeping its payload
     by `rank`, so pairs past the cut become "unranked" and are sorted by fit score.
   - `getNewItemIds` (`liked-songs/status-queries.ts:32`). Reaches 3,659. Mild: the newness ordering of
     review subjects is incomplete.
-- **Not yet checked.** Write responses that `.select()` many rows (e.g. the `setPlaylistTargets` clear
-  step in `playlists/queries.ts`); hidden `LIMIT`s inside other RPCs' SQL.
+- **Guard.** The admin client's fetch (`src/lib/data/row-cap-guard.ts`) flags a read with no `limit`
+  that returns max_rows rows, and a `limit` above max_rows. Dev and test fail the read; prod reports
+  `postgrest_row_cap` to Sentry and passes it through. Switch prod to failing once these are fixed.
+  Write representations are not capped (probed: a 1,001-row PATCH/POST/DELETE returns all 1,001).
+- **Not covered by the guard.** One-to-many embeds are cut to max_rows too, but the top-level
+  `Content-Range` doesn't show it; the only one today, `getServedRanksForSong`, is one row per playlist.
+  Hidden `LIMIT`s inside RPCs' SQL. The control panel's own client (`control-panel/server/supabase.ts`).
 - **Change.** Page each read with a unique order (offset paging only for read-before-write; keyset when
   rows can drop out between pages, as `visibility-inputs.ts` does), or push the predicate into SQL.
 
