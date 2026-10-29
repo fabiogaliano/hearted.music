@@ -16,11 +16,15 @@ import type { SongDetail } from "./song-detail-types";
 // instrumental without a read: fetch settled to ‘instrumental’ but no analysis row
 // parsed successfully — the read is unavailable, not in-flight.
 //
+// failed → the pipeline recorded a terminal failure for this song (display_state
+//   'failed'). It outranks everything: a fetch that found lyrics, or enrichment
+//   running for other songs, used to keep it on "Listening" forever.
+//
 // isEnrichmentRunning still matters for the genuinely in-flight case (e.g. a song
 // just unlocked with no fetch outcome yet), but it is NOT allowed to override a
 // settled fetch — a song whose fetch is done is not in-flight regardless of
 // whether the pipeline is running for other songs.
-export type UnreadStatus = "analyzing" | "unavailable";
+export type UnreadStatus = "analyzing" | "unavailable" | "failed";
 
 export function unreadStatus({
 	displayState,
@@ -31,6 +35,7 @@ export function unreadStatus({
 	contentFetchStatus?: SongDetail["contentFetchStatus"];
 	isEnrichmentRunning?: boolean;
 }): UnreadStatus {
+	if (displayState === "failed") return "failed";
 	if (
 		contentFetchStatus === "not_found" ||
 		contentFetchStatus === "instrumental"

@@ -29,6 +29,19 @@ describe("unreadStatus (§13.3)", () => {
 		).toBe("unavailable");
 	});
 
+	it("regression: a song whose analysis failed for good read as in-flight ('Listening' forever) once its lyrics were fetched", () => {
+		expect(
+			unreadStatus({
+				displayState: "failed",
+				contentFetchStatus: "lyrics",
+				isEnrichmentRunning: true,
+			}),
+		).toBe("failed");
+		expect(
+			unreadStatus({ displayState: "failed", contentFetchStatus: "not_found" }),
+		).toBe("failed");
+	});
+
 	it.each([
 		// Fetch settled to instrumental but no read parsed: nothing is coming.
 		[
