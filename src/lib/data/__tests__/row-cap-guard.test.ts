@@ -28,6 +28,27 @@ describe("guardRowCap", () => {
 		expect(captureServerError).toHaveBeenCalledOnce();
 	});
 
+	it("regression: a failed capped read still reaches Sentry (callers that fall back on a failed read hid it, leaving only a log line)", async () => {
+		captureServerError.mockClear();
+		const guarded = guardRowCap(
+			vi.fn(
+				async () =>
+					new Response("[]", {
+						status: 200,
+						headers: { "Content-Range": "0-999/*" },
+					}),
+			),
+			"fail",
+		);
+
+		const response = await guarded(
+			"http://127.0.0.1:54321/rest/v1/playlist_song?select=song_id",
+		);
+
+		expect(response.status).toBe(500);
+		expect(captureServerError).toHaveBeenCalledOnce();
+	});
+
 	it("pages at the max_rows set in supabase/config.toml", () => {
 		const config = readFileSync(
 			join(process.cwd(), "supabase/config.toml"),
