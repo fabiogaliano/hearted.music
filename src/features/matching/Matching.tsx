@@ -21,6 +21,7 @@ export function Matching({
 	completionStats,
 	recentItems,
 	reconnectNeeded,
+	writeGate,
 	mismatchProfile,
 	navigationDisabled,
 	mode = "playlist",
@@ -117,6 +118,7 @@ export function Matching({
 					playlists={currentPlaylists}
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
+					writeGate={writeGate}
 					mismatchProfile={mismatchProfile}
 					navigationDisabled={navigationDisabled}
 					isLastItem={offset >= totalSongs - 1}
@@ -134,6 +136,7 @@ export function Matching({
 					suggestions={currentSongSuggestions}
 					addedTo={addedTo}
 					reconnectNeeded={reconnectNeeded}
+					writeGate={writeGate}
 					mismatchProfile={mismatchProfile}
 					navigationDisabled={navigationDisabled}
 					isLastItem={offset >= totalSongs - 1}

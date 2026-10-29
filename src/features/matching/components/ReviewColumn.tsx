@@ -1,9 +1,19 @@
-import { ArrowLeftIcon, ArrowRightIcon, XIcon } from "@phosphor-icons/react";
+import {
+	ArrowLeftIcon,
+	ArrowRightIcon,
+	MonitorIcon,
+	XIcon,
+} from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useIsPresent } from "framer-motion";
 import { type ReactNode, useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import {
+	getBrowserTarget,
+	getExtensionStoreUrl,
+} from "@/lib/extension/browser-target";
 import { repairConnection } from "@/lib/extension/connection/repair";
+import type { ExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import { fonts } from "@/lib/theme/fonts";
 
 // Mirrors both columns' art/cover height cap, so on short viewports either
@@ -86,6 +96,35 @@ export function AnimatedReviewPanel({
 		>
 			{children}
 		</motion.div>
+	);
+}
+
+/** Sits beside "Best matches" when this browser can't add, in place of the
+ *  per-row Add buttons the column hides: suggestions stay browsable, and the
+ *  note says where adding works instead of letting Add fail silently. */
+export function WriteGateNote({ gate }: { gate: ExtensionWriteGate }) {
+	if (gate === "ready") return null;
+	if (gate === "needs-computer") {
+		return (
+			<p
+				className="theme-text-muted ml-auto flex items-center gap-1.5 text-xs"
+				style={{ fontFamily: fonts.body }}
+			>
+				<MonitorIcon size={14} aria-hidden />
+				Add on a computer
+			</p>
+		);
+	}
+	return (
+		<a
+			href={getExtensionStoreUrl(getBrowserTarget())}
+			target="_blank"
+			rel="noreferrer"
+			className="theme-text-muted focus-edge ml-auto text-xs underline-offset-4 hover:underline"
+			style={{ fontFamily: fonts.body }}
+		>
+			Get the extension to add
+		</a>
 	);
 }
 

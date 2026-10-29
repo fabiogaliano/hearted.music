@@ -5,6 +5,8 @@
 import { useState } from "react";
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
+import { deriveExtensionWriteGate } from "@/lib/extension/connection/write-gate";
+import { useExtensionCapability } from "@/lib/extension/useExtensionCapability";
 import { hasNavigatedThisSession } from "@/lib/navigation/session-navigation";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DashboardSyncStatus } from "./components/DashboardSyncStatus";
@@ -32,6 +34,7 @@ export function Dashboard({
 	// Liked Songs and Playlists. Frozen at mount so it never replays on re-render.
 	const [animateEntrance] = useState(() => !hasNavigatedThisSession());
 	const { verdict } = useExtensionConnection(linkedSpotifyId);
+	const { canRunExtensionHere } = useExtensionCapability();
 
 	// One corner of the header, two mutually exclusive states — never both. A
 	// broken connection has no sync to report on, so the reconnect bar takes the
@@ -67,6 +70,7 @@ export function Dashboard({
 				reviewCount={stats.reviewCount}
 				matchPreviews={matchPreviews}
 				orientation={stats.matchOrientation}
+				writeGate={deriveExtensionWriteGate(verdict, canRunExtensionHere)}
 			/>
 
 			<CreatePlaylistCTA />

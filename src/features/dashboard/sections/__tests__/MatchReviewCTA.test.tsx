@@ -42,6 +42,19 @@ describe("MatchReviewCTA — orientation awareness (A2)", () => {
 		).toHaveAttribute("href", "/match");
 	});
 
+	it("on a browser that can never add, swaps Start for a note to match on a computer", async () => {
+		await renderWithRouter(
+			<MatchReviewCTA
+				reviewCount={3}
+				matchPreviews={previews}
+				orientation="playlist"
+				writeGate="needs-computer"
+			/>,
+		);
+		expect(screen.getByText(/match on a computer/i)).toBeInTheDocument();
+		expect(screen.queryByText(/^start$/i)).toBeNull();
+	});
+
 	it("uses the singular noun for a single item", async () => {
 		await renderWithRouter(
 			<MatchReviewCTA

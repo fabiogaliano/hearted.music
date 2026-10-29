@@ -55,6 +55,32 @@ const DEFAULT_PROPS = {
 };
 
 describe("MatchesSection", () => {
+	it("regression: on a browser that can't add, rows stay browsable with no Add or dismiss, and say where adding works", () => {
+		renderWithQuery(
+			<MatchesSection
+				{...DEFAULT_PROPS}
+				onDismissSuggestion={vi.fn()}
+				writeGate="needs-computer"
+			/>,
+		);
+
+		expect(screen.getByText("Chill Vibes")).toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /^add$/i })).toBeNull();
+		expect(screen.queryByRole("button", { name: /dismiss/i })).toBeNull();
+		expect(screen.getByText(/add on a computer/i)).toBeInTheDocument();
+	});
+
+	it("links the store when this browser could run the extension", () => {
+		renderWithQuery(
+			<MatchesSection {...DEFAULT_PROPS} writeGate="needs-extension" />,
+		);
+
+		expect(
+			screen.getByRole("link", { name: /get the extension/i }),
+		).toHaveAttribute("href", expect.stringMatching(/^https:\/\//));
+		expect(screen.queryByRole("button", { name: /^add$/i })).toBeNull();
+	});
+
 	it("renders playlist name for each match", () => {
 		renderWithQuery(<MatchesSection {...DEFAULT_PROPS} />);
 		expect(screen.getByText("Chill Vibes")).toBeDefined();

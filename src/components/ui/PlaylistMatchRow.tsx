@@ -6,7 +6,9 @@ import { fonts } from "@/lib/theme/fonts";
 
 type PlaylistMatchRowAction =
 	| { type: "added" }
-	| { type: "add"; disabled?: boolean; onAdd: (playlistId: string) => void };
+	| { type: "add"; disabled?: boolean; onAdd: (playlistId: string) => void }
+	// Browse-only: this browser can't write to Spotify, so the row offers nothing.
+	| { type: "none" };
 
 interface PlaylistMatchRowProps {
 	playlistId: string;
@@ -45,7 +47,7 @@ export function PlaylistMatchRow({
 	const rowPadding = size === "lg" ? "px-2.5 py-3" : "px-2.5 py-2";
 
 	const actionElement =
-		action.type === "added" ? (
+		action.type === "none" ? null : action.type === "added" ? (
 			<span
 				className="theme-text-muted text-xs tracking-widest uppercase opacity-60"
 				style={{ fontFamily: fonts.body }}

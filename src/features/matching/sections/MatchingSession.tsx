@@ -27,6 +27,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 		isDemo,
 		realAvailable,
 		reconnectNeeded,
+		writeGate,
 		mismatchProfile,
 		navigationDisabled,
 		isLastItem,
@@ -191,6 +192,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								isDemo={isDemo}
 								realAvailable={realAvailable}
 								reconnectNeeded={reconnectNeeded}
+								writeGate={writeGate}
 								mismatchProfile={mismatchProfile}
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}
@@ -218,6 +220,7 @@ export function MatchingSession(props: MatchingSessionProps) {
 								playback={playback}
 								addedTo={addedTo}
 								reconnectNeeded={reconnectNeeded}
+								writeGate={writeGate}
 								mismatchProfile={mismatchProfile}
 								navigationDisabled={navigationDisabled}
 								isLastItem={isLastItem}

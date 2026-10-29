@@ -49,6 +49,16 @@ vi.mock("@/lib/server/match-deck.functions", () => ({
 
 vi.mock("@/lib/extension/spotify-client", () => ({ addToPlaylist: vi.fn() }));
 
+const capability = vi.hoisted(() => ({ canRunExtensionHere: true }));
+vi.mock("@/lib/extension/useExtensionCapability", () => ({
+	useExtensionCapability: () => ({
+		engine: "chromium",
+		engineSupported: capability.canRunExtensionHere,
+		fitsScreen: capability.canRunExtensionHere,
+		canRunExtensionHere: capability.canRunExtensionHere,
+	}),
+}));
+
 vi.mock("@/lib/extension/detect", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@/lib/extension/detect")>()),
 	isExtensionInstalled: vi.fn(),
@@ -99,7 +109,11 @@ const MISMATCH_PROFILE = {
 	avatarUrl: null,
 };
 
-type ConnectionKind = "ok" | "spotify-disconnected" | "mismatch";
+type ConnectionKind =
+	| "ok"
+	| "spotify-disconnected"
+	| "mismatch"
+	| "extension-missing";
 
 const CONNECTIONS: Record<ConnectionKind, PolledConnection> = {
 	ok: {
@@ -127,6 +141,12 @@ const CONNECTIONS: Record<ConnectionKind, PolledConnection> = {
 		spotifyConnected: true,
 		paired: true,
 		profile: MISMATCH_PROFILE,
+	},
+	"extension-missing": {
+		installed: false,
+		spotifyConnected: false,
+		paired: null,
+		profile: null,
 	},
 };
 
@@ -226,7 +246,9 @@ function renderCard({
 		makeReadyItemData("item-1", withSuggestion) as never,
 	);
 	queryClient.setQueryData(extensionConnectionKey, CONNECTIONS[connection]);
-	vi.mocked(isExtensionInstalled).mockResolvedValue(true);
+	vi.mocked(isExtensionInstalled).mockResolvedValue(
+		CONNECTIONS[connection].installed,
+	);
 	vi.mocked(getSpotifyAccountStatus).mockResolvedValue({
 		connected: CONNECTIONS[connection].spotifyConnected,
 		paired: true,
@@ -290,6 +312,7 @@ const addButton = () => screen.getByRole("button", { name: /^add$/i });
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	capability.canRunExtensionHere = true;
 	resetAuthFailedAtForTests();
 	resetUnreachableAtForTests();
 	vi.mocked(readMatchDeckCard).mockImplementation((async ({
@@ -439,6 +462,20 @@ describe("QueueCardContent whole-card action handlers", () => {
 		] as const)("reconnectNeeded mirrors the shared verdict (%s → %s)", (connection, expected) => {
 			const { matchingProps } = renderCard({ connection });
 			expect(matchingProps().reconnectNeeded).toBe(expected);
+		});
+
+		it.each([
+			[false, "needs-computer"],
+			[true, "needs-extension"],
+		] as const)("regression: without the extension, Add was offered and silently did nothing (browser can run it: %s → %s)", (canRun, expected) => {
+			capability.canRunExtensionHere = canRun;
+			const { matchingProps } = renderCard({ connection: "extension-missing" });
+			expect(matchingProps().writeGate).toBe(expected);
+		});
+
+		it("keeps Add when the extension is there", () => {
+			const { matchingProps } = renderCard({ connection: "ok" });
+			expect(matchingProps().writeGate).toBe("ready");
 		});
 
 		it("pushes reportSpotifyAuthFailure on a reconnect-required Spotify outcome, and bails before the deck write", async () => {

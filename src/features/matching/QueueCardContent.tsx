@@ -32,8 +32,10 @@ import {
 	reportSpotifyAuthSuccess,
 } from "@/lib/extension/connection/report-failure";
 import { useExtensionConnection } from "@/lib/extension/connection/useExtensionConnection";
+import { deriveExtensionWriteGate } from "@/lib/extension/connection/write-gate";
 import { outcomeFromCommandResponse } from "@/lib/extension/spotify-action-outcome";
 import { addToPlaylist } from "@/lib/extension/spotify-client";
+import { useExtensionCapability } from "@/lib/extension/useExtensionCapability";
 import { useLockedMutation } from "@/lib/hooks/useLockedMutation";
 import type { useAnalytics } from "@/lib/observability/useAnalytics";
 import { submitMatchDeckAction } from "@/lib/server/match-deck.functions";
@@ -373,6 +375,10 @@ export function QueueCardContent({
 	// prompt shows on whichever card is open, not just the one that failed.
 	const { verdict } = useExtensionConnection(linkedSpotifyId);
 	const reconnectNeeded = verdict.kind === "spotify-disconnected";
+	// Without the extension Add can only fail, so the columns go browse-only and
+	// say where adding works (a computer, or the store on a capable browser).
+	const { canRunExtensionHere } = useExtensionCapability();
+	const writeGate = deriveExtensionWriteGate(verdict, canRunExtensionHere);
 	// Invariant 2: mismatch outranks unpaired and is never silently
 	// repairable — see AccountMismatchPrompt/useSpotifyGate's studio gate for
 	// the same distinction. Threaded down to Matching so the suggestion
@@ -750,6 +756,7 @@ export function QueueCardContent({
 			completionStats={completionStats}
 			recentItems={pastItems}
 			reconnectNeeded={reconnectNeeded}
+			writeGate={writeGate}
 			mismatchProfile={mismatchProfile}
 			navigationDisabled={navigationStatus === "pending"}
 			mode={mode}
