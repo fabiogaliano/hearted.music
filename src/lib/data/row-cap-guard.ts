@@ -81,16 +81,15 @@ export function guardRowCap(
 		const where = `${method} ${url.pathname}`;
 		const onViolation = (violation: string): Response | null => {
 			const message = `[row-cap] ${where} ${violation}`;
-			if (mode === "report") {
-				captureServerError(new Error(message), {
-					operation: "postgrest_row_cap",
-					area: "db",
-					extra: { method, path: url.pathname },
-				});
-				return null;
-			}
+			captureServerError(new Error(message), {
+				operation: "postgrest_row_cap",
+				area: "db",
+				extra: { method, path: url.pathname },
+			});
+			if (mode === "report") return null;
 			// Many callers degrade a failed read to a fallback, which would hide
-			// the error response, so the log line is what makes it visible locally.
+			// the error response, so the log line and the Sentry event above are
+			// what make it visible.
 			log.error("db:row-cap", { request: where, violation });
 			return rowCapErrorResponse(message);
 		};
