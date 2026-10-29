@@ -103,8 +103,8 @@ export async function getAll(
 				.range(from, to),
 		),
 	);
-	return rows.map((page) =>
-		page.map(({ song, ...ref }) => ({ ...ref, spotify_id: song.spotify_id })),
+	return rows.map((liked) =>
+		liked.map(({ song, ...ref }) => ({ ...ref, spotify_id: song.spotify_id })),
 	);
 }
 

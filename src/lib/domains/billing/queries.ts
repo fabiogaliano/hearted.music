@@ -209,5 +209,5 @@ export async function readEntitledDataEnrichedSongIds(
 			return Result.ok(data ?? []);
 		},
 	);
-	return rows.map((page) => page.map((row) => row.song_id));
+	return rows.map((entitled) => entitled.map((row) => row.song_id));
 }
