@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
 import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import {
-	accountEventsConnectionKey,
+	accountEventsConnectionQueryOptions,
 	type ConnectionState,
 } from "@/lib/hooks/useAccountEvents";
 import type { LikedSongsPageResult } from "@/lib/server/liked-songs.functions";
@@ -108,12 +108,9 @@ export function useLikedSongsCollection({
 	walkthroughSong,
 	companionSongs = NO_COMPANIONS,
 }: UseLikedSongsCollectionOptions) {
-	const { data: connectionState } = useQuery<ConnectionState>({
-		queryKey: accountEventsConnectionKey(accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
-		staleTime: Number.POSITIVE_INFINITY,
-	});
+	const { data: connectionState } = useQuery(
+		accountEventsConnectionQueryOptions(accountId),
+	);
 	const {
 		data,
 		status,
