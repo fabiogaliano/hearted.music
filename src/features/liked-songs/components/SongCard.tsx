@@ -263,9 +263,16 @@ const SongCardContent = memo(function SongCardContent({
 				    art with a pale edge used to end on the page and now bleeds
 				    into the panel. */}
 				{albumArtUrl ? (
+					// Lazy: a deep link SSRs hundreds of rows, and eager art made React
+					// emit a <link rel="preload"> per row and start every download at
+					// once, competing with the panel.
 					<img
 						src={albumArtUrl}
 						alt={`${song.track.album || song.track.name} album art`}
+						loading="lazy"
+						decoding="async"
+						width={48}
+						height={48}
 						className="image-outline h-full w-full object-cover"
 						style={isLocked ? { filter: "grayscale(0.5)" } : undefined}
 					/>

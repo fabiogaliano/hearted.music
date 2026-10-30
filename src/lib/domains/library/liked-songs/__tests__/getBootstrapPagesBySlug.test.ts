@@ -314,7 +314,7 @@ describe("getBootstrapPagesBySlug", () => {
 	});
 
 	it("returns only the first page and a null selection for a missing slug", async () => {
-		state.rows = makeRows(30);
+		state.rows = makeRows(2 * LIKED_SONGS_PAGE_SIZE);
 
 		const result = await getBootstrapPagesBySlug("account-1", "does-not-exist");
 		expect(Result.isOk(result)).toBe(true);
@@ -324,7 +324,8 @@ describe("getBootstrapPagesBySlug", () => {
 		expect(selectedRow).toBeNull();
 		expect(pages).toHaveLength(1);
 		expect(pages[0].items).toHaveLength(LIKED_SONGS_PAGE_SIZE);
-		// Identical to a normal first page: 30 > 15 rows, so a cursor remains.
+		// Identical to a normal first page: more rows than a page, so a cursor
+		// remains.
 		expect(pages[0].nextCursor).toBe(
 			cursorOf(state.rows[LIKED_SONGS_PAGE_SIZE - 1]),
 		);

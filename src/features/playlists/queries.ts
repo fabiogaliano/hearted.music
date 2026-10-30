@@ -7,7 +7,7 @@ import {
 	getPlaylistTracksPage,
 } from "@/lib/server/playlists.functions";
 
-export const PLAYLIST_TRACKS_PAGE_SIZE = 25;
+export const PLAYLIST_TRACKS_PAGE_SIZE = 100;
 
 export function playlistManagementQueryOptions(accountId: string) {
 	return queryOptions({
