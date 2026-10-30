@@ -443,16 +443,19 @@ export function useLikedSongsList({
 				? element.getBoundingClientRect().top + window.scrollY
 				: null;
 		};
-		if (previous && previous.songId !== firstLoadedSongId) {
+		// The first rendered row, not the first loaded one: the locked-only views
+		// filter the loaded rows, and an unrendered row has no position.
+		const firstRenderedSongId = navItems[0]?.track.id;
+		if (previous && previous.songId !== firstRenderedSongId) {
 			const documentTop = documentTopOf(previous.songId);
 			if (documentTop !== null && documentTop !== previous.documentTop) {
 				window.scrollBy(0, documentTop - previous.documentTop);
 			}
 		}
-		if (!hasRowsAbove || !firstLoadedSongId) return;
-		const documentTop = documentTopOf(firstLoadedSongId);
+		if (!hasRowsAbove || !firstRenderedSongId) return;
+		const documentTop = documentTopOf(firstRenderedSongId);
 		if (documentTop !== null) {
-			firstRowRef.current = { songId: firstLoadedSongId, documentTop };
+			firstRowRef.current = { songId: firstRenderedSongId, documentTop };
 		}
 	});
 
