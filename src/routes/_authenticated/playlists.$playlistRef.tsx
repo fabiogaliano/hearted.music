@@ -22,14 +22,20 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 
 		const toList = () => redirect({ to: "/playlists", replace: true });
 
-		// The parent /playlists loader already holds the management data, so the
-		// cache resolves almost every ref and the tracks read starts without a
-		// management round trip. The cache can be stale (playlists added or
-		// removed since it loaded), so a miss or a cached playlist the server says
-		// is gone is settled against fresh data instead of trusted.
-		const wasCached =
-			queryClient.getQueryData(management.queryKey) !== undefined;
-		const cached = await queryClient.ensureQueryData(management);
+		// The parent /playlists loader already holds the management data, so a
+		// fresh cache resolves almost every ref and the tracks read starts without
+		// a management round trip. fetchQuery (not ensureQueryData) so a cache that
+		// library sync invalidated, or that went stale, is re-read here instead of
+		// trusted. A fresh cache can still miss playlists added since it loaded,
+		// and a cached playlist can be gone on the server, so those cases settle
+		// against fresh data below.
+		const updatesBefore = queryClient.getQueryState(
+			management.queryKey,
+		)?.dataUpdateCount;
+		const cached = await queryClient.fetchQuery(management);
+		const servedFromCache =
+			queryClient.getQueryState(management.queryKey)?.dataUpdateCount ===
+			updatesBefore;
 		const cachedId = resolvePlaylistIdFromRouteRef(
 			cached.playlists,
 			params.playlistRef,
@@ -44,9 +50,9 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 
 		// Unresolved refs (malformed, stale, unknown prefix, ambiguous, or
 		// belonging to another account) get cleaned up by sending the user
-		// back to the list URL rather than leaving a misleading detail URL. A
-		// cache that was empty was just fetched, so it isn't re-read.
-		if (!wasCached) throw toList();
+		// back to the list URL rather than leaving a misleading detail URL. Data
+		// fetched just above is already fresh, so it isn't re-read.
+		if (!servedFromCache) throw toList();
 		const fresh = await queryClient.fetchQuery({ ...management, staleTime: 0 });
 		const playlistId = resolvePlaylistIdFromRouteRef(
 			fresh.playlists,
