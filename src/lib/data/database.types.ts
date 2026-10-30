@@ -4195,6 +4195,34 @@ export type Database = {
 					song_spotify_id: string;
 				}[];
 			};
+			get_liked_songs_page_newer: {
+				Args: {
+					p_account_id: string;
+					p_cursor: string;
+					p_cursor_id: string;
+					p_limit: number;
+					p_min_score?: number;
+				};
+				Returns: {
+					artist_image_url: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
+					content_fetch_status: string;
+					display_state: string;
+					id: string;
+					liked_at: string;
+					matching_status: string;
+					song_album_name: string;
+					song_artist_ids: string[];
+					song_artists: string[];
+					song_genres: string[];
+					song_id: string;
+					song_image_url: string;
+					song_name: string;
+					song_spotify_id: string;
+				}[];
+			};
 			get_liked_songs_stats: {
 				Args: { p_account_id: string; p_min_score?: number };
 				Returns: {
@@ -4210,6 +4238,34 @@ export type Database = {
 			get_account_match_filter_options: {
 				Args: { p_account_id: string };
 				Returns: Json;
+			};
+			get_liked_songs_window_by_slug: {
+				Args: {
+					p_account_id: string;
+					p_min_score?: number;
+					p_rows_after: number;
+					p_rows_before: number;
+					p_slug: string;
+				};
+				Returns: {
+					artist_image_url: string;
+					audio_energy: number;
+					audio_tempo: number;
+					audio_valence: number;
+					content_fetch_status: string;
+					display_state: string;
+					id: string;
+					liked_at: string;
+					matching_status: string;
+					song_album_name: string;
+					song_artist_ids: string[];
+					song_artists: string[];
+					song_genres: string[];
+					song_id: string;
+					song_image_url: string;
+					song_name: string;
+					song_spotify_id: string;
+				}[];
 			};
 			get_match_pairs_for_playlist: {
 				Args: { p_playlist_id: string; p_snapshot_id: string };
