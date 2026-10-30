@@ -239,7 +239,7 @@ export function LikedSongsList({
 				)}
 				{/* Outside every chunk, like the bottom sentinel. Unmounting it once the
 				    newest like is loaded shifts only content above the viewport, which
-				    scroll anchoring absorbs. */}
+				    the list's prepend compensation absorbs. */}
 				{data.hasRowsAbove && (
 					<div
 						ref={navigation.topSentinelRef}

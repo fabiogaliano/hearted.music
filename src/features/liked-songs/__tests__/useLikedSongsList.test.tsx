@@ -510,3 +510,129 @@ describe("useLikedSongsList — focus + activation", () => {
 		expect(toggleSongSelection).toHaveBeenCalledWith(locked.track.id);
 	});
 });
+
+describe("useLikedSongsList — rows landing above", () => {
+	const ROW_PITCH_PX = 74;
+
+	function PrependHarness({
+		songs,
+		hasPreviousPage,
+	}: {
+		songs: readonly LikedSong[];
+		hasPreviousPage: boolean;
+	}) {
+		mockUseLikedSongsCollection.mockReturnValue({
+			...collectionResult(songs),
+			fetchPreviousPage: vi.fn(),
+			hasPreviousPage,
+			isFetchingPreviousPage: false,
+		});
+		mockUseSelectedLikedSongBySlug.mockReturnValue({
+			selectedSongFromUrl: null,
+			selectedSongIdFromUrl: null,
+			isSelectedSlugResolved: true,
+		});
+		mockUseSongExpansion.mockReturnValue(expansionResult());
+
+		const { state, actions } = useLikedSongsList(
+			baseOptions({ selectedSlug: null }),
+		);
+
+		return (
+			<div>
+				{state.visibleSongs.map((item, index) => (
+					<div
+						key={item.track.id}
+						ref={actions.getItemProps(item, index).ref}
+					/>
+				))}
+			</div>
+		);
+	}
+
+	const songsFrom = (first: number, count: number) =>
+		Array.from({ length: count }, (_, i) => createSong(`song-${first + i}`));
+
+	// jsdom has no layout: rows sit at their DOM position times the row pitch.
+	function layOutRowsByPosition() {
+		const original = HTMLElement.prototype.getBoundingClientRect;
+		HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+			const index = Array.prototype.indexOf.call(
+				this.parentElement?.children ?? [],
+				this,
+			);
+			return DOMRect.fromRect({
+				x: 0,
+				y: index * ROW_PITCH_PX,
+				width: 100,
+				height: ROW_PITCH_PX - 2,
+			});
+		};
+		return () => {
+			HTMLElement.prototype.getBoundingClientRect = original;
+		};
+	}
+
+	it("regression: scrolls by the inserted rows' height when a page lands above a deep-link window (the rows being read jumped down a page)", () => {
+		const restoreLayout = layOutRowsByPosition();
+		const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+		try {
+			const { rerender } = render(
+				<PrependHarness songs={songsFrom(51, 101)} hasPreviousPage />,
+				{ wrapper: Wrapper },
+			);
+			expect(document.documentElement.style.overflowAnchor).toBe("none");
+			expect(scrollBy).not.toHaveBeenCalled();
+
+			rerender(<PrependHarness songs={songsFrom(1, 151)} hasPreviousPage />);
+
+			expect(scrollBy).toHaveBeenCalledTimes(1);
+			expect(scrollBy).toHaveBeenCalledWith(0, 50 * ROW_PITCH_PX);
+		} finally {
+			scrollBy.mockRestore();
+			restoreLayout();
+		}
+	});
+
+	it("compensates the last page above too, which also ends the window", () => {
+		const restoreLayout = layOutRowsByPosition();
+		const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+		try {
+			const { rerender } = render(
+				<PrependHarness songs={songsFrom(21, 101)} hasPreviousPage />,
+				{ wrapper: Wrapper },
+			);
+
+			rerender(
+				<PrependHarness songs={songsFrom(1, 121)} hasPreviousPage={false} />,
+			);
+
+			expect(scrollBy).toHaveBeenCalledWith(0, 20 * ROW_PITCH_PX);
+			expect(document.documentElement.style.overflowAnchor).toBe("");
+		} finally {
+			scrollBy.mockRestore();
+			restoreLayout();
+		}
+	});
+
+	it("leaves the scroll alone when a new like lands at the top of the full list", () => {
+		const restoreLayout = layOutRowsByPosition();
+		const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+		try {
+			const { rerender } = render(
+				<PrependHarness songs={songsFrom(2, 50)} hasPreviousPage={false} />,
+				{ wrapper: Wrapper },
+			);
+			expect(document.documentElement.style.overflowAnchor).toBe("");
+
+			rerender(
+				<PrependHarness songs={songsFrom(1, 51)} hasPreviousPage={false} />,
+			);
+
+			expect(scrollBy).not.toHaveBeenCalled();
+		} finally {
+			scrollBy.mockRestore();
+			restoreLayout();
+		}
+	});
+});
