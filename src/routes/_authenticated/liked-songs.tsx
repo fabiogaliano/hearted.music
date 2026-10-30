@@ -97,9 +97,10 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 		}
 
 		// Deep link into the default (unfiltered, no-search) list: bootstrap the
-		// list cache with the contiguous prefix through the selected song so a
-		// cold reload renders it in-list (highlighted, scroll-centered,
-		// prev/next-navigable) without a client-side page waterfall. Filtered
+		// list cache with a window of rows around the selected song so a cold
+		// reload renders it in-list (highlighted, scroll-centered,
+		// prev/next-navigable) without a client-side page waterfall, however deep
+		// the song sits. The list loads further up and down from the window. Filtered
 		// views (`pending`/`analyzed`/`locked`) keep the existing behavior since
 		// the selected song may not belong to the filtered set.
 		//

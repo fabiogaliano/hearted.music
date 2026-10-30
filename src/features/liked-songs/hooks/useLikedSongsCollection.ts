@@ -121,6 +121,9 @@ export function useLikedSongsCollection({
 		fetchNextPage,
 		hasNextPage,
 		isFetchingNextPage,
+		fetchPreviousPage,
+		hasPreviousPage,
+		isFetchingPreviousPage,
 	} = useInfiniteQuery({
 		...likedSongsInfiniteQueryOptions(filter, search),
 		// Stream-first: while connected, enrichment terminal events invalidate the
@@ -179,5 +182,8 @@ export function useLikedSongsCollection({
 		fetchNextPage,
 		hasNextPage,
 		isFetchingNextPage,
+		fetchPreviousPage,
+		hasPreviousPage,
+		isFetchingPreviousPage,
 	};
 }

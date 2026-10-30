@@ -156,6 +156,8 @@ export function LikedSongsPage({
 			visibleSongs,
 			hasMore,
 			isLoadingMore,
+			hasRowsAbove,
+			isLoadingRowsAbove,
 			stats,
 			focusedIndex,
 			navIndexBySongId,
@@ -174,6 +176,7 @@ export function LikedSongsPage({
 		actions: {
 			retry,
 			sentinelRef,
+			topSentinelRef,
 			getItemProps,
 			handleCardClick,
 			openFocusedSong,
@@ -423,6 +426,8 @@ export function LikedSongsPage({
 							visibleSongs,
 							hasMore,
 							isLoadingMore,
+							hasRowsAbove,
+							isLoadingRowsAbove,
 							searchQuery: isSearching ? debouncedSearchQuery : null,
 						}}
 						selection={{
@@ -439,6 +444,7 @@ export function LikedSongsPage({
 							getItemProps,
 							onCardClick: handleCardClick,
 							sentinelRef,
+							topSentinelRef,
 						}}
 						walkthrough={{
 							isActive: isWalkthrough,
