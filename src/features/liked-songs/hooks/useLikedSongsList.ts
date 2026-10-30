@@ -34,6 +34,11 @@ export function likedSongsStatsRefetchInterval(
 	return 5_000;
 }
 
+// About 20 rows ahead. The next page usually lands while the sentinel is still
+// below the fold, so new rows are inserted off-screen instead of pushing a
+// visible "Loading more…" down (a layout shift even under wheel scrolling).
+const PREFETCH_MARGIN_PX = 1500;
+
 /**
  * Which rows are visible in the list right now. Selection mode and the
  * "locked" filter both narrow to locked-only rows so unlock candidates are
@@ -204,6 +209,8 @@ export function useLikedSongsList({
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: handleLoadMore,
 		hasMore,
+		itemCount: displayedSongs.length,
+		threshold: PREFETCH_MARGIN_PX,
 	});
 
 	const prefetchAdjacentSuggestions = useSongSuggestionPrefetch({
@@ -596,6 +603,7 @@ export function useLikedSongsList({
 			displayedSongIndexById,
 			visibleSongs,
 			hasMore,
+			isLoadingMore: isFetchingNextPage,
 			stats,
 			selectedSongIdFromUrl,
 			focusedIndex,

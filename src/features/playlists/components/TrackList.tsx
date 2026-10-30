@@ -5,7 +5,9 @@ import {
 	useSingleActivePlayback,
 } from "@/features/playback/useSingleActivePlayback";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
+import { chunkArray } from "@/lib/shared/utils/concurrency";
 import { fonts } from "@/lib/theme/fonts";
+import { PLAYLIST_TRACKS_PAGE_SIZE } from "../queries";
 import { Cover } from "./Cover";
 import type { PlaylistTrackVM } from "./types";
 import "./playlist-ui.css";
@@ -44,6 +46,15 @@ interface TrackListProps {
 // (and every infinite-scroll page) skip the enter instead of waiting i × 26ms.
 const STAGGERED_ROWS = 14;
 
+// py-2 around a 40px cover; the two text lines are shorter than the cover.
+// A chunk's placeholder must match its real height or skipped chunks shift
+// the panel's scroll position.
+const TRACK_ROW_HEIGHT_PX = 56;
+
+// About 25 rows ahead, so the next page usually lands before the sentinel
+// reaches the panel's bottom edge.
+const PREFETCH_MARGIN_PX = 1500;
+
 /** Presentational track list with a staggered enter. Tracks come in as props so
  *  the panel stays storybook-able; real wiring loads them via a server fn and
  *  passes hasMore/onLoadMore so the list paginates on scroll. */
@@ -62,6 +73,8 @@ export function TrackList({
 	const { sentinelRef } = useInfiniteScroll({
 		onLoadMore: onLoadMore ?? (() => {}),
 		hasMore,
+		itemCount: tracks.length,
+		threshold: PREFETCH_MARGIN_PX,
 	});
 	// One preview at a time. Prefer the coordinator shared with the suggestions
 	// column when it's passed in, so playing a track pauses a suggestion's iframe and
@@ -92,27 +105,46 @@ export function TrackList({
 					Tracks <span className="tabular-nums">{songCount}</span>
 				</span>
 			</div>
-			{tracks.map((track, i) => {
-				const rowId = `${track.position}-${track.name}`;
-				return (
-					<TrackRow
-						key={rowId}
-						track={track}
-						index={i}
-						rowId={rowId}
-						staggered={animateIn && i < STAGGERED_ROWS}
-						hideAlbum={hideAlbum}
-						enableTrackPlayback={enableTrackPlayback}
-						isPlaybackActive={activePlaybackId === rowId}
-						onActivatePlayback={activatePlayback}
-						onDeactivatePlayback={deactivatePlayback}
-					/>
-				);
-			})}
+			{/* One content-visibility chunk per page: far-off chunks skip style,
+			    layout and paint while every row stays in the DOM for find-in-page
+			    and focus. */}
+			{chunkArray(tracks, PLAYLIST_TRACKS_PAGE_SIZE).map(
+				(chunk, chunkIndex) => (
+					<div
+						// biome-ignore lint/suspicious/noArrayIndexKey: a chunk is a fixed slice of the list, so its index is its identity
+						key={chunkIndex}
+						style={{
+							contentVisibility: "auto",
+							containIntrinsicHeight: `auto ${chunk.length * TRACK_ROW_HEIGHT_PX}px`,
+						}}
+					>
+						{chunk.map((track, chunkRow) => {
+							const i = chunkIndex * PLAYLIST_TRACKS_PAGE_SIZE + chunkRow;
+							const rowId = `${track.position}-${track.name}`;
+							return (
+								<TrackRow
+									key={rowId}
+									track={track}
+									index={i}
+									rowId={rowId}
+									staggered={animateIn && i < STAGGERED_ROWS}
+									hideAlbum={hideAlbum}
+									enableTrackPlayback={enableTrackPlayback}
+									isPlaybackActive={activePlaybackId === rowId}
+									onActivatePlayback={activatePlayback}
+									onDeactivatePlayback={deactivatePlayback}
+								/>
+							);
+						})}
+					</div>
+				),
+			)}
+			{/* Outside the chunks, since a skipped chunk's contents never
+			    intersect; fixed height so the copy appearing moves nothing. */}
 			{hasMore ? (
 				<div
 					ref={sentinelRef}
-					className="theme-text-muted py-3 text-center text-xs"
+					className="theme-text-muted flex h-10 items-center justify-center text-xs"
 					style={{ fontFamily: fonts.body }}
 				>
 					{isLoadingMore ? "Loading more…" : null}
