@@ -199,6 +199,7 @@ const TrackRow = memo(function TrackRow({
 			// fill that follows the pointer onto something unclickable is a lie.
 			// Gated on the list-level flag, not per-track spotifyId, so one list
 			// doesn't have some rows that respond and some that don't.
+			// TRACK_ROW_HEIGHT_PX mirrors this row's height; change both together.
 			className={`squircle flex items-center gap-3.5 rounded-[10px] px-2.5 py-2 ${
 				enableTrackPlayback
 					? "surface-raised-hover transition-[background-color] duration-150 ease-out"
