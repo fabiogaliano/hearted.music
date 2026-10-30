@@ -194,6 +194,8 @@ export const SongCard = memo(function SongCard({
 			// past a content column to prove it's interactive, it just fills the
 			// panel's padded interior. px-3 + the panel's px-2 restores the same
 			// 20px content inset the studio's tracklist rows sit at.
+			// LikedSongsList's ROW_HEIGHT_PX mirrors this row's height (py-3 + 48px
+			// art) for off-screen chunk sizing; change both together.
 			className={`song-card squircle flex w-full cursor-pointer items-center gap-4 rounded-[10px] border-0 bg-transparent px-3 py-3 text-left transition-[transform,background-color] duration-150 ease-out active:scale-[0.98]${isEnabled ? " surface-raised-hover" : ""}${isWalkthroughHighlight ? " walkthrough-highlight" : ""}`}
 			style={buttonStyle}
 		>
