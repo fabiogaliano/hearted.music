@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { isRedirect } from "@tanstack/react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildPlaylistRouteRef } from "@/features/playlists/playlistRouteRef";
-import { playlistKeys } from "@/lib/query-keys";
+import { invalidateLibrarySyncQueries, playlistKeys } from "@/lib/query-keys";
 import {
 	getPlaylistManagementData,
 	getPlaylistTracksPage,
@@ -116,6 +116,22 @@ describe("/playlists/$playlistRef loader", () => {
 			replace: true,
 		});
 		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+	});
+
+	it("re-reads management data that library sync invalidated, so a playlist the sync removed redirects even with its tracks cached", async () => {
+		seedManagement(KEPT, DELETED);
+		queryClient.setQueryData(playlistKeys.tracks(DELETED.id), {
+			pages: [{ tracks: [], nextCursor: null }],
+			pageParams: [undefined],
+		});
+		await invalidateLibrarySyncQueries(queryClient, ACCOUNT_ID);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(management(KEPT));
+
+		expect(await redirectOf(runLoader(refOf(DELETED)))).toMatchObject({
+			to: "/playlists",
+		});
+		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+		expect(getPlaylistTracksPage).not.toHaveBeenCalled();
 	});
 
 	it("redirects an unresolvable ref without reading tracks", async () => {
