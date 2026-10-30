@@ -226,6 +226,11 @@ async function fetchAndSendReplay(
 		});
 	} catch (error) {
 		log.error("gateway-replay-error", { accountId, error: String(error) });
+		// The client skips its HTTP active-jobs read while connected, trusting
+		// this replay and snapshot. Left open without them, it would show no
+		// running jobs until some later wake; closed, it polls over HTTP and
+		// reconnects on its stream back-off.
+		client.close();
 	}
 }
 

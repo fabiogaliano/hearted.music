@@ -429,6 +429,35 @@ describe("useAccountEvents", () => {
 		expect(reconnectHeaders?.["Last-Event-ID"]).toBe("42");
 	});
 
+	// Active-jobs readers skip their HTTP read while the state is "idle"; one
+	// left there (onboarding, a background tab) would never show running jobs.
+	it("publishes disconnected when disabled, without opening a stream", async () => {
+		setupMockFetch();
+
+		renderHook(() => useAccountEvents(ACCOUNT_ID, false), { wrapper });
+
+		await waitFor(() => {
+			expect(
+				queryClient.getQueryData(accountEventsConnectionKey(ACCOUNT_ID)),
+			).toBe("disconnected");
+		});
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
+	it("publishes disconnected for a tab opened in the background", async () => {
+		setupMockFetch();
+		vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+
+		renderHook(() => useAccountEvents(ACCOUNT_ID), { wrapper });
+
+		await waitFor(() => {
+			expect(
+				queryClient.getQueryData(accountEventsConnectionKey(ACCOUNT_ID)),
+			).toBe("disconnected");
+		});
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
 	it("stops on 403 and sets state to forbidden", async () => {
 		setupMockFetch({ ok: false, status: 403 });
 
