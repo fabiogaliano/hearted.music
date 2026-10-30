@@ -11,7 +11,10 @@ import {
 	playlistKeys,
 } from "@/lib/query-keys";
 import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
-import { accountEventsConnectionKey } from "../useAccountEvents";
+import {
+	accountEventsConnectionKey,
+	type ConnectionState,
+} from "../useAccountEvents";
 import { useActiveJobCompletionEffects, useActiveJobs } from "../useActiveJobs";
 
 vi.mock("@/lib/server/jobs.functions", () => ({
@@ -134,7 +137,13 @@ describe("useActiveJobs return shape", () => {
 		queryClient = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
+		// The stream isn't running, so the HTTP read is the source.
+		setConnection("disconnected");
 	});
+
+	function setConnection(state: ConnectionState) {
+		queryClient.setQueryData(accountEventsConnectionKey(ACCOUNT_ID), state);
+	}
 
 	afterEach(() => {
 		vi.useRealTimers();
@@ -201,26 +210,49 @@ describe("useActiveJobs return shape", () => {
 		});
 	});
 
-	it("quiesces periodic polling while the account-events stream is connected", async () => {
+	it("makes no HTTP read while the stream is connected: its snapshot is the source", async () => {
 		vi.useFakeTimers();
-		queryClient.setQueryData(
-			accountEventsConnectionKey(ACCOUNT_ID),
-			"connected",
-		);
+		setConnection("connected");
 		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
 
 		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
 
 		await act(async () => {
-			await Promise.resolve();
+			await vi.advanceTimersByTimeAsync(20_000);
+		});
+
+		expect(getActiveJobs).not.toHaveBeenCalled();
+	});
+
+	it("waits for the stream's first report and its connect, then polls once it fails", async () => {
+		vi.useFakeTimers();
+		queryClient.removeQueries({
+			queryKey: accountEventsConnectionKey(ACCOUNT_ID),
+		});
+		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
+
+		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(20_000);
+		});
+		expect(getActiveJobs).not.toHaveBeenCalled();
+
+		await act(async () => {
+			setConnection("connecting");
+			await vi.advanceTimersByTimeAsync(20_000);
+		});
+		expect(getActiveJobs).not.toHaveBeenCalled();
+
+		await act(async () => {
+			setConnection("error");
+			await vi.advanceTimersByTimeAsync(0);
 		});
 		expect(getActiveJobs).toHaveBeenCalledTimes(1);
 
 		await act(async () => {
-			await vi.advanceTimersByTimeAsync(20_000);
+			await vi.advanceTimersByTimeAsync(15_000);
 		});
-
-		expect(getActiveJobs).toHaveBeenCalledTimes(1);
+		expect(getActiveJobs).toHaveBeenCalledTimes(2);
 	});
 
 	it("backs off and stops fallback polling after 5 consecutive failures (polled a failing server every 15 s forever)", async () => {
@@ -243,10 +275,6 @@ describe("useActiveJobs return shape", () => {
 
 	it("resumes fallback polling while the stream is disconnected", async () => {
 		vi.useFakeTimers();
-		queryClient.setQueryData(
-			accountEventsConnectionKey(ACCOUNT_ID),
-			"disconnected",
-		);
 		vi.mocked(getActiveJobs).mockResolvedValue(makeActiveJobs());
 
 		renderHook(() => useActiveJobs(ACCOUNT_ID), { wrapper });
@@ -280,6 +308,11 @@ describe("useActiveJobCompletionEffects", () => {
 		queryClient = new QueryClient({
 			defaultOptions: { queries: { retry: false } },
 		});
+		// The stream isn't running, so the HTTP read is the source.
+		queryClient.setQueryData(
+			accountEventsConnectionKey(ACCOUNT_ID),
+			"disconnected",
+		);
 	});
 
 	function recentActivityInvalidations(spy: {

@@ -23,11 +23,8 @@ import {
 import { getAccountEventsToken } from "@/lib/server/account-events.functions";
 
 export type ConnectionState =
-	| "connecting"
-	| "connected"
-	| "disconnected"
-	| "error"
-	| "forbidden";
+	// useAccountEvents hasn't reported yet.
+	"idle" | "connecting" | "connected" | "disconnected" | "error" | "forbidden";
 
 function parseRetryAfterMs(value: string | null): number | undefined {
 	if (!value) return undefined;
@@ -54,8 +51,8 @@ export const accountEventsConnectionKey = (accountId: string) =>
 export function accountEventsConnectionQueryOptions(accountId: string) {
 	return queryOptions<ConnectionState>({
 		queryKey: accountEventsConnectionKey(accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
+		queryFn: () => "idle",
+		initialData: "idle",
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 }
@@ -122,7 +119,7 @@ function invalidateEnrichmentCompletionQueries(
 export function useAccountEvents(accountId: string, enabled = true) {
 	const queryClient = useQueryClient();
 	const [connectionState, _setConnectionState] =
-		useState<ConnectionState>("disconnected");
+		useState<ConnectionState>("idle");
 
 	const setConnectionState = useCallback(
 		(state: ConnectionState) => {
