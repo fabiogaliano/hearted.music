@@ -74,8 +74,8 @@ function chunkStyle(rowCount: number) {
 // The row chunk boundaries are measured from: the first row the list rendered
 // with, until it leaves the list (a filter change, an unlike), when the
 // current first row takes over.
-function useChunkOriginIndex(
-	songs: readonly LikedSong[],
+export function useChunkOriginIndex(
+	songs: readonly { track: { id: string } }[],
 	indexById: ReadonlyMap<string, number>,
 ): number {
 	const [originId, setOriginId] = useState(songs[0]?.track.id ?? null);
