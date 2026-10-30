@@ -189,6 +189,11 @@ async function initializeClientStream(
 	return clientState;
 }
 
+// The client skips its HTTP active-jobs read while connected, trusting this
+// replay and snapshot. A stream that fails to deliver them is closed rather
+// than left open and silent: left open, the client would show no running jobs
+// until some later wake; closed, it polls over HTTP and reconnects on its
+// stream back-off.
 async function fetchAndSendReplay(
 	accountId: string,
 	client: AccountEventClient,
@@ -207,7 +212,10 @@ async function fetchAndSendReplay(
 
 			for (const row of rows) {
 				const success = sendReplayRow(client, row);
-				if (!success) return;
+				if (!success) {
+					client.close();
+					return;
+				}
 				client.cursor = row.publish_id;
 			}
 
@@ -218,18 +226,15 @@ async function fetchAndSendReplay(
 
 		// Always send snapshot after connect and replay
 		const snapshot = await buildActiveJobsSnapshot(accountId);
-		sendEvent(client, {
+		const sent = sendEvent(client, {
 			type: "active_jobs_snapshot",
 			v: 1,
 			ts: Date.now(),
 			data: snapshot,
 		});
+		if (!sent) client.close();
 	} catch (error) {
 		log.error("gateway-replay-error", { accountId, error: String(error) });
-		// The client skips its HTTP active-jobs read while connected, trusting
-		// this replay and snapshot. Left open without them, it would show no
-		// running jobs until some later wake; closed, it polls over HTTP and
-		// reconnects on its stream back-off.
 		client.close();
 	}
 }
