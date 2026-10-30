@@ -27,6 +27,23 @@ function hasActiveJob(data: ActiveJobs | undefined): boolean {
 	);
 }
 
+// The stream sends an authoritative active-jobs snapshot when it connects, so
+// the HTTP read only runs when the stream can't deliver one: it failed, was
+// refused, or isn't running (onboarding, a hidden tab). Before the stream first
+// reports, and while it connects, wait for it.
+function streamProvidesActiveJobs(connectionState: ConnectionState): boolean {
+	switch (connectionState) {
+		case "idle":
+		case "connecting":
+		case "connected":
+			return true;
+		case "disconnected":
+		case "error":
+		case "forbidden":
+			return false;
+	}
+}
+
 function activeJobsQueryOptions(
 	accountId: string,
 	connectionState: ConnectionState,
@@ -35,11 +52,10 @@ function activeJobsQueryOptions(
 	return queryOptions({
 		queryKey: activeJobsKeys.byAccount(accountId),
 		queryFn: () => getActiveJobs(),
-		enabled,
+		enabled: enabled && !streamProvidesActiveJobs(connectionState),
 		retry: MAX_CONSECUTIVE_POLL_FAILURES - 1,
 		retryDelay: (failureCount) => IDLE_POLL_MS * 2 ** (failureCount + 1),
 		refetchInterval: (query) => {
-			if (connectionState === "connected") return false;
 			// Error status means every retry above failed too.
 			if (query.state.status === "error") return false;
 			return hasActiveJob(query.state.data) ? ACTIVE_POLL_MS : IDLE_POLL_MS;
