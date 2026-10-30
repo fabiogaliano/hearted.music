@@ -23,10 +23,7 @@ import { seedBakedDeckCardReads } from "@/features/matching/seed-deck-cards";
 import type { MatchViewMode } from "@/features/matching/types";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";
 import { sessionMode } from "@/lib/domains/library/accounts/onboarding-session";
-import {
-	accountEventsConnectionKey,
-	type ConnectionState,
-} from "@/lib/hooks/useAccountEvents";
+import { accountEventsConnectionQueryOptions } from "@/lib/hooks/useAccountEvents";
 import { useActiveJobs } from "@/lib/hooks/useActiveJobs";
 import { captureUnhandledRouteError } from "@/lib/observability/sentry";
 import {
@@ -205,12 +202,9 @@ function QueueMatchPage() {
 		isMatchSnapshotRefreshRunning,
 		firstVisibleMatchReady,
 	} = useActiveJobs(session.accountId);
-	const { data: accountEventsConnectionState } = useQuery<ConnectionState>({
-		queryKey: accountEventsConnectionKey(session.accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
-		staleTime: Number.POSITIVE_INFINITY,
-	});
+	const { data: accountEventsConnectionState } = useQuery(
+		accountEventsConnectionQueryOptions(session.accountId),
+	);
 	const isJobsActive = isEnrichmentRunning || isMatchSnapshotRefreshRunning;
 	const isStreamConnected = accountEventsConnectionState === "connected";
 

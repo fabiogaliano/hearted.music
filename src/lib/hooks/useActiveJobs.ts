@@ -8,7 +8,7 @@ import {
 import { getActiveJobs } from "@/lib/server/jobs.functions";
 import type { ActiveJobs } from "@/lib/workflows/library-processing/active-jobs";
 import {
-	accountEventsConnectionKey,
+	accountEventsConnectionQueryOptions,
 	type ConnectionState,
 } from "./useAccountEvents";
 
@@ -48,12 +48,9 @@ function activeJobsQueryOptions(
 }
 
 export function useActiveJobs(accountId: string, enabled = true) {
-	const { data: connectionState } = useQuery<ConnectionState>({
-		queryKey: accountEventsConnectionKey(accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
-		staleTime: Number.POSITIVE_INFINITY,
-	});
+	const { data: connectionState } = useQuery(
+		accountEventsConnectionQueryOptions(accountId),
+	);
 	const { data } = useQuery(
 		activeJobsQueryOptions(accountId, connectionState, enabled),
 	);
@@ -84,12 +81,9 @@ export function useActiveJobCompletionEffects(
 	accountId: string,
 	enabled = true,
 ) {
-	const { data: connectionState } = useQuery<ConnectionState>({
-		queryKey: accountEventsConnectionKey(accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
-		staleTime: Number.POSITIVE_INFINITY,
-	});
+	const { data: connectionState } = useQuery(
+		accountEventsConnectionQueryOptions(accountId),
+	);
 	const { data } = useQuery({
 		...activeJobsQueryOptions(accountId, connectionState, enabled),
 		select: selectRunningJobs,

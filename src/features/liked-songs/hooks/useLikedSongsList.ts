@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WalkthroughSong } from "@/lib/domains/library/accounts/onboarding-session";
 import {
-	accountEventsConnectionKey,
+	accountEventsConnectionQueryOptions,
 	type ConnectionState,
 } from "@/lib/hooks/useAccountEvents";
 import { useInfiniteScroll } from "@/lib/hooks/useInfiniteScroll";
@@ -131,12 +131,9 @@ export function useLikedSongsList({
 			selectedSlug,
 		});
 
-	const { data: connectionState } = useQuery<ConnectionState>({
-		queryKey: accountEventsConnectionKey(accountId),
-		queryFn: () => "disconnected",
-		initialData: "disconnected",
-		staleTime: Number.POSITIVE_INFINITY,
-	});
+	const { data: connectionState } = useQuery(
+		accountEventsConnectionQueryOptions(accountId),
+	);
 
 	const { data: stats } = useQuery({
 		...likedSongsStatsQueryOptions(accountId),

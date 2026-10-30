@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	type AccountEventPayloadMap,
@@ -45,6 +45,20 @@ function parseRetryAfterMs(value: string | null): number | undefined {
 
 export const accountEventsConnectionKey = (accountId: string) =>
 	["account-events-connection", accountId] as const;
+
+/**
+ * The stream's connection state, as useAccountEvents publishes it to the rest
+ * of the app. Every reader must share these options: whichever mounts first
+ * seeds the cache entry with its initialData.
+ */
+export function accountEventsConnectionQueryOptions(accountId: string) {
+	return queryOptions<ConnectionState>({
+		queryKey: accountEventsConnectionKey(accountId),
+		queryFn: () => "disconnected",
+		initialData: "disconnected",
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+}
 
 function setActiveJobsSnapshot(
 	queryClient: ReturnType<typeof useQueryClient>,
