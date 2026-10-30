@@ -93,73 +93,19 @@ export function TrackList({
 			</div>
 			{tracks.map((track, i) => {
 				const rowId = `${track.position}-${track.name}`;
-				const staggered = animateIn && i < STAGGERED_ROWS;
 				return (
-					<div
+					<TrackRow
 						key={rowId}
-						// The evolved SongRow from vision/StudioTracklist.stories.tsx, which
-						// is this exact component: hairline out, radius in, ~8px/10px
-						// padding, transparent at rest. The hover is gated on
-						// enableTrackPlayback — with playback off the row is inert, and a
-						// fill that follows the pointer onto something unclickable is a lie.
-						// Gated on the list-level flag, not per-track spotifyId, so one list
-						// doesn't have some rows that respond and some that don't.
-						className={`squircle flex items-center gap-3.5 rounded-[10px] px-2.5 py-2 ${
-							enableTrackPlayback
-								? "surface-raised-hover transition-[background-color] duration-150 ease-out"
-								: ""
-						} ${staggered ? "xpl-track-enter" : ""}`}
-						style={staggered ? { animationDelay: `${i * 26}ms` } : undefined}
-					>
-						<span
-							className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"
-							style={{ fontFamily: fonts.body }}
-						>
-							{i + 1}
-						</span>
-						{enableTrackPlayback && track.spotifyId ? (
-							<SpotifyPlaybackCover
-								playbackId={rowId}
-								spotifyTrackId={track.spotifyId}
-								imageUrl={track.imageUrl}
-								imageAlt={track.name}
-								playLabel={`Play preview for ${track.name}`}
-								size={40}
-								isPlaybackActive={activePlaybackId === rowId}
-								onActivate={activatePlayback}
-								onDeactivate={deactivatePlayback}
-								playButtonSize={26}
-								playIconSize={12}
-								closeIconSize={12}
-								closeInset="0.125rem"
-								className="flex-none"
-							/>
-						) : (
-							<Cover src={track.imageUrl} size={40} className="flex-none" />
-						)}
-						<div className="min-w-0 flex-1">
-							<div
-								className="theme-text truncate text-sm leading-tight"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.name}
-							</div>
-							<div
-								className="theme-text-muted truncate text-xs"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.artists.join(", ")}
-							</div>
-						</div>
-						{!hideAlbum && track.albumName && (
-							<span
-								className="theme-text-muted max-w-[34%] flex-none truncate text-right text-xs"
-								style={{ fontFamily: fonts.body }}
-							>
-								{track.albumName}
-							</span>
-						)}
-					</div>
+						track={track}
+						index={i}
+						rowId={rowId}
+						staggered={animateIn && i < STAGGERED_ROWS}
+						hideAlbum={hideAlbum}
+						enableTrackPlayback={enableTrackPlayback}
+						isPlaybackActive={activePlaybackId === rowId}
+						onActivatePlayback={activatePlayback}
+						onDeactivatePlayback={deactivatePlayback}
+					/>
 				);
 			})}
 			{hasMore ? (
@@ -182,6 +128,95 @@ export function TrackList({
 						</span>
 					</div>
 				)
+			)}
+		</div>
+	);
+}
+
+function TrackRow({
+	track,
+	index,
+	rowId,
+	staggered,
+	hideAlbum,
+	enableTrackPlayback,
+	isPlaybackActive,
+	onActivatePlayback,
+	onDeactivatePlayback,
+}: {
+	track: PlaylistTrackVM;
+	index: number;
+	rowId: string;
+	staggered: boolean;
+	hideAlbum: boolean;
+	enableTrackPlayback: boolean;
+	isPlaybackActive: boolean;
+	onActivatePlayback: (playbackId: string) => void;
+	onDeactivatePlayback: () => void;
+}) {
+	return (
+		<div
+			// The evolved SongRow from vision/StudioTracklist.stories.tsx, which
+			// is this exact component: hairline out, radius in, ~8px/10px
+			// padding, transparent at rest. The hover is gated on
+			// enableTrackPlayback — with playback off the row is inert, and a
+			// fill that follows the pointer onto something unclickable is a lie.
+			// Gated on the list-level flag, not per-track spotifyId, so one list
+			// doesn't have some rows that respond and some that don't.
+			className={`squircle flex items-center gap-3.5 rounded-[10px] px-2.5 py-2 ${
+				enableTrackPlayback
+					? "surface-raised-hover transition-[background-color] duration-150 ease-out"
+					: ""
+			} ${staggered ? "xpl-track-enter" : ""}`}
+			style={staggered ? { animationDelay: `${index * 26}ms` } : undefined}
+		>
+			<span
+				className="theme-text-muted w-[18px] flex-none text-right text-xs tabular-nums"
+				style={{ fontFamily: fonts.body }}
+			>
+				{index + 1}
+			</span>
+			{enableTrackPlayback && track.spotifyId ? (
+				<SpotifyPlaybackCover
+					playbackId={rowId}
+					spotifyTrackId={track.spotifyId}
+					imageUrl={track.imageUrl}
+					imageAlt={track.name}
+					playLabel={`Play preview for ${track.name}`}
+					size={40}
+					isPlaybackActive={isPlaybackActive}
+					onActivate={onActivatePlayback}
+					onDeactivate={onDeactivatePlayback}
+					playButtonSize={26}
+					playIconSize={12}
+					closeIconSize={12}
+					closeInset="0.125rem"
+					className="flex-none"
+				/>
+			) : (
+				<Cover src={track.imageUrl} size={40} className="flex-none" />
+			)}
+			<div className="min-w-0 flex-1">
+				<div
+					className="theme-text truncate text-sm leading-tight"
+					style={{ fontFamily: fonts.body }}
+				>
+					{track.name}
+				</div>
+				<div
+					className="theme-text-muted truncate text-xs"
+					style={{ fontFamily: fonts.body }}
+				>
+					{track.artists.join(", ")}
+				</div>
+			</div>
+			{!hideAlbum && track.albumName && (
+				<span
+					className="theme-text-muted max-w-[34%] flex-none truncate text-right text-xs"
+					style={{ fontFamily: fonts.body }}
+				>
+					{track.albumName}
+				</span>
 			)}
 		</div>
 	);
