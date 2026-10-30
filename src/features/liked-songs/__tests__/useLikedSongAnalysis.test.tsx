@@ -80,6 +80,7 @@ describe("useLikedSongAnalysis", () => {
 	it.each([
 		"locked",
 		"pending",
+		"analyzing",
 		"failed",
 	] as const)("never reads a %s song's analysis (none is stored or it isn't entitled)", (displayState) => {
 		const { result } = renderHook(
