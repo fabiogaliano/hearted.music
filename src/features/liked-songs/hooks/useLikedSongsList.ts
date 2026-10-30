@@ -207,9 +207,17 @@ export function useLikedSongsList({
 	});
 
 	const prefetchAdjacentSuggestions = useSongSuggestionPrefetch({
+		accountId,
 		displayedSongs,
 		displayedSongIndexById,
 	});
+
+	// A song opened from the URL (deep link, back/forward) never goes through an
+	// activation, so warm its neighbours here too; repeat prefetches of fresh or
+	// in-flight queries are no-ops.
+	useEffect(() => {
+		if (selectedSongId) prefetchAdjacentSuggestions(selectedSongId);
+	}, [selectedSongId, prefetchAdjacentSuggestions]);
 
 	// The walkthrough library is fully navigable now that it holds the hero plus
 	// curated companions — keyboard nav and clicks span all of them, same as the

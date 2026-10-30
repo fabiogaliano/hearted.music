@@ -45,6 +45,9 @@ export interface SongDetail {
 	// recorded. Drives "No words yet" vs "Listening": a song with not_found and no
 	// read is resolved-unknown (show the unavailable state), not in-flight.
 	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
+	// True while the live panel is still reading this song's analysis: the
+	// empty state shows as in-flight instead of guessing from the other fields.
+	isReadLoading?: boolean;
 	// Null when the row has no v17 read yet (locked, not-yet-analyzed, or a pre-v17
 	// 8-field row). The panel still opens — it renders the hero + a minimal empty
 	// state keyed off `displayState` — so every selected song gets a panel.

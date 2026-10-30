@@ -7,6 +7,7 @@ import {
 } from "@/features/liked-songs/filter";
 import { LikedSongsPage } from "@/features/liked-songs/LikedSongsPage";
 import {
+	likedSongAnalysisQueryOptions,
 	likedSongBySlugQueryOptions,
 	likedSongsDeepLinkBootstrapQueryOptions,
 	likedSongsInfiniteQueryOptions,
@@ -14,6 +15,10 @@ import {
 	seedLikedSongsDeepLinkCaches,
 	walkthroughCompanionsQueryOptions,
 } from "@/features/liked-songs/queries";
+import {
+	hasStoredAnalysis,
+	type LikedSong,
+} from "@/features/liked-songs/types";
 
 type UrlSearchFilter = Exclude<SearchFilter, "all">;
 
@@ -71,6 +76,17 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 	// in `song-walkthrough`, the DU guarantees `session.song` is populated.
 	// Illegal states (walkthrough without song) are unrepresentable.
 	loader: async ({ deps, context }) => {
+		// The SSR'd panel must render the read itself (it is in the HTML before
+		// the client hydrates), so the server waits for it. A client song change
+		// must not hold navigation on it: the panel shows its in-flight state.
+		const loadSelectedAnalysis = async (song: LikedSong | null) => {
+			if (!song || !hasStoredAnalysis(song)) return;
+			const read = context.queryClient.prefetchQuery(
+				likedSongAnalysisQueryOptions(context.session.accountId, song.track.id),
+			);
+			if (typeof window === "undefined") await read;
+		};
+
 		// Song-walkthrough runs pre-sync: prefetch the curated companion songs so
 		// the library renders the full 6-song demo set without a pop-in after the
 		// hero. Static demo data, so this is cached forever after the first load.
@@ -109,6 +125,7 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 					bootstrapTarget.slug,
 					bootstrap,
 				);
+				await loadSelectedAnalysis(bootstrap.selectedSong);
 				return;
 			} catch {
 				// Bootstrap failed (transient server/DB error): fall through to the
@@ -122,8 +139,10 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 		);
 
 		if (deps.song) {
-			await context.queryClient.ensureQueryData(
-				likedSongBySlugQueryOptions(context.session.accountId, deps.song),
+			await loadSelectedAnalysis(
+				await context.queryClient.ensureQueryData(
+					likedSongBySlugQueryOptions(context.session.accountId, deps.song),
+				),
 			);
 		}
 	},

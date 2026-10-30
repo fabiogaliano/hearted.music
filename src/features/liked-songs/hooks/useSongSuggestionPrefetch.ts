@@ -1,14 +1,24 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { songSuggestionsQueryOptions } from "../queries";
-import type { LikedSong } from "../types";
+import {
+	likedSongAnalysisQueryOptions,
+	songSuggestionsQueryOptions,
+} from "../queries";
+import { hasStoredAnalysis, type LikedSong } from "../types";
 
 interface UseSongSuggestionPrefetchOptions {
+	accountId: string;
 	displayedSongs: readonly LikedSong[];
 	displayedSongIndexById: ReadonlyMap<string, number>;
 }
 
+/**
+ * Warms what the detail panel reads for a song and its list neighbours (its
+ * playlist suggestions and its analysis), so panel prev/next and keyboard
+ * navigation land on cached data instead of flashing a loading state.
+ */
 export function useSongSuggestionPrefetch({
+	accountId,
 	displayedSongs,
 	displayedSongIndexById,
 }: UseSongSuggestionPrefetchOptions) {
@@ -16,20 +26,27 @@ export function useSongSuggestionPrefetch({
 
 	return useCallback(
 		(songId: string) => {
-			queryClient.prefetchQuery(songSuggestionsQueryOptions(songId));
-
 			const songIndex = displayedSongIndexById.get(songId);
-			if (songIndex == null) return;
+			if (songIndex == null) {
+				queryClient.prefetchQuery(songSuggestionsQueryOptions(songId));
+				return;
+			}
 
-			const adjacentSongIds = [
-				displayedSongs[songIndex + 1]?.track.id,
-				displayedSongs[songIndex - 1]?.track.id,
-			].filter((id): id is string => id != null);
+			const songs = [
+				displayedSongs[songIndex],
+				displayedSongs[songIndex + 1],
+				displayedSongs[songIndex - 1],
+			].filter((song): song is LikedSong => song != null);
 
-			for (const adjacentSongId of adjacentSongIds) {
-				queryClient.prefetchQuery(songSuggestionsQueryOptions(adjacentSongId));
+			for (const song of songs) {
+				queryClient.prefetchQuery(songSuggestionsQueryOptions(song.track.id));
+				if (hasStoredAnalysis(song)) {
+					queryClient.prefetchQuery(
+						likedSongAnalysisQueryOptions(accountId, song.track.id),
+					);
+				}
 			}
 		},
-		[displayedSongIndexById, displayedSongs, queryClient],
+		[accountId, displayedSongIndexById, displayedSongs, queryClient],
 	);
 }

@@ -1,18 +1,20 @@
 /**
- * Adapter: a live `LikedSong` row -> the `SongDetail` the song-detail panel renders.
+ * Adapter: a live `LikedSong` row + its per-song analysis read -> the `SongDetail`
+ * the song-detail panel renders.
  *
  * Always returns a SongDetail so every selected song opens the panel. The stored
  * analysis arrives already decoded on the server (`parseStoredAnalysis`), so this
  * only maps its `kind` onto the panel's `read` / `instrumentalRead` slots.
  *
- * `read` is null when the row has no analysis, is locked (analysis omitted), or
- * holds a shape that matches neither read. `instrumentalRead` is non-null only for
- * instrumental rows. Both null = unresolved or undecodable.
+ * `read` is null when the song has no analysis, is locked (analysis omitted), its
+ * analysis is still loading, or it holds a shape that matches neither read.
+ * `instrumentalRead` is non-null only for instrumental rows. Both null =
+ * loading, unresolved or undecodable.
  */
 
 import type { StoredRead } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { ThemeColor } from "@/lib/theme/types";
-import type { LikedSong } from "../../types";
+import type { LikedSong, SongAnalysisState } from "../../types";
 import type { SongDetail } from "./song-detail-types";
 
 function readSlots(
@@ -29,9 +31,10 @@ function readSlots(
 
 export function likedSongToSongDetail(
 	song: LikedSong,
+	analysis: SongAnalysisState,
 	themeColor: ThemeColor,
 ): SongDetail {
-	const stored = song.analysis?.analysis;
+	const stored = analysis.status === "loaded" ? analysis.analysis : null;
 
 	// Live audio features come from the track row; the read's stored copy is the
 	// fallback for rows whose track features weren't joined.
@@ -55,6 +58,7 @@ export function likedSongToSongDetail(
 		artistImageUrl: song.track.artist_image_url ?? undefined,
 		displayState: song.displayState,
 		contentFetchStatus: song.contentFetchStatus ?? null,
+		isReadLoading: analysis.status === "loading",
 		...readSlots(stored?.read),
 	};
 }

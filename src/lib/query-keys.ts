@@ -68,6 +68,8 @@ export const likedSongsKeys = {
 		] as const,
 	songSuggestions: (songId: string) =>
 		[...likedSongsKeys.all, "song-suggestions", songId] as const,
+	analysis: (accountId: string, songId: string) =>
+		[...likedSongsKeys.all, "analysis", accountId, songId] as const,
 	pageLive: ["liked-songs", "page-live"] as const,
 };
 

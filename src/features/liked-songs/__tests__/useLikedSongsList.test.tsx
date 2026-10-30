@@ -73,7 +73,6 @@ function createSong(
 		liked_at: "2026-03-30T00:00:00Z",
 		matching_status: null,
 		displayState,
-		analysis: null,
 		track: {
 			id,
 			spotify_track_id: `spotify-${id}`,
