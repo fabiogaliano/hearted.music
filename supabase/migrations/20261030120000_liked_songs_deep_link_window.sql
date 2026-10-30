@@ -98,6 +98,7 @@ BEGIN
         AND d.unliked_at IS NULL
         AND (d.liked_at, d.id) <= (v_anchor_liked_at, v_anchor_id)
       ORDER BY d.liked_at DESC, d.id DESC
+      -- <= takes the anchor too: the anchor, p_rows_after rows, one extra.
       LIMIT p_rows_after + 2
     )
   ) w
