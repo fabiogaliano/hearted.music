@@ -155,6 +155,7 @@ export function LikedSongsPage({
 			displayedSongs,
 			visibleSongs,
 			hasMore,
+			isLoadingMore,
 			stats,
 			focusedIndex,
 			navIndexBySongId,
@@ -421,6 +422,7 @@ export function LikedSongsPage({
 							displayedSongs,
 							visibleSongs,
 							hasMore,
+							isLoadingMore,
 							searchQuery: isSearching ? debouncedSearchQuery : null,
 						}}
 						selection={{

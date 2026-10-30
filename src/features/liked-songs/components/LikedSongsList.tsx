@@ -1,12 +1,14 @@
 import { CircleNotchIcon } from "@phosphor-icons/react";
 import type { RefCallback } from "react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { LIKED_SONGS_PAGE_SIZE } from "@/lib/domains/library/liked-songs/constants";
 import type { ListItemNavigationProps } from "@/lib/keyboard/types";
 import { fonts } from "@/lib/theme/fonts";
 import type { SearchFilter } from "../filter";
 import type { LikedSongsLoadState } from "../hooks/useLikedSongsCollection";
 import type { LikedSong } from "../types";
+import { chunkAroundOrigin } from "./list-chunks";
 import { SongCard } from "./SongCard";
 
 interface LikedSongsListData {
@@ -16,6 +18,8 @@ interface LikedSongsListData {
 	displayedSongs: readonly LikedSong[];
 	visibleSongs: readonly LikedSong[];
 	hasMore: boolean;
+	/** A next page is in flight. */
+	isLoadingMore: boolean;
 	/** Active search query, or null when not searching. */
 	searchQuery: string | null;
 }
@@ -47,6 +51,39 @@ interface LikedSongsListProps {
 	selection: LikedSongsListSelection;
 	navigation: LikedSongsListNavigation;
 	walkthrough: LikedSongsListWalkthrough;
+}
+
+// Rows are a fixed 72px (48px art + py-3, single-line text) with space-y-0.5's
+// 2px after every row but a chunk's last. A chunk's placeholder height has to
+// match its real height or skipped chunks shift scroll position and
+// scrollIntoView centring lands off.
+const ROW_HEIGHT_PX = 72;
+const ROW_GAP_PX = 2;
+
+// One content-visibility chunk per page of rows: the browser skips style,
+// layout and paint for chunks far off-screen while every row stays in the DOM
+// (find-in-page, focus and the accessibility tree keep working). Per-row
+// skipping is slower than none when scrolling, since rows unlock one by one.
+function chunkStyle(rowCount: number) {
+	return {
+		contentVisibility: "auto",
+		containIntrinsicHeight: `auto ${rowCount * (ROW_HEIGHT_PX + ROW_GAP_PX) - ROW_GAP_PX}px`,
+	} as const;
+}
+
+// The row chunk boundaries are measured from: the first row the list rendered
+// with, until it leaves the list (a filter change, an unlike), when the
+// current first row takes over.
+function useChunkOriginIndex(
+	songs: readonly LikedSong[],
+	indexById: ReadonlyMap<string, number>,
+): number {
+	const [originId, setOriginId] = useState(songs[0]?.track.id ?? null);
+	const originIndex = originId === null ? undefined : indexById.get(originId);
+	if (originIndex !== undefined) return originIndex;
+	const firstId = songs[0]?.track.id ?? null;
+	if (firstId !== originId) setOriginId(firstId);
+	return 0;
 }
 
 function EditorialNotice({
@@ -118,6 +155,10 @@ export function LikedSongsList({
 	walkthrough,
 }: LikedSongsListProps) {
 	const noopItemRef = useCallback(() => {}, []);
+	const chunkOriginIndex = useChunkOriginIndex(
+		data.visibleSongs,
+		navigation.navIndexBySongId,
+	);
 
 	if (data.loadState === "loading") {
 		return (
@@ -191,62 +232,83 @@ export function LikedSongsList({
 						isLoading={data.hasMore}
 					/>
 				)}
-				{data.visibleSongs.map((song) => {
-					const isHeroSong =
-						walkthrough.isActive &&
-						walkthrough.songId !== null &&
-						song.track.id === walkthrough.songId;
-					// During the walkthrough only the chosen demo song stays interactive —
-					// the rest dim and go inert (isEnabled=false) so attention and the click
-					// land on the one the user picked. Outside the walkthrough, or before a
-					// song is chosen, every song stays enabled.
-					const isSongEnabled =
-						!walkthrough.isActive || walkthrough.songId === null || isHeroSong;
-					const navIndex = isSongEnabled
-						? (navigation.navIndexBySongId.get(song.track.id) ?? -1)
-						: -1;
-					const itemProps =
-						navIndex >= 0 ? navigation.getItemProps(song, navIndex) : null;
-					return (
-						<SongCard
-							key={song.track.id}
-							song={song}
-							albumArtUrl={song.track.image_url ?? undefined}
-							isSelected={navigation.selectedSongId === song.track.id}
-							isFocused={itemProps?.["data-focused"] ?? false}
-							itemRef={itemProps?.ref ?? noopItemRef}
-							tabIndex={itemProps?.tabIndex ?? -1}
-							dataFocused={itemProps?.["data-focused"] ?? false}
-							navEngaged={itemProps?.["data-nav-engaged"] ?? false}
-							dataTabFocused={itemProps?.["data-tab-focused"] ?? false}
-							onPointerDown={itemProps?.onPointerDown}
-							suppressPointerFocus={navigation.isExpanded}
-							onFocus={itemProps?.onFocus}
-							onBlur={itemProps?.onBlur}
-							onClickSong={navigation.onCardClick}
-							isAnimatingTo={navigation.closingToSongId === song.track.id}
-							selectionMode={selection.isActive}
-							isChecked={selection.selectedSongIds.has(song.track.id)}
-							onToggleSelect={selection.onToggleSelect}
-							scrollMarginTop={selection.scrollMarginTop}
-							isEnabled={isSongEnabled}
-							isWalkthrough={walkthrough.isActive}
-							isWalkthroughHighlight={!!isHeroSong && !navigation.isExpanded}
-						/>
-					);
-				})}
+				{chunkAroundOrigin(
+					data.visibleSongs,
+					chunkOriginIndex,
+					LIKED_SONGS_PAGE_SIZE,
+				).map((chunk) => (
+					<div
+						key={chunk.key}
+						className="space-y-0.5"
+						style={chunkStyle(chunk.items.length)}
+					>
+						{chunk.items.map((song) => {
+							const isHeroSong =
+								walkthrough.isActive &&
+								walkthrough.songId !== null &&
+								song.track.id === walkthrough.songId;
+							// During the walkthrough only the chosen demo song stays interactive —
+							// the rest dim and go inert (isEnabled=false) so attention and the click
+							// land on the one the user picked. Outside the walkthrough, or before a
+							// song is chosen, every song stays enabled.
+							const isSongEnabled =
+								!walkthrough.isActive ||
+								walkthrough.songId === null ||
+								isHeroSong;
+							const navIndex = isSongEnabled
+								? (navigation.navIndexBySongId.get(song.track.id) ?? -1)
+								: -1;
+							const itemProps =
+								navIndex >= 0 ? navigation.getItemProps(song, navIndex) : null;
+							return (
+								<SongCard
+									key={song.track.id}
+									song={song}
+									albumArtUrl={song.track.image_url ?? undefined}
+									isSelected={navigation.selectedSongId === song.track.id}
+									isFocused={itemProps?.["data-focused"] ?? false}
+									itemRef={itemProps?.ref ?? noopItemRef}
+									tabIndex={itemProps?.tabIndex ?? -1}
+									dataFocused={itemProps?.["data-focused"] ?? false}
+									navEngaged={itemProps?.["data-nav-engaged"] ?? false}
+									dataTabFocused={itemProps?.["data-tab-focused"] ?? false}
+									onPointerDown={itemProps?.onPointerDown}
+									suppressPointerFocus={navigation.isExpanded}
+									onFocus={itemProps?.onFocus}
+									onBlur={itemProps?.onBlur}
+									onClickSong={navigation.onCardClick}
+									isAnimatingTo={navigation.closingToSongId === song.track.id}
+									selectionMode={selection.isActive}
+									isChecked={selection.selectedSongIds.has(song.track.id)}
+									onToggleSelect={selection.onToggleSelect}
+									scrollMarginTop={selection.scrollMarginTop}
+									isEnabled={isSongEnabled}
+									isWalkthrough={walkthrough.isActive}
+									isWalkthroughHighlight={
+										!!isHeroSong && !navigation.isExpanded
+									}
+								/>
+							);
+						})}
+					</div>
+				))}
 
+				{/* Outside every chunk: a skipped chunk's contents never intersect, so
+				    a sentinel inside one would stop firing. Fixed height so the copy
+				    appearing while a page loads moves nothing. */}
 				{data.hasMore && data.visibleSongs.length > 0 && (
 					<div
 						ref={navigation.sentinelRef}
-						className="flex items-center justify-center py-8"
+						className="flex h-20 items-center justify-center"
 					>
-						<span
-							className="theme-text-muted text-xs tracking-widest uppercase"
-							style={{ fontFamily: fonts.body }}
-						>
-							Loading more…
-						</span>
+						{data.isLoadingMore && (
+							<span
+								className="theme-text-muted text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								Loading more…
+							</span>
+						)}
 					</div>
 				)}
 			</div>
