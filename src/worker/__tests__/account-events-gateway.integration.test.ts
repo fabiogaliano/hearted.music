@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { signEventToken } from "@/lib/account-events/token";
+import { buildActiveJobsSnapshot } from "@/lib/workflows/library-processing/active-jobs";
 import {
 	startAccountEventsGateway,
 	stopAccountEventsGateway,
@@ -23,6 +24,20 @@ const mockServer = {
 	stop: vi.fn(),
 	timeout: vi.fn(),
 };
+
+vi.mock(
+	"@/lib/workflows/library-processing/active-jobs",
+	async (importOriginal) => {
+		const actual =
+			await importOriginal<
+				typeof import("@/lib/workflows/library-processing/active-jobs")
+			>();
+		return {
+			...actual,
+			buildActiveJobsSnapshot: vi.fn(actual.buildActiveJobsSnapshot),
+		};
+	},
+);
 
 vi.stubGlobal("Bun", {
 	serve: vi.fn((opts: { fetch: FetchHandler }) => {
@@ -135,6 +150,49 @@ describeLocal("account-events-gateway integration", () => {
 			expect(text).not.toContain("id:"); // Live frames do not have id
 			await reader.cancel();
 		}
+	});
+	it("regression: closes the stream when the snapshot fails, so the client falls back to HTTP instead of trusting a silent stream", async () => {
+		const accountId = crypto.randomUUID();
+		const userId = crypto.randomUUID();
+		await sql`INSERT INTO "user" (id, email, name, email_verified, created_at, updated_at) VALUES (${userId}, ${`${accountId}@test.com`}, 'test', false, now(), now())`;
+		await sql`INSERT INTO account (id, spotify_id, email) VALUES (${accountId}, ${`pub-${accountId}`}, ${`${accountId}@test.com`})`;
+		const sessionId = crypto.randomUUID();
+		const sessionInsert = await sql`
+			INSERT INTO session (id, user_id, token, expires_at)
+			VALUES (${sessionId}, ${userId}, ${crypto.randomUUID()}, now() + interval '1 day')
+			RETURNING created_at
+		`;
+		const token = await signEventToken({
+			sub: accountId,
+			sid: sessionId,
+			ver: new Date(sessionInsert[0].created_at).getTime(),
+			iat: Date.now() / 1000,
+			exp: Date.now() / 1000 + 300,
+			jti: "jti-snapshot-fails",
+		});
+		vi.mocked(buildActiveJobsSnapshot).mockRejectedValueOnce(
+			new Error("snapshot query failed"),
+		);
+
+		const res = await capturedFetch(
+			new Request(`http://127.0.0.1:${port}/account-events/stream`, {
+				headers: { Authorization: `Bearer ${token}` },
+			}),
+			mockServer,
+		);
+
+		expect(res.status).toBe(200);
+		const reader = res.body?.getReader();
+		if (!reader) throw new Error("expected a stream body");
+		const chunks: string[] = [];
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunks.push(
+				typeof value === "string" ? value : new TextDecoder().decode(value),
+			);
+		}
+		expect(chunks.join("")).not.toContain("active_jobs_snapshot");
 	});
 	it("handles replay ordering and durable id discipline", async () => {
 		const accountId = crypto.randomUUID();
