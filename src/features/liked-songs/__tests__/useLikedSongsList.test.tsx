@@ -517,9 +517,11 @@ describe("useLikedSongsList — rows landing above", () => {
 	function PrependHarness({
 		songs,
 		hasPreviousPage,
+		activeFilter = "all",
 	}: {
 		songs: readonly LikedSong[];
 		hasPreviousPage: boolean;
+		activeFilter?: "all" | "locked";
 	}) {
 		mockUseLikedSongsCollection.mockReturnValue({
 			...collectionResult(songs),
@@ -535,7 +537,7 @@ describe("useLikedSongsList — rows landing above", () => {
 		mockUseSongExpansion.mockReturnValue(expansionResult());
 
 		const { state, actions } = useLikedSongsList(
-			baseOptions({ selectedSlug: null }),
+			baseOptions({ selectedSlug: null, activeFilter }),
 		);
 
 		return (
@@ -609,6 +611,44 @@ describe("useLikedSongsList — rows landing above", () => {
 
 			expect(scrollBy).toHaveBeenCalledWith(0, 20 * ROW_PITCH_PX);
 			expect(document.documentElement.style.overflowAnchor).toBe("");
+		} finally {
+			scrollBy.mockRestore();
+			restoreLayout();
+		}
+	});
+
+	it("compensates in the locked-only view, whose first loaded row isn't rendered", () => {
+		const restoreLayout = layOutRowsByPosition();
+		const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+		const window_ = [
+			createSong("analyzed-1", "analyzed"),
+			createSong("locked-1", "locked"),
+			createSong("locked-2", "locked"),
+		];
+		const newerPage = [
+			createSong("locked-new-1", "locked"),
+			createSong("locked-new-2", "locked"),
+			createSong("analyzed-new", "analyzed"),
+		];
+		try {
+			const { rerender } = render(
+				<PrependHarness
+					songs={window_}
+					hasPreviousPage
+					activeFilter="locked"
+				/>,
+				{ wrapper: Wrapper },
+			);
+
+			rerender(
+				<PrependHarness
+					songs={[...newerPage, ...window_]}
+					hasPreviousPage
+					activeFilter="locked"
+				/>,
+			);
+
+			expect(scrollBy).toHaveBeenCalledWith(0, 2 * ROW_PITCH_PX);
 		} finally {
 			scrollBy.mockRestore();
 			restoreLayout();
