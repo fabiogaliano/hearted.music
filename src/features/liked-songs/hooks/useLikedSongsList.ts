@@ -223,11 +223,29 @@ export function useLikedSongsList({
 	// scrolls up. Scroll anchoring keeps the rows on screen still as the page
 	// is inserted above them.
 	const hasRowsAbove = isWalkthrough ? false : hasPreviousPage;
+	// A request made while an older page loads is held, not dropped: neither the
+	// top sentinel nor the edge prefetch re-checks when that page lands, so the
+	// list would sit at its first loaded row until the user scrolled away and
+	// back. Held once, so a failed load above still waits for the next move.
+	const deferredLoadPreviousRef = useRef(false);
 	const handleLoadPrevious = useCallback(() => {
-		if (!isFetchingPage && hasPreviousPage) {
-			void fetchPreviousPage();
+		if (!hasPreviousPage || isFetchingPreviousPage) return;
+		if (isFetchingNextPage) {
+			deferredLoadPreviousRef.current = true;
+			return;
 		}
-	}, [fetchPreviousPage, hasPreviousPage, isFetchingPage]);
+		void fetchPreviousPage();
+	}, [
+		fetchPreviousPage,
+		hasPreviousPage,
+		isFetchingNextPage,
+		isFetchingPreviousPage,
+	]);
+	useEffect(() => {
+		if (isFetchingNextPage || !deferredLoadPreviousRef.current) return;
+		deferredLoadPreviousRef.current = false;
+		handleLoadPrevious();
+	}, [isFetchingNextPage, handleLoadPrevious]);
 
 	// No itemCount: rows land below this sentinel, so a re-check after each
 	// page would find it still in range wherever the browser doesn't anchor the

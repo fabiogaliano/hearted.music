@@ -221,6 +221,49 @@ describe("useLikedSongsList — pagination / visibility", () => {
 		});
 	});
 
+	it("regression: loads the rows above once an older page lands, when the top sentinel fired during it (the list stalled at its first row)", () => {
+		const fetchPreviousPage = vi.fn();
+		const songs = [createSong("song-1"), createSong("song-2")];
+		const collection = (isFetchingNextPage: boolean) => ({
+			...collectionResult(songs),
+			hasNextPage: true,
+			isFetchingNextPage,
+			fetchPreviousPage,
+			hasPreviousPage: true,
+			isFetchingPreviousPage: false,
+		});
+		mockUseLikedSongsCollection.mockReturnValue(collection(true));
+		mockUseSelectedLikedSongBySlug.mockReturnValue({
+			selectedSongFromUrl: null,
+			selectedSongIdFromUrl: null,
+			isSelectedSlugResolved: true,
+		});
+		mockUseSongExpansion.mockReturnValue(expansionResult());
+		const topSentinelLoad = () => {
+			const options = mockUseInfiniteScroll.mock.calls.at(-1)?.[0] as {
+				onLoadMore: () => void;
+			};
+			options.onLoadMore();
+		};
+
+		const { rerender } = renderHook(() => useLikedSongsList(baseOptions()), {
+			wrapper: Wrapper,
+		});
+		topSentinelLoad();
+		expect(fetchPreviousPage).not.toHaveBeenCalled();
+
+		mockUseLikedSongsCollection.mockReturnValue(collection(false));
+		rerender();
+		expect(fetchPreviousPage).toHaveBeenCalledTimes(1);
+
+		// Held once: another older page landing doesn't load above again.
+		mockUseLikedSongsCollection.mockReturnValue(collection(true));
+		rerender();
+		mockUseLikedSongsCollection.mockReturnValue(collection(false));
+		rerender();
+		expect(fetchPreviousPage).toHaveBeenCalledTimes(1);
+	});
+
 	it("does not auto-load again once locked songs are visible", () => {
 		const fetchNextPage = vi.fn();
 		const displayedSongs = [
