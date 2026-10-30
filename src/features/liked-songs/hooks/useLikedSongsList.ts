@@ -396,8 +396,11 @@ export function useLikedSongsList({
 	const focusedSongId =
 		focusedIndex >= 0 ? (navItems[focusedIndex]?.track.id ?? null) : null;
 	const isNearFirstLoadedRow = [selectedSongId, focusedSongId].some(
-		(songId) =>
-			songId !== null && (displayedSongIndexById.get(songId) ?? 3) <= 2,
+		(songId) => {
+			const index =
+				songId === null ? undefined : displayedSongIndexById.get(songId);
+			return index !== undefined && index <= 2;
+		},
 	);
 	const firstLoadedSongId = displayedSongs[0]?.track.id;
 	const loadPreviousRef = useRef(handleLoadPrevious);

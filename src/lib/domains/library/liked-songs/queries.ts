@@ -264,8 +264,9 @@ function encodeCursor(likedAt: string, id: string): string {
 }
 
 /**
- * A keyset position above every like ('infinity' is a valid timestamptz), so
- * reading older from it reads the list from the newest like.
+ * A keyset position above every like ('infinity' is a valid timestamptz, and
+ * the all-ones uuid sorts after any id that ties with it), so reading older
+ * from it reads the list from the newest like.
  */
 const KEYSET_TOP_CURSOR = "infinity|ffffffff-ffff-ffff-ffff-ffffffffffff";
 
@@ -381,6 +382,8 @@ export async function getNewerPage(
 		const lastItem = items[items.length - 1];
 		return {
 			items,
+			// From the first kept row, not the extra one: reading newer from the
+			// extra row would skip it for good.
 			prevCursor: hasNewer ? cursorOf(items[0]) : null,
 			// The rows below start at the row the page was read from, which an
 			// older read from that row's own cursor would skip. With nothing above
@@ -549,6 +552,9 @@ export async function getBootstrapPagesBySlug(
 	const older = rows.slice(matchIndex + 1);
 	const hasNewer = newer.length > LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS;
 	const hasOlder = older.length > LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS;
+	// newer[0] is the extra row that only says more lie above: it is left out
+	// of the window, and its cursor is startCursor, since reading older from it
+	// starts at the window's first row.
 	const seeded = [
 		...(hasNewer ? newer.slice(1) : newer),
 		rows[matchIndex],
