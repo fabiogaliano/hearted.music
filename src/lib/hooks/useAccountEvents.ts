@@ -51,6 +51,9 @@ export const accountEventsConnectionKey = (accountId: string) =>
 export function accountEventsConnectionQueryOptions(accountId: string) {
 	return queryOptions<ConnectionState>({
 		queryKey: accountEventsConnectionKey(accountId),
+		// Only setQueryData writes this entry; invalidating the key would run
+		// this and reset the published state to "idle", turning off the HTTP
+		// active-jobs read until the next state change.
 		queryFn: () => "idle",
 		initialData: "idle",
 		staleTime: Number.POSITIVE_INFINITY,
