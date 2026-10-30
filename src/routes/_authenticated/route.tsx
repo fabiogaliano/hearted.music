@@ -87,11 +87,12 @@ export const Route = createFileRoute("/_authenticated")({
 	beforeLoad: async ({ location, context }) => {
 		const { queryClient } = context;
 
-		const { session, account, identity } = await queryClient.ensureQueryData({
-			queryKey: AUTH_SESSION_QUERY_KEY,
-			queryFn: () => requireAuthSession(),
-			staleTime: 5 * 60 * 1000,
-		});
+		const { session, account, identity, userJotSignature } =
+			await queryClient.ensureQueryData({
+				queryKey: AUTH_SESSION_QUERY_KEY,
+				queryFn: () => requireAuthSession(),
+				staleTime: 5 * 60 * 1000,
+			});
 
 		// Guard-critical onboarding payload — small object, always fresh. Child
 		// routes read `onboardingSession` and `theme` from context; they do
@@ -142,6 +143,7 @@ export const Route = createFileRoute("/_authenticated")({
 			billingState,
 			onboardingSession,
 			identity,
+			userJotSignature,
 		};
 	},
 	// Durable (DB) consent for this signed-in user, resolved server-side so the
@@ -151,7 +153,23 @@ export const Route = createFileRoute("/_authenticated")({
 	// Consent only changes through the banner itself (client-driven), so one
 	// fetch per session is enough — without this, every link-hover preload and
 	// navigation re-runs the loader.
-	loader: () => getInitialConsentState(),
+	//
+	// It also starts the sidebar's match-review summary, which the layout would
+	// otherwise request only after hydration. The server waits for it so the SSR
+	// badge and Match link render the real count: streamed un-awaited, the HTML
+	// would hold the empty badge while the client could hydrate with the count,
+	// a mismatch. Loaders run in parallel, so the wait overlaps the child
+	// route's. The client never waits: the layout's useQuery owns refreshes.
+	loader: async ({ context }) => {
+		const consent = getInitialConsentState();
+		if (sessionMode(context.onboardingSession) === "complete") {
+			const summary = context.queryClient.prefetchQuery(
+				preferredMatchReviewSummaryQueryOptions(context.session.accountId),
+			);
+			if (typeof window === "undefined") await summary;
+		}
+		return consent;
+	},
 	staleTime: Number.POSITIVE_INFINITY,
 	preloadStaleTime: Number.POSITIVE_INFINITY,
 	component: AuthenticatedLayout,
@@ -165,6 +183,7 @@ function AuthenticatedLayout() {
 		billingState,
 		onboardingSession,
 		identity,
+		userJotSignature,
 	} = Route.useRouteContext();
 	const consent = Route.useLoaderData();
 	const analytics = useAnalytics();
@@ -284,7 +303,11 @@ function AuthenticatedLayout() {
 			    icon carries the signal instead. */}
 			<Toaster position="top-right" />
 			{isComplete && (
-				<UserJotWidget accountId={session.accountId} handle={account.handle} />
+				<UserJotWidget
+					accountId={session.accountId}
+					handle={account.handle}
+					signature={userJotSignature}
+				/>
 			)}
 		</>
 	);

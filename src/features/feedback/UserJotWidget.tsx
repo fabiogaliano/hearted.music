@@ -1,7 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { clientEnv } from "@/env.public";
-import { userJotSignatureQueryOptions } from "./queries";
 import {
 	identifyUserJot,
 	initUserJotWidget,
@@ -9,12 +7,14 @@ import {
 } from "./userjot-sdk";
 
 // Build-time constant: Vite inlines VITE_* vars, so the widget is fully inert
-// (no SDK load, no button, no query) when no project ID is configured.
+// (no SDK load, no button) when no project ID is configured.
 const PROJECT_ID = clientEnv.VITE_USERJOT_PROJECT_ID;
 
 interface UserJotWidgetProps {
 	accountId: string;
 	handle: string | null;
+	/** Server-signed HMAC of accountId; null when the Worker has no secret. */
+	signature: string | null;
 }
 
 /**
@@ -23,12 +23,11 @@ interface UserJotWidgetProps {
  * feedback panel. Owning the button keeps it in the light DOM, so it themes with
  * plain Tailwind tokens instead of shadow-root style injection.
  */
-export function UserJotWidget({ accountId, handle }: UserJotWidgetProps) {
-	const signatureQuery = useQuery({
-		...userJotSignatureQueryOptions(accountId),
-		enabled: Boolean(PROJECT_ID),
-	});
-
+export function UserJotWidget({
+	accountId,
+	handle,
+	signature,
+}: UserJotWidgetProps) {
 	useEffect(() => {
 		if (!PROJECT_ID) return;
 		// Forced light: hearted has no global dark mode, so the panel surfaces
@@ -42,9 +41,7 @@ export function UserJotWidget({ accountId, handle }: UserJotWidgetProps) {
 	// SDK retries on a timer, so an unsigned call becomes an error loop. Staying
 	// anonymous (no identify) is harmless — feedback still submits.
 	useEffect(() => {
-		if (!PROJECT_ID || !signatureQuery.isSuccess) return;
-		const signature = signatureQuery.data;
-		if (!signature) return;
+		if (!PROJECT_ID || !signature) return;
 		// Send only the public @handle — never the user's real name or email. It's
 		// the same pseudonymous identity hearted shows everywhere; UserJot has no
 		// username field, so it goes in firstName, which renders as the author. A
@@ -54,7 +51,7 @@ export function UserJotWidget({ accountId, handle }: UserJotWidgetProps) {
 			firstName: handle ? `@${handle}` : undefined,
 			signature,
 		});
-	}, [accountId, handle, signatureQuery.isSuccess, signatureQuery.data]);
+	}, [accountId, handle, signature]);
 
 	if (!PROJECT_ID) return null;
 
