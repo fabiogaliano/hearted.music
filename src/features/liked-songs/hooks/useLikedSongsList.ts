@@ -217,8 +217,8 @@ export function useLikedSongsList({
 	});
 
 	// A deep link seeds a window mid-library; rows above it load as the user
-	// scrolls up. Scroll anchoring keeps the rows on screen still as the page
-	// is inserted above them.
+	// scrolls up. The rows on screen stay still as a page is inserted above
+	// them (the prepend compensation below).
 	const hasRowsAbove = isWalkthrough ? false : hasPreviousPage;
 	// A request made while an older page loads is held, not dropped: neither the
 	// top sentinel nor the edge prefetch re-checks when that page lands, so the
@@ -245,9 +245,10 @@ export function useLikedSongsList({
 	}, [isFetchingNextPage, handleLoadPrevious]);
 
 	// No itemCount: rows land below this sentinel, so a re-check after each
-	// page would find it still in range wherever the browser doesn't anchor the
-	// scroll, and load every page up to the newest like. It fires again only
-	// once the user scrolls it back into range.
+	// page would find it still in range wherever a prepend isn't compensated
+	// (its previous first row filtered out), and load every page up to the
+	// newest like. It fires again only once the user scrolls it back into
+	// range.
 	const { sentinelRef: topSentinelRef } = useInfiniteScroll({
 		onLoadMore: handleLoadPrevious,
 		hasMore: hasRowsAbove,
@@ -409,6 +410,51 @@ export function useLikedSongsList({
 	useEffect(() => {
 		if (hasRowsAbove && isNearFirstLoadedRow) loadPreviousRef.current();
 	}, [hasRowsAbove, isNearFirstLoadedRow, firstLoadedSongId]);
+
+	// A page landing above must not move the rows being read. Browser scroll
+	// anchoring doesn't hold them: Chrome makes no adjustment for these inserts
+	// (measured on prod) and Safari before 27 has no anchoring at all. So while
+	// rows can land above, the page opts out of anchoring (a browser that did
+	// anchor would double the shift) and the list scrolls by however far the
+	// previous first row was pushed down.
+	useEffect(() => {
+		if (!hasRowsAbove) return;
+		const root = document.documentElement;
+		const previous = root.style.overflowAnchor;
+		root.style.overflowAnchor = "none";
+		return () => {
+			root.style.overflowAnchor = previous;
+		};
+	}, [hasRowsAbove]);
+	const firstRowRef = useRef<{ songId: string; documentTop: number } | null>(
+		null,
+	);
+	// Measured after every commit, not only when the first row changes, so a
+	// shift that happened in between isn't replayed by the next prepend. The
+	// previous commit's row is what the page just inserted above, so the commit
+	// that loads the newest like (hasRowsAbove turning false) is still covered.
+	useIsomorphicLayoutEffect(() => {
+		const previous = firstRowRef.current;
+		firstRowRef.current = null;
+		const documentTopOf = (songId: string) => {
+			const index = navIndexBySongId.get(songId);
+			const element = index === undefined ? null : getElementAtIndex(index);
+			return element
+				? element.getBoundingClientRect().top + window.scrollY
+				: null;
+		};
+		if (previous && previous.songId !== firstLoadedSongId) {
+			const documentTop = documentTopOf(previous.songId);
+			if (documentTop !== null && documentTop !== previous.documentTop) {
+				window.scrollBy(0, documentTop - previous.documentTop);
+			}
+		}
+		if (!hasRowsAbove || !firstLoadedSongId) return;
+		const documentTop = documentTopOf(firstLoadedSongId);
+		if (documentTop !== null) {
+			firstRowRef.current = { songId: firstLoadedSongId, documentTop };
+		}
+	});
 
 	const openFocusedSong = useCallback(() => {
 		if (focusedIndex < 0 || focusedIndex >= navItems.length) return;
