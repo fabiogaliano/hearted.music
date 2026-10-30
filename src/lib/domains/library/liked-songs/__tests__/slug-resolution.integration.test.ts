@@ -4,9 +4,14 @@
  * Exercises migration 20260610160200_liked_songs_slug_resolution against the
  * real local Postgres: the song_slug() expression mirrors the TS
  * generateSongSlug, get_liked_song_by_slug resolves a slug in one indexed
- * lookup, and get_liked_songs_bootstrap_by_slug returns the prefix-through-the-
- * selection plus a trailing buffer in a single query — including across a block
- * of rows that share one liked_at (the production tie bug).
+ * lookup, and get_liked_songs_window_by_slug returns a window around the
+ * selection in a single query — including across a block of rows that share
+ * one liked_at (the production tie bug).
+ *
+ * Behaviour change (2026-10-30): the bootstrap used to seed every row from the
+ * newest like through the selection plus a trailing buffer; it now seeds up to
+ * LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS on each side (deep-link-window.integration
+ * covers windows that don't reach the ends).
  *
  * Runs against the local Supabase Postgres only — auto-skipped when SUPABASE_URL
  * is not the local URL. Mirrors pending-excludes-terminal-failures.integration:
@@ -20,7 +25,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/data/database.types";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
-	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+	LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,
 	LIKED_SONGS_PAGE_SIZE,
 } from "../constants";
 
@@ -219,7 +224,7 @@ describe.skipIf(!IS_LOCAL)("liked-song slug resolution", () => {
 		expect(result.value?.display_state).toBe("locked");
 	});
 
-	it("getBootstrapPagesBySlug seeds the prefix through a deep selection plus a trailing buffer", async () => {
+	it("getBootstrapPagesBySlug seeds a window around the selection, reaching both ends of a short library", async () => {
 		const target = songs[20];
 		const result = await likedSongs.getBootstrapPagesBySlug(
 			ACCOUNT_ID,
@@ -228,21 +233,17 @@ describe.skipIf(!IS_LOCAL)("liked-song slug resolution", () => {
 		expect(Result.isOk(result)).toBe(true);
 		if (!Result.isOk(result)) return;
 
-		const { selectedRow, pages } = result.value;
+		const { selectedRow, pages, startCursor } = result.value;
 		expect(selectedRow?.song_id).toBe(target.songId);
 
+		// 20 rows above and 39 below, both within the context, so the window is
+		// the whole library in order and neither end has a cursor.
+		expect(NUM_SONGS - 21).toBeLessThan(LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS);
 		const flat = pages.flatMap((p) => p.items);
-		// Prefix song[0]..song[20] (21 rows) + the full trailing buffer.
-		expect(flat).toHaveLength(21 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		// Contiguous newest-first from the very newest like.
-		expect(flat[0].song_id).toBe(songs[0].songId);
-		expect(flat.map((r) => r.song_id)).toEqual(
-			songs
-				.slice(0, 21 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS)
-				.map((s) => s.songId),
-		);
-		// 60 songs total, so older songs still follow the seeded tail.
-		expect(pages[pages.length - 1].nextCursor).not.toBeNull();
+		expect(flat.map((r) => r.song_id)).toEqual(songs.map((s) => s.songId));
+		expect(startCursor).toBeNull();
+		expect(pages[0].prevCursor).toBeNull();
+		expect(pages[pages.length - 1].nextCursor).toBeNull();
 	});
 
 	it("getBootstrapPagesBySlug falls back to the canonical first page for a missing slug", async () => {
@@ -258,7 +259,7 @@ describe.skipIf(!IS_LOCAL)("liked-song slug resolution", () => {
 		expect(pages).toHaveLength(1);
 		expect(pages[0].items).toHaveLength(LIKED_SONGS_PAGE_SIZE);
 		expect(pages[0].items[0].song_id).toBe(songs[0].songId);
-		// 60 > 15 rows, so a cursor remains.
+		// 60 > LIKED_SONGS_PAGE_SIZE rows, so a cursor remains.
 		expect(pages[0].nextCursor).not.toBeNull();
 	});
 
@@ -290,9 +291,9 @@ describe.skipIf(!IS_LOCAL)("liked-song slug resolution", () => {
 		expect(selectedRow?.song_id).toBe(target.songId);
 
 		const flat = pages.flatMap((p) => p.items);
-		// The selection is 40 deep with 9 rows behind it (< the trailing buffer),
-		// so the seeded run is the whole block, in the exact DB order, selection in
-		// place, and the final page terminates.
+		// The selection is 40 deep with 9 rows behind it, both within the
+		// window's context, so the seeded run is the whole block, in the exact DB
+		// order, selection in place, and the final page terminates.
 		expect(flat.map((r) => r.song_id)).toEqual(order);
 		expect(flat[DEEP_INDEX].song_id).toBe(target.songId);
 		expect(pages[pages.length - 1].nextCursor).toBeNull();

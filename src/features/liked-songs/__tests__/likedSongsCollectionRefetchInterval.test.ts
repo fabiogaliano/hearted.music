@@ -31,7 +31,11 @@ function infiniteData(
 	pages: LikedSong[][],
 ): InfiniteData<LikedSongsPageResult> {
 	return {
-		pages: pages.map((songs) => ({ songs, nextCursor: null })),
+		pages: pages.map((songs) => ({
+			songs,
+			prevCursor: null,
+			nextCursor: null,
+		})),
 		pageParams: pages.map(() => undefined),
 	};
 }

@@ -26,7 +26,7 @@ import {
 	readAllRows,
 } from "@/lib/shared/utils/result-wrappers/supabase";
 import {
-	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+	LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,
 	LIKED_SONGS_PAGE_SIZE,
 } from "./constants";
 
@@ -54,6 +54,13 @@ export interface LikedSongWithDetails {
 /** Row returned from get_liked_songs_page RPC function (inferred from DB types) */
 export type LikedSongPageRow =
 	Database["public"]["Functions"]["get_liked_songs_page"]["Returns"][number];
+
+/**
+ * The columns a liked-songs list row renders. Every list read returns at least
+ * these; the deep-link window and newer-page reads return only these.
+ */
+export type LikedSongListRow =
+	Database["public"]["Functions"]["get_liked_songs_window_by_slug"]["Returns"][number];
 
 /** Stats row returned from get_liked_songs_stats RPC function */
 export type LikedSongsStatsRow =
@@ -256,6 +263,16 @@ function encodeCursor(likedAt: string, id: string): string {
 	return `${likedAt}|${id}`;
 }
 
+/**
+ * A keyset position above every like ('infinity' is a valid timestamptz), so
+ * reading older from it reads the list from the newest like.
+ */
+const KEYSET_TOP_CURSOR = "infinity|ffffffff-ffff-ffff-ffff-ffffffffffff";
+
+function cursorOf(row: { liked_at: string; id: string }): string {
+	return encodeCursor(row.liked_at, row.id);
+}
+
 function decodeCursor(cursor: string | undefined): {
 	likedAt: string | undefined;
 	id: string | undefined;
@@ -287,9 +304,7 @@ export async function getPageWithDetails(
 		search?: string;
 		minScore?: number;
 	} = {},
-): Promise<
-	Result<{ items: LikedSongPageRow[]; nextCursor: string | null }, DbError>
-> {
+): Promise<Result<LikedSongsPage<LikedSongPageRow>, DbError>> {
 	const supabase = createAdminSupabaseClient();
 	const limit = options.limit ?? 50;
 	const trimmedSearch = options.search?.trim();
@@ -321,8 +336,59 @@ export async function getPageWithDetails(
 	const nextCursor = hasMore
 		? encodeCursor(lastItem.liked_at, lastItem.id)
 		: null;
+	// A page read from a cursor has rows above it. Only a list's first page
+	// consults this, and only the deep-link list starts below the newest like.
+	const prevCursor =
+		options.cursor && items.length > 0 ? cursorOf(items[0]) : null;
 
-	return Result.ok({ items, nextCursor });
+	return Result.ok({ items, prevCursor, nextCursor });
+}
+
+/**
+ * The page of active likes just newer than `cursor`, newest first: what an
+ * unfiltered list that starts mid-library (a deep link) loads above its first
+ * row.
+ */
+export async function getNewerPage(
+	accountId: string,
+	options: { cursor: string; limit: number; minScore: number },
+): Promise<Result<LikedSongsPage<LikedSongListRow>, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	const { likedAt, id } = decodeCursor(options.cursor);
+	if (likedAt === undefined || id === undefined) {
+		return Result.err(
+			new DatabaseError({
+				code: "invalid_cursor",
+				message: "A newer-page cursor needs both liked_at and id",
+			}),
+		);
+	}
+
+	const rowsResult = await fromSupabaseMany<LikedSongListRow>(
+		supabase.rpc("get_liked_songs_page_newer", {
+			p_account_id: accountId,
+			p_cursor: likedAt,
+			p_cursor_id: id,
+			p_limit: options.limit,
+			p_min_score: options.minScore,
+		}),
+	);
+
+	return Result.map(rowsResult, (rows) => {
+		// The RPC returns one extra row, the newest, when even newer likes exist.
+		const hasNewer = rows.length > options.limit;
+		const items = hasNewer ? rows.slice(1) : rows;
+		const lastItem = items[items.length - 1];
+		return {
+			items,
+			prevCursor: hasNewer ? cursorOf(items[0]) : null,
+			// The rows below start at the row the page was read from, which an
+			// older read from that row's own cursor would skip. With nothing above
+			// it, that row is the newest like: below an empty page, read from the
+			// top.
+			nextCursor: lastItem ? cursorOf(lastItem) : KEYSET_TOP_CURSOR,
+		};
+	});
 }
 
 /**
@@ -379,70 +445,78 @@ export function getAnalysisBySongId(
 }
 
 /** Single source of truth for the deep-link slug a page row resolves to. */
-function pageRowMatchesSlug(row: LikedSongPageRow, slug: string): boolean {
+function pageRowMatchesSlug(row: LikedSongListRow, slug: string): boolean {
 	return (
 		generateSongSlug(row.song_artists[0] ?? "Unknown Artist", row.song_name) ===
 		slug
 	);
 }
 
-/** A list page shaped exactly like the client's infinite-query page. */
-export interface LikedSongsBootstrapPage {
-	items: LikedSongPageRow[];
+/**
+ * A list page shaped exactly like the client's infinite-query page. Cursors are
+ * the keyset positions of the page's first and last rows: `prevCursor` is null
+ * when no newer like sits above the page, `nextCursor` when no older one sits
+ * below it.
+ */
+export interface LikedSongsPage<
+	Row extends LikedSongListRow = LikedSongListRow,
+> {
+	items: Row[];
+	prevCursor: string | null;
 	nextCursor: string | null;
 }
 
 export interface LikedSongsBootstrapPages {
-	selectedRow: LikedSongPageRow | null;
-	pages: LikedSongsBootstrapPage[];
+	selectedRow: LikedSongListRow | null;
+	pages: LikedSongsPage[];
+	/**
+	 * The keyset position just above the first seeded row, so reading older
+	 * from it reproduces the first page; null when the seed starts at the
+	 * newest like.
+	 */
+	startCursor: string | null;
 }
 
 /**
  * Rechunks a contiguous (newest-first) run of rows into client-sized pages,
- * deriving each page's cursor the same way `getPageWithDetails` does: the
- * composite `liked_at|id` of the page's last row. Only the final page can
- * terminate the sequence (`nextCursor: null`), and only when no rows follow it in
- * the library.
+ * deriving cursors the same way `getPageWithDetails` does.
  */
 function chunkBootstrapRows(
-	rows: LikedSongPageRow[],
-	hasMoreAfterLast: boolean,
-): LikedSongsBootstrapPage[] {
+	rows: LikedSongListRow[],
+	{ hasNewer, hasOlder }: { hasNewer: boolean; hasOlder: boolean },
+): LikedSongsPage[] {
 	if (rows.length === 0) {
-		return [{ items: [], nextCursor: null }];
+		return [{ items: [], prevCursor: null, nextCursor: null }];
 	}
 
 	const chunks = chunkArray(rows, LIKED_SONGS_PAGE_SIZE);
 	return chunks.map((items, index) => {
+		const isFirst = index === 0;
 		const isLast = index === chunks.length - 1;
-		const lastItem = items[items.length - 1];
-		const lastCursor = encodeCursor(lastItem.liked_at, lastItem.id);
 		return {
 			items,
-			nextCursor: isLast ? (hasMoreAfterLast ? lastCursor : null) : lastCursor,
+			prevCursor: isFirst && !hasNewer ? null : cursorOf(items[0]),
+			nextCursor:
+				isLast && !hasOlder ? null : cursorOf(items[items.length - 1]),
 		};
 	});
 }
 
 /**
- * Builds the deep-link bootstrap for a slug in a single query.
+ * Builds the deep-link bootstrap for a slug in a single query: a window of up
+ * to `LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS` rows on each side of the selected
+ * song, so the cost and the server-rendered list don't grow with how deep
+ * the song sits. The client loads further in both directions from the window's
+ * cursors.
  *
- * `get_liked_songs_bootstrap_by_slug` resolves the slug to its anchor (the newest
- * active match, via the `idx_song_slug` index) and returns, newest-first, the
- * contiguous prefix from the newest liked song through the selected one followed
- * by up to `LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS + 1` older rows. The `+ 1` is a
- * sentinel: more trailing rows than the buffer means older songs still follow the
- * seeded tail, so the final page keeps a non-null cursor. The rows are rechunked
- * into client-sized pages with cursors derived exactly as `getPageWithDetails`
- * does, so seeding the infinite query with them is byte-identical to having
- * paginated there from the top.
+ * `get_liked_songs_window_by_slug` resolves the slug to its anchor (the newest
+ * active match) and returns one extra row on each side when more rows follow
+ * there. The anchor is the window's newest slug match, so `pageRowMatchesSlug`
+ * finds it by the slug the caller passed.
  *
  * Missing / bogus slug: the RPC returns no rows, indistinguishable from an empty
  * library and treated the same — fall back to the canonical first page with
  * `selectedRow: null`, so the list still renders and the panel stays closed.
- *
- * The anchor is the only slug match in the prefix (it is the *newest* match), so
- * `pageRowMatchesSlug` locates the selection by the same slug the caller passed.
  */
 export async function getBootstrapPagesBySlug(
 	accountId: string,
@@ -450,22 +524,14 @@ export async function getBootstrapPagesBySlug(
 	minScore = 0,
 ): Promise<Result<LikedSongsBootstrapPages, DbError>> {
 	const supabase = createAdminSupabaseClient();
-	// The prefix runs from the newest like down to the anchor, so a deep link
-	// into a large library returns more than max_rows. (liked_at, id) is the
-	// RPC's own unique order.
-	const rowsResult = await readAllRows((from, to) =>
-		fromSupabaseMany<LikedSongPageRow>(
-			supabase
-				.rpc("get_liked_songs_bootstrap_by_slug", {
-					p_account_id: accountId,
-					p_slug: slug,
-					p_trailing_limit: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
-					p_min_score: minScore,
-				})
-				.order("liked_at", { ascending: false })
-				.order("id", { ascending: false })
-				.range(from, to),
-		),
+	const rowsResult = await fromSupabaseMany<LikedSongListRow>(
+		supabase.rpc("get_liked_songs_window_by_slug", {
+			p_account_id: accountId,
+			p_slug: slug,
+			p_rows_before: LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,
+			p_rows_after: LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,
+			p_min_score: minScore,
+		}),
 	);
 
 	if (Result.isError(rowsResult)) {
@@ -479,20 +545,20 @@ export async function getBootstrapPagesBySlug(
 		return buildCanonicalFirstPage(accountId, minScore);
 	}
 
-	const prefixThroughMatch = rows.slice(0, matchIndex + 1);
-	const trailing = rows.slice(matchIndex + 1);
-	const hasMoreAfterLast =
-		trailing.length > LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS;
-	const seededTrailing = hasMoreAfterLast
-		? trailing.slice(0, LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS)
-		: trailing;
+	const newer = rows.slice(0, matchIndex);
+	const older = rows.slice(matchIndex + 1);
+	const hasNewer = newer.length > LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS;
+	const hasOlder = older.length > LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS;
+	const seeded = [
+		...(hasNewer ? newer.slice(1) : newer),
+		rows[matchIndex],
+		...(hasOlder ? older.slice(0, LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS) : older),
+	];
 
 	return Result.ok({
 		selectedRow: rows[matchIndex],
-		pages: chunkBootstrapRows(
-			[...prefixThroughMatch, ...seededTrailing],
-			hasMoreAfterLast,
-		),
+		pages: chunkBootstrapRows(seeded, { hasNewer, hasOlder }),
+		startCursor: hasNewer ? cursorOf(newer[0]) : null,
 	});
 }
 
@@ -510,15 +576,11 @@ async function buildCanonicalFirstPage(
 		limit: LIKED_SONGS_PAGE_SIZE,
 		minScore,
 	});
-	if (Result.isError(firstPageResult)) {
-		return Result.err(firstPageResult.error);
-	}
-
-	const { items, nextCursor } = firstPageResult.value;
-	return Result.ok({
+	return Result.map(firstPageResult, (firstPage) => ({
 		selectedRow: null,
-		pages: chunkBootstrapRows(items, nextCursor !== null),
-	});
+		pages: [firstPage],
+		startCursor: null,
+	}));
 }
 
 /**

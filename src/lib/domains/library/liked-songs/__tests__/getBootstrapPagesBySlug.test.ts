@@ -3,26 +3,28 @@
  *
  * Mocks the Supabase admin client with in-memory implementations of the two RPCs
  * the builder uses:
- *   - `get_liked_songs_bootstrap_by_slug` — resolves the slug to its anchor (the
- *     newest match in `(liked_at DESC, id DESC)` order) and returns the prefix
- *     from the newest row through the anchor plus up to `p_trailing_limit + 1`
- *     older rows. The `+ 1` is the sentinel the builder reads to decide whether
- *     more songs follow the seeded tail.
+ *   - `get_liked_songs_window_by_slug` — resolves the slug to its anchor (the
+ *     newest match in `(liked_at DESC, id DESC)` order) and returns up to
+ *     `p_rows_before + 1` newer rows, the anchor, and up to `p_rows_after + 1`
+ *     older rows. Each `+ 1` tells the builder more rows follow on that side.
  *   - `get_liked_songs_page` — the canonical first page used as the missing-slug
  *     fallback; mirrors the real composite-cursor contract (`p_limit + 1` rows).
  *
- * The SQL-level concerns the old page-walk had to handle in TS — chunk
- * boundaries, stepping a cursor into a block of tied `liked_at`s — now live in
- * the RPC and are covered by slug-resolution.integration.test.ts. These tests
- * exercise the TS layer: anchor location, prefix/trailing slicing, the sentinel,
- * rechunking, and the missing-slug fallback.
+ * Behaviour change (2026-10-30): the bootstrap used to seed every row from the
+ * newest like through the selected one, so a link to an old song rendered the
+ * whole prefix. It now seeds a window around the song, with cursors on both
+ * ends for the client to page either way.
+ *
+ * Keyset order across tied `liked_at`s lives in the RPC and is covered by the
+ * integration tests. These exercise the TS layer: anchor location, the window's
+ * edges and cursors, rechunking, and the missing-slug fallback.
  */
 
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
-	LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS,
+	LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,
 	LIKED_SONGS_PAGE_SIZE,
 } from "../constants";
 
@@ -61,64 +63,40 @@ function sortNewestFirst(rows: Row[]): Row[] {
 	});
 }
 
-// The bootstrap read pages its RPC with .order().range(); rows here are
-// already newest-first, so a page is a slice.
-function pagedRpc(result: {
-	data: Row[] | null;
-	error: { code: string; message: string } | null;
-}) {
-	const builder = {
-		order: () => builder,
-		range: (from: number, to: number) =>
-			Promise.resolve(
-				result.data === null
-					? result
-					: { data: result.data.slice(from, to + 1), error: null },
-			),
-	};
-	return builder;
-}
-
 vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => ({
 		rpc: (
 			fn: string,
 			params: {
 				p_slug?: string;
-				p_trailing_limit?: number;
+				p_rows_before?: number;
+				p_rows_after?: number;
 				p_cursor?: string;
 				p_cursor_id?: string;
 				p_limit?: number;
 			},
 		) => {
 			state.rpcCalls += 1;
-			const respond = (result: {
-				data: Row[] | null;
-				error: { code: string; message: string } | null;
-			}) =>
-				fn === "get_liked_songs_bootstrap_by_slug"
-					? pagedRpc(result)
-					: Promise.resolve(result);
 			if (state.error) {
-				return respond({ data: null, error: state.error });
+				return Promise.resolve({ data: null, error: state.error });
 			}
 
 			const sorted = sortNewestFirst(state.rows);
 
-			if (fn === "get_liked_songs_bootstrap_by_slug") {
+			if (fn === "get_liked_songs_window_by_slug") {
 				const anchorIndex = sorted.findIndex(
 					(row) => slugOf(row) === params.p_slug,
 				);
 				if (anchorIndex === -1) {
-					return respond({ data: [], error: null });
+					return Promise.resolve({ data: [], error: null });
 				}
-				const prefix = sorted.slice(0, anchorIndex + 1);
-				// The +1 sentinel: one extra trailing row beyond the requested buffer.
-				const trailing = sorted.slice(
-					anchorIndex + 1,
-					anchorIndex + 1 + (params.p_trailing_limit ?? 0) + 1,
+				const before = (params.p_rows_before ?? 0) + 1;
+				const after = (params.p_rows_after ?? 0) + 1;
+				const data = sorted.slice(
+					Math.max(0, anchorIndex - before),
+					anchorIndex + 1 + after,
 				);
-				return respond({ data: [...prefix, ...trailing], error: null });
+				return Promise.resolve({ data, error: null });
 			}
 
 			// get_liked_songs_page — canonical first-page fallback.
@@ -148,6 +126,7 @@ beforeEach(() => {
 });
 
 const BASE = Date.UTC(2026, 0, 1);
+const CONTEXT = LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS;
 
 function makeRows(count: number) {
 	return Array.from({ length: count }, (_, i) => ({
@@ -165,7 +144,7 @@ function slugFor(i: number): string {
 	return generateSongSlug(`Artist ${i}`, `Song ${i}`);
 }
 
-/** The composite `liked_at|id` cursor the client now encodes for a row. */
+/** The composite `liked_at|id` cursor the client encodes for a row. */
 function cursorOf(row: { liked_at: string; id: string }): string {
 	return `${row.liked_at}|${row.id}`;
 }
@@ -174,184 +153,107 @@ function flatIds(pages: { items: { song_id: string }[] }[]): string[] {
 	return pages.flatMap((page) => page.items.map((item) => item.song_id));
 }
 
+const songIds = (from: number, to: number) =>
+	Array.from({ length: to - from }, (_, i) => `song-${from + i}`);
+
+async function bootstrap(target: number | string) {
+	const slug = typeof target === "number" ? slugFor(target) : target;
+	return (await getBootstrapPagesBySlug("account-1", slug)).unwrap();
+}
+
 describe("getBootstrapPagesBySlug", () => {
-	it("seeds a trailing buffer after a slug found near the top", async () => {
-		state.rows = makeRows(200);
-
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(2));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-2");
-
-		const ids = flatIds(pages);
-		// Prefix through the match (song-0..song-2) plus the full trailing buffer.
-		expect(ids).toHaveLength(3 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(ids[0]).toBe("song-0");
-		// The selection is no longer the last loaded row — older songs follow it.
-		expect(ids[ids.length - 1]).toBe(
-			`song-${2 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS}`,
-		);
-
-		// 200 rows total, so older songs still remain past the seeded tail.
-		expect(pages[pages.length - 1].nextCursor).toBe(
-			cursorOf(state.rows[2 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
-		);
-		// One query — no library walk.
-		expect(state.rpcCalls).toBe(1);
-	});
-
-	it("returns prefix + trailing across multiple client pages for a deep match", async () => {
+	it("seeds a window around a song mid-library, with cursors to page both ways", async () => {
 		state.rows = makeRows(300);
 
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(110));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
+		const { selectedRow, pages, startCursor } = await bootstrap(150);
 
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-110");
-
-		const ids = flatIds(pages);
-		// song-0..song-110 (111) followed by the trailing buffer.
-		expect(ids).toHaveLength(111 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(ids[0]).toBe("song-0");
-		expect(ids[ids.length - 1]).toBe(
-			`song-${110 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS}`,
+		expect(selectedRow?.song_id).toBe("song-150");
+		expect(flatIds(pages)).toEqual(songIds(150 - CONTEXT, 150 + CONTEXT + 1));
+		expect(pages.every((p) => p.items.length <= LIKED_SONGS_PAGE_SIZE)).toBe(
+			true,
 		);
-		expect(pages).toHaveLength(
-			Math.ceil(
-				(111 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS) / LIKED_SONGS_PAGE_SIZE,
-			),
-		);
-
-		// In-between pages chain by their last row's composite cursor...
-		expect(pages[0].nextCursor).toBe(
-			cursorOf(state.rows[LIKED_SONGS_PAGE_SIZE - 1]),
-		);
-		// ...and the final page still points past the seeded tail (more remain).
+		// Reading older from startCursor reproduces the first row.
+		expect(startCursor).toBe(cursorOf(state.rows[150 - CONTEXT - 1]));
+		expect(pages[0].prevCursor).toBe(cursorOf(state.rows[150 - CONTEXT]));
 		expect(pages[pages.length - 1].nextCursor).toBe(
-			cursorOf(state.rows[110 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
+			cursorOf(state.rows[150 + CONTEXT]),
 		);
-		// Still a single RPC even for a deep match — the prefix arrives in one shot.
 		expect(state.rpcCalls).toBe(1);
 	});
 
-	it("fills the trailing buffer from the single RPC result, no extra round-trips", async () => {
+	it("starts at the newest like when the song is at the head", async () => {
 		state.rows = makeRows(300);
 
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(95));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
+		const { pages, startCursor } = await bootstrap(0);
 
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-95");
-
-		const ids = flatIds(pages);
-		expect(ids).toHaveLength(96 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(ids[ids.length - 1]).toBe(
-			`song-${95 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS}`,
-		);
-		// The old page-walk needed a second fetch to cross a 100-row chunk boundary
-		// here; the RPC returns prefix + trailing together, so it is always one call.
-		expect(state.rpcCalls).toBe(1);
-		expect(pages[pages.length - 1].nextCursor).toBe(
-			cursorOf(state.rows[95 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
-		);
+		expect(flatIds(pages)).toEqual(songIds(0, CONTEXT + 1));
+		expect(startCursor).toBeNull();
+		expect(pages[0].prevCursor).toBeNull();
+		expect(pages[pages.length - 1].nextCursor).not.toBeNull();
 	});
 
-	it("includes only the trailing rows that exist when the match is near the end", async () => {
+	it("has nothing above when exactly the context rows sit above the song", async () => {
+		state.rows = makeRows(300);
+
+		const { pages, startCursor } = await bootstrap(CONTEXT);
+
+		expect(flatIds(pages)[0]).toBe("song-0");
+		expect(startCursor).toBeNull();
+		expect(pages[0].prevCursor).toBeNull();
+	});
+
+	it("keeps a cursor above when one more row sits past the context (the + 1 row)", async () => {
+		state.rows = makeRows(300);
+
+		const { pages, startCursor } = await bootstrap(CONTEXT + 1);
+
+		expect(flatIds(pages)[0]).toBe("song-1");
+		expect(startCursor).toBe(cursorOf(state.rows[0]));
+		expect(pages[0].prevCursor).toBe(cursorOf(state.rows[1]));
+	});
+
+	it("terminates the last page when exactly the context rows follow the song", async () => {
+		state.rows = makeRows(CONTEXT * 2 + 1);
+
+		const { pages } = await bootstrap(CONTEXT);
+
+		expect(flatIds(pages)).toHaveLength(CONTEXT * 2 + 1);
+		expect(pages[pages.length - 1].nextCursor).toBeNull();
+	});
+
+	it("terminates the last page when the song is the oldest like", async () => {
 		state.rows = makeRows(20);
 
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(15));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
+		const { selectedRow, pages } = await bootstrap(19);
 
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-15");
-
-		const ids = flatIds(pages);
-		// Selected + only the 4 trailing rows that exist (song-16..song-19),
-		// fewer than the full buffer would request.
-		expect(ids).toHaveLength(20);
-		expect(ids[ids.length - 1]).toBe("song-19");
-		// Seeded tail reaches the true end of the library.
+		expect(selectedRow?.song_id).toBe("song-19");
+		expect(flatIds(pages)).toEqual(songIds(0, 20));
 		expect(pages[pages.length - 1].nextCursor).toBeNull();
-	});
-
-	it("terminates the final page when trailing rows exactly fill the buffer", async () => {
-		// Exactly LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS older rows follow the match,
-		// so the RPC's +1 sentinel never materializes: the tail is the library end.
-		state.rows = makeRows(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(0));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-0");
-
-		const ids = flatIds(pages);
-		expect(ids).toHaveLength(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(pages[pages.length - 1].nextCursor).toBeNull();
-	});
-
-	it("keeps a cursor when one more row exists past the buffer (the +1 sentinel)", async () => {
-		// One extra row beyond the buffer: the sentinel fires, so the seeded tail is
-		// trimmed to the buffer and the final page keeps a non-null cursor.
-		state.rows = makeRows(2 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(0));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		const { pages } = result.value;
-		const ids = flatIds(pages);
-		expect(ids).toHaveLength(1 + LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS);
-		expect(pages[pages.length - 1].nextCursor).toBe(
-			cursorOf(state.rows[LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS]),
-		);
 	});
 
 	it("returns only the first page and a null selection for a missing slug", async () => {
 		state.rows = makeRows(2 * LIKED_SONGS_PAGE_SIZE);
 
-		const result = await getBootstrapPagesBySlug("account-1", "does-not-exist");
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
+		const { selectedRow, pages, startCursor } =
+			await bootstrap("does-not-exist");
 
-		const { selectedRow, pages } = result.value;
 		expect(selectedRow).toBeNull();
+		expect(startCursor).toBeNull();
 		expect(pages).toHaveLength(1);
-		expect(pages[0].items).toHaveLength(LIKED_SONGS_PAGE_SIZE);
-		// Identical to a normal first page: more rows than a page, so a cursor
-		// remains.
+		expect(flatIds(pages)).toEqual(songIds(0, LIKED_SONGS_PAGE_SIZE));
+		expect(pages[0].prevCursor).toBeNull();
 		expect(pages[0].nextCursor).toBe(
 			cursorOf(state.rows[LIKED_SONGS_PAGE_SIZE - 1]),
 		);
-		// One bootstrap probe (empty) + one canonical-page fallback fetch.
+		// One window probe (empty) + one canonical-page fallback fetch.
 		expect(state.rpcCalls).toBe(2);
-	});
-
-	it("terminates the final page with a null cursor when the slug is the oldest song", async () => {
-		state.rows = makeRows(20);
-
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(19));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
-
-		const { selectedRow, pages } = result.value;
-		expect(selectedRow?.song_id).toBe("song-19");
-		// No rows follow the oldest song, so the seeded run is just the prefix.
-		expect(flatIds(pages)).toHaveLength(20);
-		expect(pages[pages.length - 1].nextCursor).toBeNull();
 	});
 
 	it("resolves a deep match inside a block of rows sharing one liked_at", async () => {
 		// Regression for the production bug: a bulk import stamped 76 songs with a
 		// single liked_at. The fix is the composite (liked_at, id) ordering, which
-		// now lives in the RPC. Here 150 rows share one timestamp and the match sits
-		// at sorted position 130; the builder must still seed the prefix through it.
+		// lives in the RPC. Here 150 rows share one timestamp and the match sits at
+		// sorted position 130; the window must still be built around it.
 		const TIED_AT = new Date(BASE).toISOString();
 		state.rows = Array.from({ length: 150 }, (_, i) => ({
 			// Descending ids so song-0 sorts first within the tie, matching the
@@ -363,16 +265,10 @@ describe("getBootstrapPagesBySlug", () => {
 			liked_at: TIED_AT,
 		}));
 
-		const result = await getBootstrapPagesBySlug("account-1", slugFor(130));
-		expect(Result.isOk(result)).toBe(true);
-		if (!Result.isOk(result)) return;
+		const { selectedRow, pages } = await bootstrap(130);
 
-		const { selectedRow, pages } = result.value;
 		expect(selectedRow?.song_id).toBe("song-130");
-
-		const ids = flatIds(pages);
-		expect(ids[0]).toBe("song-0");
-		expect(ids).toContain("song-130");
+		expect(flatIds(pages)).toEqual(songIds(130 - CONTEXT, 150));
 		expect(state.rpcCalls).toBe(1);
 	});
 

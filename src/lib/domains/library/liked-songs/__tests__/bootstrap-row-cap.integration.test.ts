@@ -1,13 +1,16 @@
 /**
- * The slug bootstrap RPC returns every liked song from the newest down to the
- * deep-linked one, through PostgREST, which caps each response at max_rows
- * (1000 locally, supabase/config.toml). Seeds through postgres.js against
- * DATABASE_URL; auto-skipped unless that is the local stack.
+ * A deep link to a song past PostgREST's max_rows (1000 locally,
+ * supabase/config.toml). The bootstrap used to return every liked song from the
+ * newest down to the linked one, so a single read stopped at row 1000; it now
+ * reads a window around the song, which must resolve however deep it sits.
+ * Seeds through postgres.js against DATABASE_URL; auto-skipped unless that is
+ * the local stack.
  */
 
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
+import { LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS } from "../constants";
 import { getBootstrapPagesBySlug } from "../queries";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
@@ -74,8 +77,14 @@ describeLocal("getBootstrapPagesBySlug", () => {
 			generateSongSlug(ANCHOR_ARTIST, ANCHOR_NAME),
 		);
 
-		const { selectedRow, pages } = result.unwrap();
+		const { selectedRow, pages, startCursor } = result.unwrap();
 		expect(selectedRow?.song_id).toBe(ANCHOR_SONG_ID);
-		expect(pages.flatMap((page) => page.items)).toHaveLength(LIKED_COUNT);
+		// The anchor is the oldest like: the window is the context rows above it
+		// and the anchor itself, with a cursor to load the rest above.
+		const rows = pages.flatMap((page) => page.items);
+		expect(rows).toHaveLength(LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS + 1);
+		expect(rows.at(-1)?.song_id).toBe(ANCHOR_SONG_ID);
+		expect(startCursor).not.toBeNull();
+		expect(pages.at(-1)?.nextCursor).toBeNull();
 	});
 });

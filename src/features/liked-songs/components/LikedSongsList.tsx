@@ -20,6 +20,10 @@ interface LikedSongsListData {
 	hasMore: boolean;
 	/** A next page is in flight. */
 	isLoadingMore: boolean;
+	/** Newer rows sit above the first loaded one (a deep link's window). */
+	hasRowsAbove: boolean;
+	/** A page above is in flight. */
+	isLoadingRowsAbove: boolean;
 	/** Active search query, or null when not searching. */
 	searchQuery: string | null;
 }
@@ -39,6 +43,7 @@ interface LikedSongsListNavigation {
 	getItemProps: (song: LikedSong, index: number) => ListItemNavigationProps;
 	onCardClick: (songId: string, element: HTMLElement) => void;
 	sentinelRef: RefCallback<HTMLDivElement>;
+	topSentinelRef: RefCallback<HTMLDivElement>;
 }
 
 interface LikedSongsListWalkthrough {
@@ -232,6 +237,25 @@ export function LikedSongsList({
 						isLoading={data.hasMore}
 					/>
 				)}
+				{/* Outside every chunk, like the bottom sentinel. Unmounting it once the
+				    newest like is loaded shifts only content above the viewport, which
+				    scroll anchoring absorbs. */}
+				{data.hasRowsAbove && (
+					<div
+						ref={navigation.topSentinelRef}
+						className="flex h-20 items-center justify-center"
+					>
+						{data.isLoadingRowsAbove && (
+							<span
+								className="theme-text-muted text-xs tracking-widest uppercase"
+								style={{ fontFamily: fonts.body }}
+							>
+								Loading…
+							</span>
+						)}
+					</div>
+				)}
+
 				{chunkAroundOrigin(
 					data.visibleSongs,
 					chunkOriginIndex,

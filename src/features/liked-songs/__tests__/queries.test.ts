@@ -1,10 +1,16 @@
-import { type InfiniteData, QueryClient } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
-import { LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS } from "@/lib/domains/library/liked-songs/constants";
+import {
+	type InfiniteData,
+	InfiniteQueryObserver,
+	QueryClient,
+} from "@tanstack/react-query";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { LIKED_SONGS_DEEP_LINK_CENTRING_ROWS } from "@/lib/domains/library/liked-songs/constants";
 import { likedSongsKeys } from "@/lib/query-keys";
-import type {
-	LikedSongsDeepLinkBootstrapResult,
-	LikedSongsPageResult,
+import {
+	getLikedSongsNewerPage,
+	getLikedSongsPage,
+	type LikedSongsDeepLinkBootstrapResult,
+	type LikedSongsPageResult,
 } from "@/lib/server/liked-songs.functions";
 import {
 	clearLikedSongsPageLive,
@@ -15,6 +21,15 @@ import {
 	seedLikedSongsDeepLinkCaches,
 } from "../queries";
 import type { LikedSong } from "../types";
+
+vi.mock("@/lib/server/liked-songs.functions", () => ({
+	getLikedSongsPage: vi.fn(),
+	getLikedSongsNewerPage: vi.fn(),
+}));
+
+beforeEach(() => {
+	vi.resetAllMocks();
+});
 
 function createSong(id: string): LikedSong {
 	return {
@@ -39,9 +54,21 @@ function createSong(id: string): LikedSong {
 function createPage(
 	ids: string[],
 	nextCursor: string | null,
+	prevCursor: string | null = null,
 ): LikedSongsPageResult {
-	return { songs: ids.map(createSong), nextCursor };
+	return { songs: ids.map(createSong), prevCursor, nextCursor };
 }
+
+// The cursor each getLikedSongsPage call was made with.
+const pageCursors = () =>
+	vi
+		.mocked(getLikedSongsPage)
+		.mock.calls.map(
+			([arg]) => (arg as { data: { cursor?: string } }).data.cursor,
+		);
+
+const ids = (prefix: string, count: number) =>
+	Array.from({ length: count }, (_, index) => `${prefix}-${index}`);
 
 describe("likedSongsKeys.infinite", () => {
 	it("collapses undefined, null, empty, and whitespace search into a single key", () => {
@@ -110,6 +137,7 @@ describe("seedLikedSongsDeepLinkCaches", () => {
 		const data: LikedSongsDeepLinkBootstrapResult = {
 			selectedSong,
 			pages: [createPage(["a"], null)],
+			startCursor: null,
 		};
 
 		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, data);
@@ -126,6 +154,7 @@ describe("seedLikedSongsDeepLinkCaches", () => {
 		const data: LikedSongsDeepLinkBootstrapResult = {
 			selectedSong: null,
 			pages: [createPage(["a", "b"], "cursor-b")],
+			startCursor: null,
 		};
 
 		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, data);
@@ -142,6 +171,7 @@ describe("seedLikedSongsDeepLinkCaches", () => {
 		const data: LikedSongsDeepLinkBootstrapResult = {
 			selectedSong: createSong("b"),
 			pages: [createPage(["a"], "cursor-0"), createPage(["b"], "cursor-1")],
+			startCursor: null,
 		};
 
 		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, data);
@@ -160,10 +190,11 @@ describe("seedLikedSongsDeepLinkCaches", () => {
 		const data: LikedSongsDeepLinkBootstrapResult = {
 			selectedSong: createSong("c"),
 			pages: [
-				createPage(["a"], "cursor-0"),
-				createPage(["b"], "cursor-1"),
-				createPage(["c"], null),
+				createPage(["a"], "cursor-0", "cursor-a"),
+				createPage(["b"], "cursor-1", "cursor-b"),
+				createPage(["c"], null, "cursor-c"),
 			],
+			startCursor: "cursor-start",
 		};
 
 		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, data);
@@ -172,9 +203,87 @@ describe("seedLikedSongsDeepLinkCaches", () => {
 			likedSongsInfiniteQueryOptions("all").queryKey,
 		);
 
-		// First param is the initial (undefined) cursor; each later param is the
-		// prior page's nextCursor, so React Query can keep paginating from the end.
-		expect(seeded?.pageParams).toEqual([undefined, "cursor-0", "cursor-1"]);
+		// Page 0 reads older from the row just above the window; each later page
+		// reads older from the prior page's last row.
+		expect(seeded?.pageParams).toEqual([
+			{ direction: "older", cursor: "cursor-start" },
+			{ direction: "older", cursor: "cursor-0" },
+			{ direction: "older", cursor: "cursor-1" },
+		]);
+	});
+
+	it("re-reads a window from its start, not the newest like, when the list refetches", async () => {
+		const queryClient = new QueryClient();
+		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, {
+			selectedSong: createSong("w-10"),
+			pages: [
+				createPage(ids("w", 50), "cursor-w49", "cursor-w0"),
+				createPage(ids("v", 20), "cursor-v19", "cursor-v0"),
+			],
+			startCursor: "cursor-start",
+		});
+		vi.mocked(getLikedSongsPage)
+			.mockResolvedValueOnce(
+				createPage(ids("w", 50), "cursor-w49", "cursor-w0"),
+			)
+			.mockResolvedValueOnce(
+				createPage(ids("v", 20), "cursor-v19", "cursor-v0"),
+			);
+
+		const observer = new InfiniteQueryObserver(
+			queryClient,
+			likedSongsInfiniteQueryOptions("all"),
+		);
+
+		await observer.refetch();
+
+		expect(pageCursors()).toEqual(["cursor-start", "cursor-w49"]);
+		expect(getLikedSongsNewerPage).not.toHaveBeenCalled();
+	});
+
+	it("loads the rows above a window from its first row and prepends them", async () => {
+		const queryClient = new QueryClient();
+		seedLikedSongsDeepLinkCaches(queryClient, accountId, slug, {
+			selectedSong: createSong("w-10"),
+			pages: [createPage(ids("w", 50), "cursor-w49", "cursor-w0")],
+			startCursor: "cursor-start",
+		});
+		vi.mocked(getLikedSongsNewerPage).mockResolvedValueOnce(
+			createPage(ids("n", 30), "cursor-n29", null),
+		);
+		const observer = new InfiniteQueryObserver(
+			queryClient,
+			likedSongsInfiniteQueryOptions("all"),
+		);
+		expect(observer.getCurrentResult().hasPreviousPage).toBe(true);
+
+		const result = await observer.fetchPreviousPage();
+
+		expect(getLikedSongsNewerPage).toHaveBeenCalledWith({
+			data: { cursor: "cursor-w0" },
+		});
+		expect(result.data?.pages.map((page) => page.songs[0].track.id)).toEqual([
+			"n-0",
+			"w-0",
+		]);
+		// The newest like is loaded now: nothing above to fetch.
+		expect(result.hasPreviousPage).toBe(false);
+	});
+
+	it("gives a list read from the newest like no rows above", async () => {
+		const queryClient = new QueryClient();
+		vi.mocked(getLikedSongsPage).mockResolvedValueOnce(
+			createPage(ids("t", 50), "cursor-t49"),
+		);
+		const observer = new InfiniteQueryObserver(
+			queryClient,
+			likedSongsInfiniteQueryOptions("all"),
+		);
+
+		await observer.refetch();
+
+		expect(pageCursors()).toEqual([undefined]);
+		expect(observer.getCurrentResult().hasPreviousPage).toBe(false);
 	});
 });
 
@@ -196,7 +305,7 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
 			likedSongsInfiniteQueryOptions("all").queryKey,
-			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [undefined] },
+			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [null] },
 		);
 		markLikedSongsPageLive(queryClient);
 
@@ -234,7 +343,7 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
 			likedSongsInfiniteQueryOptions("all").queryKey,
-			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [undefined] },
+			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [null] },
 		);
 
 		expect(
@@ -245,11 +354,11 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		).toEqual({ slug: "lorde-song-z" });
 	});
 
-	it("returns the slug when a warm cache has the song but lacks trailing rows", () => {
+	it("returns the slug when a warm cache has the song but lacks rows below it", () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
 			likedSongsInfiniteQueryOptions("all").queryKey,
-			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [undefined] },
+			{ pages: [createPage(["a", "b"], "cursor-b")], pageParams: [null] },
 		);
 
 		expect(
@@ -260,18 +369,19 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		).toEqual({ slug });
 	});
 
-	it("returns null when a warm cache already has the full trailing buffer", () => {
+	it("returns null when a warm cache already has room to centre the song", () => {
 		const queryClient = new QueryClient();
-		const ids = [
+		const rows = [
+			...ids("above", LIKED_SONGS_DEEP_LINK_CENTRING_ROWS),
 			"a",
-			...Array.from(
-				{ length: LIKED_SONGS_BOOTSTRAP_TRAILING_ROWS },
-				(_, index) => `id-${index + 1}`,
-			),
+			...ids("below", LIKED_SONGS_DEEP_LINK_CENTRING_ROWS),
 		];
 		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
 			likedSongsInfiniteQueryOptions("all").queryKey,
-			{ pages: [createPage(ids, "cursor-tail")], pageParams: [undefined] },
+			{
+				pages: [createPage(rows, "cursor-tail", "cursor-head")],
+				pageParams: [{ direction: "older", cursor: "cursor-start" }],
+			},
 		);
 
 		expect(
@@ -282,11 +392,30 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		).toBeNull();
 	});
 
+	it("returns the slug when a warm window has the song too close to its first row, with rows above unloaded", () => {
+		const queryClient = new QueryClient();
+		const rows = ["a", ...ids("below", LIKED_SONGS_DEEP_LINK_CENTRING_ROWS)];
+		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
+			likedSongsInfiniteQueryOptions("all").queryKey,
+			{
+				pages: [createPage(rows, "cursor-tail", "cursor-head")],
+				pageParams: [{ direction: "older", cursor: "cursor-start" }],
+			},
+		);
+
+		expect(
+			resolveLikedSongsDeepLinkBootstrap(queryClient, {
+				song: slug,
+				isDefaultFilter: true,
+			}),
+		).toEqual({ slug });
+	});
+
 	it("returns null when the warm cache already reaches the real end after the song", () => {
 		const queryClient = new QueryClient();
 		queryClient.setQueryData<InfiniteData<LikedSongsPageResult>>(
 			likedSongsInfiniteQueryOptions("all").queryKey,
-			{ pages: [createPage(["x", "a", "b"], null)], pageParams: [undefined] },
+			{ pages: [createPage(["x", "a", "b"], null)], pageParams: [null] },
 		);
 
 		expect(
@@ -301,7 +430,7 @@ describe("resolveLikedSongsDeepLinkBootstrap", () => {
 		const queryClient = new QueryClient();
 		const liveList: InfiniteData<LikedSongsPageResult> = {
 			pages: [createPage(["a", "b", "c"], "cursor-c")],
-			pageParams: [undefined],
+			pageParams: [null],
 		};
 		queryClient.setQueryData(
 			likedSongsInfiniteQueryOptions("all").queryKey,

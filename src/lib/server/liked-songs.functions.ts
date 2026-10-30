@@ -8,13 +8,16 @@ import {
 	type StoredAnalysis,
 } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
+import { LIKED_SONGS_PAGE_SIZE } from "@/lib/domains/library/liked-songs/constants";
 import {
 	getAnalysisBySongId,
 	getBootstrapPagesBySlug,
+	getNewerPage,
 	getPageRowBySlug,
 	getPageWithDetails,
 	getStats,
-	type LikedSongPageRow,
+	type LikedSongListRow,
+	type LikedSongsPage,
 } from "@/lib/domains/library/liked-songs/queries";
 import { captureServerError } from "@/lib/observability/capture-server-error";
 import { authMiddleware } from "@/lib/platform/auth/auth.middleware";
@@ -41,6 +44,10 @@ const LikedSongsPageSchema = z.object({
 	search: z.string().trim().max(100).optional(),
 });
 
+const LikedSongsNewerPageSchema = z.object({
+	cursor: z.string().min(1),
+});
+
 const LikedSongBySlugSchema = z.object({
 	slug: z.string().min(1),
 });
@@ -55,12 +62,16 @@ const LikedSongAnalysisSchema = z.object({
 
 export interface LikedSongsPageResult {
 	songs: LikedSong[];
+	/** Set when newer likes sit above this page (a list that starts mid-library). */
+	prevCursor: string | null;
 	nextCursor: string | null;
 }
 
 export interface LikedSongsDeepLinkBootstrapResult {
 	selectedSong: LikedSong | null;
 	pages: LikedSongsPageResult[];
+	/** See LikedSongsBootstrapPages.startCursor. */
+	startCursor: string | null;
 }
 
 function parseMatchingStatus(status: string | null): MatchingStatus | null {
@@ -68,7 +79,7 @@ function parseMatchingStatus(status: string | null): MatchingStatus | null {
 	return result.success ? result.data : null;
 }
 
-function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
+function mapLikedSongPageRow(row: LikedSongListRow): LikedSong {
 	return {
 		liked_at: row.liked_at,
 		matching_status: parseMatchingStatus(row.matching_status),
@@ -124,13 +135,44 @@ export const getLikedSongsPage = createServerFn({ method: "GET" })
 			minScore,
 		});
 
-		const { items, nextCursor } = unwrapOrThrow(result, {
-			area: "liked_songs",
-			operation: "get_liked_songs_page",
-			accountId: session.accountId,
+		return toPageResult(
+			unwrapOrThrow(result, {
+				area: "liked_songs",
+				operation: "get_liked_songs_page",
+				accountId: session.accountId,
+			}),
+		);
+	});
+
+function toPageResult(page: LikedSongsPage): LikedSongsPageResult {
+	return {
+		songs: page.items.map(mapLikedSongPageRow),
+		prevCursor: page.prevCursor,
+		nextCursor: page.nextCursor,
+	};
+}
+
+/** The page above a list that a deep link started mid-library. */
+export const getLikedSongsNewerPage = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => LikedSongsNewerPageSchema.parse(data))
+	.handler(async ({ data, context }): Promise<LikedSongsPageResult> => {
+		const { session } = context;
+
+		const minScore = await resolveMinMatchScore(session.accountId);
+		const result = await getNewerPage(session.accountId, {
+			cursor: data.cursor,
+			limit: LIKED_SONGS_PAGE_SIZE,
+			minScore,
 		});
 
-		return { songs: items.map(mapLikedSongPageRow), nextCursor };
+		return toPageResult(
+			unwrapOrThrow(result, {
+				area: "liked_songs",
+				operation: "get_liked_songs_page_newer",
+				accountId: session.accountId,
+			}),
+		);
 	});
 
 export const getLikedSongBySlug = createServerFn({ method: "GET" })
@@ -203,14 +245,12 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 				});
 			}
 
-			const { selectedRow, pages } = result.value;
+			const { selectedRow, pages, startCursor } = result.value;
 
 			return {
 				selectedSong: selectedRow ? mapLikedSongPageRow(selectedRow) : null,
-				pages: pages.map((page) => ({
-					songs: page.items.map(mapLikedSongPageRow),
-					nextCursor: page.nextCursor,
-				})),
+				pages: pages.map(toPageResult),
+				startCursor,
 			};
 		},
 	);

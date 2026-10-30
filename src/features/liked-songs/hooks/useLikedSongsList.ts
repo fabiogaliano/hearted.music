@@ -112,6 +112,9 @@ export function useLikedSongsList({
 		fetchNextPage,
 		hasNextPage,
 		isFetchingNextPage,
+		fetchPreviousPage,
+		hasPreviousPage,
+		isFetchingPreviousPage,
 	} = useLikedSongsCollection({
 		accountId,
 		filter,
@@ -183,11 +186,14 @@ export function useLikedSongsList({
 	);
 
 	const hasMore = isWalkthrough ? false : (hasNextPage ?? false);
+	// Either direction's fetch cancels one in flight the other way, so each
+	// waits for both.
+	const isFetchingPage = isFetchingNextPage || isFetchingPreviousPage;
 	const handleLoadMore = useCallback(() => {
-		if (!isFetchingNextPage && hasNextPage) {
+		if (!isFetchingPage && hasNextPage) {
 			void fetchNextPage();
 		}
-	}, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+	}, [fetchNextPage, hasNextPage, isFetchingPage]);
 
 	useEffect(() => {
 		if (
@@ -210,6 +216,26 @@ export function useLikedSongsList({
 		onLoadMore: handleLoadMore,
 		hasMore,
 		itemCount: displayedSongs.length,
+		threshold: PREFETCH_MARGIN_PX,
+	});
+
+	// A deep link seeds a window mid-library; rows above it load as the user
+	// scrolls up. Scroll anchoring keeps the rows on screen still as the page
+	// is inserted above them.
+	const hasRowsAbove = isWalkthrough ? false : hasPreviousPage;
+	const handleLoadPrevious = useCallback(() => {
+		if (!isFetchingPage && hasPreviousPage) {
+			void fetchPreviousPage();
+		}
+	}, [fetchPreviousPage, hasPreviousPage, isFetchingPage]);
+
+	// No itemCount: rows land below this sentinel, so a re-check after each
+	// page would find it still in range wherever the browser doesn't anchor the
+	// scroll, and load every page up to the newest like. It fires again only
+	// once the user scrolls it back into range.
+	const { sentinelRef: topSentinelRef } = useInfiniteScroll({
+		onLoadMore: handleLoadPrevious,
+		hasMore: hasRowsAbove,
 		threshold: PREFETCH_MARGIN_PX,
 	});
 
@@ -345,6 +371,26 @@ export function useLikedSongsList({
 		scrollBlock: "center",
 		autoScroll: false,
 	});
+
+	// Panel prev and keyboard nav walk up through loaded rows only, so load the
+	// rows above before either reaches the first one — the same two-row lead the
+	// list navigation keeps at the bottom.
+	const focusedSongId =
+		focusedIndex >= 0 ? (navItems[focusedIndex]?.track.id ?? null) : null;
+	const isNearFirstLoadedRow = [selectedSongId, focusedSongId].some(
+		(songId) =>
+			songId !== null && (displayedSongIndexById.get(songId) ?? 3) <= 2,
+	);
+	const firstLoadedSongId = displayedSongs[0]?.track.id;
+	const loadPreviousRef = useRef(handleLoadPrevious);
+	loadPreviousRef.current = handleLoadPrevious;
+	// Runs when a row nears the top or a page lands above it, not when the
+	// loader's identity changes: a failed load must wait for the next move
+	// rather than retry in a loop.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: firstLoadedSongId is a re-check trigger, not a value read in the body.
+	useEffect(() => {
+		if (hasRowsAbove && isNearFirstLoadedRow) loadPreviousRef.current();
+	}, [hasRowsAbove, isNearFirstLoadedRow, firstLoadedSongId]);
 
 	const openFocusedSong = useCallback(() => {
 		if (focusedIndex < 0 || focusedIndex >= navItems.length) return;
@@ -604,6 +650,8 @@ export function useLikedSongsList({
 			visibleSongs,
 			hasMore,
 			isLoadingMore: isFetchingNextPage,
+			hasRowsAbove,
+			isLoadingRowsAbove: isFetchingPreviousPage,
 			stats,
 			selectedSongIdFromUrl,
 			focusedIndex,
@@ -624,6 +672,7 @@ export function useLikedSongsList({
 			retry,
 			handleLoadMore,
 			sentinelRef,
+			topSentinelRef,
 			prefetchAdjacentSuggestions,
 			getItemProps,
 			handleCardClick,
