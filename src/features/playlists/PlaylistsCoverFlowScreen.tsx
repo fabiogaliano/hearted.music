@@ -140,17 +140,11 @@ export function PlaylistsCoverFlowScreen({
 	const tracksQuery = useInfiniteQuery(
 		playlistTracksInfiniteQueryOptions(selectedId),
 	);
+	// The server rows already have the VM's shape. Passing them through (not
+	// remapping into fresh objects) keeps each loaded row's identity across
+	// page appends, so TrackList's memoised rows don't re-render.
 	const tracks = useMemo<PlaylistTrackVM[]>(
-		() =>
-			(tracksQuery.data?.pages.flatMap((page) => page.tracks) ?? []).map(
-				(t) => ({
-					position: t.position,
-					name: t.name,
-					artists: t.artists,
-					albumName: t.albumName,
-					imageUrl: t.imageUrl,
-				}),
-			),
+		() => tracksQuery.data?.pages.flatMap((page) => page.tracks) ?? [],
 		[tracksQuery.data],
 	);
 	const loadMoreTracks = () => {
