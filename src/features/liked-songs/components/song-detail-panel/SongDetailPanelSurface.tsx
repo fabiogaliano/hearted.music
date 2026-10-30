@@ -262,6 +262,7 @@ export function SongDetailPanelSurface({
 							displayState={song.displayState}
 							contentFetchStatus={song.contentFetchStatus}
 							isEnrichmentRunning={isEnrichmentRunning}
+							isReadLoading={song.isReadLoading}
 							heroHeight={heroHeight}
 							lockedCta={lockedCta}
 						/>
@@ -544,6 +545,7 @@ function UnreadState({
 	displayState,
 	contentFetchStatus,
 	isEnrichmentRunning,
+	isReadLoading,
 	heroHeight,
 	lockedCta,
 }: {
@@ -551,6 +553,7 @@ function UnreadState({
 	displayState?: SongDisplayState;
 	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 	isEnrichmentRunning?: boolean;
+	isReadLoading?: boolean;
 	heroHeight: number;
 	lockedCta?: LockedCta;
 }) {
@@ -565,6 +568,7 @@ function UnreadState({
 		displayState,
 		contentFetchStatus,
 		isEnrichmentRunning,
+		isReadLoading,
 	});
 	const isAnalyzing = status === "analyzing";
 	const copy = UNREAD_COPY[status];

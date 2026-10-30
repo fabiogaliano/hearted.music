@@ -32,7 +32,8 @@ export interface LikedSong {
 			valence: number | null;
 		} | null;
 	};
-	analysis: SongAnalysis | null;
+	// No analysis: it is ~80% of a row's bytes and only the detail panel reads
+	// it, so the panel fetches it per song (likedSongAnalysisQueryOptions).
 	displayState: SongDisplayState;
 	// Latest song_lyrics.fetch_status for this song; null/undefined when no fetch
 	// has been recorded yet (never attempted). Drives the "No words yet" vs
@@ -41,14 +42,15 @@ export interface LikedSong {
 	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 }
 
-// Full analysis structure from the database
-interface SongAnalysis {
-	id: string;
-	track_id: string;
-	analysis: StoredAnalysis;
-	model_name: string;
-	version: number;
-	created_at: string | null;
+/** The detail panel's view of one song's stored analysis, read per song. */
+export type SongAnalysisState =
+	| { status: "loading" }
+	| { status: "loaded"; analysis: StoredAnalysis | null };
+
+// The decorated view reports 'analyzed' exactly when an entitled song has a
+// stored analysis, so every other state is known to have none without a read.
+export function hasStoredAnalysis(song: LikedSong): boolean {
+	return song.displayState === "analyzed";
 }
 
 // Helper to check if a song is "new" (liked in last 7 days)

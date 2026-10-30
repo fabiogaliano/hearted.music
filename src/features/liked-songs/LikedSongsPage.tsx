@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TourCoachMark } from "@/features/onboarding/TourCoachMark";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { hasUnlimitedAccess } from "@/lib/domains/billing/state";
+import type { StoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type {
 	OnboardingSession,
 	WalkthroughSong,
@@ -21,6 +22,7 @@ import { likedSongToSongDetail } from "./components/song-detail-panel/song-detai
 import { UnlockConfirmDialog } from "./components/UnlockConfirmDialog";
 import type { SearchFilter } from "./filter";
 import { toQueryFilter } from "./filter";
+import { useLikedSongAnalysis } from "./hooks/useLikedSongAnalysis";
 import { useLikedSongsList } from "./hooks/useLikedSongsList";
 import { useSongPlaylistSuggestions } from "./hooks/useSongPlaylistSuggestions";
 import { useSongUnlock } from "./hooks/useSongUnlock";
@@ -217,11 +219,29 @@ export function LikedSongsPage({
 	// adapter always returns a SongDetail (read=null for rows that don't parse —
 	// locked, not yet analyzed, or pre-v17 8-field), so every selected song opens:
 	// the panel renders the hero plus a minimal "not analyzed yet" state for those.
+	// Only during the walkthrough: the companions query keeps its cached data
+	// after the walkthrough ends, and those are real catalog songs a user can
+	// also have liked (and have locked).
+	const walkthroughAnalysisById = useMemo(() => {
+		const byId = new Map<string, StoredAnalysis>();
+		if (!walkthroughSong) return byId;
+		for (const ws of [walkthroughSong, ...(companionSongs ?? [])]) {
+			if (ws.analysis) byId.set(ws.id, ws.analysis.content);
+		}
+		return byId;
+	}, [walkthroughSong, companionSongs]);
+	const selectedAnalysis = useLikedSongAnalysis(
+		accountId,
+		selectedSong,
+		walkthroughAnalysisById,
+	);
 	const { themeColor } = useAuthenticatedTheme();
 	const conceptSong = useMemo(
 		() =>
-			selectedSong ? likedSongToSongDetail(selectedSong, themeColor) : null,
-		[selectedSong, themeColor],
+			selectedSong
+				? likedSongToSongDetail(selectedSong, selectedAnalysis, themeColor)
+				: null,
+		[selectedSong, selectedAnalysis, themeColor],
 	);
 
 	// The locked panel's CTA: entitled accounts can't have a locked song open, so

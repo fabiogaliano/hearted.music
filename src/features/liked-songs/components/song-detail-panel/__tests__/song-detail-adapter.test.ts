@@ -9,14 +9,13 @@
 
 import { describe, expect, it } from "vitest";
 import { parseStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
-import type { LikedSong } from "../../../types";
+import type { LikedSong, SongAnalysisState } from "../../../types";
 import { likedSongToSongDetail } from "../song-detail-adapter";
 
 // Minimal LikedSong fixture factory. Only the fields the adapter actually reads
 // need to be present; we skip unrelated join columns with a cast.
 function makeSong(
 	overrides: Partial<{
-		analysis: LikedSong["analysis"];
 		displayState: LikedSong["displayState"];
 		contentFetchStatus: LikedSong["contentFetchStatus"];
 	}> = {},
@@ -36,11 +35,14 @@ function makeSong(
 			genres: ["electronic", "house"],
 			audio_features: null,
 		},
-		analysis: overrides.analysis ?? null,
 		displayState: overrides.displayState ?? "analyzed",
 		contentFetchStatus: overrides.contentFetchStatus ?? null,
 	};
 }
+
+const loaded = (
+	analysis: ReturnType<typeof parseStoredAnalysis> | null,
+): SongAnalysisState => ({ status: "loaded", analysis });
 
 const INSTRUMENTAL_ANALYSIS_BLOB = parseStoredAnalysis({
 	headline: "The texture of arriving nowhere in particular",
@@ -69,18 +71,13 @@ const LYRICAL_ANALYSIS_BLOB = parseStoredAnalysis({
 
 describe("likedSongToSongDetail — instrumental path", () => {
 	it("yields a non-null instrumentalRead when the stored blob matches SongAnalysisInstrumentalSchema", () => {
-		const song = makeSong({
-			analysis: {
-				id: "analysis-1",
-				track_id: "track-1",
-				analysis: INSTRUMENTAL_ANALYSIS_BLOB,
-				model_name: "gemini-2.0-flash",
-				version: 1,
-				created_at: null,
-			},
-		});
+		const song = makeSong();
 
-		const detail = likedSongToSongDetail(song, "blue");
+		const detail = likedSongToSongDetail(
+			song,
+			loaded(INSTRUMENTAL_ANALYSIS_BLOB),
+			"blue",
+		);
 
 		expect(detail.instrumentalRead).not.toBeNull();
 		expect(detail.instrumentalRead?.headline).toBe(
@@ -94,18 +91,13 @@ describe("likedSongToSongDetail — instrumental path", () => {
 	});
 
 	it("leaves read null when the stored blob is instrumental-shaped (not lyrical)", () => {
-		const song = makeSong({
-			analysis: {
-				id: "analysis-2",
-				track_id: "track-1",
-				analysis: INSTRUMENTAL_ANALYSIS_BLOB,
-				model_name: "gemini-2.0-flash",
-				version: 1,
-				created_at: null,
-			},
-		});
+		const song = makeSong();
 
-		const detail = likedSongToSongDetail(song, "blue");
+		const detail = likedSongToSongDetail(
+			song,
+			loaded(INSTRUMENTAL_ANALYSIS_BLOB),
+			"blue",
+		);
 
 		// Lyrical path must stay null — no cross-contamination.
 		expect(detail.read).toBeNull();
@@ -114,18 +106,13 @@ describe("likedSongToSongDetail — instrumental path", () => {
 
 describe("likedSongToSongDetail — lyrical path (existing behaviour unchanged)", () => {
 	it("yields a non-null read and null instrumentalRead for a lyrical blob", () => {
-		const song = makeSong({
-			analysis: {
-				id: "analysis-3",
-				track_id: "track-1",
-				analysis: LYRICAL_ANALYSIS_BLOB,
-				model_name: "gemini-2.0-flash",
-				version: 17,
-				created_at: null,
-			},
-		});
+		const song = makeSong();
 
-		const detail = likedSongToSongDetail(song, "rose");
+		const detail = likedSongToSongDetail(
+			song,
+			loaded(LYRICAL_ANALYSIS_BLOB),
+			"rose",
+		);
 
 		expect(detail.read).not.toBeNull();
 		expect(detail.read?.image).toBe("the long way home, alone this time");
@@ -135,8 +122,8 @@ describe("likedSongToSongDetail — lyrical path (existing behaviour unchanged)"
 
 describe("likedSongToSongDetail — no analysis row", () => {
 	it("leaves both read and instrumentalRead null when there is no analysis", () => {
-		const song = makeSong({ analysis: null });
-		const detail = likedSongToSongDetail(song, "green");
+		const song = makeSong();
+		const detail = likedSongToSongDetail(song, loaded(null), "green");
 
 		expect(detail.read).toBeNull();
 		expect(detail.instrumentalRead).toBeNull();
@@ -147,12 +134,11 @@ describe("likedSongToSongDetail — no analysis row", () => {
 describe("likedSongToSongDetail — contentFetchStatus threading", () => {
 	it("threads not_found fetch status through to SongDetail", () => {
 		const song = makeSong({
-			analysis: null,
 			displayState: "pending",
 			contentFetchStatus: "not_found",
 		});
 
-		const detail = likedSongToSongDetail(song, "green");
+		const detail = likedSongToSongDetail(song, loaded(null), "green");
 
 		expect(detail.contentFetchStatus).toBe("not_found");
 		expect(detail.read).toBeNull();
@@ -161,21 +147,21 @@ describe("likedSongToSongDetail — contentFetchStatus threading", () => {
 
 	it("threads lyrics fetch status through to SongDetail", () => {
 		const song = makeSong({ contentFetchStatus: "lyrics" });
-		const detail = likedSongToSongDetail(song, "blue");
+		const detail = likedSongToSongDetail(song, loaded(null), "blue");
 
 		expect(detail.contentFetchStatus).toBe("lyrics");
 	});
 
 	it("threads instrumental fetch status through to SongDetail", () => {
 		const song = makeSong({ contentFetchStatus: "instrumental" });
-		const detail = likedSongToSongDetail(song, "rose");
+		const detail = likedSongToSongDetail(song, loaded(null), "rose");
 
 		expect(detail.contentFetchStatus).toBe("instrumental");
 	});
 
 	it("passes null when no fetch has been recorded", () => {
 		const song = makeSong({ contentFetchStatus: null });
-		const detail = likedSongToSongDetail(song, "green");
+		const detail = likedSongToSongDetail(song, loaded(null), "green");
 
 		expect(detail.contentFetchStatus).toBeNull();
 	});

@@ -3,9 +3,13 @@ import { Result } from "better-result";
 import { z } from "zod";
 import type { LikedSong, MatchingStatus } from "@/features/liked-songs/types";
 import type { SongDisplayState } from "@/lib/domains/billing/state";
-import { parseStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
+import {
+	parseStoredAnalysis,
+	type StoredAnalysis,
+} from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { resolveMinMatchScore } from "@/lib/domains/library/accounts/preferences-queries";
 import {
+	getAnalysisBySongId,
 	getBootstrapPagesBySlug,
 	getPageRowBySlug,
 	getPageWithDetails,
@@ -45,6 +49,10 @@ const LikedSongsDeepLinkBootstrapSchema = z.object({
 	slug: z.string().min(1),
 });
 
+const LikedSongAnalysisSchema = z.object({
+	songId: z.uuid(),
+});
+
 export interface LikedSongsPageResult {
 	songs: LikedSong[];
 	nextCursor: string | null;
@@ -61,9 +69,6 @@ function parseMatchingStatus(status: string | null): MatchingStatus | null {
 }
 
 function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
-	const displayState = row.display_state as SongDisplayState;
-	const isLocked = displayState === "locked";
-
 	return {
 		liked_at: row.liked_at,
 		matching_status: parseMatchingStatus(row.matching_status),
@@ -88,18 +93,7 @@ function mapLikedSongPageRow(row: LikedSongPageRow): LikedSong {
 						}
 					: null,
 		},
-		analysis:
-			!isLocked && row.analysis_id
-				? {
-						id: row.analysis_id,
-						track_id: row.song_id,
-						analysis: parseStoredAnalysis(row.analysis_content),
-						model_name: row.analysis_model ?? "unknown",
-						version: 1,
-						created_at: row.analysis_created_at,
-					}
-				: null,
-		displayState,
+		displayState: row.display_state as SongDisplayState,
 		contentFetchStatus:
 			(row.content_fetch_status as
 				| "lyrics"
@@ -157,6 +151,27 @@ export const getLikedSongBySlug = createServerFn({ method: "GET" })
 		}
 
 		return mapLikedSongPageRow(result.value);
+	});
+
+/**
+ * The stored analysis the song-detail panel renders for one liked song. Null
+ * when the song has none yet, or is locked: the decorated view already blanks
+ * analysis columns for songs the account isn't entitled to.
+ */
+export const getLikedSongAnalysis = createServerFn({ method: "GET" })
+	.middleware([authMiddleware])
+	.inputValidator((data) => LikedSongAnalysisSchema.parse(data))
+	.handler(async ({ data, context }): Promise<StoredAnalysis | null> => {
+		const { session } = context;
+
+		const result = await getAnalysisBySongId(session.accountId, data.songId);
+		const row = unwrapOrThrow(result, {
+			area: "liked_songs",
+			operation: "get_liked_song_analysis",
+			accountId: session.accountId,
+		});
+
+		return row?.analysis_id ? parseStoredAnalysis(row.analysis_content) : null;
 	});
 
 export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })

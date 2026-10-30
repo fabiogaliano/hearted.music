@@ -20,6 +20,9 @@ import type { SongDetail } from "./song-detail-types";
 //   'failed'). It outranks everything: a fetch that found lyrics, or enrichment
 //   running for other songs, used to keep it on "Listening" forever.
 //
+// isReadLoading → the panel hasn't received the song's analysis yet, so nothing
+//   about it is known; it shows as in-flight for that brief read.
+//
 // isEnrichmentRunning still matters for the genuinely in-flight case (e.g. a song
 // just unlocked with no fetch outcome yet), but it is NOT allowed to override a
 // settled fetch — a song whose fetch is done is not in-flight regardless of
@@ -30,11 +33,14 @@ export function unreadStatus({
 	displayState,
 	contentFetchStatus,
 	isEnrichmentRunning = false,
+	isReadLoading = false,
 }: {
 	displayState?: SongDisplayState;
 	contentFetchStatus?: SongDetail["contentFetchStatus"];
 	isEnrichmentRunning?: boolean;
+	isReadLoading?: boolean;
 }): UnreadStatus {
+	if (isReadLoading) return "analyzing";
 	if (displayState === "failed") return "failed";
 	if (
 		contentFetchStatus === "not_found" ||

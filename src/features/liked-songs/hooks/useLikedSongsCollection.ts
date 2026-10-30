@@ -85,16 +85,6 @@ function buildSyntheticLikedSong(ws: WalkthroughSong): LikedSong {
 		liked_at: new Date().toISOString(),
 		matching_status: null,
 		displayState: "analyzed",
-		analysis: ws.analysis
-			? {
-					id: ws.analysis.id,
-					track_id: ws.id,
-					analysis: ws.analysis.content,
-					model_name: ws.analysis.model,
-					version: 1,
-					created_at: ws.analysis.createdAt,
-				}
-			: null,
 		track: {
 			id: ws.id,
 			spotify_track_id: ws.spotifyTrackId,
@@ -152,7 +142,8 @@ export function useLikedSongsCollection({
 
 		// Hero first, then the curated companions, capped at the library size and
 		// deduped by id. Prefer a real synced row when one exists (post-sync), else
-		// the synthetic analyzed row built from the WalkthroughSong.
+		// the synthetic analyzed row built from the WalkthroughSong. The panel
+		// reads their analysis from the WalkthroughSongs (useLikedSongAnalysis).
 		const walkthroughSongs = [walkthroughSong, ...companionSongs];
 		const includedIds = new Set<string>();
 		const walkthroughRows: LikedSong[] = [];
@@ -160,15 +151,10 @@ export function useLikedSongsCollection({
 			if (includedIds.has(ws.id)) continue;
 			includedIds.add(ws.id);
 			const realSong = songs.find((song) => song.track.id === ws.id);
-			const syntheticSong = buildSyntheticLikedSong(ws);
 			walkthroughRows.push(
 				realSong
-					? {
-							...realSong,
-							displayState: "analyzed",
-							analysis: realSong.analysis ?? syntheticSong.analysis,
-						}
-					: syntheticSong,
+					? { ...realSong, displayState: "analyzed" }
+					: buildSyntheticLikedSong(ws),
 			);
 			if (walkthroughRows.length >= WALKTHROUGH_LIBRARY_SIZE) break;
 		}

@@ -21,6 +21,7 @@ import {
 import { chunkArray } from "@/lib/shared/utils/concurrency";
 import {
 	fromSupabaseMany,
+	fromSupabaseMaybe,
 	fromSupabaseSingle,
 	readAllRows,
 } from "@/lib/shared/utils/result-wrappers/supabase";
@@ -348,6 +349,33 @@ export async function getPageRowBySlug(
 	);
 
 	return Result.map(rowsResult, (rows) => rows[0] ?? null);
+}
+
+/** The analysis columns of one liked song's decorated row. */
+export type LikedSongAnalysisRow = Pick<
+	Database["public"]["Views"]["liked_song_decorated"]["Row"],
+	"analysis_id" | "analysis_content"
+>;
+
+/**
+ * Reads one active liked song's analysis. Goes through liked_song_decorated so
+ * the entitlement gate is the same one the list rows use: a locked song's
+ * analysis columns come back null.
+ */
+export function getAnalysisBySongId(
+	accountId: string,
+	songId: string,
+): Promise<Result<LikedSongAnalysisRow | null, DbError>> {
+	const supabase = createAdminSupabaseClient();
+	return fromSupabaseMaybe(
+		supabase
+			.from("liked_song_decorated")
+			.select("analysis_id, analysis_content")
+			.eq("account_id", accountId)
+			.eq("song_id", songId)
+			.is("unliked_at", null)
+			.maybeSingle(),
+	);
 }
 
 /** Single source of truth for the deep-link slug a page row resolves to. */

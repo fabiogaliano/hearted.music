@@ -12,6 +12,7 @@ import type { LikedSongFilter } from "@/lib/domains/library/liked-songs/queries"
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { likedSongsKeys } from "@/lib/query-keys";
 import {
+	getLikedSongAnalysis,
 	getLikedSongBySlug,
 	getLikedSongsDeepLinkBootstrap,
 	getLikedSongsPage,
@@ -46,6 +47,20 @@ export function songSuggestionsQueryOptions(songId: string | null) {
 	return queryOptions({
 		queryKey: likedSongsKeys.songSuggestions(songId ?? ""),
 		queryFn: () => getSongSuggestions({ data: { songId: songId as string } }),
+		enabled: songId != null,
+		staleTime: 30 * 60_000,
+	});
+}
+
+// Under likedSongsKeys.all, so the enrichment and entitlement invalidations
+// that refresh the list rows refresh an open panel's analysis with them.
+export function likedSongAnalysisQueryOptions(
+	accountId: string,
+	songId: string | null,
+) {
+	return queryOptions({
+		queryKey: likedSongsKeys.analysis(accountId, songId ?? ""),
+		queryFn: () => getLikedSongAnalysis({ data: { songId: songId as string } }),
 		enabled: songId != null,
 		staleTime: 30 * 60_000,
 	});
