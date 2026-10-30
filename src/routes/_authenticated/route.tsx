@@ -162,13 +162,13 @@ export const Route = createFileRoute("/_authenticated")({
 	// route's. The client never waits: the layout's useQuery owns refreshes.
 	loader: async ({ context }) => {
 		const consent = getInitialConsentState();
-		if (sessionMode(context.onboardingSession) === "complete") {
-			const summary = context.queryClient.prefetchQuery(
-				preferredMatchReviewSummaryQueryOptions(context.session.accountId),
-			);
-			if (typeof window === "undefined") await summary;
-		}
-		return consent;
+		if (sessionMode(context.onboardingSession) !== "complete") return consent;
+		const summary = context.queryClient.prefetchQuery(
+			preferredMatchReviewSummaryQueryOptions(context.session.accountId),
+		);
+		if (typeof window !== "undefined") return consent;
+		const [consentState] = await Promise.all([consent, summary]);
+		return consentState;
 	},
 	staleTime: Number.POSITIVE_INFINITY,
 	preloadStaleTime: Number.POSITIVE_INFINITY,
