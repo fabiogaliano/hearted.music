@@ -118,6 +118,36 @@ describe("/playlists/$playlistRef loader", () => {
 		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
 	});
 
+	it("redirects a just-re-read playlist that's gone by the tracks read without reading management again", async () => {
+		seedManagement(KEPT, DELETED);
+		await invalidateLibrarySyncQueries(queryClient, ACCOUNT_ID);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(
+			management(KEPT, DELETED),
+		);
+		vi.mocked(getPlaylistTracksPage).mockRejectedValue(
+			new Error(PLAYLIST_NOT_FOUND_MESSAGE),
+		);
+
+		expect(await redirectOf(runLoader(refOf(DELETED)))).toMatchObject({
+			to: "/playlists",
+		});
+		expect(getPlaylistManagementData).toHaveBeenCalledTimes(1);
+	});
+
+	it("redirects when a playlist the cache missed is deleted between the management and tracks reads", async () => {
+		seedManagement(KEPT);
+		vi.mocked(getPlaylistManagementData).mockResolvedValue(
+			management(KEPT, ADDED),
+		);
+		vi.mocked(getPlaylistTracksPage).mockRejectedValue(
+			new Error(PLAYLIST_NOT_FOUND_MESSAGE),
+		);
+
+		expect(await redirectOf(runLoader(refOf(ADDED)))).toMatchObject({
+			to: "/playlists",
+		});
+	});
+
 	it("re-reads management data that library sync invalidated, so a playlist the sync removed redirects even with its tracks cached", async () => {
 		seedManagement(KEPT, DELETED);
 		queryClient.setQueryData(playlistKeys.tracks(DELETED.id), {

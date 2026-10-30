@@ -43,8 +43,11 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 
 		if (cachedId !== null) {
 			if ((await prefetchTracks(queryClient, cachedId)) === "done") return;
-			// Refresh so the list the user lands on no longer shows it.
-			await queryClient.fetchQuery({ ...management, staleTime: 0 });
+			// Refresh a cached list so the one the user lands on no longer shows
+			// it; data read just above is as fresh as a second read would be.
+			if (servedFromCache) {
+				await queryClient.fetchQuery({ ...management, staleTime: 0 });
+			}
 			throw toList();
 		}
 
@@ -59,7 +62,9 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 			params.playlistRef,
 		);
 		if (playlistId === null) throw toList();
-		await prefetchTracks(queryClient, playlistId);
+		if ((await prefetchTracks(queryClient, playlistId)) === "playlist-gone") {
+			throw toList();
+		}
 	},
 	component: () => null,
 });
