@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { SpotifyPlaybackCover } from "@/features/playback/SpotifyPlaybackCover";
 import {
 	type SingleActivePlayback,
@@ -133,7 +134,10 @@ export function TrackList({
 	);
 }
 
-function TrackRow({
+// Memoised so a page append renders only the new rows: track objects keep
+// their identity across appends (pages are reused as-is) and every other prop
+// is a primitive or a stable callback.
+const TrackRow = memo(function TrackRow({
 	track,
 	index,
 	rowId,
@@ -220,4 +224,4 @@ function TrackRow({
 			)}
 		</div>
 	);
-}
+});
