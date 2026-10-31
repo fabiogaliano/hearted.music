@@ -137,6 +137,10 @@ No `id:`, never replayed, always repairable from a fresh snapshot.
   type ActiveJobsSnapshot = import("@/lib/server/jobs.functions").ActiveJobs;
   ```
 
+  If the gateway can't send the connect-time replay or this snapshot, it closes
+  the stream rather than leave the client without a running-jobs view; the
+  client then falls back to polling.
+
 - **`job_progress_changed`** *(optional, phase 2+)* — coalesced progress ticks. If
   dropped, the next `active_jobs_snapshot` repairs the cache. Clients must treat
   it as best-effort.
