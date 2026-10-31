@@ -65,6 +65,16 @@ const PLAYLIST_D_FRESH = "00000000-0000-4000-8000-0000000d10f1";
 const SONG_D = "00000000-0000-4000-8000-0000000d1506";
 const ITEM_SONG = "00000000-0000-4000-8000-0000000d1402";
 
+// Test F/G/H (cards whose playlists left matching after capture).
+const PLAYLIST_F_TARGET = "00000000-0000-4000-8000-0000000d1101";
+const PLAYLIST_F_OUT = "00000000-0000-4000-8000-0000000d1102";
+const SONG_F = "00000000-0000-4000-8000-0000000d1507";
+const SONG_G = "00000000-0000-4000-8000-0000000d1508";
+const SONG_H = "00000000-0000-4000-8000-0000000d1509";
+const ITEM_SONG_MIXED = "00000000-0000-4000-8000-0000000d1403";
+const ITEM_SONG_ALL_OUT = "00000000-0000-4000-8000-0000000d1404";
+const ITEM_PLAYLIST_OUT = "00000000-0000-4000-8000-0000000d1405";
+
 const ALL_SONGS = [
 	SONG_A,
 	SONG_B_MEMBER,
@@ -72,6 +82,9 @@ const ALL_SONGS = [
 	SONG_C_MEMBER,
 	SONG_C_FRESH,
 	SONG_D,
+	SONG_F,
+	SONG_G,
+	SONG_H,
 ] as const;
 
 const ALL_PLAYLISTS = [
@@ -81,6 +94,12 @@ const ALL_PLAYLISTS = [
 	[PLAYLIST_SUBJ, "Card Subject"],
 	[PLAYLIST_D_MEMBER, "Song Card Member"],
 	[PLAYLIST_D_FRESH, "Song Card Fresh"],
+	[PLAYLIST_F_TARGET, "Still Matching"],
+] as const;
+
+const ALL_PLAYLIST_IDS = [
+	...ALL_PLAYLISTS.map(([id]) => id),
+	PLAYLIST_F_OUT,
 ] as const;
 
 async function seed() {
@@ -96,12 +115,17 @@ async function seed() {
     `;
 	}
 
+	// Snapshots only ever score target playlists.
 	for (const [id, name] of ALL_PLAYLISTS) {
 		await client`
-      INSERT INTO playlist(id, account_id, spotify_id, name)
-      VALUES (${id}, ${ACCOUNT}, ${`sp-pl-${id}`}, ${name})
+      INSERT INTO playlist(id, account_id, spotify_id, name, is_target)
+      VALUES (${id}, ${ACCOUNT}, ${`sp-pl-${id}`}, ${name}, true)
     `;
 	}
+	await client`
+    INSERT INTO playlist(id, account_id, spotify_id, name, is_target)
+    VALUES (${PLAYLIST_F_OUT}, ${ACCOUNT}, ${`sp-pl-${PLAYLIST_F_OUT}`}, ${"Out of Matching"}, false)
+  `;
 
 	await client`
     INSERT INTO match_snapshot(id, account_id, algorithm_version, config_hash, playlist_set_hash, candidate_set_hash, snapshot_hash)
@@ -164,6 +188,49 @@ async function seed() {
     `;
 	}
 	await client`INSERT INTO playlist_song(playlist_id, song_id, position) VALUES (${PLAYLIST_D_MEMBER}, ${SONG_D}, ${0})`;
+
+	// --- Test F/G/H: pairs captured while PLAYLIST_F_OUT was still a target.
+	const capturedCards = [
+		[ITEM_SONG_MIXED, "song", SONG_F, null, 2],
+		[ITEM_SONG_ALL_OUT, "song", SONG_G, null, 3],
+		[ITEM_PLAYLIST_OUT, "playlist", null, PLAYLIST_F_OUT, 4],
+	] as const;
+	for (const [
+		itemId,
+		orientation,
+		songId,
+		playlistId,
+		position,
+	] of capturedCards) {
+		await client`
+      INSERT INTO match_review_queue_item(id, session_id, account_id, orientation, song_id, playlist_id, source_snapshot_id, position, state, visible_pairs_captured_at)
+      VALUES (${itemId}, ${SESSION}, ${ACCOUNT}, ${orientation}, ${songId}, ${playlistId}, ${SNAPSHOT}, ${position}, ${"active"}, now())
+    `;
+	}
+	const capturedPairs = [
+		[ITEM_SONG_MIXED, SONG_F, PLAYLIST_F_OUT, "song", 1, 0.9],
+		[ITEM_SONG_MIXED, SONG_F, PLAYLIST_F_TARGET, "song", 2, 0.8],
+		[ITEM_SONG_ALL_OUT, SONG_G, PLAYLIST_F_OUT, "song", 1, 0.9],
+		[ITEM_PLAYLIST_OUT, SONG_H, PLAYLIST_F_OUT, "playlist", 1, 0.9],
+	] as const;
+	for (const [
+		itemId,
+		songId,
+		playlistId,
+		orientation,
+		rank,
+		fit,
+	] of capturedPairs) {
+		await client`
+      INSERT INTO match_review_item_visible_pair(
+        queue_item_id, song_id, playlist_id, session_id, account_id,
+        snapshot_id, orientation, model_rank, visible_rank, fit_score
+      ) VALUES (
+        ${itemId}, ${songId}, ${playlistId}, ${SESSION}, ${ACCOUNT},
+        ${SNAPSHOT}, ${orientation}, ${rank}, ${rank}, ${fit}
+      )
+    `;
+	}
 }
 
 async function cleanup() {
@@ -175,7 +242,7 @@ async function cleanup() {
 	// alone, but scoping playlist_id too keeps cleanup correct if a later fixture
 	// adds a member row whose song lives outside ALL_SONGS.
 	await sql`DELETE FROM playlist_song WHERE song_id IN ${sql(ALL_SONGS)}
-    OR playlist_id IN ${sql(ALL_PLAYLISTS.map(([id]) => id))}`;
+    OR playlist_id IN ${sql(ALL_PLAYLIST_IDS)}`;
 	await sql`DELETE FROM match_review_queue_item WHERE account_id = ${ACCOUNT}`;
 	await sql`DELETE FROM match_review_session WHERE account_id = ${ACCOUNT}`;
 	await sql`DELETE FROM match_snapshot WHERE id = ${SNAPSHOT}`;
@@ -264,6 +331,37 @@ describeLocal(
 			expect(playlistIds).toEqual([PLAYLIST_D_FRESH]);
 			expect(playlistIds).not.toContain(PLAYLIST_D_MEMBER);
 			expect(card.total_active_count).toBe(1);
+		});
+	},
+);
+
+describeLocal(
+	"read_match_deck_card hides playlists that left matching after capture",
+	() => {
+		it("regression: song card drops a captured playlist that is no longer a target", async () => {
+			const [{ card }] = await db()`
+      SELECT public.read_match_deck_card(${ITEM_SONG_MIXED}, ${ACCOUNT}, ${100}, false) AS card
+    `;
+			expect(card.status).toBe("ready");
+			const playlistIds = (
+				card.suggestions as Array<{ playlist_id: string }>
+			).map((s) => s.playlist_id);
+			expect(playlistIds).toEqual([PLAYLIST_F_TARGET]);
+			expect(card.total_active_count).toBe(1);
+		});
+
+		it("song card whose every captured playlist left matching reads as no visible suggestions", async () => {
+			const [{ card }] = await db()`
+      SELECT public.read_match_deck_card(${ITEM_SONG_ALL_OUT}, ${ACCOUNT}, ${100}, false) AS card
+    `;
+			expect(card.status).toBe("no_visible_suggestions");
+		});
+
+		it("playlist card whose subject left matching reads as playlist gone", async () => {
+			const [{ card }] = await db()`
+      SELECT public.read_match_deck_card(${ITEM_PLAYLIST_OUT}, ${ACCOUNT}, ${100}, false) AS card
+    `;
+			expect(card.status).toBe("playlist_gone");
 		});
 	},
 );

@@ -515,12 +515,19 @@ export function makeVisibilityScenario() {
 			is_target: true,
 			match_filters: { version: 1 },
 		},
+		frenchOnly: {
+			id: id(),
+			account_id: accountId,
+			name: "French only",
+			is_target: true,
+			match_filters: { version: 1, languages: { codes: ["fr"] } },
+		},
 		untargeted: {
 			id: id(),
 			account_id: accountId,
 			name: "Untargeted",
 			is_target: false,
-			match_filters: { version: 1, languages: { codes: ["fr"] } },
+			match_filters: { version: 1 },
 		},
 		containsEntitled: {
 			id: id(),
@@ -546,7 +553,7 @@ export function makeVisibilityScenario() {
 		playlists,
 		pairs: [
 			{ song: songs.entitled, playlist: playlists.target, score: 0.9 },
-			{ song: songs.entitled, playlist: playlists.untargeted, score: 0.8 },
+			{ song: songs.entitled, playlist: playlists.frenchOnly, score: 0.8 },
 			{
 				song: songs.entitled,
 				playlist: playlists.containsEntitled,
@@ -554,7 +561,10 @@ export function makeVisibilityScenario() {
 			},
 			{ song: songs.entitled, playlist: playlists.foreign, score: 0.6 },
 			{ song: songs.locked, playlist: playlists.target, score: 0.85 },
-			{ song: songs.locked, playlist: playlists.untargeted, score: 0.75 },
+			{ song: songs.locked, playlist: playlists.frenchOnly, score: 0.75 },
+			// Taken out of matching after this snapshot was scored.
+			{ song: songs.entitled, playlist: playlists.untargeted, score: 0.65 },
+			{ song: songs.locked, playlist: playlists.untargeted, score: 0.55 },
 		],
 		playlistSongs: [
 			{ song: songs.entitled, playlist: playlists.containsEntitled },

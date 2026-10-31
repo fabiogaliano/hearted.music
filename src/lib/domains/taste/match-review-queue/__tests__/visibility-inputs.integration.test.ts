@@ -163,7 +163,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
-	it("account scope: every snapshot pair except one already in its playlist, with entitlement, ownership and decisions", async () => {
+	it("account scope: every snapshot pair except one already in its playlist or out of matching, with entitlement, ownership and decisions", async () => {
 		const { songs, playlists } = s();
 
 		const result = await loadVisibilityInputs(createAdminSupabaseClient(), {
@@ -178,15 +178,15 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		expect(pairKeys(inputs)).toEqual(
 			[
 				key(songs.entitled, playlists.target),
-				key(songs.entitled, playlists.untargeted),
+				key(songs.entitled, playlists.frenchOnly),
 				key(songs.entitled, playlists.foreign),
 				key(songs.locked, playlists.target),
-				key(songs.locked, playlists.untargeted),
+				key(songs.locked, playlists.frenchOnly),
 			].toSorted(),
 		);
 		expect([...inputs.entitledSongIds]).toEqual([songs.entitled.id]);
 		expect([...inputs.ownedPlaylistIds].toSorted()).toEqual(
-			[playlists.target.id, playlists.untargeted.id].toSorted(),
+			[playlists.target.id, playlists.frenchOnly.id].toSorted(),
 		);
 		expect([...inputs.decidedPairs]).toEqual([
 			key(songs.entitled, playlists.target),
@@ -211,7 +211,7 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		});
 	});
 
-	it("reads the filters of an untargeted playlist that appears in the pairs", async () => {
+	it("reads the filters of every target playlist that appears in the pairs", async () => {
 		const { playlists } = s();
 
 		const result = await loadVisibilityInputs(createAdminSupabaseClient(), {
@@ -223,13 +223,14 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		expect(result).toBeOk();
 		if (Result.isError(result)) return;
 		const filters = result.value.filtersByPlaylistId;
-		expect(filters.get(playlists.untargeted.id)).toEqual({
+		expect(filters.get(playlists.frenchOnly.id)).toEqual({
 			version: 1,
 			languages: { codes: ["fr"] },
 		});
 		expect(filters.get(playlists.target.id)).toEqual({ version: 1 });
-		// No pair survives for this playlist, so its filters are never read.
+		// No pair survives for these playlists, so their filters are never read.
 		expect(filters.has(playlists.containsEntitled.id)).toBe(false);
+		expect(filters.has(playlists.untargeted.id)).toBe(false);
 	});
 
 	it("song scope: only the song's pairs", async () => {
@@ -247,7 +248,7 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		expect(pairKeys(result.value)).toEqual(
 			[
 				key(songs.entitled, playlists.target),
-				key(songs.entitled, playlists.untargeted),
+				key(songs.entitled, playlists.frenchOnly),
 				key(songs.entitled, playlists.foreign),
 			].toSorted(),
 		);
@@ -258,7 +259,7 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 
 		const result = await loadVisibilityInputs(createAdminSupabaseClient(), {
 			kind: "playlist",
-			playlistId: playlists.untargeted.id,
+			playlistId: playlists.frenchOnly.id,
 			accountId: s().accountId,
 			snapshotId: s().snapshotId,
 		});
@@ -267,11 +268,28 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 		if (Result.isError(result)) return;
 		expect(pairKeys(result.value)).toEqual(
 			[
-				key(songs.entitled, playlists.untargeted),
-				key(songs.locked, playlists.untargeted),
+				key(songs.entitled, playlists.frenchOnly),
+				key(songs.locked, playlists.frenchOnly),
 			].toSorted(),
 		);
 		expect([...result.value.entitledSongIds]).toEqual([songs.entitled.id]);
+	});
+
+	it("regression: a playlist taken out of matching after the snapshot contributes no pairs", async () => {
+		// The review deck suggested a playlist months after it left matching,
+		// because old snapshots still scored it.
+		const { playlists } = s();
+
+		const result = await loadVisibilityInputs(createAdminSupabaseClient(), {
+			kind: "playlist",
+			playlistId: playlists.untargeted.id,
+			accountId: s().accountId,
+			snapshotId: s().snapshotId,
+		});
+
+		expect(result).toBeOk();
+		if (Result.isError(result)) return;
+		expect(result.value.pairs).toEqual([]);
 	});
 
 	it("reads nothing from a snapshot that belongs to another account", async () => {
@@ -289,11 +307,12 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs", () => {
 
 describe.skipIf(!IS_LOCAL)("subject derivation over the loaded inputs", () => {
 	// Eligible (entitled + owned) pairs: entitled→target is decided,
-	// entitled→untargeted fails that playlist's French-only filter, and
-	// entitled→containsEntitled is dropped because the song is already in it.
-	// So no playlist subject is visible, and only the untargeted playlist counts
-	// as hidden (it has an undecided eligible pair; the already-in pair is gone).
-	it("regression: an untargeted playlist's filters hide its pair, and a pair already in its playlist never makes a subject", async () => {
+	// entitled→frenchOnly fails that playlist's French-only filter,
+	// entitled→containsEntitled is dropped because the song is already in it,
+	// and entitled→untargeted is dropped because that playlist left matching
+	// (it would otherwise pass every filter and be a visible subject). So no
+	// playlist subject is visible, and only frenchOnly counts as hidden.
+	it("regression: a playlist's filters hide its pair, and pairs already in their playlist or out of matching never make a subject", async () => {
 		const result = await deriveProposalSubjects(
 			s().accountId,
 			"playlist",
@@ -327,8 +346,8 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs paging", () => {
     `;
 		songIds = songs.map((r) => r.id as string);
 		await db()`
-      INSERT INTO playlist(account_id, spotify_id, name)
-      SELECT ${accountId}, ${`sp-page-pl-${accountId}-`} || i, ${"Playlist"}
+      INSERT INTO playlist(account_id, spotify_id, name, is_target)
+      SELECT ${accountId}, ${`sp-page-pl-${accountId}-`} || i, ${"Playlist"}, true
       FROM generate_series(1, ${PLAYLIST_COUNT}) AS i
     `;
 		await insertSnapshot(snapshotId, accountId);
