@@ -4130,37 +4130,6 @@ export type Database = {
 					song_spotify_id: string;
 				}[];
 			};
-			get_liked_songs_bootstrap_by_slug: {
-				Args: {
-					p_account_id: string;
-					p_min_score?: number;
-					p_slug: string;
-					p_trailing_limit?: number;
-				};
-				Returns: {
-					analysis_content: Json;
-					analysis_created_at: string;
-					analysis_id: string;
-					analysis_model: string;
-					artist_image_url: string;
-					audio_energy: number;
-					audio_tempo: number;
-					audio_valence: number;
-					content_fetch_status: string;
-					display_state: string;
-					id: string;
-					liked_at: string;
-					matching_status: string;
-					song_album_name: string;
-					song_artist_ids: string[];
-					song_artists: string[];
-					song_genres: string[];
-					song_id: string;
-					song_image_url: string;
-					song_name: string;
-					song_spotify_id: string;
-				}[];
-			};
 			get_liked_songs_page: {
 				Args: {
 					p_account_id: string;
