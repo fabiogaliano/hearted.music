@@ -90,7 +90,8 @@ export const Route = createFileRoute("/_authenticated")({
 		const { session, account, identity, userJotSignature } =
 			await queryClient.ensureQueryData({
 				queryKey: AUTH_SESSION_QUERY_KEY,
-				queryFn: () => requireAuthSession(),
+				queryFn: () =>
+					requireAuthSession({ data: { returnTo: location.href } }),
 				staleTime: 5 * 60 * 1000,
 			});
 

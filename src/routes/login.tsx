@@ -19,10 +19,12 @@ import {
 import { SetupOnComputerNoticeGate } from "@/features/onboarding/components/SetupOnComputerNotice";
 import { useAnalytics } from "@/lib/observability/useAnalytics";
 import { signIn, signUp } from "@/lib/platform/auth/auth-client";
+import { returnPathSchema } from "@/lib/platform/auth/return-path";
 import { getAuthStatus } from "@/lib/server/auth.functions";
 
 const searchSchema = z.object({
 	mode: z.enum(["signin", "signup"]).optional(),
+	redirect: returnPathSchema,
 });
 
 export const Route = createFileRoute("/login")({
@@ -48,7 +50,8 @@ function LoginRoute() {
 }
 
 function LoginPage() {
-	const { mode: initialMode } = Route.useSearch();
+	const { mode: initialMode, redirect } = Route.useSearch();
+	const afterSignIn = redirect ?? "/dashboard";
 	const navigate = useNavigate();
 	const analytics = useAnalytics();
 
@@ -66,7 +69,7 @@ function LoginPage() {
 		try {
 			await signIn.social({
 				provider: "google",
-				callbackURL: "/dashboard",
+				callbackURL: afterSignIn,
 				newUserCallbackURL: "/onboarding",
 			});
 		} catch {
@@ -117,7 +120,7 @@ function LoginPage() {
 		const { error: err } = await signIn.email({
 			email,
 			password,
-			callbackURL: "/dashboard",
+			callbackURL: afterSignIn,
 		});
 		if (err) {
 			analytics.capture("login_error", { provider: "credentials" });
@@ -126,7 +129,7 @@ function LoginPage() {
 			return;
 		}
 		analytics.capture("login_succeeded", { provider: "credentials" });
-		navigate({ to: "/dashboard" });
+		navigate({ href: afterSignIn });
 	};
 
 	function handleForgotPassword() {

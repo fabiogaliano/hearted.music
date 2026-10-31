@@ -7,9 +7,11 @@
  */
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { Landing } from "@/features/landing/Landing";
 import { getShuffledLandingData } from "@/lib/content/landing/landing-songs.server";
 import { getAuthSession } from "@/lib/platform/auth/auth.server";
+import { returnPathSchema } from "@/lib/platform/auth/return-path";
 
 const checkAuth = createServerFn({ method: "GET" }).handler(async () => {
 	const session = await getAuthSession();
@@ -21,6 +23,7 @@ const loadLandingData = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const Route = createFileRoute("/")({
+	validateSearch: z.object({ redirect: returnPathSchema }),
 	beforeLoad: async () => {
 		const result = await checkAuth();
 

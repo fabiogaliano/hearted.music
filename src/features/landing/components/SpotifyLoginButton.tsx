@@ -11,6 +11,7 @@
  * - dark: For dark/gradient backgrounds (uses light bg for contrast)
  */
 
+import { useSearch } from "@tanstack/react-router";
 import { fonts } from "@/lib/theme/fonts";
 
 interface SpotifyLoginButtonProps {
@@ -24,10 +25,15 @@ export function SpotifyLoginButton({
 	variant = "light",
 }: SpotifyLoginButtonProps) {
 	const isDark = variant === "dark";
+	// Set when an auth guard bounced a signed-out deep link here.
+	const { redirect } = useSearch({ strict: false });
+	const href = redirect
+		? `/login?${new URLSearchParams({ redirect })}`
+		: "/login";
 
 	return (
 		<a
-			href="/login"
+			href={href}
 			className="relative inline-block px-6 py-3 text-sm tracking-widest uppercase transition-transform duration-150 hover:scale-105 active:scale-[0.98]"
 			style={{
 				background: isDark ? "var(--t-text-on-primary)" : "var(--t-primary)",
