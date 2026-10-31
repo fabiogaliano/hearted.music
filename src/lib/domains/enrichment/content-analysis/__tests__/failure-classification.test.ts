@@ -54,6 +54,25 @@ describe("classifyAnalysisFailure", () => {
 		expect(out.statusCode).toBe(422);
 	});
 
+	it("regression: a Vertex 400 invalid_grant is a credential failure, not a permanent 4xx", () => {
+		// Prod Jul–Oct 2026: a deleted service account surfaced as 400 invalid_grant
+		// and every analysed song was marked terminally failed.
+		const out = classifyAnalysisFailure(
+			new LlmProviderError({
+				provider: "google-vertex",
+				model: "gemini-2.5-flash",
+				statusCode: 400,
+				message: "invalid_grant: Invalid grant: account not found",
+			}),
+		);
+
+		expect(out).toMatchObject({
+			isRetryable: true,
+			cause: "llm_credentials",
+			provider: "google-vertex",
+		});
+	});
+
 	it("treats a no-object/parse failure as retryable despite no status code", () => {
 		// generateObject truncates or malforms JSON on ~10% of draws; the next draw
 		// usually parses, so this must retry rather than terminally fail the song.

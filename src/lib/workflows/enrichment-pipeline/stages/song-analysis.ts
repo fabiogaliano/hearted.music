@@ -1,9 +1,13 @@
+import { captureMessage } from "@sentry/bun";
 import { Result } from "better-result";
 import {
 	type AudioFeature,
 	getBatch as getAudioFeaturesBatch,
 } from "@/lib/domains/enrichment/audio-features/queries";
-import { classifyAnalysisFailure } from "@/lib/domains/enrichment/content-analysis/failure-classification";
+import {
+	type AnalysisFailureClassification,
+	classifyAnalysisFailure,
+} from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import { get } from "@/lib/domains/enrichment/content-analysis/queries";
 import type { AnalyzeSongInput } from "@/lib/domains/enrichment/content-analysis/song-analysis";
 import {
@@ -21,7 +25,11 @@ import {
 import { GeniusFetchError } from "@/lib/shared/errors/external/genius";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
-import type { StageFailure, StageOutcome } from "../stage-outcomes";
+import type {
+	FailureCode,
+	StageFailure,
+	StageOutcome,
+} from "../stage-outcomes";
 import type { EnrichmentContext } from "../types";
 
 const STAGE = "song_analysis" as const;
@@ -72,15 +80,27 @@ function retryCandidateFailure(songId: string): StageFailure {
 	};
 }
 
+function failureCodeFor(
+	classification: AnalysisFailureClassification,
+): FailureCode {
+	// A rejected credential fails every song identically until the secret is
+	// replaced. Recording it terminal stranded songs for months after a Vertex
+	// service account was deleted; a flat retry window recovers them once fixed.
+	if (classification.cause === "llm_credentials") {
+		return FAILURE_CODES.PROVIDER_UNAVAILABLE;
+	}
+	return classification.isRetryable
+		? FAILURE_CODES.PROVIDER_TRANSIENT
+		: FAILURE_CODES.PERMANENT;
+}
+
 function classifiedFailure(songId: string, error: unknown): StageFailure {
 	const classification = classifyAnalysisFailure(error);
 	const isRetryable = classification.isRetryable;
 
 	return {
 		songId,
-		failureCode: isRetryable
-			? FAILURE_CODES.PROVIDER_TRANSIENT
-			: FAILURE_CODES.PERMANENT,
+		failureCode: failureCodeFor(classification),
 		message:
 			classification.message ??
 			(isRetryable
@@ -108,9 +128,7 @@ function batchFailure(
 
 	return {
 		songId,
-		failureCode: classification.isRetryable
-			? FAILURE_CODES.PROVIDER_TRANSIENT
-			: FAILURE_CODES.PERMANENT,
+		failureCode: failureCodeFor(classification),
 		message: classification.message,
 		retryAfterMs: classification.retryAfterMs,
 		provider: classification.provider,
@@ -420,6 +438,34 @@ async function probeLyricsRefreshCandidates(
 	return { succeededSongIds, failures };
 }
 
+/**
+ * Per-song failure rows are invisible to anyone not querying the DB, so a dead
+ * credential needs its own alert. One event per run, fingerprinted per provider
+ * so Sentry groups it into a single issue.
+ */
+function reportCredentialFailures(
+	ctx: EnrichmentContext,
+	failures: StageFailure[],
+): void {
+	const credentialFailures = failures.filter(
+		(f) => f.causeTag === "llm_credentials",
+	);
+	const first = credentialFailures[0];
+	if (!first) return;
+	const provider = first.provider ?? "unknown";
+	captureMessage(`LLM credentials rejected by ${provider}`, {
+		level: "error",
+		fingerprint: ["llm-credentials-rejected", provider],
+		tags: { workflow: "enrichment", stage: STAGE, provider },
+		extra: {
+			jobId: ctx.jobId,
+			accountId: ctx.accountId,
+			songCount: credentialFailures.length,
+			message: first.message,
+		},
+	});
+}
+
 export async function runSongAnalysis(
 	ctx: EnrichmentContext,
 	batch: PipelineBatch,
@@ -482,6 +528,8 @@ export async function runSongAnalysis(
 		succeededSongIds = [...succeededSongIds, ...probeOutcome.succeededSongIds];
 		failures = [...failures, ...probeOutcome.failures];
 	}
+
+	reportCredentialFailures(ctx, failures);
 
 	return {
 		kind: "attempted",

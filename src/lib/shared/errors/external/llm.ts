@@ -74,6 +74,22 @@ export function isRetryableLlmError(error: unknown): boolean {
 	return false;
 }
 
+/**
+ * The provider rejected our credentials (revoked key, deleted service account).
+ * Vertex reports a dead service account as a 400 `invalid_grant`, not a 401, so
+ * status alone can't separate it from a deterministic bad request. Not retryable
+ * within a call: every attempt fails identically until the secret is replaced.
+ */
+export function isLlmCredentialError(
+	error: unknown,
+): error is LlmProviderError {
+	if (!(error instanceof LlmProviderError)) return false;
+	if (error.statusCode === 401 || error.statusCode === 403) return true;
+	return /invalid_grant|invalid api key|api key not valid|unauthenticated/i.test(
+		error.message,
+	);
+}
+
 /** Retry-After floor in ms, when the provider supplied one (rate limits). */
 export function llmRetryAfterMs(error: unknown): number | undefined {
 	return error instanceof LlmRateLimitError ? error.retryAfterMs : undefined;

@@ -11,6 +11,7 @@ import { DatabaseError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import { errorMessage } from "@/lib/shared/errors/error-message";
 import {
+	isLlmCredentialError,
 	isRetryableLlmError,
 	LlmProviderError,
 	LlmRateLimitError,
@@ -20,6 +21,7 @@ import {
 /** Failure origin, for logging and metadata. */
 export type AnalysisFailureCause =
 	| "llm_rate_limit"
+	| "llm_credentials"
 	| "llm_provider"
 	| "database"
 	| "analysis_rejected"
@@ -43,6 +45,7 @@ export interface AnalysisFailureClassification {
 /**
  * Classify a failure into a retry-aware verdict:
  *   - LLM rate limits / 429 / 5xx          -> transient
+ *   - LLM credential rejections            -> retryable once the secret is fixed
  *   - LLM 4xx and unknown provider errors  -> permanent
  *   - database errors                      -> transient
  *   - rejected analyses / everything else  -> permanent
@@ -56,6 +59,16 @@ export function classifyAnalysisFailure(
 			cause: "llm_rate_limit",
 			retryAfterMs: llmRetryAfterMs(error),
 			provider: error.provider,
+			message: error.message,
+		};
+	}
+
+	if (isLlmCredentialError(error)) {
+		return {
+			isRetryable: true,
+			cause: "llm_credentials",
+			provider: error.provider,
+			statusCode: error.statusCode,
 			message: error.message,
 		};
 	}

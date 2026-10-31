@@ -6,6 +6,11 @@ const mockAnalyzeSongBatch = vi.fn();
 const mockCreateSongBatchAnalyzerDeps = vi.fn();
 const mockGetLatestLyricsSnapshots = vi.fn();
 const mockGetAudioFeaturesBatch = vi.fn();
+const mockCaptureMessage = vi.fn();
+
+vi.mock("@sentry/bun", () => ({
+	captureMessage: (...args: unknown[]) => mockCaptureMessage(...args),
+}));
 
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
 	get: (ids: string[]) => mockSongAnalysisGet(ids),
@@ -504,6 +509,38 @@ describe("runSongAnalysis: genuine analysis failures", () => {
 			provider: "google",
 			causeTag: "llm_rate_limit",
 		});
+	});
+
+	it("maps rejected credentials to non-terminal provider_unavailable and alerts once per run", async () => {
+		const failureClassifications = new Map<
+			string,
+			AnalysisFailureClassification
+		>();
+		for (const id of ["s1", "s2"]) {
+			failureClassifications.set(
+				id,
+				classification(true, {
+					cause: "llm_credentials",
+					provider: "google-vertex",
+					statusCode: 400,
+				}),
+			);
+		}
+		mockAnalyzeSongBatch.mockResolvedValue({
+			...emptyBatchOutcome(),
+			failedSongIds: ["s1", "s2"],
+			failureClassifications,
+		});
+
+		const outcome = expectAttempted(
+			await runSongAnalysis(makeCtx(), makeBatch(["s1", "s2"])),
+		);
+
+		expect(outcome.failures.map((f) => f.failureCode)).toEqual([
+			"provider_unavailable",
+			"provider_unavailable",
+		]);
+		expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not classify as permanent if post-run check shows analysis exists", async () => {
