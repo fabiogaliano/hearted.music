@@ -503,7 +503,8 @@ function MatchStrictnessPicker({
 								className="theme-text-muted text-xs leading-none tabular-nums italic opacity-70"
 								style={{ fontFamily: fonts.body }}
 							>
-								above {Math.round(STRICTNESS_MIN_SCORE[option.value] * 100)}%
+								{Math.round(STRICTNESS_MIN_SCORE[option.value] * 100)}% or
+								higher
 							</span>
 							<span
 								className={`theme-text text-base leading-snug text-pretty ${
