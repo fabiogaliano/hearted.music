@@ -48,11 +48,10 @@ const PADDING_X = 24;
 const PANEL_WIDTH = "var(--song-panel-width)";
 const ALBUM_ART_SIZE = 112;
 const ALBUM_ART_BOTTOM = 24; // album art sits fully inside the hero so the hero's borderBottom can run clean
-const SONIC_NUMBERS_HEIGHT = 38; // approx height of the bpm/energy/valence block — lets the genre cluster stack just above it in the hero
-const GENRE_STACK_GAP = 12; // vertical gap between the genre cluster and the sonic numbers below it
+// GenrePill's rendered height (11px text at line-height 1 + 5px padding + 1px border, each side).
+const GENRE_PILL_HEIGHT = 23;
 const SECTION_GAP = 40; // padding above + below each section's content, framing it between dividers
 const HERO_HEIGHT = 450; // tall hero when there's an artist image to fill it
-const HERO_HEIGHT_NO_IMAGE = 200; // short hero (album-art-only) — no backdrop to give height
 // How far the locked CTA is lifted above the geometric center of the space below
 // the hero. Geometric centering reads as too low (worse with the tall 450px hero,
 // which leaves the CTA stranded in the lower half), so we bias up. The content's
@@ -174,7 +173,11 @@ export function SongDetailPanelSurface({
 		colorMode === "light"
 			? getThemedLightColors(themeConfig)
 			: getThemedDarkColors(themeConfig);
-	const heroHeight = song.artistImageUrl ? HERO_HEIGHT : HERO_HEIGHT_NO_IMAGE;
+	// A CSS length, not a number: the short album-art-only hero's height depends on
+	// the panel layout (styles.css, --song-hero-no-image-height).
+	const heroHeight = song.artistImageUrl
+		? `${HERO_HEIGHT}px`
+		: "var(--song-hero-no-image-height)";
 	const isLocked =
 		!song.read && !song.instrumentalRead && song.displayState === "locked";
 
@@ -281,7 +284,7 @@ function Hero({
 }: {
 	song: SongDetail;
 	colors: Palette;
-	heroHeight: number;
+	heroHeight: string;
 	isExpanded: boolean;
 }) {
 	const vignette = `radial-gradient(ellipse at center, transparent 20%, ${colors.bgVignette} 100%),
@@ -297,6 +300,7 @@ function Hero({
 				position: "relative",
 				height: heroHeight,
 				flexShrink: 0,
+				containerType: "inline-size",
 			}}
 		>
 			{song.artistImageUrl ? (
@@ -331,69 +335,66 @@ function Hero({
 				}}
 			/>
 
-			{song.albumArtUrl ? (
-				<img
-					src={song.albumArtUrl}
-					alt=""
-					data-panel-album-art=""
-					style={{
-						position: "absolute",
-						left: PADDING_X,
-						bottom: ALBUM_ART_BOTTOM,
-						width: ALBUM_ART_SIZE,
-						height: ALBUM_ART_SIZE,
-						objectFit: "cover",
-						// Layered shadow (contact + ambient) reads as depth against the hero; the old
-						// single bg-coloured glow vanished into the matching dark background.
-						boxShadow:
-							"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
-						// Crisp 1px edge: pure white, not a tinted neutral (which reads as dirt). outline,
-						// not box-shadow, so the close-morph shadow-strip can't erase it.
-						outline: "1px solid rgba(255, 255, 255, 0.1)",
-						outlineOffset: "-1px",
-						zIndex: 3,
-						// Shared-element morph target for the clicked card's album art. The
-						// box-shadow above is stripped during close (styles.css, keyed off
-						// data-panel-album-art) so it isn't baked into the morph snapshot.
-						viewTransitionName: isExpanded ? "song-album" : "none",
-					}}
-				/>
-			) : (
-				<div
-					data-panel-album-art=""
-					style={{
-						position: "absolute",
-						left: PADDING_X,
-						bottom: ALBUM_ART_BOTTOM,
-						width: ALBUM_ART_SIZE,
-						height: ALBUM_ART_SIZE,
-						background: colors.surface,
-						// Match the real art's lift + pure-white edge so the placeholder reads as the same object.
-						boxShadow:
-							"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
-						outline: "1px solid rgba(255, 255, 255, 0.1)",
-						outlineOffset: "-1px",
-						zIndex: 3,
-						viewTransitionName: isExpanded ? "song-album" : "none",
-					}}
-				/>
-			)}
-
+			{/* One grid for cover, title block, genres and sonic numbers. Wide panels
+			stack genres over the numbers beside the title; on narrow ones that row
+			squeezed the title to a letter, so genres and numbers drop to their own row
+			under the cover. The switch is a container query on the hero (styles.css,
+			.song-hero-meta), so it follows the panel's width rather than the viewport. */}
 			<div
+				className="song-hero-meta"
 				style={{
 					position: "absolute",
-					left: PADDING_X + ALBUM_ART_SIZE + 16,
+					left: PADDING_X,
 					right: PADDING_X,
 					bottom: ALBUM_ART_BOTTOM,
-					display: "flex",
-					alignItems: "flex-end",
-					gap: 14,
-					overflow: "hidden",
-					zIndex: 4,
+					zIndex: 3,
 				}}
 			>
-				<div style={{ flex: 1, minWidth: 0 }}>
+				{song.albumArtUrl ? (
+					<img
+						src={song.albumArtUrl}
+						alt=""
+						data-panel-album-art=""
+						style={{
+							gridArea: "cover",
+							width: ALBUM_ART_SIZE,
+							height: ALBUM_ART_SIZE,
+							objectFit: "cover",
+							// Layered shadow (contact + ambient) reads as depth against the hero; the old
+							// single bg-coloured glow vanished into the matching dark background.
+							boxShadow:
+								"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
+							// Crisp 1px edge: pure white, not a tinted neutral (which reads as dirt). outline,
+							// not box-shadow, so the close-morph shadow-strip can't erase it.
+							outline: "1px solid rgba(255, 255, 255, 0.1)",
+							outlineOffset: "-1px",
+							// Shared-element morph target for the clicked card's album art. The
+							// box-shadow above is stripped during close (styles.css, keyed off
+							// data-panel-album-art) so it isn't baked into the morph snapshot.
+							viewTransitionName: isExpanded ? "song-album" : "none",
+						}}
+					/>
+				) : (
 					<div
+						data-panel-album-art=""
+						style={{
+							gridArea: "cover",
+							width: ALBUM_ART_SIZE,
+							height: ALBUM_ART_SIZE,
+							background: colors.surface,
+							// Match the real art's lift + pure-white edge so the placeholder reads as the same object.
+							boxShadow:
+								"0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.45)",
+							outline: "1px solid rgba(255, 255, 255, 0.1)",
+							outlineOffset: "-1px",
+							viewTransitionName: isExpanded ? "song-album" : "none",
+						}}
+					/>
+				)}
+
+				<div style={{ gridArea: "identity", minWidth: 0 }}>
+					<div
+						className="song-hero-title"
 						style={{
 							fontFamily: fonts.display,
 							fontWeight: 400,
@@ -401,8 +402,6 @@ function Hero({
 							lineHeight: 1.1,
 							color: colors.text,
 							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
 							viewTransitionName: isExpanded ? "song-title" : "none",
 						}}
 					>
@@ -440,26 +439,36 @@ function Hero({
 						{song.year != null ? `${song.album} · ${song.year}` : song.album}
 					</div>
 				</div>
-				{hasSonicNumbers && <SonicNumbers song={song} colors={colors} />}
-			</div>
 
-			{song.genres.length > 0 && (
-				<div
-					style={{
-						position: "absolute",
-						right: PADDING_X,
-						// Sit directly above the sonic numbers (or at their baseline when
-						// there are none). Anchored to the hero — not the overflow-clipped
-						// bottom row — so the leftward fan isn't cut off.
-						bottom: hasSonicNumbers
-							? ALBUM_ART_BOTTOM + SONIC_NUMBERS_HEIGHT + GENRE_STACK_GAP
-							: ALBUM_ART_BOTTOM,
-						zIndex: 4,
-					}}
-				>
-					<GenreCluster genres={song.genres} colors={colors} />
-				</div>
-			)}
+				{song.genres.length > 0 && (
+					// Zero-width cell holding the pill's height: the fan grows out of it
+					// over its neighbours instead of resizing the grid column, which would
+					// reflow the title every time the fan opens.
+					<div
+						className="song-hero-genres"
+						style={{
+							gridArea: "genres",
+							position: "relative",
+							width: 0,
+							height: GENRE_PILL_HEIGHT,
+							zIndex: 1,
+						}}
+					>
+						<div
+							className="song-hero-genres-anchor"
+							style={{ position: "absolute", bottom: 0 }}
+						>
+							<GenreCluster genres={song.genres} colors={colors} />
+						</div>
+					</div>
+				)}
+
+				{hasSonicNumbers && (
+					<div className="song-hero-sonic" style={{ gridArea: "sonic" }}>
+						<SonicNumbers song={song} colors={colors} />
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }
@@ -554,7 +563,7 @@ function UnreadState({
 	contentFetchStatus?: "lyrics" | "instrumental" | "not_found" | null;
 	isEnrichmentRunning?: boolean;
 	isReadLoading?: boolean;
-	heroHeight: number;
+	heroHeight: string;
 	lockedCta?: LockedCta;
 }) {
 	// Locked is a terminal CTA, centered in the hero-free viewport space.
@@ -721,7 +730,7 @@ function LockedState({
 	cta,
 }: {
 	colors: Palette;
-	heroHeight: number;
+	heroHeight: string;
 	cta?: LockedCta;
 }) {
 	const [hovered, setHovered] = useState(false);
@@ -740,8 +749,8 @@ function LockedState({
 				// Fill the viewport height the hero leaves, then lift the CTA above the
 				// midpoint (see LOCKED_LIFT) — the extra bottom padding is what raises it.
 				// Proportional, so it tracks viewport and hero size.
-				minHeight: `calc(100vh - ${heroHeight}px)`,
-				paddingBottom: `calc((100vh - ${heroHeight}px) * ${LOCKED_LIFT})`,
+				minHeight: `calc(100vh - ${heroHeight})`,
+				paddingBottom: `calc((100vh - ${heroHeight}) * ${LOCKED_LIFT})`,
 			}}
 		>
 			<div

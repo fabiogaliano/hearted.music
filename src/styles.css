@@ -211,6 +211,10 @@ code {
      fixed side panel and the list pads itself by the panel's width. */
   --song-panel-width: 100dvw;
   --song-list-gutter: 0px;
+  /* Album-art-only hero (no artist image). The full-screen panel puts genres and
+     numbers on their own row under the cover, so it needs the extra height to
+     keep the title clear of the close button. */
+  --song-hero-no-image-height: 260px;
 }
 
 @media (min-width: 768px) {
@@ -223,6 +227,7 @@ code {
   :root {
     --song-panel-width: clamp(440px, 50vw, 760px);
     --song-list-gutter: var(--song-panel-width);
+    --song-hero-no-image-height: 200px;
   }
 }
 
@@ -749,6 +754,66 @@ code {
 ::view-transition-new(song-artist) {
   /* Show new snapshot immediately — the group morph handles the movement */
   animation: none;
+}
+
+/* Song panel hero: cover, title block, genres and sonic numbers. Desktop panels
+   are never narrower than 512px, so 500px only catches the full-screen mobile
+   panel, where genres and numbers beside the title left it one letter wide. */
+.song-hero-meta {
+  display: grid;
+  grid-template-areas:
+    "cover identity genres"
+    "cover identity sonic";
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto;
+  column-gap: 16px;
+  align-items: end;
+}
+.song-hero-meta .song-hero-title {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.song-hero-meta .song-hero-genres {
+  justify-self: end;
+}
+.song-hero-meta .song-hero-genres-anchor {
+  right: 0;
+}
+.song-hero-meta .song-hero-sonic {
+  margin-top: 12px;
+}
+
+@container (max-width: 500px) {
+  .song-hero-meta {
+    grid-template-areas:
+      "cover identity identity"
+      "genres genres sonic";
+    grid-template-rows: auto auto;
+    row-gap: 20px;
+  }
+  /* With the row to itself the title can take two lines instead of truncating. */
+  .song-hero-meta .song-hero-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    text-wrap: balance;
+  }
+  .song-hero-meta .song-hero-genres {
+    justify-self: start;
+    margin-bottom: 4px;
+  }
+  .song-hero-meta .song-hero-genres-anchor {
+    right: auto;
+    left: 0;
+  }
+  .song-hero-meta .song-hero-sonic {
+    margin-top: 0;
+  }
+  /* No genres and no numbers: the second row is empty, so drop its gap. */
+  .song-hero-meta:not(:has(.song-hero-genres, .song-hero-sonic)) {
+    row-gap: 0;
+  }
 }
 
 
