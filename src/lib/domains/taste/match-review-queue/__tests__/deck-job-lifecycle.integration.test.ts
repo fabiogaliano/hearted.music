@@ -15,8 +15,12 @@
  *
  * The claim is global (not account-scoped), so claimed jobs are seeded as the
  * highest-priority kind with an ancient available_at to win the ORDER BY over
- * any unrelated local row. Auto-skipped unless DATABASE_URL and SUPABASE_URL
- * both point at the local stack.
+ * any unrelated local row. The sweep and defer reset available_at to ~now(),
+ * so a test restores the ancient value before reclaiming
+ * (restoreClaimPriority); otherwise a pending job another file just enqueued
+ * outranks it. Every test runs against such a competing job so that ordering
+ * fails deterministically instead of only under parallel files. Auto-skipped
+ * unless DATABASE_URL and SUPABASE_URL both point at the local stack.
  */
 
 import { Result } from "better-result";
@@ -54,7 +58,10 @@ const LEASE_SECONDS = 900;
 // Seeded running rows stand in for a claim, so they carry a known token.
 const SEED_TOKEN = "seeded-claim-token";
 
+const SEED_AVAILABLE_AT = "2000-01-01T00:00:00Z";
+
 let accountId: string | null = null;
+let competitorAccountId: string | null = null;
 
 function account(): string {
 	if (!accountId) throw new Error("fixture not seeded");
@@ -80,13 +87,17 @@ async function seedJob(opts: SeedJob): Promise<string> {
     ) VALUES (
       ${id}, ${account()}, ${opts.orientation ?? "song"}, ${"capture_ahead"},
       ${`test:${id}`}, ${opts.status}, ${opts.attempts ?? 0},
-      ${opts.maxAttempts ?? 3}, ${"2000-01-01T00:00:00Z"}::timestamptz,
+      ${opts.maxAttempts ?? 3}, ${SEED_AVAILABLE_AT}::timestamptz,
       CASE WHEN ${heartbeatAge}::int IS NULL THEN NULL
            ELSE now() - make_interval(secs => ${heartbeatAge}::int) END,
       ${opts.status === "running" ? SEED_TOKEN : null}
     )
   `;
 	return id;
+}
+
+async function restoreClaimPriority(jobId: string): Promise<void> {
+	await db()`UPDATE match_review_deck_job SET available_at = ${SEED_AVAILABLE_AT}::timestamptz WHERE id = ${jobId}`;
 }
 
 interface JobRow {
@@ -138,13 +149,26 @@ beforeEach(async () => {
 	if (!IS_LOCAL) return;
 	accountId = crypto.randomUUID();
 	await db()`INSERT INTO account(id, spotify_id) VALUES (${accountId}, ${`test-${accountId}`})`;
+
+	// Stands in for a deck another integration file is starting concurrently:
+	// a due capture_ahead job younger than the seed, but older than any job the
+	// sweep or a release just made due.
+	competitorAccountId = crypto.randomUUID();
+	await db()`INSERT INTO account(id, spotify_id) VALUES (${competitorAccountId}, ${`test-${competitorAccountId}`})`;
+	await db()`
+    INSERT INTO match_review_deck_job(account_id, orientation, kind, idempotency_key, available_at)
+    VALUES (${competitorAccountId}, ${"song"}, ${"capture_ahead"}, ${`test:competitor:${competitorAccountId}`}, now() - interval '1 minute')
+  `;
 });
 
 afterEach(async () => {
-	if (!IS_LOCAL || !accountId) return;
+	if (!IS_LOCAL) return;
 	// Account cascade clears the deck jobs.
-	await db()`DELETE FROM account WHERE id = ${accountId}`;
+	for (const id of [accountId, competitorAccountId]) {
+		if (id) await db()`DELETE FROM account WHERE id = ${id}`;
+	}
 	accountId = null;
+	competitorAccountId = null;
 });
 
 afterAll(async () => {
@@ -182,7 +206,7 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 
 		expect(await claimOwn()).not.toBe(jobId);
 
-		await db()`UPDATE match_review_deck_job SET available_at = now() - interval '1 second' WHERE id = ${jobId}`;
+		await restoreClaimPriority(jobId);
 		expect(await claimOwn()).toBe(jobId);
 		expect((await readJob(jobId)).attempts).toBe(2);
 	});
@@ -191,7 +215,7 @@ describe.skipIf(!IS_LOCAL)("claim → settle", () => {
 		const jobId = await seedJob({ status: "pending", maxAttempts: 1 });
 		const token = await claimToken(jobId);
 		expect(await deferDeckJob(jobId, token, 30)).toHaveOkValue(true);
-		await db()`UPDATE match_review_deck_job SET available_at = now() - interval '1 second' WHERE id = ${jobId}`;
+		await restoreClaimPriority(jobId);
 
 		expect(await claimOwn()).not.toBe(jobId);
 
@@ -255,6 +279,7 @@ describe.skipIf(!IS_LOCAL)(
 			const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
 			if (Result.isError(swept)) throw swept.error;
 			expect(swept.value.map((j) => j.id)).toContain(jobId);
+			await restoreClaimPriority(jobId);
 			const liveToken = await claimToken(jobId);
 			// Backdated so a leaked stale heartbeat is observable.
 			await db()`UPDATE match_review_deck_job SET heartbeat_at = now() - interval '60 seconds' WHERE id = ${jobId}`;
@@ -324,6 +349,7 @@ describe.skipIf(!IS_LOCAL)("release after the poll loop stopped", () => {
 		const swept = await sweepStaleDeckJobs(LEASE_SECONDS);
 		if (Result.isError(swept)) throw swept.error;
 		expect(swept.value.map((j) => j.id)).toContain(jobId);
+		await restoreClaimPriority(jobId);
 		const liveToken = await claimToken(jobId);
 
 		expect(await releaseDeckJob(stale)).toHaveOkValue(false);
@@ -361,6 +387,7 @@ describe.skipIf(!IS_LOCAL)("lease-expiry sweep", () => {
 		expect(reclaimed.available_is_past).toBe(true);
 		expect((await readJob(liveId)).status).toBe("running");
 
+		await restoreClaimPriority(staleId);
 		expect(await claimOwn()).toBe(staleId);
 		expect((await readJob(staleId)).attempts).toBe(2);
 	});
