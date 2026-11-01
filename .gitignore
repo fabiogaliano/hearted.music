@@ -46,3 +46,5 @@ scripts/db/migrate/.runbook.local.md
 
 # control-panel local action-history store (bun:sqlite; recall/recovery only)
 control-panel/.data/
+.mockpit/*
+!.mockpit/rules.md
