@@ -1,6 +1,7 @@
 import * as Sentry from "@sentry/react";
 import type { AnyRouter } from "@tanstack/router-core";
 import { clientEnv } from "@/env.public";
+import { SENTRY_DATA_COLLECTION } from "@/lib/observability/sentry-data-collection";
 
 export const RUNTIME_TAG = "web" as const;
 
@@ -30,11 +31,11 @@ export function initSentry(router: AnyRouter): void {
 
 	sentryInitialized = true;
 
-	// Error monitoring only. No cookies, sendDefaultPii:false, no session
-	// replay — this is our legitimate-interest baseline that may run before
-	// consent. The replay integration is added later via enableSentryReplay()
-	// once the user opts in (it records the DOM, which EU DPAs treat as
-	// personal data requiring consent).
+	// Error monitoring only. No cookies, no user IP, no session replay —
+	// this is our legitimate-interest baseline that may run before consent.
+	// The replay integration is added later via enableSentryReplay() once the
+	// user opts in (it records the DOM, which EU DPAs treat as personal data
+	// requiring consent).
 	Sentry.init({
 		dsn: clientEnv.VITE_SENTRY_DSN,
 		environment: clientEnv.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
@@ -47,13 +48,21 @@ export function initSentry(router: AnyRouter): void {
 		// distinct path, so one filter rule can't blind both analytics and errors.
 		tunnel: "/api/pulse-s",
 		integrations: [
-			Sentry.tanstackRouterBrowserTracingIntegration(router),
-			// Default lifecycle is "route": browserSessionIntegration sends a fresh
-			// session envelope on every soft navigation, which floods the tunnel for
-			// an active SPA user. "page" keeps release-health (one session per hard
-			// load) without the per-navigation envelope storm — the real cause of
-			// the tunnel 429s.
+			Sentry.tanstackRouterBrowserTracingIntegration(router, {
+				// One set of vitals per page lifetime, as the existing dashboards
+				// and p75s were built on: per-soft-navigation and bfcache-restore
+				// vitals are separate populations that would pull those aggregates
+				// down.
+				webVitals: { softNavigations: false, bfcacheNavigations: false },
+			}),
+			// Pinned rather than left to the default: the "route" lifecycle sends
+			// a fresh session envelope on every soft navigation, which floods the
+			// tunnel for an active SPA user — the real cause of the tunnel 429s.
+			// "page" keeps release-health (one session per hard load).
 			Sentry.browserSessionIntegration({ lifecycle: "page" }),
+			// Browser tracing doesn't turn performance.mark/measure entries into
+			// spans on its own; this keeps them in page-load traces.
+			Sentry.userTimingIntegration(),
 		],
 		// Drop errors thrown inside third-party widget bundles (e.g. UserJot's
 		// SDK retrying a failed identify) — they aren't ours to fix and would
@@ -64,9 +73,15 @@ export function initSentry(router: AnyRouter): void {
 		// consent; they're inert until then.
 		replaysSessionSampleRate: 0.01,
 		replaysOnErrorSampleRate: 1.0,
-		sendDefaultPii: false,
-		enableLogs: false,
-		initialScope: { tags: { runtime: RUNTIME_TAG } },
+		dataCollection: SENTRY_DATA_COLLECTION,
+		// A synthetic call-site stack on captureMessage events would regroup
+		// every existing message issue and count those sessions as errored.
+		attachStacktrace: false,
+		// Tags reach errors only; the attribute carries it onto spans.
+		initialScope: {
+			tags: { runtime: RUNTIME_TAG },
+			attributes: { runtime: RUNTIME_TAG },
+		},
 	});
 }
 

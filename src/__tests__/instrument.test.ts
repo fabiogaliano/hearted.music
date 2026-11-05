@@ -48,6 +48,19 @@ describe("web-server Sentry instrumentation", () => {
 		expect(tags).toEqual({ service: "web-server" });
 	});
 
+	// Sentry collects these whenever dataCollection is left unset.
+	it("collects no user IPs, cookies or request bodies", async () => {
+		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: "production" });
+
+		expect(mockInit.mock.calls[0]?.[0]?.dataCollection).toMatchObject({
+			userInfo: false,
+			cookies: false,
+			httpBodies: [],
+			databaseQueryData: false,
+			genAI: { inputs: false, outputs: false },
+		});
+	});
+
 	// Regression: 2026-08-01 local errors reached the production project
 	// because the local .env carried the production DSN.
 	it.each([

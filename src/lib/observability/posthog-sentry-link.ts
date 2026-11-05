@@ -41,7 +41,7 @@ export function linkPostHogToSentry(posthog: PostHogInterface): void {
 	// class. The class implements the Sentry v7 `setupOnce(addGlobalEventProcessor)`
 	// API; on Sentry v8+ `setupOnce` is called with no arguments, so it throws
 	// "o is not a function". The functional form returns a `processEvent`-based
-	// integration that's compatible with our @sentry/react v10.
+	// integration that's compatible with our @sentry/react.
 	const sentryIntegration = (
 		posthog as PostHogInterface & {
 			sentryIntegration?: (

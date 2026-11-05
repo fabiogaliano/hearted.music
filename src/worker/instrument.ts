@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { applyServerErrorFingerprint } from "@/lib/observability/sentry-before-send";
+import { SENTRY_DATA_COLLECTION } from "@/lib/observability/sentry-data-collection";
 import { registerWorkerFatalHandlers } from "./fatal-handlers";
 import { initPostHogOtel } from "./posthog-otel";
 
@@ -34,12 +35,21 @@ if (dsn && !isLocalEnvironment) {
 		// Coolify injects SOURCE_COMMIT at runtime; APP_RELEASE is a manual override.
 		release: process.env.SOURCE_COMMIT ?? process.env.APP_RELEASE,
 		tracesSampleRate: 0.01,
-		sendDefaultPii: false,
-		enableLogs: false,
+		dataCollection: SENTRY_DATA_COLLECTION,
+		// A synthetic call-site stack on captureMessage events would regroup
+		// every existing message issue and count those sessions as errored.
+		attachStacktrace: false,
 		beforeSend: applyServerErrorFingerprint,
+		// `enableOpenTelemetrySetup` stays off: if Sentry claims the global OTel
+		// tracer provider first, initPostHogOtel's NodeSDK registration is
+		// silently rejected and no LLM span reaches PostHog.
 		// Not `runtime`: Sentry ingestion overwrites that tag from the event's
 		// runtime context ("bun 1.x"), so alert filters on it never match.
-		initialScope: { tags: { service: "worker" } },
+		// Tags reach errors only; the attribute carries it onto spans.
+		initialScope: {
+			tags: { service: "worker" },
+			attributes: { service: "worker" },
+		},
 	});
 }
 

@@ -48,7 +48,7 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY package.json tsconfig.json ./
 COPY --from=build /app/dist ./dist
 COPY src/serve.ts src/instrument.ts ./src/
-COPY src/lib/observability/sentry-before-send.ts ./src/lib/observability/
+COPY src/lib/observability/sentry-before-send.ts src/lib/observability/sentry-data-collection.ts ./src/lib/observability/
 
 # src/instrument.ts tags Sentry events with the release the sourcemaps were
 # uploaded under. Declared last: the value changes every commit and is in the

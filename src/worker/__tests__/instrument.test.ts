@@ -54,6 +54,19 @@ describe("worker Sentry instrumentation", () => {
 		expect(tags).toEqual({ service: "worker" });
 	});
 
+	// Sentry collects these whenever dataCollection is left unset.
+	it("collects no user IPs, cookies, request bodies or LLM prompts", async () => {
+		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: "production" });
+
+		expect(mockInit.mock.calls[0]?.[0]?.dataCollection).toMatchObject({
+			userInfo: false,
+			cookies: false,
+			httpBodies: [],
+			databaseQueryData: false,
+			genAI: { inputs: false, outputs: false },
+		});
+	});
+
 	it.each([
 		"development",
 		"test",

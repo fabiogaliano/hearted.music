@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/bun";
 import { applyServerErrorFingerprint } from "@/lib/observability/sentry-before-send";
+import { SENTRY_DATA_COLLECTION } from "@/lib/observability/sentry-data-collection";
 
 // Preloaded by `bun --preload` ahead of src/serve.ts so Sentry is initialised
 // once per process, before the server bundle loads. Never runs under
@@ -32,14 +33,20 @@ if (dsn && !LOCAL_ENVIRONMENTS.has(environment)) {
 		// uploaded sourcemaps with; Dockerfile.app sets it.
 		release: process.env.APP_RELEASE,
 		tracesSampleRate: 0.05,
-		sendDefaultPii: false,
+		dataCollection: SENTRY_DATA_COLLECTION,
+		// A synthetic call-site stack on captureMessage events would regroup
+		// every existing message issue and count those sessions as errored.
+		attachStacktrace: false,
 		// Error-level console output only: server code logs its failures with
 		// console.error, and anything noisier would swamp the log quota.
-		enableLogs: true,
 		integrations: [Sentry.consoleLoggingIntegration({ levels: ["error"] })],
 		beforeSend: applyServerErrorFingerprint,
 		// Not `runtime`: Sentry ingestion overwrites that tag from the event's
 		// runtime context ("bun 1.x"), so alert filters on it never match.
-		initialScope: { tags: { service: "web-server" } },
+		// Tags reach errors only; the attribute carries it onto spans and logs.
+		initialScope: {
+			tags: { service: "web-server" },
+			attributes: { service: "web-server" },
+		},
 	});
 }
