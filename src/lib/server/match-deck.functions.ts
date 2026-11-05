@@ -131,7 +131,7 @@ const StartMatchDeckSchema = z.object({ orientation: MatchOrientationSchema });
  */
 export const startOrResumeMatchDeck = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => StartMatchDeckSchema.parse(data))
+	.validator((data) => StartMatchDeckSchema.parse(data))
 	.handler(async ({ data, context }): Promise<StartOrResumeMatchDeckResult> => {
 		const accountId = context.session.accountId;
 		const result = await resolveMatchDeck(accountId, data.orientation, "entry");
@@ -151,7 +151,7 @@ const ReadMatchDeckCardSchema = z.object({ itemId: z.uuid() });
  */
 export const readMatchDeckCard = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => ReadMatchDeckCardSchema.parse(data))
+	.validator((data) => ReadMatchDeckCardSchema.parse(data))
 	.handler(async ({ data, context }): Promise<MatchReviewItemRead> => {
 		const accountId = context.session.accountId;
 		const read = await resolveDeckCard(accountId, data.itemId);
@@ -240,7 +240,7 @@ function dispatchDeckAction(
  */
 export const submitMatchDeckAction = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => SubmitMatchDeckActionSchema.parse(data))
+	.validator((data) => SubmitMatchDeckActionSchema.parse(data))
 	.handler(async ({ data, context }): Promise<SubmitMatchDeckActionResult> => {
 		const accountId = context.session.accountId;
 		const action = data;

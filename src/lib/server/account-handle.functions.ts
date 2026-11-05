@@ -88,7 +88,7 @@ export type ClaimHandleAndAdvanceResult =
  */
 export const checkHandleAvailability = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator(handleInputSchema)
+	.validator(handleInputSchema)
 	.handler(
 		async ({ data, context }): Promise<CheckHandleAvailabilityResult> => {
 			const { session: authSession, account } = context;
@@ -184,7 +184,7 @@ export const checkHandleAvailability = createServerFn({ method: "GET" })
  */
 export const claimHandleAndAdvance = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(handleInputSchema)
+	.validator(handleInputSchema)
 	.handler(async ({ data, context }): Promise<ClaimHandleAndAdvanceResult> => {
 		const { session: authSession, account } = context;
 		const accountId = authSession.accountId;

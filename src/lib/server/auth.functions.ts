@@ -20,7 +20,7 @@ export const getAuthStatus = createServerFn({ method: "GET" }).handler(
 // a server fn call on it after hydration. returnTo rides along to the landing
 // page so signing in lands back on the deep link instead of the dashboard.
 export const requireAuthSession = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ returnTo: returnPathSchema }))
+	.validator(z.object({ returnTo: returnPathSchema }))
 	.handler(async ({ data }) => {
 		const auth = await getAuthSession();
 		if (!auth) {

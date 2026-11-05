@@ -17,7 +17,7 @@ const mockAuthContext = {
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: () => builder(),
+		validator: () => builder(),
 		handler:
 			(fn: (...args: unknown[]) => unknown) => (input?: { data?: unknown }) =>
 				fn({ context: mockAuthContext, data: input?.data }),

@@ -34,7 +34,7 @@ const { mockAuthContext, mockSignBridgeRequest, mockFetch, mockEnv } =
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: (validator: (data: unknown) => unknown) => {
+		validator: (validator: (data: unknown) => unknown) => {
 			const b = builder();
 			return {
 				...b,

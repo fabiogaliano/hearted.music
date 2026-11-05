@@ -25,7 +25,7 @@ vi.mock("@/lib/domains/library/accounts/queries", () => ({
 vi.mock("@tanstack/react-start", () => {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const builder = (): any => ({
-		inputValidator: () => builder(),
+		validator: () => builder(),
 		handler: (fn: unknown) => fn,
 	});
 	return { createServerFn: builder };

@@ -116,7 +116,7 @@ function mapLikedSongPageRow(row: LikedSongListRow): LikedSong {
 
 export const getLikedSongsPage = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongsPageSchema.parse(data))
+	.validator((data) => LikedSongsPageSchema.parse(data))
 	.handler(async ({ data, context }): Promise<LikedSongsPageResult> => {
 		const { session } = context;
 
@@ -155,7 +155,7 @@ function toPageResult(page: LikedSongsPage): LikedSongsPageResult {
 /** The page above a list that a deep link started mid-library. */
 export const getLikedSongsNewerPage = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongsNewerPageSchema.parse(data))
+	.validator((data) => LikedSongsNewerPageSchema.parse(data))
 	.handler(async ({ data, context }): Promise<LikedSongsPageResult> => {
 		const { session } = context;
 
@@ -177,7 +177,7 @@ export const getLikedSongsNewerPage = createServerFn({ method: "GET" })
 
 export const getLikedSongBySlug = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongBySlugSchema.parse(data))
+	.validator((data) => LikedSongBySlugSchema.parse(data))
 	.handler(async ({ data, context }): Promise<LikedSong | null> => {
 		const { session } = context;
 
@@ -202,7 +202,7 @@ export const getLikedSongBySlug = createServerFn({ method: "GET" })
  */
 export const getLikedSongAnalysis = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongAnalysisSchema.parse(data))
+	.validator((data) => LikedSongAnalysisSchema.parse(data))
 	.handler(async ({ data, context }): Promise<StoredAnalysis | null> => {
 		const { session } = context;
 
@@ -218,7 +218,7 @@ export const getLikedSongAnalysis = createServerFn({ method: "GET" })
 
 export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => LikedSongsDeepLinkBootstrapSchema.parse(data))
+	.validator((data) => LikedSongsDeepLinkBootstrapSchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<LikedSongsDeepLinkBootstrapResult> => {
 			const { session } = context;

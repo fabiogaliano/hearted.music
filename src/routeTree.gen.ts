@@ -9,79 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as VerifyEmailRouteImport } from './routes/verify-email'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as HealthRouteImport } from './routes/health'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as FaqRouteImport } from './routes/faq'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
-import { Route as ApiPulseSRouteImport } from './routes/api/pulse-s'
-import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
-import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
+import { Route as FaqRouteImport } from './routes/faq'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as HealthRouteImport } from './routes/health'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as ApiPulseHSplatRouteImport } from './routes/api/pulse-h/$'
-import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/token'
-import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
-import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AuthenticatedPlaylistsNewRouteImport } from './routes/_authenticated/playlists.new'
-import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
-import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
+import { Route as AuthenticatedLikedSongsRouteImport } from './routes/_authenticated/liked-songs'
+import { Route as AuthenticatedMatchRouteImport } from './routes/_authenticated/match'
+import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedPlaylistsRouteImport } from './routes/_authenticated/playlists'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as ApiBillingBridgeRouteImport } from './routes/api/billing-bridge'
+import { Route as ApiPulseSRouteImport } from './routes/api/pulse-s'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthenticatedCheckoutCancelRouteImport } from './routes/_authenticated/checkout/cancel'
+import { Route as AuthenticatedCheckoutSuccessRouteImport } from './routes/_authenticated/checkout/success'
+import { Route as AuthenticatedPlaylistsPlaylistRefRouteImport } from './routes/_authenticated/playlists.$playlistRef'
+import { Route as AuthenticatedPlaylistsNewRouteImport } from './routes/_authenticated/playlists.new'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiExtensionStatusRouteImport } from './routes/api/extension/status'
+import { Route as ApiExtensionSyncRouteImport } from './routes/api/extension/sync'
+import { Route as ApiExtensionTokenRouteImport } from './routes/api/extension/token'
+import { Route as ApiPulseHSplatRouteImport } from './routes/api/pulse-h/$'
 import { Route as AuthenticatedPlaylistsNewIndexRouteImport } from './routes/_authenticated/playlists.new.index'
-import { Route as ApiExtensionReleaseYearPendingRouteImport } from './routes/api/extension/release-year/pending'
-import { Route as ApiExtensionReleaseYearCheckedRouteImport } from './routes/api/extension/release-year/checked'
-import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
 import { Route as AuthenticatedPlaylistsNewStudioRouteImport } from './routes/_authenticated/playlists.new.studio'
+import { Route as ApiExtensionArtistsCheckRouteImport } from './routes/api/extension/artists/check'
+import { Route as ApiExtensionReleaseYearCheckedRouteImport } from './routes/api/extension/release-year/checked'
+import { Route as ApiExtensionReleaseYearPendingRouteImport } from './routes/api/extension/release-year/pending'
 
-const VerifyEmailRoute = VerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HealthRoute = HealthRouteImport.update({
-  id: '/health',
-  path: '/health',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FaqRoute = FaqRouteImport.update({
-  id: '/faq',
-  path: '/faq',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AtChar123handleChar125Route = AtChar123handleChar125RouteImport.update({
@@ -93,44 +58,49 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const FaqRoute = FaqRouteImport.update({
+  id: '/faq',
+  path: '/faq',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthLogoutRoute = AuthLogoutRouteImport.update({
-  id: '/auth/logout',
-  path: '/auth/logout',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPulseSRoute = ApiPulseSRouteImport.update({
-  id: '/api/pulse-s',
-  path: '/api/pulse-s',
+const HealthRoute = HealthRouteImport.update({
+  id: '/health',
+  path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
-  id: '/api/billing-bridge',
-  path: '/api/billing-bridge',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPlaylistsRoute = AuthenticatedPlaylistsRouteImport.update({
-  id: '/playlists',
-  path: '/playlists',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedMatchRoute = AuthenticatedMatchRouteImport.update({
-  id: '/match',
-  path: '/match',
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedLikedSongsRoute = AuthenticatedLikedSongsRouteImport.update({
@@ -138,47 +108,46 @@ const AuthenticatedLikedSongsRoute = AuthenticatedLikedSongsRouteImport.update({
   path: '/liked-songs',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedMatchRoute = AuthenticatedMatchRouteImport.update({
+  id: '/match',
+  path: '/match',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPulseHSplatRoute = ApiPulseHSplatRouteImport.update({
-  id: '/api/pulse-h/$',
-  path: '/api/pulse-h/$',
+const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPlaylistsRoute = AuthenticatedPlaylistsRouteImport.update({
+  id: '/playlists',
+  path: '/playlists',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiBillingBridgeRoute = ApiBillingBridgeRouteImport.update({
+  id: '/api/billing-bridge',
+  path: '/api/billing-bridge',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiExtensionTokenRoute = ApiExtensionTokenRouteImport.update({
-  id: '/api/extension/token',
-  path: '/api/extension/token',
+const ApiPulseSRoute = ApiPulseSRouteImport.update({
+  id: '/api/pulse-s',
+  path: '/api/pulse-s',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiExtensionSyncRoute = ApiExtensionSyncRouteImport.update({
-  id: '/api/extension/sync',
-  path: '/api/extension/sync',
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiExtensionStatusRoute = ApiExtensionStatusRouteImport.update({
-  id: '/api/extension/status',
-  path: '/api/extension/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedPlaylistsNewRoute =
-  AuthenticatedPlaylistsNewRouteImport.update({
-    id: '/new',
-    path: '/new',
-    getParentRoute: () => AuthenticatedPlaylistsRoute,
-  } as any)
-const AuthenticatedPlaylistsPlaylistRefRoute =
-  AuthenticatedPlaylistsPlaylistRefRouteImport.update({
-    id: '/$playlistRef',
-    path: '/$playlistRef',
-    getParentRoute: () => AuthenticatedPlaylistsRoute,
+const AuthenticatedCheckoutCancelRoute =
+  AuthenticatedCheckoutCancelRouteImport.update({
+    id: '/checkout/cancel',
+    path: '/checkout/cancel',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCheckoutSuccessRoute =
   AuthenticatedCheckoutSuccessRouteImport.update({
@@ -186,22 +155,59 @@ const AuthenticatedCheckoutSuccessRoute =
     path: '/checkout/success',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedCheckoutCancelRoute =
-  AuthenticatedCheckoutCancelRouteImport.update({
-    id: '/checkout/cancel',
-    path: '/checkout/cancel',
-    getParentRoute: () => AuthenticatedRouteRoute,
+const AuthenticatedPlaylistsPlaylistRefRoute =
+  AuthenticatedPlaylistsPlaylistRefRouteImport.update({
+    id: '/$playlistRef',
+    path: '/$playlistRef',
+    getParentRoute: () => AuthenticatedPlaylistsRoute,
   } as any)
+const AuthenticatedPlaylistsNewRoute =
+  AuthenticatedPlaylistsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedPlaylistsRoute,
+  } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionStatusRoute = ApiExtensionStatusRouteImport.update({
+  id: '/api/extension/status',
+  path: '/api/extension/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionSyncRoute = ApiExtensionSyncRouteImport.update({
+  id: '/api/extension/sync',
+  path: '/api/extension/sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionTokenRoute = ApiExtensionTokenRouteImport.update({
+  id: '/api/extension/token',
+  path: '/api/extension/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPulseHSplatRoute = ApiPulseHSplatRouteImport.update({
+  id: '/api/pulse-h/$',
+  path: '/api/pulse-h/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedPlaylistsNewIndexRoute =
   AuthenticatedPlaylistsNewIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedPlaylistsNewRoute,
   } as any)
-const ApiExtensionReleaseYearPendingRoute =
-  ApiExtensionReleaseYearPendingRouteImport.update({
-    id: '/api/extension/release-year/pending',
-    path: '/api/extension/release-year/pending',
+const AuthenticatedPlaylistsNewStudioRoute =
+  AuthenticatedPlaylistsNewStudioRouteImport.update({
+    id: '/studio',
+    path: '/studio',
+    getParentRoute: () => AuthenticatedPlaylistsNewRoute,
+  } as any)
+const ApiExtensionArtistsCheckRoute =
+  ApiExtensionArtistsCheckRouteImport.update({
+    id: '/api/extension/artists/check',
+    path: '/api/extension/artists/check',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiExtensionReleaseYearCheckedRoute =
@@ -210,17 +216,11 @@ const ApiExtensionReleaseYearCheckedRoute =
     path: '/api/extension/release-year/checked',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiExtensionArtistsCheckRoute =
-  ApiExtensionArtistsCheckRouteImport.update({
-    id: '/api/extension/artists/check',
-    path: '/api/extension/artists/check',
+const ApiExtensionReleaseYearPendingRoute =
+  ApiExtensionReleaseYearPendingRouteImport.update({
+    id: '/api/extension/release-year/pending',
+    path: '/api/extension/release-year/pending',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedPlaylistsNewStudioRoute =
-  AuthenticatedPlaylistsNewStudioRouteImport.update({
-    id: '/studio',
-    path: '/studio',
-    getParentRoute: () => AuthenticatedPlaylistsNewRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -464,60 +464,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/verify-email': {
-      id: '/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof VerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/health': {
-      id: '/health'
-      path: '/health'
-      fullPath: '/health'
-      preLoaderRoute: typeof HealthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/faq': {
-      id: '/faq'
-      path: '/faq'
-      fullPath: '/faq'
-      preLoaderRoute: typeof FaqRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/@{$handle}': {
@@ -534,60 +485,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/faq': {
+      id: '/faq'
+      path: '/faq'
+      fullPath: '/faq'
+      preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/logout': {
-      id: '/auth/logout'
-      path: '/auth/logout'
-      fullPath: '/auth/logout'
-      preLoaderRoute: typeof AuthLogoutRouteImport
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/pulse-s': {
-      id: '/api/pulse-s'
-      path: '/api/pulse-s'
-      fullPath: '/api/pulse-s'
-      preLoaderRoute: typeof ApiPulseSRouteImport
+    '/health': {
+      id: '/health'
+      path: '/health'
+      fullPath: '/health'
+      preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/billing-bridge': {
-      id: '/api/billing-bridge'
-      path: '/api/billing-bridge'
-      fullPath: '/api/billing-bridge'
-      preLoaderRoute: typeof ApiBillingBridgeRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/playlists': {
-      id: '/_authenticated/playlists'
-      path: '/playlists'
-      fullPath: '/playlists'
-      preLoaderRoute: typeof AuthenticatedPlaylistsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/match': {
-      id: '/_authenticated/match'
-      path: '/match'
-      fullPath: '/match'
-      preLoaderRoute: typeof AuthenticatedMatchRouteImport
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/liked-songs': {
@@ -597,32 +555,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLikedSongsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+    '/_authenticated/match': {
+      id: '/_authenticated/match'
+      path: '/match'
+      fullPath: '/match'
+      preLoaderRoute: typeof AuthenticatedMatchRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/pulse-h/$': {
-      id: '/api/pulse-h/$'
-      path: '/api/pulse-h/$'
-      fullPath: '/api/pulse-h/$'
-      preLoaderRoute: typeof ApiPulseHSplatRouteImport
+    '/_authenticated/onboarding': {
+      id: '/_authenticated/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/playlists': {
+      id: '/_authenticated/playlists'
+      path: '/playlists'
+      fullPath: '/playlists'
+      preLoaderRoute: typeof AuthenticatedPlaylistsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/billing-bridge': {
+      id: '/api/billing-bridge'
+      path: '/api/billing-bridge'
+      fullPath: '/api/billing-bridge'
+      preLoaderRoute: typeof ApiBillingBridgeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/extension/token': {
-      id: '/api/extension/token'
-      path: '/api/extension/token'
-      fullPath: '/api/extension/token'
-      preLoaderRoute: typeof ApiExtensionTokenRouteImport
+    '/api/pulse-s': {
+      id: '/api/pulse-s'
+      path: '/api/pulse-s'
+      fullPath: '/api/pulse-s'
+      preLoaderRoute: typeof ApiPulseSRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/extension/sync': {
-      id: '/api/extension/sync'
-      path: '/api/extension/sync'
-      fullPath: '/api/extension/sync'
-      preLoaderRoute: typeof ApiExtensionSyncRouteImport
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/checkout/cancel': {
+      id: '/_authenticated/checkout/cancel'
+      path: '/checkout/cancel'
+      fullPath: '/checkout/cancel'
+      preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/checkout/success': {
+      id: '/_authenticated/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof AuthenticatedCheckoutSuccessRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/playlists/$playlistRef': {
+      id: '/_authenticated/playlists/$playlistRef'
+      path: '/$playlistRef'
+      fullPath: '/playlists/$playlistRef'
+      preLoaderRoute: typeof AuthenticatedPlaylistsPlaylistRefRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsRoute
+    }
+    '/_authenticated/playlists/new': {
+      id: '/_authenticated/playlists/new'
+      path: '/new'
+      fullPath: '/playlists/new'
+      preLoaderRoute: typeof AuthenticatedPlaylistsNewRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/status': {
@@ -632,40 +646,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionStatusRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
+    '/api/extension/sync': {
+      id: '/api/extension/sync'
+      path: '/api/extension/sync'
+      fullPath: '/api/extension/sync'
+      preLoaderRoute: typeof ApiExtensionSyncRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/playlists/new': {
-      id: '/_authenticated/playlists/new'
-      path: '/new'
-      fullPath: '/playlists/new'
-      preLoaderRoute: typeof AuthenticatedPlaylistsNewRouteImport
-      parentRoute: typeof AuthenticatedPlaylistsRoute
+    '/api/extension/token': {
+      id: '/api/extension/token'
+      path: '/api/extension/token'
+      fullPath: '/api/extension/token'
+      preLoaderRoute: typeof ApiExtensionTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/playlists/$playlistRef': {
-      id: '/_authenticated/playlists/$playlistRef'
-      path: '/$playlistRef'
-      fullPath: '/playlists/$playlistRef'
-      preLoaderRoute: typeof AuthenticatedPlaylistsPlaylistRefRouteImport
-      parentRoute: typeof AuthenticatedPlaylistsRoute
-    }
-    '/_authenticated/checkout/success': {
-      id: '/_authenticated/checkout/success'
-      path: '/checkout/success'
-      fullPath: '/checkout/success'
-      preLoaderRoute: typeof AuthenticatedCheckoutSuccessRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/checkout/cancel': {
-      id: '/_authenticated/checkout/cancel'
-      path: '/checkout/cancel'
-      fullPath: '/checkout/cancel'
-      preLoaderRoute: typeof AuthenticatedCheckoutCancelRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/api/pulse-h/$': {
+      id: '/api/pulse-h/$'
+      path: '/api/pulse-h/$'
+      fullPath: '/api/pulse-h/$'
+      preLoaderRoute: typeof ApiPulseHSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/playlists/new/': {
       id: '/_authenticated/playlists/new/'
@@ -674,11 +674,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlaylistsNewIndexRouteImport
       parentRoute: typeof AuthenticatedPlaylistsNewRoute
     }
-    '/api/extension/release-year/pending': {
-      id: '/api/extension/release-year/pending'
-      path: '/api/extension/release-year/pending'
-      fullPath: '/api/extension/release-year/pending'
-      preLoaderRoute: typeof ApiExtensionReleaseYearPendingRouteImport
+    '/_authenticated/playlists/new/studio': {
+      id: '/_authenticated/playlists/new/studio'
+      path: '/studio'
+      fullPath: '/playlists/new/studio'
+      preLoaderRoute: typeof AuthenticatedPlaylistsNewStudioRouteImport
+      parentRoute: typeof AuthenticatedPlaylistsNewRoute
+    }
+    '/api/extension/artists/check': {
+      id: '/api/extension/artists/check'
+      path: '/api/extension/artists/check'
+      fullPath: '/api/extension/artists/check'
+      preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/release-year/checked': {
@@ -688,19 +695,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionReleaseYearCheckedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/extension/artists/check': {
-      id: '/api/extension/artists/check'
-      path: '/api/extension/artists/check'
-      fullPath: '/api/extension/artists/check'
-      preLoaderRoute: typeof ApiExtensionArtistsCheckRouteImport
+    '/api/extension/release-year/pending': {
+      id: '/api/extension/release-year/pending'
+      path: '/api/extension/release-year/pending'
+      fullPath: '/api/extension/release-year/pending'
+      preLoaderRoute: typeof ApiExtensionReleaseYearPendingRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/playlists/new/studio': {
-      id: '/_authenticated/playlists/new/studio'
-      path: '/studio'
-      fullPath: '/playlists/new/studio'
-      preLoaderRoute: typeof AuthenticatedPlaylistsNewStudioRouteImport
-      parentRoute: typeof AuthenticatedPlaylistsNewRoute
     }
   }
 }

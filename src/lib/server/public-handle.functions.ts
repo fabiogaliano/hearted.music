@@ -23,7 +23,7 @@ import { captureServerError } from "@/lib/observability/capture-server-error";
 // well-formed handle is ≤30 chars (account_handle_format_check), so 100 is pure
 // headroom that never affects a real lookup.
 export const getPublicHandleIdentity = createServerFn({ method: "GET" })
-	.inputValidator(z.object({ handle: z.string().max(100) }))
+	.validator(z.object({ handle: z.string().max(100) }))
 	.handler(async ({ data }): Promise<PublicHandleIdentity | null> => {
 		const result = await getPublicHandleIdentityByHandle(
 			data.handle.toLowerCase(),

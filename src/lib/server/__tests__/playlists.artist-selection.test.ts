@@ -28,7 +28,7 @@ const {
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: (validator: (data: unknown) => unknown) => ({
+		validator: (validator: (data: unknown) => unknown) => ({
 			handler:
 				(
 					fn: (args: {

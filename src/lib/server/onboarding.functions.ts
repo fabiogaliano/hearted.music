@@ -294,7 +294,7 @@ export const getOnboardingSession = createServerFn({ method: "GET" })
  */
 export const saveThemePreference = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(themeInputSchema)
+	.validator(themeInputSchema)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const { session } = context;
 
@@ -340,7 +340,7 @@ export const resetSyncJobs = createServerFn({ method: "POST" })
  */
 export const saveOnboardingStep = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(saveableStepInputSchema)
+	.validator(saveableStepInputSchema)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const { session } = context;
 
@@ -507,7 +507,7 @@ export const commitDemoSongAndEnterWalkthrough = createServerFn({
 	method: "POST",
 })
 	.middleware([authMiddleware])
-	.inputValidator(saveDemoSongSelectionInputSchema)
+	.validator(saveDemoSongSelectionInputSchema)
 	.handler(async ({ data, context }): Promise<OnboardingAuthPayload> => {
 		const { session } = context;
 		const supabase = createAdminSupabaseClient();

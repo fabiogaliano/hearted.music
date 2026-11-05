@@ -21,7 +21,7 @@ const waitlistSchema = z.object({
 });
 
 export const joinWaitlist = createServerFn({ method: "POST" })
-	.inputValidator((data) => waitlistSchema.parse(data))
+	.validator((data) => waitlistSchema.parse(data))
 	.handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
 		// Every signup inserts a row and sends an email, so an unthrottled caller
 		// can fill the table and spend the sender reputation.

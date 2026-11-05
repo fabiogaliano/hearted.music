@@ -21,7 +21,7 @@ const mockAuthContext = {
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: (validator: (data: unknown) => unknown) => ({
+		validator: (validator: (data: unknown) => unknown) => ({
 			handler:
 				(
 					fn: (args: {
@@ -147,7 +147,7 @@ describe("playlist-draft.functions adapter", () => {
 	});
 
 	it("previewPlaylistDraft rejects invalid input before calling the workflow", async () => {
-		// The mocked inputValidator (like the real one) runs synchronously inside
+		// The mocked validator (like the real one) runs synchronously inside
 		// the callable, so the zod failure throws rather than rejecting — wrap in
 		// an async closure so `.rejects` can observe it either way.
 		await expect(async () => {

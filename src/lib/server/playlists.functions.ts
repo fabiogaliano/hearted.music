@@ -126,7 +126,7 @@ export const getPlaylistManagementData = createServerFn({
 	method: "GET",
 })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }) => {
 		const { session } = context;
 
@@ -182,7 +182,7 @@ export const PLAYLIST_NOT_FOUND_MESSAGE = "Playlist not found";
 
 export const getPlaylistTracksPage = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => PlaylistTracksPageSchema.parse(data))
+	.validator((data) => PlaylistTracksPageSchema.parse(data))
 	.handler(async ({ data, context }): Promise<PlaylistTracksPageResult> => {
 		const { session } = context;
 		const limit = data.limit ?? PLAYLIST_TRACKS_DEFAULT_LIMIT;
@@ -308,7 +308,7 @@ const SetTargetSchema = z.object({
 
 export const setPlaylistTargetMutation = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => SetTargetSchema.parse(data))
+	.validator((data) => SetTargetSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 
@@ -422,7 +422,7 @@ const AcknowledgeCreateSchema = z.object({
 
 export const acknowledgePlaylistCreate = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => AcknowledgeCreateSchema.parse(data))
+	.validator((data) => AcknowledgeCreateSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 		const spotifyId = parsePlaylistSpotifyId(data.uri);
@@ -477,7 +477,7 @@ export type SavePlaylistMatchConfigInput = z.input<
 
 export const savePlaylistMatchConfig = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => SaveMatchConfigSchema.parse(data))
+	.validator((data) => SaveMatchConfigSchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<SavePlaylistMatchConfigResult> => {
 			const { session } = context;
@@ -629,7 +629,7 @@ const STATIC_TOP_GENRES: readonly string[] = [
  */
 export const getAccountTopGenres = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<{ genres: string[] }> => {
 		const { session } = context;
 
@@ -671,7 +671,7 @@ export const flushPlaylistManagementSession = createServerFn({
 	method: "POST",
 })
 	.middleware([authMiddleware])
-	.inputValidator((data) => FlushSessionSchema.parse(data))
+	.validator((data) => FlushSessionSchema.parse(data))
 	.handler(async ({ data, context }) => {
 		const { session } = context;
 
@@ -742,7 +742,7 @@ export const flushPlaylistManagementSession = createServerFn({
  */
 export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<PlaylistMatchFilterOptions> => {
 		const { session } = context;
 		const accountId = session.accountId;
@@ -803,7 +803,7 @@ export const getPlaylistMatchFilterOptions = createServerFn({ method: "GET" })
  */
 export const getTasteProfile = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<TasteProfile> => {
 		const { accountId } = context.session;
 
@@ -897,7 +897,7 @@ const LIKED_ARTIST_BROWSE_POOL = 1000;
 
 export const searchLikedArtists = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => SearchLikedArtistsSchema.parse(data))
+	.validator((data) => SearchLikedArtistsSchema.parse(data))
 	.handler(
 		async ({
 			data,
@@ -945,7 +945,7 @@ const ResolveLikedArtistSongsSchema = z.object({
 
 export const resolveLikedArtistSongs = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => ResolveLikedArtistSongsSchema.parse(data))
+	.validator((data) => ResolveLikedArtistSongsSchema.parse(data))
 	.handler(
 		async ({
 			data,

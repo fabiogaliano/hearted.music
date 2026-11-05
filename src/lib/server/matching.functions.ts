@@ -102,7 +102,7 @@ const GetSongSuggestionsSchema = z.object({
 
 export const getSongSuggestions = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => GetSongSuggestionsSchema.parse(data))
+	.validator((data) => GetSongSuggestionsSchema.parse(data))
 	.handler(async ({ data, context }): Promise<SongSuggestionsResult | null> => {
 		const { session } = context;
 		const failure = {
@@ -173,7 +173,7 @@ const AddToPlaylistSchema = z.object({
 
 export const addSongToPlaylist = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => AddToPlaylistSchema.parse(data))
+	.validator((data) => AddToPlaylistSchema.parse(data))
 	.handler(async ({ data, context }): Promise<{ success: boolean }> => {
 		const { session } = context;
 		// Served-context resolution is best-effort and independent of the ownership

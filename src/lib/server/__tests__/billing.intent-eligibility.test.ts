@@ -12,7 +12,7 @@ const mockReadBillingStateOrFreeTier = vi.fn();
 vi.mock("@tanstack/react-start", () => {
 	const builder = (): Record<string, unknown> => ({
 		middleware: () => builder(),
-		inputValidator: () => builder(),
+		validator: () => builder(),
 		handler:
 			(fn: (args: { context: typeof mockAuthContext }) => unknown) => () =>
 				fn({ context: mockAuthContext }),

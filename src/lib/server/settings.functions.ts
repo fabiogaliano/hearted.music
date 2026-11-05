@@ -39,7 +39,7 @@ const updateMatchStrictnessInput = z.object({
  */
 export const updateThemePreference = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(updateThemeInput)
+	.validator(updateThemeInput)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const result = await updateTheme(context.session.accountId, data.theme);
 
@@ -85,7 +85,7 @@ export const updateMatchStrictnessPreference = createServerFn({
 	method: "POST",
 })
 	.middleware([authMiddleware])
-	.inputValidator(updateMatchStrictnessInput)
+	.validator(updateMatchStrictnessInput)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const result = await updateMatchStrictness(
 			context.session.accountId,
@@ -117,7 +117,7 @@ const setMatchViewModeInput = z.object({
  */
 export const setMatchViewModePreference = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(setMatchViewModeInput)
+	.validator(setMatchViewModeInput)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const result = await setPreferredMatchViewMode(
 			context.session.accountId,

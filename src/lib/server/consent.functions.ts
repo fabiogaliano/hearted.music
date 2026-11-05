@@ -56,7 +56,7 @@ const consentDecisionInput = z.object({
 
 export const persistConsentDecision = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator(consentDecisionInput)
+	.validator(consentDecisionInput)
 	.handler(async ({ data, context }): Promise<{ success: true }> => {
 		const result = await saveConsentPreference(
 			context.session.accountId,

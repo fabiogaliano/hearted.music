@@ -75,7 +75,7 @@ const PreviewPlaylistDraftSchema = z.object({
 
 export const previewPlaylistDraft = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => PreviewPlaylistDraftSchema.parse(data))
+	.validator((data) => PreviewPlaylistDraftSchema.parse(data))
 	.handler(async ({ data, context }): Promise<PlaylistDraftPreview> => {
 		const { accountId } = context.session;
 		const supabase = createAdminSupabaseClient();
@@ -131,7 +131,7 @@ const PersistNewPlaylistConfigSchema = z.object({
 
 export const persistNewPlaylistConfig = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => PersistNewPlaylistConfigSchema.parse(data))
+	.validator((data) => PersistNewPlaylistConfigSchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<PersistNewPlaylistConfigResult> => {
 			const { accountId } = context.session;
@@ -155,7 +155,7 @@ const RecordPlaylistMatchDecisionsSchema = z.object({
 
 export const recordPlaylistMatchDecisions = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => RecordPlaylistMatchDecisionsSchema.parse(data))
+	.validator((data) => RecordPlaylistMatchDecisionsSchema.parse(data))
 	.handler(async ({ data, context }): Promise<{ recorded: number }> => {
 		const { accountId } = context.session;
 		return runRecordPlaylistMatchDecisions(accountId, data);
@@ -193,7 +193,7 @@ const RecordStudioActionsSchema = z
 
 export const recordStudioActions = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => RecordStudioActionsSchema.parse(data))
+	.validator((data) => RecordStudioActionsSchema.parse(data))
 	.handler(async ({ data, context }): Promise<{ recorded: number }> => {
 		const { accountId } = context.session;
 		if (data.actions.length === 0) return { recorded: 0 };

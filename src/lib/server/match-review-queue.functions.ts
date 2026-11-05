@@ -117,7 +117,7 @@ const ListMatchReviewItemSuggestionsSchema = z.object({
  */
 export const listMatchReviewItemSuggestions = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => ListMatchReviewItemSuggestionsSchema.parse(data))
+	.validator((data) => ListMatchReviewItemSuggestionsSchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<ListMatchReviewItemSuggestionsPage> => {
 			const { session } = context;
@@ -191,7 +191,7 @@ const GetMatchReviewSummarySchema = z.object({
  */
 export const getMatchReviewSummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => GetMatchReviewSummarySchema.parse(data))
+	.validator((data) => GetMatchReviewSummarySchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<ServerMatchReviewSummaryResult> => {
 			return resolveMatchReviewSummary(
@@ -207,7 +207,7 @@ export const getMatchReviewSummary = createServerFn({ method: "GET" })
  */
 export const getPreferredMatchReviewSummary = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<ServerMatchReviewSummaryResult> => {
 		return resolvePreferredMatchReviewSummary(context.session.accountId);
 	});

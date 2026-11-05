@@ -65,7 +65,7 @@ export interface SubscriptionUpgradeQuote {
 
 export const getSubscriptionUpgradeQuote = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.inputValidator((data: undefined) => NoInputSchema.parse(data))
+	.validator((data: undefined) => NoInputSchema.parse(data))
 	.handler(async ({ context }): Promise<SubscriptionUpgradeQuote> => {
 		const supabase = createAdminSupabaseClient();
 		const result = await fromSupabaseSingle(
@@ -110,7 +110,7 @@ export type RequestSongUnlockResponse =
 
 export const requestSongUnlock = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => RequestSongUnlockSchema.parse(data))
+	.validator((data) => RequestSongUnlockSchema.parse(data))
 	.handler(async ({ data, context }): Promise<RequestSongUnlockResponse> => {
 		const supabase = createAdminSupabaseClient();
 		const result = await orchestrateUnlock(
@@ -249,7 +249,7 @@ async function signedPost(
 
 export const createCheckoutSession = createServerFn({ method: "POST" })
 	.middleware([authMiddleware])
-	.inputValidator((data) => CreateCheckoutSessionSchema.parse(data))
+	.validator((data) => CreateCheckoutSessionSchema.parse(data))
 	.handler(
 		async ({ data, context }): Promise<CreateCheckoutSessionResponse> => {
 			const config = resolveBillingConfig();
