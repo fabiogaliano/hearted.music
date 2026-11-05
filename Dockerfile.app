@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Web app image. Built in CI and pushed to GHCR; Coolify only pulls it.
 
-FROM oven/bun:1.3.14 AS base
+FROM oven/bun:1.4.4 AS base
 WORKDIR /app
 
 FROM base AS build-deps
