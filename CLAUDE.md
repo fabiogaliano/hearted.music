@@ -28,7 +28,7 @@ Work on `main` unless told otherwise.
 ## Conventions
 
 - Before adding queries or persistence code, read `docs/architecture/module-boundaries.md` — the source of truth for where code lives.
-- Server functions: `src/lib/server/*.functions.ts`, `createServerFn().inputValidator(zod).handler()`. Domain code returns `Result`, never throws; only the server-fn boundary throws (`new Error(msg, { cause })` + `captureServerError`). Pattern: `public-handle.functions.ts`.
+- Server functions: `src/lib/server/*.functions.ts`, `createServerFn().validator(zod).handler()`. Domain code returns `Result`, never throws; only the server-fn boundary throws (`new Error(msg, { cause })` + `captureServerError`). Pattern: `public-handle.functions.ts`.
 - No barrel exports — import by direct path.
 - DB-derived id sets never re-enter a query as `.in()` URL filters — push the predicate into an RPC/join. `chunkedRead` is only for externally-sourced id lists.
 
