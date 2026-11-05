@@ -31,7 +31,10 @@ export function initPostHogOtel() {
 	sdk = new NodeSDK({
 		resource: resourceFromAttributes({ "service.name": "hearted-worker" }),
 		spanProcessors: [
-			new PostHogSpanProcessor({ apiKey, host: resolvedHosts.value.apiHost }),
+			new PostHogSpanProcessor({
+				projectToken: apiKey,
+				host: resolvedHosts.value.apiHost,
+			}),
 		],
 	});
 	sdk.start();
