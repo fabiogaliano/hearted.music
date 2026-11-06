@@ -17,8 +17,8 @@ import {
 	modeFromSearch,
 	validateMatchSearch,
 } from "@/features/matching/match-search";
-import { QueueMatchContent } from "@/features/matching/QueueMatchSession";
 import { deriveEmptyStateReason } from "@/features/matching/queue-helpers";
+import { QueueMatchContent } from "@/features/matching/QueueMatchSession";
 import { seedBakedDeckCardReads } from "@/features/matching/seed-deck-cards";
 import type { MatchViewMode } from "@/features/matching/types";
 import { WalkthroughMatchContent } from "@/features/matching/WalkthroughMatchContent";

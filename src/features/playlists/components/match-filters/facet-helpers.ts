@@ -16,7 +16,6 @@ import {
 	type Icon as PhosphorIcon,
 	TranslateIcon,
 } from "@phosphor-icons/react";
-
 import type {
 	LikedAtFilterV1,
 	ReleaseYearFilterV1,

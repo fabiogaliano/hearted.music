@@ -13,10 +13,8 @@
 
 import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { useRef } from "react";
-
 import type { LikedSongsStatsResult } from "@/lib/server/liked-songs.functions";
 import { fonts } from "@/lib/theme/fonts";
-
 import type { SearchFilter } from "../filter";
 import { SEARCH_FILTER_VALUES } from "../filter";
 

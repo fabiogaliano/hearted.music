@@ -180,19 +180,18 @@ export interface ListNavigationOptions<T> extends ListCursorOptions<T> {
 	onLateralRight?: () => void;
 }
 
-export interface ListNavigationResult<T>
-	extends Pick<
-		ListCursorResult<T>,
-		| "focusedIndex"
-		| "focusedItem"
-		| "interactionMode"
-		| "lastCursorChange"
-		| "hasFocusWithin"
-		| "getFocusedElement"
-		| "getElementAtIndex"
-		| "focusIndex"
-		| "getItemProps"
-	> {
+export interface ListNavigationResult<T> extends Pick<
+	ListCursorResult<T>,
+	| "focusedIndex"
+	| "focusedItem"
+	| "interactionMode"
+	| "lastCursorChange"
+	| "hasFocusWithin"
+	| "getFocusedElement"
+	| "getElementAtIndex"
+	| "focusIndex"
+	| "getItemProps"
+> {
 	syncFocusedIndex: (
 		index: number,
 		options?: ListNavigationSyncOptions,

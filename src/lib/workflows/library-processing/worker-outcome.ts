@@ -395,18 +395,16 @@ const WorkerOutcomeMeasurementSchema = z.union([
 				...enrichmentCountDetails,
 			}),
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "enrichment",
-				status: "completed",
-				batchSequence: row.details.batchSequence,
-				requestSatisfied: row.details.requestSatisfied,
-				newCandidatesAvailable: row.details.newCandidatesAvailable,
-				counts: toCounts(row.details),
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "enrichment",
+			status: "completed",
+			batchSequence: row.details.batchSequence,
+			requestSatisfied: row.details.requestSatisfied,
+			newCandidatesAvailable: row.details.newCandidatesAvailable,
+			counts: toCounts(row.details),
+		})),
 	z
 		.object({
 			...ids,
@@ -414,16 +412,14 @@ const WorkerOutcomeMeasurementSchema = z.union([
 			outcome: z.literal("blocked"),
 			details: z.object(enrichmentCountDetails),
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "enrichment",
-				status: "blocked",
-				batchSequence: row.details.batchSequence,
-				counts: toCounts(row.details),
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "enrichment",
+			status: "blocked",
+			batchSequence: row.details.batchSequence,
+			counts: toCounts(row.details),
+		})),
 	z
 		.object({
 			...ids,
@@ -431,15 +427,13 @@ const WorkerOutcomeMeasurementSchema = z.union([
 			outcome: z.literal("error"),
 			details: failedDetails,
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "enrichment",
-				status: "failed",
-				error: row.details.error,
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "enrichment",
+			status: "failed",
+			error: row.details.error,
+		})),
 	z
 		.object({
 			...ids,
@@ -451,31 +445,27 @@ const WorkerOutcomeMeasurementSchema = z.union([
 				snapshotId: z.string().nullable().default(null),
 			}),
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "match_snapshot_refresh",
-				status: "published",
-				published: row.details.published,
-				isEmpty: row.details.isEmpty,
-				snapshotId: row.details.snapshotId,
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "match_snapshot_refresh",
+			status: "published",
+			published: row.details.published,
+			isEmpty: row.details.isEmpty,
+			snapshotId: row.details.snapshotId,
+		})),
 	z
 		.object({
 			...ids,
 			workflow: z.literal("match_snapshot_refresh"),
 			outcome: z.literal("superseded"),
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "match_snapshot_refresh",
-				status: "superseded",
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "match_snapshot_refresh",
+			status: "superseded",
+		})),
 	z
 		.object({
 			...ids,
@@ -483,15 +473,13 @@ const WorkerOutcomeMeasurementSchema = z.union([
 			outcome: z.literal("error"),
 			details: failedDetails,
 		})
-		.transform(
-			(row): WorkerOutcome => ({
-				jobId: row.job_id,
-				accountId: row.account_id,
-				workflow: "match_snapshot_refresh",
-				status: "failed",
-				error: row.details.error,
-			}),
-		),
+		.transform((row): WorkerOutcome => ({
+			jobId: row.job_id,
+			accountId: row.account_id,
+			workflow: "match_snapshot_refresh",
+			status: "failed",
+			error: row.details.error,
+		})),
 ]);
 
 /**

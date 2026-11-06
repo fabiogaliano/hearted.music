@@ -1,6 +1,5 @@
 import { LockSimpleIcon, XIcon } from "@phosphor-icons/react";
 import type { Ref } from "react";
-
 import { Button } from "@/components/ui/Button";
 import { fonts } from "@/lib/theme/fonts";
 

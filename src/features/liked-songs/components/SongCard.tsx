@@ -4,7 +4,6 @@ import {
 	LockSimpleIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useMemo } from "react";
-
 import { AlbumPlaceholder } from "@/components/ui/AlbumPlaceholder";
 import { fonts } from "@/lib/theme/fonts";
 import type { LikedSong } from "../types";

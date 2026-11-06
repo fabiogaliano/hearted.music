@@ -7,14 +7,12 @@ import {
 } from "@phosphor-icons/react";
 import { useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
-
 import { Button } from "@/components/ui/Button";
 import { PaywallCTA } from "@/features/billing/components/PaywallCTA";
 import { PaywallDialog } from "@/features/billing/components/PaywallDialog";
 import type { BillingState } from "@/lib/domains/billing/state";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { fonts } from "@/lib/theme/fonts";
-
 import type { UnlockFlowState } from "../hooks/useSongUnlock";
 
 interface UnlockConfirmDialogProps {

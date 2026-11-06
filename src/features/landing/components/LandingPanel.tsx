@@ -8,8 +8,8 @@
  */
 import { useRef, useState } from "react";
 import { getThemedLightColors } from "@/features/liked-songs/components/detail/themed-light-colors";
-import { SongDetailPanelSurface } from "@/features/liked-songs/components/song-detail-panel/SongDetailPanelSurface";
 import type { SongDetail } from "@/features/liked-songs/components/song-detail-panel/song-detail-types";
+import { SongDetailPanelSurface } from "@/features/liked-songs/components/song-detail-panel/SongDetailPanelSurface";
 import { themes } from "@/lib/theme/colors";
 
 const SWIPE_MIN_DISTANCE_PX = 44;

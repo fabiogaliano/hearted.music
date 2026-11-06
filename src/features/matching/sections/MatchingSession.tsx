@@ -1,6 +1,5 @@
 import { motion, useAnimationControls, useReducedMotion } from "framer-motion";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import { MatchesSection } from "../components/MatchesSection";
 import { PlaylistReviewItemSection } from "../components/PlaylistReviewItemSection";

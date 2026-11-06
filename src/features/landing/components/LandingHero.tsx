@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-
 import type { HeartRippleHandle } from "@/components/ui/HeartRippleBackground";
 import { HeartRipplePlaceholder } from "@/components/ui/HeartRipplePlaceholder";
 import { LazyHeartRippleBackground } from "@/components/ui/LazyHeartRippleBackground";

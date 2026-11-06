@@ -13,7 +13,6 @@
  * ```
  */
 import { useEffect, useRef } from "react";
-
 import { useShortcutActions } from "@/lib/keyboard/KeyboardShortcutProvider";
 import type { ShortcutRegistration } from "@/lib/keyboard/types";
 

@@ -1,7 +1,6 @@
 import type { FocusEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIsomorphicLayoutEffect } from "@/lib/hooks/useIsomorphicLayoutEffect";
-
 import type {
 	ListCursorChange,
 	ListCursorMoveOptions,

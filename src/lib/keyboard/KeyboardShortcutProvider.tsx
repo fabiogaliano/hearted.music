@@ -18,7 +18,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-
 import type {
 	Shortcut,
 	ShortcutActionsValue,

@@ -4,7 +4,6 @@ import { createIsomorphicFn } from "@tanstack/react-start";
 import { getContext } from "./integrations/tanstack-query/root-provider";
 import { markNavigated } from "./lib/navigation/session-navigation";
 import { initSentry } from "./lib/observability/sentry";
-
 import { routeTree } from "./routeTree.gen";
 
 const getSSROptions = createIsomorphicFn().server(() => {
@@ -34,7 +33,7 @@ export const getRouter = () => {
 	});
 
 	if (!router.isServer) {
-		void initSentry(router);
+		initSentry(router);
 
 		// The initial location is already set before we subscribe, so this fires
 		// only on the first real in-app navigation — never for a direct landing.

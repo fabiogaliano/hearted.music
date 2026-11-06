@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react";
 import { CoverFlowEmptyState } from "./CoverFlowEmptyState";
-import { CoverFlowStage } from "./CoverFlowStage";
 import { prefersReduced } from "./coverFlowGeometry";
+import { CoverFlowStage } from "./CoverFlowStage";
 import { PanelSection } from "./PanelSection";
 import { ShelfCaption } from "./ShelfCaption";
 import type { PlaylistSummary } from "./types";

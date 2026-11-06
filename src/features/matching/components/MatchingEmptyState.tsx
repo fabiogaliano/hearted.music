@@ -1,6 +1,5 @@
 import { ArrowRightIcon } from "@phosphor-icons/react";
 import { Link } from "@tanstack/react-router";
-
 import { StaggeredContent } from "@/components/ui/StaggeredContent";
 import { fonts } from "@/lib/theme/fonts";
 import type { Reason } from "../queue-helpers";

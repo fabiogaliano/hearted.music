@@ -17,11 +17,11 @@ import { type CSSProperties, useEffect, useRef, useState } from "react";
 import { useShortcut } from "@/lib/keyboard/useShortcut";
 import { themes } from "@/lib/theme/colors";
 import { getThemedDarkColors } from "../detail/themed-dark-colors";
+import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 import {
 	type LockedCta,
 	SongDetailPanelSurface,
 } from "./SongDetailPanelSurface";
-import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
 
 // Full-screen overlay on small screens, fixed side panel at lg+ (see --song-panel-width in styles.css).
 export const PANEL_WIDTH = "var(--song-panel-width)";

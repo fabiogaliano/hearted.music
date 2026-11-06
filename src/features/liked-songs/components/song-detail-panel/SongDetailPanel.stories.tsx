@@ -1,7 +1,7 @@
 import type { Story } from "@ladle/react";
-import { SongDetailPanel } from "./SongDetailPanel";
 import { GOLD_SONG_DETAILS } from "./song-detail-data";
 import type { PlaylistsPanel, SongDetail } from "./song-detail-types";
+import { SongDetailPanel } from "./SongDetailPanel";
 
 export default {
 	title: "Liked Songs/SongDetailPanel",

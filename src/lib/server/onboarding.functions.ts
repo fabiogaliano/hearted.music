@@ -264,12 +264,11 @@ async function loadOnboardingData({
  */
 export const getOnboardingData = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.handler(
-		({ context }): Promise<OnboardingData> =>
-			loadOnboardingData({
-				accountId: context.session.accountId,
-				account: context.account,
-			}),
+	.handler(({ context }): Promise<OnboardingData> =>
+		loadOnboardingData({
+			accountId: context.session.accountId,
+			account: context.account,
+		}),
 	);
 
 /**
@@ -280,12 +279,11 @@ export const getOnboardingData = createServerFn({ method: "GET" })
  */
 export const getOnboardingSession = createServerFn({ method: "GET" })
 	.middleware([authMiddleware])
-	.handler(
-		({ context }): Promise<OnboardingAuthPayload> =>
-			loadOnboardingSession({
-				accountId: context.session.accountId,
-				accountHandle: context.account.handle,
-			}),
+	.handler(({ context }): Promise<OnboardingAuthPayload> =>
+		loadOnboardingSession({
+			accountId: context.session.accountId,
+			accountHandle: context.account.handle,
+		}),
 	);
 
 /**

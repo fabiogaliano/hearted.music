@@ -28,25 +28,23 @@ const RankedRowSchema = z
 		album_name: z.string().nullable(),
 		duration_ms: z.number().nullable(),
 	})
-	.transform(
-		(row): RankedSong => ({
-			candidate: {
-				song: {
-					id: row.song_id,
-					spotifyId: row.spotify_id,
-					name: row.name,
-					artists: row.artists,
-					genres: row.genres,
-				},
-				display: {
-					imageUrl: row.image_url,
-					album: row.album_name,
-					durationMs: row.duration_ms,
-				},
+	.transform((row): RankedSong => ({
+		candidate: {
+			song: {
+				id: row.song_id,
+				spotifyId: row.spotify_id,
+				name: row.name,
+				artists: row.artists,
+				genres: row.genres,
 			},
-			score: row.score,
-		}),
-	);
+			display: {
+				imageUrl: row.image_url,
+				album: row.album_name,
+				durationMs: row.duration_ms,
+			},
+		},
+		score: row.score,
+	}));
 
 const PreviewRankingSchema = z
 	.object({

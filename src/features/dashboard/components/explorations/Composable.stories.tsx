@@ -1,10 +1,10 @@
 import type { Story } from "@ladle/react";
 import { AppFrame as AppFrameComponent } from "./AppFrame";
+import { makeHubData } from "./fixtures";
 import { FrontPage } from "./FrontPage";
 import { FrontPageCeramic } from "./FrontPageCeramic";
 import { FrontPageEditorial } from "./FrontPageEditorial";
 import { FrontPageGallery } from "./FrontPageGallery";
-import { makeHubData } from "./fixtures";
 import type { FrontPageComposition, MastheadVariant } from "./types";
 
 export default {

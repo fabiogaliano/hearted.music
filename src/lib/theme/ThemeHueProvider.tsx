@@ -5,7 +5,6 @@
  * and the `--theme-hue` CSS variable are emitted during render too.
  */
 import { createContext, type ReactNode, useContext } from "react";
-
 import { getThemeHue, themes } from "./colors";
 import { DEFAULT_THEME, type ThemeConfig } from "./types";
 

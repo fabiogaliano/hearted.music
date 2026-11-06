@@ -1,11 +1,11 @@
 import { redirect } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 import {
 	getAuthSession,
 	getAuthSessionState,
 } from "@/lib/platform/auth/auth.server";
-import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 import { returnPathSchema } from "@/lib/platform/auth/return-path";
 import { signUserJotIdentity } from "@/lib/server/userjot-signature.server";
 

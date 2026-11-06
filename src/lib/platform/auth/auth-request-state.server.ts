@@ -85,9 +85,8 @@ function createBetterAuth() {
 			user: {
 				create: {
 					after: async (user) => {
-						const { createAccountForBetterAuthUser } = await import(
-							"@/lib/domains/library/accounts/queries"
-						);
+						const { createAccountForBetterAuthUser } =
+							await import("@/lib/domains/library/accounts/queries");
 						const result = await createAccountForBetterAuthUser({
 							better_auth_user_id: user.id,
 							email: user.email,

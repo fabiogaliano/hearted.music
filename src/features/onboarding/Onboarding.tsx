@@ -25,7 +25,6 @@ import { PickColorStep } from "./components/PickColorStep";
 import { PickDemoSongStep } from "./components/PickDemoSongStep";
 import { PlanSelectionStep } from "./components/PlanSelectionStep";
 import { StepContainer } from "./components/StepContainer";
-
 import { SyncingStep } from "./components/SyncingStep";
 import { WelcomeStep } from "./components/WelcomeStep";
 import "./types"; // Import to ensure HistoryState augmentation is loaded

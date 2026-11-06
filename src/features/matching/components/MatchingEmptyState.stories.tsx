@@ -1,6 +1,5 @@
 import type { Story } from "@ladle/react";
 import { useState } from "react";
-
 import type { Reason } from "../queue-helpers";
 import type { MatchViewMode } from "../types";
 import { MatchingEmptyState } from "./MatchingEmptyState";
