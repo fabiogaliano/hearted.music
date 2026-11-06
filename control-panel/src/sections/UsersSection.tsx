@@ -159,6 +159,10 @@ const PLAN_OPTIONS = [
 	{ value: "yearly", label: "Yearly" },
 ];
 
+// A fresh [] per render would re-run the selection-pruning effect on every
+// render while the list loads.
+const NO_USERS: UserRow[] = [];
+
 export function UsersSection({ refreshKey }: { refreshKey: number }) {
 	const { data, error } = useApi<UsersMetrics>(
 		"/api/metrics/users",
@@ -232,7 +236,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		`/api/users/list?${params.toString()}`,
 		refreshKey,
 	);
-	const users = list.data?.rows ?? [];
+	const users = list.data?.rows ?? NO_USERS;
 	const activeFilterCount = [
 		table.plan !== "",
 		table.access !== "all",
@@ -241,7 +245,6 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		table.lastSeen !== "all",
 		table.productMetrics !== "all",
 	].filter(Boolean).length;
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	useEffect(() => {
 		// "Select all matching" is a standing intent, not a snapshot of loaded
 		// rows, so a page's rows disappearing from view shouldn't prune it.
@@ -252,7 +255,6 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 			return next.size === current.size ? current : next;
 		});
 	}, [users, selectAllMatching]);
-	// oxlint-enable react-hooks/exhaustive-deps
 	if (error) return <ErrorState message={error} />;
 	if (!data) return <Loading />;
 

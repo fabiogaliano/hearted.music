@@ -154,24 +154,17 @@ export function useMatchReviewCard({
 	const hasMoreSuggestions =
 		initialCursor !== null && (!tailQuery.data || tailQuery.hasNextPage);
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
+	const { hasNextPage, isFetchingNextPage, fetchNextPage } = tailQuery;
 	const loadMoreSuggestions = useCallback(() => {
 		// Guards against duplicating the enabled-gated auto first-page fetch —
 		// a sentinel that renders before that fetch settles must not double-call.
-		if (!tailQuery.hasNextPage || tailQuery.isFetchingNextPage) return;
-		void tailQuery.fetchNextPage();
-	}, [
-		tailQuery.hasNextPage,
-		tailQuery.isFetchingNextPage,
-		tailQuery.fetchNextPage,
-	]);
-	// oxlint-enable react-hooks/exhaustive-deps
+		if (!hasNextPage || isFetchingNextPage) return;
+		void fetchNextPage();
+	}, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const retryLoadMore = useCallback(() => {
-		void tailQuery.fetchNextPage();
-	}, [tailQuery.fetchNextPage]);
-	// oxlint-enable react-hooks/exhaustive-deps
+		void fetchNextPage();
+	}, [fetchNextPage]);
 
 	// Serializes overlapping dismisses within ONE card. The dismiss mutation
 	// snapshots that card's present + tail caches in onMutate and restores the
@@ -194,7 +187,7 @@ export function useMatchReviewCard({
 	// resume its own chain rather than reset it mid-flight.
 	const dismissChainsRef = useRef<Map<string, Promise<unknown>>>(new Map());
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
+	const { mutateAsync: dismissAsync } = dismissMutation;
 	const dismissSuggestion = useCallback(
 		async (suggestionId: string) => {
 			const chains = dismissChainsRef.current;
@@ -202,9 +195,7 @@ export function useMatchReviewCard({
 			// itemId is captured in these variables at enqueue time, so a dismiss
 			// queued here still targets THIS card even if it settles after the user
 			// navigated away (see dismissSuggestionMutation's variables note).
-			const run = prior.then(() =>
-				dismissMutation.mutateAsync({ itemId, suggestionId }),
-			);
+			const run = prior.then(() => dismissAsync({ itemId, suggestionId }));
 			// The chain must survive a rejected dismiss so the next one still runs;
 			// swallow here (the boolean the caller needs is derived from `run` below).
 			const settled = run.then(
@@ -233,9 +224,8 @@ export function useMatchReviewCard({
 				return false;
 			}
 		},
-		[dismissMutation.mutateAsync, itemId],
+		[dismissAsync, itemId],
 	);
-	// oxlint-enable react-hooks/exhaustive-deps
 
 	const waitForPendingDismisses = useCallback(async () => {
 		// Drain in a loop, not a single read: a row dismiss enqueued during the

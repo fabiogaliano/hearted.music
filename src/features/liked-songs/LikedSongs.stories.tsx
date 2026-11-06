@@ -55,7 +55,6 @@ export const ProgressiveEnrichment: Story = () => {
 		setAutoPlay(false);
 	}, []);
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const start = useCallback(() => {
 		stop();
 		setAutoPlay(true);
@@ -68,8 +67,7 @@ export const ProgressiveEnrichment: Story = () => {
 				return c + 1;
 			});
 		}, 600);
-	}, [stop]);
-	// oxlint-enable react-hooks/exhaustive-deps
+	}, [stop, total]);
 
 	useEffect(() => () => stop(), [stop]);
 

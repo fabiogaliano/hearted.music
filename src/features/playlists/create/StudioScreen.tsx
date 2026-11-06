@@ -128,26 +128,30 @@ export function StudioScreen({
 	// Keep the transfer motion pending through the preview fetch so a slow query
 	// cannot consume it before the newly added row actually appears.
 	const { newSongIds, markSongAdded } = useSongAddHighlight(draft.tracklist);
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
+	const {
+		addSong,
+		dismissSuggestion,
+		restoreSong,
+		setGenrePills,
+		setMatchFilters,
+	} = draft;
 	const handleAddSong = useCallback(
 		(id: string) => {
 			markSongAdded(id);
-			draft.addSong(id);
+			addSong(id);
 		},
-		[draft.addSong, markSongAdded],
+		[addSong, markSongAdded],
 	);
-	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Undo mirrors PreviewList's remove-undo: dismissing a suggestion and
 	// removing a preview song are both exclusions under the hood, so a user who
 	// dismisses by mistake gets the same one-tap recovery either way. restoreSong
 	// un-excludes without force-pinning, so the song only reappears in the tray
 	// if the current ranking would still put it there.
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const handleDismissSuggestion = useCallback(
 		(id: string) => {
 			const song = draft.suggestions.find((s) => s.id === id);
-			draft.dismissSuggestion(id);
+			dismissSuggestion(id);
 			toast(
 				<span className="toast-line">
 					<span className="toast-line-verb">Dismissed</span>
@@ -159,20 +163,19 @@ export function StudioScreen({
 				{
 					action: {
 						label: "Undo",
-						onClick: () => draft.restoreSong(id),
+						onClick: () => restoreSong(id),
 					},
 				},
 			);
 		},
-		[draft.suggestions, draft.dismissSuggestion, draft.restoreSong],
+		[draft.suggestions, dismissSuggestion, restoreSong],
 	);
-	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Payload assembly stays outside CreateBar, which is presentational. The
 	// helper structurally limits publishing to the preview's committed config.
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
+	const { submit } = flow;
 	const handleSubmit = useCallback(() => {
-		void flow.submit(
+		void submit(
 			buildStudioSubmitInput(name, {
 				tracklist: draft.tracklist,
 				committedConfig: draft.committedConfig,
@@ -184,9 +187,8 @@ export function StudioScreen({
 		draft.tracklist,
 		draft.committedConfig,
 		draft.intentApplied,
-		flow.submit,
+		submit,
 	]);
-	// oxlint-enable react-hooks/exhaustive-deps
 
 	const { previewState } = draft;
 	const eligibleShortfall =
@@ -194,12 +196,10 @@ export function StudioScreen({
 			? previewState.eligibleShortfall
 			: null;
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const handleClearFilters = useCallback(() => {
-		draft.setGenrePills([]);
-		draft.setMatchFilters({ version: 1 });
-	}, [draft.setGenrePills, draft.setMatchFilters]);
-	// oxlint-enable react-hooks/exhaustive-deps
+		setGenrePills([]);
+		setMatchFilters({ version: 1 });
+	}, [setGenrePills, setMatchFilters]);
 
 	// These states occupy the same surface, so paired timing keeps the swap
 	// reading as one state change rather than unrelated entrances and exits.

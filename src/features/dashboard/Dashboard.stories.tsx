@@ -29,13 +29,11 @@ export const ProgressiveEnrichment: Story = () => {
 	const [count, setCount] = useState(0);
 	const total = TOTAL_LIKED_SONGS;
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	useEffect(() => {
 		if (count >= total) return;
 		const id = setTimeout(() => setCount((c) => Math.min(c + 1, total)), 800);
 		return () => clearTimeout(id);
-	}, [count]);
-	// oxlint-enable react-hooks/exhaustive-deps
+	}, [count, total]);
 
 	return (
 		<div>

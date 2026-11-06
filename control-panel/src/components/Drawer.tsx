@@ -23,8 +23,8 @@ export function Drawer({
 	const onCloseRef = useRef(onClose);
 	onCloseRef.current = onClose;
 
-	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	useEffect(() => {
+		const trigger = triggerRef.current;
 		panelRef.current?.focus();
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.key === "Escape") onCloseRef.current();
@@ -32,10 +32,9 @@ export function Drawer({
 		window.addEventListener("keydown", onKeyDown);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown);
-			triggerRef.current?.focus();
+			trigger?.focus();
 		};
 	}, []);
-	// oxlint-enable react-hooks/exhaustive-deps
 
 	return (
 		<div className="drawer-root">
