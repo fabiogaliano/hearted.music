@@ -61,7 +61,7 @@ import { themeSchema } from "@/lib/theme/types";
 
 /**
  * Captures the cause via Sentry, then returns the typed OnboardingError to
- * throw. console-only throws never reach Sentry (enableLogs:false), so every
+ * throw. console-only throws never become Sentry issues, so every
  * onboarding failure needs this at the throw site, not just the log line.
  */
 function onboardingError(

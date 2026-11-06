@@ -70,7 +70,7 @@ export const persistConsentDecision = createServerFn({ method: "POST" })
 				status: data.status,
 				error: result.error,
 			});
-			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 			captureServerError(result.error, {
 				area: "consent",
 				operation: "persist_consent_decision",

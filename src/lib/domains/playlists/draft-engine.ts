@@ -251,7 +251,7 @@ export async function rankCandidates(
 	if (Result.isError(result)) {
 		// Non-fatal: fall back to unscored order (no matches is a safe
 		// degradation), but the preview is now insertion order with every score 0,
-		// so report it — console.error never reaches Sentry (enableLogs:false).
+		// so report it — console.error alone never becomes a Sentry issue.
 		captureServerError(result.error, {
 			area: "playlist_studio",
 			operation: "rank_candidates",

@@ -41,7 +41,7 @@ export const requestLibraryPhase1Enrichment = createServerFn({ method: "POST" })
 				const message = cause
 					? String("message" in cause ? cause.message : cause)
 					: outcome.error.kind;
-				// log.error never reaches Sentry with enableLogs:false; capture explicitly
+				// log.error never becomes a Sentry issue, so it can't alert; capture explicitly
 				captureServerError(outcome.error, {
 					area: "enrichment",
 					operation: "request_library_phase1_enrichment",

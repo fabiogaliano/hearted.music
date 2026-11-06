@@ -44,7 +44,7 @@ export const updateThemePreference = createServerFn({ method: "POST" })
 		const result = await updateTheme(context.session.accountId, data.theme);
 
 		if (Result.isError(result)) {
-			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 			captureServerError(result.error, {
 				area: "settings",
 				operation: "update_theme_preference",
@@ -93,7 +93,7 @@ export const updateMatchStrictnessPreference = createServerFn({
 		);
 
 		if (Result.isError(result)) {
-			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 			captureServerError(result.error, {
 				area: "settings",
 				operation: "update_match_strictness_preference",
@@ -125,7 +125,7 @@ export const setMatchViewModePreference = createServerFn({ method: "POST" })
 		);
 
 		if (Result.isError(result)) {
-			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 			captureServerError(result.error, {
 				area: "settings",
 				operation: "set_match_view_mode_preference",

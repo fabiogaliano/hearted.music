@@ -234,7 +234,7 @@ export const getLikedSongsDeepLinkBootstrap = createServerFn({ method: "GET" })
 				// Surface the failure so the route loader falls back to the normal
 				// first-page load. Seeding an empty page here would hydrate the deep
 				// link as an empty library on any transient server/DB error.
-				// console.error never reaches Sentry with enableLogs:false; capture explicitly
+				// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 				captureServerError(result.error, {
 					area: "liked_songs",
 					operation: "get_liked_songs_deeplink_bootstrap",

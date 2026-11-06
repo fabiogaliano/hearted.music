@@ -140,7 +140,7 @@ export const checkHandleAvailability = createServerFn({ method: "GET" })
 					.maybeSingle();
 
 				if (takenError) {
-					// console.error never reaches Sentry with enableLogs:false; capture explicitly
+					// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 					captureServerError(takenError, {
 						area: "account_handle",
 						operation: "check_handle_availability",

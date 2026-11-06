@@ -270,7 +270,7 @@ export const createCheckoutSession = createServerFn({ method: "POST" })
 					config.sharedSecret,
 				);
 			} catch (err) {
-				// console.* does not reach Sentry (enableLogs:false) — a billing
+				// console.* never becomes a Sentry issue — a billing
 				// service outage would otherwise be silent. Capture it.
 				captureServerError(err, {
 					area: "billing",

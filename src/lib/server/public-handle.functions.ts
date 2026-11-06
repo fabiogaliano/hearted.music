@@ -34,7 +34,7 @@ export const getPublicHandleIdentity = createServerFn({ method: "GET" })
 			// and throw a generic error so DB internals (table/constraint names)
 			// never reach an anonymous caller.
 			console.error("[getPublicHandleIdentity] lookup failed:", result.error);
-			// console.error never reaches Sentry with enableLogs:false; capture explicitly
+			// console.error never becomes a Sentry issue, so it can't alert; capture explicitly
 			captureServerError(result.error, {
 				area: "public_handle",
 				operation: "get_public_handle_identity",

@@ -102,7 +102,7 @@ async function loadAuthSession(): Promise<AuthSessionState> {
 		};
 	} catch (error) {
 		console.warn("Failed to get auth session:", errorMessage(error));
-		// console.warn never reaches Sentry with enableLogs:false; capture explicitly
+		// console.warn never reaches Sentry; capture explicitly
 		captureServerError(error, {
 			area: "auth",
 			operation: "load_auth_session",
@@ -133,8 +133,8 @@ function recordLastSeen(accountId: string, lastSeenAt: string | null): void {
 	const heartbeat = touchAccountLastSeen(accountId).catch((error) => {
 		console.warn("Failed to record last_seen_at:", errorMessage(error));
 		// A missed heartbeat is non-fatal, but a persistent failure would silently
-		// rot last_seen_at across all accounts; surface it (console is not enough
-		// with enableLogs:false).
+		// rot last_seen_at across all accounts; surface it (console output never becomes a
+		// Sentry issue).
 		captureServerError(error, {
 			area: "auth",
 			operation: "touch_account_last_seen",

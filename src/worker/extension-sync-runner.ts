@@ -118,7 +118,7 @@ interface PhaseResults {
 /**
  * Surfaces an operational extension-sync failure to Sentry before the job is
  * marked failed. Without this, a failed sync only leaves a `failed` job row +
- * `log.*` line (the worker runs with `enableLogs:false`), so incidents require
+ * `log.*` line (the worker has no Sentry logging integration), so incidents require
  * DB/log spelunking. Uses `@sentry/bun` because this runs in the worker, not on
  * Cloudflare. `level` lets a likely-client bad payload land as a warning instead
  * of an error.
@@ -539,8 +539,8 @@ export async function runExtensionSyncJob(
 		} catch (grantError) {
 			// The reporter above only sees the grant's *handled* swallows; an
 			// unexpected throw from maybeGrantLikedSongAccessAfterSync itself lands
-			// here. The worker runs with enableLogs:false, so log.error never reaches
-			// Sentry — capture explicitly while still swallowing so the job stays
+			// here. The worker has no Sentry logging integration, so log.error never
+			// reaches Sentry — capture explicitly while still swallowing so the job stays
 			// best-effort.
 			log.error("extension-sync-grant-threw", {
 				actor,
