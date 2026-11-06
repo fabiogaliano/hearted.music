@@ -1,4 +1,4 @@
-import { APICallError, RetryError } from "ai";
+import { APICallError, NoOutputGeneratedError, RetryError } from "ai";
 import { describe, expect, it } from "vite-plus/test";
 import { classifyAnalysisFailure } from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import {
@@ -128,6 +128,16 @@ describe("normalizeLlmError", () => {
 		);
 
 		expect(normalized).toBeInstanceOf(LlmProviderError);
+		expect(isRetryableLlmError(normalized)).toBe(true);
+	});
+
+	it("treats an empty structured draw (NoOutputGenerated) as retryable, like an unparseable one", () => {
+		const normalized = normalizeLlmError(
+			new NoOutputGeneratedError(),
+			"google-vertex",
+			"gemini-2.5-flash",
+		);
+
 		expect(isRetryableLlmError(normalized)).toBe(true);
 	});
 

@@ -1,14 +1,14 @@
-import { generateObject, generateText } from "ai";
+import { generateText } from "ai";
 import { Result } from "better-result";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { z } from "zod";
 import { LlmService } from "./service";
 
-// Mock only the two generation entry points; keep the rest of the SDK (error
+// Mock only the generation entry point; keep the rest of the SDK (error
 // classes used by normalizeError) real.
 vi.mock("ai", async (importOriginal: <T>() => Promise<T>) => {
 	const actual = await importOriginal<typeof import("ai")>();
-	return { ...actual, generateText: vi.fn(), generateObject: vi.fn() };
+	return { ...actual, generateText: vi.fn() };
 });
 
 // A google (AI-Studio) service defaults to gemini-2.5-flash, which the price
@@ -85,8 +85,8 @@ describe("generateText usage + cost enrichment", () => {
 
 describe("generateObject usage + cost enrichment", () => {
 	it("attaches provider/modelId/costUsd alongside the parsed object", async () => {
-		vi.mocked(generateObject).mockResolvedValue({
-			object: { ok: true },
+		vi.mocked(generateText).mockResolvedValue({
+			output: { ok: true },
 			usage: FULL_USAGE,
 		} as never);
 

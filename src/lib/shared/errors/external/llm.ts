@@ -64,12 +64,13 @@ export function isRetryableLlmError(error: unknown): boolean {
 		const status = error.statusCode;
 		if (status === 429) return true;
 		if (status !== undefined && status >= 500) return true;
-		// generateObject failed to parse/validate the response. This is usually
-		// transient — the model occasionally truncates or malforms the JSON on one
-		// draw and returns valid output on the next — so retry rather than fail
-		// terminally. Matches the AI SDK's NoObjectGeneratedError message, which
-		// normalizeError preserves verbatim inside the wrapped message.
-		if (/no object generated/i.test(error.message)) return true;
+		// A structured-output draw produced nothing parseable. This is usually
+		// transient — the model occasionally truncates, malforms, or omits the JSON
+		// on one draw and returns valid output on the next — so retry rather than
+		// fail terminally. Matches the AI SDK's NoObjectGeneratedError (unparseable
+		// text) and NoOutputGeneratedError (empty text) messages, which
+		// normalizeError preserves verbatim.
+		if (/no (object|output) generated/i.test(error.message)) return true;
 	}
 	return false;
 }

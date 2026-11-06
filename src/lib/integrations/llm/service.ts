@@ -16,7 +16,7 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
 import { createOpenAI } from "@ai-sdk/openai";
-import { APICallError, generateObject, generateText, RetryError } from "ai";
+import { APICallError, generateText, Output, RetryError } from "ai";
 import { Result } from "better-result";
 import type { CredentialBody } from "google-auth-library";
 import { z } from "zod";
@@ -265,10 +265,10 @@ export class LlmService {
 			() =>
 				this.limiter.run(async () => {
 					try {
-						const result = await generateObject({
+						const result = await generateText({
 							model: this.languageModel(this.model),
 							prompt,
-							schema,
+							output: Output.object({ schema }),
 							// See generateText: withRetry owns retry/backoff so the SDK's
 							// internal retries don't wrap a 429 into a non-retryable RetryError.
 							maxRetries: 0,
@@ -287,7 +287,7 @@ export class LlmService {
 						const tokens = this.extractTokenUsage(result.usage);
 
 						return Result.ok({
-							output: result.object as T,
+							output: result.output,
 							model: this.getCurrentModel(),
 							modelId: this.model,
 							provider: this.provider,
