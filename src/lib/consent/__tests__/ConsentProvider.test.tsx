@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ConsentBanner } from "@/components/consent/ConsentBanner";
 import type { ResolvedConsent } from "@/lib/consent/consent-policy";
 import { render, screen, waitFor } from "@/test/utils/render";

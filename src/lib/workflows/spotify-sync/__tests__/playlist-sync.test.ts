@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type {
 	Playlist,
 	PlaylistSong,
@@ -36,9 +36,8 @@ vi.mock("../dedupe", () => ({
 	dedupeTracksBySpotifyId: (tracks: unknown[]) => tracks,
 }));
 
-const { syncPlaylists, syncPlaylistTracksFromData } = await import(
-	"../playlist-sync"
-);
+const { syncPlaylists, syncPlaylistTracksFromData } =
+	await import("../playlist-sync");
 
 function makePlaylist(overrides: Partial<Playlist> = {}): Playlist {
 	return {

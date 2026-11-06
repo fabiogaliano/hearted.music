@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { CommandResponse } from "../../../../shared/spotify-command-protocol";
 import type { AcknowledgedResult } from "../playlist-write-acknowledgement";
 import {

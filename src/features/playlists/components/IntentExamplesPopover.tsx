@@ -87,7 +87,7 @@ export function IntentExamplesPopover({
 	}, [open]);
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: a hover-region wrapper bridging the trigger and its card, not a control itself — the focusable trigger button inside owns the real semantics.
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a hover-region wrapper bridging the trigger and its card, not a control itself — the focusable trigger button inside owns the real semantics.
 		<span
 			className="relative inline-flex"
 			onPointerEnter={scheduleOpen}

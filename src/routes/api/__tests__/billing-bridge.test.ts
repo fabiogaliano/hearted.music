@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { signBridgeRequest } from "@/lib/domains/billing/hmac";
 import { captureServerEvent } from "@/lib/observability/posthog-server";
 import { withinRateLimit } from "@/lib/platform/rate-limit/rate-limit";

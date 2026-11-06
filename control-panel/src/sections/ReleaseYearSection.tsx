@@ -115,7 +115,7 @@ function useYearCandidates(albumIds: string[]) {
 	const [tick, setTick] = useState(0);
 
 	const key = albumIds.join(",");
-	// biome-ignore lint/correctness/useExhaustiveDependencies: key stands in for albumIds' contents; tick re-arms after a manual retry
+	// oxlint-disable react-hooks/exhaustive-deps -- key stands in for albumIds' contents; tick re-arms after a manual retry
 	useEffect(() => {
 		const missing = albumIds.filter((id) => !requested.current.has(id));
 		if (missing.length === 0) return;
@@ -157,6 +157,7 @@ function useYearCandidates(albumIds: string[]) {
 			for (const id of unresolved) requested.current.delete(id);
 		};
 	}, [key, tick]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	const retry = () => {
 		setStalled(false);
@@ -390,7 +391,7 @@ function AlbumCard({
 							// In focus mode the field is pre-focused with the prefill
 							// selected, so the whole interaction is Enter (accept) or
 							// type-over (correct) — Escape releases the keys to J/K.
-							// biome-ignore lint/a11y/noAutofocus: solo focus-mode is the intended keyboard entry point
+							// oxlint-disable-next-line jsx-a11y/no-autofocus -- solo focus-mode is the intended keyboard entry point
 							autoFocus={solo}
 							onFocus={(e) => e.currentTarget.select()}
 							style={{ maxWidth: 140 }}
@@ -816,7 +817,7 @@ export function ReleaseYearSection({ refreshKey }: { refreshKey: number }) {
 					</button>
 				</div>
 				{queue.tab === "unresolved" && (
-					// biome-ignore lint/a11y/useSemanticElements: styled button toggle group, not a form fieldset
+					// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- styled button toggle group, not a form fieldset
 					<div
 						className="queue-head-tabs ry-shape"
 						role="group"

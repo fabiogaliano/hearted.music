@@ -4,7 +4,7 @@
  * dedupe, and budget/empty edge cases.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { allocateArtistPins } from "../artist-allocation";
 
 const pool = (name: string, ...songIds: string[]) => ({ name, songIds });

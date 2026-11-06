@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { z } from "zod";
 import type { LikedSongRef } from "@/lib/domains/library/liked-songs/queries";
 import type { Song } from "@/lib/domains/library/songs/queries";
@@ -42,9 +42,8 @@ vi.mock("@/lib/domains/library/liked-songs/queries", () => ({
 	softDeleteBatch: (...args: unknown[]) => mockSoftDeleteBatch(...args),
 }));
 
-const { importSpotifyTracks, runPhase, incrementalSync } = await import(
-	"../sync-helpers"
-);
+const { importSpotifyTracks, runPhase, incrementalSync } =
+	await import("../sync-helpers");
 
 const ACCOUNT_ID = "acct-1";
 const SONG_ID = "song-x";
@@ -144,48 +143,54 @@ describe("runPhase", () => {
 		it.each([
 			["the same", 2],
 			["a newer", 3],
-		])("running under %s parent attempt: that run owns it, so this one is superseded and touches nothing", async (_label, holder) => {
-			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
-			mockGetJobById.mockResolvedValueOnce(
-				Result.ok(
-					makeJob({ id: "job-1", status: "running", attempts: holder }),
-				),
-			);
-			const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
+		])(
+			"running under %s parent attempt: that run owns it, so this one is superseded and touches nothing",
+			async (_label, holder) => {
+				mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+				mockGetJobById.mockResolvedValueOnce(
+					Result.ok(
+						makeJob({ id: "job-1", status: "running", attempts: holder }),
+					),
+				);
+				const syncFn = vi.fn(async () => Result.ok({ total: 1 }));
 
-			const result = await runPhase(PHASE, TotalSchema, syncFn);
+				const result = await runPhase(PHASE, TotalSchema, syncFn);
 
-			expect(result).toHaveOkValue({ status: "superseded" });
-			expect(mockTakeOverJob).not.toHaveBeenCalled();
-			expect(syncFn).not.toHaveBeenCalled();
-			expect(mockCompleteJob).not.toHaveBeenCalled();
-			expect(mockSettleClaimedJob).not.toHaveBeenCalled();
-		});
+				expect(result).toHaveOkValue({ status: "superseded" });
+				expect(mockTakeOverJob).not.toHaveBeenCalled();
+				expect(syncFn).not.toHaveBeenCalled();
+				expect(mockCompleteJob).not.toHaveBeenCalled();
+				expect(mockSettleClaimedJob).not.toHaveBeenCalled();
+			},
+		);
 
 		// 0 is a phase started before phases recorded their parent attempt.
 		it.each([
 			["an older", 1],
 			["no recorded", 0],
-		])("running under %s parent attempt (regression: a phase stranded by a crashed attempt stopped every retry as superseded): takes it over and re-runs the work", async (_label, holder) => {
-			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
-			mockGetJobById.mockResolvedValueOnce(
-				Result.ok(
-					makeJob({ id: "job-1", status: "running", attempts: holder }),
-				),
-			);
-			const syncFn = vi.fn(async () => Result.ok({ total: 4 }));
+		])(
+			"running under %s parent attempt (regression: a phase stranded by a crashed attempt stopped every retry as superseded): takes it over and re-runs the work",
+			async (_label, holder) => {
+				mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));
+				mockGetJobById.mockResolvedValueOnce(
+					Result.ok(
+						makeJob({ id: "job-1", status: "running", attempts: holder }),
+					),
+				);
+				const syncFn = vi.fn(async () => Result.ok({ total: 4 }));
 
-			const result = await runPhase(PHASE, TotalSchema, syncFn);
+				const result = await runPhase(PHASE, TotalSchema, syncFn);
 
-			expect(result).toHaveOkValue({
-				status: "completed",
-				value: { total: 4 },
-			});
-			expect(mockTakeOverJob).toHaveBeenCalledWith(PHASE);
-			expect(mockCompleteJob).toHaveBeenCalledWith(PHASE, {
-				result: { total: 4 },
-			});
-		});
+				expect(result).toHaveOkValue({
+					status: "completed",
+					value: { total: 4 },
+				});
+				expect(mockTakeOverJob).toHaveBeenCalledWith(PHASE);
+				expect(mockCompleteJob).toHaveBeenCalledWith(PHASE, {
+					result: { total: 4 },
+				});
+			},
+		);
 
 		it("running under an older attempt that settles it before the takeover lands: reuses the settled result", async () => {
 			mockStartJob.mockResolvedValueOnce(Result.ok("superseded"));

@@ -1,5 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { OnboardingSession } from "@/lib/domains/library/accounts/onboarding-session";
 import { isExtensionInstalled } from "@/lib/extension/detect";
 import { getActiveJobs } from "@/lib/server/jobs.functions";
@@ -136,15 +143,18 @@ describe("/match URL canonicalisation (A3)", () => {
 	it.each([
 		["/match", "playlist"],
 		["/match?mode=song", "song"],
-	])("keeps canonical %s and reads the %s-orientation deck", async (url, orientation) => {
-		const { router } = await renderMatchRoute({ queryClient, url });
+	])(
+		"keeps canonical %s and reads the %s-orientation deck",
+		async (url, orientation) => {
+			const { router } = await renderMatchRoute({ queryClient, url });
 
-		expect(router.state.location.href).toBe(url);
-		expect(startOrResumeMatchDeck).toHaveBeenCalledTimes(1);
-		expect(startOrResumeMatchDeck).toHaveBeenCalledWith({
-			data: { orientation },
-		});
-	});
+			expect(router.state.location.href).toBe(url);
+			expect(startOrResumeMatchDeck).toHaveBeenCalledTimes(1);
+			expect(startOrResumeMatchDeck).toHaveBeenCalledWith({
+				data: { orientation },
+			});
+		},
+	);
 });
 
 describe("/match loader — cold-entry deck read (RB)", () => {

@@ -6,7 +6,14 @@
  * sessionStorage — living on the jsdom window — persists across it.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 async function importStore() {
 	return import("../demoSandboxStore");

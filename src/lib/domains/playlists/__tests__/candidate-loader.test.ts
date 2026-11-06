@@ -8,7 +8,7 @@
  * the audio feature embedded through the FK (no DB-derived `.in(...)` re-query).
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { loadPhase1Candidates } from "../candidate-loader";
 
 // ---------------------------------------------------------------------------

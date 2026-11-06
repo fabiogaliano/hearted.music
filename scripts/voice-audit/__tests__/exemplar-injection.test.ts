@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { getLyricalPrompt } from "@/lib/domains/enrichment/content-analysis/prompts/registry";
 import { renderAnnotationsBlockForPrompt } from "@/lib/domains/enrichment/content-analysis/grounding-annotations";
 import { loadGoldExemplars, renderExemplarBlock } from "../exemplars";

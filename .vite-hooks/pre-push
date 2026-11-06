@@ -1,0 +1,29 @@
+#!/bin/sh
+# Full quality gates (check + typecheck + tests) in parallel, matching CI.
+
+# The dev worker's account-event publisher races the account-events
+# integration tests (it claims their rows and fires extra wake NOTIFYs),
+# so fail fast instead of burning a ~100s test run on a confusing failure.
+if pgrep -f 'src/worker/index.ts' >/dev/null; then
+	echo "❌ Stop the dev worker (bun run dev) before pushing — it races the account-event integration tests."
+	exit 1
+fi
+
+bun run check &
+check=$!
+
+# Bust tsgo's incremental cache so this gate runs a FULL check, matching CI
+# (fresh checkout = no .tsbuildinfo). A stale cache once let a type error
+# pass pre-push yet fail CI, which stranded a migration. Cover both projects
+# CI typechecks (main + worker).
+(rm -rf node_modules/.cache/tsgo && bun run typecheck && bun run typecheck:worker) &
+typecheck=$!
+
+bun run test &
+tests=$!
+
+status=0
+wait "$check" || status=1
+wait "$typecheck" || status=1
+wait "$tests" || status=1
+exit "$status"

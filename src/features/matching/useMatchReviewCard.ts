@@ -154,6 +154,7 @@ export function useMatchReviewCard({
 	const hasMoreSuggestions =
 		initialCursor !== null && (!tailQuery.data || tailQuery.hasNextPage);
 
+	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const loadMoreSuggestions = useCallback(() => {
 		// Guards against duplicating the enabled-gated auto first-page fetch —
 		// a sentinel that renders before that fetch settles must not double-call.
@@ -164,10 +165,13 @@ export function useMatchReviewCard({
 		tailQuery.isFetchingNextPage,
 		tailQuery.fetchNextPage,
 	]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
+	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const retryLoadMore = useCallback(() => {
 		void tailQuery.fetchNextPage();
 	}, [tailQuery.fetchNextPage]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Serializes overlapping dismisses within ONE card. The dismiss mutation
 	// snapshots that card's present + tail caches in onMutate and restores the
@@ -190,6 +194,7 @@ export function useMatchReviewCard({
 	// resume its own chain rather than reset it mid-flight.
 	const dismissChainsRef = useRef<Map<string, Promise<unknown>>>(new Map());
 
+	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	const dismissSuggestion = useCallback(
 		async (suggestionId: string) => {
 			const chains = dismissChainsRef.current;
@@ -230,6 +235,7 @@ export function useMatchReviewCard({
 		},
 		[dismissMutation.mutateAsync, itemId],
 	);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	const waitForPendingDismisses = useCallback(async () => {
 		// Drain in a loop, not a single read: a row dismiss enqueued during the

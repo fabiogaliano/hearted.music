@@ -8,7 +8,7 @@
  * extension or network.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // ── Server function mocks ──────────────────────────────────────────────────
 
@@ -57,9 +57,8 @@ vi.mock("../spotify-client", () => ({
 
 // ── Import under test ──────────────────────────────────────────────────────
 
-const { createPlaylistFromDraft, resumePlaylistCreateFromDraft } = await import(
-	"../create-playlist-from-draft"
-);
+const { createPlaylistFromDraft, resumePlaylistCreateFromDraft } =
+	await import("../create-playlist-from-draft");
 
 // ── Shared fixtures ────────────────────────────────────────────────────────
 

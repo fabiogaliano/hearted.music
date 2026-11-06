@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { GOLD_SONG_DETAILS } from "@/features/liked-songs/components/song-detail-panel/song-detail-data";
 import {
 	parseStoredAnalysis,

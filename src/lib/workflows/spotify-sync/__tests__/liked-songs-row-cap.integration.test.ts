@@ -6,7 +6,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Result } from "better-result";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import { getAll } from "@/lib/domains/library/liked-songs/queries";
 import { toSpotifyApiSavedTrack } from "@/test/fixtures";

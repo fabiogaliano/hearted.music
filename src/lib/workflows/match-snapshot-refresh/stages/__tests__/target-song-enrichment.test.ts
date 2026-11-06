@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockRunLightweightEnrichment = vi.fn();
 vi.mock("@/lib/workflows/playlist-sync/lightweight-enrichment", () => ({

@@ -2,7 +2,7 @@
  * Tests for matching scoring algorithms.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { computeAudioFeatureScore } from "../scoring";
 import type { AudioFeatureWeights, MatchingAudioFeatures } from "../types";
 

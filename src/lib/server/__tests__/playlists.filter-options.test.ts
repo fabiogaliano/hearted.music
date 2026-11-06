@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { MatchFilterOptionAggregates } from "@/lib/domains/library/liked-songs/filter-options-queries";
 import type { PlaylistMatchFilterOptions } from "@/lib/domains/taste/match-filters/types";
 import { getPlaylistMatchFilterOptions } from "../playlists.functions";

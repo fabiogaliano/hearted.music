@@ -6,7 +6,7 @@
  * are used by the rank-derivation algorithm).
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { deriveDecidedPairRanks } from "../run-config";
 import type { MatchResult } from "@/lib/domains/taste/song-matching/types";
 

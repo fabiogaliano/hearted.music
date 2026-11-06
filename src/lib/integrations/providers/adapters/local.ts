@@ -118,7 +118,7 @@ export class LocalProvider implements MLProvider {
 			// The actual ONNX weights are loaded from RERANKER_ONNX_REPO.
 			rerankerModel: "Qwen/Qwen3-Reranker-0.6B",
 		};
-		// biome-ignore lint/style/noProcessEnv: dev-only local embedding sidecar port, intentionally not part of validated env
+		// oxlint-disable-next-line node/no-process-env -- dev-only local embedding sidecar port, intentionally not part of validated env
 		const port = process.env.EMBEDDING_SERVER_PORT || "9847";
 		this.serverBaseUrl = `http://127.0.0.1:${port}`;
 		if (options?.forceDirect) this.mode = "direct";
@@ -227,9 +227,8 @@ export class LocalProvider implements MLProvider {
 		if (!this.rerankerState) {
 			this.rerankerState = (async () => {
 				try {
-					const { AutoModelForCausalLM, AutoTokenizer } = await import(
-						"@huggingface/transformers"
-					);
+					const { AutoModelForCausalLM, AutoTokenizer } =
+						await import("@huggingface/transformers");
 					console.log(
 						`[Local Provider] Loading reranker: ${RERANKER_ONNX_REPO} (~1.2GB q8, first time only)`,
 					);

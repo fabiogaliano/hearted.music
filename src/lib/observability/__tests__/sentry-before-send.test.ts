@@ -1,5 +1,5 @@
 import type { ErrorEvent, EventHint } from "@sentry/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { applyServerErrorFingerprint } from "../sentry-before-send";
 

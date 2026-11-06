@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockMatchBatch = vi.fn();
 vi.mock("@/lib/domains/taste/song-matching/service", () => ({

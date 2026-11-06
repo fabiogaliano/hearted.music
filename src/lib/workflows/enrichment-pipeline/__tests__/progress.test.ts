@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { EnrichmentChunkProgressSchema } from "@/lib/platform/jobs/progress/enrichment";
 import { batchSizeForSequence, makeInitialProgress } from "../progress";
 

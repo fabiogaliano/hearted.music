@@ -1,5 +1,12 @@
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { makeJob } from "@/test/fixtures";
 import type { Job } from "../repository";
@@ -30,9 +37,8 @@ vi.mock("@/lib/observability/logger", () => ({
 	log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-const { completeJob, failJob, settleClaimedJob, startJob } = await import(
-	"../lifecycle"
-);
+const { completeJob, failJob, settleClaimedJob, startJob } =
+	await import("../lifecycle");
 
 const lostResponse = () =>
 	Result.err(

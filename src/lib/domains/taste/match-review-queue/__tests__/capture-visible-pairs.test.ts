@@ -13,7 +13,7 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { captureVisiblePairsAtomic } from "@/lib/domains/taste/match-review-queue/capture-visible-pairs";
 import type { VisibleSuggestion } from "@/lib/domains/taste/match-review-queue/visible-suggestion-list";

@@ -7,7 +7,7 @@
  * bypasses the pin.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { AdminSupabaseClient } from "@/lib/data/client";
 import type { UserPreferences } from "@/lib/domains/library/accounts/preferences-queries";
 

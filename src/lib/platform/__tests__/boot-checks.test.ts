@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { checkEmbeddingSpace } from "../boot-checks";
 
 const qwen = { model: "Qwen/Qwen3-Embedding-0.6B", dims: 512 };

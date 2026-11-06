@@ -7,7 +7,7 @@
  * these cover the stored JSON -> panel path end to end.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { parseStoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import type { LikedSong, SongAnalysisState } from "../../../types";
 import { likedSongToSongDetail } from "../song-detail-adapter";

@@ -102,7 +102,7 @@ export function StaggeredContent({
 	if (shouldReduceMotion || !enabled) {
 		return (
 			<>
-				{/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: aria-label only applied when role is explicitly set by caller */}
+				{/* oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-label only applied when role is explicitly set by caller */}
 				<div
 					className={className}
 					role={role}
@@ -124,7 +124,7 @@ export function StaggeredContent({
 			animate="animate"
 		>
 			{Children.map(children, (child, index) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: Static list of children without stable IDs
+				// oxlint-disable-next-line react/no-array-index-key -- Static list of children without stable IDs
 				<motion.div key={`stagger-${index}`} variants={itemVariants}>
 					{child}
 				</motion.div>

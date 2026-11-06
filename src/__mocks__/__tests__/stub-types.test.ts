@@ -15,7 +15,7 @@
  * site. Output/result literals are already guarded in-place by `satisfies`
  * at their construction site in each stub file, so they aren't retested here.
  */
-import { describe, expectTypeOf, it } from "vitest";
+import { describe, expectTypeOf, it } from "vite-plus/test";
 import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
 import type { SavePlaylistMatchConfigInput } from "@/lib/server/playlists.functions";
 import type {

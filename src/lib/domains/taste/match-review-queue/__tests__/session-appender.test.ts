@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Tables } from "@/lib/data/database.types";
 import { getLatestMatchSnapshot } from "@/lib/domains/taste/song-matching/queries";

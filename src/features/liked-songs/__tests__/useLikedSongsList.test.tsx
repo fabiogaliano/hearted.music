@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 import type { LikedSong } from "../types";

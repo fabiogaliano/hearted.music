@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { BillingBand } from "@/lib/shared/queue/band";
 import { resolveEnrichmentBand, resolveRefreshBand } from "../band-policy";
 import type { LibraryProcessingChange } from "../types";

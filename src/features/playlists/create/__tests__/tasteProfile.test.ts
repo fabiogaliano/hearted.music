@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { TasteProfile } from "@/lib/domains/library/liked-songs/taste-profile-queries";
 
 // tasteProfile.ts imports the getTasteProfile server fn; stub the module so this

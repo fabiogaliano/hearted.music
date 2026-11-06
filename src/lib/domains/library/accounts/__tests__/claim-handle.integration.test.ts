@@ -17,7 +17,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const IS_LOCAL =
@@ -375,18 +375,21 @@ describeLocal("claim_handle RPC — §14.5 integration", () => {
 		["leading period", ".handle"],
 		["trailing period", "handle."],
 		["consecutive periods", "han..dle"],
-	])("case 11: DB rejects direct UPDATE with %s handle", async (_label, badHandle) => {
-		const id = crypto.randomUUID();
-		await seedAccount(id, { step: "claim-handle" });
+	])(
+		"case 11: DB rejects direct UPDATE with %s handle",
+		async (_label, badHandle) => {
+			const id = crypto.randomUUID();
+			await seedAccount(id, { step: "claim-handle" });
 
-		try {
-			await expect(
-				db()`UPDATE account SET handle = ${badHandle} WHERE id = ${id}`,
-			).rejects.toMatchObject({ code: "23514" });
-		} finally {
-			await cleanAccount(id);
-		}
-	});
+			try {
+				await expect(
+					db()`UPDATE account SET handle = ${badHandle} WHERE id = ${id}`,
+				).rejects.toMatchObject({ code: "23514" });
+			} finally {
+				await cleanAccount(id);
+			}
+		},
+	);
 
 	// ── Case 12: concurrent claims for same handle → exactly one wins ────────
 

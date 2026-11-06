@@ -69,7 +69,7 @@ export function WritingSurfaceEditor({
 		textarea.style.height = `${textarea.scrollHeight}px`;
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: draftDescription drives the resize; autosize reads the textarea via ref
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- draftDescription drives the resize; autosize reads the textarea via ref
 	useLayoutEffect(() => {
 		autosize();
 	}, [draftDescription, autosize]);

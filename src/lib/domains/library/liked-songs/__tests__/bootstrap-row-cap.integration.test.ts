@@ -8,7 +8,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS } from "../constants";
 import { getBootstrapPagesBySlug } from "../queries";

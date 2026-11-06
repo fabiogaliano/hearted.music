@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 vi.mock("../shared/pathfinder", () => ({
 	queryPathfinder: vi.fn(),
@@ -287,9 +294,8 @@ describe("playlist-v2", () => {
 					new Response(JSON.stringify({ revision: "rev-b" }), { status: 200 }),
 				);
 
-			const { createPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { createPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const result = await createPlaylist("tok-create", "My List", "user-1");
 
@@ -333,9 +339,8 @@ describe("playlist-v2", () => {
 					new Response("rootlist unavailable", { status: 500 }),
 				);
 
-			const { createPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { createPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const result = await createPlaylist("tok-create", "My List", "user-1");
 
@@ -362,9 +367,8 @@ describe("playlist-v2", () => {
 					new Response(JSON.stringify({ revision: "rev-rl" }), { status: 200 }),
 				);
 
-			const { createPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { createPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const result = await createPlaylist(
 				"tok-fb",
@@ -391,9 +395,8 @@ describe("playlist-v2", () => {
 					new Response(JSON.stringify({ revision: "rev-p2" }), { status: 200 }),
 				);
 
-			const { createPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { createPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			await createPlaylist("tok-p", "Primary", "user-p");
 
@@ -412,9 +415,8 @@ describe("playlist-v2", () => {
 					}),
 				);
 
-			const { updatePlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { updatePlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const result = await updatePlaylist("tok-upd", "playlist-id", {
 				name: "Renamed",
@@ -448,9 +450,8 @@ describe("playlist-v2", () => {
 					}),
 				);
 
-			const { deletePlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { deletePlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const result = await deletePlaylist(
 				"tok-del",

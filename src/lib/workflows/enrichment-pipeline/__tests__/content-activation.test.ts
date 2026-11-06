@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
 const mockApplyEntitlement = vi.fn();
@@ -42,23 +42,26 @@ describe("runContentActivation", () => {
 		expect(mockMarkItemsNew).not.toHaveBeenCalled();
 	});
 
-	it.each([
-		"left_locked",
-		"unlocked_self_hosted",
-	] as const)("marks songs new after entitlement %s", async (kind) => {
-		mockApplyEntitlement.mockResolvedValue(Result.ok({ kind }));
+	it.each(["left_locked", "unlocked_self_hosted"] as const)(
+		"marks songs new after entitlement %s",
+		async (kind) => {
+			mockApplyEntitlement.mockResolvedValue(Result.ok({ kind }));
 
-		const outcome = await runContentActivation(makeCtx(), ["song-1", "song-2"]);
+			const outcome = await runContentActivation(makeCtx(), [
+				"song-1",
+				"song-2",
+			]);
 
-		expect(outcome.kind).toBe("attempted");
-		if (outcome.kind !== "attempted") return;
-		expect(outcome.succeededSongIds).toEqual(["song-1", "song-2"]);
-		expect(outcome.failures).toEqual([]);
-		expect(mockMarkItemsNew).toHaveBeenCalledWith("account-1", "song", [
-			"song-1",
-			"song-2",
-		]);
-	});
+			expect(outcome.kind).toBe("attempted");
+			if (outcome.kind !== "attempted") return;
+			expect(outcome.succeededSongIds).toEqual(["song-1", "song-2"]);
+			expect(outcome.failures).toEqual([]);
+			expect(mockMarkItemsNew).toHaveBeenCalledWith("account-1", "song", [
+				"song-1",
+				"song-2",
+			]);
+		},
+	);
 
 	it("does not mark songs new itself after unlimited activation", async () => {
 		mockApplyEntitlement.mockResolvedValue(

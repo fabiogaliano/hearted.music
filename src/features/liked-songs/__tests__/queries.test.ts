@@ -3,7 +3,7 @@ import {
 	InfiniteQueryObserver,
 	QueryClient,
 } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { LIKED_SONGS_DEEP_LINK_CENTRING_ROWS } from "@/lib/domains/library/liked-songs/constants";
 import { likedSongsKeys } from "@/lib/query-keys";
 import {

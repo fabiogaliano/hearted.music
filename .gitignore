@@ -48,3 +48,4 @@ scripts/db/migrate/.runbook.local.md
 control-panel/.data/
 .mockpit/*
 !.mockpit/rules.md
+.vitest/

@@ -1,6 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { Job } from "@/lib/platform/jobs/repository";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
@@ -402,58 +402,61 @@ describe("runExtensionSyncJob", () => {
 			attempts: 3,
 			error: new DatabaseError({ code: "57014", message: "liked blew up" }),
 		},
-	])("fails every unsettled phase + the parent and deletes the payload when a phase returns $label", async ({
-		attempts,
-		error,
-	}) => {
-		mockDownloadSyncPayload.mockResolvedValue(
-			Result.ok(
-				jsonBytes({
-					likedSongs: [
-						{
-							added_at: "2026-01-01T00:00:00Z",
-							track: {
-								id: "t1",
-								name: "n",
-								artists: [{ id: "a1", name: "A" }],
-								album: { id: "al1", name: "Al", images: [] },
-								duration_ms: 1,
-								uri: "spotify:track:t1",
+	])(
+		"fails every unsettled phase + the parent and deletes the payload when a phase returns $label",
+		async ({ attempts, error }) => {
+			mockDownloadSyncPayload.mockResolvedValue(
+				Result.ok(
+					jsonBytes({
+						likedSongs: [
+							{
+								added_at: "2026-01-01T00:00:00Z",
+								track: {
+									id: "t1",
+									name: "n",
+									artists: [{ id: "a1", name: "A" }],
+									album: { id: "al1", name: "Al", images: [] },
+									duration_ms: 1,
+									uri: "spotify:track:t1",
+								},
 							},
-						},
-					],
-					playlists: [],
-				}),
-			),
-		);
-		mockRunPhase.mockResolvedValueOnce(Result.err(error));
+						],
+						playlists: [],
+					}),
+				),
+			);
+			mockRunPhase.mockResolvedValueOnce(Result.err(error));
 
-		const outcome = await runExtensionSyncJob(
-			{ ...parentJob(validProgress()), attempts },
-			"actor",
-			LIVE_LEASE,
-		);
+			const outcome = await runExtensionSyncJob(
+				{ ...parentJob(validProgress()), attempts },
+				"actor",
+				LIVE_LEASE,
+			);
 
-		expect(outcome).toEqual({
-			status: "failed",
-			error: "Liked songs sync failed: liked blew up",
-		});
-		expect(mockRequeueClaimedJobForRetry).not.toHaveBeenCalled();
-		// runPhase leaves a failed phase running, so the parent fails the
-		// errored phase along with the siblings that never started.
-		for (const phaseJobId of Object.values(PHASE_JOB_IDS)) {
-			expect(mockFailJob).toHaveBeenCalledWith(phaseJobId, expect.any(String));
-		}
-		expect(mockSettleClaimedJob).toHaveBeenCalledWith(
-			expect.objectContaining({ id: PARENT_ID, attempts }),
-			"failed",
-			expect.any(String),
-		);
-		expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
-			{ id: "admin" },
-			PAYLOAD_PATH,
-		);
-	});
+			expect(outcome).toEqual({
+				status: "failed",
+				error: "Liked songs sync failed: liked blew up",
+			});
+			expect(mockRequeueClaimedJobForRetry).not.toHaveBeenCalled();
+			// runPhase leaves a failed phase running, so the parent fails the
+			// errored phase along with the siblings that never started.
+			for (const phaseJobId of Object.values(PHASE_JOB_IDS)) {
+				expect(mockFailJob).toHaveBeenCalledWith(
+					phaseJobId,
+					expect.any(String),
+				);
+			}
+			expect(mockSettleClaimedJob).toHaveBeenCalledWith(
+				expect.objectContaining({ id: PARENT_ID, attempts }),
+				"failed",
+				expect.any(String),
+			);
+			expect(mockDeleteSyncPayload).toHaveBeenCalledWith(
+				{ id: "admin" },
+				PAYLOAD_PATH,
+			);
+		},
+	);
 
 	it("regression: a failed playlist-track write fails the attempt and keeps the payload for a retry instead of completing without that playlist", async () => {
 		mockDownloadSyncPayload.mockResolvedValue(
@@ -800,23 +803,24 @@ describe("runExtensionSyncJob", () => {
 	it.each([
 		{ path: "requeue", attempts: 1 },
 		{ path: "terminal failure", attempts: 3 },
-	])("a lease reclaimed before a failure's $path neither fails the new run's phases nor deletes its payload", async ({
-		attempts,
-	}) => {
-		mockDownloadSyncPayload.mockResolvedValue(
-			Result.err(new DatabaseError({ code: "storage", message: "blip" })),
-		);
-		mockRequeueClaimedJobForRetry.mockResolvedValue(Result.ok(false));
-		mockSettleClaimedJob.mockResolvedValue(Result.ok("superseded"));
+	])(
+		"a lease reclaimed before a failure's $path neither fails the new run's phases nor deletes its payload",
+		async ({ attempts }) => {
+			mockDownloadSyncPayload.mockResolvedValue(
+				Result.err(new DatabaseError({ code: "storage", message: "blip" })),
+			);
+			mockRequeueClaimedJobForRetry.mockResolvedValue(Result.ok(false));
+			mockSettleClaimedJob.mockResolvedValue(Result.ok("superseded"));
 
-		const outcome = await runExtensionSyncJob(
-			{ ...parentJob(validProgress()), attempts },
-			"actor",
-			LIVE_LEASE,
-		);
+			const outcome = await runExtensionSyncJob(
+				{ ...parentJob(validProgress()), attempts },
+				"actor",
+				LIVE_LEASE,
+			);
 
-		expect(outcome).toEqual({ status: "superseded" });
-		expect(mockFailJob).not.toHaveBeenCalled();
-		expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
-	});
+			expect(outcome).toEqual({ status: "superseded" });
+			expect(mockFailJob).not.toHaveBeenCalled();
+			expect(mockDeleteSyncPayload).not.toHaveBeenCalled();
+		},
+	);
 });

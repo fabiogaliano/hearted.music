@@ -21,7 +21,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Result } from "better-result";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {

@@ -150,7 +150,7 @@ export function CommandPalette({
 	// Re-anchor the highlight to the first row whenever the query changes.
 	// Results only grow (not shrink) between keystrokes as accounts load, and
 	// row activation is index-guarded, so a stale index can never mis-fire.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset is keyed on query intentionally
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- reset is keyed on query intentionally
 	useEffect(() => {
 		setActiveIndex(0);
 	}, [query]);

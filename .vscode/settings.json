@@ -9,33 +9,33 @@
 		"**/routeTree.gen.ts": true
 	},
 	"[javascript]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[javascriptreact]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[typescript]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[typescriptreact]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[json]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[jsonc]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[css]": {
-		"editor.defaultFormatter": "biomejs.biome"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
+	// Keep editor lint/format on the root vite.config.ts blocks, matching `vp check`.
+	"oxc.disableNestedConfig": true,
+	"oxc.fmt.disableNestedConfig": true,
 	// VS Code's bundled CSS validator predates both Tailwind v4's `@import
 	// "tailwindcss" source(".")` import condition and the relative-color
 	// `oklch(from var(--token) …)` syntax the theme is built on, and reports
-	// both as "semicolon expected". Biome lints CSS here, so the built-in
-	// validator only contributes false positives.
-	"css.validate": false,
-	"editor.codeActionsOnSave": {
-		"source.organizeImports.biome": "explicit"
-	}
+	// both as "semicolon expected", so the built-in validator only contributes
+	// false positives.
+	"css.validate": false
 }

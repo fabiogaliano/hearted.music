@@ -87,7 +87,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
 
 		// Create the player exactly once. Later source changes flow through the cue
 		// effect below so advancing a card swaps the video without a fresh iframe.
-		// biome-ignore lint/correctness/useExhaustiveDependencies: create-once; activeId is read at creation only
+		// oxlint-disable react-hooks/exhaustive-deps -- create-once; activeId is read at creation only
 		useEffect(() => {
 			let cancelled = false;
 			let poll: ReturnType<typeof setInterval> | undefined;
@@ -139,9 +139,10 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
 				playerRef.current = null;
 			};
 		}, []);
+		// oxlint-enable react-hooks/exhaustive-deps
 
 		// New card in focus mode → reset to its primary source.
-		// biome-ignore lint/correctness/useExhaustiveDependencies: reset on source-set change
+		// oxlint-disable-next-line react-hooks/exhaustive-deps -- reset on source-set change
 		useEffect(() => {
 			setInternalIndex(0);
 		}, [sourceKey]);

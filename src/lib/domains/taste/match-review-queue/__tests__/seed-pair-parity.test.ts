@@ -13,7 +13,7 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: vi.fn(),
 }));
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { visibleSuggestionsToSeedPairRows } from "../proposal-builder";
 import type { MatchReviewSubject } from "../types";
 import {

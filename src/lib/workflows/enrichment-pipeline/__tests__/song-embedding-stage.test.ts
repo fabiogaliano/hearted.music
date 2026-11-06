@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { PipelineBatch } from "../batch";
 import { FAILURE_CODES } from "../failure-policy";
 import type { EnrichmentContext } from "../types";

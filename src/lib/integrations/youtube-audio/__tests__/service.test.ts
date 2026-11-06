@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { acquireSource } from "../service";
 import type { ProbeResult, YoutubeCandidate } from "../types";
 
@@ -162,9 +162,8 @@ describe("acquireSource youtube_search hydration", () => {
 	});
 
 	it("returns a typed hydrate_failed error when every candidate fails to hydrate", async () => {
-		const { YtDlpError } = await import(
-			"@/lib/shared/errors/external/youtube-audio"
-		);
+		const { YtDlpError } =
+			await import("@/lib/shared/errors/external/youtube-audio");
 		vi.mocked(searchYouTube).mockResolvedValue(
 			Result.ok([flat("ccccccccccc"), flat("ddddddddddd")]),
 		);

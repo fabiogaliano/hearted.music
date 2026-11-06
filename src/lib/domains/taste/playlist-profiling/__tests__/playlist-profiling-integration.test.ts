@@ -26,7 +26,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeAll, describe, expect, test } from "vitest";
+import { beforeAll, describe, expect, test } from "vite-plus/test";
 import { EmbeddingService } from "@/lib/domains/enrichment/embeddings/service";
 import type { Song } from "@/lib/domains/library/songs/queries";
 import { PlaylistProfilingService } from "../service";
@@ -52,9 +52,8 @@ const KNOWN_SPOTIFY_TRACK_IDS = [
 // ─────────────────────────────────────────────────────────────
 
 async function getTestSongsFromDatabase(): Promise<Song[]> {
-	const { getBySpotifyIds } = await import(
-		"@/lib/domains/library/songs/queries"
-	);
+	const { getBySpotifyIds } =
+		await import("@/lib/domains/library/songs/queries");
 	const result = await getBySpotifyIds(KNOWN_SPOTIFY_TRACK_IDS);
 
 	if (!Result.isOk(result)) {

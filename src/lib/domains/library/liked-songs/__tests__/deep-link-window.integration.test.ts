@@ -11,7 +11,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import { LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS } from "../constants";
 import {
@@ -196,11 +196,14 @@ describeLocal("deep-link window", () => {
 			"one row past the context from the head",
 			LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS + 1,
 		],
-	])("pages up then down from a window %s to the canonical order, no gaps or duplicates", async (_label, index) => {
-		const bootstrap = await windowAt(index);
+	])(
+		"pages up then down from a window %s to the canonical order, no gaps or duplicates",
+		async (_label, index) => {
+			const bootstrap = await windowAt(index);
 
-		expect(await pageOut(bootstrap)).toEqual(canonical);
-	});
+			expect(await pageOut(bootstrap)).toEqual(canonical);
+		},
+	);
 
 	it("reads below each page read upwards from that page's next cursor, as a refetch does", async () => {
 		const bootstrap = await windowAt(80);

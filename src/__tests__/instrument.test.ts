@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 const { mockInit } = vi.hoisted(() => ({ mockInit: vi.fn() }));
 
@@ -63,15 +70,14 @@ describe("web-server Sentry instrumentation", () => {
 
 	// Regression: 2026-08-01 local errors reached the production project
 	// because the local .env carried the production DSN.
-	it.each([
-		"development",
-		"test",
-		"local",
-	])("stays silent in the %s environment even with a DSN set", async (environment) => {
-		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: environment });
+	it.each(["development", "test", "local"])(
+		"stays silent in the %s environment even with a DSN set",
+		async (environment) => {
+			await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: environment });
 
-		expect(mockInit).not.toHaveBeenCalled();
-	});
+			expect(mockInit).not.toHaveBeenCalled();
+		},
+	);
 
 	// Fail-open on purpose: a container missing SENTRY_ENVIRONMENT must still report.
 	it("reports as production when the environment is unset", async () => {

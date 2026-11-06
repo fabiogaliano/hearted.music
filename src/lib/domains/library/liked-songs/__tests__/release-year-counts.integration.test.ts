@@ -14,7 +14,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import { ACCOUNT_BILLING } from "@/test/fixtures";
 
@@ -34,9 +34,8 @@ vi.mock("@/lib/data/client", () => ({
 	createAdminSupabaseClient: () => supabase,
 }));
 
-const { getAccountReleaseYearAggregates } = await import(
-	"../taste-profile-queries"
-);
+const { getAccountReleaseYearAggregates } =
+	await import("../taste-profile-queries");
 
 const SUBSCRIPTION_ID = crypto.randomUUID();
 const SELF_HOSTED_ID = crypto.randomUUID();

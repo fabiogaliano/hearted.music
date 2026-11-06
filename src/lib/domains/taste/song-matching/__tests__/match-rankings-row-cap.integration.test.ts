@@ -5,7 +5,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { getMatchRankingsForPlaylist } from "../queries";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";

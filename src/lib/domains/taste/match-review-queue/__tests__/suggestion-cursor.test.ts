@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { deriveSuggestionNextCursor } from "../suggestion-cursor";
 
 type Row = { fitScore: number; modelRank: number; songId: string };

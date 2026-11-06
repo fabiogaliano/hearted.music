@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockGetSongAnalyses = vi.fn();
 vi.mock("@/lib/domains/enrichment/content-analysis/queries", () => ({
@@ -159,9 +159,8 @@ describe("runOrientedRanking", () => {
 		mockGetSongAnalyses.mockResolvedValue(
 			Result.ok(new Map([["s1", { some: "analysis" }]])),
 		);
-		const { flattenAnalysisText } = await import(
-			"@/lib/domains/enrichment/embeddings/analysis-text"
-		);
+		const { flattenAnalysisText } =
+			await import("@/lib/domains/enrichment/embeddings/analysis-text");
 		vi.mocked(flattenAnalysisText).mockReturnValue("some analysis prose");
 		mockRankMatchSuggestionLists.mockResolvedValue({
 			status: "completed",

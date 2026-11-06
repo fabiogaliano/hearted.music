@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { PlaylistProfilingService } from "@/lib/domains/taste/playlist-profiling/service";
 import type { ComputedPlaylistProfile } from "@/lib/domains/taste/playlist-profiling/types";
 import { DatabaseError } from "@/lib/shared/errors/database";

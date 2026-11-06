@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { render, waitFor } from "@/test/utils/render";
 
 const { mockRecover, mockCapture, mockImport } = vi.hoisted(() => ({
@@ -22,9 +22,8 @@ const staleChunkError = new TypeError(
 async function mountWithFailingChunk() {
 	vi.resetModules();
 	mockImport.mockRejectedValue(staleChunkError);
-	const { LazyHeartRippleBackground } = await import(
-		"../LazyHeartRippleBackground"
-	);
+	const { LazyHeartRippleBackground } =
+		await import("../LazyHeartRippleBackground");
 	render(<LazyHeartRippleBackground />);
 }
 

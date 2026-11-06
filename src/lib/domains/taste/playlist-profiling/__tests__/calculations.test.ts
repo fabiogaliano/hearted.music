@@ -2,7 +2,7 @@
  * Tests for profiling calculation functions.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { hashPlaylistProfile } from "@/lib/domains/enrichment/embeddings/hashing";
 import type { Song } from "@/lib/domains/library/songs/queries";

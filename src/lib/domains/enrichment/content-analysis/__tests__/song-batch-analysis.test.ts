@@ -1,5 +1,12 @@
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { GeniusFetchError } from "@/lib/shared/errors/external/genius";
@@ -35,12 +42,10 @@ vi.mock("@/lib/integrations/llm/config", () => ({
 	}),
 }));
 
-const { getBatch: mockGetAudioFeaturesBatch } = await import(
-	"@/lib/domains/enrichment/audio-features/queries"
-);
-const { getByIds: mockGetSongsByIds } = await import(
-	"@/lib/domains/library/songs/queries"
-);
+const { getBatch: mockGetAudioFeaturesBatch } =
+	await import("@/lib/domains/enrichment/audio-features/queries");
+const { getByIds: mockGetSongsByIds } =
+	await import("@/lib/domains/library/songs/queries");
 
 import {
 	analyzeSongBatch,
@@ -392,23 +397,25 @@ describe("analyzeSongBatch", () => {
 					new DatabaseError({ code: "08006", message: "connection lost" }),
 				cause: "database",
 			},
-		])("routes a failed song's $name through the classifier", async ({
-			error,
-			cause,
-		}) => {
-			vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
-				Result.ok(new Map<string, AudioFeature>()),
-			);
-			mockAnalyzeSong.mockResolvedValueOnce(Result.err(error()));
+		])(
+			"routes a failed song's $name through the classifier",
+			async ({ error, cause }) => {
+				vi.mocked(mockGetAudioFeaturesBatch).mockResolvedValueOnce(
+					Result.ok(new Map<string, AudioFeature>()),
+				);
+				mockAnalyzeSong.mockResolvedValueOnce(Result.err(error()));
 
-			const outcome = await analyzeSongBatch(
-				[makeSong("s1", "Has lyrics")],
-				deps,
-			);
+				const outcome = await analyzeSongBatch(
+					[makeSong("s1", "Has lyrics")],
+					deps,
+				);
 
-			expect(outcome.failedSongIds).toEqual(["s1"]);
-			expect(outcome.failureClassifications.get("s1")).toMatchObject({ cause });
-		});
+				expect(outcome.failedSongIds).toEqual(["s1"]);
+				expect(outcome.failureClassifications.get("s1")).toMatchObject({
+					cause,
+				});
+			},
+		);
 	});
 
 	describe("createSongBatchAnalyzerDeps", () => {

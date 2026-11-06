@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { TokenProvider } from "../command-handler";
 import type { DispatcherDeps } from "../dispatcher";
 import {

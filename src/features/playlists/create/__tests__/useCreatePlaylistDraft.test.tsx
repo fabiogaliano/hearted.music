@@ -12,7 +12,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { SUGGESTIONS_COUNT } from "@/lib/domains/playlists/constants";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import type { PlaylistDraftPreview } from "@/lib/server/playlist-draft.functions";

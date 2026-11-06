@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { NOTIFY_CHANNEL_WAKE } from "@/lib/account-events/contract";
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { publishAccountEvents } from "../poll-account-events";

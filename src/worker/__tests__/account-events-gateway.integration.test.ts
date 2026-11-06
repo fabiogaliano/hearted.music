@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import { env } from "@/env";
 import { writeAccountEvent } from "@/lib/account-events/producer";
 import { signEventToken } from "@/lib/account-events/token";
@@ -485,9 +485,8 @@ describeLocal("account-events-gateway integration", () => {
 
 	it("enforces bounded per-connection buffer (overflow behavior) and 503 draining", async () => {
 		// Mock 503 draining behavior first
-		const { setAccountEventsGatewayDraining } = await import(
-			"../account-events-gateway"
-		);
+		const { setAccountEventsGatewayDraining } =
+			await import("../account-events-gateway");
 		setAccountEventsGatewayDraining(true);
 
 		const res503 = await capturedFetch(

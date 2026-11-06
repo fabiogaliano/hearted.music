@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
 	applyFailurePolicy,
 	BACKOFF_CODES,
@@ -193,20 +193,21 @@ describe("applyFailurePolicy", () => {
 		}
 	});
 
-	it.each([
-		7, 50,
-	])("analysis_retry_candidate stops retrying forever: terminal and compensated after %i priors", (count) => {
-		const out = applyFailurePolicy({
-			failureCode: FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE,
-			priorUnresolvedCount: count,
-			now: FIXED_NOW,
-		});
-		expect(out).toEqual({
-			isTerminal: true,
-			suppressUntil: null,
-			escalatedToInputsMissing: true,
-		});
-	});
+	it.each([7, 50])(
+		"analysis_retry_candidate stops retrying forever: terminal and compensated after %i priors",
+		(count) => {
+			const out = applyFailurePolicy({
+				failureCode: FAILURE_CODES.ANALYSIS_RETRY_CANDIDATE,
+				priorUnresolvedCount: count,
+				now: FIXED_NOW,
+			});
+			expect(out).toEqual({
+				isTerminal: true,
+				suppressUntil: null,
+				escalatedToInputsMissing: true,
+			});
+		},
+	);
 
 	it("analysis_lyrics_refresh_pending backs off from 24h to a 30d cap", () => {
 		const cases: { count: number; minutes: number }[] = [

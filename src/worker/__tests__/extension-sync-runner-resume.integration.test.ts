@@ -22,7 +22,7 @@ import {
 	expect,
 	it,
 	vi,
-} from "vitest";
+} from "vite-plus/test";
 import { z } from "zod";
 import {
 	claimExtensionSyncJob,
@@ -431,69 +431,71 @@ describe.skipIf(!IS_LOCAL)(
 				hang: hangAfterNextLikedSongsWrite,
 				retryAdded: 0,
 			},
-		])("crash $crashPoint: the retry takes over the stranded phase, finishes the sync, and emits the liked-songs change", async ({
-			hang,
-			retryAdded,
-		}) => {
-			const phaseJobIds = {
-				liked_songs: await seedJob("sync_liked_songs"),
-				playlists: await seedJob("sync_playlists"),
-				playlist_tracks: await seedJob("sync_playlist_tracks"),
-			};
-			const parentId = await seedJob("extension_sync", {
-				payload_path: `${account()}/p.json`,
-				phase_job_ids: phaseJobIds,
-			});
+		])(
+			"crash $crashPoint: the retry takes over the stranded phase, finishes the sync, and emits the liked-songs change",
+			async ({ hang, retryAdded }) => {
+				const phaseJobIds = {
+					liked_songs: await seedJob("sync_liked_songs"),
+					playlists: await seedJob("sync_playlists"),
+					playlist_tracks: await seedJob("sync_playlist_tracks"),
+				};
+				const parentId = await seedJob("extension_sync", {
+					payload_path: `${account()}/p.json`,
+					phase_job_ids: phaseJobIds,
+				});
 
-			// First run: the worker dies inside the liked-songs phase (modelled as
-			// a library call that never returns).
-			const crashed = await claim();
-			expect(crashed.id).toBe(parentId);
-			hang.current = true;
-			void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
-			// The hang clears its flag once it fires, i.e. once the crashed run's
-			// read was issued or its write committed.
-			await vi.waitFor(() => expect(hang.current).toBe(false), {
-				timeout: 10_000,
-			});
-			expect((await readPhase(phaseJobIds.liked_songs)).status).toBe("running");
+				// First run: the worker dies inside the liked-songs phase (modelled as
+				// a library call that never returns).
+				const crashed = await claim();
+				expect(crashed.id).toBe(parentId);
+				hang.current = true;
+				void runExtensionSyncJob(crashed, "actor", LIVE_LEASE);
+				// The hang clears its flag once it fires, i.e. once the crashed run's
+				// read was issued or its write committed.
+				await vi.waitFor(() => expect(hang.current).toBe(false), {
+					timeout: 10_000,
+				});
+				expect((await readPhase(phaseJobIds.liked_songs)).status).toBe(
+					"running",
+				);
 
-			await db()`UPDATE job SET heartbeat_at = now() - interval '10 minutes' WHERE id = ${parentId}`;
-			const swept = await sweepStaleExtensionSyncJobs("5 minutes");
-			if (Result.isError(swept)) throw swept.error;
-			expect(swept.value.map((j) => j.id)).toContain(parentId);
+				await db()`UPDATE job SET heartbeat_at = now() - interval '10 minutes' WHERE id = ${parentId}`;
+				const swept = await sweepStaleExtensionSyncJobs("5 minutes");
+				if (Result.isError(swept)) throw swept.error;
+				expect(swept.value.map((j) => j.id)).toContain(parentId);
 
-			const retry = await claim();
-			expect(retry.id).toBe(parentId);
-			expect(retry.attempts).toBe(2);
-			mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
+				const retry = await claim();
+				expect(retry.id).toBe(parentId);
+				expect(retry.attempts).toBe(2);
+				mockApplyLibraryProcessingChange.mockResolvedValueOnce(Result.ok({}));
 
-			const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
+				const outcome = await runExtensionSyncJob(retry, "actor", LIVE_LEASE);
 
-			expect(outcome).toEqual({ status: "completed" });
-			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
-			expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith({
-				kind: "library_synced",
-				accountId: account(),
-				changes: {
-					likedSongs: { added: true, removed: true },
-					targetPlaylists: {
-						trackMembershipChanged: false,
-						profileTextChanged: false,
-						removed: false,
+				expect(outcome).toEqual({ status: "completed" });
+				expect(mockApplyLibraryProcessingChange).toHaveBeenCalledOnce();
+				expect(mockApplyLibraryProcessingChange).toHaveBeenCalledWith({
+					kind: "library_synced",
+					accountId: account(),
+					changes: {
+						likedSongs: { added: true, removed: true },
+						targetPlaylists: {
+							trackMembershipChanged: false,
+							profileTextChanged: false,
+							removed: false,
+						},
 					},
-				},
-			});
-			const likedPhase = await readPhase(phaseJobIds.liked_songs);
-			expect(likedPhase.status).toBe("completed");
-			expect(likedPhase.progress).toEqual({
-				result: { total: 2, added: retryAdded, removed: 0, tookOver: true },
-			});
-			const [parent] = await db()<{ status: string }[]>`
+				});
+				const likedPhase = await readPhase(phaseJobIds.liked_songs);
+				expect(likedPhase.status).toBe("completed");
+				expect(likedPhase.progress).toEqual({
+					result: { total: 2, added: retryAdded, removed: 0, tookOver: true },
+				});
+				const [parent] = await db()<{ status: string }[]>`
         SELECT status FROM job WHERE id = ${parentId}
       `;
-			expect(parent?.status).toBe("completed");
-		});
+				expect(parent?.status).toBe("completed");
+			},
+		);
 	},
 );
 

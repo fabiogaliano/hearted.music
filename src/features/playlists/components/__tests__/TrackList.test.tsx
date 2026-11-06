@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { makePlaylistTracks } from "@/test/fixtures";
 import { render, screen } from "@/test/utils/render";
 import { Cover } from "../Cover";

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { StoredAnalysis } from "@/lib/domains/enrichment/content-analysis/read-schema";
 import { likedSongsKeys } from "@/lib/query-keys";
 import { getLikedSongAnalysis } from "@/lib/server/liked-songs.functions";
@@ -77,25 +77,23 @@ describe("useLikedSongAnalysis", () => {
 		});
 	});
 
-	it.each([
-		"locked",
-		"pending",
-		"analyzing",
-		"failed",
-	] as const)("never reads a %s song's analysis (none is stored or it isn't entitled)", (displayState) => {
-		const { result } = renderHook(
-			() =>
-				useLikedSongAnalysis(
-					ACCOUNT_ID,
-					song("a", displayState),
-					NO_WALKTHROUGH,
-				),
-			{ wrapper },
-		);
+	it.each(["locked", "pending", "analyzing", "failed"] as const)(
+		"never reads a %s song's analysis (none is stored or it isn't entitled)",
+		(displayState) => {
+			const { result } = renderHook(
+				() =>
+					useLikedSongAnalysis(
+						ACCOUNT_ID,
+						song("a", displayState),
+						NO_WALKTHROUGH,
+					),
+				{ wrapper },
+			);
 
-		expect(result.current).toEqual({ status: "loaded", analysis: null });
-		expect(getLikedSongAnalysis).not.toHaveBeenCalled();
-	});
+			expect(result.current).toEqual({ status: "loaded", analysis: null });
+			expect(getLikedSongAnalysis).not.toHaveBeenCalled();
+		},
+	);
 
 	it("uses a walkthrough song's bundled analysis without a read (the account may not have liked it)", () => {
 		const { result } = renderHook(

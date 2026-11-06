@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SpotifyAccountStatus } from "@/lib/extension/detect";
 import { setupOnboardingNavigationMock, setupShortcutMock } from "@/test/mocks";
 import { act, fireEvent, render, screen, waitFor } from "@/test/utils/render";

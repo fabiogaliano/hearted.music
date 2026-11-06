@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Json } from "@/lib/data/database.types";
 import { parseDocument } from "../queries";
 

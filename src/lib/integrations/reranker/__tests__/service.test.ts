@@ -7,7 +7,7 @@
  */
 
 import { Result } from "better-result";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { MLProvider } from "@/lib/integrations/providers/ports";
 import { DEFAULT_RERANK_INSTRUCTION } from "@/lib/integrations/providers/types";
 

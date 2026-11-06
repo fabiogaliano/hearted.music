@@ -11,7 +11,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 import { ensureEnrichmentJob } from "@/lib/platform/jobs/library-processing-queue";
 import { makeInitialProgress } from "@/lib/workflows/enrichment-pipeline/progress";
 

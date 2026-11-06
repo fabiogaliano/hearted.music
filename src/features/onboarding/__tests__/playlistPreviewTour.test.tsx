@@ -9,7 +9,14 @@
  */
 
 import { act } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { render, screen, waitFor } from "@/test/utils/render";
 
 const FLAGGED_KEY = "hearted:demo:flagged-playlists";

@@ -1,5 +1,12 @@
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { FfmpegError } from "@/lib/shared/errors/external/youtube-audio";
 
 vi.mock("@/lib/integrations/youtube-audio/service");
@@ -395,9 +402,8 @@ describe("processBackfillJob", () => {
 	});
 
 	it("persists the yt-dlp stderr summary on a download failure", async () => {
-		const { YtDlpError } = await import(
-			"@/lib/shared/errors/external/youtube-audio"
-		);
+		const { YtDlpError } =
+			await import("@/lib/shared/errors/external/youtube-audio");
 		vi.mocked(acquireSource).mockResolvedValue(
 			Result.err(
 				new YtDlpError({
@@ -448,9 +454,8 @@ describe("processBackfillJob", () => {
 	});
 
 	it("missing yt-dlp binary marks manual_needed and never acquires a source", async () => {
-		const { YtDlpError } = await import(
-			"@/lib/shared/errors/external/youtube-audio"
-		);
+		const { YtDlpError } =
+			await import("@/lib/shared/errors/external/youtube-audio");
 		vi.mocked(checkYtDlpAvailable).mockResolvedValue(
 			Result.err(
 				new YtDlpError({

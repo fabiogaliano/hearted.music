@@ -1,4 +1,4 @@
-import { type Mock, vi } from "vitest";
+import { type Mock, vi } from "vite-plus/test";
 import type { ThemeConfig } from "@/lib/theme/types";
 
 // Default: successful transition. Tests that need transition_failed override per-case.
@@ -110,7 +110,7 @@ export function installInFilterCapturingClient(
 			inCalls.push({ table, col, batch });
 			return chain;
 		});
-		// biome-ignore lint/suspicious/noThenProperty: the chain must be thenable so awaiting the query resolves to the per-batch response.
+		// oxlint-disable-next-line unicorn/no-thenable -- the chain must be thenable so awaiting the query resolves to the per-batch response.
 		chain.then = (onF: (v: unknown) => unknown, onR: (e: unknown) => unknown) =>
 			Promise.resolve()
 				.then(() => resolver(query))

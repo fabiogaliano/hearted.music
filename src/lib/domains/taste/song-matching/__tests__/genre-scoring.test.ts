@@ -6,7 +6,7 @@
  * math without constructing the full service or wrestling with private methods.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ADJACENT_FLOOR, ADJACENT_MAX } from "../config";
 import { bandedCredit, createGenreScorer } from "../service";
 

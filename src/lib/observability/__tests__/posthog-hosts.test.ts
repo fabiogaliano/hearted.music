@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { resolvePostHogHosts } from "@/lib/observability/posthog-hosts";
 
 describe("resolvePostHogHosts", () => {

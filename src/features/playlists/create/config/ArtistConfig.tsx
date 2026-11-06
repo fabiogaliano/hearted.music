@@ -157,13 +157,14 @@ export function ArtistConfig({
 		[selections, likeCounts],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only focus
+	// oxlint-disable react-hooks/exhaustive-deps -- intentional mount-only focus
 	useEffect(() => {
 		if (autoFocusSearch) {
 			setExpanded(true);
 			inputRef.current?.focus();
 		}
 	}, []);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	useEffect(() => {
 		if (expanded) {

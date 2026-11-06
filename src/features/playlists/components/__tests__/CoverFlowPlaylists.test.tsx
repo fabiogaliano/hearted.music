@@ -12,8 +12,7 @@ import {
 	screen,
 	within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { CoverFlowPlaylists } from "../CoverFlowPlaylists";
 import type { PlaylistSummary } from "../types";

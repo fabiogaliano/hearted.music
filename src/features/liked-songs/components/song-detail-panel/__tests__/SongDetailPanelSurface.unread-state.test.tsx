@@ -4,10 +4,10 @@
  * `unreadStatus`; the surface only routes to it when neither read exists.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { render, screen } from "@/test/utils/render";
-import { SongDetailPanelSurface } from "../SongDetailPanelSurface";
 import type { SongDetail } from "../song-detail-types";
+import { SongDetailPanelSurface } from "../SongDetailPanelSurface";
 import { unreadStatus } from "../unread-status";
 
 describe("unreadStatus (§13.3)", () => {

@@ -18,7 +18,14 @@
  */
 
 import postgres from "postgres";
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+} from "vite-plus/test";
 import { captureVisiblePairsAtomic } from "../capture-visible-pairs";
 import {
 	addQueueItemDecisionAtomically,
@@ -273,31 +280,31 @@ describe.skipIf(!IS_LOCAL)(
 				pairs: (s: string, p: string) => [pair(s, p, 1), pair(s, p, 1)],
 				reason: /dense/,
 			},
-		])("rejects $name as invalid_input and writes nothing", async ({
-			pairs,
-			reason,
-		}) => {
-			const { songs, playlists, accountId } = fixture();
-			const itemId = await makeItem({
-				orientation: "song",
-				subjectId: songs[0],
-			});
+		])(
+			"rejects $name as invalid_input and writes nothing",
+			async ({ pairs, reason }) => {
+				const { songs, playlists, accountId } = fixture();
+				const itemId = await makeItem({
+					orientation: "song",
+					subjectId: songs[0],
+				});
 
-			const result = await captureVisiblePairsAtomic(
-				itemId,
-				accountId,
-				pairs(songs[0], playlists[0]),
-			);
+				const result = await captureVisiblePairsAtomic(
+					itemId,
+					accountId,
+					pairs(songs[0], playlists[0]),
+				);
 
-			expect(result).toEqual({
-				status: "invalid_input",
-				reason: expect.stringMatching(reason),
-			});
-			expect(await pairRows(itemId)).toEqual([]);
-			const item = await itemRow(itemId);
-			expect(item.state).toBe("pending");
-			expect(item.visible_pairs_captured_at).toBeNull();
-		});
+				expect(result).toEqual({
+					status: "invalid_input",
+					reason: expect.stringMatching(reason),
+				});
+				expect(await pairRows(itemId)).toEqual([]);
+				const item = await itemRow(itemId);
+				expect(item.state).toBe("pending");
+				expect(item.visible_pairs_captured_at).toBeNull();
+			},
+		);
 
 		it("rejects a pair whose song is not the song-orientation item's subject", async () => {
 			const { songs, playlists, accountId } = fixture();
@@ -576,47 +583,49 @@ describe.skipIf(!IS_LOCAL)(
 			})),
 		);
 
-		it.each(
-			cases,
-		)("$action on a $orientation card returns not_entitled for a locked song and writes nothing until it is unlocked", async ({
-			run,
-			succeeded,
-			orientation,
-		}) => {
-			const { songs, playlists, accountId } = fixture();
-			// Song card: the locked song is the subject. Playlist card: it is the
-			// suggestion — the item row itself carries no song_id to check.
-			const lockedSong = orientation === "song" ? songs[0] : songs[1];
-			const itemId = await makeItem({
-				orientation,
-				subjectId: orientation === "song" ? songs[0] : playlists[0],
-			});
-			await captureVisiblePairsAtomic(itemId, accountId, [
-				pair(lockedSong, playlists[0], 1),
-			]);
-			const [targetSong, targetPlaylist] =
-				orientation === "song" ? [null, playlists[0]] : [lockedSong, null];
+		it.each(cases)(
+			"$action on a $orientation card returns not_entitled for a locked song and writes nothing until it is unlocked",
+			async ({ run, succeeded, orientation }) => {
+				const { songs, playlists, accountId } = fixture();
+				// Song card: the locked song is the subject. Playlist card: it is the
+				// suggestion — the item row itself carries no song_id to check.
+				const lockedSong = orientation === "song" ? songs[0] : songs[1];
+				const itemId = await makeItem({
+					orientation,
+					subjectId: orientation === "song" ? songs[0] : playlists[0],
+				});
+				await captureVisiblePairsAtomic(itemId, accountId, [
+					pair(lockedSong, playlists[0], 1),
+				]);
+				const [targetSong, targetPlaylist] =
+					orientation === "song" ? [null, playlists[0]] : [lockedSong, null];
 
-			const locked = await run(itemId, accountId, targetSong, targetPlaylist);
+				const locked = await run(itemId, accountId, targetSong, targetPlaylist);
 
-			expect(locked).toHaveOkValue("not_entitled");
-			expect(await decisionRows(itemId)).toEqual([]);
-			expect(await eventRows(itemId)).toEqual([]);
-			expect(await deckState(orientation)).toEqual({
-				revision: 0,
-				resumePosition: null,
-				jobs: 0,
-			});
-			expect((await itemRow(itemId)).state).toBe("active");
+				expect(locked).toHaveOkValue("not_entitled");
+				expect(await decisionRows(itemId)).toEqual([]);
+				expect(await eventRows(itemId)).toEqual([]);
+				expect(await deckState(orientation)).toEqual({
+					revision: 0,
+					resumePosition: null,
+					jobs: 0,
+				});
+				expect((await itemRow(itemId)).state).toBe("active");
 
-			// Same call once entitled proves the denial came from the entitlement
-			// check, not an earlier guard.
-			await unlock(lockedSong);
-			const unlocked = await run(itemId, accountId, targetSong, targetPlaylist);
+				// Same call once entitled proves the denial came from the entitlement
+				// check, not an earlier guard.
+				await unlock(lockedSong);
+				const unlocked = await run(
+					itemId,
+					accountId,
+					targetSong,
+					targetPlaylist,
+				);
 
-			expect(unlocked).toHaveOkValue(succeeded);
-			expect(await decisionRows(itemId)).toHaveLength(1);
-		});
+				expect(unlocked).toHaveOkValue(succeeded);
+				expect(await decisionRows(itemId)).toHaveLength(1);
+			},
+		);
 	},
 );
 

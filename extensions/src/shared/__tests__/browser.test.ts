@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { browser } from "../browser";
 
 const g = globalThis as { browser?: unknown; chrome?: unknown };

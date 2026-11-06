@@ -3,7 +3,7 @@ import type {
 	MutationFunctionContext,
 } from "@tanstack/react-query";
 import { QueryClient } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // dismissSuggestionMutation's mutationFn is never actually invoked by these
 // tests (onMutate/onSuccess/onError are called directly, matching the

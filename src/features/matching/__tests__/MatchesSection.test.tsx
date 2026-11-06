@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { Playlist } from "@/features/matching/types";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
 import { render, screen } from "@/test/utils/render";

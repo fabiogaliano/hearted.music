@@ -4,7 +4,7 @@
  * Verifies the heading renders @handle when present and is omitted when null.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { render, screen } from "@/test/utils/render";
 import { DashboardHeader } from "../DashboardHeader";
 

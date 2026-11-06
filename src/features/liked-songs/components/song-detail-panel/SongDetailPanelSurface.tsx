@@ -949,7 +949,7 @@ function GenreCluster({
 		// no text selection. The padding extends the hover zone past the pills so the reveal
 		// triggers across the whole cluster; the matching negative margin pulls the layout
 		// back so the pills don't move.
-		// biome-ignore lint/a11y/noStaticElementInteractions: passive hover-reveal wrapper, no activation.
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- passive hover-reveal wrapper, no activation.
 		<div
 			onMouseEnter={openFan}
 			onMouseLeave={closeFanSoon}
@@ -1269,8 +1269,8 @@ function ReadLayer({
 				}}
 			>
 				<div style={{ overflow: "hidden", minHeight: 0 }}>
-					{/* biome-ignore lint/a11y/noStaticElementInteractions: pointer-only convenience. */}
-					{/* biome-ignore lint/a11y/useKeyWithClickEvents: header toggle already handles keyboard collapse; a key handler here would be redundant. */}
+					{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only convenience. */}
+					{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- header toggle already handles keyboard collapse; a key handler here would be redundant. */}
 					<div
 						onClick={collapseFromTake}
 						// Hovering the take drives the same `hovered` state as the header, so the whole
@@ -1558,7 +1558,7 @@ function FocusedLines({
 	const current = lines[index];
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: passive pause wrapper; real controls are the buttons inside.
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- passive pause wrapper; real controls are the buttons inside.
 		<div
 			onMouseEnter={() => setPaused(true)}
 			onMouseLeave={() => setPaused(false)}

@@ -1,6 +1,6 @@
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Outlet } from "@tanstack/react-router";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 import type { OnboardingSession } from "@/lib/domains/library/accounts/onboarding-session";
 import { act, renderWithRouter } from "@/test/utils/render";
 import { Route as MatchRoute } from "../match";

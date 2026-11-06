@@ -8,10 +8,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { ExtensionSpotifyProfile } from "@/lib/extension/detect";
-import { SongDetailPanelSurface } from "../SongDetailPanelSurface";
 import type { PlaylistsPanel, SongDetail } from "../song-detail-types";
+import { SongDetailPanelSurface } from "../SongDetailPanelSurface";
 
 // AccountMismatchPrompt reads useQueryClient (repairConnection's cache
 // invalidation), so the mismatch-branch test needs a provider in scope.

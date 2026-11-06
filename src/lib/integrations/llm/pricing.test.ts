@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { computeCostUsd, getModelPrice } from "./pricing";
 
 const FLASH = "gemini-2.5-flash";

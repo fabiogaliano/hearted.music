@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { MatchDecision } from "../decision-queries";
 
 let upsertResponse: { data: unknown; error: unknown };

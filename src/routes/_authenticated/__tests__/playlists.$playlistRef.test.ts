@@ -1,6 +1,13 @@
 import { QueryClient } from "@tanstack/react-query";
 import { isRedirect } from "@tanstack/react-router";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { buildPlaylistRouteRef } from "@/features/playlists/playlistRouteRef";
 import { invalidateLibrarySyncQueries, playlistKeys } from "@/lib/query-keys";
 import {

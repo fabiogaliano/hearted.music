@@ -13,7 +13,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import { grantAnalysisFailureReplacementCredit } from "../compensation";
 

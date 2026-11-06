@@ -44,7 +44,7 @@ function IntentEditorEligible({ value, onChange }: IntentEditorEligibleProps) {
 		el.style.height = `${el.scrollHeight}px`;
 	}, []);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: value drives the re-measure; autosize reads the textarea via ref
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- value drives the re-measure; autosize reads the textarea via ref
 	useLayoutEffect(() => {
 		autosize();
 	}, [value, autosize]);

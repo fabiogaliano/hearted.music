@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
 	ARM_BACK_SCAN_TOLERANCE_MS,
 	ARM_FORWARD_CLAIM_WINDOW_MS,

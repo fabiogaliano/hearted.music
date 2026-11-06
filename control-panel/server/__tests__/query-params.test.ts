@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { parseJobRunsQuery } from "../job-lists";
 import { parseListQuery, parseQueueQuery } from "../query-params";
 import { parseUsersListQuery } from "../users-list";

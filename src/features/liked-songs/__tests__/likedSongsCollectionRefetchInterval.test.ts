@@ -1,5 +1,5 @@
 import type { InfiniteData } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { LikedSongsPageResult } from "@/lib/server/liked-songs.functions";
 import { likedSongsCollectionRefetchInterval } from "../hooks/useLikedSongsCollection";
 import type { LikedSong } from "../types";

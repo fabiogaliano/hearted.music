@@ -11,7 +11,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // ---------------------------------------------------------------------------
 // Hoisted client mock — mirrors the pattern used in preferences-queries.strictness.test.ts

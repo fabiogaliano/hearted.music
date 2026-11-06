@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
 	initialReconnectState,
 	type ReconnectState,
@@ -41,17 +41,18 @@ function mintAttemptsWhileMintFails(
 }
 
 describe("reconnectPolicy", () => {
-	it.each([
-		0, 0.5, 0.999,
-	])("28-hour loop regression: a failing mint is retried no sooner than 60 s and no later than 5 min apart (jitter %s)", (random) => {
-		const attempts = mintAttemptsWhileMintFails(28 * HOUR, random);
+	it.each([0, 0.5, 0.999])(
+		"28-hour loop regression: a failing mint is retried no sooner than 60 s and no later than 5 min apart (jitter %s)",
+		(random) => {
+			const attempts = mintAttemptsWhileMintFails(28 * HOUR, random);
 
-		const gaps = attempts.slice(1).map((at, i) => at - (attempts[i] ?? 0));
-		expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MINUTE);
-		expect(Math.max(...gaps)).toBeLessThanOrEqual(5 * MINUTE);
-		// The outage client retried within 30 s: >= 3,360 mints in 28 h.
-		expect(attempts.length).toBeLessThanOrEqual((28 * HOUR) / MINUTE + 1);
-	});
+			const gaps = attempts.slice(1).map((at, i) => at - (attempts[i] ?? 0));
+			expect(Math.min(...gaps)).toBeGreaterThanOrEqual(MINUTE);
+			expect(Math.max(...gaps)).toBeLessThanOrEqual(5 * MINUTE);
+			// The outage client retried within 30 s: >= 3,360 mints in 28 h.
+			expect(attempts.length).toBeLessThanOrEqual((28 * HOUR) / MINUTE + 1);
+		},
+	);
 
 	it("does not retry a failed mint while the tab is hidden, and keeps the back-off when shown early", () => {
 		let state = visible(0);

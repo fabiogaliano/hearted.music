@@ -32,7 +32,6 @@ import {
 } from "@/lib/shared/errors/external/genius";
 import { ConcurrencyLimiter } from "@/lib/shared/utils/concurrency";
 import { withRetry } from "@/lib/shared/utils/result-wrappers/generic";
-
 import {
 	createLrclibProvider,
 	type LrclibError,
@@ -475,7 +474,7 @@ export class LyricsService {
 		song: string,
 	): Promise<Result<SearchHit, GeniusError>> {
 		const queryVariants = generateQueryVariants(artist, song);
-		// biome-ignore lint/style/noProcessEnv: dev-only debug flag, intentionally not part of validated env
+		// oxlint-disable-next-line node/no-process-env -- dev-only debug flag, intentionally not part of validated env
 		const debug = process.env.DEBUG_LYRICS_SEARCH === "true";
 		let lastError: GeniusError | undefined;
 		let hadSuccessfulResponse = false;

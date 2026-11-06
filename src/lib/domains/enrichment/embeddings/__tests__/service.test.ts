@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { EmbeddingService } from "../service";
 
 const service = Object.create(EmbeddingService.prototype) as EmbeddingService;

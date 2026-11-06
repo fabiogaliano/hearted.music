@@ -1,6 +1,13 @@
 import { captureException } from "@sentry/bun";
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { finalizeJob, requeueClaimedJobForRetry } from "@/worker/finalize";
 

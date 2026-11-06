@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 
 // `tx` and `sql` are postgres.js tagged templates. The fake keeps one job row:

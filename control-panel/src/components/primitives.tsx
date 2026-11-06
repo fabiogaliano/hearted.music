@@ -184,7 +184,7 @@ export function Table<T>({
 			</thead>
 			<tbody>
 				{rows.map((row, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: rows are read-only snapshots
+					// oxlint-disable-next-line react/no-array-index-key -- rows are read-only snapshots
 					<tr key={i}>
 						{columns.map((c) => (
 							<td key={c.key} className={c.right ? "right" : undefined}>

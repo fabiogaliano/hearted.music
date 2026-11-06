@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockCreatePlaylist = vi.fn();
 const mockAcknowledgeCreate = vi.fn();
@@ -12,9 +12,8 @@ vi.mock("@/lib/server/playlists.functions", () => ({
 		mockAcknowledgeCreate(...args),
 }));
 
-const { createPlaylistAcknowledged } = await import(
-	"../playlist-write-acknowledgement"
-);
+const { createPlaylistAcknowledged } =
+	await import("../playlist-write-acknowledgement");
 
 describe("createPlaylistAcknowledged", () => {
 	beforeEach(() => vi.clearAllMocks());

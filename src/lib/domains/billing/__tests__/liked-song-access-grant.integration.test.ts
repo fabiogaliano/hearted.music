@@ -14,7 +14,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 
 const SUPABASE_URL = process.env.SUPABASE_URL ?? "";
@@ -261,7 +261,7 @@ describe.skipIf(!IS_LOCAL)("grant_liked_song_access", () => {
 		expect(result.candidate_count).toBe(500);
 		expect(result.newly_unlocked_song_ids).toHaveLength(500);
 		expect(result.newly_unlocked_song_ids?.sort()).toEqual(
-			[...songIds.slice(1)].sort(),
+			songIds.slice(1).sort(),
 		);
 		expect(await countUnlocks(accountId)).toBe(500);
 	}, 15_000);

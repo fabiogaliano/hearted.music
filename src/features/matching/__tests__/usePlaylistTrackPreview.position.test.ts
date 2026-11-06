@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { computePosition } from "../components/usePlaylistTrackPreview";
 
 const DESKTOP = { width: 1440, height: 900 };

@@ -14,7 +14,14 @@
 
 import { Result } from "better-result";
 import postgres from "postgres";
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+} from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { makeVisibilityScenario } from "@/test/fixtures";
 import { deriveProposalSubjects } from "../eligible-subjects";
@@ -399,7 +406,7 @@ describe.skipIf(!IS_LOCAL)("loadVisibilityInputs paging", () => {
 					if (rpcCalls !== 2) return builder;
 					const send = builder.then.bind(builder);
 					Object.assign(builder, {
-						// biome-ignore lint/suspicious/noThenProperty: the builder is a thenable; delaying its send is the point
+						// oxlint-disable-next-line unicorn/no-thenable -- the builder is a thenable; delaying its send is the point
 						then: (...handlers: Parameters<typeof builder.then>) =>
 							db()`
                 INSERT INTO playlist_song(playlist_id, song_id, position)

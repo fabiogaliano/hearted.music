@@ -219,7 +219,7 @@ function IdeaCard({
 				>
 					{idea.parts.map((part, i) =>
 						typeof part === "string" ? (
-							// biome-ignore lint/suspicious/noArrayIndexKey: parts are a stable literal sequence
+							// oxlint-disable-next-line react/no-array-index-key -- parts are a stable literal sequence
 							<span key={i}>{part}</span>
 						) : (
 							// The blank is the sentence's emphasis word — kept as <em> for

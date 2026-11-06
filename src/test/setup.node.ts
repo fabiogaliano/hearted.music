@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { expect } from "vitest";
+import { expect } from "vite-plus/test";
 
 // Shared custom matchers for better-result. Loaded by every project (node and
 // jsdom) since Result is used across the whole codebase, not just UI tests.

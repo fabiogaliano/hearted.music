@@ -4,7 +4,7 @@
  * stubbed so we can drive the preferences row (or its absence) directly.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { state, mockClient } = vi.hoisted(() => {
 	const state = {

@@ -574,7 +574,7 @@ export function InstrumentalReviewSection({
 	// A selection is only meaningful for the rows currently in view; leaving the
 	// pending tab or switching to focus mode drops it rather than silently acting
 	// on rows the operator can no longer see.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset-on-change; tab/mode are the intended triggers
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- reset-on-change; tab/mode are the intended triggers
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [queue.tab, queue.mode]);

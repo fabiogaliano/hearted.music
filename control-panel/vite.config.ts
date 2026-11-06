@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 
 const API_PORT = Number(process.env.CP_API_PORT ?? 4319);
 const WEB_PORT = Number(process.env.CP_WEB_PORT ?? 4318);

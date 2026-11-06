@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { assert, describe, expect, it, vi } from "vitest";
+import { assert, describe, expect, it, vi } from "vite-plus/test";
 import type {
 	MatchingSong,
 	MatchResult,

@@ -9,7 +9,7 @@
  * because the bug is what the user reads, not how the predicate answers.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { DashboardSyncUiState } from "@/features/dashboard/hooks/useDashboardSync";
 import { render, screen } from "@/test/utils/render";
 import { DashboardSyncStatus } from "../DashboardSyncStatus";

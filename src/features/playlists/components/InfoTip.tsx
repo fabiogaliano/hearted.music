@@ -89,7 +89,7 @@ export function InfoTip({ label, children, tone = "info" }: InfoTipProps) {
 	}, [open]);
 
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: a hover-region wrapper that bridges the trigger button and its card, not a control itself — the focusable trigger lives inside and owns the real semantics.
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a hover-region wrapper that bridges the trigger button and its card, not a control itself — the focusable trigger lives inside and owns the real semantics.
 		<span
 			ref={ref}
 			className="relative inline-flex"

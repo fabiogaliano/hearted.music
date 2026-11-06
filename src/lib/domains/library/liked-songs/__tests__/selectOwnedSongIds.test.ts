@@ -9,7 +9,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { mockIn, mockFrom } = vi.hoisted(() => {
 	// Chain terminates at .in(): from → select → eq → is → in.

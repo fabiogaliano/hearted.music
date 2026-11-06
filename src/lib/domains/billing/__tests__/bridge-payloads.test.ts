@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { parseBridgePayload } from "@/lib/domains/billing/bridge-payloads";
 
 const ACCOUNT_ID = "11111111-1111-4111-8111-111111111111";

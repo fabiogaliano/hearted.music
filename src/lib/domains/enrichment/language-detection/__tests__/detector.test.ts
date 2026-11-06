@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { cleanLyrics, detectLanguage } from "../detector";
 
 // Fixtures are original sentences written for this test, NOT song lyrics — the

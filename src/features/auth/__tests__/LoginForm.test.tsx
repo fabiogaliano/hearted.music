@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { LoginForm } from "@/features/auth/LoginForm";
 import { render, screen } from "@/test/utils/render";
 

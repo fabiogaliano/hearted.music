@@ -15,7 +15,7 @@
 
 import { Result } from "better-result";
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import { getSongEmbeddingsBatch } from "@/lib/domains/enrichment/embeddings/queries";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";

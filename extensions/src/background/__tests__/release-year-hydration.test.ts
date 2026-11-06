@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SpotifyTrackDTO } from "../../shared/types";
 
 // Prefixed with `mock` so vitest's hoisted vi.mock factory may reference it.

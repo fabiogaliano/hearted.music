@@ -6,7 +6,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { Result } from "better-result";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { Database } from "@/lib/data/database.types";
 import { ROW_CAP_ERROR_CODE } from "@/lib/data/row-cap-guard";

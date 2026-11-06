@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { QueueItemSongSuggestionRow } from "@/lib/domains/taste/match-review-queue/queries";
 import type { MatchReviewQueueItemDto } from "@/lib/domains/taste/match-review-queue/types";
 import { DatabaseError } from "@/lib/shared/errors/database";

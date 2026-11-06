@@ -9,7 +9,14 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import {
 	act,
 	fireEvent,
@@ -228,28 +235,25 @@ describe("ClaimHandleStep", () => {
 	// only pin that any format failure surfaces in the live status region and
 	// blocks submit.
 
-	it.each([
-		["@fabio"],
-		["fab io"],
-		[".fabio"],
-		["fabio."],
-		["fabio..g"],
-	])("invalid input %j shows an error and disables Continue", async (typed) => {
-		const { user } = await renderStep(
-			<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
-		);
+	it.each([["@fabio"], ["fab io"], [".fabio"], ["fabio."], ["fabio..g"]])(
+		"invalid input %j shows an error and disables Continue",
+		async (typed) => {
+			const { user } = await renderStep(
+				<ClaimHandleStep {...BASE_PROPS} claimHandleSeed={{ kind: "blank" }} />,
+			);
 
-		await user.type(screen.getByRole("textbox", { name: /handle/i }), typed);
+			await user.type(screen.getByRole("textbox", { name: /handle/i }), typed);
 
-		expect(
-			document.getElementById("claim-handle-status")?.textContent?.trim(),
-		).toBeTruthy();
-		expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
-		// Outlast the 250ms debounce: a format error must never reach the server,
-		// otherwise a "Checking…" status would satisfy the assertions above.
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		expect(mockCheckHandleAvailability).not.toHaveBeenCalled();
-	});
+			expect(
+				document.getElementById("claim-handle-status")?.textContent?.trim(),
+			).toBeTruthy();
+			expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+			// Outlast the 250ms debounce: a format error must never reach the server,
+			// otherwise a "Checking…" status would satisfy the assertions above.
+			await new Promise((resolve) => setTimeout(resolve, 300));
+			expect(mockCheckHandleAvailability).not.toHaveBeenCalled();
+		},
+	);
 
 	it("overlength input shows an error and is not truncated", async () => {
 		const { user } = await renderStep(

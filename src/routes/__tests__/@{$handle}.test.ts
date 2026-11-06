@@ -11,7 +11,7 @@
  * - route calls getPublicHandleIdentity, not the admin-query module directly
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const redirectMock = vi.fn(
 	(opts: { to: string; params?: Record<string, string> }) => ({

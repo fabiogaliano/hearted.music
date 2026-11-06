@@ -10,7 +10,7 @@ import {
 import { act, type RenderOptions, render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { type ReactElement, type ReactNode, useSyncExternalStore } from "react";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { ThemeHueProvider } from "@/lib/theme/ThemeHueProvider";
 

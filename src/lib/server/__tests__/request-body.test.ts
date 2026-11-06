@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { readBodyBytesWithByteCap } from "@/lib/server/request-body";
 
 // The helper only touches request.body, so a minimal object with a body stream

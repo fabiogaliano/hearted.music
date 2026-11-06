@@ -1,5 +1,5 @@
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SpotifyAccountStatus } from "../../detect";
 
 const { mockIsExtensionInstalled, mockGetSpotifyAccountStatus } = vi.hoisted(

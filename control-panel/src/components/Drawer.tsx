@@ -23,6 +23,7 @@ export function Drawer({
 	const onCloseRef = useRef(onClose);
 	onCloseRef.current = onClose;
 
+	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	useEffect(() => {
 		panelRef.current?.focus();
 		function onKeyDown(event: KeyboardEvent) {
@@ -34,6 +35,7 @@ export function Drawer({
 			triggerRef.current?.focus();
 		};
 	}, []);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	return (
 		<div className="drawer-root">

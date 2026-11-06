@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SpotifyTokenPayload } from "../../../shared/extension-wire-protocol";
 import type { TokenProvider } from "../background/command-handler";
 import { handleSpotifyCommand } from "../background/command-handler";
@@ -163,9 +163,8 @@ describe("handleSpotifyCommand", () => {
 
 	describe("command routing to correct client functions", () => {
 		it("routes addToPlaylist to mutations.addToPlaylist", async () => {
-			const { addToPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
+			const { addToPlaylist } =
+				await import("../shared/spotify-client/mutations");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -190,9 +189,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes removeFromPlaylist to mutations.removeFromPlaylist", async () => {
-			const { removeFromPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
+			const { removeFromPlaylist } =
+				await import("../shared/spotify-client/mutations");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -215,9 +213,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes createPlaylist to playlist-v2.createPlaylist", async () => {
-			const { createPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { createPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -244,9 +241,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes registerPlaylist to playlist-v2.registerPlaylist", async () => {
-			const { registerPlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { registerPlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -269,9 +265,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes updatePlaylist to playlist-v2.updatePlaylist", async () => {
-			const { updatePlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { updatePlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -290,9 +285,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes deletePlaylist to playlist-v2.deletePlaylist", async () => {
-			const { deletePlaylist } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { deletePlaylist } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -312,9 +306,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes moveInPlaylist to mutations.moveInPlaylist", async () => {
-			const { moveInPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
+			const { moveInPlaylist } =
+				await import("../shared/spotify-client/mutations");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -339,9 +332,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes removePlaylistCover to playlist-v2.removePlaylistCover", async () => {
-			const { removePlaylistCover } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { removePlaylistCover } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -361,9 +353,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes setPlaylistVisibility to playlist-v2.setPlaylistVisibility", async () => {
-			const { setPlaylistVisibility } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { setPlaylistVisibility } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -389,9 +380,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes uploadPlaylistCover to playlist-v2.uploadPlaylistCover", async () => {
-			const { uploadPlaylistCover } = await import(
-				"../shared/spotify-client/playlist-v2"
-			);
+			const { uploadPlaylistCover } =
+				await import("../shared/spotify-client/playlist-v2");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -414,9 +404,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes queryArtistOverview to reads.queryArtistOverview", async () => {
-			const { queryArtistOverview } = await import(
-				"../shared/spotify-client/reads"
-			);
+			const { queryArtistOverview } =
+				await import("../shared/spotify-client/reads");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -443,9 +432,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("routes fetchPlaylistMetadata to reads.fetchPlaylistMetadata", async () => {
-			const { fetchPlaylistMetadata } = await import(
-				"../shared/spotify-client/reads"
-			);
+			const { fetchPlaylistMetadata } =
+				await import("../shared/spotify-client/reads");
 
 			const cmd: SpotifyCommand = {
 				type: "SPOTIFY_COMMAND",
@@ -474,9 +462,8 @@ describe("handleSpotifyCommand", () => {
 
 	describe("error mapping", () => {
 		it("maps rate limit errors to RATE_LIMITED with retryable=true", async () => {
-			const { addToPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
+			const { addToPlaylist } =
+				await import("../shared/spotify-client/mutations");
 			vi.mocked(addToPlaylist).mockRejectedValueOnce(
 				new Error("Spotify rate limit: max retries exceeded"),
 			);
@@ -501,9 +488,8 @@ describe("handleSpotifyCommand", () => {
 		});
 
 		it("maps unknown operation errors to UNKNOWN_HASH", async () => {
-			const { queryArtistOverview } = await import(
-				"../shared/spotify-client/reads"
-			);
+			const { queryArtistOverview } =
+				await import("../shared/spotify-client/reads");
 			vi.mocked(queryArtistOverview).mockRejectedValueOnce(
 				new Error(
 					"Unknown operation: queryArtistOverview — no hash in storage or defaults",
@@ -531,42 +517,43 @@ describe("handleSpotifyCommand", () => {
 			["unauthorized", "Upstream said: unauthorized"],
 			["token expired", "Token expired"],
 			["auth required", "auth required"],
-		])("maps %s to AUTH_REQUIRED and clears cached token", async (_label, errMessage) => {
-			const { addToPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
-			vi.mocked(addToPlaylist).mockRejectedValueOnce(new Error(errMessage));
+		])(
+			"maps %s to AUTH_REQUIRED and clears cached token",
+			async (_label, errMessage) => {
+				const { addToPlaylist } =
+					await import("../shared/spotify-client/mutations");
+				vi.mocked(addToPlaylist).mockRejectedValueOnce(new Error(errMessage));
 
-			const clearCachedToken = vi.fn();
-			const provider: TokenProvider = {
-				...makeTokenProvider(true),
-				clearCachedToken,
-			};
+				const clearCachedToken = vi.fn();
+				const provider: TokenProvider = {
+					...makeTokenProvider(true),
+					clearCachedToken,
+				};
 
-			const cmd: SpotifyCommand = {
-				type: "SPOTIFY_COMMAND",
-				command: "addToPlaylist",
-				payload: {
-					playlistUri: "spotify:playlist:1",
-					trackUris: ["spotify:track:1"],
-				},
-				commandId: "cmd-auth",
-			};
+				const cmd: SpotifyCommand = {
+					type: "SPOTIFY_COMMAND",
+					command: "addToPlaylist",
+					payload: {
+						playlistUri: "spotify:playlist:1",
+						trackUris: ["spotify:track:1"],
+					},
+					commandId: "cmd-auth",
+				};
 
-			const result = await handleSpotifyCommand(cmd, provider);
+				const result = await handleSpotifyCommand(cmd, provider);
 
-			expect(result.ok).toBe(false);
-			if (!result.ok) {
-				expect(result.errorCode).toBe("AUTH_REQUIRED");
-				expect(result.retryable).toBe(false);
-			}
-			expect(clearCachedToken).toHaveBeenCalledTimes(1);
-		});
+				expect(result.ok).toBe(false);
+				if (!result.ok) {
+					expect(result.errorCode).toBe("AUTH_REQUIRED");
+					expect(result.retryable).toBe(false);
+				}
+				expect(clearCachedToken).toHaveBeenCalledTimes(1);
+			},
+		);
 
 		it("maps generic errors to UPSTREAM_ERROR with retryable=false", async () => {
-			const { removeFromPlaylist } = await import(
-				"../shared/spotify-client/mutations"
-			);
+			const { removeFromPlaylist } =
+				await import("../shared/spotify-client/mutations");
 			vi.mocked(removeFromPlaylist).mockRejectedValueOnce(
 				new Error("Connection refused"),
 			);

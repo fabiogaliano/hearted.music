@@ -6,7 +6,7 @@
  * queue derivation and card presentation share.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { QueueVisibilityConfigHashInput } from "../types";

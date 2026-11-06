@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { FREE_BILLING_STATE } from "@/lib/domains/billing/state";
 import { DatabaseError } from "@/lib/shared/errors/database";

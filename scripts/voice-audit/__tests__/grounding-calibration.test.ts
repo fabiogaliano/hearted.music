@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { loadGoldExemplars } from "../exemplars";
 import { GROUNDING_NEGATIVES } from "../fixtures/grounding-negatives";
 import {

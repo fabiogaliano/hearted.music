@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { MatchModeToggle } from "@/features/matching/components/MatchModeToggle";
 import type { MatchViewMode } from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";

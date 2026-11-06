@@ -1,6 +1,13 @@
 import { gzipSync } from "node:zlib";
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import {
 	EXTENSION_SYNC_ALREADY_RUNNING,

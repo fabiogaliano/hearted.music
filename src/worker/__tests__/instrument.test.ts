@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 const { mockInit, mockRegisterFatalHandlers, mockInitPostHogOtel } = vi.hoisted(
 	() => ({
@@ -67,15 +74,14 @@ describe("worker Sentry instrumentation", () => {
 		});
 	});
 
-	it.each([
-		"development",
-		"test",
-		"local",
-	])("stays silent in the %s environment even with a DSN set", async (environment) => {
-		await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: environment });
+	it.each(["development", "test", "local"])(
+		"stays silent in the %s environment even with a DSN set",
+		async (environment) => {
+			await loadWith({ SENTRY_DSN: DSN, SENTRY_ENVIRONMENT: environment });
 
-		expect(mockInit).not.toHaveBeenCalled();
-	});
+			expect(mockInit).not.toHaveBeenCalled();
+		},
+	);
 
 	it("falls back to NODE_ENV when SENTRY_ENVIRONMENT is unset", async () => {
 		await loadWith({

@@ -1,5 +1,12 @@
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 vi.mock("@/lib/workflows/library-processing/service", () => ({
 	applyLibraryProcessingChange: vi.fn(),

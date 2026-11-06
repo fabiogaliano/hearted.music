@@ -7,9 +7,9 @@
 		"dev": "bun run scripts/build.ts --watch",
 		"ext:store:firefox": "bun run scripts/build.ts --target=firefox --store",
 		"ext:lint:firefox": "web-ext lint --source-dir=dist/firefox",
-		"test": "vitest run",
-		"test:live": "vitest run -c vitest.live.config.ts",
-		"test:watch": "vitest"
+		"test": "vp test run",
+		"test:live": "vp test run -c vitest.live.config.ts",
+		"test:watch": "vp test"
 	},
 	"dependencies": {
 		"react": "^19.0.0",
@@ -21,8 +21,12 @@
 		"@types/react-dom": "^19.0.0",
 		"esbuild": "^0.28.2",
 		"typescript": "^5.7.0",
-		"vitest": "^4.1.12",
+		"vite": "npm:@voidzero-dev/vite-plus-core@1.5.0",
+		"vite-plus": "1.5.0",
 		"web-ext": "^10.8.0"
+	},
+	"overrides": {
+		"vite": "npm:@voidzero-dev/vite-plus-core@1.5.0"
 	},
 	"patchedDependencies": {
 		"deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch"

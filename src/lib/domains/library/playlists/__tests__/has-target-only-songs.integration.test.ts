@@ -5,7 +5,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import { hasTargetOnlySongs } from "@/lib/domains/library/playlists/queries";
 

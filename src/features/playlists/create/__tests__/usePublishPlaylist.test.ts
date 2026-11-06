@@ -12,7 +12,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { CreatePlaylistFromDraftInput } from "@/lib/extension/create-playlist-from-draft";
 
 const createPlaylistFromDraftMock = vi.fn();
@@ -179,37 +179,37 @@ describe("usePublishPlaylist — resume uses the original input", () => {
 });
 
 describe("usePublishPlaylist — gate-failure routing (the stuck-CTA regression test)", () => {
-	it.each([
-		"reconnect-required",
-		"extension-unavailable",
-	] as const)("on %s: reports the gate failure, leaves result null, resets isSubmitting, and allows a second submit to reach the orchestrator", async (status) => {
-		createPlaylistFromDraftMock.mockResolvedValueOnce({ status });
-		const { result, reportGateFailure } = setup();
+	it.each(["reconnect-required", "extension-unavailable"] as const)(
+		"on %s: reports the gate failure, leaves result null, resets isSubmitting, and allows a second submit to reach the orchestrator",
+		async (status) => {
+			createPlaylistFromDraftMock.mockResolvedValueOnce({ status });
+			const { result, reportGateFailure } = setup();
 
-		await act(async () => {
-			await result.current.submit(INPUT_A);
-		});
+			await act(async () => {
+				await result.current.submit(INPUT_A);
+			});
 
-		expect(reportGateFailure).toHaveBeenCalledWith(status);
-		expect(result.current.result).toBeNull();
-		// This is the bug: previously isSubmitting only reset on error/throw,
-		// so the CTA stayed disabled forever after a gate failure.
-		expect(result.current.isSubmitting).toBe(false);
+			expect(reportGateFailure).toHaveBeenCalledWith(status);
+			expect(result.current.result).toBeNull();
+			// This is the bug: previously isSubmitting only reset on error/throw,
+			// so the CTA stayed disabled forever after a gate failure.
+			expect(result.current.isSubmitting).toBe(false);
 
-		createPlaylistFromDraftMock.mockResolvedValueOnce({
-			status: "success",
-			playlistUri: "spotify:playlist:def",
-			spotifyId: "def",
-			playlistId: "playlist-def",
-		});
+			createPlaylistFromDraftMock.mockResolvedValueOnce({
+				status: "success",
+				playlistUri: "spotify:playlist:def",
+				spotifyId: "def",
+				playlistId: "playlist-def",
+			});
 
-		await act(async () => {
-			await result.current.submit(INPUT_A);
-		});
+			await act(async () => {
+				await result.current.submit(INPUT_A);
+			});
 
-		expect(createPlaylistFromDraftMock).toHaveBeenCalledTimes(2);
-		expect(result.current.result?.status).toBe("success");
-	});
+			expect(createPlaylistFromDraftMock).toHaveBeenCalledTimes(2);
+			expect(result.current.result?.status).toBe("success");
+		},
+	);
 });
 
 describe("usePublishPlaylist — submit → error", () => {

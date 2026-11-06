@@ -20,7 +20,7 @@ vi.mock("@/lib/domains/taste/match-review-queue/visibility-inputs", () => ({
 }));
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createAdminSupabaseClient } from "@/lib/data/client";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";

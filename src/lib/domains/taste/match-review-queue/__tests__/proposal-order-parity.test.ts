@@ -28,7 +28,7 @@ vi.mock("../visibility-inputs", () => ({
 }));
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { getNewItemIds } from "@/lib/domains/library/liked-songs/status-queries";
 import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";
 import {

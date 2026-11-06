@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockSongAnalysisGet = vi.fn();
 const mockAnalyzeSongBatch = vi.fn();
@@ -692,9 +692,8 @@ describe("runSongAnalysis: success classification", () => {
 
 describe("runSongAnalysis: pipeline config failure", () => {
 	it("returns provider_unavailable for all ready songs when deps creation fails (e.g. missing API key)", async () => {
-		const { PipelineConfigError } = await import(
-			"@/lib/shared/errors/domain/analysis"
-		);
+		const { PipelineConfigError } =
+			await import("@/lib/shared/errors/domain/analysis");
 		mockCreateSongBatchAnalyzerDeps.mockReturnValue(
 			Result.err(new PipelineConfigError("Missing API key", "google")),
 		);

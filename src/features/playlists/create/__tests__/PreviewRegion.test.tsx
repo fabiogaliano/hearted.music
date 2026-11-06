@@ -14,13 +14,13 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { LibraryEmptyState } from "../LibraryEmptyState";
 import { NotEnoughSongsNote } from "../NotEnoughSongsNote";
-import { PreviewFailedState } from "../PreviewFailedState";
 import { PreviewList } from "../preview/PreviewList";
 import { PreviewListSkeleton } from "../preview/PreviewListSkeleton";
+import { PreviewFailedState } from "../PreviewFailedState";
 import {
 	deriveStudioPreviewState,
 	type StudioPreviewStateInput,

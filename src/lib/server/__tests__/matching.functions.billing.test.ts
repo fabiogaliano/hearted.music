@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { VisibilityInputs } from "@/lib/domains/taste/match-review-queue/visibility-inputs";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { addSongToPlaylist, getSongSuggestions } from "../matching.functions";

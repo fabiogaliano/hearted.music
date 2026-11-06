@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
 	SCORING_VERSION,
 	scoreCandidate,
@@ -54,24 +54,20 @@ describe("scoreCandidates", () => {
 		}
 	});
 
-	it.each([
-		"live",
-		"remix",
-		"cover",
-		"sped up",
-		"slowed",
-		"nightcore",
-	])("hard-rejects a '%s' variant", (marker) => {
-		const scored = scoreCandidate(
-			SONG,
-			candidate({
-				title: `The Weeknd - Blinding Lights (${marker})`,
-				channel: "The Weeknd - Topic",
-				durationSeconds: 201,
-			}),
-		);
-		expect(scored.rejected).toBe(true);
-	});
+	it.each(["live", "remix", "cover", "sped up", "slowed", "nightcore"])(
+		"hard-rejects a '%s' variant",
+		(marker) => {
+			const scored = scoreCandidate(
+				SONG,
+				candidate({
+					title: `The Weeknd - Blinding Lights (${marker})`,
+					channel: "The Weeknd - Topic",
+					durationSeconds: 201,
+				}),
+			);
+			expect(scored.rejected).toBe(true);
+		},
+	);
 
 	it("hard-rejects a styled-Unicode 'slowed' variant (NFKD fold)", () => {
 		// Uploaders dodge the reject phrases by spelling them in math-bold glyphs;
@@ -346,11 +342,10 @@ describe("stripVersionQualifier", () => {
 		expect(stripVersionQualifier(input)).toBe(expected);
 	});
 
-	it.each([
-		"Tequila - En Vivo",
-		"Plain Title",
-		"Title - With A Dash Subtitle",
-	])("leaves %s untouched (not a same-recording qualifier)", (input) => {
-		expect(stripVersionQualifier(input)).toBe(input);
-	});
+	it.each(["Tequila - En Vivo", "Plain Title", "Title - With A Dash Subtitle"])(
+		"leaves %s untouched (not a same-recording qualifier)",
+		(input) => {
+			expect(stripVersionQualifier(input)).toBe(input);
+		},
+	);
 });

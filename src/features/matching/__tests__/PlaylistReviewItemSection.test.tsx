@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { PlaylistForMatching } from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";
 import { PlaylistReviewItemSection } from "../components/PlaylistReviewItemSection";

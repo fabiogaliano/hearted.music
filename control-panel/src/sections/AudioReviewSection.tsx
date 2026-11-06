@@ -944,7 +944,7 @@ function AudioReviewsQueue({
 		new Set(),
 	);
 	const [batchOpen, setBatchOpen] = useState(false);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset-on-change; status/mode are the intended triggers
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- reset-on-change; status/mode are the intended triggers
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, [status, queue.mode]);

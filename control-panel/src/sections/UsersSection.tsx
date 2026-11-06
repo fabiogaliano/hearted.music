@@ -241,6 +241,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 		table.lastSeen !== "all",
 		table.productMetrics !== "all",
 	].filter(Boolean).length;
+	// oxlint-disable react-hooks/exhaustive-deps -- deps list predates the Biome→Oxlint switch (Biome's rule accepted it); audit before changing.
 	useEffect(() => {
 		// "Select all matching" is a standing intent, not a snapshot of loaded
 		// rows, so a page's rows disappearing from view shouldn't prune it.
@@ -251,6 +252,7 @@ export function UsersSection({ refreshKey }: { refreshKey: number }) {
 			return next.size === current.size ? current : next;
 		});
 	}, [users, selectAllMatching]);
+	// oxlint-enable react-hooks/exhaustive-deps
 	if (error) return <ErrorState message={error} />;
 	if (!data) return <Loading />;
 

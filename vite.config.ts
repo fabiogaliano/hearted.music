@@ -6,7 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
-import { defineConfig, loadEnv, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite-plus";
 
 const isTest = process.env.VITEST === "true";
 const isLiveTest = process.env.VITEST_LIVE === "true";
@@ -81,6 +81,13 @@ const domTestFiles = [
 	// setAuthFailedAt, both of which need a real `window`.
 	"src/lib/extension/connection/__tests__/repair.test.ts",
 ];
+
+const restrictedCreateClient = {
+	name: "@supabase/supabase-js",
+	importNames: ["createClient"],
+	message:
+		"Use createAdminSupabaseClient (src/lib/data/client.ts): its fetch carries the row-cap and URL-length guards, which a client built here would skip.",
+};
 
 function embeddingSidecarPlugin(): Plugin {
 	let child: ChildProcess | null = null;
@@ -158,6 +165,133 @@ export default defineConfig(({ command }) => {
 	const useUipaneStub = isBuild || isTest;
 
 	return {
+		fmt: {
+			useTabs: true,
+			printWidth: 80,
+			sortImports: { internalPattern: ["@/"], newlinesBetween: false },
+			// Formatting scope is deliberately narrow: scripts/, tests/, shared/,
+			// docs and the Bun-only server code were never auto-formatted, and
+			// reformatting them would bury real history under whitespace churn.
+			ignorePatterns: [
+				"/*",
+				"!/src/",
+				"!/vite.config.ts",
+				"!/package.json",
+				"!/control-panel/",
+				"/control-panel/*",
+				"!/control-panel/src/",
+				"!/control-panel/vite.config.ts",
+				"!/extensions/",
+				"/extensions/*",
+				"!/extensions/src/",
+				"!/extensions/package.json",
+				"**/*.md",
+				"src/routeTree.gen.ts",
+				"src/styles.css",
+				"src/features/liked-songs/components/variants/",
+				"**/.playwright/",
+			],
+		},
+		lint: {
+			plugins: ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "node"],
+			jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
+			options: { typeAware: true, typeCheck: true },
+			ignorePatterns: [
+				"v1_hearted_brand/**",
+				"scripts/matching-lab/**",
+				"src/routeTree.gen.ts",
+				"src/features/liked-songs/components/variants/**",
+				"**/.playwright/**",
+				".claude/**",
+				"**/playground/**",
+				"**/_ProdPrimitives.tsx",
+				"src/stories/**",
+				// No tsconfig covers these, so type-aware linting can't resolve them.
+				".ladle/**",
+				"extensions/scripts/**",
+			],
+			rules: {
+				"vite-plus/prefer-vite-plus-imports": "error",
+				"typescript/no-deprecated": "warn",
+				"typescript/no-explicit-any": "error",
+				"react/exhaustive-deps": "error",
+				"react/no-array-index-key": "error",
+				"unicorn/no-document-cookie": "error",
+				"unicorn/no-thenable": "error",
+				"node/no-process-env": "error",
+				"no-restricted-imports": ["error", { paths: [restrictedCreateClient] }],
+			},
+			overrides: [
+				{
+					files: ["**/__tests__/**"],
+					rules: {
+						"typescript/no-explicit-any": "off",
+						"node/no-process-env": "off",
+						"no-restricted-imports": "off",
+					},
+				},
+				{
+					files: [
+						"src/env.ts",
+						"src/instrument.ts",
+						"src/serve.ts",
+						"src/worker/**",
+						"src/lib/observability/logger.ts",
+						"**/vite.config.ts",
+					],
+					rules: { "node/no-process-env": "off" },
+				},
+				// Standalone Bun processes and dev tooling read their own env and
+				// sit outside the app's validated-env and client-guard policies.
+				{
+					files: ["scripts/**", "tests/**", "control-panel/server/**"],
+					rules: {
+						"node/no-process-env": "off",
+						"no-restricted-imports": "off",
+						"typescript/no-explicit-any": "off",
+					},
+				},
+				{
+					files: ["src/lib/integrations/providers/adapters/local.ts"],
+					rules: { "typescript/no-explicit-any": "off" },
+				},
+				{
+					files: [
+						"src/lib/domains/enrichment/content-analysis/song-batch-analysis.ts",
+						"src/lib/workflows/enrichment-pipeline/stages/song-analysis.ts",
+					],
+					rules: {
+						"no-restricted-imports": [
+							"error",
+							{
+								paths: [restrictedCreateClient],
+								patterns: [
+									{
+										group: [
+											"**/platform/jobs/lifecycle",
+											"**/platform/jobs/repository",
+											"**/platform/jobs/item-failures",
+											"**/record-failure",
+											"**/billing/compensation",
+											"**/data/client",
+										],
+										message:
+											"Song analysis returns outcomes only; the pipeline orchestrator owns job lifecycle, failure recording, replacement credits, and DB writes.",
+									},
+								],
+							},
+						],
+					},
+				},
+				{
+					files: ["src/lib/data/client.ts"],
+					rules: { "no-restricted-imports": "off" },
+				},
+			],
+		},
+		staged: {
+			"*": "vp check --fix",
+		},
 		test: {
 			// CI has no .env files, so seed placeholders as fallbacks; loadEnv
 			// values (real local secrets) spread last and win over these defaults.
@@ -188,7 +322,7 @@ export default defineConfig(({ command }) => {
 			minWorkers: 1,
 			// Vitest's 5s default is sized for a run that owns the machine. The
 			// pre-push hook runs `check`, a cache-busted full `typecheck`, and this
-			// suite in parallel (lefthook.yml), so workers can lose most of the CPU
+			// suite in parallel (.vite-hooks/pre-push), so workers can lose most of the CPU
 			// for stretches — a jsdom render that measures ~300ms solo (the language
 			// catalog in MatchFiltersFieldList) has blown past 5s there and reported
 			// as a timeout. Assertions are unchanged; only the deadline is realistic.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { loadGoldExemplars } from "../exemplars";
 import { dashes, runAllRules } from "@/lib/domains/enrichment/content-analysis/voice/tier1-rules";
 import { lensCoherencePrompt } from "../tier2/prompts/lens-coherence";

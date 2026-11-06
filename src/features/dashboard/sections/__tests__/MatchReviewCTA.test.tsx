@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { MatchReviewCTA } from "@/features/dashboard/sections/MatchReviewCTA";
 import type { MatchPreview } from "@/features/dashboard/types";
 import { renderWithRouter, screen } from "@/test/utils/render";

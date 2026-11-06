@@ -31,7 +31,14 @@ import {
 } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { SpotifyAccountStatus } from "@/lib/extension/detect";
 
 const { mockIsExtensionInstalled, mockGetSpotifyAccountStatus } = vi.hoisted(

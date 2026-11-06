@@ -5,7 +5,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vite-plus/test";
 import type { Database } from "@/lib/data/database.types";
 import type { OnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
 import {

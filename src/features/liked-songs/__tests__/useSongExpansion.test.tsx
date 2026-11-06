@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
 	fireEvent,

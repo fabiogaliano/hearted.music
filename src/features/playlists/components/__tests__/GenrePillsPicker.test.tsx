@@ -8,7 +8,7 @@
  * the popover highlight and what Enter adds drift apart.
  */
 
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vite-plus/test";
 import { render, screen } from "@/test/utils/render";
 import { GenrePillsPicker } from "../GenrePillsPicker";
 

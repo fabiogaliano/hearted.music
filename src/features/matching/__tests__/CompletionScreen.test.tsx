@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import type { CompletionStats } from "@/features/matching/types";
 import { render, screen } from "@/test/utils/render";
 import { CompletionScreen } from "../sections/CompletionScreen";
@@ -15,20 +15,20 @@ describe("CompletionScreen", () => {
 	it.each([
 		{ totalAdditions: 1, noun: /\baddition\b/i },
 		{ totalAdditions: 5, noun: /\badditions\b/i },
-	])("pluralizes the addition noun for $totalAdditions", ({
-		totalAdditions,
-		noun,
-	}) => {
-		render(
-			<CompletionScreen
-				stats={{ ...BASE_STATS, totalAdditions }}
-				items={[]}
-				onExit={vi.fn()}
-			/>,
-		);
-		expect(screen.getByText(new RegExp(`^${totalAdditions}$`))).toBeDefined();
-		expect(screen.getByText(noun)).toBeDefined();
-	});
+	])(
+		"pluralizes the addition noun for $totalAdditions",
+		({ totalAdditions, noun }) => {
+			render(
+				<CompletionScreen
+					stats={{ ...BASE_STATS, totalAdditions }}
+					items={[]}
+					onExit={vi.fn()}
+				/>,
+			);
+			expect(screen.getByText(new RegExp(`^${totalAdditions}$`))).toBeDefined();
+			expect(screen.getByText(noun)).toBeDefined();
+		},
+	);
 
 	it("renders the dismissed count", () => {
 		render(<CompletionScreen stats={BASE_STATS} items={[]} onExit={vi.fn()} />);

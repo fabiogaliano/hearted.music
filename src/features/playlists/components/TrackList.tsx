@@ -111,7 +111,7 @@ export function TrackList({
 			{chunkArray(tracks, PLAYLIST_TRACKS_PAGE_SIZE).map(
 				(chunk, chunkIndex) => (
 					<div
-						// biome-ignore lint/suspicious/noArrayIndexKey: a chunk is a fixed slice of the list, so its index is its identity
+						// oxlint-disable-next-line react/no-array-index-key -- a chunk is a fixed slice of the list, so its index is its identity
 						key={chunkIndex}
 						style={{
 							contentVisibility: "auto",

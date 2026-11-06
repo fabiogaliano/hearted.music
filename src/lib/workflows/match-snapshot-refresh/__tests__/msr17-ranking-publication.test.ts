@@ -8,7 +8,7 @@
  *     forwarded unchanged to the RPC (C12 contract lives in orchestrator).
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type {
 	MatchingPlaylistProfile,
 	MatchingSong,

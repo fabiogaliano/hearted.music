@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { LastFmNotFoundError } from "@/lib/shared/errors/external/lastfm";
 import { LastFmService } from "../service";
 

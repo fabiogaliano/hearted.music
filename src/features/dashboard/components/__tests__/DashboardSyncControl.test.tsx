@@ -5,7 +5,7 @@
  * actionable states delegate clicks to onAction.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import type {
 	DashboardSyncUiState,
 	ErrorAction,

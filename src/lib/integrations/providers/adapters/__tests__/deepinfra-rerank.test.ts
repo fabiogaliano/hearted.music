@@ -10,7 +10,7 @@
  */
 
 import { Result } from "better-result";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("@/env", () => ({
 	env: { DEEPINFRA_API_KEY: "test-key" },

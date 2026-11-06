@@ -8,7 +8,7 @@
  */
 
 import postgres from "postgres";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vite-plus/test";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "";
 const IS_LOCAL =

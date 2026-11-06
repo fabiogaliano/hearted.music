@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // bun:sqlite only exists in the Bun runtime (the worker). Under Vitest/Node we
 // stub it so this exercises the wrapper's logic — dedupe, miss handling, the

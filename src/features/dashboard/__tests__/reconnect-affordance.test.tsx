@@ -15,7 +15,14 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import { render, screen, userEvent } from "@/test/utils/render";
 import { DashboardSyncStatus } from "../components/DashboardSyncStatus";
@@ -114,20 +121,23 @@ describe("dashboard reconnect affordance — two-reconnects regression guard", (
 				avatarUrl: null,
 			},
 		},
-	])("surfaces exactly one reconnect button for a linked account's $kind verdict", (verdict) => {
-		renderDashboardArea(
-			<DashboardConnectionSurfaces
-				verdict={verdict}
-				linkedSpotifyId="spotify-1"
-			/>,
-		);
+	])(
+		"surfaces exactly one reconnect button for a linked account's $kind verdict",
+		(verdict) => {
+			renderDashboardArea(
+				<DashboardConnectionSurfaces
+					verdict={verdict}
+					linkedSpotifyId="spotify-1"
+				/>,
+			);
 
-		const buttons = screen.getAllByRole("button");
-		expect(buttons).toHaveLength(1);
-		// The one button is the banner's — the sync control renders only its
-		// "sync paused" status line (see DashboardSyncControl's `paused` case).
-		expect(screen.getByText(/sync paused/i)).toBeInTheDocument();
-	});
+			const buttons = screen.getAllByRole("button");
+			expect(buttons).toHaveLength(1);
+			// The one button is the banner's — the sync control renders only its
+			// "sync paused" status line (see DashboardSyncControl's `paused` case).
+			expect(screen.getByText(/sync paused/i)).toBeInTheDocument();
+		},
+	);
 
 	it("a fresh unpaired install resolves in that one click: Reconnect pairs, and the control settles to paused without ever showing its own CTA", async () => {
 		const user = userEvent.setup();

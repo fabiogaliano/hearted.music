@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { DatabaseError } from "@/lib/shared/errors/database";
 import { AnalysisFailedError } from "@/lib/shared/errors/domain/analysis";
 import {

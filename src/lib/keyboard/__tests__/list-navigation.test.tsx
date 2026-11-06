@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { KeyboardShortcutProvider } from "@/lib/keyboard/KeyboardShortcutProvider";
 import { useListCursor } from "@/lib/keyboard/useListCursor";
 import { useListNavigation } from "@/lib/keyboard/useListNavigation";
@@ -352,7 +351,7 @@ function OverflowHarness(props: OverflowHarnessOptions) {
 			{ITEMS.map((item, index) => {
 				const itemProps = getItemProps(item, index);
 				return (
-					// biome-ignore lint/a11y/useSemanticElements: Test harness mirrors production rows that contain nested controls.
+					// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- Test harness mirrors production rows that contain nested controls.
 					<div
 						key={item}
 						ref={itemProps.ref}

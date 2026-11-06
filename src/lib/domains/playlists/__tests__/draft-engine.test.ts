@@ -7,7 +7,7 @@
  * clamp + dropped-pin reporting, and suggestions slicing.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import type { BillingState } from "@/lib/domains/billing/state";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";

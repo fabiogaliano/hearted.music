@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { ReleaseYearAggregate } from "../filter-options-queries";
 
 const mockRpc = vi.fn();

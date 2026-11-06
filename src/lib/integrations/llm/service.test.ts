@@ -1,6 +1,6 @@
 import { generateObject, generateText } from "ai";
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { z } from "zod";
 import { LlmService } from "./service";
 

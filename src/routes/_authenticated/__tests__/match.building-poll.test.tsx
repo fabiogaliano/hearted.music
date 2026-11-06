@@ -1,5 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { accountEventsConnectionKey } from "@/lib/hooks/useAccountEvents";
 import { activeJobsKeys } from "@/lib/query-keys";
 import { getActiveJobs } from "@/lib/server/jobs.functions";

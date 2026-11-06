@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { useChunkOriginIndex } from "../components/LikedSongsList";
 
 const rows = (...ids: string[]) => ids.map((id) => ({ track: { id } }));

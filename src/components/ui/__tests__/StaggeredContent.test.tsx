@@ -1,7 +1,14 @@
 import { act } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { StaggeredContent } from "../StaggeredContent";
 
 // The global setup stubs framer's useReducedMotion and motion.* — that stub is

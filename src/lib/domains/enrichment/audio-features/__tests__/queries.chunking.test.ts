@@ -10,7 +10,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { DB_IN_FILTER_CHUNK_SIZE } from "@/lib/shared/utils/chunked-write";
 import { installInFilterCapturingClient } from "@/test/mocks";
 

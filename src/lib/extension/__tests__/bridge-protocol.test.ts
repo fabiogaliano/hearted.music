@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import {
 	BRIDGE_ENVELOPE_TAG,
 	BRIDGE_SOURCE,

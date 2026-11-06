@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { canonicalUrl, parseUrlState } from "../url-state";
 
 const userId = "123e4567-e89b-12d3-a456-426614174000";

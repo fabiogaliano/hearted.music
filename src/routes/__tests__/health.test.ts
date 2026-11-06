@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { Route } from "../health";
 
 // TanStack's Route handler types don't narrow cleanly; cast to the shape we

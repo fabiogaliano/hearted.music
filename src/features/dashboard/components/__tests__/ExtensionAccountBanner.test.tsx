@@ -9,7 +9,14 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { render, screen, userEvent } from "@/test/utils/render";
 import { ExtensionAccountBanner } from "../ExtensionAccountBanner";
 
@@ -77,19 +84,19 @@ describe("ExtensionAccountBanner — pre-link suppression", () => {
 });
 
 describe("ExtensionAccountBanner — non-actionable verdicts", () => {
-	it.each([
-		{ kind: "ok" as const },
-		{ kind: "checking" as const },
-	])("renders nothing for $kind", (verdict) => {
-		renderBanner(
-			<ExtensionAccountBanner
-				verdict={verdict}
-				linkedSpotifyId="spotify-1"
-				accountDisplayName="fabio"
-			/>,
-		);
-		expect(screen.queryByRole("status")).not.toBeInTheDocument();
-	});
+	it.each([{ kind: "ok" as const }, { kind: "checking" as const }])(
+		"renders nothing for $kind",
+		(verdict) => {
+			renderBanner(
+				<ExtensionAccountBanner
+					verdict={verdict}
+					linkedSpotifyId="spotify-1"
+					accountDisplayName="fabio"
+				/>,
+			);
+			expect(screen.queryByRole("status")).not.toBeInTheDocument();
+		},
+	);
 });
 
 describe("ExtensionAccountBanner — unverifiable (invariant 6)", () => {

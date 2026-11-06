@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { UnverifiedEmailBanner } from "@/features/auth/UnverifiedEmailBanner";
 import { render, screen } from "@/test/utils/render";
 

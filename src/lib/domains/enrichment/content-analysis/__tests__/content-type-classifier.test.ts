@@ -6,7 +6,7 @@
  * classifyContentType method exposed on SongAnalysisService.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { AnalyzeSongInput } from "../song-analysis";
 import { SongAnalysisService } from "../song-analysis";
 

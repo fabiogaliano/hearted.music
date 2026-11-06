@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { renderWithRouter, screen } from "@/test/utils/render";
 import { MatchingEmptyState } from "../components/MatchingEmptyState";
 

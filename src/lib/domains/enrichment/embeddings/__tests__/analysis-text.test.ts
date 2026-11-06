@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { SongAnalysis } from "@/lib/domains/enrichment/content-analysis/queries";
 import { flattenAnalysisText } from "../analysis-text";
 

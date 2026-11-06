@@ -94,12 +94,13 @@ export function useSpotlightEditor({
 	// Reseed the saved fields when a different playlist opens. The edit/save/error
 	// flags are derived (tagged by playlist id), so they reset themselves on the
 	// switch and need no setter here.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reseed only on identity change
+	// oxlint-disable react-hooks/exhaustive-deps -- reseed only on identity change
 	useEffect(() => {
 		setDescription(playlist?.intent ?? null);
 		setGenres(playlist?.genres ?? []);
 		setMatchFilters(playlist?.matchFilters ?? { version: 1 });
 	}, [playlist?.id]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Settle the band via a timeout rather than transitionend so reduced-motion —
 	// where the grid-rows transition is suppressed and never fires an end event —
@@ -151,7 +152,7 @@ export function useSpotlightEditor({
 	// the reseed effect above has only *queued* the new playlist's values, so the
 	// state copies still hold the previous playlist's data this flush. The prop is
 	// already the new playlist, so a direct B→C switch can't seed C with B's intent.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: genres/matchFilters are read fresh from the prop, intentionally excluded so a background refetch can't reopen a mid-edit panel
+	// oxlint-disable react-hooks/exhaustive-deps -- genres/matchFilters are read fresh from the prop, intentionally excluded so a background refetch can't reopen a mid-edit panel
 	useEffect(() => {
 		const described = !!playlist?.intent && playlist.intent.trim() !== "";
 		if (!autoEditOnAdd || !playlist?.isTarget || described) return;
@@ -162,6 +163,7 @@ export function useSpotlightEditor({
 		setDraftMatchFilters(playlist.matchFilters ?? { version: 1 });
 		setEditingPlaylistId(playlist.id);
 	}, [playlist?.id, playlist?.isTarget, playlist?.intent, autoEditOnAdd]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Picking a ready-made example seeds the draft from it and jumps straight into
 	// editing — bypassing openEditor's reseed-from-saved, since the point is to

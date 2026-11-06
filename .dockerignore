@@ -24,8 +24,7 @@ supabase
 *.md
 .env*
 .DS_Store
-biome.json
-lefthook.yml
+.vite-hooks
 wrangler.jsonc
 vite.config.ts
 .mcp.json

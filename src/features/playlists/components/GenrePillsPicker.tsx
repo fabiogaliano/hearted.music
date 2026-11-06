@@ -162,10 +162,11 @@ export function GenrePillsPicker({
 
 	// Focus the input when the field expands on demand, so the user can type
 	// immediately without a second click. Mount-only by design.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional mount-only focus
+	// oxlint-disable react-hooks/exhaustive-deps -- intentional mount-only focus
 	useEffect(() => {
 		if (autoFocus) inputRef.current?.focus();
 	}, []);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Keep the highlighted option scrolled into view as the user arrows through.
 	useEffect(() => {
@@ -353,7 +354,7 @@ export function GenrePillsPicker({
 				{!atCap && (
 					<ul
 						id={listboxId}
-						// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: APG combobox keeps DOM focus on the input; the listbox is referenced via aria-controls/aria-activedescendant, so a styled <ul role=listbox> is the correct pattern here.
+						// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role -- APG combobox keeps DOM focus on the input; the listbox is referenced via aria-controls/aria-activedescendant, so a styled <ul role=listbox> is the correct pattern here.
 						role="listbox"
 						aria-label="Genres"
 						aria-hidden={!popOpen}

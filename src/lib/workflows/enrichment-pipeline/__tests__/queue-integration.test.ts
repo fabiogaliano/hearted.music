@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { Job } from "@/lib/platform/jobs/repository";
 
 let activeJobResponse: { data: unknown; error: unknown };

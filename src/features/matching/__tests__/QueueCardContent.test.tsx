@@ -8,7 +8,7 @@ import {
 	expect,
 	it,
 	vi,
-} from "vitest";
+} from "vite-plus/test";
 import { readMatchDeckCardQueryOptions } from "@/features/matching/deck-queries";
 import { Matching } from "@/features/matching/Matching";
 import { resetAuthFailedAtForTests } from "@/lib/extension/connection/auth-failed-store";
@@ -462,19 +462,27 @@ describe("QueueCardContent whole-card action handlers", () => {
 			// reconnectNeeded: ReconnectPrompt's repair path is wrong for
 			// "connected, just as the wrong person" (see useSpotifyGate.ts).
 			["mismatch", false],
-		] as const)("reconnectNeeded mirrors the shared verdict (%s → %s)", (connection, expected) => {
-			const { matchingProps } = renderCard({ connection });
-			expect(matchingProps().reconnectNeeded).toBe(expected);
-		});
+		] as const)(
+			"reconnectNeeded mirrors the shared verdict (%s → %s)",
+			(connection, expected) => {
+				const { matchingProps } = renderCard({ connection });
+				expect(matchingProps().reconnectNeeded).toBe(expected);
+			},
+		);
 
 		it.each([
 			[false, "needs-computer"],
 			[true, "needs-extension"],
-		] as const)("regression: without the extension, Add was offered and silently did nothing (browser can run it: %s → %s)", (canRun, expected) => {
-			capability.canRunExtensionHere = canRun;
-			const { matchingProps } = renderCard({ connection: "extension-missing" });
-			expect(matchingProps().writeGate).toBe(expected);
-		});
+		] as const)(
+			"regression: without the extension, Add was offered and silently did nothing (browser can run it: %s → %s)",
+			(canRun, expected) => {
+				capability.canRunExtensionHere = canRun;
+				const { matchingProps } = renderCard({
+					connection: "extension-missing",
+				});
+				expect(matchingProps().writeGate).toBe(expected);
+			},
+		);
 
 		it("keeps Add when the extension is there", () => {
 			const { matchingProps } = renderCard({ connection: "ok" });
@@ -635,12 +643,12 @@ describe("QueueCardContent whole-card action handlers", () => {
 			expect(screen.queryByRole("button", { name: /^add$/i })).toBeNull();
 		});
 
-		it.each([
-			"ok",
-			"spotify-disconnected",
-		] as const)("mismatchProfile is null for the %s verdict", (connection) => {
-			const { matchingProps } = renderCard({ connection });
-			expect(matchingProps().mismatchProfile).toBeNull();
-		});
+		it.each(["ok", "spotify-disconnected"] as const)(
+			"mismatchProfile is null for the %s verdict",
+			(connection) => {
+				const { matchingProps } = renderCard({ connection });
+				expect(matchingProps().mismatchProfile).toBeNull();
+			},
+		);
 	});
 });

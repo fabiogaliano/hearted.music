@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { AudioFeature } from "@/lib/domains/enrichment/audio-features/queries";
 import type { AudioFeaturesFailureKind } from "@/lib/domains/enrichment/audio-features/service";
 import type { PipelineBatch } from "../batch";

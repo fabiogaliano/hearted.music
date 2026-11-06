@@ -9,7 +9,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // ── mock the data-layer modules before any imports that touch them ──────────
 
@@ -61,41 +61,44 @@ const BLOCKED_CODES = [
 // ── §7.2: applyFailurePolicy escalation ──────────────────────────────────────
 
 describe("applyFailurePolicy — blocked escalation ladder", () => {
-	it.each(
-		BLOCKED_CODES,
-	)("%s is in BACKOFF_CODES so the prior-count lookup runs", (code) => {
-		expect(BACKOFF_CODES.has(code)).toBe(true);
-	});
+	it.each(BLOCKED_CODES)(
+		"%s is in BACKOFF_CODES so the prior-count lookup runs",
+		(code) => {
+			expect(BACKOFF_CODES.has(code)).toBe(true);
+		},
+	);
 
-	it.each(
-		BLOCKED_CODES,
-	)("%s below threshold → non-terminal with 6h suppression", (code) => {
-		// Any count from 0 to threshold-1 must stay non-terminal.
-		for (let count = 0; count < BLOCKED_ESCALATION_THRESHOLD; count++) {
+	it.each(BLOCKED_CODES)(
+		"%s below threshold → non-terminal with 6h suppression",
+		(code) => {
+			// Any count from 0 to threshold-1 must stay non-terminal.
+			for (let count = 0; count < BLOCKED_ESCALATION_THRESHOLD; count++) {
+				const out = applyFailurePolicy({
+					failureCode: code,
+					priorUnresolvedCount: count,
+					now: FIXED_NOW,
+				});
+				expect(out.isTerminal).toBe(false);
+				expect(out.suppressUntil).not.toBeNull();
+				expect(minutesFromNow(out.suppressUntil, FIXED_NOW)).toBe(6 * 60);
+				expect(out.escalatedToInputsMissing).toBeFalsy();
+			}
+		},
+	);
+
+	it.each(BLOCKED_CODES)(
+		"%s at threshold → terminal with escalatedToInputsMissing",
+		(code) => {
 			const out = applyFailurePolicy({
 				failureCode: code,
-				priorUnresolvedCount: count,
+				priorUnresolvedCount: BLOCKED_ESCALATION_THRESHOLD,
 				now: FIXED_NOW,
 			});
-			expect(out.isTerminal).toBe(false);
-			expect(out.suppressUntil).not.toBeNull();
-			expect(minutesFromNow(out.suppressUntil, FIXED_NOW)).toBe(6 * 60);
-			expect(out.escalatedToInputsMissing).toBeFalsy();
-		}
-	});
-
-	it.each(
-		BLOCKED_CODES,
-	)("%s at threshold → terminal with escalatedToInputsMissing", (code) => {
-		const out = applyFailurePolicy({
-			failureCode: code,
-			priorUnresolvedCount: BLOCKED_ESCALATION_THRESHOLD,
-			now: FIXED_NOW,
-		});
-		expect(out.isTerminal).toBe(true);
-		expect(out.suppressUntil).toBeNull();
-		expect(out.escalatedToInputsMissing).toBe(true);
-	});
+			expect(out.isTerminal).toBe(true);
+			expect(out.suppressUntil).toBeNull();
+			expect(out.escalatedToInputsMissing).toBe(true);
+		},
+	);
 
 	it.each(BLOCKED_CODES)("%s above threshold also escalates", (code) => {
 		const out = applyFailurePolicy({
@@ -130,29 +133,30 @@ describe("recordStageFailure — blocked escalation integration", () => {
 	});
 
 	describe("below threshold — non-terminal, no compensation", () => {
-		it.each(
-			BLOCKED_CODES,
-		)("%s at count 0 → non-terminal row, compensation NOT called", async (code) => {
-			mockCountUnresolved.mockResolvedValue(Result.ok(0));
+		it.each(BLOCKED_CODES)(
+			"%s at count 0 → non-terminal row, compensation NOT called",
+			async (code) => {
+				mockCountUnresolved.mockResolvedValue(Result.ok(0));
 
-			const result = await recordStageFailure({
-				...BASE_PARAMS,
-				failureCode: code,
-				errorMessage: "provider down",
-			});
+				const result = await recordStageFailure({
+					...BASE_PARAMS,
+					failureCode: code,
+					errorMessage: "provider down",
+				});
 
-			expect(Result.isOk(result)).toBe(true);
+				expect(Result.isOk(result)).toBe(true);
 
-			// DB row must use the original blocked code, not inputs_missing.
-			expect(mockRecordJobItemFailure).toHaveBeenCalledOnce();
-			const recorded = mockRecordJobItemFailure.mock.calls[0][0];
-			expect(recorded.failureCode).toBe(code);
-			expect(recorded.isTerminal).toBe(false);
-			expect(recorded.suppressUntil).not.toBeNull();
+				// DB row must use the original blocked code, not inputs_missing.
+				expect(mockRecordJobItemFailure).toHaveBeenCalledOnce();
+				const recorded = mockRecordJobItemFailure.mock.calls[0][0];
+				expect(recorded.failureCode).toBe(code);
+				expect(recorded.isTerminal).toBe(false);
+				expect(recorded.suppressUntil).not.toBeNull();
 
-			// Compensation must NOT fire for non-terminal failures.
-			expect(mockGrantCompensation).not.toHaveBeenCalled();
-		});
+				// Compensation must NOT fire for non-terminal failures.
+				expect(mockGrantCompensation).not.toHaveBeenCalled();
+			},
+		);
 
 		it("count threshold-1 stays non-terminal", async () => {
 			mockCountUnresolved.mockResolvedValue(
@@ -197,55 +201,59 @@ describe("recordStageFailure — blocked escalation integration", () => {
 	});
 
 	describe("at threshold — terminal, compensation fires", () => {
-		it.each(
-			BLOCKED_CODES,
-		)("%s at threshold → row recorded with analysis_inputs_missing code", async (code) => {
-			mockCountUnresolved.mockResolvedValue(
-				Result.ok(BLOCKED_ESCALATION_THRESHOLD),
-			);
+		it.each(BLOCKED_CODES)(
+			"%s at threshold → row recorded with analysis_inputs_missing code",
+			async (code) => {
+				mockCountUnresolved.mockResolvedValue(
+					Result.ok(BLOCKED_ESCALATION_THRESHOLD),
+				);
 
-			const result = await recordStageFailure({
-				...BASE_PARAMS,
-				failureCode: code,
-				errorMessage:
+				const result = await recordStageFailure({
+					...BASE_PARAMS,
+					failureCode: code,
+					errorMessage:
+						"GeniusFetchError: Failed to fetch lyrics page (503) — https://api.genius.com/search",
+				});
+
+				expect(Result.isOk(result)).toBe(true);
+
+				// The DB row must be rewritten to analysis_inputs_missing.
+				const recorded = mockRecordJobItemFailure.mock.calls[0][0];
+				expect(recorded.failureCode).toBe(
+					FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+				);
+				expect(recorded.isTerminal).toBe(true);
+				expect(recorded.suppressUntil).toBeNull();
+				// The real error message is preserved for observability.
+				expect(recorded.errorMessage).toBe(
 					"GeniusFetchError: Failed to fetch lyrics page (503) — https://api.genius.com/search",
-			});
+				);
+			},
+		);
 
-			expect(Result.isOk(result)).toBe(true);
+		it.each(BLOCKED_CODES)(
+			"%s at threshold → compensation RPC fires with analysis_inputs_missing",
+			async (code) => {
+				mockCountUnresolved.mockResolvedValue(
+					Result.ok(BLOCKED_ESCALATION_THRESHOLD),
+				);
 
-			// The DB row must be rewritten to analysis_inputs_missing.
-			const recorded = mockRecordJobItemFailure.mock.calls[0][0];
-			expect(recorded.failureCode).toBe(FAILURE_CODES.ANALYSIS_INPUTS_MISSING);
-			expect(recorded.isTerminal).toBe(true);
-			expect(recorded.suppressUntil).toBeNull();
-			// The real error message is preserved for observability.
-			expect(recorded.errorMessage).toBe(
-				"GeniusFetchError: Failed to fetch lyrics page (503) — https://api.genius.com/search",
-			);
-		});
+				await recordStageFailure({
+					...BASE_PARAMS,
+					failureCode: code,
+				});
 
-		it.each(
-			BLOCKED_CODES,
-		)("%s at threshold → compensation RPC fires with analysis_inputs_missing", async (code) => {
-			mockCountUnresolved.mockResolvedValue(
-				Result.ok(BLOCKED_ESCALATION_THRESHOLD),
-			);
-
-			await recordStageFailure({
-				...BASE_PARAMS,
-				failureCode: code,
-			});
-
-			// Compensation must fire exactly once.
-			expect(mockGrantCompensation).toHaveBeenCalledOnce();
-			const [, compensationParams] = mockGrantCompensation.mock.calls[0];
-			expect(compensationParams.accountId).toBe(BASE_PARAMS.accountId);
-			expect(compensationParams.songId).toBe(BASE_PARAMS.songId);
-			// Must pass the canonical code the DB RPC is gated on.
-			expect(compensationParams.failureCode).toBe(
-				FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
-			);
-		});
+				// Compensation must fire exactly once.
+				expect(mockGrantCompensation).toHaveBeenCalledOnce();
+				const [, compensationParams] = mockGrantCompensation.mock.calls[0];
+				expect(compensationParams.accountId).toBe(BASE_PARAMS.accountId);
+				expect(compensationParams.songId).toBe(BASE_PARAMS.songId);
+				// Must pass the canonical code the DB RPC is gated on.
+				expect(compensationParams.failureCode).toBe(
+					FAILURE_CODES.ANALYSIS_INPUTS_MISSING,
+				);
+			},
+		);
 
 		it("compensation is idempotent — already_compensated response is not an error", async () => {
 			mockCountUnresolved.mockResolvedValue(

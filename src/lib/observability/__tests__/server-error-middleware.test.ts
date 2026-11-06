@@ -1,5 +1,5 @@
 import { redirect } from "@tanstack/react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { reportAndThrow } from "@/lib/server/unwrap-or-throw";
 import { serverFnErrorMiddleware } from "../server-error-middleware";
 

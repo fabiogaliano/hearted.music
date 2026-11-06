@@ -8,7 +8,14 @@
  */
 
 import { Result } from "better-result";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { LyricsService } from "../service";
 
 // Avoid Supabase calls — cache write is non-fatal and must not affect outcomes.

@@ -42,7 +42,7 @@ export function writeConsent(status: ConsentStatus): void {
 	// The Cookie Store API is async and unsupported in Safari; readConsent()
 	// must read this synchronously during render, so document.cookie is the
 	// correct cross-browser choice.
-	// biome-ignore lint/suspicious/noDocumentCookie: synchronous cross-browser write required (see note above)
+	// oxlint-disable-next-line unicorn/no-document-cookie -- synchronous cross-browser write required (see note above)
 	document.cookie = [
 		`${CONSENT_COOKIE}=${status}`,
 		"path=/",
@@ -58,7 +58,7 @@ export function writeConsent(status: ConsentStatus): void {
 export function clearConsent(): void {
 	if (typeof document === "undefined") return;
 
-	// biome-ignore lint/suspicious/noDocumentCookie: synchronous cross-browser write required (see note above)
+	// oxlint-disable-next-line unicorn/no-document-cookie -- synchronous cross-browser write required (see note above)
 	document.cookie = [
 		`${CONSENT_COOKIE}=`,
 		"path=/",

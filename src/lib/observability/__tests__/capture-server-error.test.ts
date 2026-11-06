@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { DatabaseError, NotFoundError } from "@/lib/shared/errors/database";
 import { captureServerError } from "../capture-server-error";
 

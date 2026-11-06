@@ -1,5 +1,5 @@
 import { APICallError, RetryError } from "ai";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { classifyAnalysisFailure } from "@/lib/domains/enrichment/content-analysis/failure-classification";
 import {
 	isRetryableLlmError,

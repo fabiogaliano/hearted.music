@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { OnboardingSession } from "@/lib/domains/library/accounts/onboarding-session";
 import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";

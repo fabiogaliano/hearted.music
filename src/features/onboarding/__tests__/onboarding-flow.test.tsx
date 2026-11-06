@@ -3,7 +3,7 @@
  * when navigation state and the DB snapshot disagree.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { OnboardingData } from "@/lib/server/onboarding.functions";
 import { AuthenticatedThemeProvider } from "@/lib/theme/authenticated-theme";
 import {

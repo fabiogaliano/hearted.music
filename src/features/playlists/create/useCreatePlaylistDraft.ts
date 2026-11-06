@@ -270,7 +270,7 @@ export function useCreatePlaylistDraft(
 	// debouncedConfig is the trigger for this reset, not a value read in the
 	// body — removing it from the deps (biome's autofix) would make this run
 	// only once on mount instead of on every config change.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: trigger-only dependency, see comment above
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- trigger-only dependency, see comment above
 	useEffect(() => {
 		setSuggestionsOffset(0);
 	}, [debouncedConfig]);

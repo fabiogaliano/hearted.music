@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { Account } from "@/lib/domains/library/accounts/queries";
 import type { AuthSessionState } from "@/lib/platform/auth/auth-types";
 import { DatabaseError } from "@/lib/shared/errors/database";

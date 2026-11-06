@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { isDeckActionSuccess } from "@/features/matching/deck-action-status";
 
 // Rejection token sets are the non-success remainder of each atomic RPC's status

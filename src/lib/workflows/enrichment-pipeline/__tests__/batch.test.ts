@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 let rpcResponse: { data: unknown; error: unknown };
 // Per-RPC overrides let a test feed the ungated Phase-1 selector and the gated

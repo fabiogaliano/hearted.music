@@ -20,7 +20,14 @@
  */
 
 import postgres from "postgres";
-import { afterAll, afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+} from "vite-plus/test";
 import {
 	activeDeckOrNull,
 	callStartOrResumeMatchDeck,

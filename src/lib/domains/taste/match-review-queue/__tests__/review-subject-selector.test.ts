@@ -7,7 +7,7 @@
  * plus the song metadata the filter step needs.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { SongFilterMetadata } from "@/lib/domains/taste/match-filters/predicates";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import type { MatchResultRow } from "@/lib/domains/taste/song-matching/queries";

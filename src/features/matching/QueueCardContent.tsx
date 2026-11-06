@@ -345,10 +345,11 @@ export function QueueCardContent({
 	// successful action leaves navigation locked (status "pending"); re-running on
 	// itemId change clears the lock once we land on the next card. onReleaseNavigation
 	// is stable (useCallback), so itemId is the only trigger.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: itemId is an intentional re-sync trigger, not a value read in the body — the lock must release when the current card changes, mirroring the old release-on-mount behavior.
+	// oxlint-disable react-hooks/exhaustive-deps -- itemId is an intentional re-sync trigger, not a value read in the body — the lock must release when the current card changes, mirroring the old release-on-mount behavior.
 	useEffect(() => {
 		sessionActions.releaseNavigation();
 	}, [itemId, sessionActions.releaseNavigation]);
+	// oxlint-enable react-hooks/exhaustive-deps
 
 	// Present-card mapping, tail paging, and suggestion-dismiss cache behavior
 	// are owned by the hook (Deepening #2 tracer bullet) — this component stays
@@ -385,10 +386,11 @@ export function QueueCardContent({
 	// extension-missing here, and only a deliberate recheck clears it — which
 	// this screen doesn't offer. Rechecking on entry keeps a transient failure
 	// from leaving a working extension browse-only until a reload.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: entry-only — recheckConnection is a fresh closure each render, and the flag can't be set while this screen is open.
+	// oxlint-disable react-hooks/exhaustive-deps -- entry-only — recheckConnection is a fresh closure each render, and the flag can't be set while this screen is open.
 	useEffect(() => {
 		if (getUnreachableAt() !== null) void recheckConnection();
 	}, []);
+	// oxlint-enable react-hooks/exhaustive-deps
 	// Invariant 2: mismatch outranks unpaired and is never silently
 	// repairable — see AccountMismatchPrompt/useSpotifyGate's studio gate for
 	// the same distinction. Threaded down to Matching so the suggestion

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import "./setup.node";
 import { cleanup, configure } from "@testing-library/react";
 import type React from "react";
-import { afterEach, vi } from "vitest";
+import { afterEach, vi } from "vite-plus/test";
 
 afterEach(() => {
 	cleanup();

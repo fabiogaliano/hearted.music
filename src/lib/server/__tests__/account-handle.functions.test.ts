@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // ---------------------------------------------------------------------------
 // Shared mock auth context — overridden per-describe/test as needed.

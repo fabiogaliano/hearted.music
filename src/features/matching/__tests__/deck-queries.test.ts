@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 // The deck query options are thin wrappers over the Phase 3 server fns; mock the
 // server modules so the tests drive the key/queryFn contract without a network.

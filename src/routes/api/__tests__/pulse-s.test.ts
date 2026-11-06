@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 const ALLOWED_DSN = "https://public@example.ingest.sentry.io/123456";
 const MAX_ENVELOPE_BYTES = 15 * 1024 * 1024;
@@ -295,9 +302,8 @@ describe("/api/pulse-s", () => {
 	});
 
 	it("returns 429 when rate limited", async () => {
-		const { withinRateLimit } = await import(
-			"@/lib/platform/rate-limit/rate-limit"
-		);
+		const { withinRateLimit } =
+			await import("@/lib/platform/rate-limit/rate-limit");
 		vi.mocked(withinRateLimit).mockResolvedValueOnce(false);
 
 		const route = await loadRoute(ALLOWED_DSN);

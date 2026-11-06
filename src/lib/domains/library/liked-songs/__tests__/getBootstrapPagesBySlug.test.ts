@@ -21,7 +21,7 @@
  */
 
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { generateSongSlug } from "@/lib/domains/library/songs/slug";
 import {
 	LIKED_SONGS_DEEP_LINK_CONTEXT_ROWS,

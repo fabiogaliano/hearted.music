@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 // TanStack's route option types don't expose `headers` callably; cast to the
 // shape we invoke.
@@ -38,11 +45,14 @@ describe("root CSP", () => {
 	it.each([
 		["nonce", { ssr: { nonce: "abc" } }],
 		["no-nonce", {}],
-	])("allows connecting to the account-events gateway origin (%s variant) — SSE was blocked in prod", async (_variant, ctx) => {
-		const headers = await loadRootHeaders();
+	])(
+		"allows connecting to the account-events gateway origin (%s variant) — SSE was blocked in prod",
+		async (_variant, ctx) => {
+			const headers = await loadRootHeaders();
 
-		const connectSrc = connectSrcOf(headers(ctx)["Content-Security-Policy"]);
+			const connectSrc = connectSrcOf(headers(ctx)["Content-Security-Policy"]);
 
-		expect(connectSrc).toContain("https://events.example.test");
-	});
+			expect(connectSrc).toContain("https://events.example.test");
+		},
+	);
 });

@@ -15,7 +15,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { PreviewList } from "../preview/PreviewList";
 

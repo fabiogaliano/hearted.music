@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { CURRENT_CONSENT_VERSION } from "@/lib/consent/consent-policy";
 
 const mockSingle = vi.fn();

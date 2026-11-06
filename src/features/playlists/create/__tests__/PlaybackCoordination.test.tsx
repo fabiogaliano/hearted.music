@@ -12,7 +12,7 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { useSingleActivePlayback } from "@/features/playback/useSingleActivePlayback";
 import type { SongVM } from "@/lib/domains/playlists/types";
 import { PreviewList } from "../preview/PreviewList";

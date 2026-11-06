@@ -5,7 +5,7 @@
  * using the v0-proven constants (0.6 threshold, 55/45 weights).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { ResponseHitsResult } from "../types/genius.types";
 import {
 	extractCollaborators,

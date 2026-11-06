@@ -2,7 +2,14 @@
  * Tests for SyncingStep - extension-driven progress and auto-navigation.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
 import { mockGoToStep, setupOnboardingNavigationMock } from "@/test/mocks";
 import { render, screen, waitFor } from "@/test/utils/render";

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Auto-fix staged files (format + safe lint fixes + import sorting); the
+# `staged` block in vite.config.ts decides what runs.
+vp staged

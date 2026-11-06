@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type {
 	MatchingPlaylistProfile,
 	MatchingSong,
@@ -27,9 +27,8 @@ vi.mock("@/lib/domains/library/liked-songs/status-queries", () => ({
 	markItemsNew: (...args: unknown[]) => mockMarkItemsNew(...args),
 }));
 
-const { writeMatchSnapshot, writeEmptySnapshot } = await import(
-	"../write-match-snapshot"
-);
+const { writeMatchSnapshot, writeEmptySnapshot } =
+	await import("../write-match-snapshot");
 
 function makeSong(id: string): MatchingSong {
 	return {

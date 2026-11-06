@@ -15,7 +15,7 @@ Work on `main` unless told otherwise.
 
 - Usually I'll have it already running but - Dev: `bun run dev` · full stack: `bun run dev:all` (app + worker + embeddings)
 - Typecheck: `bun run typecheck` (tsgo; worker: `typecheck:worker`)
-- Lint/format: `bun run check` (Biome; lefthook auto-fixes staged files on commit)
+- Lint/format/type-aware lint: `bun run check` (Vite+ `vp check`: Oxfmt + Oxlint, config in `vite.config.ts`; the `.vite-hooks/pre-commit` hook auto-fixes staged files via `vp staged`)
 - Test one file: `bun run test src/path/__tests__/x.test.tsx` — verify with the file, not the full suite
 - After adding a migration: `bunx supabase db push` (local), then `bun run gen:types`
 

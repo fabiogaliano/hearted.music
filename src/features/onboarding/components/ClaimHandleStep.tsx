@@ -656,7 +656,7 @@ export function ClaimHandleStep({
 							value={value}
 							onChange={handleChange}
 							readOnly={isSubmitting}
-							// biome-ignore lint/a11y/noAutofocus: §8.3 mandates autoFocus on mount — dedicated single-field onboarding step; intentional expected.
+							// oxlint-disable-next-line jsx-a11y/no-autofocus -- §8.3 mandates autoFocus on mount — dedicated single-field onboarding step; intentional expected.
 							autoFocus
 							autoCapitalize="none"
 							autoCorrect="off"

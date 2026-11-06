@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { signBridgeRequest, verifyBridgeHmac } from "../hmac";
 
 const TEST_SECRET = "test-shared-secret-key";

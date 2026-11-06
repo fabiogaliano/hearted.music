@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { VocalsDetectionResult } from "../vocals-detector";
 import { detectVocalGender } from "../vocals-detector";
 

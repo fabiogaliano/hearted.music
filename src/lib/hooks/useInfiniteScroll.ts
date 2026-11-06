@@ -65,7 +65,7 @@ export function useInfiniteScroll({
 		[],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: itemCount is a re-check trigger, not a value read in the body — a fresh observer reports the sentinel's current intersection.
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- itemCount is a re-check trigger, not a value read in the body — a fresh observer reports the sentinel's current intersection.
 	useEffect(() => {
 		if (!hasMore || sentinel === null) return;
 

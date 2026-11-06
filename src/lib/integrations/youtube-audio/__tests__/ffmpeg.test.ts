@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { buildClipArgs, buildProbeArgs, computeClipStarts } from "../ffmpeg";
 
 const CONFIG = { clipSeconds: 30, clipCount: 3, clipBitrateKbps: 128 };

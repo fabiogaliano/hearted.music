@@ -8,7 +8,14 @@
  * throws regardless of the raw stored shape.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { parseStoredMatchFilters } from "@/lib/domains/taste/match-filters/schemas";
 import type { PlaylistMatchFiltersV1 } from "@/lib/domains/taste/match-filters/types";
 import { parseSummaryMatchFilters } from "../parseSummaryMatchFilters";

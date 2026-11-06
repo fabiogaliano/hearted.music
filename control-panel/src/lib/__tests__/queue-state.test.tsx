@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { type QueueConfig, useQueueState } from "../queue-state";
 
 type Tab = "pending" | "approved" | "rejected";

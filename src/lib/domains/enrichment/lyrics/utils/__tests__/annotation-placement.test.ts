@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { ResponseReferents } from "../../types/genius.types";
 import { placeAnnotations } from "../annotation-placement";
 

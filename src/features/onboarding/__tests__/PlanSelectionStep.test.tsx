@@ -8,7 +8,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { CheckoutIntent } from "@/features/billing/checkout-intent";
 import { makeBillingState } from "@/lib/domains/billing/fixtures";
 import { SONG_PACK_500 } from "@/lib/domains/billing/offers";

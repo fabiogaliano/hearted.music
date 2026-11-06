@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 let queuedResponses: Array<{
 	data: Array<{ spotify_id: string; image_url: string | null }> | null;

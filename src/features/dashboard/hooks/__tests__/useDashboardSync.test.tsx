@@ -9,7 +9,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { ConnectionVerdict } from "@/lib/extension/connection/verdict";
 import type { ExtensionSyncState } from "@/lib/extension/detect";
 import { activeJobsKeys, dashboardKeys } from "@/lib/query-keys";
@@ -142,16 +149,19 @@ describe("useDashboardSync", () => {
 		},
 		{ kind: "unpaired" as const },
 		{ kind: "unverifiable" as const },
-	])("blocks sync for a linked account's $kind verdict (checking renders its own status; every other non-ok verdict collapses to paused, letting the banner own the action)", (verdict) => {
-		const { result } = renderHook(
-			() => useDashboardSync(ACCOUNT_ID, verdict, "spotify-1"),
-			{ wrapper },
-		);
-		const expectedKind = verdict.kind === "checking" ? "checking" : "paused";
-		expect(result.current.state.kind).toBe(expectedKind);
-		result.current.onAction();
-		expect(mockRequestExtensionSync).not.toHaveBeenCalled();
-	});
+	])(
+		"blocks sync for a linked account's $kind verdict (checking renders its own status; every other non-ok verdict collapses to paused, letting the banner own the action)",
+		(verdict) => {
+			const { result } = renderHook(
+				() => useDashboardSync(ACCOUNT_ID, verdict, "spotify-1"),
+				{ wrapper },
+			);
+			const expectedKind = verdict.kind === "checking" ? "checking" : "paused";
+			expect(result.current.state.kind).toBe(expectedKind);
+			result.current.onAction();
+			expect(mockRequestExtensionSync).not.toHaveBeenCalled();
+		},
+	);
 
 	it("a sync's 202 re-reads active jobs but does not count as done (regression: recent activity refetched before the worker wrote the new songs)", async () => {
 		const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");

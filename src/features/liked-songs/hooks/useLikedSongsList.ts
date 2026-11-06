@@ -406,7 +406,7 @@ export function useLikedSongsList({
 	// Runs when a row nears the top or a page lands above it, not when the
 	// loader's identity changes: a failed load must wait for the next move
 	// rather than retry in a loop.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: firstLoadedSongId is a re-check trigger, not a value read in the body.
+	// oxlint-disable-next-line react-hooks/exhaustive-deps -- firstLoadedSongId is a re-check trigger, not a value read in the body.
 	useEffect(() => {
 		if (hasRowsAbove && isNearFirstLoadedRow) loadPreviousRef.current();
 	}, [hasRowsAbove, isNearFirstLoadedRow, firstLoadedSongId]);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { renderWithRouter, screen, within } from "@/test/utils/render";
 import { PublishResultRegion } from "../publish/PublishResultRegion";
 import type { PublishPlaylistResult } from "../usePublishPlaylist";
@@ -56,18 +56,21 @@ describe("PublishResultRegion", () => {
 			{ role: "button", name: /retry/i },
 			{ role: "link", name: /view playlist/i },
 		],
-	] as const)("focuses each terminal result when it appears", async (result, present, absent) => {
-		await renderRegion(result);
+	] as const)(
+		"focuses each terminal result when it appears",
+		async (result, present, absent) => {
+			await renderRegion(result);
 
-		const region = screen.getByRole("status");
-		expect(region).toHaveFocus();
-		expect(
-			within(region).getByRole(present.role, { name: present.name }),
-		).toBeInTheDocument();
-		expect(
-			within(region).queryByRole(absent.role, { name: absent.name }),
-		).not.toBeInTheDocument();
-	});
+			const region = screen.getByRole("status");
+			expect(region).toHaveFocus();
+			expect(
+				within(region).getByRole(present.role, { name: present.name }),
+			).toBeInTheDocument();
+			expect(
+				within(region).queryByRole(absent.role, { name: absent.name }),
+			).not.toBeInTheDocument();
+		},
+	);
 
 	it("moves focus back to the region when the terminal status changes", async () => {
 		const { rerender } = await renderRegion(unsyncedResult);

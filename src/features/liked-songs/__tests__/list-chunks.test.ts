@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { chunkAroundOrigin } from "../components/list-chunks";
 
 const rows = (from: number, to: number) =>

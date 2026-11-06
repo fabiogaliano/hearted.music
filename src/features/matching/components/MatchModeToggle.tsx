@@ -30,7 +30,7 @@ export const MatchModeToggle = memo(function MatchModeToggle({
 	return (
 		// aria-pressed on each button (not tablist/tab) because selecting a mode
 		// triggers a navigation rather than switching a visible panel in-place.
-		// biome-ignore lint/a11y/useSemanticElements: navigation toggle, not a form-control group; aria-pressed buttons with a group label is the correct pattern
+		// oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- navigation toggle, not a form-control group; aria-pressed buttons with a group label is the correct pattern
 		<div
 			role="group"
 			aria-label="View mode"
