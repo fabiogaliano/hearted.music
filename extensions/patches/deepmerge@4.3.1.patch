@@ -1,0 +1,108 @@
+diff --git a/dist/cjs.js b/dist/cjs.js
+index 7c36cbdd06cc22c92d590be3f87a08a91ca06b40..49511591b0b94148d3d89386bc98df02ee1c6bdf 100644
+--- a/dist/cjs.js
++++ b/dist/cjs.js
+@@ -76,11 +76,18 @@ function propertyIsUnsafe(target, key) {
+ 			&& Object.propertyIsEnumerable.call(target, key)) // and also unsafe if they're nonenumerable.
+ }
+ 
++// Plain assignment of a "__proto__" key (an own key whenever the input came
++// from JSON.parse) re-points the result's prototype instead of storing data
++// (GHSA-gcqx-w48m-w2h4); defining it keeps the key as ordinary own data.
++function defineOwn(object, key, value) {
++	Object.defineProperty(object, key, { value: value, writable: true, enumerable: true, configurable: true })
++}
++
+ function mergeObject(target, source, options) {
+ 	var destination = {};
+ 	if (options.isMergeableObject(target)) {
+ 		getKeys(target).forEach(function(key) {
+-			destination[key] = cloneUnlessOtherwiseSpecified(target[key], options);
++			defineOwn(destination, key, cloneUnlessOtherwiseSpecified(target[key], options));
+ 		});
+ 	}
+ 	getKeys(source).forEach(function(key) {
+@@ -89,9 +96,9 @@ function mergeObject(target, source, options) {
+ 		}
+ 
+ 		if (propertyIsOnObject(target, key) && options.isMergeableObject(source[key])) {
+-			destination[key] = getMergeFunction(key, options)(target[key], source[key], options);
++			defineOwn(destination, key, getMergeFunction(key, options)(target[key], source[key], options));
+ 		} else {
+-			destination[key] = cloneUnlessOtherwiseSpecified(source[key], options);
++			defineOwn(destination, key, cloneUnlessOtherwiseSpecified(source[key], options));
+ 		}
+ 	});
+ 	return destination
+diff --git a/dist/umd.js b/dist/umd.js
+index 4071e7c56ec8e5273fe166f6e723ac460fab8b72..1ba444bbfdbcdaa6534430b0a43f4a6ca134ff1a 100644
+--- a/dist/umd.js
++++ b/dist/umd.js
+@@ -80,11 +80,18 @@
+ 				&& Object.propertyIsEnumerable.call(target, key)) // and also unsafe if they're nonenumerable.
+ 	}
+ 
++	// Plain assignment of a "__proto__" key (an own key whenever the input came
++	// from JSON.parse) re-points the result's prototype instead of storing data
++	// (GHSA-gcqx-w48m-w2h4); defining it keeps the key as ordinary own data.
++	function defineOwn(object, key, value) {
++		Object.defineProperty(object, key, { value: value, writable: true, enumerable: true, configurable: true })
++	}
++
+ 	function mergeObject(target, source, options) {
+ 		var destination = {};
+ 		if (options.isMergeableObject(target)) {
+ 			getKeys(target).forEach(function(key) {
+-				destination[key] = cloneUnlessOtherwiseSpecified(target[key], options);
++				defineOwn(destination, key, cloneUnlessOtherwiseSpecified(target[key], options));
+ 			});
+ 		}
+ 		getKeys(source).forEach(function(key) {
+@@ -93,9 +100,9 @@
+ 			}
+ 
+ 			if (propertyIsOnObject(target, key) && options.isMergeableObject(source[key])) {
+-				destination[key] = getMergeFunction(key, options)(target[key], source[key], options);
++				defineOwn(destination, key, getMergeFunction(key, options)(target[key], source[key], options));
+ 			} else {
+-				destination[key] = cloneUnlessOtherwiseSpecified(source[key], options);
++				defineOwn(destination, key, cloneUnlessOtherwiseSpecified(source[key], options));
+ 			}
+ 		});
+ 		return destination
+diff --git a/index.js b/index.js
+index 77968aed5d456cccc294f60912ef381fa1e52a7b..d3e34d536a7b97b6ae263b12dc27fdb359bb6429 100644
+--- a/index.js
++++ b/index.js
+@@ -51,11 +51,18 @@ function propertyIsUnsafe(target, key) {
+ 			&& Object.propertyIsEnumerable.call(target, key)) // and also unsafe if they're nonenumerable.
+ }
+ 
++// Plain assignment of a "__proto__" key (an own key whenever the input came
++// from JSON.parse) re-points the result's prototype instead of storing data
++// (GHSA-gcqx-w48m-w2h4); defining it keeps the key as ordinary own data.
++function defineOwn(object, key, value) {
++	Object.defineProperty(object, key, { value: value, writable: true, enumerable: true, configurable: true })
++}
++
+ function mergeObject(target, source, options) {
+ 	var destination = {}
+ 	if (options.isMergeableObject(target)) {
+ 		getKeys(target).forEach(function(key) {
+-			destination[key] = cloneUnlessOtherwiseSpecified(target[key], options)
++			defineOwn(destination, key, cloneUnlessOtherwiseSpecified(target[key], options))
+ 		})
+ 	}
+ 	getKeys(source).forEach(function(key) {
+@@ -64,9 +71,9 @@ function mergeObject(target, source, options) {
+ 		}
+ 
+ 		if (propertyIsOnObject(target, key) && options.isMergeableObject(source[key])) {
+-			destination[key] = getMergeFunction(key, options)(target[key], source[key], options)
++			defineOwn(destination, key, getMergeFunction(key, options)(target[key], source[key], options))
+ 		} else {
+-			destination[key] = cloneUnlessOtherwiseSpecified(source[key], options)
++			defineOwn(destination, key, cloneUnlessOtherwiseSpecified(source[key], options))
+ 		}
+ 	})
+ 	return destination

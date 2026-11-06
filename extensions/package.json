@@ -23,5 +23,8 @@
 		"typescript": "^5.7.0",
 		"vitest": "^4.1.12",
 		"web-ext": "^10.8.0"
+	},
+	"patchedDependencies": {
+		"deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch"
 	}
 }
