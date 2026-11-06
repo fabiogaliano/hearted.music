@@ -95,10 +95,12 @@ export const Route = createFileRoute("/_authenticated")({
 				staleTime: "static",
 			});
 
-		// Guard-critical onboarding payload — small object, always fresh. Child
-		// routes read `onboardingSession` and `theme` from context; they do
-		// NOT need the full page payload (playlists, landing songs, etc.),
-		// which lives in `/onboarding`'s own loader. We start billing in
+		// Guard-critical onboarding payload — small object. Served from cache once
+		// loaded ("static"): every onboarding write re-reads or patches this key
+		// itself, so a time-based refetch would only add a round trip per
+		// navigation. Child routes read `onboardingSession` and `theme` from
+		// context; they do NOT need the full page payload (playlists, landing
+		// songs, etc.), which lives in `/onboarding`'s own loader. We start billing in
 		// parallel, but onboarding still resolves first so redirects are not
 		// blocked by billing latency or failures.
 		const onboardingSessionPromise = queryClient.query({
