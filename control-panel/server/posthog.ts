@@ -89,7 +89,7 @@ const HogQLResponseSchema = z.object({
 	types: z.array(z.unknown()).optional(),
 });
 
-const CountSchema = z.number().finite().nonnegative().int();
+const CountSchema = z.number().nonnegative().int();
 const NullableTimestampSchema = z.string().min(1).nullable();
 const SourceStatusRowsSchema = z.array(
 	z.tuple([NullableTimestampSchema]),

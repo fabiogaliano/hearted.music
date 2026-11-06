@@ -11,21 +11,19 @@ const BridgeEventKindSchema = z.enum([
 	"subscription_deactivated",
 ]);
 
-const BridgeEnvelopeSchema = z
-	.object({
-		stripe_event_id: z.string().min(1),
-		event_kind: BridgeEventKindSchema,
-		schema_version: z.number().int().positive(),
-	})
-	.passthrough();
+const BridgeEnvelopeSchema = z.looseObject({
+	stripe_event_id: z.string().min(1),
+	event_kind: BridgeEventKindSchema,
+	schema_version: z.number().int().positive(),
+});
 
 const PackFulfilledSchema = z
 	.object({
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("pack_fulfilled"),
 		schema_version: z.literal(CURRENT_BRIDGE_SCHEMA_VERSION),
-		account_id: z.string().uuid(),
-		bonus_unlocked_song_ids: z.array(z.string().uuid()),
+		account_id: z.uuid(),
+		bonus_unlocked_song_ids: z.array(z.uuid()),
 	})
 	.transform(({ schema_version: _schemaVersion, ...payload }) => payload);
 
@@ -34,7 +32,7 @@ const UnlimitedActivatedSchema = z
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("unlimited_activated"),
 		schema_version: z.literal(CURRENT_BRIDGE_SCHEMA_VERSION),
-		account_id: z.string().uuid(),
+		account_id: z.uuid(),
 		stripe_subscription_id: z.string().min(1),
 		subscription_period_end: z.string().min(1),
 	})
@@ -45,7 +43,7 @@ const PackReversedSchema = z
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("pack_reversed"),
 		schema_version: z.literal(CURRENT_BRIDGE_SCHEMA_VERSION),
-		account_id: z.string().uuid(),
+		account_id: z.uuid(),
 		pack_stripe_event_id: z.string().min(1),
 		reason: z.enum(["refund", "chargeback"]),
 		access_removed: z.boolean(),
@@ -57,7 +55,7 @@ const UnlimitedPeriodReversedSchema = z
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("unlimited_period_reversed"),
 		schema_version: z.literal(CURRENT_BRIDGE_SCHEMA_VERSION),
-		account_id: z.string().uuid(),
+		account_id: z.uuid(),
 		stripe_subscription_id: z.string().min(1),
 		subscription_period_end: z.string().min(1),
 		reason: z.enum(["refund", "chargeback"]),
@@ -70,7 +68,7 @@ const SubscriptionDeactivatedSchema = z
 		stripe_event_id: z.string().min(1),
 		event_kind: z.literal("subscription_deactivated"),
 		schema_version: z.literal(CURRENT_BRIDGE_SCHEMA_VERSION),
-		account_id: z.string().uuid(),
+		account_id: z.uuid(),
 	})
 	.transform(({ schema_version: _schemaVersion, ...payload }) => payload);
 

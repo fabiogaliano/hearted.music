@@ -244,7 +244,7 @@ async function main() {
 	const prompt = getExperimentLyricalPrompt(flags.version);
 	// All shipped prompts emit the redesigned { read } model, so generation always
 	// validates against SongReadSchema (the audit step requires the read shape).
-	const genSchema: z.ZodTypeAny = SongReadSchema;
+	const genSchema: z.ZodType = SongReadSchema;
 	const songs = resolveSongs(flags.songs);
 
 	const resolution = resolveLlmConfig(flags.provider);

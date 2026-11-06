@@ -504,11 +504,7 @@ export function HeartRippleBackground({
 		};
 		window.addEventListener("resize", handleResize);
 		document.addEventListener("visibilitychange", handleVisibilityChange);
-		if (typeof reducedMotionQuery.addEventListener === "function") {
-			reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
-		} else {
-			reducedMotionQuery.addListener(handleReducedMotionChange);
-		}
+		reducedMotionQuery.addEventListener("change", handleReducedMotionChange);
 
 		if (reducedMotionQuery.matches) {
 			renderFrame();
@@ -528,14 +524,10 @@ export function HeartRippleBackground({
 
 			window.removeEventListener("resize", handleResize);
 			document.removeEventListener("visibilitychange", handleVisibilityChange);
-			if (typeof reducedMotionQuery.removeEventListener === "function") {
-				reducedMotionQuery.removeEventListener(
-					"change",
-					handleReducedMotionChange,
-				);
-			} else {
-				reducedMotionQuery.removeListener(handleReducedMotionChange);
-			}
+			reducedMotionQuery.removeEventListener(
+				"change",
+				handleReducedMotionChange,
+			);
 
 			gl.bindBuffer(gl.ARRAY_BUFFER, null);
 			gl.deleteBuffer(buffer);

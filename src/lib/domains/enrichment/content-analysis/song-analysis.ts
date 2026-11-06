@@ -188,7 +188,7 @@ export class SongAnalysisService {
 		// Lyrical generation is v17: the active prompt emits the redesigned { read }
 		// model, so output is validated against SongReadSchema, stored flat, and rendered
 		// in production by SongDetailPanel. Instrumental uses its own schema.
-		const schema: z.ZodTypeAny = isInstrumental
+		const schema: z.ZodType = isInstrumental
 			? SongAnalysisInstrumentalSchema
 			: SongReadSchema;
 

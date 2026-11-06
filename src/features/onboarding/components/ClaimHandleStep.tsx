@@ -416,7 +416,7 @@ export function ClaimHandleStep({
 	// ── Submit ────────────────────────────────────────────────────────────────
 
 	const handleSubmit = useCallback(
-		async (e: React.FormEvent<HTMLFormElement>) => {
+		async (e: React.SubmitEvent<HTMLFormElement>) => {
 			e.preventDefault();
 
 			// Branch by submit-state — one explicit path.

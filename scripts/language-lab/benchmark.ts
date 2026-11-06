@@ -36,7 +36,7 @@ const PER_LANG_CAP = 6; // keeps English from swamping the sample
 const MIN_CHARS = 80;
 
 const PoolRowSchema = z.object({
-	song_id: z.string().uuid(),
+	song_id: z.uuid(),
 	title: z.string(),
 	artist: z.string(),
 	lyrics_text: z.string(),
@@ -44,7 +44,7 @@ const PoolRowSchema = z.object({
 
 const PoolSchema = z.array(PoolRowSchema);
 const ReviewedLabelsSchema = z.record(
-	z.string().uuid(),
+	z.uuid(),
 	z.string().regex(/^[a-z]{2,3}$/),
 );
 

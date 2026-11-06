@@ -88,7 +88,7 @@ export const getSubscriptionUpgradeQuote = createServerFn({ method: "GET" })
 	});
 
 const RequestSongUnlockSchema = z.object({
-	songIds: z.array(z.string().uuid()).min(1).max(500),
+	songIds: z.array(z.uuid()).min(1).max(500),
 });
 
 export type RequestSongUnlockResponse =
@@ -179,7 +179,7 @@ const OfferIdSchema = z.enum([
 
 const CreateCheckoutSessionSchema = z.object({
 	offer: OfferIdSchema,
-	checkoutAttemptId: z.string().uuid(),
+	checkoutAttemptId: z.uuid(),
 });
 
 function checkoutEndpointForOffer(offer: OfferId): string {
