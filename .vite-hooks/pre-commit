@@ -1,4 +1,8 @@
 #!/bin/sh
 # Auto-fix staged files (format + safe lint fixes + import sorting); the
 # `staged` block in vite.config.ts decides what runs.
+# Type-aware lint runs on tsrs (Rust) instead of Vite+'s bundled Go backend:
+# identical diagnostics at ~40% of the CPU and memory. Keep in sync with
+# the `check` script in package.json.
+export OXLINT_TSGOLINT_PATH=node_modules/.bin/tsrs-lint
 vp staged
