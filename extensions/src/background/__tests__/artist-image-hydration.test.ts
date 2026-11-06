@@ -12,7 +12,7 @@ vi.mock("../../shared/storage", () => ({
 	setSyncState: (...args: unknown[]) => mockSetSyncState(...args),
 }));
 
-const { fetchArtistImageUrls } = await import("../artist-image-hydration");
+const { fetchArtistData } = await import("../artist-image-hydration");
 
 function makeTrack(
 	artistOverrides: Array<{
@@ -65,7 +65,7 @@ describe("artist image hydration", () => {
 			),
 		);
 
-		const result = await fetchArtistImageUrls({
+		const result = await fetchArtistData({
 			token: "spotify-token",
 			tracks: [
 				makeTrack([
@@ -85,9 +85,9 @@ describe("artist image hydration", () => {
 			"spotify-token",
 			"spotify:artist:artist-2",
 		);
-		expect(result.get("artist-1")).toBe("https://img/1.jpg");
-		expect(result.get("artist-2")).toBe("https://img/2-large.jpg");
-		expect(result.get("artist-3")).toBe("https://img/3.jpg");
+		expect(result.get("artist-1")?.imageUrl).toBe("https://img/1.jpg");
+		expect(result.get("artist-2")?.imageUrl).toBe("https://img/2-large.jpg");
+		expect(result.get("artist-3")?.imageUrl).toBe("https://img/3.jpg");
 		expect(mockSetSyncState).toHaveBeenCalledWith({
 			phase: "artistImages",
 			fetched: 0,
@@ -112,7 +112,7 @@ describe("artist image hydration", () => {
 			.fn()
 			.mockRejectedValue(new Error("backend unavailable"));
 
-		const result = await fetchArtistImageUrls({
+		const result = await fetchArtistData({
 			token: "spotify-token",
 			tracks: [
 				makeTrack([
@@ -124,8 +124,8 @@ describe("artist image hydration", () => {
 		});
 
 		expect(mockQueryArtistOverview).toHaveBeenCalledTimes(2);
-		expect(result.get("artist-1")).toBe("https://img/1.jpg");
-		expect(result.get("artist-2")).toBe("https://img/2.jpg");
+		expect(result.get("artist-1")?.imageUrl).toBe("https://img/1.jpg");
+		expect(result.get("artist-2")?.imageUrl).toBe("https://img/2.jpg");
 		expect(mockSetSyncState).toHaveBeenCalledWith({
 			phase: "artistImages",
 			fetched: 0,

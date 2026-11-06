@@ -236,20 +236,6 @@ export async function fetchArtistData(params: {
 	return artistData;
 }
 
-/** @deprecated Use fetchArtistData instead */
-export async function fetchArtistImageUrls(params: {
-	token: string;
-	tracks: SpotifyTrackDTO[];
-	postToBackend: PostToBackend;
-}): Promise<Map<string, string | null>> {
-	const data = await fetchArtistData(params);
-	const imageUrls = new Map<string, string | null>();
-	for (const [id, result] of data) {
-		imageUrls.set(id, result.imageUrl);
-	}
-	return imageUrls;
-}
-
 export function attachArtistDataToTracks(
 	tracks: SpotifyTrackDTO[],
 	artistResults: ReadonlyMap<string, ArtistHydrationResult>,
@@ -266,23 +252,6 @@ export function attachArtistDataToTracks(
 					bio: data?.bio ?? null,
 				};
 			}),
-		},
-	}));
-}
-
-/** @deprecated Use attachArtistDataToTracks instead */
-export function attachArtistImagesToTracks(
-	tracks: SpotifyTrackDTO[],
-	artistImageUrls: ReadonlyMap<string, string | null>,
-): SpotifyTrackDTO[] {
-	return tracks.map((track) => ({
-		...track,
-		track: {
-			...track.track,
-			artists: track.track.artists.map((artist) => ({
-				...artist,
-				imageUrl: artistImageUrls.get(artist.id) ?? null,
-			})),
 		},
 	}));
 }
