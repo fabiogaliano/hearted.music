@@ -300,7 +300,7 @@ function renderCard({
 		sessionActions,
 		cancelQueries: vi.spyOn(queryClient, "cancelQueries"),
 		setQueryData: vi.spyOn(queryClient, "setQueryData"),
-		prefetchQuery: vi.spyOn(queryClient, "prefetchQuery"),
+		query: vi.spyOn(queryClient, "query"),
 		matchingProps: () => {
 			const props = vi.mocked(Matching).mock.lastCall?.[0];
 			if (!props) throw new Error("Matching was not rendered");
@@ -377,10 +377,9 @@ describe("QueueCardContent whole-card action handlers", () => {
 		});
 	});
 
-	describe("N1 (second half) — applyResolvedView routes a promoted retryable-error card through prefetchQuery", () => {
+	describe("N1 (second half) — applyResolvedView routes a promoted retryable-error card through the authoritative card read", () => {
 		it("prefetches a promoted retryable-error card instead of seeding it into the card cache", async () => {
-			const { user, sessionActions, setQueryData, prefetchQuery } =
-				renderCard();
+			const { user, sessionActions, setQueryData, query } = renderCard();
 			const view = makeView(
 				{ itemId: "item-2", status: "retryable-error" },
 				{ itemId: "item-3", status: "ready" },
@@ -397,10 +396,10 @@ describe("QueueCardContent whole-card action handlers", () => {
 			);
 
 			// The promoted current card is a transient retryable-error — must be
-			// re-read through the authoritative card read (prefetchQuery), never
+			// re-read through the authoritative card read (query), never
 			// pinned into the long-lived card cache via setQueryData (mirrors the
 			// loader-side test in match.test.ts).
-			expect(prefetchQuery).toHaveBeenCalledWith(
+			expect(query).toHaveBeenCalledWith(
 				expect.objectContaining({ queryKey: cardKey("item-2") }),
 			);
 			expect(setQueryData).not.toHaveBeenCalledWith(

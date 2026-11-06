@@ -25,7 +25,10 @@ import { requestLibraryPhase1Enrichment } from "@/lib/server/enrichment.function
 export const Route = createFileRoute("/_authenticated/playlists/new")({
 	loader: async ({ context }) => {
 		void requestLibraryPhase1Enrichment({ data: undefined });
-		await context.queryClient.ensureQueryData(intentEligibilityQueryOptions());
+		await context.queryClient.query({
+			...intentEligibilityQueryOptions(),
+			staleTime: "static",
+		});
 	},
 	component: () => <Outlet />,
 });

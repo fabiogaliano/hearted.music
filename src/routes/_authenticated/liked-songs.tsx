@@ -1,3 +1,4 @@
+import { noop } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
 	isSearchFilter,
@@ -80,9 +81,14 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 		// must not hold navigation on it: the panel shows its in-flight state.
 		const loadSelectedAnalysis = async (song: LikedSong | null) => {
 			if (!song || !hasStoredAnalysis(song)) return;
-			const read = context.queryClient.prefetchQuery(
-				likedSongAnalysisQueryOptions(context.session.accountId, song.track.id),
-			);
+			const read = context.queryClient
+				.query(
+					likedSongAnalysisQueryOptions(
+						context.session.accountId,
+						song.track.id,
+					),
+				)
+				.catch(noop);
 			if (typeof window === "undefined") await read;
 		};
 
@@ -90,9 +96,10 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 		// the library renders the full 6-song demo set without a pop-in after the
 		// hero. Static demo data, so this is cached forever after the first load.
 		if (context.onboardingSession.status === "song-walkthrough") {
-			await context.queryClient.ensureQueryData(
-				walkthroughCompanionsQueryOptions(),
-			);
+			await context.queryClient.query({
+				...walkthroughCompanionsQueryOptions(),
+				staleTime: "static",
+			});
 		}
 
 		// Deep link into the default (unfiltered, no-search) list: bootstrap the
@@ -113,12 +120,13 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 		);
 		if (bootstrapTarget) {
 			try {
-				const bootstrap = await context.queryClient.ensureQueryData(
-					likedSongsDeepLinkBootstrapQueryOptions(
+				const bootstrap = await context.queryClient.query({
+					...likedSongsDeepLinkBootstrapQueryOptions(
 						context.session.accountId,
 						bootstrapTarget.slug,
 					),
-				);
+					staleTime: "static",
+				});
 				seedLikedSongsDeepLinkCaches(
 					context.queryClient,
 					context.session.accountId,
@@ -134,15 +142,17 @@ export const Route = createFileRoute("/_authenticated/liked-songs")({
 			}
 		}
 
-		await context.queryClient.ensureInfiniteQueryData(
-			likedSongsInfiniteQueryOptions(deps.queryFilter, undefined),
-		);
+		await context.queryClient.infiniteQuery({
+			...likedSongsInfiniteQueryOptions(deps.queryFilter, undefined),
+			staleTime: "static",
+		});
 
 		if (deps.song) {
 			await loadSelectedAnalysis(
-				await context.queryClient.ensureQueryData(
-					likedSongBySlugQueryOptions(context.session.accountId, deps.song),
-				),
+				await context.queryClient.query({
+					...likedSongBySlugQueryOptions(context.session.accountId, deps.song),
+					staleTime: "static",
+				}),
 			);
 		}
 	},

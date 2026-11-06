@@ -69,7 +69,7 @@ export function useOnboardingNavigation() {
 				// Authoritative refetch of the session before the next render.
 				// Prevents guards in `/_authenticated` from reading a stale
 				// session during the transition. Same pattern as useStepNavigation.
-				await queryClient.fetchQuery({
+				await queryClient.query({
 					queryKey: ONBOARDING_SESSION_QUERY_KEY,
 					queryFn: () => getOnboardingSession(),
 				});

@@ -7,12 +7,12 @@
  * pinned into the long-lived card cache.
  */
 
-import type { QueryClient } from "@tanstack/react-query";
+import { noop, type QueryClient } from "@tanstack/react-query";
 import { readMatchDeckCardQueryOptions } from "@/features/matching/deck-queries";
 import type { MatchDeckCard } from "@/lib/domains/taste/match-review-queue/deck-view";
 
 export async function seedBakedDeckCardReads(
-	queryClient: Pick<QueryClient, "setQueryData" | "prefetchQuery">,
+	queryClient: Pick<QueryClient, "setQueryData" | "query">,
 	cards: Array<MatchDeckCard | null>,
 ): Promise<void> {
 	const retries: Promise<unknown>[] = [];
@@ -23,7 +23,9 @@ export async function seedBakedDeckCardReads(
 			// Auto-retry once through the authoritative card read instead of
 			// pinning a transient baked error into the 30-minute card cache.
 			retries.push(
-				queryClient.prefetchQuery(readMatchDeckCardQueryOptions(card.itemId)),
+				queryClient
+					.query(readMatchDeckCardQueryOptions(card.itemId))
+					.catch(noop),
 			);
 			continue;
 		}

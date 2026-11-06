@@ -15,6 +15,7 @@
  * client cache. The screen's useQuery owns loading, retry, and error states.
  */
 
+import { noop } from "@tanstack/react-query";
 import { createFileRoute, useLocation } from "@tanstack/react-router";
 import {
 	DEFAULT_DRAFT_CONFIG,
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/playlists/new/studio")({
 		// Parent and child loaders run in parallel. This duplicate ensure is deduped
 		// by Query, while keeping the child correct when its loader runs in isolation.
 		const gatePromise = context.queryClient
-			.ensureQueryData(intentEligibilityQueryOptions())
+			.query({ ...intentEligibilityQueryOptions(), staleTime: "static" })
 			.catch(() => null);
 
 		// A seeded intent is the only preview input that depends on eligibility.
@@ -43,14 +44,16 @@ export const Route = createFileRoute("/_authenticated/playlists/new/studio")({
 		// every other seed can start its preview immediately.
 		const gate = seed.intent === undefined ? null : await gatePromise;
 		const init = studioSeedToDraftInit(seed, gate?.allowed ?? false);
-		void context.queryClient.prefetchQuery(
-			playlistDraftPreviewQueryOptions({
-				...DEFAULT_DRAFT_CONFIG,
-				intent: init.intent,
-				genrePills: init.genrePills ?? DEFAULT_DRAFT_CONFIG.genrePills,
-				matchFilters: init.matchFilters ?? DEFAULT_DRAFT_CONFIG.matchFilters,
-			}),
-		);
+		void context.queryClient
+			.query(
+				playlistDraftPreviewQueryOptions({
+					...DEFAULT_DRAFT_CONFIG,
+					intent: init.intent,
+					genrePills: init.genrePills ?? DEFAULT_DRAFT_CONFIG.genrePills,
+					matchFilters: init.matchFilters ?? DEFAULT_DRAFT_CONFIG.matchFilters,
+				}),
+			)
+			.catch(noop);
 	},
 	component: StudioPage,
 });

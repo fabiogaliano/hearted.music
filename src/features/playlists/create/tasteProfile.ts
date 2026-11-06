@@ -1,7 +1,7 @@
 /**
  * Client-facing taste-profile query for the ideas screen.
  *
- * Server fn + query options factory so the route loader can ensureQueryData and
+ * Server fn + query options factory so the route loader can load it into the cache and
  * the ideas screen can read it synchronously via useQuery. This is the ONE place
  * the raw-count domain payload is mapped to the presentation VM: window ids gain
  * human labels and a stable recency order, decades gain a "2010s"-style label.

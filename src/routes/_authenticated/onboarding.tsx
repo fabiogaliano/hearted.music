@@ -49,10 +49,10 @@ export const Route = createFileRoute("/_authenticated/onboarding")({
 		const { session, queryClient } = context;
 		const accountId = session.accountId;
 
-		// Guard-critical data: force a fresh read on each navigation. `ensureQueryData`
-		// can reuse cached data for this key, which makes step guards lag behind
+		// Guard-critical data: force a fresh read on each navigation. `staleTime: "static"`
+		// would reuse cached data for this key, which makes step guards lag behind
 		// recently-saved progress until a hard reload.
-		const data = await queryClient.fetchQuery({
+		const data = await queryClient.query({
 			queryKey: ONBOARDING_DATA_QUERY_KEY,
 			queryFn: () => getOnboardingData(),
 			staleTime: 0,

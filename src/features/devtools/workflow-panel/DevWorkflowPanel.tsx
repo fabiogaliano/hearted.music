@@ -56,7 +56,7 @@ async function reachPlanSelection(
 	queryClient: QueryClient,
 ): Promise<OnboardingAuthPayload> {
 	const fetchSession = () =>
-		queryClient.fetchQuery({
+		queryClient.query({
 			queryKey: ONBOARDING_SESSION_QUERY_KEY,
 			queryFn: () => getOnboardingSession(),
 		});
@@ -185,7 +185,7 @@ export function DevWorkflowPanel() {
 					// Fetch the authoritative session so the resolver can make routing
 					// decisions against it — jumping into a walkthrough step without a
 					// demo song trips the dev invariant loudly, which is what we want.
-					const nextSession = await queryClient.fetchQuery({
+					const nextSession = await queryClient.query({
 						queryKey: ONBOARDING_SESSION_QUERY_KEY,
 						queryFn: () => getOnboardingSession(),
 					});

@@ -136,7 +136,7 @@ const { navigateTo, isPending } = useStepNavigation();
 navigateTo(step: SaveableOnboardingStep): Promise<void>
 ```
 
-Flow: save step to DB → fetch authoritative session (`fetchQuery`, not `setQueryData`) →
+Flow: save step to DB → fetch authoritative session (`query`, not `setQueryData`) →
 resolve route → navigate. On failure: error toast, no navigation.
 
 Used for cross-surface transitions (`/onboarding` ↔ `/liked-songs` ↔ `/match`).

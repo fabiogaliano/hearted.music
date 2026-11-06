@@ -13,9 +13,10 @@ import { formatRelativeTime } from "@/lib/shared/utils/format-time";
 export const Route = createFileRoute("/_authenticated/dashboard")({
 	loader: async ({ context }) => {
 		const accountId = context.session.accountId;
-		const pageData = await context.queryClient.ensureQueryData(
-			dashboardPageDataQueryOptions(accountId),
-		);
+		const pageData = await context.queryClient.query({
+			...dashboardPageDataQueryOptions(accountId),
+			staleTime: "static",
+		});
 		seedDashboardCaches(context.queryClient, accountId, pageData);
 	},
 	component: DashboardHome,

@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 
 		// The parent /playlists loader already holds the management data, so a
 		// fresh cache resolves almost every ref and the tracks read starts without
-		// a management round trip. fetchQuery (not ensureQueryData) so a cache that
+		// a management round trip. The options' own staleTime (not "static") so a cache that
 		// library sync invalidated, or that went stale, is re-read here instead of
 		// trusted. A fresh cache can still miss playlists added since it loaded,
 		// and a cached playlist can be gone on the server, so those cases settle
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 		const updatesBefore = queryClient.getQueryState(
 			management.queryKey,
 		)?.dataUpdateCount;
-		const cached = await queryClient.fetchQuery(management);
+		const cached = await queryClient.query(management);
 		const servedFromCache =
 			queryClient.getQueryState(management.queryKey)?.dataUpdateCount ===
 			updatesBefore;
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 			// Refresh a cached list so the one the user lands on no longer shows
 			// it; data read just above is as fresh as a second read would be.
 			if (servedFromCache) {
-				await queryClient.fetchQuery({ ...management, staleTime: 0 });
+				await queryClient.query({ ...management, staleTime: 0 });
 			}
 			throw toList();
 		}
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/_authenticated/playlists/$playlistRef")({
 		// back to the list URL rather than leaving a misleading detail URL. Data
 		// fetched just above is already fresh, so it isn't re-read.
 		if (!servedFromCache) throw toList();
-		const fresh = await queryClient.fetchQuery({ ...management, staleTime: 0 });
+		const fresh = await queryClient.query({ ...management, staleTime: 0 });
 		const playlistId = resolvePlaylistIdFromRouteRef(
 			fresh.playlists,
 			params.playlistRef,
@@ -74,7 +74,7 @@ async function prefetchTracks(
 	playlistId: string,
 ): Promise<"done" | "playlist-gone"> {
 	try {
-		await queryClient.fetchInfiniteQuery(
+		await queryClient.infiniteQuery(
 			playlistTracksInfiniteQueryOptions(playlistId),
 		);
 	} catch (error) {

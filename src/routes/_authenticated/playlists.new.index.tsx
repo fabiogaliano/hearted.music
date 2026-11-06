@@ -12,7 +12,10 @@ import { tasteProfileQueryOptions } from "@/features/playlists/create/tasteProfi
 
 export const Route = createFileRoute("/_authenticated/playlists/new/")({
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(tasteProfileQueryOptions());
+		await context.queryClient.query({
+			...tasteProfileQueryOptions(),
+			staleTime: "static",
+		});
 		// The board's per-visit shuffle is seeded here, in the loader, so a hard
 		// load mints it on the server and serializes it to the client — server and
 		// client then compute the same shuffleIdeas draw, no hydration mismatch.

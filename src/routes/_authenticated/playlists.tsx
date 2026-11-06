@@ -17,9 +17,10 @@ export const Route = createFileRoute("/_authenticated/playlists")({
 		// The flag-playlists preview renders a local sandbox screen, so the real
 		// playlist-management data is never read — skip the fetch entirely.
 		if (context.onboardingSession.status === "flag-playlists") return;
-		await context.queryClient.ensureQueryData(
-			playlistManagementQueryOptions(context.session.accountId),
-		);
+		await context.queryClient.query({
+			...playlistManagementQueryOptions(context.session.accountId),
+			staleTime: "static",
+		});
 	},
 	component: PlaylistsPage,
 });

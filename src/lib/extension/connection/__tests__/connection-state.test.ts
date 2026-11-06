@@ -336,9 +336,9 @@ describe("extensionConnectionQueryOptions + reportSpotifyAuthFailure (lost-updat
 
 		// staleTime: 0 forces an actual fetch despite the just-seeded, still-fresh
 		// cache entry — the reviewer's repro seeds healthy data, then starts a
-		// fetch that races a push, and `fetchQuery` would otherwise skip the
+		// fetch that races a push, and `query` would otherwise skip the
 		// network call entirely and serve the fresh cached value.
-		await qc.fetchQuery({ ...extensionConnectionQueryOptions(), staleTime: 0 });
+		await qc.query({ ...extensionConnectionQueryOptions(), staleTime: 0 });
 
 		const authFailedAt = getAuthFailedAt();
 		expect(authFailedAt).not.toBeNull();
@@ -400,7 +400,7 @@ describe("extensionConnectionQueryOptions + reportExtensionUnreachable (lost-upd
 		// staleTime: 0 forces an actual fetch despite the just-seeded, still-fresh
 		// cache entry — seeds healthy data, then starts a fetch that races the
 		// push, mirroring the authFailedAt regression guard above.
-		await qc.fetchQuery({ ...extensionConnectionQueryOptions(), staleTime: 0 });
+		await qc.query({ ...extensionConnectionQueryOptions(), staleTime: 0 });
 
 		const unreachableAt = getUnreachableAt();
 		expect(unreachableAt).not.toBeNull();

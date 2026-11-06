@@ -21,8 +21,7 @@ type StudioRoute = {
 	loader: (args: {
 		context: {
 			queryClient: {
-				ensureQueryData: (options: unknown) => Promise<unknown>;
-				prefetchQuery: (options: unknown) => Promise<void>;
+				query: (options: { queryKey: readonly unknown[] }) => Promise<unknown>;
 			};
 		};
 		location: {
@@ -37,6 +36,18 @@ function isStudioRoute(value: unknown): value is StudioRoute {
 		value !== null &&
 		typeof Reflect.get(value, "loader") === "function"
 	);
+}
+
+// The loader reads both the gate and the preview through `query`; routing by key
+// lets each test hold the two reads independently.
+function fakeQueryClient(gate: Promise<unknown>, preview: Promise<unknown>) {
+	const readGate = vi.fn(() => gate);
+	const readPreview = vi.fn(() => preview);
+	const query = (options: { queryKey: readonly unknown[] }) =>
+		options.queryKey[0] === "playlist-intent-eligibility"
+			? readGate()
+			: readPreview();
+	return { queryClient: { query }, readGate, readPreview };
 }
 
 async function loadRoute(): Promise<StudioRoute> {
@@ -76,18 +87,20 @@ describe("/_authenticated/playlists/new/studio loader", () => {
 		const preview = new Promise<void>((resolve) => {
 			resolvePreview = resolve;
 		});
-		const ensureQueryData = vi.fn(() => gate);
-		const prefetchQuery = vi.fn(() => preview);
+		const { queryClient, readGate, readPreview } = fakeQueryClient(
+			gate,
+			preview,
+		);
 
 		await expect(
 			route.loader({
-				context: { queryClient: { ensureQueryData, prefetchQuery } },
+				context: { queryClient },
 				location: { state: {} },
 			}),
 		).resolves.toBeUndefined();
 
-		expect(ensureQueryData).toHaveBeenCalledTimes(1);
-		expect(prefetchQuery).toHaveBeenCalledTimes(1);
+		expect(readGate).toHaveBeenCalledTimes(1);
+		expect(readPreview).toHaveBeenCalledTimes(1);
 		expect(playlistDraftPreviewQueryOptionsMock).toHaveBeenCalledWith(
 			DEFAULT_DRAFT_CONFIG,
 		);
@@ -102,21 +115,23 @@ describe("/_authenticated/playlists/new/studio loader", () => {
 		const gate = new Promise<{ allowed: boolean }>((resolve) => {
 			resolveGate = resolve;
 		});
-		const ensureQueryData = vi.fn(() => gate);
-		const prefetchQuery = vi.fn().mockResolvedValue(undefined);
+		const { queryClient, readGate, readPreview } = fakeQueryClient(
+			gate,
+			Promise.resolve(undefined),
+		);
 
 		const loading = route.loader({
-			context: { queryClient: { ensureQueryData, prefetchQuery } },
+			context: { queryClient },
 			location: { state: { studioSeed: { intent: "late-night focus" } } },
 		});
 
-		expect(ensureQueryData).toHaveBeenCalledTimes(1);
-		expect(prefetchQuery).not.toHaveBeenCalled();
+		expect(readGate).toHaveBeenCalledTimes(1);
+		expect(readPreview).not.toHaveBeenCalled();
 
 		resolveGate({ allowed: false });
 		await loading;
 
-		expect(prefetchQuery).toHaveBeenCalledTimes(1);
+		expect(readPreview).toHaveBeenCalledTimes(1);
 		expect(playlistDraftPreviewQueryOptionsMock).toHaveBeenCalledWith({
 			...DEFAULT_DRAFT_CONFIG,
 			intent: undefined,

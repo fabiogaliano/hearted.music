@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { noop, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import {
 	likedSongAnalysisQueryOptions,
@@ -28,7 +28,7 @@ export function useSongSuggestionPrefetch({
 		(songId: string) => {
 			const songIndex = displayedSongIndexById.get(songId);
 			if (songIndex == null) {
-				queryClient.prefetchQuery(songSuggestionsQueryOptions(songId));
+				queryClient.query(songSuggestionsQueryOptions(songId)).catch(noop);
 				return;
 			}
 
@@ -39,11 +39,13 @@ export function useSongSuggestionPrefetch({
 			].filter((song): song is LikedSong => song != null);
 
 			for (const song of songs) {
-				queryClient.prefetchQuery(songSuggestionsQueryOptions(song.track.id));
+				queryClient
+					.query(songSuggestionsQueryOptions(song.track.id))
+					.catch(noop);
 				if (hasStoredAnalysis(song)) {
-					queryClient.prefetchQuery(
-						likedSongAnalysisQueryOptions(accountId, song.track.id),
-					);
+					queryClient
+						.query(likedSongAnalysisQueryOptions(accountId, song.track.id))
+						.catch(noop);
 				}
 			}
 		},

@@ -61,9 +61,10 @@ export const Route = createFileRoute("/_authenticated/match")({
 		if (sessionMode(context.onboardingSession) === "walkthrough") return;
 
 		const { queryClient, session } = context;
-		const view = await queryClient.ensureQueryData(
-			matchDeckQueryOptions(session.accountId, deps.mode),
-		);
+		const view = await queryClient.query({
+			...matchDeckQueryOptions(session.accountId, deps.mode),
+			staleTime: "static",
+		});
 
 		// Seed the current + next card reads so the first render (and a one-step
 		// advance) resolve from cache instead of re-fetching. If a baked card is a

@@ -7,7 +7,11 @@
  * `sessionActions` — no raw setState dispatchers cross this boundary.
  */
 
-import { type useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import {
+	noop,
+	type useQueryClient,
+	useSuspenseQuery,
+} from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { MatchModeToggle } from "@/features/matching/components/MatchModeToggle";
@@ -336,7 +340,7 @@ export function QueueCardContent({
 	useEffect(() => {
 		const next1 = unresolvedIds[currentIndex + 1];
 		if (next1) {
-			queryClient.prefetchQuery(readMatchDeckCardQueryOptions(next1));
+			queryClient.query(readMatchDeckCardQueryOptions(next1)).catch(noop);
 		}
 	}, [queryClient, currentIndex, unresolvedIds]);
 

@@ -16,7 +16,7 @@
  */
 
 import { ListIcon } from "@phosphor-icons/react";
-import { useQuery } from "@tanstack/react-query";
+import { noop, useQuery } from "@tanstack/react-query";
 import {
 	createFileRoute,
 	type ErrorComponentProps,
@@ -88,11 +88,11 @@ export const Route = createFileRoute("/_authenticated")({
 		const { queryClient } = context;
 
 		const { session, account, identity, userJotSignature } =
-			await queryClient.ensureQueryData({
+			await queryClient.query({
 				queryKey: AUTH_SESSION_QUERY_KEY,
 				queryFn: () =>
 					requireAuthSession({ data: { returnTo: location.href } }),
-				staleTime: 5 * 60 * 1000,
+				staleTime: "static",
 			});
 
 		// Guard-critical onboarding payload — small object, always fresh. Child
@@ -101,15 +101,15 @@ export const Route = createFileRoute("/_authenticated")({
 		// which lives in `/onboarding`'s own loader. We start billing in
 		// parallel, but onboarding still resolves first so redirects are not
 		// blocked by billing latency or failures.
-		const onboardingSessionPromise = queryClient.ensureQueryData({
+		const onboardingSessionPromise = queryClient.query({
 			queryKey: ONBOARDING_SESSION_QUERY_KEY,
 			queryFn: () => getOnboardingSession(),
-			staleTime: 0,
+			staleTime: "static",
 		});
 		const billingStatePromise = queryClient
-			.ensureQueryData({
+			.query({
 				...billingStateQueryOptions(),
-				staleTime: 5 * 60 * 1000,
+				staleTime: "static",
 			})
 			.then((value) => ({ ok: true as const, value }))
 			.catch((error: unknown) => ({ ok: false as const, error }));
@@ -164,9 +164,9 @@ export const Route = createFileRoute("/_authenticated")({
 	loader: async ({ context }) => {
 		const consent = getInitialConsentState();
 		if (sessionMode(context.onboardingSession) !== "complete") return consent;
-		const summary = context.queryClient.prefetchQuery(
-			preferredMatchReviewSummaryQueryOptions(context.session.accountId),
-		);
+		const summary = context.queryClient
+			.query(preferredMatchReviewSummaryQueryOptions(context.session.accountId))
+			.catch(noop);
 		if (typeof window !== "undefined") return consent;
 		const [consentState] = await Promise.all([consent, summary]);
 		return consentState;

@@ -29,10 +29,10 @@ export function useStepNavigation() {
 				await saveOnboardingStep({ data: { step: nextStep } });
 
 				// Fetch the authoritative session before navigating so route
-				// guards never read a partially-patched cache. `fetchQuery` is
+				// guards never read a partially-patched cache. `query` is
 				// imperative and doesn't require an active observer (which
 				// `refetchQueries` would, default type: 'active').
-				const payload = await queryClient.fetchQuery({
+				const payload = await queryClient.query({
 					queryKey: ONBOARDING_SESSION_QUERY_KEY,
 					queryFn: () => getOnboardingSession(),
 				});
