@@ -174,7 +174,10 @@ export class LlmService {
 					project: validated.project,
 					location: validated.location,
 					...(validated.credentials
-						? { googleAuthOptions: { credentials: validated.credentials } }
+						? {
+								// oxlint-disable-next-line typescript/no-deprecated -- the advisory targets credential JSON from untrusted sources; ours is our own GOOGLE_APPLICATION_CREDENTIALS_JSON secret.
+								googleAuthOptions: { credentials: validated.credentials },
+							}
 						: {}),
 				});
 				break;
