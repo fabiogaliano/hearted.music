@@ -1,5 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { getContext } from "@/integrations/tanstack-query/root-provider";
 import type { OnboardingSession } from "@/lib/domains/library/accounts/onboarding-session";
 import type { SaveableOnboardingStep } from "@/lib/domains/library/accounts/onboarding-steps";
 import { ONBOARDING_SESSION_QUERY_KEY } from "@/lib/platform/auth/query-keys";
@@ -14,7 +15,8 @@ import { useStepNavigation } from "../hooks/useStepNavigation";
  * useStepNavigation's contract: persist the step, then read the authoritative
  * session back, then navigate — so route guards on the destination read the
  * fresh session from the cache, never the pre-save one. The server fns are
- * mocked as a tiny in-memory server; the QueryClient and router are real.
+ * mocked as a tiny in-memory server; the QueryClient (with the app's defaults,
+ * including its non-zero staleTime) and router are real.
  */
 
 vi.mock("@/lib/server/onboarding.functions", () => ({
@@ -48,9 +50,7 @@ function sessionFor(step: SaveableOnboardingStep): OnboardingSession {
 let serverSession: OnboardingSession;
 
 async function renderNavigation() {
-	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
-	});
+	const { queryClient } = getContext();
 	queryClient.setQueryData(ONBOARDING_SESSION_QUERY_KEY, {
 		session: serverSession,
 		theme: null,
@@ -122,6 +122,15 @@ describe("useStepNavigation", () => {
 		await navigateTo("song-walkthrough");
 
 		expect(statusWhenNavigating).toEqual(["song-walkthrough"]);
+		expect(router.state.location.pathname).toBe("/liked-songs");
+	});
+
+	it("regression: re-reads the session after saving even while the cached one is still fresh", async () => {
+		const { router, navigateTo } = await renderNavigation();
+
+		await navigateTo("song-walkthrough");
+
+		expect(getOnboardingSession).toHaveBeenCalledTimes(1);
 		expect(router.state.location.pathname).toBe("/liked-songs");
 	});
 

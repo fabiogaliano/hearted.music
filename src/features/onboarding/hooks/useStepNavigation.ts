@@ -29,12 +29,14 @@ export function useStepNavigation() {
 				await saveOnboardingStep({ data: { step: nextStep } });
 
 				// Fetch the authoritative session before navigating so route
-				// guards never read a partially-patched cache. `query` is
-				// imperative and doesn't require an active observer (which
-				// `refetchQueries` would, default type: 'active').
+				// guards never read a partially-patched cache. staleTime: 0 because the
+				// cached session can still be within the client-wide staleTime yet predate
+				// the save. `query` is imperative and doesn't require an active observer
+				// (which `refetchQueries` would, default type: 'active').
 				const payload = await queryClient.query({
 					queryKey: ONBOARDING_SESSION_QUERY_KEY,
 					queryFn: () => getOnboardingSession(),
+					staleTime: 0,
 				});
 
 				const { allowedPath } = resolveSession(payload.session);

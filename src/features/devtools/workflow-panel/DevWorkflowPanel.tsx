@@ -59,6 +59,7 @@ async function reachPlanSelection(
 		queryClient.query({
 			queryKey: ONBOARDING_SESSION_QUERY_KEY,
 			queryFn: () => getOnboardingSession(),
+			staleTime: 0,
 		});
 
 	await saveOnboardingStep({ data: { step: "plan-selection" } });
@@ -188,6 +189,7 @@ export function DevWorkflowPanel() {
 					const nextSession = await queryClient.query({
 						queryKey: ONBOARDING_SESSION_QUERY_KEY,
 						queryFn: () => getOnboardingSession(),
+						staleTime: 0,
 					});
 
 					const resolved = resolveSession(nextSession.session);

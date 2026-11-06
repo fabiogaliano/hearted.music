@@ -72,6 +72,7 @@ export function useOnboardingNavigation() {
 				await queryClient.query({
 					queryKey: ONBOARDING_SESSION_QUERY_KEY,
 					queryFn: () => getOnboardingSession(),
+					staleTime: 0,
 				});
 
 				// Update URL and pass state (merge current state with new options).
