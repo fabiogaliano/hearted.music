@@ -101,7 +101,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 			if (hasRemainingCredits) {
 				setPendingPack(pack);
 			} else {
-				startCheckout(pack.offer);
+				void startCheckout(pack.offer);
 			}
 		},
 		[hasRemainingCredits, startCheckout],
@@ -388,7 +388,7 @@ export function PaywallCTA({ billingState, compact = false }: PaywallCTAProps) {
 									onClick={() => {
 										const pack = pendingPack;
 										setPendingPack(null);
-										startCheckout(pack.offer);
+										void startCheckout(pack.offer);
 									}}
 									style={{ fontFamily: fonts.body }}
 								>

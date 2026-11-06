@@ -22,7 +22,7 @@ import { createPollLoop } from "./poll-loop";
 
 function dispatch(job: Job, actor: string, markDone: () => void): void {
 	const { id: jobId, account_id: accountId } = job;
-	(async () => {
+	void (async () => {
 		const heartbeat = startHeartbeat(job);
 		try {
 			const outcome = await runExtensionSyncJob(

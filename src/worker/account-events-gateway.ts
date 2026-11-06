@@ -560,7 +560,7 @@ export async function stopAccountEventsGateway() {
 	}
 	clients.clear();
 	if (server) {
-		server.stop(true);
+		void server.stop(true);
 		server = undefined;
 	}
 }

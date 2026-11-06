@@ -50,7 +50,7 @@ export function reportSpotifyAuthFailure(queryClient: QueryClient): void {
 	);
 	// Load-bearing — see module header: rearms `refetchInterval` for every
 	// subscribed observer and refreshes paired/profile.
-	queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
+	void queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
 }
 
 /** Clears a sticky `authFailedAt` — call wherever a Spotify command returns
@@ -90,5 +90,5 @@ export function reportExtensionUnreachable(queryClient: QueryClient): void {
 	// reads it via useSyncExternalStore, not gated on any query state), so
 	// this invalidate can only ever refresh cosmetic fields, never race away
 	// the observation itself.
-	queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
+	void queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
 }

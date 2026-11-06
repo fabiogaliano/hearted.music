@@ -227,7 +227,7 @@ function InstallExtensionStepBody() {
 			setBrowserTarget(target);
 			setBrowserLabel(label);
 		};
-		detect();
+		void detect();
 		// Arc only injects its palette vars after load — re-check once shortly after.
 		const arcRecheck = setTimeout(detect, 1_200);
 		return () => {

@@ -19,7 +19,7 @@ export function startKeepAlive(): { stop: () => void } {
 		}
 	}
 
-	ping();
+	void ping();
 
 	const interval = setInterval(ping, KEEP_ALIVE_INTERVAL_MS);
 	return { stop: () => clearInterval(interval) };

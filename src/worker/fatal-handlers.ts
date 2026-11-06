@@ -14,7 +14,7 @@ function handleFatal(error: unknown, phase: FatalPhase): void {
 		console.error(`[worker] ${phase}`, error);
 	}
 	Sentry.captureException(error, { tags: { phase } });
-	Sentry.flush(2000).finally(() => process.exit(1));
+	void Sentry.flush(2000).finally(() => process.exit(1));
 }
 
 export function setWorkerFatalObserver(

@@ -129,7 +129,7 @@ function MatchErrorComponent({ error, reset }: ErrorComponentProps) {
 	}, [error]);
 
 	const handleRetry = () => {
-		queryClient.resetQueries({ queryKey: matchDeckKeys.all });
+		void queryClient.resetQueries({ queryKey: matchDeckKeys.all });
 		reset();
 	};
 
@@ -322,12 +322,12 @@ function QueueMatchPage() {
 			});
 			void setMatchViewModePreference({ data: { mode: newMode } })
 				.then(() => {
-					queryClient.invalidateQueries({
+					void queryClient.invalidateQueries({
 						queryKey: matchReviewSummaryKeys.preferredSummary(
 							session.accountId,
 						),
 					});
-					queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+					void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 				})
 				.catch(() => {
 					// Best-effort: the preference write failed but navigation already

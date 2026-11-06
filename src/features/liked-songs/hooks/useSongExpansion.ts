@@ -36,7 +36,7 @@ function withViewTransition(callback: () => void): Promise<void> {
 		).startViewTransition(() => {
 			flushSync(callback);
 		});
-		transition.finished.finally(() => {
+		void transition.finished.finally(() => {
 			delete document.documentElement.dataset.songClosing;
 		});
 		return transition.finished;

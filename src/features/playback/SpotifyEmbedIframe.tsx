@@ -91,7 +91,7 @@ export function SpotifyEmbedIframe({
 
 		let cancelled = false;
 
-		loadIFrameAPI().then((api) => {
+		void loadIFrameAPI().then((api) => {
 			if (cancelled) return;
 			api.createController(
 				placeholder,

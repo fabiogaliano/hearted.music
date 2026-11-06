@@ -32,7 +32,7 @@ const loop = createPollLoop<Job, { message: string }>({
 			accountId: job.account_id,
 		});
 
-		(async () => {
+		void (async () => {
 			const heartbeat = startHeartbeat(job);
 			try {
 				const outcome = await runClaimedJob(job, actor, heartbeat.leaseLost);

@@ -150,7 +150,7 @@ async function main() {
 			});
 		}
 
-		healthServer.stop();
+		void healthServer.stop();
 		await shutdownPostHogOtel();
 		// Drain any buffered product events (e.g. match_snapshot_published) before
 		// exit so the last jobs' analytics aren't lost on redeploy.
@@ -227,5 +227,5 @@ main().catch((err) => {
 	Sentry.captureException(err, { tags: { phase: "main" } });
 	setUnhealthy();
 	// Flush before exit so the event makes it out of the process.
-	Sentry.flush(2000).finally(() => process.exit(1));
+	void Sentry.flush(2000).finally(() => process.exit(1));
 });

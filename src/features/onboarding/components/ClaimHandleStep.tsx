@@ -345,12 +345,12 @@ export function ClaimHandleStep({
 
 			const { allowedPath } = resolveSession(onboarding.session);
 			if (allowedPath === "/onboarding") {
-				router.navigate({
+				void router.navigate({
 					to: "/onboarding",
 					search: { step: onboarding.session.status },
 				});
 			} else {
-				router.navigate({ to: allowedPath });
+				void router.navigate({ to: allowedPath });
 			}
 		},
 		[queryClient, router],

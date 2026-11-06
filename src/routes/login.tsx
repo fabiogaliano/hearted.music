@@ -129,11 +129,11 @@ function LoginPage() {
 			return;
 		}
 		analytics.capture("login_succeeded", { provider: "credentials" });
-		navigate({ href: afterSignIn });
+		void navigate({ href: afterSignIn });
 	};
 
 	function handleForgotPassword() {
-		navigate({ to: "/forgot-password" });
+		void navigate({ to: "/forgot-password" });
 	}
 
 	function handleModeChange(next: LoginMode) {

@@ -104,19 +104,19 @@ function invalidateEnrichmentCompletionQueries(
 	queryClient: ReturnType<typeof useQueryClient>,
 	accountId: string,
 ) {
-	queryClient.invalidateQueries({
+	void queryClient.invalidateQueries({
 		queryKey: dashboardKeys.pageData(accountId),
 	});
-	queryClient.invalidateQueries({
+	void queryClient.invalidateQueries({
 		queryKey: dashboardKeys.stats(accountId),
 	});
-	queryClient.invalidateQueries({
+	void queryClient.invalidateQueries({
 		queryKey: dashboardKeys.recentActivity(accountId),
 	});
-	queryClient.invalidateQueries({
+	void queryClient.invalidateQueries({
 		queryKey: likedSongsKeys.stats(accountId),
 	});
-	queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
+	void queryClient.invalidateQueries({ queryKey: likedSongsKeys.all });
 }
 
 export function useAccountEvents(accountId: string, enabled = true) {
@@ -291,7 +291,9 @@ export function useAccountEvents(accountId: string, enabled = true) {
 					void invalidateLibrarySyncQueries(queryClient, accountId);
 					break;
 				case "match_snapshot_published":
-					queryClient.invalidateQueries({ queryKey: matchDeckKeys.deckRoot });
+					void queryClient.invalidateQueries({
+						queryKey: matchDeckKeys.deckRoot,
+					});
 					break;
 				// The gateway follows every replay batch with an authoritative
 				// active_jobs_snapshot frame, so job-change frames need no
@@ -301,7 +303,7 @@ export function useAccountEvents(accountId: string, enabled = true) {
 				case "active_jobs_changed":
 					break;
 				case "match_deck_appended":
-					queryClient.invalidateQueries({
+					void queryClient.invalidateQueries({
 						queryKey: matchDeckKeys.deck(accountId, envelope.data.orientation),
 					});
 					break;

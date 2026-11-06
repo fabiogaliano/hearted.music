@@ -187,10 +187,10 @@ export function PlaylistsCoverFlowScreen({
 		// summaries so badge counts don't wait on staleTime. Captured card (item)
 		// keys are intentionally left untouched so an in-progress card never
 		// mutates after a filter change.
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: playlistKeys.management(accountId),
 		});
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: matchReviewSummaryKeys.summariesRoot,
 		});
 		return result;

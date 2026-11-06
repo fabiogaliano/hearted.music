@@ -68,7 +68,9 @@ export function repairConnection({
 	if (needsPairing) {
 		return pairExtension()
 			.finally(() => {
-				queryClient.invalidateQueries({ queryKey: extensionConnectionKey });
+				void queryClient.invalidateQueries({
+					queryKey: extensionConnectionKey,
+				});
 			})
 			.then(() => undefined);
 	}

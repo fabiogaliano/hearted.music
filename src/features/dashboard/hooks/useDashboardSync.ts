@@ -133,7 +133,7 @@ export function useDashboardSync(
 	// refreshes the dashboard on its running-to-done edge (with the event
 	// stream, extension_sync_completed does that).
 	const watchQueuedSync = useCallback(() => {
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: activeJobsKeys.byAccount(accountId),
 		});
 	}, [queryClient, accountId]);

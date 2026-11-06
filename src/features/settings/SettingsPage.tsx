@@ -139,10 +139,10 @@ export function SettingsPage({
 				// Refresh the sidebar badge, dashboard CTA count, and no-active-queue
 				// fallback in /match. An in-progress queue retains the strictness it was
 				// created with by design; only the summary + threshold-based fallback change.
-				queryClient.invalidateQueries({
+				void queryClient.invalidateQueries({
 					queryKey: matchReviewSummaryKeys.summary(accountId, "song"),
 				});
-				queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+				void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 			} catch {
 				setStrictness(previousStrictness);
 				toast.error("Something went sideways. Let's try that again.");

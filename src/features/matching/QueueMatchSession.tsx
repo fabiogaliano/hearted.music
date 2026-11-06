@@ -74,10 +74,10 @@ export function QueueMatchContent({
 	// current orientation so playlist-mode invalidation doesn't evict song-mode
 	// cache.
 	const invalidateSessionSummaries = useCallback(() => {
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: matchReviewSummaryKeys.summary(accountId, mode),
 		});
-		queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+		void queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
 	}, [queryClient, accountId, mode]);
 
 	const completionCapturedRef = useRef(false);
@@ -85,7 +85,7 @@ export function QueueMatchContent({
 		if (!isComplete || completionCapturedRef.current) return;
 		completionCapturedRef.current = true;
 		analytics.capture("matching_session_completed", { total_songs: total });
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: matchDeckKeys.deck(accountId, mode),
 		});
 		invalidateSessionSummaries();
@@ -107,7 +107,7 @@ export function QueueMatchContent({
 	// event) with nobody rendering the result.
 	useEffect(
 		() => () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: matchDeckKeys.deck(accountId, mode),
 				refetchType: "none",
 			});

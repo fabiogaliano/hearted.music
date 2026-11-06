@@ -34,7 +34,7 @@ export function usePlaylistSession(accountId: string) {
 				await setPlaylistTargetMutation({
 					data: { playlistId, isTarget },
 				});
-				queryClient.invalidateQueries({
+				void queryClient.invalidateQueries({
 					queryKey: playlistKeys.management(accountId),
 				});
 			} catch {

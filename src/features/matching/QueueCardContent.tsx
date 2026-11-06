@@ -654,7 +654,7 @@ export function QueueCardContent({
 	// item — retryable errors must never silently skip the card.
 	if (itemData.status === "retryable-error") {
 		const handleRetry = () => {
-			queryClient.invalidateQueries({
+			void queryClient.invalidateQueries({
 				queryKey: readMatchDeckCardQueryOptions(itemId).queryKey,
 			});
 		};

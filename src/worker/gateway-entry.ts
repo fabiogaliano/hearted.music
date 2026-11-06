@@ -48,5 +48,5 @@ async function main() {
 main().catch((err) => {
 	log.error("gateway-fatal", { error: String(err) });
 	Sentry.captureException(err, { tags: { phase: "main" } });
-	Sentry.flush(2000).finally(() => process.exit(1));
+	void Sentry.flush(2000).finally(() => process.exit(1));
 });

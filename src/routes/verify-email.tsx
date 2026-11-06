@@ -32,7 +32,7 @@ function VerifyEmailPage() {
 
 	async function handleResend() {
 		if (!email) {
-			navigate({ to: "/login" });
+			void navigate({ to: "/login" });
 			return;
 		}
 		await sendVerificationEmail({

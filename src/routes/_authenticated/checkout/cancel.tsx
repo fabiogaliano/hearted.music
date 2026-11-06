@@ -22,7 +22,7 @@ function CheckoutCancelPage() {
 	useEffect(() => {
 		analytics.capture("checkout_cancelled");
 		clearCheckoutIntent();
-		navigate({ to: "/dashboard", replace: true });
+		void navigate({ to: "/dashboard", replace: true });
 	}, [navigate, analytics]);
 
 	return null;

@@ -122,7 +122,7 @@ function useYearCandidates(albumIds: string[]) {
 		for (const id of missing) requested.current.add(id);
 		const unresolved = new Set(missing);
 		let cancelled = false;
-		(async () => {
+		void (async () => {
 			let ids = missing;
 			while (!cancelled && ids.length > 0) {
 				let res: AlbumCandidatesResult;
@@ -249,7 +249,7 @@ function GroupSongRow({
 					{...noAutofill}
 					onChange={(e) => setYear(e.target.value.replace(/[^\d]/g, ""))}
 					onKeyDown={(e) => {
-						if (e.key === "Enter" && valid && !busy) save();
+						if (e.key === "Enter" && valid && !busy) void save();
 						if (e.key === "Escape") e.currentTarget.blur();
 					}}
 				/>
@@ -400,7 +400,7 @@ function AlbumCard({
 								setDirty(true);
 							}}
 							onKeyDown={(e) => {
-								if (e.key === "Enter" && valid && !busy) save();
+								if (e.key === "Enter" && valid && !busy) void save();
 								if (e.key === "Escape") e.currentTarget.blur();
 							}}
 						/>
@@ -586,7 +586,8 @@ function SongCard({
 								setSaved(false);
 							}}
 							onKeyDown={(e) => {
-								if (e.key === "Enter" && valid && !unchanged && !busy) save();
+								if (e.key === "Enter" && valid && !unchanged && !busy)
+									void save();
 							}}
 						/>
 						<button

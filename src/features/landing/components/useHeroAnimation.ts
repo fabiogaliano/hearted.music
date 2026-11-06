@@ -739,7 +739,7 @@ export function useHeroAnimation(
 						if (!isAlive || !logoRef.current || !headlineRef.current) return;
 						ScrollTrigger.refresh();
 					};
-					document.fonts?.ready.then(handleFontLoad);
+					void document.fonts?.ready.then(handleFontLoad);
 
 					// ─── Cleanup (matchMedia auto-calls on revert) ───────
 					return () => {
