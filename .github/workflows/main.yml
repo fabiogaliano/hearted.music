@@ -146,6 +146,10 @@ jobs:
 
       - if: needs.detect.outputs.code == 'true'
         run: bun install --frozen-lockfile
+      # The type-aware lint checks extensions/src against extensions/tsconfig.json,
+      # whose `types: ["chrome"]` resolve only from the extension's own install.
+      - if: needs.detect.outputs.code == 'true'
+        run: bun install --frozen-lockfile --cwd extensions
       - if: needs.detect.outputs.code == 'true'
         run: bun run check
       - if: needs.detect.outputs.code == 'true'
