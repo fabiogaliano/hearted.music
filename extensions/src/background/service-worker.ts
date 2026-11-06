@@ -1147,7 +1147,9 @@ const dispatcherDeps: DispatcherDeps = {
 	},
 	handleSpotifyTokenMessage,
 	updatePathfinderHash: ({ operationName, sha256Hash }) => {
-		updateHash(operationName, sha256Hash);
+		updateHash(operationName, sha256Hash).catch((error: unknown) => {
+			console.warn("[hearted.] Failed to persist pathfinder hash", error);
+		});
 	},
 	handleArmTokenPresent,
 	closeAndFocusHearted,

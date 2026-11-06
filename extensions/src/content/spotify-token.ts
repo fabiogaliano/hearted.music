@@ -5,6 +5,17 @@ const HASH_EVENT = "__hearted_hash";
 // MUST stay in sync with src/lib/extension/reconnect-link.ts.
 const ARM_TOKEN_FRAGMENT_PARAM = "hearted-arm";
 
+// The extension can be reloaded or updated while this page stays open; the send
+// then fails — synchronously or as a rejection, depending on the browser and
+// the failure — and there is no background left to tell.
+async function notifyBackground(message: object): Promise<void> {
+	try {
+		await browser.runtime.sendMessage(message);
+	} catch {
+		// Extension context invalidated
+	}
+}
+
 window.addEventListener(TOKEN_EVENT, ((event: CustomEvent) => {
 	const { accessToken } = event.detail;
 	if (!accessToken) return;
@@ -15,26 +26,18 @@ window.addEventListener(TOKEN_EVENT, ((event: CustomEvent) => {
 		isAnonymous: false,
 	};
 
-	try {
-		browser.runtime.sendMessage({ type: "SPOTIFY_TOKEN", payload });
-		console.log("[hearted.] Token captured and sent to background");
-	} catch {
-		// Extension context invalidated
-	}
+	void notifyBackground({ type: "SPOTIFY_TOKEN", payload });
+	console.log("[hearted.] Token captured and sent to background");
 }) as EventListener);
 
 window.addEventListener(HASH_EVENT, ((event: CustomEvent) => {
 	const { operationName, sha256Hash } = event.detail;
 	if (!operationName || !sha256Hash) return;
 
-	try {
-		browser.runtime.sendMessage({
-			type: "PATHFINDER_HASH",
-			payload: { operationName, sha256Hash },
-		});
-	} catch {
-		// Extension context invalidated
-	}
+	void notifyBackground({
+		type: "PATHFINDER_HASH",
+		payload: { operationName, sha256Hash },
+	});
 }) as EventListener);
 
 // Report any `hearted-arm` fragment param to the background. This is the
@@ -57,11 +60,7 @@ function readArmTokenFromHash(hash: string): string | null {
 function reportArmTokenIfPresent(): void {
 	const token = readArmTokenFromHash(window.location.hash);
 	if (token === null) return;
-	try {
-		browser.runtime.sendMessage({ type: "ARM_TOKEN_PRESENT", token });
-	} catch {
-		// Extension context invalidated
-	}
+	void notifyBackground({ type: "ARM_TOKEN_PRESENT", token });
 }
 
 reportArmTokenIfPresent();

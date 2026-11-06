@@ -216,12 +216,15 @@ function createBanner(): void {
 	dismissBtn.textContent = "×";
 
 	returnBtn.addEventListener("click", () => {
-		try {
-			browser.runtime.sendMessage({ type: "CLOSE_AND_FOCUS_HEARTED" });
-		} catch {
-			// extension context invalidated (e.g. extension reloaded) — just hide
-			removeBanner(host, wrap);
-		}
+		void (async () => {
+			try {
+				await browser.runtime.sendMessage({ type: "CLOSE_AND_FOCUS_HEARTED" });
+			} catch {
+				// extension context invalidated (e.g. extension reloaded) — just hide.
+				// Awaited: the failure is usually a rejection, not a synchronous throw.
+				removeBanner(host, wrap);
+			}
+		})();
 	});
 
 	dismissBtn.addEventListener("click", () => removeBanner(host, wrap));
