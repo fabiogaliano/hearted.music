@@ -19,9 +19,9 @@
 		"@types/chrome": "^0.0.304",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
-		"esbuild": "^0.25.0",
+		"esbuild": "^0.28.2",
 		"typescript": "^5.7.0",
-		"vitest": "^4.0.18",
-		"web-ext": "^10.3.0"
+		"vitest": "^4.1.12",
+		"web-ext": "^10.8.0"
 	}
 }
